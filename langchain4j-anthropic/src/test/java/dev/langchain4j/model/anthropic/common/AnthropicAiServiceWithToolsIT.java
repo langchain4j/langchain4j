@@ -72,7 +72,7 @@ class AnthropicAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
                 .modelName(CLAUDE_SONNET_4_5_20250929)
                 .beta("advanced-tool-use-2025-11-20")
                 .serverTools(toolSearchTool)
-                .sendToolMetadataKeys(deferLoadingKey)
+                .toolMetadataKeysToSend(deferLoadingKey)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -154,7 +154,7 @@ class AnthropicAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
                 .modelName(CLAUDE_SONNET_4_5_20250929)
                 .beta("advanced-tool-use-2025-11-20")
                 .serverTools(codeExecutionTool)
-                .sendToolMetadataKeys("allowed_callers")
+                .toolMetadataKeysToSend("allowed_callers")
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -225,7 +225,7 @@ class AnthropicAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_SONNET_4_5_20250929)
                 .beta("advanced-tool-use-2025-11-20")
-                .sendToolMetadataKeys("input_examples") // TODO name, everywhere
+                .toolMetadataKeysToSend("input_examples") // TODO name, everywhere
                 .logRequests(true)
                 .logResponses(true)
                 .build();

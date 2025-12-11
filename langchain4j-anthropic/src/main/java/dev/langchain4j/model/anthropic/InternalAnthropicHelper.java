@@ -56,7 +56,7 @@ class InternalAnthropicHelper {
             String toolChoiceName,
             Boolean disableParallelToolUse,
             List<Map<String, Object>> serverTools,
-            Set<String> sendToolMetadataKeys,
+            Set<String> toolMetadataKeysToSend,
             String userId,
             Map<String, Object> customParameters) {
 
@@ -77,7 +77,7 @@ class InternalAnthropicHelper {
             tools.addAll(serverTools);
         }
         if (!isNullOrEmpty(chatRequest.toolSpecifications())) {
-            tools.addAll(toAnthropicTools(chatRequest.toolSpecifications(), toolsCacheType, sendToolMetadataKeys));
+            tools.addAll(toAnthropicTools(chatRequest.toolSpecifications(), toolsCacheType, toolMetadataKeysToSend));
         }
         if (!tools.isEmpty()) {
             requestBuilder.tools(tools);

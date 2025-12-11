@@ -683,7 +683,7 @@ class AnthropicChatModelIT {
                  .modelName(CLAUDE_SONNET_4_5_20250929)
                  .beta("advanced-tool-use-2025-11-20")
                  .serverTools(toolSearchTool)
-                 .sendToolMetadataKeys(toolMetadata.keySet()) // TODO document
+                 .toolMetadataKeysToSend(toolMetadata.keySet()) // TODO document
                  .logRequests(true)
                  .logResponses(true)
                  .build();

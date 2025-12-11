@@ -74,7 +74,7 @@ public class AnthropicChatModel implements ChatModel {
     private final String toolChoiceName;
     private final Boolean disableParallelToolUse;
     private final List<Map<String, Object>> serverTools;
-    private final Set<String> sendToolMetadataKeys;
+    private final Set<String> toolMetadataKeysToSend;
     private final String userId;
     private final Map<String, Object> customParameters;
 
@@ -102,7 +102,7 @@ public class AnthropicChatModel implements ChatModel {
         this.toolChoiceName = builder.toolChoiceName;
         this.disableParallelToolUse = builder.disableParallelToolUse;
         this.serverTools = copy(builder.serverTools);
-        this.sendToolMetadataKeys = copy(builder.sendToolMetadataKeys);
+        this.toolMetadataKeysToSend = copy(builder.toolMetadataKeysToSend);
         this.userId = builder.userId;
         this.customParameters = copy(builder.customParameters);
 
@@ -149,7 +149,7 @@ public class AnthropicChatModel implements ChatModel {
         private String toolChoiceName;
         private Boolean disableParallelToolUse;
         private List<Map<String, Object>> serverTools;
-        private Set<String> sendToolMetadataKeys;
+        private Set<String> toolMetadataKeysToSend;
         private Boolean cacheSystemMessages;
         private Boolean cacheTools;
         private String thinkingType;
@@ -282,16 +282,16 @@ public class AnthropicChatModel implements ChatModel {
         /**
          * Specifies metadata keys from the {@link ToolSpecification#metadata()} to be included in the request.
          */
-        public AnthropicChatModelBuilder sendToolMetadataKeys(Set<String> toolMetadataKeys) {
-            this.sendToolMetadataKeys = toolMetadataKeys;
+        public AnthropicChatModelBuilder toolMetadataKeysToSend(Set<String> toolMetadataKeysToSend) {
+            this.toolMetadataKeysToSend = toolMetadataKeysToSend;
             return this;
         }
 
         /**
          * Specifies metadata keys from the {@link ToolSpecification#metadata()} to be included in the request.
          */
-        public AnthropicChatModelBuilder sendToolMetadataKeys(String... toolMetadataKeys) {
-            return sendToolMetadataKeys(new HashSet<>(asList(toolMetadataKeys)));
+        public AnthropicChatModelBuilder toolMetadataKeysToSend(String... toolMetadataKeysToSend) {
+            return toolMetadataKeysToSend(new HashSet<>(asList(toolMetadataKeysToSend)));
         }
 
         public AnthropicChatModelBuilder cacheSystemMessages(Boolean cacheSystemMessages) {
@@ -432,7 +432,7 @@ public class AnthropicChatModel implements ChatModel {
                 toolChoiceName,
                 disableParallelToolUse,
                 serverTools,
-                sendToolMetadataKeys,
+                toolMetadataKeysToSend,
                 userId,
                 customParameters);
 

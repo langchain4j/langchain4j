@@ -301,16 +301,16 @@ public class AnthropicMapper {
     public static List<AnthropicTool> toAnthropicTools(
             List<ToolSpecification> toolSpecifications,
             AnthropicCacheType cacheToolsPrompt,
-            Set<String> sendToolMetadataKeys) {
+            Set<String> toolMetadataKeysToSend) {
         ToolSpecification lastToolSpecification =
                 toolSpecifications.isEmpty() ? null : toolSpecifications.get(toolSpecifications.size() - 1);
         return toolSpecifications.stream()
                 .map(toolSpecification -> {
                     boolean isLastItem = toolSpecification.equals(lastToolSpecification);
                     if (isLastItem && cacheToolsPrompt != AnthropicCacheType.NO_CACHE) {
-                        return toAnthropicTool(toolSpecification, cacheToolsPrompt, sendToolMetadataKeys);
+                        return toAnthropicTool(toolSpecification, cacheToolsPrompt, toolMetadataKeysToSend);
                     }
-                    return toAnthropicTool(toolSpecification, AnthropicCacheType.NO_CACHE, sendToolMetadataKeys);
+                    return toAnthropicTool(toolSpecification, AnthropicCacheType.NO_CACHE, toolMetadataKeysToSend);
                 })
                 .collect(toList());
     }
@@ -323,7 +323,7 @@ public class AnthropicMapper {
     public static AnthropicTool toAnthropicTool(
             ToolSpecification toolSpecification,
             AnthropicCacheType cacheToolsPrompt,
-            Set<String> sendToolMetadataKeys) {
+            Set<String> toolMetadataKeysToSend) {
         JsonObjectSchema parameters = toolSpecification.parameters();
 
         AnthropicTool.Builder toolBuilder = AnthropicTool.builder()
@@ -338,8 +338,8 @@ public class AnthropicMapper {
             return toolBuilder.cacheControl(cacheToolsPrompt.cacheControl()).build();
         }
 
-        if (!sendToolMetadataKeys.isEmpty()) {
-            toolBuilder.customParameters(retainKeys(toolSpecification.metadata(), sendToolMetadataKeys));
+        if (!toolMetadataKeysToSend.isEmpty()) {
+            toolBuilder.customParameters(retainKeys(toolSpecification.metadata(), toolMetadataKeysToSend));
         }
 
         return toolBuilder.build();
