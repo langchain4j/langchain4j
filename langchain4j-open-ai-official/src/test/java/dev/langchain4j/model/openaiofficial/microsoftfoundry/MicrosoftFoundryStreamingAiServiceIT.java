@@ -1,4 +1,4 @@
-package dev.langchain4j.model.openaiofficial.azureopenai;
+package dev.langchain4j.model.openaiofficial.microsoftfoundry;
 
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
@@ -10,11 +10,11 @@ import java.util.List;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
-class AzureOpenAiOfficialStreamingAiServiceIT extends AbstractStreamingAiServiceIT {
+class MicrosoftFoundryStreamingAiServiceIT extends AbstractStreamingAiServiceIT {
 
     @Override
     protected List<StreamingChatModel> models() {
-        return InternalAzureOpenAiOfficialTestHelper.chatModelsStreamingNormalAndJsonStrict();
+        return InternalMicrosoftFoundryTestHelper.chatModelsStreamingNormalAndJsonStrict();
     }
 
     @Override

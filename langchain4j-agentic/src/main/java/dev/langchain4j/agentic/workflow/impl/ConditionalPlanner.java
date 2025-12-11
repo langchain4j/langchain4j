@@ -19,7 +19,7 @@ public record ConditionalPlanner(List<ConditionalAgent> conditionalAgents) imple
                 .filter(conditionalAgent -> conditionalAgent.condition.test(planningContext.agenticScope()))
                 .flatMap(conditionalAgent -> conditionalAgent.agentInstances.stream())
                 .toList();
-        return call(agentsToCall);
+        return agentsToCall.isEmpty() ? done() : call(agentsToCall);
     }
 
     @Override

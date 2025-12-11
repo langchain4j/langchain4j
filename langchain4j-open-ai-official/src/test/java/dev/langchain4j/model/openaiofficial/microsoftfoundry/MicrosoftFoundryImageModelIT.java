@@ -1,4 +1,4 @@
-package dev.langchain4j.model.openaiofficial.azureopenai;
+package dev.langchain4j.model.openaiofficial.microsoftfoundry;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -11,14 +11,14 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 @Disabled("Run manually before release. Expensive to run very often.")
-class AzureOpenAiOfficialImageModelIT {
+class MicrosoftFoundryImageModelIT {
 
     protected List<ImageModel> modelsUrl() {
-        return InternalAzureOpenAiOfficialTestHelper.imageModelsUrl();
+        return InternalMicrosoftFoundryTestHelper.imageModelsUrl();
     }
 
     protected List<ImageModel> modelsBase64() {
-        return InternalAzureOpenAiOfficialTestHelper.imageModelsBase64();
+        return InternalMicrosoftFoundryTestHelper.imageModelsBase64();
     }
 
     @Test
