@@ -38,7 +38,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-import org.junitpioneer.jupiter.RetryingTest;
 
 @EnabledIfEnvironmentVariable(named = "GCP_PROJECT_ID", matches = ".+")
 class VertexAiGeminiStreamingChatModelIT {
@@ -160,7 +159,6 @@ class VertexAiGeminiStreamingChatModelIT {
     }
 
     @Disabled("TODO fix")
-    @RetryingTest(2)
     void should_allow_defining_safety_settings() {
         // given
         HashMap<HarmCategory, SafetyThreshold> safetySettings = new HashMap<>();

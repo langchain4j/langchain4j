@@ -96,7 +96,7 @@ jobs:
           mvn -B -U verify \
             -Dgib.disable=false -Dgib.referenceBranch=__branch_before \
             -Djunit.jupiter.extensions.autodetection.enabled=true \
-            -DskipAzureAiSearchITs -DskipJlamaITs -DskipLocalAiITs -DskipMilvusITs -DskipOllamaITs -DskipVespaITs \
+            -DskipAzureAiSearchITs -DskipJlamaITs -DskipLocalAiITs -DskipMilvusITs -DskipOllamaITs -DskipOracleITs -DskipVespaITs \
             -Dtinylog.writer.level=info
         env:
           LC4J_GLOBAL_TEST_RETRY_ENABLED: true
