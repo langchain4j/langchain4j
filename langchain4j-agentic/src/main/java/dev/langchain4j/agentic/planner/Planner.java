@@ -10,6 +10,10 @@ public interface Planner {
         return nextAction(planningContext);
     }
 
+    default AgenticSystemTopology topology() {
+        return AgenticSystemTopology.SEQUENCE;
+    }
+
     Action nextAction(PlanningContext planningContext);
 
     default Action noOp() {

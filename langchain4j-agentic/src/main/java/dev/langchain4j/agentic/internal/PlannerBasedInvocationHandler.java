@@ -66,6 +66,8 @@ public class PlannerBasedInvocationHandler implements InvocationHandler {
 
     private final Supplier<Planner> plannerSupplier;
 
+    private final Planner defaultPlannerInstance;
+
     public PlannerBasedInvocationHandler(AbstractServiceBuilder<?, ?> service, Supplier<Planner> plannerSupplier) {
         this(service, plannerSupplier, null);
     }
@@ -78,12 +80,13 @@ public class PlannerBasedInvocationHandler implements InvocationHandler {
         this.errorHandler = service.errorHandler;
         this.agentListener = service.agentListener;
         this.plannerSupplier = plannerSupplier;
+        this.defaultPlannerInstance = plannerSupplier.get();
         this.agenticScope = agenticScope;
 
         this.plannerAgent = new DefaultAgentInstance(service.agentServiceClass, service.name, uniqueAgentName(service.agentServiceClass, service.name),
                 service.description, service.agentReturnType(), service.outputKey,
                 service.agenticMethod != null ? argumentsFromMethod(service.agenticMethod) : List.of(),
-                service.agentExecutors().stream().map(AgentInstance.class::cast).toList());
+                service.agentExecutors().stream().map(AgentInstance.class::cast).toList(), defaultPlannerInstance.topology());
         agenticSystemDataTypes(this.plannerAgent);
     }
 
@@ -127,6 +130,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler {
                 case "outputKey" -> plannerAgent.outputKey();
                 case "arguments" -> plannerAgent.arguments();
                 case "subagents" -> plannerAgent.subagents();
+                case "topology" -> defaultPlannerInstance.topology();
                 case "async" -> false;
                 default ->
                         throw new UnsupportedOperationException(
@@ -334,7 +338,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler {
     }
 
     private Object accessChatMemory(AgenticScope agenticScope, String methodName, Object memoryId) {
-        ChatMemoryAccess chatMemoryAccess = ((ChatMemoryAccessProvider) plannerSupplier.get()).chatMemoryAccess(agenticScope);
+        ChatMemoryAccess chatMemoryAccess = ((ChatMemoryAccessProvider) defaultPlannerInstance).chatMemoryAccess(agenticScope);
         return switch (methodName) {
             case "getChatMemory" -> chatMemoryAccess.getChatMemory(memoryId);
             case "evictChatMemory" -> chatMemoryAccess.evictChatMemory(memoryId);

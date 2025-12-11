@@ -6,6 +6,7 @@ import dev.langchain4j.agentic.observability.AgentRequest;
 import dev.langchain4j.agentic.observability.AgentResponse;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.function.Consumer;
@@ -27,5 +28,10 @@ public record NonAiAgentInstance(
     @Override
     public List<AgentInstance> subagents() {
         return List.of();
+    }
+
+    @Override
+    public AgenticSystemTopology topology() {
+        return AgenticSystemTopology.SINGLE_AGENT;
     }
 }

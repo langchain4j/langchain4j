@@ -6,6 +6,7 @@ import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentListenerProvider;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import java.lang.reflect.Method;
@@ -72,5 +73,10 @@ public record MethodAgentInvoker(Method method, AgentInstance agentInstance) imp
     @Override
     public AgentListener listener() {
         return ((AgentListenerProvider) agentInstance).listener();
+    }
+
+    @Override
+    public AgenticSystemTopology topology() {
+        return agentInstance.topology();
     }
 }

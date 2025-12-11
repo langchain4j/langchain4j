@@ -44,6 +44,7 @@ import dev.langchain4j.agentic.observability.MonitoredExecution;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
+import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.AgenticScopePersister;
 import dev.langchain4j.agentic.scope.AgenticScopeRegistry;
@@ -722,6 +723,7 @@ public class WorkflowAgentsIT {
         assertThat(agentInstance.name()).isEqualTo("ask");
         assertThat(agentInstance.outputType()).isEqualTo(String.class);
         assertThat(agentInstance.outputKey()).isEqualTo("response");
+        assertThat(agentInstance.topology()).isEqualTo(AgenticSystemTopology.SEQUENCE);
         assertThat(agentInstance.arguments()).hasSize(1);
         assertThat(agentInstance.arguments().get(0).name()).isEqualTo("request");
         assertThat(agentInstance.arguments().get(0).type()).isEqualTo(String.class);
@@ -731,6 +733,7 @@ public class WorkflowAgentsIT {
         assertThat(routerAgentInstance.name()).isEqualTo("classify");
         assertThat(routerAgentInstance.outputType()).isEqualTo(RequestCategory.class);
         assertThat(routerAgentInstance.outputKey()).isEqualTo("category");
+        assertThat(routerAgentInstance.topology()).isEqualTo(AgenticSystemTopology.SINGLE_AGENT);
         assertThat(routerAgentInstance.arguments()).hasSize(1);
         assertThat(routerAgentInstance.arguments().get(0).name()).isEqualTo("request");
         assertThat(routerAgentInstance.arguments().get(0).type()).isEqualTo(String.class);
@@ -739,6 +742,7 @@ public class WorkflowAgentsIT {
         AgentInstance conditionalAgentInstance = agentInstance.subagents().get(1);
         assertThat(conditionalAgentInstance.outputType()).isEqualTo(Object.class);
         assertThat(conditionalAgentInstance.outputKey()).isNull();
+        assertThat(conditionalAgentInstance.topology()).isEqualTo(AgenticSystemTopology.ROUTER);
         assertThat(conditionalAgentInstance.arguments()).isEmpty(); // untyped agent does not know its arguments
         assertThat(conditionalAgentInstance.subagents()).hasSize(3);
 
@@ -751,14 +755,15 @@ public class WorkflowAgentsIT {
         verify(medicalExpert).medical("I broke my leg what should I do");
     }
 
-    private static void checkExpertAgent(AgentInstance medicalAgentInstance, String name) {
-        assertThat(medicalAgentInstance.name()).isEqualTo(name);
-        assertThat(medicalAgentInstance.outputType()).isEqualTo(String.class);
-        assertThat(medicalAgentInstance.outputKey()).isEqualTo("response");
-        assertThat(medicalAgentInstance.arguments()).hasSize(1);
-        assertThat(medicalAgentInstance.arguments().get(0).name()).isEqualTo("request");
-        assertThat(medicalAgentInstance.arguments().get(0).type()).isEqualTo(String.class);
-        assertThat(medicalAgentInstance.subagents()).hasSize(0);
+    private static void checkExpertAgent(AgentInstance expertAgentInstance, String name) {
+        assertThat(expertAgentInstance.name()).isEqualTo(name);
+        assertThat(expertAgentInstance.outputType()).isEqualTo(String.class);
+        assertThat(expertAgentInstance.outputKey()).isEqualTo("response");
+        assertThat(expertAgentInstance.topology()).isEqualTo(AgenticSystemTopology.SINGLE_AGENT);
+        assertThat(expertAgentInstance.arguments()).hasSize(1);
+        assertThat(expertAgentInstance.arguments().get(0).name()).isEqualTo("request");
+        assertThat(expertAgentInstance.arguments().get(0).type()).isEqualTo(String.class);
+        assertThat(expertAgentInstance.subagents()).hasSize(0);
     }
 
     @Test

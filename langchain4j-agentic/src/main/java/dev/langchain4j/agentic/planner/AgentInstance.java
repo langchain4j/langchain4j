@@ -26,4 +26,6 @@ public interface AgentInstance {
     default boolean leaf() {
         return subagents().isEmpty();
     }
+
+    AgenticSystemTopology topology();
 }
