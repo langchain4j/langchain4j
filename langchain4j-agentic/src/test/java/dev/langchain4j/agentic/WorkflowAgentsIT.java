@@ -629,6 +629,41 @@ public class WorkflowAgentsIT {
     }
 
     @Test
+    void no_matching_condition_tests() {
+        CategoryRouter routerAgent = AgenticServices.agentBuilder(CategoryRouter.class)
+                .chatModel(baseModel())
+                .outputKey("category")
+                .build();
+
+        LegalExpert legalExpert = spy(AgenticServices.agentBuilder(LegalExpert.class)
+                .chatModel(baseModel())
+                .outputKey("response")
+                .build());
+        TechnicalExpert technicalExpert = spy(AgenticServices.agentBuilder(TechnicalExpert.class)
+                .chatModel(baseModel())
+                .outputKey("response")
+                .build());
+
+        UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
+                .subAgents(
+                        agenticScope ->
+                                agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.LEGAL,
+                        legalExpert)
+                .subAgents(
+                        agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN)
+                                == RequestCategory.TECHNICAL,
+                        technicalExpert)
+                .build();
+
+        var agentInstance = AgenticServices.sequenceBuilder(ExpertRouterAgentInstance.class)
+                .subAgents(routerAgent, expertsAgent)
+                .outputKey("response")
+                .build();
+
+        assertThat(agentInstance.ask("I broke my leg what should I do")).isNull();
+    }
+
+    @Test
     void agents_validation_tests() {
         CategoryRouter routerAgent = AgenticServices.agentBuilder(CategoryRouter.class)
                 .chatModel(baseModel())
