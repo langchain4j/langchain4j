@@ -1,6 +1,7 @@
 package dev.langchain4j.agent.tool;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.model.chat.ChatModel;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
@@ -53,12 +54,16 @@ public @interface Tool {
 
     /**
      * A valid JSON string that contains LLM-provider-specific tool metadata entries.
-     * This string is parsed into {@link ToolSpecification#metadata()}.
+     * This string is parsed into a {@link ToolSpecification#metadata()} map
+     * when {@code @Tool}-annotated method is converted into {@link ToolSpecification}.
      * <p>
-     * NOTE: Currently, this is supported only by the {@code langchain4j-anthropic} module.
+     * NOTE: this metadata is not sent to the LLM provider API by default,
+     * you must explicitly specify which metadata keys should be sent when creating a {@link ChatModel}.
+     * <p>
+     * NOTE: Currently, tool metadata is supported only by the {@code langchain4j-anthropic} module.
      *
      * @since 1.10.0
      */
     @Experimental
-    String metadata() default "";
+    String metadata() default "{}";
 }

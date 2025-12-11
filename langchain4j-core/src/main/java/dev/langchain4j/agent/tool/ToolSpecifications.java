@@ -120,12 +120,7 @@ public class ToolSpecifications {
     }
 
     private static Map<String, Object> getMetadata(Tool annotation) {
-        String metadata = annotation.metadata();
-        if (metadata.isEmpty()) {
-            return Map.of();
-        } else {
-            return Json.fromJson(metadata, MAP_TYPE);
-        }
+        return Json.fromJson(annotation.metadata(), MAP_TYPE);
     }
 
     private static JsonObjectSchema parametersFrom(Parameter[] parameters) {

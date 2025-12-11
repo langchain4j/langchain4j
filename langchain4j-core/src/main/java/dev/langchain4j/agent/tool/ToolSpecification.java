@@ -1,5 +1,6 @@
 package dev.langchain4j.agent.tool;
 
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 
 import java.util.HashMap;
@@ -61,6 +62,11 @@ public class ToolSpecification {
 
     /**
      * Returns the metadata relevant to the tool.
+     * <p>
+     * NOTE: this metadata is not sent to the LLM provider API by default,
+     * you must explicitly specify which metadata keys should be sent when creating a {@link ChatModel}.
+     * <p>
+     * NOTE: Currently, tool metadata is supported only by the {@code langchain4j-anthropic} module.
      */
     public Map<String, Object> metadata() {
         return metadata;

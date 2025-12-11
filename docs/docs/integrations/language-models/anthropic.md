@@ -137,7 +137,7 @@ ChatModel model = AnthropicChatModel.builder()
 String answer = model.chat("What is the weather in Munich?");
 ```
 
-Tools specified via `serverTools` will be included in every request to Anthropic API.
+Tools specified via `serverTools` will be included in every request to the Anthropic API.
 
 ## Tool Search Tool
 
