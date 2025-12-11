@@ -4,7 +4,6 @@ import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentListenerProvider;
-import dev.langchain4j.agentic.observability.ComposedAgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -18,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.afterAgentInvocation;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.agentError;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.beforeAgentInvocation;
@@ -29,26 +29,16 @@ public interface AgentInvoker extends AgentInstance, AgentListenerProvider {
     AgentInvocationArguments toInvocationArguments(AgenticScope agenticScope) throws MissingArgumentException;
 
     default Object invoke(DefaultAgenticScope agenticScope, Object agent, AgentInvocationArguments args) throws AgentInvocationException {
-        AgentListener listener = listener(agenticScope);
+        AgentListener listener = composeWithInherited(listener(), agenticScope.listener());
         beforeAgentInvocation(listener, agenticScope, this, args.namedArgs());
         Object result = internalInvoke(agenticScope, listener, agent, args);
         afterAgentInvocation(listener, agenticScope, this, args.namedArgs(), result);
         return result;
     }
 
-    private AgentListener listener(DefaultAgenticScope agenticScope) {
-        AgentListener localListener = listener();
-        if (localListener == null) {
-            return agenticScope.listener();
-        }
-        if (agenticScope.listener() == null) {
-            return localListener;
-        }
-        return new ComposedAgentListener(localListener, agenticScope.listener());
-    }
-
     private Object internalInvoke(DefaultAgenticScope agenticScope, AgentListener listener, Object agent, AgentInvocationArguments args) {
         LangChain4jManaged.setCurrent(Map.of(AgenticScope.class, agenticScope));
+        AgentListener higherLevelListener = leaf() ? null : agenticScope.replaceListener(listener);
         try {
             return method().invoke(agent, args.positionalArgs());
         } catch (Exception e) {
@@ -56,6 +46,9 @@ public interface AgentInvoker extends AgentInstance, AgentListenerProvider {
             agentError(listener, agenticScope, this, args.namedArgs(), invocationException);
             throw invocationException;
         } finally {
+            if (!leaf()) {
+                agenticScope.setListener(higherLevelListener);
+            }
             LangChain4jManaged.removeCurrent();
         }
     }

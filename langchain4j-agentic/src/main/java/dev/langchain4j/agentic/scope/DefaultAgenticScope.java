@@ -305,7 +305,7 @@ public class DefaultAgenticScope implements AgenticScope {
         return oldListener;
     }
 
-    public void resetListener(AgentListener agentListener) {
+    public void setListener(AgentListener agentListener) {
         this.agentListener = agentListener;
     }
 

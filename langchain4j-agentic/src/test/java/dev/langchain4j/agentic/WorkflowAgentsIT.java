@@ -407,15 +407,19 @@ public class WorkflowAgentsIT {
 
     @Test
     void loop_agents_tests() {
-        class TopLevelListener implements AgentListener {
-            double finalScore;
+        class AllLevelsListener implements AgentListener {
+            int invocationsCounter = 0;
+            int loopCounter = 0;
+            double finalScore = 0.0;
             Object createdScopeId;
             Object destroyedScopeId;
 
             @Override
             public void afterAgentInvocation(AgentResponse response) {
-                if (response.agentName().equals("reviewLoop")) {
-                    finalScore = response.agenticScope().readState("score", 0.0);
+                invocationsCounter++;
+                if (StyleScorer.class.isAssignableFrom(response.agent().type())) {
+                    loopCounter++;
+                    finalScore = (double) response.output();
                 }
             }
 
@@ -427,6 +431,23 @@ public class WorkflowAgentsIT {
             @Override
             public void beforeAgenticScopeDestroyed(AgenticScope agenticScope) {
                 destroyedScopeId = agenticScope.memoryId();
+            }
+
+            @Override
+            public boolean inheritedBySubagents() {
+                return true;
+            }
+        }
+
+        class TopLevelListener implements AgentListener {
+            int invocationsCounter = 0;
+
+            @Override
+            public void afterAgentInvocation(AgentResponse response) {
+                invocationsCounter++;
+                if (StyleScorer.class.isAssignableFrom(response.agent().type())) {
+                    throw new RuntimeException("It should not be called for a subagent");
+                }
             }
         }
 
@@ -440,6 +461,7 @@ public class WorkflowAgentsIT {
         }
 
         TopLevelListener topLevelListener = new TopLevelListener();
+        AllLevelsListener allLevelsListener = new AllLevelsListener();
         WriterListener writerListener = new WriterListener();
         AgentMonitor monitor = new AgentMonitor();
 
@@ -462,6 +484,7 @@ public class WorkflowAgentsIT {
         UntypedAgent styleReviewLoop = AgenticServices.loopBuilder()
                 .name("reviewLoop")
                 .subAgents(styleScorer, styleEditor)
+                .listener(new AgentListener() {}) // empty listener to test inheritance
                 .maxIterations(5)
                 .exitCondition(agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
                 .build();
@@ -469,6 +492,7 @@ public class WorkflowAgentsIT {
         UntypedAgent styledWriter = AgenticServices.sequenceBuilder()
                 .subAgents(creativeWriter, styleReviewLoop)
                 .listener(topLevelListener)
+                .listener(allLevelsListener)
                 .listener(monitor)
                 .outputKey("story")
                 .build();
@@ -490,9 +514,11 @@ public class WorkflowAgentsIT {
                 .isEqualTo(agenticScope.contextAsConversation(styleEditor));
         assertThat(agenticScope.contextAsConversation("notExistingAgent")).isBlank();
 
+        assertThat(topLevelListener.invocationsCounter).isEqualTo(1);
         assertThat(writerListener.requestedTopic).isEqualTo("dragons and wizards");
-        assertThat(topLevelListener.finalScore).isGreaterThanOrEqualTo(0.8);
-        assertThat(topLevelListener.createdScopeId).isNotNull().isEqualTo(topLevelListener.destroyedScopeId);
+        assertThat(allLevelsListener.finalScore).isGreaterThanOrEqualTo(0.8);
+        assertThat(allLevelsListener.createdScopeId).isNotNull().isEqualTo(allLevelsListener.destroyedScopeId);
+        assertThat(allLevelsListener.invocationsCounter).isEqualTo((allLevelsListener.loopCounter*2)-1 + 3);
 
         assertThat(monitor.successfulExecutionsFor(agenticScope)).hasSize(1);
         MonitoredExecution execution = monitor.successfulExecutionsFor(agenticScope).get(0);

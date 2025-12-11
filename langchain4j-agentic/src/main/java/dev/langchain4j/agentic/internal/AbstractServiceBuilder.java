@@ -125,7 +125,7 @@ public abstract class AbstractServiceBuilder<T, S> {
         if (this.agentListener == null) {
             this.agentListener = agentListener;
         } else if (this.agentListener instanceof ComposedAgentListener composed) {
-            composed.addListeners(agentListener);
+            composed.addListener(agentListener);
         } else {
             this.agentListener = new ComposedAgentListener(this.agentListener, agentListener);
         }

@@ -4,23 +4,41 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Predicate;
 
 @Internal
 public class ComposedAgentListener implements AgentListener {
 
-    private final List<AgentListener> listeners = new ArrayList<>();
+    private final List<AgentListener> listeners;
 
-    public ComposedAgentListener(AgentListener... listeners) {
-        addListeners(listeners);
+    private ComposedAgentListener(List<AgentListener> listeners) {
+        this.listeners = listeners;
     }
 
-    public void addListeners(AgentListener... listeners) {
+    public ComposedAgentListener(AgentListener... listeners) {
+        this(collectListeners(listeners));
+    }
+
+    private static List<AgentListener> collectListeners(AgentListener... listeners) {
+        List<AgentListener> collectedListeners = new ArrayList<>();
         for (AgentListener listener : listeners) {
-            if (listener instanceof ComposedAgentListener composed) {
-                this.listeners.addAll(composed.listeners);
-            } else {
-                this.listeners.add(listener);
+            if (listener == null) {
+                continue;
             }
+            if (listener instanceof ComposedAgentListener composed) {
+                collectedListeners.addAll(composed.listeners);
+            } else {
+                collectedListeners.add(listener);
+            }
+        }
+        return collectedListeners;
+    }
+
+    public void addListener(AgentListener listener) {
+        if (listener instanceof ComposedAgentListener composed) {
+            this.listeners.addAll(composed.listeners);
+        } else {
+            this.listeners.add(listener);
         }
     }
 
@@ -57,5 +75,44 @@ public class ComposedAgentListener implements AgentListener {
         for (AgentListener listener : listeners) {
             listener.beforeAgenticScopeDestroyed(agenticScope);
         }
+    }
+
+    public static AgentListener composeWithInherited(AgentListener localListener, AgentListener parentListener) {
+        if (parentListener == null) {
+            return localListener;
+        }
+        List<AgentListener> listeners = new ArrayList<>();
+        addInherited(listeners, parentListener);
+        addAll(listeners, localListener);
+        return composedListener(listeners);
+    }
+
+    private static void addAll(List<AgentListener> existingListeners, AgentListener newListener) {
+        add(existingListeners, newListener, l -> true);
+    }
+
+    private static void addInherited(List<AgentListener> existingListeners, AgentListener newListener) {
+        add(existingListeners, newListener, AgentListener::inheritedBySubagents);
+    }
+
+    private static void add(List<AgentListener> existingListeners, AgentListener newListener, Predicate<AgentListener> filter) {
+        if (newListener == null) {
+            return;
+        }
+        if (newListener instanceof ComposedAgentListener composed) {
+            existingListeners.addAll(composed.listeners.stream().filter(filter).toList());
+        } else {
+            if (filter.test(newListener)) {
+                existingListeners.add(newListener);
+            }
+        }
+    }
+
+    private static AgentListener composedListener(List<AgentListener> inherited) {
+        return switch (inherited.size()) {
+            case 0 -> null;
+            case 1 -> inherited.get(0);
+            default -> new ComposedAgentListener(inherited);
+        };
     }
 }

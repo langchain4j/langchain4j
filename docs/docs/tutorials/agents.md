@@ -550,6 +550,10 @@ public interface AgentListener {
 
     default void afterAgenticScopeCreated(AgenticScope agenticScope) { }
     default void beforeAgenticScopeDestroyed(AgenticScope agenticScope) { }
+
+    default boolean inheritedBySubagents() {
+        return false;
+    }
 }
 ```
 
@@ -579,16 +583,16 @@ These listener methods receive as argument respectively an `AgentRequest` and an
 
 `AgentListener`s have 2 important properties, they are:
 - **composable**, meaning that you can register multiple listeners to the same agent, by invoking the `listener` method more than once, and they will be notified in the order they were registered; 
-- **hierarchical**, meaning that they are inherited by subagents, so that if you register a listener to a top level agent, that listener will also be notified of the invocations of all its subagents at any level and composed with all listeners that these subagents could have registered on their own.
+- **optionally hierarchical**, meaning that by default they are only local to the agent where they are directly registered, but they can also be inherited by all its subagents, simply making its `inheritedBySubagents` method to return `true`. In that case a listener registered on a top level agent will also be notified of the invocations to all its subagents at any level and composed with all listeners that these subagents could have registered on their own.
 
 ### Monitoring
 
-Leveraging the observability features provided by the `AgenticListener` interface, the `langchain4j-agentic` module also provides a built-in implementation of this interface, named `AgenticMonitor`, having the goal of recording all agents invocations in an in-memory tree structure, allowing to inspect the sequence of invocations and their results during or after the execution of the agentic system. This monitor can be registered as a listener to the root agent of the agentic system using the `listener` method of the agent builder.
+Leveraging the observability features provided by the `AgentListener` interface, the `langchain4j-agentic` module also provides a built-in implementation of this interface, configured to be inherited by all subagents, named `AgentMonitor`, having the goal of recording all agents invocations in an in-memory tree structure, allowing to inspect the sequence of invocations and their results during or after the execution of the agentic system. This monitor can be registered as a listener to the root agent of the agentic system using the `listener` method of the agent builder.
 
-To provide a more comprehensive example, let's reconsider the loop workflow intended to generate and iteratively refine a story until it meets the required style quality, and register a few listeners on it, including an `AgenticMonitor`.
+To provide a more comprehensive example, let's reconsider the loop workflow intended to generate and iteratively refine a story until it meets the required style quality, and register a few listeners on it, including an `AgentMonitor`.
 
 ```java
-AgenticMonitor monitor = new AgenticMonitor();
+AgentMonitor monitor = new AgentMonitor();
 
 CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
         .listener(new AgenticListener() {
@@ -620,7 +624,8 @@ UntypedAgent styleReviewLoop = AgenticServices.loopBuilder()
 
 UntypedAgent styledWriter = AgenticServices.sequenceBuilder()
         .subAgents(creativeWriter, styleReviewLoop)
-        .listener(new AgenticListener() {
+        .listener(monitor)
+        .listener(new AgentListener() {
             @Override
             public void afterAgentInvocation(AgentResponse response) {
                 if (response.agentName().equals("styleScorer")) {
@@ -628,14 +633,13 @@ UntypedAgent styledWriter = AgenticServices.sequenceBuilder()
                 }
             }
         })
-        .listener(monitor)
         .outputKey("story")
         .build();
 ```
 
 Here a first listener is registered directly on the `creativeWriter` agent, so that it logs the request topic for the story to be generated only when that agent is invoked. A second listener is registered on the top level `styledWriter` agent, so that it will be also invoked for all subagents in the hierarchy of that agent at any level. That is why the `afterAgentInvocation` method of that listener checks if the agent being invoked is the `styleScorer`, and only in that case it logs the current score assigned to the style of the generated story.
 
-Finally, the `AgenticMonitor` instance is also registered, and automatically composed with the other 2 listeners, as a further listener to the `styledWriter` top level agent, so that it can track all agents invocations in the whole agentic system. 
+Finally, the `AgentMonitor` instance is also registered, and automatically composed with the other 2 listeners, as a further listener to the `styledWriter` top level agent, so that it can track all agents invocations in the whole agentic system. 
 
 When invoking the `styledWriter` agent as follows:
 
@@ -646,7 +650,7 @@ Map<String, Object> input = Map.of(
 String story = styledWriter.invoke(input);
 ```
 
-the `AgenticMonitor` records all agents invocations in a tree structure that also keeps track of the start time, finish time, duration, inputs and output of each agent invocation. At this point it is possible to retrieve the recorded executions from the monitor and for instance print it to the console for inspection.
+the `AgentMonitor` records all agents invocations in a tree structure that also keeps track of the start time, finish time, duration, inputs and output of each agent invocation. At this point it is possible to retrieve the recorded executions from the monitor and for instance print it to the console for inspection.
 
 ```java
 MonitoredExecution execution = monitor.successfulExecutions().get(0);

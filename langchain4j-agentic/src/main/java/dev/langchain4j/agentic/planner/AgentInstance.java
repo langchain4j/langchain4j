@@ -22,4 +22,8 @@ public interface AgentInstance {
     List<AgentArgument> arguments();
 
     List<AgentInstance> subagents();
+
+    default boolean leaf() {
+        return subagents().isEmpty();
+    }
 }

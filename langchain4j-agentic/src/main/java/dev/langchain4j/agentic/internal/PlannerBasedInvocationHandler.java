@@ -168,9 +168,9 @@ public class PlannerBasedInvocationHandler implements InvocationHandler {
         writeAgenticScope(currentScope, method, args);
         beforeCall.accept(currentScope);
 
-        AgentListener higherLevelListener = currentScope.replaceListener(agentListener);
         Map<String, Object> namedArgs = isRootCall() ? argToMap(method, args) : null;
         if (isRootCall()) {
+            currentScope.setListener(agentListener);
             currentScope.rootCallStarted(registry);
             beforeAgentInvocation(agentListener, currentScope, plannerAgent, namedArgs);
         }
@@ -183,8 +183,8 @@ public class PlannerBasedInvocationHandler implements InvocationHandler {
         if (isRootCall()) {
             afterAgentInvocation(agentListener, currentScope, plannerAgent, namedArgs, output);
             currentScope.rootCallEnded(registry);
+            currentScope.setListener(null);
         }
-        currentScope.resetListener(higherLevelListener);
 
         return method.getReturnType().equals(ResultWithAgenticScope.class)
                 ? new ResultWithAgenticScope<>(currentScope, output)

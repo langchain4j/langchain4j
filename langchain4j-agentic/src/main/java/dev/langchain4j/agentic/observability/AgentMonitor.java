@@ -45,6 +45,11 @@ public class AgentMonitor implements AgentListener {
         }
     }
 
+    @Override
+    public boolean inheritedBySubagents() {
+        return true;
+    }
+
     public Map<Object, MonitoredExecution> ongoingExecutions() {
         return ongoingExecutions;
     }
