@@ -64,7 +64,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
+@EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 public class WorkflowAgentsIT {
 
     public interface CreativeWriterWithModel extends CreativeWriter {
@@ -756,6 +759,41 @@ public class WorkflowAgentsIT {
         assertThat(medicalAgentInstance.arguments().get(0).name()).isEqualTo("request");
         assertThat(medicalAgentInstance.arguments().get(0).type()).isEqualTo(String.class);
         assertThat(medicalAgentInstance.subagents()).hasSize(0);
+    }
+
+    @Test
+    void no_matching_condition_tests() {
+        CategoryRouter routerAgent = AgenticServices.agentBuilder(CategoryRouter.class)
+                .chatModel(baseModel())
+                .outputKey("category")
+                .build();
+
+        LegalExpert legalExpert = spy(AgenticServices.agentBuilder(LegalExpert.class)
+                .chatModel(baseModel())
+                .outputKey("response")
+                .build());
+        TechnicalExpert technicalExpert = spy(AgenticServices.agentBuilder(TechnicalExpert.class)
+                .chatModel(baseModel())
+                .outputKey("response")
+                .build());
+
+        UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
+                .subAgents(
+                        agenticScope ->
+                                agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.LEGAL,
+                        legalExpert)
+                .subAgents(
+                        agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN)
+                                == RequestCategory.TECHNICAL,
+                        technicalExpert)
+                .build();
+
+        var agentInstance = AgenticServices.sequenceBuilder(ExpertRouterAgentInstance.class)
+                .subAgents(routerAgent, expertsAgent)
+                .outputKey("response")
+                .build();
+
+        assertThat(agentInstance.ask("I broke my leg what should I do")).isNull();
     }
 
     @Test

@@ -14,12 +14,14 @@ import dev.langchain4j.agentic.patterns.goap.writer.WriterAgents.Writer;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static dev.langchain4j.agentic.patterns.Models.baseModel;
 import static org.assertj.core.api.Assertions.assertThat;
 
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 public class GoapWriterIT {
 
     @Test

@@ -15,7 +15,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-import org.junitpioneer.jupiter.RetryingTest;
 
 /**
  * Error handling and edge case tests for VertexAiAnthropic models

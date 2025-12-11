@@ -35,8 +35,9 @@ import java.util.Objects;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.junitpioneer.jupiter.RetryingTest;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+@EnabledIfEnvironmentVariable(named = "GCP_PROJECT_ID", matches = ".+")
 class VertexAiGeminiChatModelIT {
 
     public static final Gson GSON = new Gson();
@@ -251,7 +252,6 @@ class VertexAiGeminiChatModelIT {
     }
 
     @Disabled("TODO fix")
-    @RetryingTest(10)
     void should_allow_defining_safety_settings() {
         // given
         HashMap<HarmCategory, SafetyThreshold> safetySettings = new HashMap<>();

@@ -22,7 +22,6 @@
     </developers>
 
     <properties>
-        <skipGeminiITs>false</skipGeminiITs>
         <maven.compiler.parameters>true</maven.compiler.parameters>
     </properties>
 
@@ -63,18 +62,6 @@
         </dependency>
 
         <!-- test dependencies -->
-
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-engine</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-params</artifactId>
-            <scope>test</scope>
-        </dependency>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
@@ -118,17 +105,5 @@
         </dependency>
 
     </dependencies>
-
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-failsafe-plugin</artifactId>
-                <configuration>
-                    <skipTests>${skipGeminiITs}</skipTests>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
 
 </project>

@@ -38,7 +38,7 @@ Response<Embedding> response = embeddingModel.embed("test");
 Embedding embedding = response.content();
 ```
 
-The complete list of all embedding models can be found [here](https://github.com/langchain4j/langchain4j-embeddings).
+The complete list of all embedding models can be found [here](https://github.com/langchain4j/langchain4j/tree/main/embeddings).
 
 
 ## Parallelization
