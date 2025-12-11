@@ -248,8 +248,7 @@ public final class GoogleAiGeminiBatchChatModel {
                 return List.of();
             }
             return response.inlinedResponses().inlinedResponses().stream()
-                    .map(BatchCreateResponse.InlinedResponseWrapper::response)
-//                    .map(wrapper -> Json.convertValue(wrapper.response(), GeminiGenerateContentResponse.class))
+                    .map(wrapper -> Json.convertValue(wrapper.response(), GeminiGenerateContentResponse.class))
                     .map(chatModel::processResponse)
                     .toList();
         }
