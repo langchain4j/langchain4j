@@ -41,7 +41,7 @@ class AnthropicAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
     }
 
     @Test
-    void should_support_tool_search_tool() { // TODO document
+    void should_support_tool_search_tool() {
 
         // given
         Map<String, Object> toolSearchTool = Map.of(
@@ -51,7 +51,7 @@ class AnthropicAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
 
         class Tools {
 
-            @Tool(metadata = "{\"defer_loading\": true}") // TODO document
+            @Tool(metadata = "{\"defer_loading\": true}")
             String getWeather(String location) {
                 return "sunny";
             }

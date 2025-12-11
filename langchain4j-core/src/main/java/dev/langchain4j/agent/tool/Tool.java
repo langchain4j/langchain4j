@@ -52,9 +52,11 @@ public @interface Tool {
     ReturnBehavior returnBehavior() default ReturnBehavior.TO_LLM;
 
     /**
-     * TODO
+     * A valid JSON string that contains LLM-provider-specific tool metadata entries.
+     * This string is parsed into {@link ToolSpecification#metadata()}.
+     * <p>
+     * NOTE: Currently, this is supported only by the {@code langchain4j-anthropic} module.
      *
-     * @return
      * @since 1.10.0
      */
     @Experimental

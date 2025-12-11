@@ -483,9 +483,12 @@ System.out.println(answer); // The square root of 475695037565 is 689706.486532.
 When the `ask` method is called, 2 interactions with the LLM occur, as described in the earlier section.
 In between those interactions, the `squareRoot` method is called automatically.
 
-The `@Tool` annotation has 2 optional fields:
+The `@Tool` annotation has these fields:
 - `name`: the tool's name. If this is not provided, the method's name will serve as the tool's name.
 - `value`: the tool's description.
+- `returnBehavior`: see [this](/tutorials/tools#returning-immediately-the-result-of-a-tool-execution-request) for more details
+- `metadata`: a valid JSON string that contains LLM-provider-specific tool metadata entries.
+Currently supported only by the `langchain4j-anthropic` module.
 
 Depending on the tool, the LLM might understand it well even without any description
 (for example, `add(a, b)` is obvious),

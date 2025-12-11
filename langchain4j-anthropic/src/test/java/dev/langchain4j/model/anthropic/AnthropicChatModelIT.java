@@ -656,7 +656,7 @@ class AnthropicChatModelIT {
                  "name", "tool_search_tool_regex"
          );
 
-         Map<String, Object> toolMetadata = Map.of("defer_loading", true); // TODO document
+         Map<String, Object> toolMetadata = Map.of("defer_loading", true);
 
          ToolSpecification weatherTool = ToolSpecification.builder()
                  .name("get_weather")
@@ -683,7 +683,7 @@ class AnthropicChatModelIT {
                  .modelName(CLAUDE_SONNET_4_5_20250929)
                  .beta("advanced-tool-use-2025-11-20")
                  .serverTools(toolSearchTool)
-                 .toolMetadataKeysToSend(toolMetadata.keySet()) // TODO document
+                 .toolMetadataKeysToSend(toolMetadata.keySet())
                  .logRequests(true)
                  .logResponses(true)
                  .build();

@@ -46,6 +46,8 @@ AnthropicChatModel model = AnthropicChatModel.builder()
     .toolChoice(...)
     .toolChoiceName(...)
     .disableParallelToolUse(...)
+    .serverTools(...)
+    .toolMetadataKeysToSend(...)
     .cacheSystemMessages(...)
     .cacheTools(...)
     .thinkingType(...)
@@ -140,9 +142,94 @@ Tools specified via `serverTools` will be included in every request to Anthropic
 ## Tool Search Tool
 
 Anthropic's [tool search tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-search-tool)
-is supported, here is an example:
+is supported, here is an example when using high-level AI Service and `@Tool` APIs:
 
-TODO
+```java
+Map<String, Object> toolSearchTool = Map.of(
+    "type", "tool_search_tool_regex_20251119",
+    "name", "tool_search_tool_regex"
+);
+
+class Tools {
+
+    @Tool(metadata = "{\"defer_loading\": true}")
+    String getWeather(String location) {
+        return "sunny";
+    }
+
+    @Tool
+    String getTime(String location) {
+        return "12:34:56";
+    }
+}
+
+ChatModel chatModel = AnthropicChatModel.builder()
+        .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+        .modelName(CLAUDE_SONNET_4_5_20250929)
+        .beta("advanced-tool-use-2025-11-20")
+        .serverTools(toolSearchTool)
+        .toolMetadataKeysToSend("deferLoading") // need to specify it explicitly
+        .logRequests(true)
+        .logResponses(true)
+        .build();
+
+interface Assistant {
+
+    @SystemMessage("Use tool search if needed")
+    String chat(String userMessage);
+}
+
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatModel(chatModel)
+        .tools(new Tools())
+        .build();
+
+assistant.chat("What is the weather in Munich?");
+```
+
+Here is an example when using low-level `ChatModel` and `ToolSpecification` APIs:
+```java
+Map<String, Object> toolSearchTool = Map.of(
+    "type", "tool_search_tool_regex_20251119",
+    "name", "tool_search_tool_regex"
+);
+
+Map<String, Object> toolMetadata = Map.of("defer_loading", true);
+
+ToolSpecification weatherTool = ToolSpecification.builder()
+        .name("get_weather")
+        .parameters(JsonObjectSchema.builder()
+                .addStringProperty("location")
+                .required("location")
+                .build())
+        .metadata(toolMetadata)
+        .build();
+
+ToolSpecification timeTool = ToolSpecification.builder()
+        .name("get_time")
+        .parameters(JsonObjectSchema.builder()
+                .addStringProperty("location")
+                .required("location")
+                .build())
+        .build();
+
+ChatModel model = AnthropicChatModel.builder()
+        .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+        .modelName(CLAUDE_SONNET_4_5_20250929)
+        .beta("advanced-tool-use-2025-11-20")
+        .serverTools(toolSearchTool)
+        .toolMetadataKeysToSend(toolMetadata.keySet()) // need to specify it explicitly
+        .logRequests(true)
+        .logResponses(true)
+        .build();
+
+ChatRequest chatRequest = ChatRequest.builder()
+        .messages(UserMessage.from("What is the weather in Munich? Use tool search if needed."))
+        .toolSpecifications(weatherTool, timeTool)
+        .build();
+
+ChatResponse chatResponse = model.chat(chatRequest);
+```
 
 ## Caching
 
