@@ -1,6 +1,6 @@
-package dev.langchain4j.model.openaiofficial.azureopenai;
+package dev.langchain4j.model.openaiofficial.microsoftfoundry;
 
-import static dev.langchain4j.model.openaiofficial.azureopenai.InternalAzureOpenAiOfficialTestHelper.CHAT_MODEL_NAME_ALTERNATE;
+import static dev.langchain4j.model.openaiofficial.microsoftfoundry.InternalMicrosoftFoundryTestHelper.CHAT_MODEL_NAME_ALTERNATE;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 
@@ -24,11 +24,11 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InOrder;
 
 @EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
-class AzureOpenAiOfficialStreamingChatModelIT extends AbstractStreamingChatModelIT {
+class MicrosoftFoundryStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected List<StreamingChatModel> models() {
-        return InternalAzureOpenAiOfficialTestHelper.chatModelsStreamingNormalAndJsonStrict();
+        return InternalMicrosoftFoundryTestHelper.chatModelsStreamingNormalAndJsonStrict();
     }
 
     @Override
@@ -105,7 +105,7 @@ class AzureOpenAiOfficialStreamingChatModelIT extends AbstractStreamingChatModel
     }
 
     @Disabled(
-            "TODO fix: com.openai.errors.RateLimitException: 429: Requests to the ChatCompletions_Create Operation under Azure OpenAI API version 2024-10-21 have exceeded token rate limit of your current OpenAI S0 pricing tier.")
+            "TODO fix: com.openai.errors.RateLimitException: 429: Requests to the ChatCompletions_Create Operation under Microsoft Foundry API version 2024-10-21 have exceeded token rate limit of your current OpenAI S0 pricing tier.")
     @Override
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
@@ -113,7 +113,7 @@ class AzureOpenAiOfficialStreamingChatModelIT extends AbstractStreamingChatModel
     protected void should_accept_single_image_as_public_URL(StreamingChatModel model) {}
 
     @Disabled(
-            "TODO fix: com.openai.errors.RateLimitException: 429: Requests to the ChatCompletions_Create Operation under Azure OpenAI API version 2024-10-21 have exceeded token rate limit of your current OpenAI S0 pricing tier.")
+            "TODO fix: com.openai.errors.RateLimitException: 429: Requests to the ChatCompletions_Create Operation under Microsoft Foundry API version 2024-10-21 have exceeded token rate limit of your current OpenAI S0 pricing tier.")
     @Override
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
@@ -121,7 +121,7 @@ class AzureOpenAiOfficialStreamingChatModelIT extends AbstractStreamingChatModel
     protected void should_accept_single_image_as_base64_encoded_string(StreamingChatModel model) {}
 
     @Disabled(
-            "TODO fix: com.openai.errors.RateLimitException: 429: Requests to the ChatCompletions_Create Operation under Azure OpenAI API version 2024-10-21 have exceeded token rate limit of your current OpenAI S0 pricing tier.")
+            "TODO fix: com.openai.errors.RateLimitException: 429: Requests to the ChatCompletions_Create Operation under Microsoft Foundry API version 2024-10-21 have exceeded token rate limit of your current OpenAI S0 pricing tier.")
     @Override
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
@@ -129,7 +129,7 @@ class AzureOpenAiOfficialStreamingChatModelIT extends AbstractStreamingChatModel
     protected void should_accept_multiple_images_as_public_URLs(StreamingChatModel model) {}
 
     @Disabled(
-            "TODO fix: com.openai.errors.RateLimitException: 429: Requests to the ChatCompletions_Create Operation under Azure OpenAI API version 2024-10-21 have exceeded token rate limit of your current OpenAI S0 pricing tier.")
+            "TODO fix: com.openai.errors.RateLimitException: 429: Requests to the ChatCompletions_Create Operation under Microsoft Foundry API version 2024-10-21 have exceeded token rate limit of your current OpenAI S0 pricing tier.")
     @Override
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")

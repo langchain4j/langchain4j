@@ -1,4 +1,4 @@
-package dev.langchain4j.model.openaiofficial.azureopenai;
+package dev.langchain4j.model.openaiofficial.microsoftfoundry;
 
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 
@@ -17,15 +17,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Helper class for testing Azure OpenAI models.
+ * Helper class for testing Microsoft Foundry models.
  * <p>
  * Tests will run depending on the available environment variables:
- * - AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_KEY: Azure OpenAI models will be tested
+ * - AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_KEY: Microsoft Foundry models will be tested
  * <p>
  */
-public class InternalAzureOpenAiOfficialTestHelper {
+public class InternalMicrosoftFoundryTestHelper {
 
-    private static final Logger log = LoggerFactory.getLogger(InternalAzureOpenAiOfficialTestHelper.class);
+    private static final Logger log = LoggerFactory.getLogger(InternalMicrosoftFoundryTestHelper.class);
 
     public static final com.openai.models.ChatModel CHAT_MODEL_NAME = com.openai.models.ChatModel.GPT_4O_MINI;
     public static final com.openai.models.ChatModel CHAT_MODEL_NAME_ALTERNATE = com.openai.models.ChatModel.GPT_4O;
@@ -51,7 +51,7 @@ public class InternalAzureOpenAiOfficialTestHelper {
     static final OpenAiOfficialImageModel AZURE_OPEN_AI_IMAGE_MODEL_BASE64;
 
     static {
-        // Set up Azure OpenAI models if the environment variables are set
+        // Set up Microsoft Foundry models if the environment variables are set
         if (System.getenv("AZURE_OPENAI_ENDPOINT") != null || System.getenv("AZURE_OPENAI_KEY") != null) {
             AZURE_OPEN_AI_CHAT_MODEL = OpenAiOfficialChatModel.builder()
                     .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
@@ -149,7 +149,7 @@ public class InternalAzureOpenAiOfficialTestHelper {
             models.add(AZURE_OPEN_AI_CHAT_MODEL_JSON_WITH_STRICT_SCHEMA);
         }
         if (models.isEmpty()) {
-            log.error("Testing normal model & JSON strict model: skipping tests as Azure OpenAI keys are not set");
+            log.error("Testing normal model & JSON strict model: skipping tests as Microsoft Foundry keys are not set");
         }
         return models;
     }
@@ -163,7 +163,7 @@ public class InternalAzureOpenAiOfficialTestHelper {
             models.add(AZURE_OPEN_AI_CHAT_MODEL_WITH_STRICT_TOOLS);
         }
         if (models.isEmpty()) {
-            log.error("Testing normal model & JSON strict tools: skipping tests as Azure OpenAI keys are not set");
+            log.error("Testing normal model & JSON strict tools: skipping tests as Microsoft Foundry keys are not set");
         }
         return models;
     }
@@ -177,7 +177,7 @@ public class InternalAzureOpenAiOfficialTestHelper {
             models.add(AZURE_OPEN_AI_CHAT_MODEL_JSON_WITHOUT_STRICT_SCHEMA);
         }
         if (models.isEmpty()) {
-            log.error("Testing JSON responses: skipping tests as Azure OpenAI keys are not set");
+            log.error("Testing JSON responses: skipping tests as Microsoft Foundry keys are not set");
         }
         return models;
     }
@@ -191,7 +191,7 @@ public class InternalAzureOpenAiOfficialTestHelper {
             models.add(AZURE_OPEN_AI_STREAMING_CHAT_MODEL_JSON_WITH_STRICT_SCHEMA);
         }
         if (models.isEmpty()) {
-            log.error("Testing streaming models: skipping tests as Azure OpenAI keys are not set");
+            log.error("Testing streaming models: skipping tests as Microsoft Foundry keys are not set");
         }
         return models;
     }
@@ -202,7 +202,7 @@ public class InternalAzureOpenAiOfficialTestHelper {
             models.add(AZURE_OPEN_AI_EMBEDDING_MODEL);
         }
         if (models.isEmpty()) {
-            log.error("Testing embedding models: skipping tests as Azure OpenAI keys are not set");
+            log.error("Testing embedding models: skipping tests as Microsoft Foundry keys are not set");
         }
         return models;
     }
@@ -216,7 +216,7 @@ public class InternalAzureOpenAiOfficialTestHelper {
             models.add(AZURE_OPEN_AI_IMAGE_MODEL);
         }
         if (models.isEmpty()) {
-            log.error("Testing image models: skipping tests as Azure OpenAI keys are not set");
+            log.error("Testing image models: skipping tests as Microsoft Foundry keys are not set");
         }
         return models;
     }
@@ -227,7 +227,7 @@ public class InternalAzureOpenAiOfficialTestHelper {
             models.add(AZURE_OPEN_AI_IMAGE_MODEL_BASE64);
         }
         if (models.isEmpty()) {
-            log.error("Testing image models base64: skipping tests as Azure OpenAI keys are not set");
+            log.error("Testing image models base64: skipping tests as Microsoft Foundry keys are not set");
         }
         return models;
     }

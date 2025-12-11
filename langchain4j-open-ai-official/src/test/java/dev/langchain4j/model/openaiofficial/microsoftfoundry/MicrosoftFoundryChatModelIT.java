@@ -1,6 +1,6 @@
-package dev.langchain4j.model.openaiofficial.azureopenai;
+package dev.langchain4j.model.openaiofficial.microsoftfoundry;
 
-import static dev.langchain4j.model.openaiofficial.azureopenai.InternalAzureOpenAiOfficialTestHelper.CHAT_MODEL_NAME_ALTERNATE;
+import static dev.langchain4j.model.openaiofficial.microsoftfoundry.InternalMicrosoftFoundryTestHelper.CHAT_MODEL_NAME_ALTERNATE;
 
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
@@ -19,11 +19,11 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 @EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
-class AzureOpenAiOfficialChatModelIT extends AbstractChatModelIT {
+class MicrosoftFoundryChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected List<ChatModel> models() {
-        return InternalAzureOpenAiOfficialTestHelper.chatModelsNormalAndJsonStrict();
+        return InternalMicrosoftFoundryTestHelper.chatModelsNormalAndJsonStrict();
     }
 
     @Override
@@ -68,7 +68,7 @@ class AzureOpenAiOfficialChatModelIT extends AbstractChatModelIT {
     }
 
     @Disabled(
-            "TODO fix: com.openai.errors.RateLimitException: 429: Requests to the ChatCompletions_Create Operation under Azure OpenAI API version 2024-10-21 have exceeded token rate limit of your current OpenAI S0 pricing tier.")
+            "TODO fix: com.openai.errors.RateLimitException: 429: Requests to the ChatCompletions_Create Operation under Microsoft Foundry API version 2024-10-21 have exceeded token rate limit of your current OpenAI S0 pricing tier.")
     @Override
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
@@ -76,7 +76,7 @@ class AzureOpenAiOfficialChatModelIT extends AbstractChatModelIT {
     protected void should_accept_single_image_as_public_URL(ChatModel model) {}
 
     @Disabled(
-            "TODO fix: com.openai.errors.RateLimitException: 429: Requests to the ChatCompletions_Create Operation under Azure OpenAI API version 2024-10-21 have exceeded token rate limit of your current OpenAI S0 pricing tier.")
+            "TODO fix: com.openai.errors.RateLimitException: 429: Requests to the ChatCompletions_Create Operation under Microsoft Foundry API version 2024-10-21 have exceeded token rate limit of your current OpenAI S0 pricing tier.")
     @Override
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
@@ -84,7 +84,7 @@ class AzureOpenAiOfficialChatModelIT extends AbstractChatModelIT {
     protected void should_accept_single_image_as_base64_encoded_string(ChatModel model) {}
 
     @Disabled(
-            "TODO fix: com.openai.errors.RateLimitException: 429: Requests to the ChatCompletions_Create Operation under Azure OpenAI API version 2024-10-21 have exceeded token rate limit of your current OpenAI S0 pricing tier.")
+            "TODO fix: com.openai.errors.RateLimitException: 429: Requests to the ChatCompletions_Create Operation under Microsoft Foundry API version 2024-10-21 have exceeded token rate limit of your current OpenAI S0 pricing tier.")
     @Override
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
@@ -92,7 +92,7 @@ class AzureOpenAiOfficialChatModelIT extends AbstractChatModelIT {
     protected void should_accept_multiple_images_as_public_URLs(ChatModel model) {}
 
     @Disabled(
-            "TODO fix: com.openai.errors.RateLimitException: 429: Requests to the ChatCompletions_Create Operation under Azure OpenAI API version 2024-10-21 have exceeded token rate limit of your current OpenAI S0 pricing tier.")
+            "TODO fix: com.openai.errors.RateLimitException: 429: Requests to the ChatCompletions_Create Operation under Microsoft Foundry API version 2024-10-21 have exceeded token rate limit of your current OpenAI S0 pricing tier.")
     @Override
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
