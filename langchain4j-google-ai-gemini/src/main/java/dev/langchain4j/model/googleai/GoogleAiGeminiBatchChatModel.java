@@ -250,8 +250,10 @@ public final class GoogleAiGeminiBatchChatModel {
                 return List.of();
             }
             return response.inlinedResponses().inlinedResponses().stream()
-                    .map(wrapper -> Json.convertValue(wrapper, new TypeReference<BatchCreateResponse.InlinedResponseWrapper<GeminiGenerateContentResponse>>() { }))
-                    .map(wrapper -> Json.convertValue(wrapper.response(), new TypeReference<GeminiGenerateContentResponse>() { }))
+                    .map(wrapper -> Json.convertValue(wrapper, new TypeReference<BatchCreateResponse.InlinedResponseWrapper<GeminiGenerateContentResponse>>() {
+                    }))
+                    .map(wrapper -> Json.convertValue(wrapper.response(), new TypeReference<GeminiGenerateContentResponse>() {
+                    }))
                     .map(chatModel::processResponse)
                     .toList();
         }
