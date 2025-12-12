@@ -148,6 +148,9 @@ class AwsDocumentConverterTest {
                 .parameters(JsonObjectSchema.builder()
                         .addStringProperty("param1")
                         .addIntegerProperty("param2")
+                        .addIntegerProperty("param3")
+                        .addStringProperty("param4")
+                        .required( "param2", "param4" )
                         .build())
                 .build();
 
@@ -160,11 +163,39 @@ class AwsDocumentConverterTest {
         assertThat(docMap.get("description").asString()).isEqualTo("Test tool description");
 
         Document properties = docMap.get("properties");
-        assertThat(properties.asMap()).containsKey("param1");
-        assertThat(properties.asMap()).containsKey("param2");
-
+        assertThat(properties.asMap().keySet()).containsExactlyInAnyOrder("param1","param2","param3","param4");
+ 
         List<Document> required = docMap.get("required").asList();
-        assertThat(required).containsAll(List.of(Document.fromString("param1"), Document.fromString("param2")));
+        assertThat(required).containsExactlyInAnyOrder(Document.fromString("param2"),Document.fromString("param4"));
+    }
+
+    @Test
+    void convert_tool_specification_to_document_none_required() {
+        // Given
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("test-tool")
+                .description("Test tool description")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("param1")
+                        .addIntegerProperty("param2")
+                        .addIntegerProperty("param3")
+                        .addStringProperty("param4")
+                        .build())
+                .build();
+
+        // When
+        Document document = AwsDocumentConverter.convertJsonObjectSchemaToDocument(toolSpec);
+
+        // Then
+        Map<String, Document> docMap = document.asMap();
+        assertThat(docMap.get("type").asString()).isEqualTo("object");
+        assertThat(docMap.get("description").asString()).isEqualTo("Test tool description");
+
+        Document properties = docMap.get("properties");
+        assertThat(properties.asMap().keySet()).containsExactlyInAnyOrder("param1","param2","param3","param4");
+ 
+        List<Document> required = docMap.get("required").asList();
+        assertThat(required).isEmpty();
     }
 
     @Test
