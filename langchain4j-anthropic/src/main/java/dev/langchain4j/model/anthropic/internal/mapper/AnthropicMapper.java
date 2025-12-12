@@ -347,8 +347,8 @@ public class AnthropicMapper {
         return toolBuilder.build();
     }
 
-    private static Map<String, Object> retainKeys(Map<String, Object> map, Set<String> keys) {
-        Map<String, Object> result = new HashMap<>(map);
+    public static Map<String, Object> retainKeys(Map<String, Object> map, Set<String> keys) {
+        Map<String, Object> result = new HashMap<>();
         for (String key : keys) {
             if (map.containsKey(key)) {
                 result.put(key, map.get(key));
