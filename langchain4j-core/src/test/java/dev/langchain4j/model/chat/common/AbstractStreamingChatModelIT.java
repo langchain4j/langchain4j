@@ -10,17 +10,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Queue;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -35,6 +24,17 @@ import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCallContext;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Queue;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -114,7 +114,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
             }
 
             @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {
+            public void onCompleteResponse(ChatRequest chatRequest, ChatResponse completeResponse) {
                 futureResponse.complete(completeResponse);
             }
 
@@ -168,7 +168,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
             public void onPartialResponse(String partialResponse) {}
 
             @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {
+            public void onCompleteResponse(ChatRequest chatRequest, ChatResponse completeResponse) {
                 futureResponse.complete(completeResponse);
                 throw userCodeException;
             }
@@ -219,7 +219,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
             public void onPartialResponse(String partialResponse) {}
 
             @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {
+            public void onCompleteResponse(ChatRequest chatRequest, ChatResponse completeResponse) {
                 futureResponse.complete(completeResponse);
                 throw userCodeException; // to make sure onError will be called
             }
@@ -260,11 +260,12 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         return chat(chatModel, chatRequest, ignored -> {}, 120, true);
     }
 
-    private ChatResponseAndStreamingMetadata chat(StreamingChatModel chatModel,
-                                                  ChatRequest chatRequest,
-                                                  Consumer<StreamingHandle> streamingHandleConsumer,
-                                                  int timeoutSeconds,
-                                                  boolean failOnTimeout) {
+    private ChatResponseAndStreamingMetadata chat(
+            StreamingChatModel chatModel,
+            ChatRequest chatRequest,
+            Consumer<StreamingHandle> streamingHandleConsumer,
+            int timeoutSeconds,
+            boolean failOnTimeout) {
 
         CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();
         StringBuffer concatenatedPartialResponsesBuilder = new StringBuffer();
@@ -323,7 +324,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
             }
 
             @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {
+            public void onCompleteResponse(ChatRequest chatRequest, ChatResponse completeResponse) {
                 timesOnCompleteResponseWasCalled.incrementAndGet();
                 threads.add(Thread.currentThread());
                 futureChatResponse.complete(completeResponse);

@@ -20,7 +20,6 @@ import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -55,7 +54,8 @@ public class ToolService {
         }
     };
     private static final ToolExecutionErrorHandler DEFAULT_TOOL_EXECUTION_ERROR_HANDLER = (error, context) -> {
-        String errorMessage = isNullOrBlank(error.getMessage()) ? error.getClass().getName() : error.getMessage();
+        String errorMessage =
+                isNullOrBlank(error.getMessage()) ? error.getClass().getName() : error.getMessage();
         return ToolErrorHandlerResult.text(errorMessage);
     };
 
@@ -306,7 +306,7 @@ public class ToolService {
                     memoryId);
 
             chatResponse = context.chatModel.chat(chatRequest);
-            fireResponseReceivedEvent(chatResponse, invocationContext, context.eventListenerRegistrar);
+            fireResponseReceivedEvent(chatRequest, chatResponse, invocationContext, context.eventListenerRegistrar);
             aggregateTokenUsage =
                     TokenUsage.sum(aggregateTokenUsage, chatResponse.metadata().tokenUsage());
         }
@@ -320,11 +320,13 @@ public class ToolService {
     }
 
     private void fireResponseReceivedEvent(
+            ChatRequest chatRequest,
             ChatResponse chatResponse,
             InvocationContext invocationContext,
             AiServiceListenerRegistrar listenerRegistrar) {
         listenerRegistrar.fireEvent(AiServiceResponseReceivedEvent.builder()
                 .invocationContext(invocationContext)
+                .request(chatRequest)
                 .response(chatResponse)
                 .build());
     }

@@ -86,9 +86,9 @@ public interface StreamingChatModel {
             }
 
             @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {
+            public void onCompleteResponse(ChatRequest chatRequest, ChatResponse completeResponse) {
                 onResponse(completeResponse, finalChatRequest, provider(), attributes, listeners);
-                handler.onCompleteResponse(completeResponse);
+                handler.onCompleteResponse(chatRequest, completeResponse);
             }
 
             @Override

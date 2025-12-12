@@ -226,7 +226,7 @@ class LambdaStreamingResponseHandlerTest implements WithAssertions {
             });
             // Always call onCompleteResponse at the end if no error occurred
             if (stringsAndError.stream().noneMatch(obj -> obj instanceof Throwable)) {
-                handler.onCompleteResponse(null); // Mock ChatResponse
+                handler.onCompleteResponse(null, null); // Mock ChatResponse
             }
         }
     }
@@ -255,7 +255,7 @@ class LambdaStreamingResponseHandlerTest implements WithAssertions {
                             }
                             // Call onCompleteResponse if no error occurred
                             if (stringsAndError.stream().noneMatch(obj -> obj instanceof Throwable)) {
-                                handler.onCompleteResponse(null); // Mock ChatResponse
+                                handler.onCompleteResponse(null, null); // Mock ChatResponse
                             }
                         } catch (InterruptedException e) {
                             Thread.currentThread().interrupt();

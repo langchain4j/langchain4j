@@ -1,6 +1,7 @@
 package dev.langchain4j.model;
 
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.util.concurrent.CountDownLatch;
@@ -44,7 +45,7 @@ public class LambdaStreamingResponseHandler {
             }
 
             @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {}
+            public void onCompleteResponse(ChatRequest chatRequest, ChatResponse completeResponse) {}
 
             @Override
             public void onError(Throwable error) {
@@ -63,7 +64,7 @@ public class LambdaStreamingResponseHandler {
             }
 
             @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {}
+            public void onCompleteResponse(ChatRequest chatRequest, ChatResponse completeResponse) {}
 
             @Override
             public void onError(Throwable error) {
@@ -110,7 +111,7 @@ public class LambdaStreamingResponseHandler {
             }
 
             @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {
+            public void onCompleteResponse(ChatRequest chatRequest, ChatResponse completeResponse) {
                 completionLatch.countDown();
             }
 

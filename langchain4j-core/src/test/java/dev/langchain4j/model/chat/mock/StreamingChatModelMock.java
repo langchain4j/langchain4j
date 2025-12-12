@@ -58,7 +58,6 @@ public class StreamingChatModelMock implements StreamingChatModel {
 
             try {
                 executor.execute(() -> {
-
                     StreamingHandle streamingHandle = new SimpleStreamingHandle();
 
                     for (String token : toTokens(aiMessage)) {
@@ -79,7 +78,7 @@ public class StreamingChatModelMock implements StreamingChatModel {
                     ChatResponse chatResponse =
                             ChatResponse.builder().aiMessage(aiMessage).build();
 
-                    onCompleteResponse(handler, chatResponse);
+                    onCompleteResponse(handler, chatRequest, chatResponse);
                 });
             } finally {
                 executor.shutdown();

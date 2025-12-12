@@ -303,6 +303,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         context.eventListenerRegistrar.fireEvent(AiServiceResponseReceivedEvent.builder()
                                 .invocationContext(invocationContext)
                                 .response(chatResponse)
+                                .request(chatRequest)
                                 .build());
 
                         verifyModerationIfNeeded(moderationFuture);

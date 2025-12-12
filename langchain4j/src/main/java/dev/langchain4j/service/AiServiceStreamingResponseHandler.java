@@ -212,9 +212,10 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 .build());
     }
 
-    private void fireResponseReceivedEvent(ChatResponse chatResponse) {
+    private void fireResponseReceivedEvent(ChatRequest chatRequest, ChatResponse chatResponse) {
         context.eventListenerRegistrar.fireEvent(AiServiceResponseReceivedEvent.builder()
                 .invocationContext(invocationContext)
+                .request(chatRequest)
                 .response(chatResponse)
                 .build());
     }
@@ -227,8 +228,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     @Override
-    public void onCompleteResponse(ChatResponse chatResponse) {
-        fireResponseReceivedEvent(chatResponse);
+    public void onCompleteResponse(ChatRequest chatRequest, ChatResponse chatResponse) {
+        fireResponseReceivedEvent(chatRequest, chatResponse);
         AiMessage aiMessage = chatResponse.aiMessage();
         addToMemory(aiMessage);
 
@@ -283,7 +284,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 return;
             }
 
-            ChatRequest chatRequest = ChatRequest.builder()
+            ChatRequest nextChatRequest = ChatRequest.builder()
                     .messages(messagesToSend(invocationContext.chatMemoryId()))
                     .toolSpecifications(toolSpecifications)
                     .build();
@@ -311,7 +312,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     commonGuardrailParams,
                     methodKey);
 
-            context.streamingChatModel.chat(chatRequest, handler);
+            context.streamingChatModel.chat(nextChatRequest, handler);
         } else {
             ChatResponse finalChatResponse = finalResponse(chatResponse, aiMessage);
 
