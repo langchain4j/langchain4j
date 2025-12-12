@@ -17,7 +17,13 @@ public interface AgentInstance {
 
     String outputKey();
 
+    boolean async();
+
     List<AgentArgument> arguments();
 
     List<AgentInstance> subagents();
+
+    default boolean leaf() {
+        return subagents().isEmpty();
+    }
 }

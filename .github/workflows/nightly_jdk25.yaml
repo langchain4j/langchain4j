@@ -23,7 +23,7 @@ jobs:
           echo "$modules"
 
           # number of parallel groups
-          N=10
+          N=20
 
           # round-robin grouping
           matrix=$(echo "$modules" | awk -v N="$N" '
