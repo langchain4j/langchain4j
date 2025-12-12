@@ -1,4 +1,4 @@
-package dev.langchain4j.model.openaiofficial.azureopenai;
+package dev.langchain4j.model.openaiofficial.microsoftfoundry;
 
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceWithToolsIT;
@@ -6,11 +6,11 @@ import java.util.List;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
-class AzureOpenAiOfficialAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
+class MicrosoftFoundryAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
 
     @Override
     protected List<ChatModel> models() {
-        return InternalAzureOpenAiOfficialTestHelper.chatModelsNormalAndStrictTools();
+        return InternalMicrosoftFoundryTestHelper.chatModelsNormalAndStrictTools();
     }
 
     @Override
