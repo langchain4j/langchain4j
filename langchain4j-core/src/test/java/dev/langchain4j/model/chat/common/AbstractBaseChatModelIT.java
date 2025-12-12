@@ -69,7 +69,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     // TODO https://github.com/langchain4j/langchain4j/issues/2220
 
     static final String WHAT_IS_THE_CAPITAL_OF_GERMANY = "What is the capital of Germany?";
-    
+
     static final String CAT_IMAGE_URL =
             "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
     static final String DICE_IMAGE_URL =
@@ -202,9 +202,8 @@ public abstract class AbstractBaseChatModelIT<M> {
         String modelName = customModelName();
         ensureModelNameIsDifferentFromDefault(modelName, model);
 
-        ChatRequestParameters parameters = ChatRequestParameters.builder()
-                .modelName(modelName)
-                .build();
+        ChatRequestParameters parameters =
+                ChatRequestParameters.builder().modelName(modelName).build();
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from(WHAT_IS_THE_CAPITAL_OF_GERMANY))
@@ -239,7 +238,8 @@ public abstract class AbstractBaseChatModelIT<M> {
     protected ChatRequestParameters saveTokens(ChatRequestParameters parameters) {
         // TODO slight optimization: check model.parameters().modelName() instead?
         if (supportsMaxOutputTokensParameter()) {
-            return parameters.overrideWith(ChatRequestParameters.builder().maxOutputTokens(1).build());
+            return parameters.overrideWith(
+                    ChatRequestParameters.builder().maxOutputTokens(1).build());
         } else {
             return parameters;
         }
@@ -251,9 +251,8 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // given
         String modelName = customModelName();
-        ChatRequestParameters parameters = ChatRequestParameters.builder()
-                .modelName(modelName)
-                .build();
+        ChatRequestParameters parameters =
+                ChatRequestParameters.builder().modelName(modelName).build();
         M model = createModelWith(saveTokens(parameters));
 
         ChatRequest chatRequest = ChatRequest.builder()
@@ -352,9 +351,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     }
 
     protected ChatRequestParameters createParameters(int maxOutputTokens) {
-        return ChatRequestParameters.builder()
-                .maxOutputTokens(maxOutputTokens)
-                .build();
+        return ChatRequestParameters.builder().maxOutputTokens(maxOutputTokens).build();
     }
 
     protected Set<FinishReason> finishReasonForMaxOutputTokens() {
@@ -367,9 +364,8 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // given
         int maxOutputTokens = maxOutputTokens();
-        ChatRequestParameters parameters = ChatRequestParameters.builder()
-                        .maxOutputTokens(maxOutputTokens)
-                        .build();
+        ChatRequestParameters parameters =
+                ChatRequestParameters.builder().maxOutputTokens(maxOutputTokens).build();
         M model = createModelWith(parameters);
 
         ChatRequest chatRequest = ChatRequest.builder()

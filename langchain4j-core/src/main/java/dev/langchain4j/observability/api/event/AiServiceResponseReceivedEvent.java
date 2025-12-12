@@ -19,7 +19,6 @@ public interface AiServiceResponseReceivedEvent extends AiServiceEvent {
      */
     ChatRequest request();
 
-
     /**
      * Retrieves the chat response from the AI Service invocation event.
      *
@@ -48,8 +47,7 @@ public interface AiServiceResponseReceivedEvent extends AiServiceEvent {
         private ChatResponse response;
         private ChatRequest request;
 
-        protected AiServiceResponseReceivedEventBuilder() {
-        }
+        protected AiServiceResponseReceivedEventBuilder() {}
 
         /**
          * Creates a builder initialized from an existing {@link AiServiceResponseReceivedEvent}.

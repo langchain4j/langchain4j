@@ -7,19 +7,6 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
-import java.util.function.Function;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.Tool;
@@ -42,6 +29,19 @@ import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.observability.api.event.ToolExecutedEvent;
 import dev.langchain4j.service.AiServiceContext;
 import dev.langchain4j.service.IllegalConfigurationException;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
+import java.util.function.Function;
 
 @Internal
 public class ToolService {
@@ -54,7 +54,8 @@ public class ToolService {
         }
     };
     private static final ToolExecutionErrorHandler DEFAULT_TOOL_EXECUTION_ERROR_HANDLER = (error, context) -> {
-        String errorMessage = isNullOrBlank(error.getMessage()) ? error.getClass().getName() : error.getMessage();
+        String errorMessage =
+                isNullOrBlank(error.getMessage()) ? error.getClass().getName() : error.getMessage();
         return ToolErrorHandlerResult.text(errorMessage);
     };
 
