@@ -170,7 +170,7 @@ ChatModel chatModel = AnthropicChatModel.builder()
         .modelName(CLAUDE_SONNET_4_5_20250929)
         .beta("advanced-tool-use-2025-11-20")
         .serverTools(toolSearchTool)
-        .toolMetadataKeysToSend("deferLoading") // need to specify it explicitly
+        .toolMetadataKeysToSend("defer_loading") // need to specify it explicitly
         .logRequests(true)
         .logResponses(true)
         .build();
