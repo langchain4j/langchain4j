@@ -43,11 +43,7 @@ class Json {
         }
     }
 
-    static <T, U> U convertValue(T fromValue, Class<U> toValue) {
-        return OBJECT_MAPPER.convertValue(fromValue, toValue);
-    }
-
-    static <T, U> U convertValue(T fromValue, TypeReference<U> toValue) {
+    static <T> T convertValue(Object fromValue, TypeReference<T> toValue) {
         return OBJECT_MAPPER.convertValue(fromValue, toValue);
     }
 }
