@@ -332,7 +332,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         }
 
         /**
-         * Specifies server tools to be included in the request. For example:
+         * Specifies server tools to be included in each request to the Anthropic API. For example:
          * <pre>
          * AnthropicServerTool webSearchTool = AnthropicServerTool.builder()
          *     .type("web_search_20250305")
@@ -348,7 +348,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         }
 
         /**
-         * Specifies server tools to be included in the request. For example:
+         * Specifies server tools to be included in each request to the Anthropic API. For example:
          * <pre>
          * AnthropicServerTool webSearchTool = AnthropicServerTool.builder()
          *     .type("web_search_20250305")

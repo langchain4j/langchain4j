@@ -248,17 +248,17 @@ AnthropicServerTool codeExecutionTool = AnthropicServerTool.builder()
 
 class Tools {
 
-    static final String DESCRIPTION = """
+    static final String TOOL_METADATA = "{\"allowed_callers\": [\"code_execution_20250825\"]}";
+    static final String TOOL_DESCRIPTION = """
             Returns daily minimum and maximum temperatures recorded
             for a specified city for a specified number of previous days.
             Response format: [{"min":0.0,"max":10.0},{"min":0.0,"max":20.0},{"min":0.0,"max":30.0}]
             """;
-    static final String METADATA = "{\"allowed_callers\": [\"code_execution_20250825\"]}";
 
     record TemperatureRange(double min, double max) {}
 
-    @Tool(value = DESCRIPTION, metadata = METADATA)
-    List<TemperatureRange> getMaxDailyTemperatures(String city, int days) {
+    @Tool(value = TOOL_DESCRIPTION, metadata = TOOL_METADATA)
+    List<TemperatureRange> getDailyTemperatures(String city, int days) {
         if ("Munich".equals(city) && days == 5) {
             return List.of(
                     new TemperatureRange(0.0, 1.0),
@@ -272,7 +272,7 @@ class Tools {
         throw new IllegalArgumentException("Unknown city: " + city + " or days: " + days);
     }
 
-    @Tool(value = "Calculates the average of the specified list of numbers", metadata = METADATA)
+    @Tool(value = "Calculates the average of the specified list of numbers", metadata = TOOL_METADATA)
     Double average(List<Double> numbers) {
         return numbers.stream()
                 .mapToDouble(Double::doubleValue)
@@ -296,11 +296,9 @@ interface Assistant {
     String chat(String userMessage);
 }
 
-Tools tools = spy(new Tools());
-
 Assistant assistant = AiServices.builder(Assistant.class)
         .chatModel(chatModel)
-        .tools(tools)
+        .tools(new Tools())
         .build();
 
 assistant.chat("What was the average max temperature in Munich in the last 5 days?");
