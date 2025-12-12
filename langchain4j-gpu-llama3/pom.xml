@@ -88,6 +88,16 @@
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.5.0</version>
+                <configuration>
+                    <additionalOptions>--enable-preview</additionalOptions>
+                    <source>21</source>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
                 <executions>
                     <execution>
@@ -113,19 +123,21 @@
                 </configuration>
             </plugin>
 
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>default-testCompile</id>
-                        <goals>
-                            <goal>testCompile</goal>
-                        </goals>
-                        <phase>test-compile</phase>
-                    </execution>
-                </executions>
-            </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.14.0</version>
+                    <configuration>
+                        <compilerArgs>
+                            <arg>--enable-preview</arg>
+                        </compilerArgs>
+                        <testCompilerArgs>
+                            <arg>--enable-preview</arg>
+                        </testCompilerArgs>
+                        <release>21</release>
+                    </configuration>
+                </plugin>
+
 
             <!-- TornadoVM Test Runner -->
             <plugin>
