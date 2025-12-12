@@ -428,6 +428,8 @@ public class DefaultMcpClient implements McpClient {
         if (initializationLock.tryLock()) {
             try {
                 initialize();
+            }catch (Exception e) {
+                log.warn("mcp server reconnection failed", e);
             } finally {
                 initializationLock.unlock();
             }
