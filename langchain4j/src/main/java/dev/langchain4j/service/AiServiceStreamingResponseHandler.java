@@ -5,6 +5,17 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.tool.ToolService.executeWithErrorHandling;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Future;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -35,18 +46,6 @@ import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -89,7 +88,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private final List<String> responseBuffer = new ArrayList<>();
     private final boolean hasOutputGuardrails;
 
-    private final AtomicInteger executionsLeft;
+    private int executionsLeft;
 
     private record ToolRequestResult(ToolExecutionRequest request, ToolExecutionResult result) {}
 
@@ -143,7 +142,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
         this.hasOutputGuardrails = context.guardrailService().hasOutputGuardrails(methodKey);
 
-        this.executionsLeft = new AtomicInteger(executionsLeft);
+        this.executionsLeft = executionsLeft;
     }
 
     @Override
@@ -241,14 +240,10 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
         if (aiMessage.hasToolExecutionRequests()) {
 
-            final int toolExecutionRequestSize =
-                    aiMessage.toolExecutionRequests().size();
-            if (executionsLeft.get() < toolExecutionRequestSize) {
+            if (executionsLeft-- == 0) {
                 throw runtime(
                         "Something is wrong, exceeded %s sequential tool executions",
                         context.toolService.maxSequentialToolsInvocations());
-            } else {
-                executionsLeft.set(executionsLeft.get() - toolExecutionRequestSize);
             }
 
             if (intermediateResponseHandler != null) {
@@ -322,7 +317,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     TokenUsage.sum(tokenUsage, chatResponse.metadata().tokenUsage()),
                     toolSpecifications,
                     toolExecutors,
-                    executionsLeft.get(),
+                    executionsLeft,
                     toolArgumentsErrorHandler,
                     toolExecutionErrorHandler,
                     toolExecutor,

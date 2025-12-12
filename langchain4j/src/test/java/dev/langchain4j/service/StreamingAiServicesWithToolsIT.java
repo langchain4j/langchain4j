@@ -105,7 +105,6 @@ class StreamingAiServicesWithToolsIT {
         @Tool("returns amount of a given transaction")
         Double getTransactionAmount(@P("ID of a transaction") String id) {
             threads.add(Thread.currentThread());
-            System.out.printf("called getTransactionAmount(%s)%n", id);
             return switch (id) {
                 case "T001" -> 11.1;
                 case "T002" -> 22.2;
@@ -1361,7 +1360,6 @@ class StreamingAiServicesWithToolsIT {
                                 A: The sum is 5.
                                 """)
         public Integer add(Integer a, Integer b) {
-            System.out.println("计算了 add " + a + " and " + b);
             return a + b;
         }
 
@@ -1376,7 +1374,6 @@ class StreamingAiServicesWithToolsIT {
                                 A: The difference is -1.
                                 """)
         public Integer subtract(Integer a, Integer b) {
-            System.out.println("计算了 subtract " + a + " and " + b);
             return a - b;
         }
     }
@@ -1399,20 +1396,17 @@ class StreamingAiServicesWithToolsIT {
         demoService
                 .chat("add 10 and 6")
                 .beforeToolExecution(toolExecutionRequest -> {
-                    System.out.println("beforeToolExecution: " + toolExecutionRequest);
                     final int index = n.incrementAndGet();
                     assertThat(index).isLessThanOrEqualTo(maxSequentialToolsInvocations);
                 })
                 .onToolExecuted(toolExecutionResult -> {
-                    System.out.println("onToolExecuted: " + toolExecutionResult);
                     final int index = n.get();
                     assertThat(index).isLessThanOrEqualTo(maxSequentialToolsInvocations);
                 })
                 .onError(future::completeExceptionally)
                 .onCompleteResponse(future::complete)
-                .onPartialResponse(System.out::println)
                 .start();
-        assertThat(future.get(30, SECONDS).aiMessage().text()).contains("sum");
+        assertThat(future.get(30, SECONDS).aiMessage().text()).contains("16");
     }
 
     @ParameterizedTest
@@ -1427,29 +1421,27 @@ class StreamingAiServicesWithToolsIT {
                 .streamingChatModel(spyModel)
                 .tools(new MathTools())
                 .maxSequentialToolsInvocations(maxSequentialToolsInvocations)
+                .executeToolsConcurrently()
                 .build();
         final AtomicInteger n = new AtomicInteger(0);
+        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
+        demoService
+                .chat("calculate the result of (1+5)-(2+6)")
+                .beforeToolExecution(toolExecutionRequest -> {
+                    final int index = n.incrementAndGet();
+                    assertThat(index).isLessThanOrEqualTo(maxSequentialToolsInvocations);
+                })
+                .onToolExecuted(toolExecutionResult -> {
+                    final int index = n.get();
+                    assertThat(index).isLessThanOrEqualTo(maxSequentialToolsInvocations);
+                })
+                .onError(future::completeExceptionally)
+                .onCompleteResponse(future::complete)
+                .start();
         try {
-            CompletableFuture<ChatResponse> future = new CompletableFuture<>();
-            demoService
-                    .chat("calculate the result of (1+5)-(2+6)")
-                    .beforeToolExecution(toolExecutionRequest -> {
-                        System.out.println("beforeToolExecution: " + toolExecutionRequest);
-                        final int index = n.incrementAndGet();
-                        assertThat(index).isLessThanOrEqualTo(maxSequentialToolsInvocations);
-                    })
-                    .onToolExecuted(toolExecutionResult -> {
-                        System.out.println("onToolExecuted: " + toolExecutionResult);
-                        final int index = n.get();
-                        assertThat(index).isLessThanOrEqualTo(maxSequentialToolsInvocations);
-                    })
-                    .onError(future::completeExceptionally)
-                    .onCompleteResponse(future::complete)
-                    .onPartialResponse(System.out::println)
-                    .start();
             future.get();
         } catch (Exception e) {
-            assertThat(e.getMessage()).contains("Something is wrong");
+            assertThat(e.getMessage()).contains("Something is wrong, exceeded 2 sequential tool executions");
         }
     }
 
