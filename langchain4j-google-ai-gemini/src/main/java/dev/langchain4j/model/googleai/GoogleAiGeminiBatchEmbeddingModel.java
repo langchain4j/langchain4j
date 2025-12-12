@@ -172,6 +172,8 @@ public final class GoogleAiGeminiBatchEmbeddingModel {
     private class EmbeddingRequestPreparer
             implements GeminiBatchProcessor.RequestPreparer<
                     TextSegment, GeminiEmbeddingRequest, GeminiEmbeddingResponse, Embedding> {
+        private static final TypeReference<BatchCreateResponse.InlinedResponseWrapper<GeminiEmbeddingResponse>>
+                responseWrapperType = new TypeReference<>() {};
 
         @Override
         public TextSegment prepareRequest(TextSegment textSegment) {
@@ -203,12 +205,8 @@ public final class GoogleAiGeminiBatchEmbeddingModel {
             }
 
             return response.inlinedResponses().inlinedResponses().stream()
-                    .map(wrapper -> Json.convertValue(
-                            wrapper,
-                            new TypeReference<
-                                    BatchCreateResponse.InlinedResponseWrapper<GeminiEmbeddingResponse>>() {}))
-                    .map(wrapper ->
-                            Json.convertValue(wrapper.response(), new TypeReference<GeminiEmbeddingResponse>() {}))
+                    .map(wrapper -> Json.convertValue(wrapper, responseWrapperType))
+                    .map(BatchCreateResponse.InlinedResponseWrapper::response)
                     .map(GeminiEmbeddingResponse::embedding)
                     .map(contentEmbedding -> Embedding.from(contentEmbedding.values()))
                     .toList();

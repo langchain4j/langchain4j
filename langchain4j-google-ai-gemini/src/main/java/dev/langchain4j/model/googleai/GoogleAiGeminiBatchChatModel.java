@@ -229,6 +229,8 @@ public final class GoogleAiGeminiBatchChatModel {
     private class ChatRequestPreparer
             implements GeminiBatchProcessor.RequestPreparer<
                     ChatRequest, GeminiGenerateContentRequest, GeminiGenerateContentResponse, ChatResponse> {
+        private static final TypeReference<BatchCreateResponse.InlinedResponseWrapper<GeminiGenerateContentResponse>>
+                responseWrapperType = new TypeReference<>() {};
 
         @Override
         public ChatRequest prepareRequest(ChatRequest request) {
@@ -249,12 +251,8 @@ public final class GoogleAiGeminiBatchChatModel {
                 return List.of();
             }
             return response.inlinedResponses().inlinedResponses().stream()
-                    .map(wrapper -> Json.convertValue(
-                            wrapper,
-                            new TypeReference<
-                                    BatchCreateResponse.InlinedResponseWrapper<GeminiGenerateContentResponse>>() {}))
-                    .map(wrapper -> Json.convertValue(
-                            wrapper.response(), new TypeReference<GeminiGenerateContentResponse>() {}))
+                    .map(wrapper -> Json.convertValue(wrapper, responseWrapperType))
+                    .map(BatchCreateResponse.InlinedResponseWrapper::response)
                     .map(chatModel::processResponse)
                     .toList();
         }
