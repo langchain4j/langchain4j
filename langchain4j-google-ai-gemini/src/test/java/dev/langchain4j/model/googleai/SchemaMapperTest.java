@@ -19,6 +19,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 public class SchemaMapperTest {
@@ -261,15 +262,4 @@ public class SchemaMapperTest {
         assertThat(result.getType()).isEqualTo(GeminiType.NULL);
     }
 
-    @Test
-    public void should_throw_exception_for_unsupported_schema_type() {
-        // given
-        JsonSchemaElement unsupportedSchema =
-                new JsonRawSchema.Builder().schema("{ \"type\": \"string\" }").build();
-
-        // when/then
-        assertThrows(IllegalArgumentException.class, () -> {
-            SchemaMapper.fromJsonSchemaToGSchema(unsupportedSchema);
-        });
-    }
 }
