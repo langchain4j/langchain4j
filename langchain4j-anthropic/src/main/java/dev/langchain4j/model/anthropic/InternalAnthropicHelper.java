@@ -13,6 +13,7 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicMetadata;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicThinking;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicTool;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import java.util.ArrayList;
@@ -55,7 +56,7 @@ class InternalAnthropicHelper {
             boolean stream,
             String toolChoiceName,
             Boolean disableParallelToolUse,
-            List<Map<String, Object>> serverTools,
+            List<AnthropicServerTool> serverTools,
             Set<String> toolMetadataKeysToSend,
             String userId,
             Map<String, Object> customParameters) {
@@ -72,9 +73,9 @@ class InternalAnthropicHelper {
                 .thinking(thinking)
                 .customParameters(customParameters);
 
-        List<Object> tools = new ArrayList<>();
+        List<AnthropicTool> tools = new ArrayList<>();
         if (!isNullOrEmpty(serverTools)) {
-            tools.addAll(serverTools);
+            tools.addAll(toAnthropicTools(serverTools));
         }
         if (!isNullOrEmpty(chatRequest.toolSpecifications())) {
             tools.addAll(toAnthropicTools(chatRequest.toolSpecifications(), toolsCacheType, toolMetadataKeysToSend));

@@ -26,7 +26,7 @@ public class AnthropicCreateMessageRequest {
     public Double temperature;
     public Double topP;
     public Integer topK;
-    public List<Object> tools;
+    public List<AnthropicTool> tools;
     public AnthropicToolChoice toolChoice;
     public AnthropicThinking thinking;
     public AnthropicMetadata metadata;
@@ -153,11 +153,11 @@ public class AnthropicCreateMessageRequest {
         this.topK = topK;
     }
 
-    public List<Object> getTools() {
+    public List<AnthropicTool> getTools() {
         return tools;
     }
 
-    public void setTools(List<Object> tools) {
+    public void setTools(List<AnthropicTool> tools) {
         this.tools = tools;
     }
 
@@ -227,7 +227,7 @@ public class AnthropicCreateMessageRequest {
         private Double temperature;
         private Double topP;
         private Integer topK;
-        private List<Object> tools;
+        private List<AnthropicTool> tools;
         private AnthropicToolChoice toolChoice;
         private AnthropicThinking thinking;
         private AnthropicMetadata metadata;
@@ -278,7 +278,7 @@ public class AnthropicCreateMessageRequest {
             return this;
         }
 
-        public Builder tools(List<Object> tools) {
+        public Builder tools(List<AnthropicTool> tools) {
             this.tools = tools;
             return this;
         }

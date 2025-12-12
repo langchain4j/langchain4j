@@ -6,6 +6,7 @@ import dev.langchain4j.http.client.MockHttpClientBuilder;
 import dev.langchain4j.http.client.SpyingHttpClient;
 import dev.langchain4j.http.client.jdk.JdkHttpClient;
 import dev.langchain4j.model.anthropic.AnthropicChatModel;
+import dev.langchain4j.model.anthropic.AnthropicServerTool;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.SystemMessage;
@@ -14,7 +15,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.List;
-import java.util.Map;
 
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_SONNET_4_5_20250929;
@@ -44,10 +44,10 @@ class AnthropicAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
     void should_support_tool_search_tool() {
 
         // given
-        Map<String, Object> toolSearchTool = Map.of(
-                "type", "tool_search_tool_regex_20251119",
-                "name", "tool_search_tool_regex"
-        );
+        AnthropicServerTool toolSearchTool = AnthropicServerTool.builder()
+                .type("tool_search_tool_regex_20251119")
+                .name("tool_search_tool_regex")
+                .build();
 
         class Tools {
 
@@ -95,7 +95,7 @@ class AnthropicAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
 
         // then
         assertThat(spyingHttpClient.requests().get(0).body())
-                .contains(toolSearchTool.get("type").toString())
+                .contains(toolSearchTool.type())
                 .contains(deferLoadingKey);
 
         verify(tools).getWeather("Munich");

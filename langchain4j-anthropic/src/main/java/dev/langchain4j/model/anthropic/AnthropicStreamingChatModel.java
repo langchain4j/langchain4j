@@ -69,7 +69,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
     private final ChatRequestParameters defaultRequestParameters;
     private final String toolChoiceName;
     private final Boolean disableParallelToolUse;
-    private final List<Map<String, Object>> serverTools;
+    private final List<AnthropicServerTool> serverTools;
     private final Set<String> toolMetadataKeysToSend;
     private final String userId;
     private final Map<String, Object> customParameters;
@@ -151,7 +151,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         private ToolChoice toolChoice;
         private String toolChoiceName;
         private Boolean disableParallelToolUse;
-        private List<Map<String, Object>> serverTools;
+        private List<AnthropicServerTool> serverTools;
         private Set<String> toolMetadataKeysToSend;
         private String userId;
         private Map<String, Object> customParameters;
@@ -341,7 +341,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
          * );
          * </pre>
          */
-        public AnthropicStreamingChatModelBuilder serverTools(List<Map<String, Object>> serverTools) {
+        public AnthropicStreamingChatModelBuilder serverTools(List<AnthropicServerTool> serverTools) {
             this.serverTools = serverTools;
             return this;
         }
@@ -356,7 +356,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
          * );
          * </pre>
          */
-        public AnthropicStreamingChatModelBuilder serverTools(Map<String, Object>... serverTools) {
+        public AnthropicStreamingChatModelBuilder serverTools(AnthropicServerTool... serverTools) {
             return serverTools(asList(serverTools));
         }
 

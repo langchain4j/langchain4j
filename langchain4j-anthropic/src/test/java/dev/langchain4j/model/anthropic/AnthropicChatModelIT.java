@@ -580,10 +580,10 @@ class AnthropicChatModelIT {
     void should_support_code_execution_tool() {
 
         // given
-        Map<String, Object> codeExecutionTool = Map.of(
-                "type", "code_execution_20250825",
-                "name", "code_execution"
-        );
+        AnthropicServerTool codeExecutionTool = AnthropicServerTool.builder()
+                .type("code_execution_20250825")
+                .name("code_execution")
+                .build();
 
         SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
 
@@ -605,7 +605,7 @@ class AnthropicChatModelIT {
         ChatResponse chatResponse = model.chat(chatRequest);
 
         // then
-        assertThat(spyingHttpClient.request().body()).contains(codeExecutionTool.get("type").toString());
+        assertThat(spyingHttpClient.request().body()).contains(codeExecutionTool.type());
 
         assertThat(chatResponse.aiMessage().text()).contains("3");
         assertThat(chatResponse.aiMessage().toolExecutionRequests()).isEmpty();
@@ -615,12 +615,12 @@ class AnthropicChatModelIT {
     void should_support_web_search_tool() {
 
         // given
-        Map<String, Object> webSearchTool = Map.of(
-                "type", "web_search_20250305",
-                "name", "web_search",
-                "max_uses", 5,
-                "allowed_domains", List.of("accuweather.com")
-        );
+        AnthropicServerTool webSearchTool = AnthropicServerTool.builder()
+                .type("web_search_20250305")
+                .name("web_search")
+                .addAttribute("max_uses", 5)
+                .addAttribute("allowed_domains", List.of("accuweather.com"))
+                .build();
 
         SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
 
@@ -641,7 +641,7 @@ class AnthropicChatModelIT {
         ChatResponse chatResponse = model.chat(chatRequest);
 
         // then
-        assertThat(spyingHttpClient.request().body()).contains(webSearchTool.get("type").toString());
+        assertThat(spyingHttpClient.request().body()).contains(webSearchTool.type());
 
         assertThat(chatResponse.aiMessage().text()).isNotBlank();
         assertThat(chatResponse.aiMessage().toolExecutionRequests()).isEmpty();
@@ -651,10 +651,10 @@ class AnthropicChatModelIT {
      void should_support_tool_search_tool() {
 
          // given
-         Map<String, Object> toolSearchTool = Map.of(
-                 "type", "tool_search_tool_regex_20251119",
-                 "name", "tool_search_tool_regex"
-         );
+         AnthropicServerTool toolSearchTool = AnthropicServerTool.builder()
+                 .type("tool_search_tool_regex_20251119")
+                 .name("tool_search_tool_regex")
+                 .build();
 
          Map<String, Object> toolMetadata = Map.of("defer_loading", true);
 
@@ -698,7 +698,7 @@ class AnthropicChatModelIT {
 
          // then
          assertThat(spyingHttpClient.request().body())
-                 .contains(toolSearchTool.get("type").toString())
+                 .contains(toolSearchTool.type())
                  .contains(toolMetadata.keySet().iterator().next());
 
          List<ToolExecutionRequest> toolExecutionRequests = chatResponse.aiMessage().toolExecutionRequests();

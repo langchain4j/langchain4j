@@ -33,6 +33,7 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.pdf.PdfFile;
+import dev.langchain4j.model.anthropic.AnthropicServerTool;
 import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicContent;
@@ -56,6 +57,7 @@ import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -353,5 +355,22 @@ public class AnthropicMapper {
             }
         }
         return result;
+    }
+
+    public static List<AnthropicTool> toAnthropicTools(List<AnthropicServerTool> serverTools) {
+        return serverTools.stream()
+                .map(AnthropicMapper::toAnthropicTool)
+                .toList();
+    }
+
+    public static AnthropicTool toAnthropicTool(AnthropicServerTool serverTool) {
+        Map<String, Object> customParameters = new LinkedHashMap<>();
+        customParameters.put("type", serverTool.type());
+        customParameters.putAll(serverTool.attributes());
+
+        return AnthropicTool.builder()
+                .name(serverTool.name())
+                .customParameters(customParameters)
+                .build();
     }
 }

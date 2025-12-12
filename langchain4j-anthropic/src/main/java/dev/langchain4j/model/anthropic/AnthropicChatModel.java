@@ -73,7 +73,7 @@ public class AnthropicChatModel implements ChatModel {
     private final ChatRequestParameters defaultRequestParameters;
     private final String toolChoiceName;
     private final Boolean disableParallelToolUse;
-    private final List<Map<String, Object>> serverTools;
+    private final List<AnthropicServerTool> serverTools;
     private final Set<String> toolMetadataKeysToSend;
     private final String userId;
     private final Map<String, Object> customParameters;
@@ -148,7 +148,7 @@ public class AnthropicChatModel implements ChatModel {
         private ToolChoice toolChoice;
         private String toolChoiceName;
         private Boolean disableParallelToolUse;
-        private List<Map<String, Object>> serverTools;
+        private List<AnthropicServerTool> serverTools;
         private Set<String> toolMetadataKeysToSend;
         private Boolean cacheSystemMessages;
         private Boolean cacheTools;
@@ -251,7 +251,7 @@ public class AnthropicChatModel implements ChatModel {
         }
 
         /**
-         * Specifies server tools to be included in the request. For example:
+         * Specifies server tools to be included in the request. For example: TODO, everywhere
          * <pre>
          * Map&lt;String, Object&gt; webSearchTool = Map.of(
          *     "type", "web_search_20250305",
@@ -260,7 +260,7 @@ public class AnthropicChatModel implements ChatModel {
          * );
          * </pre>
          */
-        public  AnthropicChatModelBuilder serverTools(List<Map<String, Object>> serverTools) {
+        public  AnthropicChatModelBuilder serverTools(List<AnthropicServerTool> serverTools) {
             this.serverTools = serverTools;
             return this;
         }
@@ -275,7 +275,7 @@ public class AnthropicChatModel implements ChatModel {
          * );
          * </pre>
          */
-        public  AnthropicChatModelBuilder serverTools(Map<String, Object>... serverTools) {
+        public  AnthropicChatModelBuilder serverTools(AnthropicServerTool... serverTools) {
             return serverTools(asList(serverTools));
         }
 
