@@ -8,7 +8,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -75,7 +74,7 @@ public class AnthropicCreateMessageRequest {
         this.temperature = temperature;
         this.topP = topP;
         this.topK = topK;
-        this.tools = tools == null ? null : new ArrayList<>(tools);
+        this.tools = tools;
         this.toolChoice = toolChoice;
         this.thinking = thinking;
         this.metadata = metadata;

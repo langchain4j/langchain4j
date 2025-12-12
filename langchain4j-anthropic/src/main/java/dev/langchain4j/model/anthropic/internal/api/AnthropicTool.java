@@ -3,6 +3,7 @@ package dev.langchain4j.model.anthropic.internal.api;
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
@@ -20,7 +21,8 @@ public class AnthropicTool {
     public String description;
     public AnthropicToolSchema inputSchema;
     public AnthropicCacheControl cacheControl;
-    private Map<String, Object> customParameters;
+    @JsonIgnore
+    public Map<String, Object> customParameters;
 
     public AnthropicTool() {}
 
