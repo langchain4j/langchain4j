@@ -334,11 +334,12 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         /**
          * Specifies server tools to be included in the request. For example:
          * <pre>
-         * Map&lt;String, Object&gt; webSearchTool = Map.of(
-         *     "type", "web_search_20250305",
-         *     "name", "web_search",
-         *     "max_uses", 5
-         * );
+         * AnthropicServerTool webSearchTool = AnthropicServerTool.builder()
+         *     .type("web_search_20250305")
+         *     .name("web_search")
+         *     .addAttribute("max_uses", 5)
+         *     .addAttribute("allowed_domains", List.of("accuweather.com"))
+         *     .build();
          * </pre>
          */
         public AnthropicStreamingChatModelBuilder serverTools(List<AnthropicServerTool> serverTools) {
@@ -349,11 +350,12 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         /**
          * Specifies server tools to be included in the request. For example:
          * <pre>
-         * Map&lt;String, Object&gt; webSearchTool = Map.of(
-         *     "type", "web_search_20250305",
-         *     "name", "web_search",
-         *     "max_uses", 5
-         * );
+         * AnthropicServerTool webSearchTool = AnthropicServerTool.builder()
+         *     .type("web_search_20250305")
+         *     .name("web_search")
+         *     .addAttribute("max_uses", 5)
+         *     .addAttribute("allowed_domains", List.of("accuweather.com"))
+         *     .build();
          * </pre>
          */
         public AnthropicStreamingChatModelBuilder serverTools(AnthropicServerTool... serverTools) {

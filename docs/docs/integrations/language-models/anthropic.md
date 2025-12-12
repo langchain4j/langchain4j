@@ -119,12 +119,12 @@ but you can disable [parallel tool](https://docs.anthropic.com/en/docs/agents-an
 Anthropic's [server tools](https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview#server-tools)
 are supported via `serverTools` parameter, here is an example of using a [web search tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-search-tool):
 ```java
-Map<String, Object> webSearchTool = Map.of(
-        "type", "web_search_20250305",
-        "name", "web_search",
-        "max_uses", 5,
-        "allowed_domains", List.of("accuweather.com")
-);
+AnthropicServerTool webSearchTool = AnthropicServerTool.builder()
+        .type("web_search_20250305")
+        .name("web_search")
+        .addAttribute("max_uses", 5)
+        .addAttribute("allowed_domains", List.of("accuweather.com"))
+        .build();
 
 ChatModel model = AnthropicChatModel.builder()
         .apiKey(System.getenv("ANTHROPIC_API_KEY"))
@@ -147,10 +147,10 @@ is supported via `serverTools`, tool `metadata` and `toolMetadataKeysToSend` par
 Here is an example when using high-level AI Service and `@Tool` APIs:
 
 ```java
-Map<String, Object> toolSearchTool = Map.of(
-        "type", "tool_search_tool_regex_20251119",
-        "name", "tool_search_tool_regex"
-);
+AnthropicServerTool toolSearchTool = AnthropicServerTool.builder()
+        .type("tool_search_tool_regex_20251119")
+        .name("tool_search_tool_regex")
+        .build();
 
 class Tools {
 
@@ -191,10 +191,10 @@ assistant.chat("What is the weather in Munich?");
 
 Here is an example when using low-level `ChatModel` and `ToolSpecification` APIs:
 ```java
-Map<String, Object> toolSearchTool = Map.of(
-        "type", "tool_search_tool_regex_20251119",
-        "name", "tool_search_tool_regex"
-);
+AnthropicServerTool toolSearchTool = AnthropicServerTool.builder()
+        .type("tool_search_tool_regex_20251119")
+        .name("tool_search_tool_regex")
+        .build();
 
 Map<String, Object> toolMetadata = Map.of("defer_loading", true);
 
@@ -241,10 +241,10 @@ is supported via `serverTools`, tool `metadata` and `toolMetadataKeysToSend` par
 Here is an example when using high-level AI Service and `@Tool` APIs:
 
 ```java
-Map<String, Object> codeExecutionTool = Map.of(
-        "type", "code_execution_20250825",
-        "name", "code_execution"
-);
+AnthropicServerTool codeExecutionTool = AnthropicServerTool.builder()
+        .type("code_execution_20250825")
+        .name("code_execution")
+        .build();
 
 class Tools {
 
