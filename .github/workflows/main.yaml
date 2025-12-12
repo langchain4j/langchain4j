@@ -94,7 +94,7 @@ jobs:
       - name: Integration test with JDK ${{ matrix.java_version }}
         run: |
           mvn -B -U verify \
-            -Dgib.disable=false -Dgib.referenceBranch=__branch_before  -Dgib.excludePathsMatching=^docs[/\\].* \
+            -Dgib.disable=false -Dgib.referenceBranch=__branch_before -Dgib.skipIfPathMatches=^docs.* \
             -Djunit.jupiter.extensions.autodetection.enabled=true \
             -DskipAzureAiSearchITs -DskipJlamaITs -DskipLocalAiITs -DskipMilvusITs -DskipOllamaITs -DskipVespaITs \
             -Dtinylog.writer.level=info
