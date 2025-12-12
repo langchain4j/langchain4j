@@ -180,12 +180,13 @@ class AzureOpenAiAudioTranscriptionModelTest {
     @Test
     void should_throw_exception_when_request_is_null() {
         // given
+        AudioTranscriptionRequest audioTranscriptionRequest = null;
         OpenAIClient client = mock(OpenAIClient.class);
         AzureOpenAiAudioTranscriptionModel model =
                 new AzureOpenAiAudioTranscriptionModel(client, "test-deployment", AudioTranscriptionFormat.JSON);
 
         // when & then
-        assertThatThrownBy(() -> model.transcribe(null))
+        assertThatThrownBy(() -> model.transcribe(audioTranscriptionRequest))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Request and audio data are required");
     }
