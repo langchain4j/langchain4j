@@ -13,7 +13,7 @@
     <name>LangChain4j :: Integration :: Ollama</name>
 
     <properties>
-        <skipOllamaITs>false</skipOllamaITs>
+        <skipOllamaITs>${skipITs}</skipOllamaITs>
     </properties>
 
     <dependencies>
@@ -54,18 +54,6 @@
 
 
         <!-- test dependencies -->
-
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-engine</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-params</artifactId>
-            <scope>test</scope>
-        </dependency>
 
         <dependency>
             <groupId>org.testcontainers</groupId>
@@ -144,7 +132,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <configuration>
-                    <skipTests>${skipOllamaITs}</skipTests>
+                    <skipITs>${skipOllamaITs}</skipITs>
                 </configuration>
             </plugin>
         </plugins>

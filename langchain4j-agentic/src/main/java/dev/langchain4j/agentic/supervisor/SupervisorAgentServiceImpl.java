@@ -3,6 +3,7 @@ package dev.langchain4j.agentic.supervisor;
 import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 
 import dev.langchain4j.agentic.internal.AbstractServiceBuilder;
+import dev.langchain4j.agentic.planner.AgenticService;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
@@ -10,7 +11,7 @@ import java.lang.reflect.Method;
 import java.util.function.Function;
 
 public class SupervisorAgentServiceImpl<T> extends AbstractServiceBuilder<T, SupervisorAgentServiceImpl<T>>
-        implements SupervisorAgentService<T> {
+        implements SupervisorAgentService<T>, AgenticService<SupervisorAgentService<T>, T> {
 
     private ChatModel chatModel;
 

@@ -18,14 +18,16 @@ import dev.langchain4j.agentic.Agents.StyleEditor;
 import dev.langchain4j.agentic.Agents.StyleScorer;
 import dev.langchain4j.agentic.Agents.TechnicalExpert;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
-import dev.langchain4j.agentic.agent.AgentRequest;
-import dev.langchain4j.agentic.agent.AgentResponse;
+import dev.langchain4j.agentic.declarative.AgentListenerSupplier;
+import dev.langchain4j.agentic.observability.AgentInvocation;
+import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.observability.AgentMonitor;
+import dev.langchain4j.agentic.observability.AgentRequest;
+import dev.langchain4j.agentic.observability.AgentResponse;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.declarative.ActivationCondition;
-import dev.langchain4j.agentic.declarative.AfterAgentInvocation;
-import dev.langchain4j.agentic.declarative.BeforeAgentInvocation;
 import dev.langchain4j.agentic.declarative.ChatMemoryProviderSupplier;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
 import dev.langchain4j.agentic.declarative.ConditionalAgent;
@@ -44,7 +46,7 @@ import dev.langchain4j.agentic.declarative.SequenceAgent;
 import dev.langchain4j.agentic.declarative.SupervisorAgent;
 import dev.langchain4j.agentic.declarative.SupervisorRequest;
 import dev.langchain4j.agentic.declarative.ToolsSupplier;
-import dev.langchain4j.agentic.scope.AgentInvocation;
+import dev.langchain4j.agentic.observability.MonitoredExecution;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -71,7 +73,10 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
+@EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 public class DeclarativeAgentIT {
 
     @Test
@@ -279,26 +284,36 @@ public class DeclarativeAgentIT {
         assertThat(story).isEqualTo(agenticScope.readState("story"));
         assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
 
-        List<AgentInvocation> scoreAgentCalls = agenticScope.agentInvocations("scoreStyle");
-        assertThat(scoreAgentCalls).hasSizeBetween(1, 5).hasSize(loopCount.get());
+        List<dev.langchain4j.agentic.scope.AgentInvocation> scoreAgentInvocations = agenticScope.agentInvocations("scoreStyle");
+        assertThat(scoreAgentInvocations).hasSizeBetween(1, 5).hasSize(loopCount.get());
 
-        List<AgentInvocation> styleEditorAgentCalls = agenticScope.agentInvocations("editStory");
-        assertThat(styleEditorAgentCalls).hasSizeBetween(1, 5).hasSize(loopCount.get());
+        List<dev.langchain4j.agentic.scope.AgentInvocation> styleEditorAgentInvocations = agenticScope.agentInvocations("editStory");
+        assertThat(styleEditorAgentInvocations).hasSizeBetween(1, 5).hasSize(loopCount.get());
 
         loopCount = null;
     }
 
     public interface CreativeWriterWithListener extends CreativeWriter {
-        @BeforeAgentInvocation
-        static void beforeAgentInvocation(AgentRequest request) {
-            requestedTopic = (String) request.inputs().get("topic");
+        @AgentListenerSupplier
+        static AgentListener listener() {
+            return new AgentListener() {
+                @Override
+                public void beforeAgentInvocation(AgentRequest request) {
+                    requestedTopic = (String) request.inputs().get("topic");
+                }
+            };
         }
     }
 
     public interface StyleReviewLoopAgentWithListener extends StyleReviewLoopAgent {
-        @AfterAgentInvocation
-        static void afterAgentInvocation(AgentResponse response) {
-            finalScore = response.agenticScope().readState("score", 0.0);
+        @AgentListenerSupplier
+        static AgentListener listener() {
+            return new AgentListener() {
+                @Override
+                public void afterAgentInvocation(AgentResponse response) {
+                    finalScore = response.agenticScope().readState("score", 0.0);
+                }
+            };
         }
     }
 
@@ -378,10 +393,12 @@ public class DeclarativeAgentIT {
         assertThat(agenticScope.readState("category")).isEqualTo(RequestCategory.MEDICAL);
     }
 
+    private static AgentMonitor PARALLEL_AGENTS_MONITOR = new AgentMonitor();
+
     public interface EveningPlannerAgent {
 
-        @ParallelAgent( outputKey = "plans",
-                subAgents = { FoodExpert.class, MovieExpert.class })
+        @ParallelAgent(outputKey = "plans",
+                subAgents = {FoodExpert.class, MovieExpert.class})
         List<EveningPlan> plan(@V("mood") String mood);
 
         @ParallelExecutor
@@ -400,6 +417,11 @@ public class DeclarativeAgentIT {
             }
             return moviesAndMeals;
         }
+
+        @AgentListenerSupplier
+        static AgentListener monitor() {
+            return PARALLEL_AGENTS_MONITOR;
+        }
     }
 
     @Test
@@ -408,6 +430,15 @@ public class DeclarativeAgentIT {
                 AgenticServices.createAgenticSystem(EveningPlannerAgent.class, baseModel());
         List<Agents.EveningPlan> plans = eveningPlannerAgent.plan("romantic");
         assertThat(plans).hasSize(3);
+
+        MonitoredExecution execution = PARALLEL_AGENTS_MONITOR.successfulExecutions().get(0);
+        System.out.println(execution);
+        assertThat(execution.done()).isTrue();
+        assertThat(execution.ongoingInvocations()).isEmpty();
+        AgentInvocation topLevelInvocation = execution.topLevelInvocations();
+        assertThat(topLevelInvocation.agent().name()).isEqualTo("plan");
+        assertThat(topLevelInvocation.inputs()).containsKey("mood").containsValue("romantic");
+        assertThat(topLevelInvocation.nestedInvocations()).hasSize(2);
     }
 
     public interface SupervisorStoryCreator {
@@ -450,9 +481,9 @@ public class DeclarativeAgentIT {
 
         assertThat(agenticScope.agentInvocations("generateStory")).hasSize(1);
 
-        List<AgentInvocation> scoreAgentCalls = agenticScope.agentInvocations("scoreStyle");
-        assertThat(scoreAgentCalls).hasSizeBetween(1, 5);
-        assertThat((Double) scoreAgentCalls.get(scoreAgentCalls.size() - 1).output())
+        List<dev.langchain4j.agentic.scope.AgentInvocation> scoreAgentInvocations = agenticScope.agentInvocations("scoreStyle");
+        assertThat(scoreAgentInvocations).hasSizeBetween(1, 5);
+        assertThat((Double) scoreAgentInvocations.get(scoreAgentInvocations.size() - 1).output())
                 .isGreaterThanOrEqualTo(0.8);
     }
 

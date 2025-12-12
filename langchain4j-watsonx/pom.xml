@@ -12,10 +12,6 @@
     <artifactId>langchain4j-watsonx</artifactId>
     <name>LangChain4j :: Integration :: Watsonx</name>
 
-    <properties>
-        <skipWatsonxITs>false</skipWatsonxITs>
-    </properties>
-
     <dependencies>
 
         <dependency>
@@ -45,18 +41,6 @@
         </dependency>
 
         <!-- test dependencies -->
-
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-engine</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-params</artifactId>
-            <scope>test</scope>
-        </dependency>
 
         <dependency>
             <groupId>org.skyscreamer</groupId>
@@ -91,17 +75,5 @@
         </dependency>
 
     </dependencies>
-
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-failsafe-plugin</artifactId>
-                <configuration>
-                    <skipTests>${skipWatsonxITs}</skipTests>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
 
 </project>

@@ -69,7 +69,7 @@ public class OpenAiOfficialSetup {
             if (credential != null) {
                 builder.credential(credential);
             } else if (modelProvider == ModelProvider.AZURE_OPEN_AI) {
-                // If no API key is provided for Azure OpenAI, we try to use passwordless
+                // If no API key is provided for Microsoft Foundry, we try to use passwordless
                 // authentication
                 builder.credential(azureAuthentication());
             }
@@ -134,7 +134,7 @@ public class OpenAiOfficialSetup {
             if (credential != null) {
                 builder.credential(credential);
             } else if (modelProvider == ModelProvider.AZURE_OPEN_AI) {
-                // If no API key is provided for Azure OpenAI, we try to use passwordless
+                // If no API key is provided for Microsoft Foundry, we try to use passwordless
                 // authentication
                 builder.credential(azureAuthentication());
             }
@@ -171,7 +171,7 @@ public class OpenAiOfficialSetup {
             var azureOpenAiBaseUrl = System.getenv("AZURE_OPENAI_BASE_URL");
             if (azureOpenAiBaseUrl != null) {
                 baseUrl = azureOpenAiBaseUrl;
-                logger.debug("Azure OpenAI Base URL detected from environment variable AZURE_OPENAI_BASE_URL.");
+                logger.debug("Microsoft Foundry Base URL detected from environment variable AZURE_OPENAI_BASE_URL.");
             }
         }
         return baseUrl;
@@ -224,7 +224,7 @@ public class OpenAiOfficialSetup {
             return GITHUB_MODELS_URL;
         } else if (modelProvider == ModelProvider.AZURE_OPEN_AI) {
             if (baseUrl == null || baseUrl.isBlank()) {
-                throw new IllegalArgumentException("Base URL must be provided for Azure OpenAI.");
+                throw new IllegalArgumentException("Base URL must be provided for Microsoft Foundry.");
             }
             String tmpUrl = baseUrl;
             if (baseUrl.endsWith("/") || baseUrl.endsWith("?")) {
@@ -247,7 +247,7 @@ public class OpenAiOfficialSetup {
             return AzureInternalOpenAiOfficialHelper.getAzureCredential();
         } catch (NoClassDefFoundError e) {
             throw new IllegalArgumentException(
-                    "Azure OpenAI was detected, but no credential was provided. "
+                    "Microsoft Foundry was detected, but no credential was provided. "
                             + "If you want to use passwordless authentication, you need to add the Azure Identity library (groupId=`com.azure`, artifactId=`azure-identity`) to your classpath.");
         }
     }

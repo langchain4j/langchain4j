@@ -22,7 +22,7 @@ LangChain4j provides 4 different integrations with OpenAI for using chat models,
 This integration uses the [OpenAI Java SDK GitHub Repository](https://github.com/openai/openai-java), and will work for all OpenAI models which can be provided by:
 
 - OpenAI
-- Azure OpenAI
+- Microsoft Foundry
 - GitHub Models
 
 It will also work with models supporting the OpenAI API, such as DeepSeek.
