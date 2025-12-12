@@ -114,7 +114,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
             }
 
             @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {
+            public void onCompleteResponse(ChatRequest chatRequest, ChatResponse completeResponse) {
                 futureResponse.complete(completeResponse);
             }
 
@@ -168,7 +168,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
             public void onPartialResponse(String partialResponse) {}
 
             @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {
+            public void onCompleteResponse(ChatRequest chatRequest, ChatResponse completeResponse) {
                 futureResponse.complete(completeResponse);
                 throw userCodeException;
             }
@@ -219,7 +219,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
             public void onPartialResponse(String partialResponse) {}
 
             @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {
+            public void onCompleteResponse(ChatRequest chatRequest, ChatResponse completeResponse) {
                 futureResponse.complete(completeResponse);
                 throw userCodeException; // to make sure onError will be called
             }
@@ -323,7 +323,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
             }
 
             @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {
+            public void onCompleteResponse(ChatRequest chatRequest, ChatResponse completeResponse) {
                 timesOnCompleteResponseWasCalled.incrementAndGet();
                 threads.add(Thread.currentThread());
                 futureChatResponse.complete(completeResponse);

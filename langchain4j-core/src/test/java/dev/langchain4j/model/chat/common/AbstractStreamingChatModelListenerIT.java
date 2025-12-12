@@ -239,7 +239,7 @@ public abstract class AbstractStreamingChatModelListenerIT {
             }
 
             @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {
+            public void onCompleteResponse(ChatRequest chatRequest, ChatResponse completeResponse) {
                 fail("onCompleteResponse() must not be called");
             }
 

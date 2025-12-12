@@ -4,6 +4,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialResponse;
 import dev.langchain4j.model.chat.response.PartialResponseContext;
@@ -49,7 +50,7 @@ public class TestStreamingChatResponseHandler implements StreamingChatResponseHa
     public void onPartialToolCall(PartialToolCall partialToolCall, PartialToolCallContext context) {}
 
     @Override
-    public void onCompleteResponse(ChatResponse completeResponse) {
+    public void onCompleteResponse(ChatRequest chatRequest, ChatResponse completeResponse) {
         AiMessage aiMessage = completeResponse.aiMessage();
         if (!aiMessage.hasToolExecutionRequests()) {
             assertThat(aiMessage.text()).isEqualTo(responseBuilder.toString());

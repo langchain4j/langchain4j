@@ -683,7 +683,7 @@ public abstract class AbstractBaseChatModelIT<M> {
             StreamingChatResponseHandler handler = metadata.handler();
             InOrder inOrder = inOrder(handler);
             verifyToolCallbacks(handler, inOrder, toolExecutionRequest.id(), (StreamingChatModel) model);
-            inOrder.verify(handler).onCompleteResponse(chatResponse);
+            inOrder.verify(handler).onCompleteResponse(chatRequest, chatResponse);
             inOrder.verifyNoMoreInteractions();
             verifyNoMoreInteractions(handler);
 
@@ -815,7 +815,7 @@ public abstract class AbstractBaseChatModelIT<M> {
             StreamingChatResponseHandler handler = metadata.handler();
             InOrder inOrder = inOrder(handler);
             verifyToolCallbacks(handler, inOrder, (StreamingChatModel) model);
-            inOrder.verify(handler).onCompleteResponse(chatResponse);
+            inOrder.verify(handler).onCompleteResponse(chatRequest, chatResponse);
             inOrder.verifyNoMoreInteractions();
             verifyNoMoreInteractions(handler);
 
@@ -992,7 +992,7 @@ public abstract class AbstractBaseChatModelIT<M> {
                     toolExecutionRequests.get(0).id(),
                     toolExecutionRequests.get(1).id(),
                     (StreamingChatModel) model);
-            inOrder.verify(handler).onCompleteResponse(chatResponse);
+            inOrder.verify(handler).onCompleteResponse(chatRequest, chatResponse);
             inOrder.verifyNoMoreInteractions();
             verifyNoMoreInteractions(handler);
 

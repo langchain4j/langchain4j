@@ -3,6 +3,7 @@ package dev.langchain4j.internal;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.PartialResponse;
@@ -131,9 +132,9 @@ public class InternalStreamingChatResponseHandlerUtils {
         }
     }
 
-    public static void onCompleteResponse(StreamingChatResponseHandler handler, ChatResponse completeResponse) {
+    public static void onCompleteResponse(StreamingChatResponseHandler handler, ChatRequest chatRequest, ChatResponse completeResponse) {
         try {
-            handler.onCompleteResponse(completeResponse);
+            handler.onCompleteResponse(chatRequest, completeResponse);
         } catch (Exception e) {
             withLoggingExceptions(() -> handler.onError(e));
         }

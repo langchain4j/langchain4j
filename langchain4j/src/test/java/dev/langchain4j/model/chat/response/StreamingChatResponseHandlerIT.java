@@ -12,6 +12,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import java.util.concurrent.CompletableFuture;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -44,7 +45,7 @@ public class StreamingChatResponseHandlerIT {
             }
 
             @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {
+            public void onCompleteResponse(ChatRequest chatRequest, ChatResponse completeResponse) {
                 completableFuture.complete(completeResponse);
             }
 
@@ -63,7 +64,7 @@ public class StreamingChatResponseHandlerIT {
 
         verify(handler, atLeastOnce()).onPartialResponse(any(), any()); // LC4j will always call this callback
         verify(handler, atLeastOnce()).onPartialResponse(any());
-        verify(handler).onCompleteResponse(any());
+        verify(handler).onCompleteResponse(any(), any());
         verifyNoMoreInteractions(handler);
     }
 
@@ -82,7 +83,7 @@ public class StreamingChatResponseHandlerIT {
             }
 
             @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {
+            public void onCompleteResponse(ChatRequest chatRequest, ChatResponse completeResponse) {
                 completableFuture.complete(completeResponse);
             }
 
@@ -101,7 +102,7 @@ public class StreamingChatResponseHandlerIT {
 
         verify(handler, atLeastOnce()).onPartialResponse(any(), any());
         verify(handler, never()).onPartialResponse(any());
-        verify(handler).onCompleteResponse(any());
+        verify(handler).onCompleteResponse(any(), any());
         verifyNoMoreInteractions(handler);
     }
 
@@ -126,7 +127,7 @@ public class StreamingChatResponseHandlerIT {
             }
 
             @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {
+            public void onCompleteResponse(ChatRequest chatRequest, ChatResponse completeResponse) {
                 completableFuture.complete(completeResponse);
             }
 
@@ -145,7 +146,7 @@ public class StreamingChatResponseHandlerIT {
 
         verify(handler, atLeastOnce()).onPartialResponse(any(), any());
         verify(handler, never()).onPartialResponse(any());
-        verify(handler).onCompleteResponse(any());
+        verify(handler).onCompleteResponse(any(), any());
         verifyNoMoreInteractions(handler);
     }
 }

@@ -1,6 +1,7 @@
 package dev.langchain4j.observability.api.event;
 
 import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.observability.event.DefaultAiServiceResponseReceivedEvent;
 
@@ -10,6 +11,15 @@ import dev.langchain4j.observability.event.DefaultAiServiceResponseReceivedEvent
  * when tools or guardrails exist.
  */
 public interface AiServiceResponseReceivedEvent extends AiServiceEvent {
+
+    /**
+     * Retries the chat request from the AI Service invocation event.
+     *
+     * @return the {@link ChatRequest} object containing the request sent to the LLM.
+     */
+    ChatRequest request();
+
+
     /**
      * Retrieves the chat response from the AI Service invocation event.
      *
@@ -36,8 +46,10 @@ public interface AiServiceResponseReceivedEvent extends AiServiceEvent {
      */
     class AiServiceResponseReceivedEventBuilder extends Builder<AiServiceResponseReceivedEvent> {
         private ChatResponse response;
+        private ChatRequest request;
 
-        protected AiServiceResponseReceivedEventBuilder() {}
+        protected AiServiceResponseReceivedEventBuilder() {
+        }
 
         /**
          * Creates a builder initialized from an existing {@link AiServiceResponseReceivedEvent}.
@@ -45,10 +57,15 @@ public interface AiServiceResponseReceivedEvent extends AiServiceEvent {
         protected AiServiceResponseReceivedEventBuilder(AiServiceResponseReceivedEvent src) {
             super(src);
             response(src.response());
+            request(src.request());
         }
 
         public ChatResponse response() {
             return response;
+        }
+
+        public ChatRequest request() {
+            return request;
         }
 
         /**
@@ -56,6 +73,14 @@ public interface AiServiceResponseReceivedEvent extends AiServiceEvent {
          */
         public AiServiceResponseReceivedEventBuilder invocationContext(InvocationContext invocationContext) {
             return (AiServiceResponseReceivedEventBuilder) super.invocationContext(invocationContext);
+        }
+
+        /**
+         * Sets the chat request.
+         */
+        public AiServiceResponseReceivedEventBuilder request(ChatRequest request) {
+            this.request = request;
+            return this;
         }
 
         /**
