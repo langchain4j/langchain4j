@@ -33,6 +33,7 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.pdf.PdfFile;
+import dev.langchain4j.model.anthropic.AnthropicServerTool;
 import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicContent;
@@ -56,8 +57,10 @@ import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Internal
 public class AnthropicMapper {
@@ -294,21 +297,35 @@ public class AnthropicMapper {
 
     public static List<AnthropicTool> toAnthropicTools(
             List<ToolSpecification> toolSpecifications, AnthropicCacheType cacheToolsPrompt) {
+        return toAnthropicTools(toolSpecifications, cacheToolsPrompt, Set.of());
+    }
+
+    public static List<AnthropicTool> toAnthropicTools(
+            List<ToolSpecification> toolSpecifications,
+            AnthropicCacheType cacheToolsPrompt,
+            Set<String> toolMetadataKeysToSend) {
         ToolSpecification lastToolSpecification =
                 toolSpecifications.isEmpty() ? null : toolSpecifications.get(toolSpecifications.size() - 1);
         return toolSpecifications.stream()
                 .map(toolSpecification -> {
                     boolean isLastItem = toolSpecification.equals(lastToolSpecification);
                     if (isLastItem && cacheToolsPrompt != AnthropicCacheType.NO_CACHE) {
-                        return toAnthropicTool(toolSpecification, cacheToolsPrompt);
+                        return toAnthropicTool(toolSpecification, cacheToolsPrompt, toolMetadataKeysToSend);
                     }
-                    return toAnthropicTool(toolSpecification, AnthropicCacheType.NO_CACHE);
+                    return toAnthropicTool(toolSpecification, AnthropicCacheType.NO_CACHE, toolMetadataKeysToSend);
                 })
                 .collect(toList());
     }
 
     public static AnthropicTool toAnthropicTool(
             ToolSpecification toolSpecification, AnthropicCacheType cacheToolsPrompt) {
+        return toAnthropicTool(toolSpecification, cacheToolsPrompt, Set.of());
+    }
+
+    public static AnthropicTool toAnthropicTool(
+            ToolSpecification toolSpecification,
+            AnthropicCacheType cacheToolsPrompt,
+            Set<String> toolMetadataKeysToSend) {
         JsonObjectSchema parameters = toolSpecification.parameters();
 
         AnthropicTool.Builder toolBuilder = AnthropicTool.builder()
@@ -323,6 +340,37 @@ public class AnthropicMapper {
             return toolBuilder.cacheControl(cacheToolsPrompt.cacheControl()).build();
         }
 
+        if (!toolMetadataKeysToSend.isEmpty()) {
+            toolBuilder.customParameters(retainKeys(toolSpecification.metadata(), toolMetadataKeysToSend));
+        }
+
         return toolBuilder.build();
+    }
+
+    public static Map<String, Object> retainKeys(Map<String, Object> map, Set<String> keys) {
+        Map<String, Object> result = new HashMap<>();
+        for (String key : keys) {
+            if (map.containsKey(key)) {
+                result.put(key, map.get(key));
+            }
+        }
+        return result;
+    }
+
+    public static List<AnthropicTool> toAnthropicTools(List<AnthropicServerTool> serverTools) {
+        return serverTools.stream()
+                .map(AnthropicMapper::toAnthropicTool)
+                .toList();
+    }
+
+    public static AnthropicTool toAnthropicTool(AnthropicServerTool serverTool) {
+        Map<String, Object> customParameters = new LinkedHashMap<>();
+        customParameters.put("type", serverTool.type());
+        customParameters.putAll(serverTool.attributes());
+
+        return AnthropicTool.builder()
+                .name(serverTool.name())
+                .customParameters(customParameters)
+                .build();
     }
 }
