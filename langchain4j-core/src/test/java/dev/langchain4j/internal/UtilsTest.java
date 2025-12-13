@@ -13,6 +13,7 @@ import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.entry;
 
 import com.sun.net.httpserver.HttpServer;
@@ -313,6 +314,23 @@ class UtilsTest {
         assertThat(Utils.copy(emptyList())).isEmpty();
         assertThat(Utils.copy(singletonList("one"))).containsExactly("one");
         assertThat(Utils.copy(asList("one", "two"))).containsExactly("one", "two");
+    }
+
+    @Test
+    void mutableCopy_list() {
+        assertThat(Utils.mutableCopy((List<?>) null)).isEmpty();
+        assertThat(Utils.mutableCopy(emptyList())).isEmpty();
+        assertThat(Utils.mutableCopy(singletonList("one"))).containsExactly("one");
+        assertThat(Utils.mutableCopy(asList("one", "two"))).containsExactly("one", "two");
+
+        List<String> emptyCopy = Utils.mutableCopy((List<String>) null);
+        assertThatNoException().isThrownBy(() -> emptyCopy.add("one"));
+
+        List<String> source = List.of("one");
+        List<String> copy = Utils.mutableCopy(source);
+        copy.add("two");
+        assertThat(source).containsExactlyInAnyOrder("one");
+        assertThat(copy).containsExactly("one", "two");
     }
 
     @Test
