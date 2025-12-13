@@ -21,9 +21,12 @@ public interface AgentInstance {
 
     List<AgentArgument> arguments();
 
+    AgentInstance parent();
     List<AgentInstance> subagents();
 
     default boolean leaf() {
         return subagents().isEmpty();
     }
+
+    AgenticSystemTopology topology();
 }

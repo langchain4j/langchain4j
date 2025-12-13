@@ -39,7 +39,7 @@ public abstract class AbstractServiceBuilder<T, S> {
 
     protected AgentListener agentListener;
 
-    private List<AgentExecutor> agentExecutors;
+    protected final List<AgentExecutor> subagents = new ArrayList<>();
 
     protected Function<ErrorContext, ErrorRecoveryResult> errorHandler;
 
@@ -112,7 +112,7 @@ public abstract class AbstractServiceBuilder<T, S> {
     }
 
     public S subAgents(List<AgentExecutor> agentExecutors) {
-        addAgentExecutors(agentExecutors);
+        addSubagents(agentExecutors);
         return (S) this;
     }
 
@@ -137,15 +137,8 @@ public abstract class AbstractServiceBuilder<T, S> {
         return (S) this;
     }
 
-    protected List<AgentExecutor> agentExecutors() {
-        return agentExecutors != null ? agentExecutors : List.of();
-    }
-
-    private void addAgentExecutors(List<AgentExecutor> agents) {
-        if (this.agentExecutors == null) {
-            this.agentExecutors = new ArrayList<>();
-        }
-        this.agentExecutors.addAll(agents);
+    private void addSubagents(List<AgentExecutor> agents) {
+        this.subagents.addAll(agents);
     }
 
     public T build(Supplier<Planner> plannerSupplier) {

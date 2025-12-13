@@ -1,6 +1,5 @@
 package dev.langchain4j.agentic.observability;
 
-import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import java.util.Collection;
 import java.util.Map;
@@ -25,7 +24,10 @@ public class MonitoredExecution {
     }
 
     void beforeAgentInvocation(AgentRequest agentRequest) {
-        AgentInvocation parentInvocation = parentInvocation(agentRequest.agent());
+        AgentInvocation parentInvocation = ongoingInvocations.get(agentRequest.agent().parent().agentId());
+        if (parentInvocation == null) {
+            throw new IllegalStateException("No ongoing parent invocation found for agent ID: " + agentRequest.agent().parent().agentId());
+        }
         AgentInvocation newInvocation = new AgentInvocation(agentRequest);
         parentInvocation.addNestedInvocation(newInvocation);
         ongoingInvocations.put(agentRequest.agentId(), newInvocation);
@@ -45,14 +47,6 @@ public class MonitoredExecution {
 
     public Collection<AgentInvocation> ongoingInvocations() {
         return ongoingInvocations.values();
-    }
-
-    private AgentInvocation parentInvocation(AgentInstance agent) {
-        return ongoingInvocations.values().stream()
-                .filter(parent -> parent.agent().subagents().stream()
-                        .anyMatch(subagent -> subagent.agentId().equals(agent.agentId())))
-                .findFirst()
-                .orElseThrow( () -> new IllegalStateException("No parent invocation found for agent ID: " + agent.agentId()));
     }
 
     public boolean done() {

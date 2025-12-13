@@ -2,6 +2,7 @@ package dev.langchain4j.agentic.workflow.impl;
 
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.PlanningContext;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -25,5 +26,10 @@ public record ConditionalPlanner(List<ConditionalAgent> conditionalAgents) imple
     @Override
     public Action nextAction(PlanningContext planningContext) {
         return done();
+    }
+
+    @Override
+    public AgenticSystemTopology topology() {
+        return AgenticSystemTopology.ROUTER;
     }
 }

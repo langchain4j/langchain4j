@@ -8,6 +8,7 @@ import dev.langchain4j.agentic.observability.AgentListenerProvider;
 import dev.langchain4j.agentic.internal.AgentInvocationArguments;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.internal.AgentInvoker;
 import io.a2a.spec.AgentCard;
@@ -27,6 +28,8 @@ public class A2AClientAgentInvoker implements AgentInvoker {
 
     private final AgentCard agentCard;
     private final Method method;
+
+    private AgentInstance parent;
 
     public A2AClientAgentInvoker(A2AClientInstance a2AClientInstance, Method method) {
         this.method = method;
@@ -121,5 +124,20 @@ public class A2AClientAgentInvoker implements AgentInvoker {
     @Override
     public AgentListener listener() {
         return ((AgentListenerProvider) a2AClientInstance).listener();
+    }
+
+    @Override
+    public AgenticSystemTopology topology() {
+        return a2AClientInstance.topology();
+    }
+
+    @Override
+    public void setParent(AgentInstance parent) {
+        this.parent = parent;
+    }
+
+    @Override
+    public AgentInstance parent() {
+        return parent;
     }
 }

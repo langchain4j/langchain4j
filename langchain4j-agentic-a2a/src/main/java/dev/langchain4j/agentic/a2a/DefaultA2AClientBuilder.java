@@ -7,6 +7,7 @@ import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentListenerProvider;
 import dev.langchain4j.agentic.internal.A2AClientBuilder;
 import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.service.output.ServiceOutputParser;
 import io.a2a.A2A;
 import io.a2a.client.Client;
@@ -48,8 +49,9 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
     private final AgentCard agentCard;
     private final Client a2aClient;
 
-    private String name;
-    private String agentId;
+    private final String name;
+    private final String agentId;
+
     private String[] inputKeys;
     private String outputKey;
     private boolean async;
@@ -100,6 +102,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
                                 case "description" -> agentCard.description();
                                 case "outputKey" -> outputKey;
                                 case "async" -> async;
+                                case "topology" -> AgenticSystemTopology.SINGLE_AGENT;
                                 default ->
                                         throw new UnsupportedOperationException(
                                                 "Unknown method on agentInstance class : " + method.getName());

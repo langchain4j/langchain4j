@@ -77,4 +77,6 @@ public interface AgentInvoker extends AgentInstance, AgentListenerProvider {
     static Optional<String> optionalParameterName(Parameter parameter) {
         return Optional.ofNullable(ParameterNameResolver.name(parameter));
     }
+
+    void setParent(AgentInstance parent);
 }

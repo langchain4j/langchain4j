@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.function.BiPredicate;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
 import dev.langchain4j.agentic.planner.PlanningContext;
 import dev.langchain4j.agentic.planner.Planner;
@@ -49,5 +50,10 @@ public class LoopPlanner implements Planner {
             return done();
         }
         return call(agents.get(agentCursor));
+    }
+
+    @Override
+    public AgenticSystemTopology topology() {
+        return AgenticSystemTopology.LOOP;
     }
 }

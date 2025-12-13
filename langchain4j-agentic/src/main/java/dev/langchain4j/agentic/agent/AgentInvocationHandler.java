@@ -4,6 +4,7 @@ import dev.langchain4j.agentic.observability.AgentListenerProvider;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.internal.UserMessageRecorder;
+import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.service.AiServiceContext;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
@@ -81,6 +82,7 @@ public class AgentInvocationHandler implements InvocationHandler {
                 case "arguments" -> builder.arguments;
                 case "subagents" -> List.of();
                 case "async" -> builder.async;
+                case "topology" -> AgenticSystemTopology.SINGLE_AGENT;
                 default ->
                         throw new UnsupportedOperationException(
                                 "Unknown method on agentInstance class : " + method.getName());
