@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openai.internal.chat;
 
+import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -10,7 +11,9 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import static dev.langchain4j.model.openai.internal.chat.Role.ASSISTANT;
@@ -37,6 +40,7 @@ public final class AssistantMessage implements Message {
     @JsonProperty
     @Deprecated
     private final FunctionCall functionCall;
+    private final Map<String, Object> additionalProperties;
 
     public AssistantMessage(Builder builder) {
         this.content = builder.content;
@@ -45,6 +49,9 @@ public final class AssistantMessage implements Message {
         this.toolCalls = builder.toolCalls;
         this.refusal = builder.refusal;
         this.functionCall = builder.functionCall;
+        this.additionalProperties = builder.additionalProperties != null && !builder.additionalProperties.isEmpty()
+                ? new HashMap<>(builder.additionalProperties)
+                : null;
     }
 
     public Role role() {
@@ -76,6 +83,12 @@ public final class AssistantMessage implements Message {
         return functionCall;
     }
 
+    @JsonAnyGetter
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    public Map<String, Object> additionalProperties() {
+        return additionalProperties;
+    }
+
     @Override
     public boolean equals(Object another) {
         if (this == another) return true;
@@ -90,7 +103,8 @@ public final class AssistantMessage implements Message {
                 && Objects.equals(name, another.name)
                 && Objects.equals(toolCalls, another.toolCalls)
                 && Objects.equals(refusal, another.refusal)
-                && Objects.equals(functionCall, another.functionCall);
+                && Objects.equals(functionCall, another.functionCall)
+                && Objects.equals(additionalProperties, another.additionalProperties);
     }
 
     @Override
@@ -103,6 +117,7 @@ public final class AssistantMessage implements Message {
         h += (h << 5) + Objects.hashCode(toolCalls);
         h += (h << 5) + Objects.hashCode(refusal);
         h += (h << 5) + Objects.hashCode(functionCall);
+        h += (h << 5) + Objects.hashCode(additionalProperties);
         return h;
     }
 
@@ -116,6 +131,7 @@ public final class AssistantMessage implements Message {
                 + ", toolCalls=" + toolCalls
                 + ", refusal=" + refusal
                 + ", functionCall=" + functionCall
+                + ", additionalProperties=" + additionalProperties
                 + "}";
     }
 
@@ -141,6 +157,7 @@ public final class AssistantMessage implements Message {
         private String refusal;
         @Deprecated
         private FunctionCall functionCall;
+        private Map<String, Object> additionalProperties;
 
         public Builder content(String content) {
             this.content = content;
@@ -178,6 +195,24 @@ public final class AssistantMessage implements Message {
         @Deprecated
         public Builder functionCall(FunctionCall functionCall) {
             this.functionCall = functionCall;
+            return this;
+        }
+
+        public Builder additionalProperty(String key, Object value) {
+            if (this.additionalProperties == null) {
+                this.additionalProperties = new HashMap<>();
+            }
+            this.additionalProperties.put(key, value);
+            return this;
+        }
+
+        public Builder additionalProperties(Map<String, Object> additionalProperties) {
+            if (additionalProperties != null && !additionalProperties.isEmpty()) {
+                if (this.additionalProperties == null) {
+                    this.additionalProperties = new HashMap<>();
+                }
+                this.additionalProperties.putAll(additionalProperties);
+            }
             return this;
         }
 

@@ -112,6 +112,8 @@ public class OpenAiChatModel implements ChatModel {
                 .metadata(getOrDefault(builder.metadata, openAiParameters.metadata()))
                 .serviceTier(getOrDefault(builder.serviceTier, openAiParameters.serviceTier()))
                 .reasoningEffort(getOrDefault(builder.reasoningEffort, openAiParameters.reasoningEffort()))
+                .sendThinking(getOrDefault(builder.sendThinking, openAiParameters.sendThinking()))
+                .reasoningContentFieldName(getOrDefault(builder.reasoningContentFieldName, openAiParameters.reasoningContentFieldName()))
                 .customParameters(getOrDefault(builder.customParameters, openAiParameters.customParameters()))
                 .build();
         this.responseFormatString = builder.responseFormatString;
@@ -215,6 +217,8 @@ public class OpenAiChatModel implements ChatModel {
         private Map<String, String> metadata;
         private String serviceTier;
         private String reasoningEffort;
+        private Boolean sendThinking;
+        private String reasoningContentFieldName;
         private Boolean returnThinking;
         private Duration timeout;
         private Integer maxRetries;
@@ -397,6 +401,31 @@ public class OpenAiChatModel implements ChatModel {
          */
         public OpenAiChatModelBuilder returnThinking(Boolean returnThinking) {
             this.returnThinking = returnThinking;
+            return this;
+        }
+
+        /**
+         * Controls whether to include reasoning_content in assistant messages when sending requests to the API.
+         * This is required for some APIs (like DeepSeek) when using thinking mode with tool calls.
+         * <p>
+         * Disabled by default.
+         * <p>
+         * When enabled, the reasoning content from previous assistant messages (stored in {@link AiMessage#thinking()})
+         * will be included in the request when converting messages to API format.
+         */
+        public OpenAiChatModelBuilder sendThinking(Boolean sendThinking) {
+            this.sendThinking = sendThinking;
+            return this;
+        }
+
+        /**
+         * Sets the field name to use for reasoning content in API requests.
+         * <p>
+         * Defaults to "reasoning_content".
+         * <p>
+         */
+        public OpenAiChatModelBuilder reasoningContentFieldName(String reasoningContentFieldName) {
+            this.reasoningContentFieldName = reasoningContentFieldName;
             return this;
         }
 
