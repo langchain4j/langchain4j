@@ -2,7 +2,6 @@ package dev.langchain4j.model.bedrock;
 
 import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -21,9 +20,8 @@ import software.amazon.awssdk.core.document.internal.MapDocument;
 @Internal
 class AwsDocumentConverter {
 
-    static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
-            .disable(INDENT_OUTPUT)
-            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+    static final ObjectMapper OBJECT_MAPPER =
+            new ObjectMapper().disable(INDENT_OUTPUT).disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
 
     private AwsDocumentConverter() {}
 
@@ -121,7 +119,7 @@ class AwsDocumentConverter {
             schemaMap.put("properties", propertiesMap);
 
             List<String> required =
-                    new ArrayList<>(toolSpecification.parameters().properties().keySet());
+                    new ArrayList<>(toolSpecification.parameters().required());
             schemaMap.put("required", required);
         }
 
