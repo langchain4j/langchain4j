@@ -296,41 +296,44 @@ public class AnthropicMapper {
     }
 
     public static List<AnthropicTool> toAnthropicTools(
-            List<ToolSpecification> toolSpecifications, AnthropicCacheType cacheToolsPrompt) {
-        return toAnthropicTools(toolSpecifications, cacheToolsPrompt, Set.of());
+            List<ToolSpecification> toolSpecifications, AnthropicCacheType cacheToolsPrompt, boolean strictTools) {
+        return toAnthropicTools(toolSpecifications, cacheToolsPrompt, Set.of(), strictTools);
     }
 
     public static List<AnthropicTool> toAnthropicTools(
             List<ToolSpecification> toolSpecifications,
             AnthropicCacheType cacheToolsPrompt,
-            Set<String> toolMetadataKeysToSend) {
+            Set<String> toolMetadataKeysToSend,
+            boolean strictTools) {
         ToolSpecification lastToolSpecification =
                 toolSpecifications.isEmpty() ? null : toolSpecifications.get(toolSpecifications.size() - 1);
         return toolSpecifications.stream()
                 .map(toolSpecification -> {
                     boolean isLastItem = toolSpecification.equals(lastToolSpecification);
                     if (isLastItem && cacheToolsPrompt != AnthropicCacheType.NO_CACHE) {
-                        return toAnthropicTool(toolSpecification, cacheToolsPrompt, toolMetadataKeysToSend);
+                        return toAnthropicTool(toolSpecification, cacheToolsPrompt, toolMetadataKeysToSend, strictTools);
                     }
-                    return toAnthropicTool(toolSpecification, AnthropicCacheType.NO_CACHE, toolMetadataKeysToSend);
+                    return toAnthropicTool(toolSpecification, AnthropicCacheType.NO_CACHE, toolMetadataKeysToSend, strictTools);
                 })
                 .collect(toList());
     }
 
     public static AnthropicTool toAnthropicTool(
-            ToolSpecification toolSpecification, AnthropicCacheType cacheToolsPrompt) {
-        return toAnthropicTool(toolSpecification, cacheToolsPrompt, Set.of());
+            ToolSpecification toolSpecification, AnthropicCacheType cacheToolsPrompt, boolean strictTools) {
+        return toAnthropicTool(toolSpecification, cacheToolsPrompt, Set.of(), strictTools);
     }
 
     public static AnthropicTool toAnthropicTool(
             ToolSpecification toolSpecification,
             AnthropicCacheType cacheToolsPrompt,
-            Set<String> toolMetadataKeysToSend) {
+            Set<String> toolMetadataKeysToSend,
+            boolean strictTools) {
         JsonObjectSchema parameters = toolSpecification.parameters();
 
         AnthropicTool.Builder toolBuilder = AnthropicTool.builder()
                 .name(toolSpecification.name())
                 .description(toolSpecification.description())
+                .strict(strictTools)
                 .inputSchema(AnthropicToolSchema.builder()
                         .properties(parameters != null ? toMap(parameters.properties()) : emptyMap())
                         .required(parameters != null ? parameters.required() : emptyList())

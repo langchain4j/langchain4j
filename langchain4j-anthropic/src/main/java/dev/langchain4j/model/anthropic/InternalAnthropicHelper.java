@@ -59,7 +59,8 @@ class InternalAnthropicHelper {
             List<AnthropicServerTool> serverTools,
             Set<String> toolMetadataKeysToSend,
             String userId,
-            Map<String, Object> customParameters) {
+            Map<String, Object> customParameters,
+            boolean strictTools) {
 
         AnthropicCreateMessageRequest.Builder requestBuilder = AnthropicCreateMessageRequest.builder().stream(stream)
                 .model(chatRequest.modelName())
@@ -78,7 +79,7 @@ class InternalAnthropicHelper {
             tools.addAll(toAnthropicTools(serverTools));
         }
         if (!isNullOrEmpty(chatRequest.toolSpecifications())) {
-            tools.addAll(toAnthropicTools(chatRequest.toolSpecifications(), toolsCacheType, toolMetadataKeysToSend));
+            tools.addAll(toAnthropicTools(chatRequest.toolSpecifications(), toolsCacheType, toolMetadataKeysToSend, strictTools));
         }
         if (!tools.isEmpty()) {
             requestBuilder.tools(tools);
