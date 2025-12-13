@@ -29,6 +29,8 @@ public class A2AClientAgentInvoker implements AgentInvoker {
     private final AgentCard agentCard;
     private final Method method;
 
+    private AgentInstance parent;
+
     public A2AClientAgentInvoker(A2AClientInstance a2AClientInstance, Method method) {
         this.method = method;
         this.a2AClientInstance = a2AClientInstance;
@@ -129,4 +131,13 @@ public class A2AClientAgentInvoker implements AgentInvoker {
         return a2AClientInstance.topology();
     }
 
+    @Override
+    public void setParent(AgentInstance parent) {
+        this.parent = parent;
+    }
+
+    @Override
+    public AgentInstance parent() {
+        return parent;
+    }
 }

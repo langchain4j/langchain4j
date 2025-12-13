@@ -49,8 +49,9 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T> {
     private final AgentCard agentCard;
     private final Client a2aClient;
 
-    private String name;
-    private String agentId;
+    private final String name;
+    private final String agentId;
+
     private String[] inputKeys;
     private String outputKey;
     private boolean async;

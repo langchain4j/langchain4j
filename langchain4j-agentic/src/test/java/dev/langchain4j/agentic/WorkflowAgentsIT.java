@@ -738,6 +738,7 @@ public class WorkflowAgentsIT {
         assertThat(routerAgentInstance.arguments().get(0).name()).isEqualTo("request");
         assertThat(routerAgentInstance.arguments().get(0).type()).isEqualTo(String.class);
         assertThat(routerAgentInstance.subagents()).isEmpty();
+        assertThat(routerAgentInstance.parent().agentId()).isEqualTo(agentInstance.agentId());
 
         AgentInstance conditionalAgentInstance = agentInstance.subagents().get(1);
         assertThat(conditionalAgentInstance.outputType()).isEqualTo(Object.class);
@@ -745,17 +746,18 @@ public class WorkflowAgentsIT {
         assertThat(conditionalAgentInstance.topology()).isEqualTo(AgenticSystemTopology.ROUTER);
         assertThat(conditionalAgentInstance.arguments()).isEmpty(); // untyped agent does not know its arguments
         assertThat(conditionalAgentInstance.subagents()).hasSize(3);
+        assertThat(conditionalAgentInstance.parent().agentId()).isEqualTo(agentInstance.agentId());
 
-        checkExpertAgent(conditionalAgentInstance.subagents().get(0), "medical");
-        checkExpertAgent(conditionalAgentInstance.subagents().get(1), "legal");
-        checkExpertAgent(conditionalAgentInstance.subagents().get(2), "technical");
+        checkExpertAgent(conditionalAgentInstance.subagents().get(0), "medical", conditionalAgentInstance.agentId());
+        checkExpertAgent(conditionalAgentInstance.subagents().get(1), "legal", conditionalAgentInstance.agentId());
+        checkExpertAgent(conditionalAgentInstance.subagents().get(2), "technical", conditionalAgentInstance.agentId());
 
         System.out.println(agentInstance.ask("I broke my leg what should I do"));
 
         verify(medicalExpert).medical("I broke my leg what should I do");
     }
 
-    private static void checkExpertAgent(AgentInstance expertAgentInstance, String name) {
+    private static void checkExpertAgent(AgentInstance expertAgentInstance, String name, String parentId) {
         assertThat(expertAgentInstance.name()).isEqualTo(name);
         assertThat(expertAgentInstance.outputType()).isEqualTo(String.class);
         assertThat(expertAgentInstance.outputKey()).isEqualTo("response");
@@ -763,7 +765,8 @@ public class WorkflowAgentsIT {
         assertThat(expertAgentInstance.arguments()).hasSize(1);
         assertThat(expertAgentInstance.arguments().get(0).name()).isEqualTo("request");
         assertThat(expertAgentInstance.arguments().get(0).type()).isEqualTo(String.class);
-        assertThat(expertAgentInstance.subagents()).hasSize(0);
+        assertThat(expertAgentInstance.subagents()).isEmpty();
+        assertThat(expertAgentInstance.parent().agentId()).isEqualTo(parentId);
     }
 
     @Test

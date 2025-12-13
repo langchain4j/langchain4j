@@ -26,6 +26,11 @@ public record NonAiAgentInstance(
         implements AgentInstance, AgentListenerProvider {
 
     @Override
+    public AgentInstance parent() {
+        return null;
+    }
+
+    @Override
     public List<AgentInstance> subagents() {
         return List.of();
     }

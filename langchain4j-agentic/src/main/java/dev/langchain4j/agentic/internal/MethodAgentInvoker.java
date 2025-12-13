@@ -12,8 +12,18 @@ import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.List;
+import java.util.Objects;
 
-public record MethodAgentInvoker(Method method, AgentInstance agentInstance) implements AgentInvoker {
+public final class MethodAgentInvoker implements AgentInvoker {
+    private final Method method;
+    private final AgentInstance agentInstance;
+
+    private AgentInstance parent;
+
+    public MethodAgentInvoker(Method method, AgentInstance agentInstance) {
+        this.method = method;
+        this.agentInstance = agentInstance;
+    }
 
     @Override
     public Class<?> type() {
@@ -79,4 +89,41 @@ public record MethodAgentInvoker(Method method, AgentInstance agentInstance) imp
     public AgenticSystemTopology topology() {
         return agentInstance.topology();
     }
+
+    @Override
+    public Method method() {
+        return method;
+    }
+
+    @Override
+    public void setParent(AgentInstance parent) {
+        this.parent = parent;
+    }
+
+    @Override
+    public AgentInstance parent() {
+        return parent;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == this) return true;
+        if (obj == null || obj.getClass() != this.getClass()) return false;
+        var that = (MethodAgentInvoker) obj;
+        return Objects.equals(this.method, that.method) &&
+                Objects.equals(this.agentInstance, that.agentInstance);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(method, agentInstance);
+    }
+
+    @Override
+    public String toString() {
+        return "MethodAgentInvoker[" +
+                "method=" + method + ", " +
+                "agentInstance=" + agentInstance + ']';
+    }
+
 }
