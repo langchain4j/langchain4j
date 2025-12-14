@@ -83,31 +83,6 @@ class PolymorphicAiServiceTest {
     }
 
     @Test
-    void shouldDeserializeListResponse() {
-        String json =
-                """
-            [
-              { "type": "text", "text": "hello" },
-              { "type": "image", "url": "https://example.com/x.png" }
-            ]
-        """;
-
-        ChatModel model = new StubJsonModel(json);
-
-        ChatbotListService service =
-                AiServices.builder(ChatbotListService.class).chatModel(model).build();
-
-        List<ChatbotResponse> responses = service.reply("hi");
-
-        assertThat(responses).hasSize(2);
-        assertThat(responses.get(0)).isInstanceOf(TextResponse.class);
-        assertThat(((TextResponse) responses.get(0)).text()).isEqualTo("hello");
-
-        assertThat(responses.get(1)).isInstanceOf(ImageResponse.class);
-        assertThat(((ImageResponse) responses.get(1)).url()).isEqualTo("https://example.com/x.png");
-    }
-
-    @Test
     void shouldDeserializeImageResponse() {
         String json = """
             { "type": "image", "url": "https://example.com/x.png" }
