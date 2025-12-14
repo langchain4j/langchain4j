@@ -296,7 +296,7 @@ public class AnthropicMapper {
     }
 
     public static List<AnthropicTool> toAnthropicTools(
-            List<ToolSpecification> toolSpecifications, AnthropicCacheType cacheToolsPrompt, boolean strictTools) {
+            List<ToolSpecification> toolSpecifications, AnthropicCacheType cacheToolsPrompt, Boolean strictTools) {
         return toAnthropicTools(toolSpecifications, cacheToolsPrompt, Set.of(), strictTools);
     }
 
@@ -304,7 +304,7 @@ public class AnthropicMapper {
             List<ToolSpecification> toolSpecifications,
             AnthropicCacheType cacheToolsPrompt,
             Set<String> toolMetadataKeysToSend,
-            boolean strictTools) {
+            Boolean strictTools) {
         ToolSpecification lastToolSpecification =
                 toolSpecifications.isEmpty() ? null : toolSpecifications.get(toolSpecifications.size() - 1);
         return toolSpecifications.stream()
@@ -319,7 +319,7 @@ public class AnthropicMapper {
     }
 
     public static AnthropicTool toAnthropicTool(
-            ToolSpecification toolSpecification, AnthropicCacheType cacheToolsPrompt, boolean strictTools) {
+            ToolSpecification toolSpecification, AnthropicCacheType cacheToolsPrompt, Boolean strictTools) {
         return toAnthropicTool(toolSpecification, cacheToolsPrompt, Set.of(), strictTools);
     }
 
@@ -327,7 +327,7 @@ public class AnthropicMapper {
             ToolSpecification toolSpecification,
             AnthropicCacheType cacheToolsPrompt,
             Set<String> toolMetadataKeysToSend,
-            boolean strictTools) {
+            Boolean strictTools) {
         JsonObjectSchema parameters = toolSpecification.parameters();
 
         AnthropicTool.Builder toolBuilder = AnthropicTool.builder()

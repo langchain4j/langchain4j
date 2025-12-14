@@ -60,7 +60,7 @@ class InternalAnthropicHelper {
             Set<String> toolMetadataKeysToSend,
             String userId,
             Map<String, Object> customParameters,
-            boolean strictTools) {
+            Boolean strictTools) {
 
         AnthropicCreateMessageRequest.Builder requestBuilder = AnthropicCreateMessageRequest.builder().stream(stream)
                 .model(chatRequest.modelName())
