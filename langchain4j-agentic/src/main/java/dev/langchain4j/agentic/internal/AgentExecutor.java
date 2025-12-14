@@ -13,7 +13,7 @@ import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.util.List;
 
-public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements AgentInstance {
+public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements AgentInstance, InternalAgent {
 
     private static final Logger LOG = LoggerFactory.getLogger(AgentExecutor.class);
 
@@ -124,10 +124,27 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
         return agentInvoker.parent();
     }
 
-    void setParent(AgentInstance parent) {
+    @Override
+    public void setParent(final AgentInstance parent) {
         agentInvoker.setParent(parent);
-        if (Proxy.isProxyClass(agent.getClass()) && Proxy.getInvocationHandler(agent) instanceof PlannerBasedInvocationHandler planner) {
-            planner.setParent(parent);
+    }
+
+    @Override
+    public void appendId(final String idSuffix) {
+        agentInvoker.appendId(idSuffix);
+    }
+
+    void setParent(AgentInstance parent, int index) {
+        setParent(parent);
+        propagateParentIndex(agentInvoker, index);
+    }
+
+    private void propagateParentIndex(InternalAgent agent, int index) {
+        agent.appendId("$" + index);
+        for (AgentInstance subagent : agent.subagents()) {
+            if (subagent instanceof InternalAgent internalAgent) {
+                propagateParentIndex(internalAgent, index);
+            }
         }
     }
 }
