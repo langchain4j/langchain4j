@@ -1,10 +1,10 @@
-package dev.langchain4j.agentic.agent;
+package dev.langchain4j.agentic.observability;
 
+import java.util.Map;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
-import java.util.Map;
 
-public record AgentResponse(AgenticScope agenticScope, AgentInstance agent, Map<String, Object> inputs, Object output) {
+public record AgentInvocationError(AgenticScope agenticScope, AgentInstance agent, Map<String, Object> inputs, Throwable error) {
 
     public String agentName() {
         return agent.name();

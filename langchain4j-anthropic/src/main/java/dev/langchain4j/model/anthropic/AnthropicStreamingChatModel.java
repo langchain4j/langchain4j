@@ -32,8 +32,11 @@ import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.time.Duration;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+
 import org.slf4j.Logger;
 
 /**
@@ -66,6 +69,8 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
     private final ChatRequestParameters defaultRequestParameters;
     private final String toolChoiceName;
     private final Boolean disableParallelToolUse;
+    private final List<AnthropicServerTool> serverTools;
+    private final Set<String> toolMetadataKeysToSend;
     private final String userId;
     private final Map<String, Object> customParameters;
 
@@ -108,6 +113,8 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         this.listeners = copy(builder.listeners);
         this.toolChoiceName = builder.toolChoiceName;
         this.disableParallelToolUse = builder.disableParallelToolUse;
+        this.serverTools = copy(builder.serverTools);
+        this.toolMetadataKeysToSend = copy(builder.toolMetadataKeysToSend);
         this.userId = builder.userId;
         this.customParameters = copy(builder.customParameters);
     }
@@ -144,6 +151,8 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         private ToolChoice toolChoice;
         private String toolChoiceName;
         private Boolean disableParallelToolUse;
+        private List<AnthropicServerTool> serverTools;
+        private Set<String> toolMetadataKeysToSend;
         private String userId;
         private Map<String, Object> customParameters;
 
@@ -323,6 +332,52 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         }
 
         /**
+         * Specifies server tools to be included in each request to the Anthropic API. For example:
+         * <pre>
+         * AnthropicServerTool webSearchTool = AnthropicServerTool.builder()
+         *     .type("web_search_20250305")
+         *     .name("web_search")
+         *     .addAttribute("max_uses", 5)
+         *     .addAttribute("allowed_domains", List.of("accuweather.com"))
+         *     .build();
+         * </pre>
+         */
+        public AnthropicStreamingChatModelBuilder serverTools(List<AnthropicServerTool> serverTools) {
+            this.serverTools = serverTools;
+            return this;
+        }
+
+        /**
+         * Specifies server tools to be included in each request to the Anthropic API. For example:
+         * <pre>
+         * AnthropicServerTool webSearchTool = AnthropicServerTool.builder()
+         *     .type("web_search_20250305")
+         *     .name("web_search")
+         *     .addAttribute("max_uses", 5)
+         *     .addAttribute("allowed_domains", List.of("accuweather.com"))
+         *     .build();
+         * </pre>
+         */
+        public AnthropicStreamingChatModelBuilder serverTools(AnthropicServerTool... serverTools) {
+            return serverTools(asList(serverTools));
+        }
+
+        /**
+         * Specifies metadata keys from the {@link ToolSpecification#metadata()} to be included in the request.
+         */
+        public AnthropicStreamingChatModelBuilder toolMetadataKeysToSend(Set<String> toolMetadataKeysToSend) {
+            this.toolMetadataKeysToSend = toolMetadataKeysToSend;
+            return this;
+        }
+
+        /**
+         * Specifies metadata keys from the {@link ToolSpecification#metadata()} to be included in the request.
+         */
+        public AnthropicStreamingChatModelBuilder toolMetadataKeysToSend(String... toolMetadataKeysToSend) {
+            return toolMetadataKeysToSend(new HashSet<>(asList(toolMetadataKeysToSend)));
+        }
+
+        /**
          * Sets the user ID for the requests.
          * This should be a uuid, hash value, or other opaque identifier.
          * Anthropic may use this id to help detect abuse.
@@ -359,6 +414,8 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
                 true,
                 toolChoiceName,
                 disableParallelToolUse,
+                serverTools,
+                toolMetadataKeysToSend,
                 userId,
                 customParameters);
         client.createMessage(anthropicRequest, new AnthropicCreateMessageOptions(returnThinking), handler);

@@ -16,7 +16,6 @@
     <properties>
         <jdbc.version>23.5.0.24.07</jdbc.version>
         <maven.compiler.release>17</maven.compiler.release>
-        <skipOracleITs>${skipITs}</skipOracleITs>
     </properties>
 
     <dependencies>
@@ -106,7 +105,6 @@
 
     <build>
         <plugins>
-
             <plugin>
                 <groupId>org.honton.chas</groupId>
                 <artifactId>license-maven-plugin</artifactId>
@@ -115,15 +113,6 @@
                     <skipCompliance>true</skipCompliance>
                 </configuration>
             </plugin>
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-failsafe-plugin</artifactId>
-                <configuration>
-                    <skipITs>${skipOracleITs}</skipITs>
-                </configuration>
-            </plugin>
-
         </plugins>
     </build>
 
