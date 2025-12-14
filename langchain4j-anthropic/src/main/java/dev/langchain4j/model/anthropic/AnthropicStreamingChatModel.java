@@ -73,7 +73,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
     private final Set<String> toolMetadataKeysToSend;
     private final String userId;
     private final Map<String, Object> customParameters;
-    private final boolean strictTools;
+    private final Boolean strictTools;
 
 
     /**
@@ -119,7 +119,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         this.toolMetadataKeysToSend = copy(builder.toolMetadataKeysToSend);
         this.userId = builder.userId;
         this.customParameters = copy(builder.customParameters);
-        this.strictTools= getOrDefault(builder.strictTools, false);
+        this.strictTools= builder.strictTools;
 
     }
 

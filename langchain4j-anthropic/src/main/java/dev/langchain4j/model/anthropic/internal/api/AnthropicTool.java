@@ -23,7 +23,7 @@ public class AnthropicTool {
     public AnthropicCacheControl cacheControl;
     @JsonIgnore
     public Map<String, Object> customParameters;
-    public boolean strict;
+    public Boolean strict;
 
     public AnthropicTool() {}
 

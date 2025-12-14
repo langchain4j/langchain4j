@@ -319,8 +319,8 @@ public class AnthropicMapper {
     }
 
     public static AnthropicTool toAnthropicTool(
-            ToolSpecification toolSpecification, AnthropicCacheType cacheToolsPrompt, Boolean strictTools) {
-        return toAnthropicTool(toolSpecification, cacheToolsPrompt, Set.of(), strictTools);
+            ToolSpecification toolSpecification, AnthropicCacheType cacheToolsPrompt) {
+        return toAnthropicTool(toolSpecification, cacheToolsPrompt, Set.of(), null);
     }
 
     public static AnthropicTool toAnthropicTool(
@@ -330,13 +330,17 @@ public class AnthropicMapper {
             Boolean strictTools) {
         JsonObjectSchema parameters = toolSpecification.parameters();
 
+        //prevent NPE during unboxing
+        boolean strict = Boolean.TRUE.equals(strictTools);
+
         AnthropicTool.Builder toolBuilder = AnthropicTool.builder()
                 .name(toolSpecification.name())
                 .description(toolSpecification.description())
-                .strict(strictTools)
+                .strict(strict ? Boolean.TRUE : null)
                 .inputSchema(AnthropicToolSchema.builder()
-                        .properties(parameters != null ? toMap(parameters.properties()) : emptyMap())
+                        .properties(parameters != null ? toMap(parameters.properties(), strict) : emptyMap())
                         .required(parameters != null ? parameters.required() : emptyList())
+                        .additionalProperties(strict ? Boolean.FALSE : null)
                         .build());
 
         if (cacheToolsPrompt != AnthropicCacheType.NO_CACHE) {
