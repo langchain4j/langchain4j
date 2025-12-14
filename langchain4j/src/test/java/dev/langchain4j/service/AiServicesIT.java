@@ -1,5 +1,6 @@
 package dev.langchain4j.service;
 
+import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
@@ -19,15 +20,19 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.data.MapEntry.entry;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.json.Polymorphic;
+import dev.langchain4j.json.PolymorphicValue;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
@@ -40,12 +45,12 @@ import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.function.BiFunction;
 import java.util.function.UnaryOperator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -439,6 +444,53 @@ public class AiServicesIT {
                         + "\"city\": (type: string)\n"
                         + "})\n"
                         + "}"));
+    }
+
+    @Polymorphic(discriminator = "type")
+    sealed interface ChatbotResponse permits TextResponse, ImageResponse {}
+
+    @PolymorphicValue("text")
+    record TextResponse(String type, String text) implements ChatbotResponse {}
+
+    @PolymorphicValue("image")
+    record ImageResponse(String type, String url) implements ChatbotResponse {}
+
+    interface PolymorphicResponder {
+
+        @UserMessage("Respond to user message: {{it}}")
+        ChatbotResponse respond(String userMessage);
+    }
+
+    @Test
+    void should_handle_polymorphic_sealed_return_type() {
+
+        doReturn(ChatResponse.builder()
+                        .aiMessage(
+                                aiMessage(
+                                        """
+                                { "type": "image", "url": "https://example.com/cat.png" }
+                                """))
+                        .build())
+                .when(chatModel)
+                .chat(any(ChatRequest.class));
+
+        PolymorphicResponder responder = AiServices.create(PolymorphicResponder.class, chatModel);
+
+        ChatbotResponse response = responder.respond("show me a cat image");
+
+        assertThat(response).isInstanceOf(ImageResponse.class);
+        assertThat(((ImageResponse) response).url()).startsWith("https://example.com/cat");
+
+        ArgumentCaptor<ChatRequest> captor = ArgumentCaptor.forClass(ChatRequest.class);
+        verify(chatModel).chat(captor.capture());
+
+        String prompt = ((dev.langchain4j.data.message.UserMessage)
+                        captor.getValue().messages().get(0))
+                .singleText();
+        assertThat(prompt).contains("Respond to user message: show me a cat image");
+        assertThat(prompt).contains("discriminator 'type'");
+        assertThat(prompt).contains("type=text");
+        assertThat(prompt).contains("type=image");
     }
 
     @Test
@@ -981,9 +1033,9 @@ public class AiServicesIT {
                             return chatRequest; // No transformation needed
                         }
                         List<ChatMessage> messages = chatRequest.messages().stream()
-                                .map(message -> message == userMessage ?
-                                        dev.langchain4j.data.message.UserMessage.from(transformedMessage) :
-                                        message)
+                                .map(message -> message == userMessage
+                                        ? dev.langchain4j.data.message.UserMessage.from(transformedMessage)
+                                        : message)
                                 .toList();
                         return ChatRequest.builder()
                                 .messages(messages)
