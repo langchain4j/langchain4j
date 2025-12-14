@@ -691,6 +691,21 @@ ToolExecutor toolExecutor = (toolExecutionRequest, memoryId) -> {
 };
 ```
 
+LangChain4j also provides the `DefaultToolExecutor`, which can automatically invoke methods on Java objects and handle
+parameter mapping:
+```java
+class BookingTools {
+    String getBookingDetails(String bookingNumber) {
+        Booking booking = loadBookingFromDatabase(bookingNumber);
+        return booking.toString();
+    }
+}
+
+BookingTools tools = new BookingTools();
+Method method = BookingTools.class.getMethod("getBookingDetails", String.class);
+ToolExecutor toolExecutor = new DefaultToolExecutor(tools, method);
+```
+
 Once we have one or multiple (`ToolSpecification`, `ToolExecutor`) pairs,
 we can specify them when creating an AI Service:
 ```java
@@ -745,6 +760,30 @@ Assistant assistant = AiServices.builder(Assistant.class)
     .build();
 ```
 
+#### Configuring Immediate Return in Dynamic Tools
+
+When building `ToolProviderResult`, you can mark tools for [immediate return](/tutorials/tools#returning-immediately-the-result-of-a-tool-execution-request) using the ToolProviderResult.builder():
+
+```java
+ToolProvider toolProvider = (toolProviderRequest) -> {
+    return ToolProviderResult.builder()
+        .add(bookingToolSpec, bookingExecutor).withImmediateReturn()
+        .add(weatherToolSpec, weatherExecutor)
+        .build();
+};
+```
+
+The `.withImmediateReturn()` method applies to the most recently added tool. You can also mark multiple tools by name:
+
+```java
+ToolProvider toolProvider = (toolProviderRequest) -> {
+    return ToolProviderResult.builder()
+        .addAll(allTools)
+        .withImmediateReturn(Set.of("get_booking_details", "cancel_booking"))
+        .build();
+};
+```
+
 It is possible for an AI service to use both programmatically and dynamically specified tools in the same invocation.
 
 ### Returning immediately the result of a tool execution request
@@ -791,6 +830,13 @@ Result<String> result = assistant.chat("How much is 37 plus 87?");
 will produce a `Result` with a null content, while the actual response of `124` will have to be retrieved from the `result.toolExecutions()`. Without the immediate return, the LLM would have to reprocess the result of the `add` tool execution request, thus returning a response like: `The result of adding 37 and 87 is 124.`
 
 Also note that if the LLM calls multiple tools and at least one of them is not immediate, then reprocessing will happen.
+
+:::note
+When using programmatic tools, you can mark tools for immediate return by passing a set of tool names 
+to the `.tools()` method. When using dynamic tools via `ToolProvider`, you can use the 
+`.withImmediateReturn()` method on `ToolProviderResult.builder()`. 
+See the respective sections above for examples.
+:::
 
 ### Error Handling
 
