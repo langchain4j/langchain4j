@@ -573,8 +573,138 @@ class AnthropicChatModelIT {
         // then
         assertThat(chatResponse.aiMessage().text()).contains("Berlin");
 
-        assertThat(spyingHttpClient.request().body().contains("context_management"));
+        assertThat(spyingHttpClient.request().body()).contains("context_management");
     }
+
+    @Test
+    void should_support_code_execution_tool() {
+
+        // given
+        AnthropicServerTool codeExecutionTool = AnthropicServerTool.builder()
+                .type("code_execution_20250825")
+                .name("code_execution")
+                .build();
+
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+
+        ChatModel model = AnthropicChatModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .beta("code-execution-2025-08-25")
+                .modelName(CLAUDE_SONNET_4_5_20250929)
+                .serverTools(codeExecutionTool)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("Calculate the average of [1, 2, 3, 4, 5]"))
+                .build();
+
+        // when
+        ChatResponse chatResponse = model.chat(chatRequest);
+
+        // then
+        assertThat(spyingHttpClient.request().body()).contains(codeExecutionTool.type());
+
+        assertThat(chatResponse.aiMessage().text()).contains("3");
+        assertThat(chatResponse.aiMessage().toolExecutionRequests()).isEmpty();
+    }
+
+    @Test
+    void should_support_web_search_tool() {
+
+        // given
+        AnthropicServerTool webSearchTool = AnthropicServerTool.builder()
+                .type("web_search_20250305")
+                .name("web_search")
+                .addAttribute("max_uses", 5)
+                .addAttribute("allowed_domains", List.of("accuweather.com"))
+                .build();
+
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+
+        ChatModel model = AnthropicChatModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(CLAUDE_SONNET_4_5_20250929)
+                .serverTools(webSearchTool)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("What is the weather in Munich?"))
+                .build();
+
+        // when
+        ChatResponse chatResponse = model.chat(chatRequest);
+
+        // then
+        assertThat(spyingHttpClient.request().body()).contains(webSearchTool.type());
+
+        assertThat(chatResponse.aiMessage().text()).isNotBlank();
+        assertThat(chatResponse.aiMessage().toolExecutionRequests()).isEmpty();
+    }
+
+     @Test
+     void should_support_tool_search_tool() {
+
+         // given
+         AnthropicServerTool toolSearchTool = AnthropicServerTool.builder()
+                 .type("tool_search_tool_regex_20251119")
+                 .name("tool_search_tool_regex")
+                 .build();
+
+         Map<String, Object> toolMetadata = Map.of("defer_loading", true);
+
+         ToolSpecification weatherTool = ToolSpecification.builder()
+                 .name("get_weather")
+                 .parameters(JsonObjectSchema.builder()
+                         .addStringProperty("location")
+                         .required("location")
+                         .build())
+                 .metadata(toolMetadata)
+                 .build();
+
+         ToolSpecification timeTool = ToolSpecification.builder()
+                 .name("get_time")
+                 .parameters(JsonObjectSchema.builder()
+                         .addStringProperty("location")
+                         .required("location")
+                         .build())
+                 .build();
+
+         SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+
+         ChatModel model = AnthropicChatModel.builder()
+                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
+                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                 .modelName(CLAUDE_SONNET_4_5_20250929)
+                 .beta("advanced-tool-use-2025-11-20")
+                 .serverTools(toolSearchTool)
+                 .toolMetadataKeysToSend(toolMetadata.keySet())
+                 .logRequests(true)
+                 .logResponses(true)
+                 .build();
+
+         ChatRequest chatRequest = ChatRequest.builder()
+                 .messages(UserMessage.from("What is the weather in Munich? Use tool search if needed."))
+                 .toolSpecifications(weatherTool, timeTool)
+                 .build();
+
+         // when
+         ChatResponse chatResponse = model.chat(chatRequest);
+
+         // then
+         assertThat(spyingHttpClient.request().body())
+                 .contains(toolSearchTool.type())
+                 .contains(toolMetadata.keySet().iterator().next());
+
+         List<ToolExecutionRequest> toolExecutionRequests = chatResponse.aiMessage().toolExecutionRequests();
+         assertThat(toolExecutionRequests).hasSize(1);
+         assertThat(toolExecutionRequests.get(0).name()).isEqualTo(weatherTool.name());
+     }
 
     static String randomString(int length) {
         String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
