@@ -13,6 +13,10 @@
     <name>LangChain4j :: Embeddings :: bge-small-zh-v15 (quantized)</name>
     <description>In-process bge-small-zh-v1.5 (quantized) embedding model</description>
 
+    <properties>
+        <embeddingsSkipCache>false</embeddingsSkipCache>
+    </properties>
+
     <dependencies>
 
         <dependency>
@@ -41,6 +45,7 @@
                             <outputDirectory>${project.build.directory}/classes</outputDirectory>
                             <outputFileName>bge-small-zh-v1.5-q.onnx</outputFileName>
                             <sha256>15b717c382bcb518ba457b93ea6850ede7f4f1cd8937454aa06972366cd19bcc</sha256>
+                            <skipCache>${embeddingsSkipCache}</skipCache>
                         </configuration>
                     </execution>
                 </executions>
