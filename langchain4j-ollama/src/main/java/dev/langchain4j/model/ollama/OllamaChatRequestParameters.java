@@ -145,6 +145,14 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
                 .build();
     }
 
+    @Override
+    public ChatRequestParameters defaultedBy(ChatRequestParameters that) {
+        return OllamaChatRequestParameters.builder()
+                .overrideWith(that)
+                .overrideWith(this)
+                .build();
+    }
+
     public static Builder builder() {
         return new Builder();
     }

@@ -2,7 +2,9 @@ package dev.langchain4j.service;
 
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.O3_MINI;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.service.AiServicesIT.Ingredient.OIL;
 import static dev.langchain4j.service.AiServicesIT.Ingredient.PEPPER;
@@ -33,6 +35,7 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.model.openai.OpenAiChatRequestParameters;
 import dev.langchain4j.model.openai.OpenAiModerationModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -43,7 +46,6 @@ import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.function.BiFunction;
 import java.util.function.UnaryOperator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -1020,7 +1022,6 @@ public class AiServicesIT {
                 .stopSequences("DONE")
                 .build();
 
-        // when
         Response<AiMessage> response = assistant.chat("Hello, I'm passing custom parameters!", customParams);
 
         verify(chatModel).chat(chatRequestCaptor.capture());
@@ -1028,6 +1029,36 @@ public class AiServicesIT {
 
         assertThat(actualRequest.parameters().temperature()).isEqualTo(0.76);
         assertThat(actualRequest.parameters().stopSequences()).containsExactly("DONE");
+
+        assertThat(response.content()).isNotNull();
+    }
+
+    @Test
+    void should_use_custom_chat_request_for_provider_specific_params() {
+        OpenAiChatModel modelWithReasoningEffort = spy(OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(O3_MINI)
+                .logRequests(true)
+                .logResponses(true)
+                .build());
+
+        AssistantWithChatRequestParams assistant = AiServices.builder(AssistantWithChatRequestParams.class)
+                .chatModel(modelWithReasoningEffort)
+                .build();
+
+        OpenAiChatRequestParameters openAiParams = OpenAiChatRequestParameters.builder()
+                .reasoningEffort("low")
+                .build();
+
+        Response<AiMessage> response = assistant.chat("Hello, I'm passing custom parameters!", openAiParams);
+
+        verify(modelWithReasoningEffort).chat(chatRequestCaptor.capture());
+        ChatRequest actualRequest = chatRequestCaptor.getValue();
+
+        assertThat(actualRequest.parameters()).isInstanceOf(OpenAiChatRequestParameters.class);
+        assertThat(((OpenAiChatRequestParameters)actualRequest.parameters()).reasoningEffort()).isEqualTo("low");
 
         assertThat(response.content()).isNotNull();
     }

@@ -27,6 +27,7 @@ import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -76,9 +77,9 @@ class DefaultAiServices<T> extends AiServices<T> {
 
     private static final Set<Class<? extends Annotation>> VALID_PARAM_ANNOTATIONS = Set.of(
             dev.langchain4j.service.UserMessage.class,
-            dev.langchain4j.service.V.class,
-            dev.langchain4j.service.MemoryId.class,
-            dev.langchain4j.service.UserName.class);
+            V.class,
+            MemoryId.class,
+            UserName.class);
 
     DefaultAiServices(AiServiceContext context) {
         super(context);
@@ -378,13 +379,13 @@ class DefaultAiServices<T> extends AiServices<T> {
                     }
 
                     private ChatRequestParameters chatRequestParameters(Method method, Object[] args, ToolServiceContext toolServiceContext, ResponseFormat responseFormat) {
-                        ChatRequestParameters parameters = ChatRequestParameters.builder()
+                        ChatRequestParameters defaultParams = ChatRequestParameters.builder()
                                 .toolSpecifications(toolServiceContext.toolSpecifications())
                                 .responseFormat(responseFormat)
                                 .build();
                         return findParamOfType(ChatRequestParameters.class, args, method.getParameters())
-                                .map(parameters::overrideWith)
-                                .orElse(parameters);
+                                .map(p -> ((DefaultChatRequestParameters) p).defaultedBy(defaultParams))
+                                .orElse(defaultParams);
                     }
 
                     private <P> Optional<P> findParamOfType(Class<P> paramType, Object[] args, Parameter[] params) {
