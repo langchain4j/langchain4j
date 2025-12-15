@@ -1011,13 +1011,10 @@ public class AiServicesIT {
 
     @Test
     void should_use_custom_chat_request_parameters_passed_in_method() {
-
-        // Build an AI service for AssistantWithChatRequestParams
         AssistantWithChatRequestParams assistant = AiServices.builder(AssistantWithChatRequestParams.class)
                 .chatModel(chatModel)
                 .build();
 
-        // Create some custom ChatRequestParameters
         ChatRequestParameters customParams = ChatRequestParameters.builder()
                 .temperature(0.76)
                 .stopSequences("DONE")
@@ -1026,16 +1023,12 @@ public class AiServicesIT {
         // when
         Response<AiMessage> response = assistant.chat("Hello, I'm passing custom parameters!", customParams);
 
-        // then
-        // First, verify the model was called
         verify(chatModel).chat(chatRequestCaptor.capture());
         ChatRequest actualRequest = chatRequestCaptor.getValue();
 
-        // Check that the custom parameters are now present in the request
         assertThat(actualRequest.parameters().temperature()).isEqualTo(0.76);
         assertThat(actualRequest.parameters().stopSequences()).containsExactly("DONE");
 
-        // Optionally check that the AIMessage response is not null, or has some text:
         assertThat(response.content()).isNotNull();
     }
 }
