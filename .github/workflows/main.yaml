@@ -50,7 +50,7 @@ jobs:
 
       - name: Compile and unit test with JDK ${{ matrix.java_version }}
         run: |
-          mvn -B -U -T8C test javadoc:aggregate
+          mvn -B -U -DembeddingsSkipCache -T8C test javadoc:aggregate
 
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v5
@@ -98,6 +98,7 @@ jobs:
             -Dgib.disable=false -Dgib.referenceBranch=__branch_before \
             -Djunit.jupiter.extensions.autodetection.enabled=true \
             -DskipAzureAiSearchITs -DskipJlamaITs -DskipLocalAiITs -DskipMilvusITs -DskipOllamaITs -DskipVespaITs \
+            -DembeddingsSkipCache \
             -Dtinylog.writer.level=info
         env:
           LC4J_GLOBAL_TEST_RETRY_ENABLED: true
