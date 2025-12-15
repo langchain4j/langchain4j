@@ -178,7 +178,7 @@ This annotation is necessary only when the `-parameters` option is *not* enabled
 
 In some cases, you may want to configure parameters (e.g., temperature, toolsChoice, maximum tokens, etc.) on a per-call basis. For example, you might want some requests to be more “creative” (higher temperature) and others to be more deterministic (lower temperature).
 
-To achieve this, you can create a second parameter in your AI Service method that accepts ChatRequestParams—marked with a custom annotation (@ChatRequestParams). This tells LangChain4j to accept and merge these parameters during each invocation.
+To achieve this, you can create an AI Service method that also accepts an argument of type ChatRequestParams. This tells LangChain4j to accept and merge these parameters during each invocation.
 
 :::note
 Note that ChatRequestParameters toolsSpecification and responseFormat will override parameters set on AiContext. If not set by ChatRequestParameters, AiContext definition will be used.
