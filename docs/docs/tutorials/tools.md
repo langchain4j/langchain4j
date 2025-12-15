@@ -778,7 +778,7 @@ When building `ToolProviderResult`, you can mark tools for [immediate return](/t
 ```java
 ToolProvider toolProvider = (toolProviderRequest) -> {
     return ToolProviderResult.builder()
-        .add(bookingToolSpec, bookingExecutor).withImmediateReturn()
+        .add(bookingToolSpec, bookingExecutor, ReturnBehavior.IMMEDIATE)
         .add(weatherToolSpec, weatherExecutor)
         .build();
 };
@@ -843,9 +843,9 @@ will produce a `Result` with a null content, while the actual response of `124` 
 Also note that if the LLM calls multiple tools and at least one of them is not immediate, then reprocessing will happen.
 
 :::note
-When using programmatic tools, you can mark tools for immediate return by passing a set of tool names 
-to the `.tools()` method. When using dynamic tools via `ToolProvider`, you can use the 
-`.withImmediateReturn()` method on `ToolProviderResult.builder()`. 
+When using programmatic tools, you can mark tools for immediate return by passing a set of tool names
+to the `.tools()` method. When using dynamic tools via `ToolProvider`, you can use the overloaded method, 
+`.add(ToolSpecification, ToolExecutor, ReturnBehavior)`, on `ToolProviderResult.builder()`. 
 See the respective sections above for examples.
 :::
 

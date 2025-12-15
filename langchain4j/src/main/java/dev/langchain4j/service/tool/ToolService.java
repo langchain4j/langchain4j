@@ -183,7 +183,11 @@ public class ToolService {
         if (this.toolProvider == null) {
             return this.toolSpecifications.isEmpty()
                     ? ToolServiceContext.Empty.INSTANCE
-                    : new ToolServiceContext(this.toolSpecifications, this.toolExecutors, this.immediateReturnTools);
+                    : ToolServiceContext.builder()
+                            .toolSpecifications(this.toolSpecifications)
+                            .toolExecutors(this.toolExecutors)
+                            .immediateReturnTools(this.immediateReturnTools)
+                            .build();
         }
 
         List<ToolSpecification> toolsSpecs = new ArrayList<>(this.toolSpecifications);
@@ -209,7 +213,11 @@ public class ToolService {
                 mergedImmediateReturnTools.addAll(toolProviderResult.immediateReturnToolNames());
             }
         }
-        return new ToolServiceContext(toolsSpecs, toolExecs, mergedImmediateReturnTools);
+        return ToolServiceContext.builder()
+                .toolSpecifications(toolsSpecs)
+                .toolExecutors(toolExecs)
+                .immediateReturnTools(mergedImmediateReturnTools)
+                .build();
     }
 
     public ToolServiceResult executeInferenceAndToolsLoop(

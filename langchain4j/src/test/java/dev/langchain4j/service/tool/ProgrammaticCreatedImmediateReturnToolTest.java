@@ -2,6 +2,7 @@ package dev.langchain4j.service.tool;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -43,8 +44,7 @@ public class ProgrammaticCreatedImmediateReturnToolTest {
 
         // Using the fluent API with immediate return tool
         ToolProvider provider = request -> ToolProviderResult.builder()
-                .add(tool, executor)
-                .withImmediateReturn()
+                .add(tool, executor, ReturnBehavior.IMMEDIATE)
                 .build();
 
         Assistant assistant = AiServices.builder(Assistant.class)

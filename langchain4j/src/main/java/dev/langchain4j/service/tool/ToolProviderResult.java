@@ -2,6 +2,7 @@ package dev.langchain4j.service.tool;
 
 import static dev.langchain4j.internal.Utils.copy;
 
+import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.service.IllegalConfigurationException;
 import java.util.HashMap;
@@ -13,27 +14,23 @@ public class ToolProviderResult {
 
     private final Map<ToolSpecification, ToolExecutor> tools;
     private final Map<String, ToolSpecification> toolsByName;
-    private final Set<String> immediateReturnToolsByName;
+    private final Set<String> immediateReturnToolNames;
 
     public ToolProviderResult(Map<ToolSpecification, ToolExecutor> tools) {
-        this(tools, indexTools(tools));
+        this(tools, indexTools(tools), new HashSet<>());
     }
 
-    public ToolProviderResult(Map<ToolSpecification, ToolExecutor> tools, Set<String> immediateReturnToolNames) {
-        this(tools, indexTools(tools), immediateReturnToolNames);
-    }
-
-    private ToolProviderResult(Map<ToolSpecification, ToolExecutor> tools, Map<String, ToolSpecification> toolsByName) {
-        this(tools, toolsByName, new HashSet<>());
+    public ToolProviderResult(Builder builder) {
+        this(builder.tools, builder.toolsByName, builder.immediateReturnToolNames);
     }
 
     private ToolProviderResult(
             Map<ToolSpecification, ToolExecutor> tools,
             Map<String, ToolSpecification> toolsByName,
-            Set<String> immediateReturnToolsByName) {
+            Set<String> immediateReturnToolNames) {
         this.tools = copy(tools);
         this.toolsByName = copy(toolsByName);
-        this.immediateReturnToolsByName = copy(immediateReturnToolsByName);
+        this.immediateReturnToolNames = copy(immediateReturnToolNames);
     }
 
     private static Map<String, ToolSpecification> indexTools(Map<ToolSpecification, ToolExecutor> tools) {
@@ -60,7 +57,7 @@ public class ToolProviderResult {
     }
 
     public Set<String> immediateReturnToolNames() {
-        return immediateReturnToolsByName;
+        return immediateReturnToolNames;
     }
 
     public static Builder builder() {
@@ -71,41 +68,37 @@ public class ToolProviderResult {
 
         private final Map<ToolSpecification, ToolExecutor> tools = new HashMap<>();
         private final Map<String, ToolSpecification> toolsByName = new HashMap<>();
-        private final Set<String> immediateReturnToolsByName = new HashSet<>();
-        private ToolSpecification lastAddedTool;
+        private final Set<String> immediateReturnToolNames = new HashSet<>();
 
         public Builder add(ToolSpecification tool, ToolExecutor executor) {
+            return add(tool, executor, ReturnBehavior.TO_LLM);
+        }
+
+        public Builder add(ToolSpecification tool, ToolExecutor executor, ReturnBehavior returnBehavior) {
             tools.put(tool, executor);
             if (toolsByName.putIfAbsent(tool.name(), tool) != null) {
                 throw new IllegalConfigurationException("Duplicated definition for tool: " + tool.name());
             }
-            lastAddedTool = tool;
-            return this;
-        }
-
-        public Builder withImmediateReturn() {
-            if (lastAddedTool == null) {
-                throw new IllegalStateException("No tool has been added yet. Call add() before withImmediateReturn()");
+            if (returnBehavior == ReturnBehavior.IMMEDIATE) {
+                immediateReturnToolNames.add(tool.name());
             }
-            immediateReturnToolsByName.add(lastAddedTool.name());
-            lastAddedTool = null; // Clear to prevent accidental reuse
             return this;
         }
 
         public Builder withImmediateReturn(Set<String> toolNames) {
-            immediateReturnToolsByName.addAll(toolNames);
+            if (toolNames != null) {
+                immediateReturnToolNames.addAll(toolNames);
+            }
             return this;
         }
 
         public Builder addAll(Map<ToolSpecification, ToolExecutor> tools) {
-            tools.forEach(this::add);
-            lastAddedTool =
-                    null; // Prevent withImmediateReturn() from applying to unpredictable tool from map iteration
+            tools.forEach((tool, executor) -> add(tool, executor));
             return this;
         }
 
         public ToolProviderResult build() {
-            return new ToolProviderResult(tools, toolsByName, immediateReturnToolsByName);
+            return new ToolProviderResult(this);
         }
     }
 }

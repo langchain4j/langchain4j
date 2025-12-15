@@ -14,13 +14,16 @@ public class ToolServiceContext {
     private final Map<String, ToolExecutor> toolExecutors;
     private final Set<String> immediateReturnTools;
 
-    public ToolServiceContext(
-            List<ToolSpecification> toolSpecifications,
-            Map<String, ToolExecutor> toolExecutors,
-            Set<String> immediateReturnTools) {
+    public ToolServiceContext(List<ToolSpecification> toolSpecifications, Map<String, ToolExecutor> toolExecutors) {
         this.toolSpecifications = toolSpecifications;
         this.toolExecutors = toolExecutors;
-        this.immediateReturnTools = immediateReturnTools;
+        this.immediateReturnTools = Set.of();
+    }
+
+    public ToolServiceContext(Builder builder) {
+        this.toolSpecifications = builder.toolSpecifications;
+        this.toolExecutors = builder.toolExecutors;
+        this.immediateReturnTools = builder.immediateReturnTools;
     }
 
     public Set<String> immediateReturnTools() {
@@ -56,12 +59,41 @@ public class ToolServiceContext {
                 + toolExecutors + ']';
     }
 
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+        private List<ToolSpecification> toolSpecifications;
+        private Map<String, ToolExecutor> toolExecutors;
+        private Set<String> immediateReturnTools = Set.of();
+
+        public Builder toolSpecifications(List<ToolSpecification> toolSpecifications) {
+            this.toolSpecifications = toolSpecifications;
+            return this;
+        }
+
+        public Builder toolExecutors(Map<String, ToolExecutor> toolExecutors) {
+            this.toolExecutors = toolExecutors;
+            return this;
+        }
+
+        public Builder immediateReturnTools(Set<String> immediateReturnTools) {
+            this.immediateReturnTools = immediateReturnTools;
+            return this;
+        }
+
+        public ToolServiceContext build() {
+            return new ToolServiceContext(this);
+        }
+    }
+
     public static class Empty extends ToolServiceContext {
 
         public static final Empty INSTANCE = new Empty();
 
         private Empty() {
-            super(List.of(), Map.of(), Set.of());
+            super(List.of(), Map.of());
         }
     }
 }
