@@ -25,6 +25,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
+import javax.net.ssl.SSLContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,6 +42,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
     private final AtomicReference<CompletableFuture<JsonNode>> initializeInProgress = new AtomicReference<>(null);
     private volatile McpOperationHandler operationHandler;
     private final HttpClient httpClient;
+    private final SSLContext sslContext;
     private McpInitializeRequest initializeRequest;
     private final AtomicReference<String> mcpSessionId = new AtomicReference<>();
 
@@ -51,11 +53,15 @@ public class StreamableHttpMcpTransport implements McpTransport {
         trafficLog = getOrDefault(builder.logger, DEFAULT_TRAFFIC_LOG);
         Duration timeout = getOrDefault(builder.timeout, Duration.ofSeconds(60));
         customHeadersSupplier = getOrDefault(builder.customHeadersSupplier, () -> Map::of);
-        HttpClient.Builder clientBuilder = HttpClient.newBuilder();
+        sslContext = builder.sslContext;
+        HttpClient.Builder clientBuilder = HttpClient.newBuilder().connectTimeout(timeout);
         if (builder.executor != null) {
             clientBuilder.executor(builder.executor);
         }
-        httpClient = clientBuilder.connectTimeout(timeout).build();
+        if (sslContext != null) {
+            clientBuilder.sslContext(sslContext);
+        }
+        httpClient = clientBuilder.build();
     }
 
     @Override
@@ -232,6 +238,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         private boolean logRequests = false;
         private boolean logResponses = false;
         private Logger logger;
+        private SSLContext sslContext;
 
         /**
          * The URL of the MCP server.
@@ -301,6 +308,15 @@ public class StreamableHttpMcpTransport implements McpTransport {
          */
         public StreamableHttpMcpTransport.Builder executor(Executor executor) {
             this.executor = executor;
+            return this;
+        }
+
+        /**
+         * Supplies a custom {@link SSLContext} used when establishing HTTPS connections to the MCP server,
+         * allowing private CAs or certificates.
+         */
+        public StreamableHttpMcpTransport.Builder sslContext(SSLContext sslContext) {
+            this.sslContext = sslContext;
             return this;
         }
 
