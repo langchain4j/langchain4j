@@ -544,7 +544,7 @@ class AnthropicChatModelIT {
     }
 
     @Test
-    void should_send_custom_parameters() {
+    void should_set_custom_parameters_and_get_raw_response() {
 
         // given
         record Edit(String type) {}
@@ -574,6 +574,11 @@ class AnthropicChatModelIT {
         assertThat(chatResponse.aiMessage().text()).contains("Berlin");
 
         assertThat(spyingHttpClient.request().body()).contains("context_management");
+
+        AnthropicChatResponseMetadata metadata = (AnthropicChatResponseMetadata) chatResponse.metadata();
+        assertThat(metadata.rawHttpResponse().headers()).containsKey("anthropic-organization-id");
+        assertThat(metadata.rawHttpResponse().body()).contains("Berlin");
+        assertThat(metadata.rawServerSentEvents()).isEmpty();
     }
 
     @Test

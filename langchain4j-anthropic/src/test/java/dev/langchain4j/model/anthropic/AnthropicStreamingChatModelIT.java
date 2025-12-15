@@ -238,7 +238,7 @@ class AnthropicStreamingChatModelIT {
     }
 
     @Test
-    void should_send_custom_parameters() {
+    void should_set_custom_parameters_and_get_raw_response() {
 
         // given
         Map<String, Object> customParameters = Map.of("context_management", Map.of("edits", List.of(Map.of("type", "clear_tool_uses_20250919"))));
@@ -268,5 +268,10 @@ class AnthropicStreamingChatModelIT {
         assertThat(chatResponse.aiMessage().text()).contains("Berlin");
 
         assertThat(spyingHttpClient.request().body().contains("context_management"));
+
+        AnthropicChatResponseMetadata metadata = (AnthropicChatResponseMetadata) chatResponse.metadata();
+        assertThat(metadata.rawHttpResponse().headers()).containsKey("anthropic-organization-id");
+        assertThat(metadata.rawHttpResponse().body()).isNull();
+        assertThat(metadata.rawServerSentEvents()).isNotEmpty();
     }
 }

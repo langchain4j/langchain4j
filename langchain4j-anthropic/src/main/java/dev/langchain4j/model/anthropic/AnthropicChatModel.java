@@ -25,6 +25,7 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageReques
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicThinking;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
+import dev.langchain4j.model.anthropic.internal.client.ParsedAndRawResponse;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -32,7 +33,6 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
@@ -438,18 +438,20 @@ public class AnthropicChatModel implements ChatModel {
                 userId,
                 customParameters);
 
-        AnthropicCreateMessageResponse response =
-                withRetryMappingExceptions(() -> client.createMessage(anthropicRequest), maxRetries);
+        ParsedAndRawResponse response =
+                withRetryMappingExceptions(() -> client.createMessageWithRawResponse(anthropicRequest), maxRetries);
 
         return createChatResponse(response);
     }
 
-    private ChatResponse createChatResponse(AnthropicCreateMessageResponse response) {
-        ChatResponseMetadata responseMetadata = ChatResponseMetadata.builder()
+    private ChatResponse createChatResponse(ParsedAndRawResponse parsedAndRawResponse) {
+        AnthropicCreateMessageResponse response = parsedAndRawResponse.parsedResponse();
+        AnthropicChatResponseMetadata responseMetadata = AnthropicChatResponseMetadata.builder()
                 .id(response.id)
                 .modelName(response.model)
                 .tokenUsage(toTokenUsage(response.usage))
                 .finishReason(toFinishReason(response.stopReason))
+                .rawHttpResponse(parsedAndRawResponse.rawResponse())
                 .build();
 
         return ChatResponse.builder()
