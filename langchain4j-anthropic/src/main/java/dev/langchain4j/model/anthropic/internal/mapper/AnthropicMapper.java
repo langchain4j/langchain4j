@@ -127,7 +127,10 @@ public class AnthropicMapper {
                                 ensureNotBlank(image.base64Data(), "base64Data"));
                     } else if (content instanceof PdfFileContent pdfFileContent) {
                         PdfFile pdfFile = pdfFileContent.pdfFile();
-                        return new AnthropicPdfContent(
+                        if (pdfFile.url() != null) {
+                            return AnthropicPdfContent.fromUrl(pdfFile.url().toString());
+                        }
+                        return AnthropicPdfContent.fromBase64(
                                 pdfFile.mimeType(), ensureNotBlank(pdfFile.base64Data(), "base64Data"));
                     } else {
                         throw illegalArgument("Unknown content type: " + content);
@@ -358,9 +361,7 @@ public class AnthropicMapper {
     }
 
     public static List<AnthropicTool> toAnthropicTools(List<AnthropicServerTool> serverTools) {
-        return serverTools.stream()
-                .map(AnthropicMapper::toAnthropicTool)
-                .toList();
+        return serverTools.stream().map(AnthropicMapper::toAnthropicTool).toList();
     }
 
     public static AnthropicTool toAnthropicTool(AnthropicServerTool serverTool) {
