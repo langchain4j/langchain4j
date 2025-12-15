@@ -23,15 +23,18 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiModerationModel;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.output.structured.Description;
 import java.time.LocalDate;
@@ -46,12 +49,17 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 public class AiServicesIT {
+
+    @Captor
+    ArgumentCaptor<ChatRequest> chatRequestCaptor;
 
     @Spy
     ChatModel chatModel = OpenAiChatModel.builder()
@@ -994,5 +1002,40 @@ public class AiServicesIT {
         }
 
         String transformUserMessage(String userMessage);
+    }
+
+    interface AssistantWithChatRequestParams {
+
+        Response<AiMessage> chat(@UserMessage String userMessage, ChatRequestParameters params);
+    }
+
+    @Test
+    void should_use_custom_chat_request_parameters_passed_in_method() {
+
+        // Build an AI service for AssistantWithChatRequestParams
+        AssistantWithChatRequestParams assistant = AiServices.builder(AssistantWithChatRequestParams.class)
+                .chatModel(chatModel)
+                .build();
+
+        // Create some custom ChatRequestParameters
+        ChatRequestParameters customParams = ChatRequestParameters.builder()
+                .temperature(0.76)
+                .stopSequences("DONE")
+                .build();
+
+        // when
+        Response<AiMessage> response = assistant.chat("Hello, I'm passing custom parameters!", customParams);
+
+        // then
+        // First, verify the model was called
+        verify(chatModel).chat(chatRequestCaptor.capture());
+        ChatRequest actualRequest = chatRequestCaptor.getValue();
+
+        // Check that the custom parameters are now present in the request
+        assertThat(actualRequest.parameters().temperature()).isEqualTo(0.76);
+        assertThat(actualRequest.parameters().stopSequences()).containsExactly("DONE");
+
+        // Optionally check that the AIMessage response is not null, or has some text:
+        assertThat(response.content()).isNotNull();
     }
 }

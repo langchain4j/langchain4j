@@ -136,7 +136,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         // TODO do it once, when creating AI Service?
                         validateParameters(context.aiServiceClass, method);
 
-                        InvocationParameters invocationParameters = findInvocationParams(args, method.getParameters())
+                        InvocationParameters invocationParameters = findParamOfType(InvocationParameters.class, args, method.getParameters())
                                 .orElseGet(InvocationParameters::new);
 
                         InvocationContext invocationContext = InvocationContext.builder()
@@ -282,10 +282,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .build();
                         }
 
-                        ChatRequestParameters parameters = ChatRequestParameters.builder()
-                                .toolSpecifications(toolServiceContext.toolSpecifications())
-                                .responseFormat(responseFormat)
-                                .build();
+                        ChatRequestParameters parameters = chatRequestParameters(method, args, toolServiceContext, responseFormat);
 
                         ChatRequest chatRequest = context.chatRequestTransformer.apply(
                                 ChatRequest.builder()
@@ -380,16 +377,26 @@ class DefaultAiServices<T> extends AiServices<T> {
                         return actualResponse;
                     }
 
-                    private Optional<InvocationParameters> findInvocationParams(Object[] args, Parameter[] params) {
+                    private ChatRequestParameters chatRequestParameters(Method method, Object[] args, ToolServiceContext toolServiceContext, ResponseFormat responseFormat) {
+                        ChatRequestParameters parameters = ChatRequestParameters.builder()
+                                .toolSpecifications(toolServiceContext.toolSpecifications())
+                                .responseFormat(responseFormat)
+                                .build();
+                        return findParamOfType(ChatRequestParameters.class, args, method.getParameters())
+                                .map(parameters::overrideWith)
+                                .orElse(parameters);
+                    }
+
+                    private <P> Optional<P> findParamOfType(Class<P> paramType, Object[] args, Parameter[] params) {
                         if (args == null) {
                             return Optional.empty();
                         }
                         for (int i = 0; i < params.length; i++) {
                             Parameter parameter = params[i];
-                            if (InvocationParameters.class.isAssignableFrom(parameter.getType())) {
-                                InvocationParameters invocationParameters = (InvocationParameters) args[i];
-                                ensureNotNull(invocationParameters, "InvocationParameters");
-                                return Optional.of(invocationParameters);
+                            if (paramType.isAssignableFrom(parameter.getType())) {
+                                P param = (P) args[i];
+                                ensureNotNull(param, paramType.getSimpleName());
+                                return Optional.of(param);
                             }
                         }
                         return Optional.empty();
