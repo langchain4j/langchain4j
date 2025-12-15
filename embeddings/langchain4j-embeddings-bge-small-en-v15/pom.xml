@@ -13,6 +13,10 @@
     <name>LangChain4j :: Embeddings :: bge-small-en-v15</name>
     <description>In-process bge-small-en-v1.5 embedding model</description>
 
+    <properties>
+        <embeddingsSkipCache>false</embeddingsSkipCache>
+    </properties>
+
     <dependencies>
 
         <dependency>
@@ -41,6 +45,7 @@
                             <outputDirectory>${project.build.directory}/classes</outputDirectory>
                             <outputFileName>bge-small-en-v1.5.onnx</outputFileName>
                             <sha256>828e1496d7fabb79cfa4dcd84fa38625c0d3d21da474a00f08db0f559940cf35</sha256>
+                            <skipCache>${embeddingsSkipCache}</skipCache>
                         </configuration>
                     </execution>
                 </executions>

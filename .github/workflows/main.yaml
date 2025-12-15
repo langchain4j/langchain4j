@@ -89,6 +89,7 @@ jobs:
           cache: 'maven'
 
       - name: Setup JBang
+        # Required for MCP module
         uses: jbangdev/setup-jbang@main
 
       - name: Integration test with JDK ${{ matrix.java_version }}
