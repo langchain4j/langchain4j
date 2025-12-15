@@ -88,13 +88,6 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Authenticate to Google Cloud
-        # Required for Google modules (e.g., langchain4j-vertex-ai)
-        uses: google-github-actions/auth@v2
-        with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
-          credentials_json: ${{ secrets.GCP_CREDENTIALS_JSON }}
-
       - name: Setup JBang
         # Required for MCP module
         uses: jbangdev/setup-jbang@main
