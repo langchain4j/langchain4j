@@ -198,7 +198,7 @@ Build the AI Service:
 java
 ```java
 AssistantWithChatParams assistant = AiServices.builder(AssistantWithChatParams.class)
-.chatLanguageModel(openAiChatModel)  // or whichever model
+.chatModel(openAiChatModel)  // or whichever model
 .build();
 ```
 
