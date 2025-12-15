@@ -13,11 +13,13 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicMetadata;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicThinking;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicTool;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Internal
 class InternalAnthropicHelper {
@@ -54,6 +56,8 @@ class InternalAnthropicHelper {
             boolean stream,
             String toolChoiceName,
             Boolean disableParallelToolUse,
+            List<AnthropicServerTool> serverTools,
+            Set<String> toolMetadataKeysToSend,
             String userId,
             Map<String, Object> customParameters) {
 
@@ -69,9 +73,17 @@ class InternalAnthropicHelper {
                 .thinking(thinking)
                 .customParameters(customParameters);
 
-        if (!isNullOrEmpty(chatRequest.toolSpecifications())) {
-            requestBuilder.tools(toAnthropicTools(chatRequest.toolSpecifications(), toolsCacheType));
+        List<AnthropicTool> tools = new ArrayList<>();
+        if (!isNullOrEmpty(serverTools)) {
+            tools.addAll(toAnthropicTools(serverTools));
         }
+        if (!isNullOrEmpty(chatRequest.toolSpecifications())) {
+            tools.addAll(toAnthropicTools(chatRequest.toolSpecifications(), toolsCacheType, toolMetadataKeysToSend));
+        }
+        if (!tools.isEmpty()) {
+            requestBuilder.tools(tools);
+        }
+
         if (chatRequest.toolChoice() != null) {
             requestBuilder.toolChoice(
                     toAnthropicToolChoice(chatRequest.toolChoice(), toolChoiceName, disableParallelToolUse));

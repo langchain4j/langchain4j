@@ -22,7 +22,7 @@ import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.afterAg
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.agentError;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.beforeAgentInvocation;
 
-public interface AgentInvoker extends AgentInstance, AgentListenerProvider {
+public interface AgentInvoker extends AgentInstance, AgentListenerProvider, InternalAgent {
 
     Method method();
 
@@ -53,20 +53,20 @@ public interface AgentInvoker extends AgentInstance, AgentListenerProvider {
         }
     }
 
-    static AgentInvoker fromSpec(AgentSpecsProvider spec, Method agenticMethod, String name, String agentId) {
+    static AgentInvoker fromSpec(AgentSpecsProvider spec, Method agenticMethod, String name) {
         List<AgentArgument> arguments = List.of(new AgentArgument(agenticMethod.getGenericParameterTypes()[0], spec.inputKey()));
-        AgentInstance agentInstance = new NonAiAgentInstance(agenticMethod.getDeclaringClass(),
-                name, agentId, spec.description(), agenticMethod.getGenericReturnType(), spec.outputKey(), spec.async(), arguments,
-                x -> { }, x -> { }, spec.listener());
+        InternalAgent agentInstance = new NonAiAgentInstance(agenticMethod.getDeclaringClass(),
+                name, spec.description(), agenticMethod.getGenericReturnType(), spec.outputKey(), spec.async(), arguments,
+                spec.listener());
         return new MethodAgentInvoker(agenticMethod, agentInstance);
     }
 
-    static AgentInvoker fromMethod(AgentInstance spec, Method method) {
+    static AgentInvoker fromMethod(InternalAgent agent, Method method) {
         if (method.getDeclaringClass() == UntypedAgent.class) {
-            return new UntypedAgentInvoker(method, spec);
+            return new UntypedAgentInvoker(method, agent);
         }
 
-        return new MethodAgentInvoker(method, spec);
+        return new MethodAgentInvoker(method, agent);
     }
 
     static String parameterName(Parameter parameter) {

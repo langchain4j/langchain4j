@@ -2,7 +2,6 @@ package dev.langchain4j.agentic.internal;
 
 import static dev.langchain4j.agentic.internal.AgentUtil.agenticSystemDataTypes;
 import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
-import static dev.langchain4j.agentic.internal.AgentUtil.uniqueAgentName;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.afterAgentInvocation;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.beforeAgentInvocation;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.afterAgenticScopeCreated;
@@ -11,6 +10,7 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.Proxy;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -29,12 +29,13 @@ import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentListenerProvider;
 import dev.langchain4j.agentic.planner.Action;
+import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
 import dev.langchain4j.agentic.planner.PlanningContext;
 import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.planner.ChatMemoryAccessProvider;
-import dev.langchain4j.agentic.planner.DefaultAgentInstance;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.AgenticScopeAccess;
@@ -46,10 +47,9 @@ import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.ParameterNameResolver;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 
-public class PlannerBasedInvocationHandler implements InvocationHandler {
+public class PlannerBasedInvocationHandler implements InvocationHandler, AgentInstance, InternalAgent {
     private final Executor executor;
 
-    private final AgentInstance plannerAgent;
     private final Function<AgenticScope, Object> output;
 
     protected final AgentListener agentListener;
@@ -66,36 +66,59 @@ public class PlannerBasedInvocationHandler implements InvocationHandler {
 
     private final Supplier<Planner> plannerSupplier;
 
+    private final Planner defaultPlannerInstance;
+
+    private final Class<?> type;
+    private final String name;
+    private final String description;
+    private final Type outputType;
+    private final String outputKey;
+    private final List<AgentArgument> arguments;
+    private final List<AgentInstance> subagents;
+
+    private String agentId;
+    private AgentInstance parent;
+
     public PlannerBasedInvocationHandler(AbstractServiceBuilder<?, ?> service, Supplier<Planner> plannerSupplier) {
-        this(service, plannerSupplier, null);
+        this(service, null, service.name, plannerSupplier, null);
+
+        for (int i = 0; i < service.subagents.size(); i++) {
+            service.subagents.get(i).setParent(this, i);
+        }
+        agenticSystemDataTypes(this);
     }
 
-    private PlannerBasedInvocationHandler(AbstractServiceBuilder<?, ?> service, Supplier<Planner> plannerSupplier, DefaultAgenticScope agenticScope) {
+    private PlannerBasedInvocationHandler(AbstractServiceBuilder<?, ?> service, AgentInstance parent, String agentId, Supplier<Planner> plannerSupplier, DefaultAgenticScope agenticScope) {
         this.service = service;
+        this.agentId = agentId;
+        this.parent = parent;
         this.output = service.output;
         this.executor = service.executor;
         this.beforeCall = service.beforeCall;
         this.errorHandler = service.errorHandler;
         this.agentListener = service.agentListener;
         this.plannerSupplier = plannerSupplier;
+        this.defaultPlannerInstance = plannerSupplier.get();
         this.agenticScope = agenticScope;
 
-        this.plannerAgent = new DefaultAgentInstance(service.agentServiceClass, service.name, uniqueAgentName(service.agentServiceClass, service.name),
-                service.description, service.agentReturnType(), service.outputKey,
-                service.agenticMethod != null ? argumentsFromMethod(service.agenticMethod) : List.of(),
-                service.agentExecutors().stream().map(AgentInstance.class::cast).toList());
-        agenticSystemDataTypes(this.plannerAgent);
+        this.type = service.agentServiceClass;
+        this.name = service.name;
+        this.description = service.description;
+        this.outputType = service.agentReturnType();
+        this.outputKey = service.outputKey;
+        this.arguments = service.agenticMethod != null ? argumentsFromMethod(service.agenticMethod) : List.of();
+        this.subagents = service.subagents.stream().map(AgentInstance.class::cast).toList();
     }
 
     public AgenticScopeOwner withAgenticScope(DefaultAgenticScope agenticScope) {
         return (AgenticScopeOwner) Proxy.newProxyInstance(
-                plannerAgent.type().getClassLoader(),
-                new Class<?>[] {plannerAgent.type(), AgentInstance.class, AgentListenerProvider.class, AgenticScopeOwner.class},
-                new PlannerBasedInvocationHandler(service, plannerSupplier, agenticScope));
+                type.getClassLoader(),
+                new Class<?>[] {type, AgentInstance.class, AgentListenerProvider.class, AgenticScopeOwner.class},
+                new PlannerBasedInvocationHandler(service, parent, agentId, plannerSupplier, agenticScope));
     }
 
     @Override
-    public Object invoke(Object proxy, Method method, Object[] args) {
+    public Object invoke(Object proxy, Method method, Object[] args) throws Exception {
         AgenticScopeRegistry registry = agenticScopeRegistry();
         if (method.getDeclaringClass() == AgenticScopeOwner.class) {
             return switch (method.getName()) {
@@ -117,21 +140,8 @@ public class PlannerBasedInvocationHandler implements InvocationHandler {
             };
         }
 
-        if (method.getDeclaringClass() == AgentInstance.class) {
-            return switch (method.getName()) {
-                case "type" -> plannerAgent.type();
-                case "name" -> plannerAgent.name();
-                case "agentId" -> plannerAgent.agentId();
-                case "description" -> plannerAgent.description();
-                case "outputType" -> plannerAgent.outputType();
-                case "outputKey" -> plannerAgent.outputKey();
-                case "arguments" -> plannerAgent.arguments();
-                case "subagents" -> plannerAgent.subagents();
-                case "async" -> false;
-                default ->
-                        throw new UnsupportedOperationException(
-                                "Unknown method on agentInstance class : " + method.getName());
-            };
+        if (method.getDeclaringClass() == AgentInstance.class || method.getDeclaringClass() == InternalAgent.class) {
+            return method.invoke(Proxy.getInvocationHandler(proxy), args);
         }
 
         if (method.getDeclaringClass() == AgentListenerProvider.class) {
@@ -140,7 +150,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler {
 
         if (method.getDeclaringClass() == Object.class) {
             return switch (method.getName()) {
-                case "toString" -> service.serviceType() + "<" + plannerAgent.type().getSimpleName() + ">";
+                case "toString" -> service.serviceType() + "<" + type.getSimpleName() + ">";
                 case "hashCode" -> System.identityHashCode(this);
                 default ->
                         throw new UnsupportedOperationException(
@@ -158,7 +168,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler {
 
     private AgenticScopeRegistry agenticScopeRegistry() {
         if (isRootCall()) {
-            agenticScopeRegistry.compareAndSet(null, new AgenticScopeRegistry(plannerAgent.type().getName()));
+            agenticScopeRegistry.compareAndSet(null, new AgenticScopeRegistry(type.getName()));
         }
         return agenticScopeRegistry.get();
     }
@@ -172,16 +182,16 @@ public class PlannerBasedInvocationHandler implements InvocationHandler {
         if (isRootCall()) {
             currentScope.setListener(agentListener);
             currentScope.rootCallStarted(registry);
-            beforeAgentInvocation(agentListener, currentScope, plannerAgent, namedArgs);
+            beforeAgentInvocation(agentListener, currentScope, this, namedArgs);
         }
 
         Planner planner = plannerSupplier.get();
-        planner.init(new InitPlanningContext(currentScope, plannerAgent, plannerAgent.subagents()));
+        planner.init(new InitPlanningContext(currentScope, this, subagents));
         Object result = new PlannerLoop(planner, currentScope).loop();
-        Object output = plannerAgent.outputKey() != null ? currentScope.readState(plannerAgent.outputKey()) : result;
+        Object output = outputKey != null ? currentScope.readState(outputKey) : result;
 
         if (isRootCall()) {
-            afterAgentInvocation(agentListener, currentScope, plannerAgent, namedArgs, output);
+            afterAgentInvocation(agentListener, currentScope, this, namedArgs, output);
             currentScope.rootCallEnded(registry);
             currentScope.setListener(null);
         }
@@ -203,6 +213,71 @@ public class PlannerBasedInvocationHandler implements InvocationHandler {
             namedArgs.put(ParameterNameResolver.name(method.getParameters()[i]), args[i]);
         }
         return namedArgs;
+    }
+
+    @Override
+    public Class<?> type() {
+        return type;
+    }
+
+    @Override
+    public String name() {
+        return name;
+    }
+
+    @Override
+    public String agentId() {
+        return agentId;
+    }
+
+    @Override
+    public String description() {
+        return description;
+    }
+
+    @Override
+    public Type outputType() {
+        return outputType;
+    }
+
+    @Override
+    public String outputKey() {
+        return outputKey;
+    }
+
+    @Override
+    public boolean async() {
+        return false;
+    }
+
+    @Override
+    public List<AgentArgument> arguments() {
+        return arguments;
+    }
+
+    @Override
+    public AgentInstance parent() {
+        return parent;
+    }
+
+    @Override
+    public void setParent(AgentInstance parent) {
+        this.parent = parent;
+    }
+
+    @Override
+    public void appendId(String idSuffix) {
+        this.agentId = this.agentId + idSuffix;
+    }
+
+    @Override
+    public List<AgentInstance> subagents() {
+        return subagents;
+    }
+
+    @Override
+    public AgenticSystemTopology topology() {
+        return defaultPlannerInstance.topology();
     }
 
     private class PlannerLoop implements AgentInvocationListener {
@@ -250,12 +325,12 @@ public class PlannerBasedInvocationHandler implements InvocationHandler {
 
         private Object result() {
             Object result = output != null ? output.apply(agenticScope) : nextAction.result();
-            if (plannerAgent.outputKey() != null) {
+            if (outputKey != null) {
                 if (result != null) {
-                    agenticScope.writeState(plannerAgent.outputKey(), result);
+                    agenticScope.writeState(outputKey, result);
                     return result;
                 } else {
-                    return agenticScope.readState(plannerAgent.outputKey());
+                    return agenticScope.readState(outputKey);
                 }
             }
             return result;
@@ -334,7 +409,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler {
     }
 
     private Object accessChatMemory(AgenticScope agenticScope, String methodName, Object memoryId) {
-        ChatMemoryAccess chatMemoryAccess = ((ChatMemoryAccessProvider) plannerSupplier.get()).chatMemoryAccess(agenticScope);
+        ChatMemoryAccess chatMemoryAccess = ((ChatMemoryAccessProvider) defaultPlannerInstance).chatMemoryAccess(agenticScope);
         return switch (methodName) {
             case "getChatMemory" -> chatMemoryAccess.getChatMemory(memoryId);
             case "evictChatMemory" -> chatMemoryAccess.evictChatMemory(memoryId);
