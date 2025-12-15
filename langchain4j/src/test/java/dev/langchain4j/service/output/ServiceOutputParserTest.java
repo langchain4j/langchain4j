@@ -3,9 +3,12 @@ package dev.langchain4j.service.output;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.structured.Description;
 import dev.langchain4j.service.IllegalConfigurationException;
+import dev.langchain4j.service.Result;
+import dev.langchain4j.service.TokenStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -21,7 +24,7 @@ import java.time.LocalTime;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -43,8 +46,8 @@ class ServiceOutputParserTest {
         testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("1"), Byte.class, ByteOutputParser.class);
         testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("1"), short.class, ShortOutputParser.class);
         testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("1"), Short.class, ShortOutputParser.class);
-        testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("1"), int.class, IntOutputParser.class);
-        testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("1"), Integer.class, IntOutputParser.class);
+        testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("1"), int.class, IntegerOutputParser.class);
+        testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("1"), Integer.class, IntegerOutputParser.class);
         testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("1"), long.class, LongOutputParser.class);
         testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("1"), Long.class, LongOutputParser.class);
         testWhetherProperOutputParserWasCalled(
@@ -91,13 +94,13 @@ class ServiceOutputParserTest {
         DefaultOutputParserFactory defaultOutputParserFactory = new DefaultOutputParserFactory();
         OutputParserFactory defaultOutputParserFactorySpy = spy(defaultOutputParserFactory);
 
-        Response<AiMessage> responseStub = Response.from(aiMessage);
+        ChatResponse chatResponseStub = ChatResponse.builder().aiMessage(aiMessage).build();
         sut = new ServiceOutputParser(defaultOutputParserFactorySpy);
 
-        AtomicReference<Optional<OutputParser<?>>> capturedParserReference = new AtomicReference<>();
+        AtomicReference<OutputParser<?>> capturedParserReference = new AtomicReference<>();
 
-        doAnswer((Answer<Optional<?>>) invocation -> {
-                    Optional<OutputParser<?>> result = (Optional<OutputParser<?>>) invocation.callRealMethod();
+        doAnswer((Answer<?>) invocation -> {
+                    OutputParser<?> result = (OutputParser<?>) invocation.callRealMethod();
                     capturedParserReference.set(result);
                     return result;
                 })
@@ -105,11 +108,91 @@ class ServiceOutputParserTest {
                 .get(any(), any());
 
         // When
-        sut.parse(responseStub, rawReturnType);
+        sut.parse(chatResponseStub, rawReturnType);
 
         // Then
-        Object capturedOutputParser = capturedParserReference.get().get();
+        Object capturedOutputParser = capturedParserReference.get();
         assertThat(capturedOutputParser).isInstanceOf(expectedOutputParserType);
+    }
+
+    @Test
+    void jsonSchema() {
+
+        // primitives
+        assertThat(sut.jsonSchema(boolean.class)).isPresent();
+        assertThat(sut.jsonSchema(Boolean.class)).isPresent();
+        assertThat(sut.jsonSchema(int.class)).isPresent();
+        assertThat(sut.jsonSchema(Integer.class)).isPresent();
+        assertThat(sut.jsonSchema(long.class)).isPresent();
+        assertThat(sut.jsonSchema(Long.class)).isPresent();
+        assertThat(sut.jsonSchema(float.class)).isPresent();
+        assertThat(sut.jsonSchema(Float.class)).isPresent();
+        assertThat(sut.jsonSchema(double.class)).isPresent();
+        assertThat(sut.jsonSchema(Double.class)).isPresent();
+        assertThat(sut.jsonSchema(new TypeReference<Result<Double>>() {
+        }.getType())).isPresent();
+
+        // POJOs
+        assertThat(sut.jsonSchema(Person.class)).isPresent();
+        assertThat(sut.jsonSchema(new TypeReference<Result<Person>>() {
+        }.getType())).isPresent();
+
+        assertThat(sut.jsonSchema(new TypeReference<List<Person>>() {
+        }.getType())).isPresent();
+        assertThat(sut.jsonSchema(new TypeReference<Set<Person>>() {
+        }.getType())).isPresent();
+        assertThat(sut.jsonSchema(new TypeReference<Result<Set<Person>>>() {
+        }.getType())).isPresent();
+
+        // Enums
+        assertThat(sut.jsonSchema(Weather.class)).isPresent();
+        assertThat(sut.jsonSchema(new TypeReference<Result<Weather>>() {
+        }.getType())).isPresent();
+
+        assertThat(sut.jsonSchema(new TypeReference<List<Weather>>() {
+        }.getType())).isPresent();
+        assertThat(sut.jsonSchema(new TypeReference<Set<Weather>>() {
+        }.getType())).isPresent();
+        assertThat(sut.jsonSchema(new TypeReference<Result<Set<Weather>>>() {
+        }.getType())).isPresent();
+
+        // Strings
+        assertThat(sut.jsonSchema(new TypeReference<Result<String>>() {
+        }.getType())).isEmpty();
+
+        assertThat(sut.jsonSchema(new TypeReference<List<String>>() {
+        }.getType())).isPresent();
+        assertThat(sut.jsonSchema(new TypeReference<Set<String>>() {
+        }.getType())).isPresent();
+        assertThat(sut.jsonSchema(new TypeReference<Result<Set<String>>>() {
+        }.getType())).isPresent();
+
+        // JSON schema is not required
+        assertThat(sut.jsonSchema(String.class)).isEmpty();
+        assertThat(sut.jsonSchema(new TypeReference<Result<String>>() {
+        }.getType())).isEmpty();
+
+        assertThat(sut.jsonSchema(AiMessage.class)).isEmpty();
+        assertThat(sut.jsonSchema(new TypeReference<Result<AiMessage>>() {
+        }.getType())).isEmpty();
+
+        assertThat(sut.jsonSchema(Response.class)).isEmpty(); // legacy
+        assertThat(sut.jsonSchema(TokenStream.class)).isEmpty();
+
+        // JSON schema is (currently) not supported
+        assertThat(sut.jsonSchema(byte.class)).isEmpty();
+        assertThat(sut.jsonSchema(Byte.class)).isEmpty();
+        assertThat(sut.jsonSchema(short.class)).isEmpty();
+        assertThat(sut.jsonSchema(Short.class)).isEmpty();
+        assertThat(sut.jsonSchema(BigInteger.class)).isEmpty();
+        assertThat(sut.jsonSchema(BigDecimal.class)).isEmpty();
+        assertThat(sut.jsonSchema(Date.class)).isEmpty();
+        assertThat(sut.jsonSchema(LocalDate.class)).isEmpty();
+        assertThat(sut.jsonSchema(LocalTime.class)).isEmpty();
+        assertThat(sut.jsonSchema(LocalDateTime.class)).isEmpty();
+        assertThat(sut.jsonSchema(Map.class)).isEmpty();
+        assertThat(sut.jsonSchema(new TypeReference<Map<String, String>>() {
+        }.getType())).isEmpty();
     }
 
     /********************************************************************************************
@@ -126,11 +209,11 @@ class ServiceOutputParserTest {
     void makeSureJsonBlockIsExtractedBeforeParse(String json) {
         // Given
         AiMessage aiMessage = AiMessage.aiMessage(json);
-        Response<AiMessage> responseStub = Response.from(aiMessage);
+        ChatResponse chatResponseStub = ChatResponse.builder().aiMessage(aiMessage).build();
         sut = new ServiceOutputParser();
 
         // When
-        Object result = sut.parse(responseStub, KeyProperty.class);
+        Object result = sut.parse(chatResponseStub, KeyProperty.class);
 
         // Then
         assertThat(result).isInstanceOf(KeyProperty.class);
@@ -150,11 +233,11 @@ class ServiceOutputParserTest {
     void makeSureNestedJsonBlockIsExtractedBeforeParse(String json) {
         // Given
         AiMessage aiMessage = AiMessage.aiMessage(json);
-        Response<AiMessage> responseStub = Response.from(aiMessage);
+        ChatResponse chatResponseStub = ChatResponse.builder().aiMessage(aiMessage).build();
         sut = new ServiceOutputParser();
 
         // When
-        Object result = sut.parse(responseStub, KeyPropertyWrapper.class);
+        Object result = sut.parse(chatResponseStub, KeyPropertyWrapper.class);
 
         // Then
         assertThat(result).isInstanceOf(KeyPropertyWrapper.class);
@@ -168,12 +251,12 @@ class ServiceOutputParserTest {
     void illegalJsonBlockNotExtractedAndFailsParse(String json) {
         // Given
         AiMessage aiMessage = AiMessage.aiMessage(json);
-        Response<AiMessage> responseStub = Response.from(aiMessage);
+        ChatResponse chatResponseStub = ChatResponse.builder().aiMessage(aiMessage).build();
         sut = new ServiceOutputParser();
 
         // When / Then
-        assertThatThrownBy(() -> sut.parse(responseStub, KeyProperty.class))
-                .isExactlyInstanceOf(RuntimeException.class)
+        assertThatThrownBy(() -> sut.parse(chatResponseStub, KeyProperty.class))
+                .isExactlyInstanceOf(OutputParsingException.class)
                 .hasRootCauseInstanceOf(JsonProcessingException.class);
     }
 

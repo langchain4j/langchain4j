@@ -1,7 +1,5 @@
 package dev.langchain4j.model.chat.request.json;
 
-import dev.langchain4j.Experimental;
-
 import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.quoted;
@@ -11,7 +9,6 @@ import static dev.langchain4j.internal.Utils.quoted;
  * When used, the {@link JsonObjectSchema#definitions()} of the root JSON schema element
  * should contain an entry with a key equal to the {@link #reference()} of this {@link JsonReferenceSchema}.
  */
-@Experimental
 public class JsonReferenceSchema implements JsonSchemaElement {
 
     private final String reference;
@@ -22,6 +19,11 @@ public class JsonReferenceSchema implements JsonSchemaElement {
 
     public String reference() {
         return reference;
+    }
+
+    @Override
+    public String description() {
+        return null;
     }
 
     public static Builder builder() {

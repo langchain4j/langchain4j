@@ -1,9 +1,13 @@
 package dev.langchain4j.internal;
 
+import dev.langchain4j.Internal;
+
 /**
  * Utility methods for creating common exceptions.
  */
+@Internal
 public class Exceptions {
+
     private Exceptions() {}
 
     /**
@@ -16,7 +20,7 @@ public class Exceptions {
      * @return the constructed exception.
      */
     public static IllegalArgumentException illegalArgument(String format, Object... args) {
-        return new IllegalArgumentException(String.format(format, args));
+        return new IllegalArgumentException(format.formatted(args));
     }
 
     /**
@@ -29,6 +33,15 @@ public class Exceptions {
      * @return the constructed exception.
      */
     public static RuntimeException runtime(String format, Object... args) {
-        return new RuntimeException(String.format(format, args));
+        return new RuntimeException(format.formatted(args));
+    }
+
+    public static Throwable unwrapRuntimeException(Exception e) {
+        if (e.getClass() == RuntimeException.class && e.getCause() != null) {
+            // when checked exception (e.g., JsonProcessingException) is wrapped into RuntimeException
+            return e.getCause();
+        } else {
+            return e;
+        }
     }
 }

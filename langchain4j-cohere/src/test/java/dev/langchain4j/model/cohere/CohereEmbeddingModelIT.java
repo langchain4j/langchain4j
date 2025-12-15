@@ -12,7 +12,9 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+@EnabledIfEnvironmentVariable(named = "COHERE_API_KEY", matches = ".+")
 class CohereEmbeddingModelIT {
 
     @Test
@@ -45,7 +47,7 @@ class CohereEmbeddingModelIT {
                 .inputType("search_document")
                 .timeout(Duration.ofSeconds(60))
                 .logRequests(true)
-                .logResponses(true)
+                .logResponses(false) // embeddings are huge in logs
                 .build();
 
         TextSegment segment1 = TextSegment.from("hello");
@@ -81,7 +83,7 @@ class CohereEmbeddingModelIT {
                 .inputType("search_document")
                 .timeout(Duration.ofSeconds(60))
                 .logRequests(true)
-                .logResponses(true)
+                .logResponses(false) // embeddings are huge in logs
                 .build();
 
         List<TextSegment> segments = new ArrayList<>();

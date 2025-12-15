@@ -1,11 +1,15 @@
 package dev.langchain4j.model.ollama;
 
+import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.ollamaBaseUrl;
+import static dev.langchain4j.model.ollama.OllamaJsonUtils.fromJson;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
-import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
@@ -17,18 +21,9 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.output.Response;
-import org.junit.jupiter.api.Test;
-
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-
-import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.ollamaBaseUrl;
-import static dev.langchain4j.model.ollama.OllamaImage.LLAMA_3_1;
-import static dev.langchain4j.model.ollama.OllamaJsonUtils.fromJson;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.Test;
 
 class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageModelInfrastructure {
 
@@ -43,44 +38,15 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
             .required("name", "capital", "languages")
             .build();
 
-    record CountryInfo(String name, String capital, List<String> languages) {
-    }
-
-    @Test
-    void should_generate_structured_output_using_chat_request_api() {
-        // given
-        ChatLanguageModel ollamaChatModel = OllamaChatModel.builder()
-                .baseUrl(ollamaBaseUrl(ollama))
-                .modelName(LLAMA_3_1)
-                .temperature(0.0)
-                .build();
-
-        // when
-        ChatResponse chatResponse = ollamaChatModel.chat(ChatRequest.builder()
-                .messages(userMessage("Tell me about Canada."))
-                .responseFormat(ResponseFormat.builder()
-                        .type(ResponseFormatType.JSON)
-                        .jsonSchema(JsonSchema.builder().rootElement(schema).build())
-                        .build())
-                .build());
-
-        String response = chatResponse.aiMessage().text();
-
-        // then
-        CountryInfo countryInfo = fromJson(response, CountryInfo.class);
-
-        assertThat(countryInfo.name()).isEqualTo("Canada");
-        assertThat(countryInfo.capital()).isEqualTo("Ottawa");
-        assertThat(countryInfo.languages()).contains("English", "French");
-    }
+    record CountryInfo(String name, String capital, List<String> languages) {}
 
     @Test
     void should_generate_structured_output_using_response_format() {
 
         // given
-        ChatLanguageModel ollamaChatModel = OllamaChatModel.builder()
+        ChatModel ollamaChatModel = OllamaChatModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
-                .modelName(LLAMA_3_1)
+                .modelName(MODEL_NAME)
                 .temperature(0.0)
                 .responseFormat(ResponseFormat.builder()
                         .type(ResponseFormatType.JSON)
@@ -106,9 +72,9 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
     void should_generate_structured_output_using_response_format_streaming() throws Exception {
 
         // given
-        StreamingChatLanguageModel streamingOllamaChatModelWithResponseFormat = OllamaStreamingChatModel.builder()
+        StreamingChatModel streamingOllamaChatModelWithResponseFormat = OllamaStreamingChatModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
-                .modelName(LLAMA_3_1)
+                .modelName(MODEL_NAME)
                 .temperature(0.0)
                 .responseFormat(ResponseFormat.builder()
                         .type(ResponseFormatType.JSON)
@@ -123,9 +89,7 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
         streamingOllamaChatModelWithResponseFormat.chat("Tell me about Canada.", new StreamingChatResponseHandler() {
 
             @Override
-            public void onPartialResponse(String partialResponse) {
-
-            }
+            public void onPartialResponse(String partialResponse) {}
 
             @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
@@ -149,29 +113,11 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
     }
 
     @Test
-    void should_throw_exception_when_both_format_parameters_are_set_for_ollama_chat_model() {
-        assertThatThrownBy(() -> OllamaChatModel.builder()
-                .format("json")
-                .responseFormat(ResponseFormat.JSON)
-                .build())
-                .isInstanceOf(IllegalStateException.class);
-    }
-
-    @Test
-    void should_throw_exception_when_both_format_parameters_are_set_for_ollama_streaming_chat_model() {
-        assertThatThrownBy(() -> OllamaStreamingChatModel.builder()
-                .format("json")
-                .responseFormat(ResponseFormat.JSON)
-                .build())
-                .isInstanceOf(IllegalStateException.class);
-    }
-
-    @Test
     void language_model_should_generate_structured_output() {
         // given
         LanguageModel languageModel = OllamaLanguageModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
-                .modelName(LLAMA_3_1)
+                .modelName(MODEL_NAME)
                 .temperature(0.0)
                 .responseFormat(ResponseFormat.builder()
                         .type(ResponseFormatType.JSON)
@@ -197,7 +143,7 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
         // given
         StreamingLanguageModel languageModel = OllamaStreamingLanguageModel.builder()
                 .baseUrl(ollamaBaseUrl(ollama))
-                .modelName(LLAMA_3_1)
+                .modelName(MODEL_NAME)
                 .temperature(0.0)
                 .responseFormat(ResponseFormat.builder()
                         .type(ResponseFormatType.JSON)

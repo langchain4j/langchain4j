@@ -7,7 +7,6 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-
 import java.util.Objects;
 
 @JsonDeserialize(builder = Content.Builder.class)
@@ -17,18 +16,29 @@ public final class Content {
 
     @JsonProperty
     private final ContentType type;
+
     @JsonProperty
     private final String text;
+
     @JsonProperty
     private final ImageUrl imageUrl;
+
+    @JsonProperty
+    private final VideoUrl videoUrl;
+
     @JsonProperty
     private final InputAudio inputAudio;
+
+    @JsonProperty
+    private final PdfFile file;
 
     public Content(Builder builder) {
         this.type = builder.type;
         this.text = builder.text;
         this.imageUrl = builder.imageUrl;
+        this.videoUrl = builder.videoUrl;
         this.inputAudio = builder.inputAudio;
+        this.file = builder.file;
     }
 
     public ContentType type() {
@@ -43,22 +53,31 @@ public final class Content {
         return imageUrl;
     }
 
+    public VideoUrl videoUrl() {
+        return videoUrl;
+    }
+
     public InputAudio inputAudio() {
         return inputAudio;
+    }
+
+    public PdfFile file() {
+        return file;
     }
 
     @Override
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof Content
-                && equalTo((Content) another);
+        return another instanceof Content && equalTo((Content) another);
     }
 
     private boolean equalTo(Content another) {
         return Objects.equals(type, another.type)
                 && Objects.equals(text, another.text)
                 && Objects.equals(imageUrl, another.imageUrl)
-                && Objects.equals(inputAudio, another.inputAudio);
+                && Objects.equals(videoUrl, another.videoUrl)
+                && Objects.equals(inputAudio, another.inputAudio)
+                && Objects.equals(file, another.file);
     }
 
     @Override
@@ -67,18 +86,21 @@ public final class Content {
         h += (h << 5) + Objects.hashCode(type);
         h += (h << 5) + Objects.hashCode(text);
         h += (h << 5) + Objects.hashCode(imageUrl);
+        h += (h << 5) + Objects.hashCode(videoUrl);
         h += (h << 5) + Objects.hashCode(inputAudio);
+        h += (h << 5) + Objects.hashCode(file);
         return h;
     }
 
     @Override
     public String toString() {
-        return "Content{" +
-                "type=" + type +
-                ", text=" + text +
-                ", imageUrl=" + imageUrl +
-                ", inputAudio=" + inputAudio +
-                "}";
+        return "Content{" + "type="
+                + type + ", text="
+                + text + ", imageUrl="
+                + imageUrl + ", videoUrl="
+                + videoUrl + ", inputAudio="
+                + inputAudio + ", file="
+                + file + "}";
     }
 
     public static Builder builder() {
@@ -93,7 +115,9 @@ public final class Content {
         private ContentType type;
         private String text;
         private ImageUrl imageUrl;
+        private VideoUrl videoUrl;
         private InputAudio inputAudio;
+        private PdfFile file;
 
         public Builder type(ContentType type) {
             this.type = type;
@@ -110,8 +134,18 @@ public final class Content {
             return this;
         }
 
+        public Builder videoUrl(VideoUrl videoUrl) {
+            this.videoUrl = videoUrl;
+            return this;
+        }
+
         public Builder inputAudio(InputAudio inputAudio) {
             this.inputAudio = inputAudio;
+            return this;
+        }
+
+        public Builder file(PdfFile file) {
+            this.file = file;
             return this;
         }
 

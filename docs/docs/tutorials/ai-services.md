@@ -4,7 +4,7 @@ sidebar_position: 6
 
 # AI Services
 
-So far, we have been covering low-level components like `ChatLanguageModel`, `ChatMessage`, `ChatMemory`, etc.
+So far, we have been covering low-level components like `ChatModel`, `ChatMessage`, `ChatMemory`, etc.
 Working at this level is very flexible and gives you total freedom, but it also forces you to write a lot of boilerplate code.
 Since LLM-powered applications usually require not just a single component but multiple components working together
 (e.g., prompt templates, chat memory, LLMs, output parsers, RAG components: embedding models and stores)
@@ -57,9 +57,9 @@ interface Assistant {
 ```
 
 Then, we create our low-level components. These components will be used under the hood of our AI Service.
-In this case, we just need the `ChatLanguageModel`:
+In this case, we just need the `ChatModel`:
 ```java
-ChatLanguageModel model = OpenAiChatModel.builder()
+ChatModel model = OpenAiChatModel.builder()
     .apiKey(System.getenv("OPENAI_API_KEY"))
     .modelName(GPT_4_O_MINI)
     .build();
@@ -88,9 +88,9 @@ You provide the `Class` of your interface to `AiServices` along with the low-lev
 and `AiServices` creates a proxy object implementing this interface.
 Currently, it uses reflection, but we are considering alternatives as well.
 This proxy object handles all the conversions for inputs and outputs.
-In this case, the input is a single `String`, but we are using a `ChatLanguageModel` which takes `ChatMessage` as input.
-So, `AiService` will automatically convert it into a `UserMessage` and invoke `ChatLanguageModel`.
-Since the output type of the `chat` method is a `String`, after `ChatLanguageModel` returns `AiMessage`,
+In this case, the input is a single `String`, but we are using a `ChatModel` which takes `ChatMessage` as input.
+So, `AiService` will automatically convert it into a `UserMessage` and invoke `ChatModel`.
+Since the output type of the `chat` method is a `String`, after `ChatModel` returns `AiMessage`,
 it will be converted into a `String` before being returned from the `chat` method.
 
 ## AI Services in Quarkus Application
@@ -132,7 +132,7 @@ This will be converted into a `SystemMessage` behind the scenes and sent to the 
 System messages can also be defined dynamically with the system message provider:
 ```java
 Friend friend = AiServices.builder(Friend.class)
-    .chatLanguageModel(model)
+    .chatModel(model)
     .systemMessageProvider(chatMemoryId -> "You are a good friend of mine. Answer using slang.")
     .build();
 ```
@@ -187,6 +187,14 @@ String chat(String userMessage);
 String chat(@UserMessage String userMessage);
 
 String chat(@UserMessage String userMessage, @V("country") String country); // userMessage contains "{{country}}" template variable
+
+String chat(@UserMessage String userMessage, @UserMessage Content content); // content can be one of: TextContent, ImageContent, AudioContent, VideoContent, PdfFileContent
+
+String chat(@UserMessage String userMessage, @UserMessage ImageContent image); // second argument can be one of: TextContent, ImageContent, AudioContent, VideoContent, PdfFileContent
+
+String chat(@UserMessage String userMessage, @UserMessage List<Content> contents);
+
+String chat(@UserMessage String userMessage, @UserMessage List<ImageContent> images);
 
 @UserMessage("What is the capital of Germany?")
 String chat();
@@ -247,43 +255,72 @@ String chat(@V("answerInstructions") String answerInstructions, @V("country") St
 </details>
 
 ## Multimodality
-AI services currently do not support multimodality,
-please use the [low-level API](/tutorials/chat-and-language-models#multimodality) for this.
+
+Additionally to the text content,
+AI Service method can accept one or multiple `Content` or `List<Content>` arguments:
+
+```java
+String chat(@UserMessage String userMessage, @UserMessage Content content);
+
+String chat(@UserMessage String userMessage, @UserMessage ImageContent image);
+
+String chat(@UserMessage String userMessage, @UserMessage ImageContent image, @UserMessage AudioContent audio);
+
+String chat(@UserMessage String userMessage, @UserMessage List<Content> contents);
+
+String chat(@UserMessage String userMessage, @UserMessage List<ImageContent> images);
+```
+
+AI Service will put all contents into the final `UserMessage` in the order of parameter declaration.
+
+Please check [Content API](/tutorials/chat-and-language-models#multimodality)
+for more details on the available content types.
+
+
+## Return Types
+
+AI Service method can return one of the following types:
+- `String` - in this case LLM-generated output is returned without any processing/parsing
+- Any type supported by [Structured Outputs](/tutorials/structured-outputs#supported-types) - in this case
+AI service will parse LLM-generated output into a desired type before returning
+
+Any type can be additionally wrapped into a `Result<T>` to get extra metadata about AI Service invocation:
+- `TokenUsage` - total number of tokens used during AI service invocation. If AI service did multiple calls to
+the LLM (e.g., because tools were executed), it will sum token usages of all calls.
+- Sources - `Content`s retrieved during [RAG](/tutorials/ai-services#rag) retrieval
+- All [tools](/tutorials/ai-services#tools-function-calling) executed during AI Service invocation (both requests and results)
+- `FinishReason` of the final chat response
+- All intermediate `ChatResponse`s
+- The final `ChatResponse`
+
+An example:
+```java
+interface Assistant {
+    
+    @UserMessage("Generate an outline for the article on the following topic: {{it}}")
+    Result<List<String>> generateOutlineFor(String topic);
+}
+
+Result<List<String>> result = assistant.generateOutlineFor("Java");
+
+List<String> outline = result.content();
+TokenUsage tokenUsage = result.tokenUsage();
+List<Content> sources = result.sources();
+List<ToolExecution> toolExecutions = result.toolExecutions();
+FinishReason finishReason = result.finishReason();
+```
 
 ## Structured Outputs
+
+If you want to receive a structured output (e.g., a complex Java object,
+as opposed to an unstructured text inside the `String`) from the LLM,
+you can change the return type of your AI Service method from `String` to some other type.
 
 :::note
 More info on Structured Outputs can be found [here](/tutorials/structured-outputs).
 :::
 
-If you want to receive a structured output from the LLM,
-you can change the return type of your AI Service method from `String` to something else.
-Currently, AI Services support the following return types:
-- `String`
-- `AiMessage`
-- Any custom POJO
-- Any `Enum` or `List<Enum>` or `Set<Enum>`, if you want to classify text, e.g. sentiment, user intent, etc.
-- `boolean`/`Boolean`, if you need to get "yes" or "no" answer
-- `byte`/`short`/`int`/`BigInteger`/`long`/`float`/`double`/`BigDecimal`
-- `Date`/`LocalDate`/`LocalTime`/`LocalDateTime`
-- `List<String>`/`Set<String>`, if you want to get the answer in the form of a list of bullet points
-- `Map<K, V>`
-- `Result<T>`, if you need to access `TokenUsage`, `FinishReason`, sources (`Content`s retrieved during RAG) and executed tools, aside from `T`, which can be of any type listed above. For example: `Result<String>`, `Result<MyCustomPojo>`
-
-Unless the return type is `String`, `AiMessage`, or `Map<K, V>`, the AI Service will automatically append instructions
-to the end of the `UserMessage` indicating the format in which the LLM should respond.
-Before the method returns, the AI Service will parse the output of the LLM into the desired type.
-
-You can observe appended instructions by [enabling logging](/tutorials/logging).
-
-:::note
-Some LLM providers (e.g., OpenAI and Google Gemini) allow specifying JSON schema for the desired output.
-If such a feature is supported **and enabled**, free-form text instructions will not be appended to the end of the `UserMessage`.
-In this case, the JSON schema will be automatically generated from your POJO and passed to the LLM.
-This will guarantee that the LLM adheres to this JSON schema.
-:::
-
-Now let's take a look at some examples.
+A few examples:
 
 ### `boolean` as return type
 
@@ -304,15 +341,7 @@ boolean positive = sentimentAnalyzer.isPositive("It's wonderful!");
 ### `Enum` as return type
 ```java
 enum Priority {
-    
-    @Description("Critical issues such as payment gateway failures or security breaches.")
-    CRITICAL,
-    
-    @Description("High-priority issues like major feature malfunctions or widespread outages.")
-    HIGH,
-    
-    @Description("Low-priority issues such as minor bugs or cosmetic problems.")
-    LOW
+    CRITICAL, HIGH, LOW
 }
 
 interface PriorityAnalyzer {
@@ -326,10 +355,6 @@ PriorityAnalyzer priorityAnalyzer = AiServices.create(PriorityAnalyzer.class, mo
 Priority priority = priorityAnalyzer.analyzePriority("The main payment gateway is down, and customers cannot process transactions.");
 // CRITICAL
 ```
-
-:::note
-`@Description` annotation is optional. It's suggested to be used when enum names are not self-explanatory.
-:::
 
 ### POJO as a return type
 ```java
@@ -515,7 +540,7 @@ interface Assistant {
     TokenStream chat(String message);
 }
 
-StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
+StreamingChatModel model = OpenAiStreamingChatModel.builder()
     .apiKey(System.getenv("OPENAI_API_KEY"))
     .modelName(GPT_4_O_MINI)
     .build();
@@ -524,13 +549,46 @@ Assistant assistant = AiServices.create(Assistant.class, model);
 
 TokenStream tokenStream = assistant.chat("Tell me a joke");
 
-tokenStream.onPartialResponse((String partialResponse) -> System.out.println(partialResponse))
+CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
+
+tokenStream
+    .onPartialResponse((String partialResponse) -> System.out.println(partialResponse))
+    .onPartialThinking((PartialThinking partialThinking) -> System.out.println(partialThinking))
     .onRetrieved((List<Content> contents) -> System.out.println(contents))
+    .onIntermediateResponse((ChatResponse intermediateResponse) -> System.out.println(intermediateResponse))
+     // This will be invoked right before a tool is executed. BeforeToolExecution contains ToolExecutionRequest (e.g. tool name, tool arguments, etc.)  
+    .beforeToolExecution((BeforeToolExecution beforeToolExecution) -> System.out.println(beforeToolExecution))
+     // This will be invoked right after a tool is executed. ToolExecution contains ToolExecutionRequest and tool execution result. 
     .onToolExecuted((ToolExecution toolExecution) -> System.out.println(toolExecution))
-    .onCompleteResponse((ChatResponse response) -> System.out.println(response))
-    .onError((Throwable error) -> error.printStackTrace())
+    .onCompleteResponse((ChatResponse response) -> futureResponse.complete(response))
+    .onError((Throwable error) -> futureResponse.completeExceptionally(error))
+    .start();
+
+futureResponse.join(); // Blocks the main thread until the streaming process (running in another thread) is complete
+```
+
+### Streaming Cancellation
+
+If you wish to cancel the streaming, you can do so from one of the following callbacks:
+- `onPartialResponseWithContext(BiConsumer<PartialResponse, PartialResponseContext>)`
+- `onPartialThinkingWithContext(BiConsumer<PartialThinking, PartialThinkingContext>)`
+
+For example:
+```java
+tokenStream
+    .onPartialResponseWithContext((PartialResponse partialResponse, PartialResponseContext context) -> {
+        process(partialResponse);
+        if (shouldCancel()) {
+            context.streamingHandle().cancel();
+        }
+    })
+    .onCompleteResponse((ChatResponse response) -> futureResponse.complete(response))
+    .onError((Throwable error) -> futureResponse.completeExceptionally(error))
     .start();
 ```
+
+When `StreamingHandle.cancel()` is called, LangChain4j will close the connection and stop the streaming.
+Once `StreamingHandle.cancel()` has been called, `TokenStream` will not receive any further callbacks.
 
 ### Flux
 You can also use `Flux<String>` instead of `TokenStream`.
@@ -539,7 +597,7 @@ For this, please import `langchain4j-reactor` module:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-reactor</artifactId>
-    <version>1.0.0-beta2</version>
+    <version>1.9.1-beta17</version>
 </dependency>
 ```
 ```java
@@ -557,7 +615,7 @@ interface Assistant {
 The AI Service can use [chat memory](/tutorials/chat-memory) in order to "remember" previous interactions:
 ```java
 Assistant assistant = AiServices.builder(Assistant.class)
-    .chatLanguageModel(model)
+    .chatModel(model)
     .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
     .build();
 ```
@@ -573,7 +631,7 @@ interface Assistant  {
 }
 
 Assistant assistant = AiServices.builder(Assistant.class)
-    .chatLanguageModel(model)
+    .chatModel(model)
     .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
     .build();
 
@@ -581,6 +639,23 @@ String answerToKlaus = assistant.chat(1, "Hello, my name is Klaus");
 String answerToFrancine = assistant.chat(2, "Hello, my name is Francine");
 ```
 In this scenario, two distinct instances of `ChatMemory` will be provided by `ChatMemoryProvider`, one for each memory ID.
+
+When using `ChatMemory` in this way it's also important to evict the memory of a no longer needed conversations in order to avoid memory leaks. To make the chat memories internally used by an AI service accessible it's enough that the interface defining it extends the `ChatMemoryAccess` one.
+```java
+
+interface Assistant extends ChatMemoryAccess {
+    String chat(@MemoryId int memoryId, @UserMessage String message);
+}
+```
+This makes it possible to both access the `ChatMemory` instance of a single conversation and to get rid of it when the conversation is terminated.
+
+```java
+String answerToKlaus = assistant.chat(1, "Hello, my name is Klaus");
+String answerToFrancine = assistant.chat(2, "Hello, my name is Francine");
+
+List<ChatMessage> messagesWithKlaus = assistant.getChatMemory(1).messages();
+boolean chatMemoryWithFrancineEvicted = assistant.evictChatMemory(2);
+```
 
 :::note
 Please note that if an AI Service method does not have a parameter annotated with `@MemoryId`,
@@ -619,7 +694,7 @@ class Tools {
 }
 
 Assistant assistant = AiServices.builder(Assistant.class)
-    .chatLanguageModel(model)
+    .chatModel(model)
     .tools(new Tools())
     .build();
 
@@ -643,7 +718,7 @@ EmbeddingModel embeddingModel = ...
 ContentRetriever contentRetriever = new EmbeddingStoreContentRetriever(embeddingStore, embeddingModel);
 
 Assistant assistant = AiServices.builder(Assistant.class)
-    .chatLanguageModel(model)
+    .chatModel(model)
     .contentRetriever(contentRetriever)
     .build();
 ```
@@ -660,7 +735,7 @@ RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
         .build();
 
 Assistant assistant = AiServices.builder(Assistant.class)
-    .chatLanguageModel(model)
+    .chatModel(model)
     .retrievalAugmentor(retrievalAugmentor)
     .build();
 ```
@@ -671,8 +746,36 @@ More RAG examples can be found [here](https://github.com/langchain4j/langchain4j
 
 
 ## Auto-Moderation
+
+AI Services can automatically perform content moderation. When inappropriate content is detected, a `ModerationException` is thrown, which contains the original `Moderation` object.
+This object includes information about the flagged content, such as the specific text that was flagged.
+
+Auto-moderation can be configured when building the AI Service:
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+    .chatModel(model)
+    .moderationModel(moderationModel)  // Configures moderation  model
+    .build();
+```
+
+
 [Example](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithAutoModerationExample.java)
 
+## Programmatic ChatRequest rewriting
+
+In some circumstances it can be useful to modify the `ChatRequest` before it is sent to the LLM. For instance, it may be necessary to append some additional context to the user message or modify the system message based on some external conditions.
+
+It is possible to do so by configuring the AI Service with a `UnaryOperator<ChatRequest>` implementing the transformation that be applied to the `ChatRequest`:
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+    .chatModel(model)
+    .chatRequestTransformer(transformingFunction)  // Configures the transformation function to be applied to the ChatRequest
+    .build();
+```
+
+In case it is needed to also access the `ChatMemory` to implement the required `ChatRequest` transformation, it is also possible to configure the `chatRequestTransformer` method with a `BiFunction<ChatRequest, Object, ChatRequest>`, where the second parameter passed to this function is the memory ID.
 
 ## Chaining multiple AI Services
 The more complex the logic of your LLM-powered application becomes,
@@ -756,7 +859,7 @@ class MilesOfSmiles {
 GreetingExpert greetingExpert = AiServices.create(GreetingExpert.class, llama2);
 
 ChatBot chatBot = AiServices.builder(ChatBot.class)
-    .chatLanguageModel(gpt4)
+    .chatModel(gpt4)
     .contentRetriever(milesOfSmilesContentRetriever)
     .build();
 

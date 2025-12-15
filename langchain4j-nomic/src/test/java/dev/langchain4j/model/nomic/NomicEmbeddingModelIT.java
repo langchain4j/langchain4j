@@ -6,6 +6,7 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.store.embedding.CosineSimilarity;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.List;
 
@@ -13,6 +14,7 @@ import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
+@EnabledIfEnvironmentVariable(named = "NOMIC_API_KEY", matches = ".+")
 class NomicEmbeddingModelIT {
 
     @Test
@@ -48,9 +50,8 @@ class NomicEmbeddingModelIT {
                 .taskType("clustering")
                 .maxSegmentsPerBatch(1)
                 .timeout(ofSeconds(10))
-                .maxRetries(2)
                 .logRequests(true)
-                .logResponses(true)
+                .logResponses(false) // embeddings are huge in logs
                 .build();
 
         TextSegment segment1 = TextSegment.from("hello");

@@ -5,5 +5,4 @@ package dev.langchain4j.store.embedding.infinispan;
  * @param name, the name of the metadata
  * @param value, the value of the metadata
  */
-public record LangChainMetadata(String name, String value) {}
-
+public record LangChainMetadata(String name, Object value) {}

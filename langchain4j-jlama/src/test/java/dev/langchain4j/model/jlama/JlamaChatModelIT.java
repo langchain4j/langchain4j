@@ -3,7 +3,7 @@ package dev.langchain4j.model.jlama;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class JlamaChatModelIT {
 
     static File tmpDir;
-    static ChatLanguageModel model;
+    static ChatModel model;
 
     @BeforeAll
     static void setup() {

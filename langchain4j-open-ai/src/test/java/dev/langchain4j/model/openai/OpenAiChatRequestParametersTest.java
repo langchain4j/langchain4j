@@ -67,4 +67,13 @@ class OpenAiChatRequestParametersTest {
         assertThat(openAiResult.serviceTier()).isEqualTo("tier1");
         assertThat(openAiResult.reasoningEffort()).isEqualTo("low");
     }
+
+    @Test
+    void null_model_name() {
+        OpenAiChatRequestParameters params = OpenAiChatRequestParameters.builder()
+                .modelName((OpenAiChatModelName) null)
+                .build();
+
+        assertThat(params.modelName()).isNull();
+    }
 }

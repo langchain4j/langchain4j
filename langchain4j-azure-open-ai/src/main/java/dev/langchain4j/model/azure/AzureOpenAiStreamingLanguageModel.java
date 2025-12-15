@@ -1,31 +1,32 @@
 package dev.langchain4j.model.azure;
 
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupSyncClient;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+
 import com.azure.ai.openai.OpenAIClient;
+import com.azure.ai.openai.implementation.accesshelpers.CompletionsOptionsAccessHelper;
+import com.azure.ai.openai.models.ChatCompletionStreamOptions;
 import com.azure.ai.openai.models.Choice;
 import com.azure.ai.openai.models.Completions;
 import com.azure.ai.openai.models.CompletionsOptions;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
+import com.azure.core.http.HttpClientProvider;
 import com.azure.core.http.ProxyOptions;
+import com.azure.core.http.policy.RetryOptions;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.azure.spi.AzureOpenAiStreamingLanguageModelBuilderFactory;
 import dev.langchain4j.model.language.StreamingLanguageModel;
-import dev.langchain4j.model.language.TokenCountEstimator;
 import dev.langchain4j.model.output.Response;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupSyncClient;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-
 
 /**
  * Represents an OpenAI language model, hosted on Azure, such as gpt-3.5-turbo-instruct.
@@ -47,19 +48,16 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
  * The constructor requires a KeyCredential instance, which can be created using `new AzureKeyCredential("{key}")`, and doesn't set up the endpoint.
  * <p>
  * 3. Azure OpenAI client with Microsoft Entra ID (formerly Azure Active Directory) credentials.
- * - This requires to add the `com.azure:azure-identity` dependency to your project, which is an optional dependency to this library.
+ * - This requires to add the `com.azure:azure-identity` dependency to your project.
  * - You need to provide a TokenCredential instance, using the tokenCredential() method in the Builder, or the tokenCredential parameter in the constructor.
  * As an example, DefaultAzureCredential can be used to authenticate the client: Set the values of the client ID, tenant ID, and
  * client secret of the AAD application as environment variables: AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET.
  * Then, provide the DefaultAzureCredential instance to the builder: `builder.tokenCredential(new DefaultAzureCredentialBuilder().build())`.
  */
-public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel, TokenCountEstimator {
+public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel {
 
-    private static final Logger logger = LoggerFactory.getLogger(AzureOpenAiStreamingLanguageModel.class);
-
-    private OpenAIClient client;
+    private final OpenAIClient client;
     private final String deploymentName;
-    private final Tokenizer tokenizer;
     private final Integer maxTokens;
     private final Double temperature;
     private final Double topP;
@@ -71,207 +69,63 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
     private final Double presencePenalty;
     private final Double frequencyPenalty;
 
-    public AzureOpenAiStreamingLanguageModel(
-            OpenAIClient client,
-            String deploymentName,
-            Tokenizer tokenizer,
-            Integer maxTokens,
-            Double temperature,
-            Double topP,
-            Map<String, Integer> logitBias,
-            String user,
-            Integer logprobs,
-            Boolean echo,
-            List<String> stop,
-            Double presencePenalty,
-            Double frequencyPenalty) {
+    public AzureOpenAiStreamingLanguageModel(Builder builder) {
+        if (builder.openAIClient == null) {
+            if (builder.tokenCredential != null) {
+                this.client = setupSyncClient(
+                        builder.endpoint,
+                        builder.serviceVersion,
+                        builder.tokenCredential,
+                        builder.timeout,
+                        builder.maxRetries,
+                        builder.retryOptions,
+                        builder.httpClientProvider,
+                        builder.proxyOptions,
+                        builder.logRequestsAndResponses,
+                        builder.userAgentSuffix,
+                        builder.customHeaders);
+            } else if (builder.keyCredential != null) {
+                this.client = setupSyncClient(
+                        builder.endpoint,
+                        builder.serviceVersion,
+                        builder.keyCredential,
+                        builder.timeout,
+                        builder.maxRetries,
+                        builder.retryOptions,
+                        builder.httpClientProvider,
+                        builder.proxyOptions,
+                        builder.logRequestsAndResponses,
+                        builder.userAgentSuffix,
+                        builder.customHeaders);
+            } else {
+                this.client = setupSyncClient(
+                        builder.endpoint,
+                        builder.serviceVersion,
+                        builder.apiKey,
+                        builder.timeout,
+                        builder.maxRetries,
+                        builder.retryOptions,
+                        builder.httpClientProvider,
+                        builder.proxyOptions,
+                        builder.logRequestsAndResponses,
+                        builder.userAgentSuffix,
+                        builder.customHeaders);
+            }
+        } else {
+            this.client = ensureNotNull(builder.openAIClient, "openAIClient");
+        }
 
-        this(
-                deploymentName,
-                tokenizer,
-                maxTokens,
-                temperature,
-                topP,
-                logitBias,
-                user,
-                logprobs,
-                echo,
-                stop,
-                presencePenalty,
-                frequencyPenalty);
-        this.client = client;
-    }
-
-    public AzureOpenAiStreamingLanguageModel(
-            String endpoint,
-            String serviceVersion,
-            String apiKey,
-            String deploymentName,
-            Tokenizer tokenizer,
-            Integer maxTokens,
-            Double temperature,
-            Double topP,
-            Map<String, Integer> logitBias,
-            String user,
-            Integer logprobs,
-            Boolean echo,
-            List<String> stop,
-            Double presencePenalty,
-            Double frequencyPenalty,
-            Duration timeout,
-            Integer maxRetries,
-            ProxyOptions proxyOptions,
-            boolean logRequestsAndResponses,
-            String userAgentSuffix,
-            Map<String, String> customHeaders) {
-
-        this(
-                deploymentName,
-                tokenizer,
-                maxTokens,
-                temperature,
-                topP,
-                logitBias,
-                user,
-                logprobs,
-                echo,
-                stop,
-                presencePenalty,
-                frequencyPenalty);
-        this.client = setupSyncClient(
-                endpoint,
-                serviceVersion,
-                apiKey,
-                timeout,
-                maxRetries,
-                proxyOptions,
-                logRequestsAndResponses,
-                userAgentSuffix,
-                customHeaders);
-    }
-
-    public AzureOpenAiStreamingLanguageModel(
-            String endpoint,
-            String serviceVersion,
-            KeyCredential keyCredential,
-            String deploymentName,
-            Tokenizer tokenizer,
-            Integer maxTokens,
-            Double temperature,
-            Double topP,
-            Map<String, Integer> logitBias,
-            String user,
-            Integer logprobs,
-            Boolean echo,
-            List<String> stop,
-            Double presencePenalty,
-            Double frequencyPenalty,
-            Duration timeout,
-            Integer maxRetries,
-            ProxyOptions proxyOptions,
-            boolean logRequestsAndResponses,
-            String userAgentSuffix,
-            Map<String, String> customHeaders) {
-
-        this(
-                deploymentName,
-                tokenizer,
-                maxTokens,
-                temperature,
-                topP,
-                logitBias,
-                user,
-                logprobs,
-                echo,
-                stop,
-                presencePenalty,
-                frequencyPenalty);
-        this.client = setupSyncClient(
-                endpoint,
-                serviceVersion,
-                keyCredential,
-                timeout,
-                maxRetries,
-                proxyOptions,
-                logRequestsAndResponses,
-                userAgentSuffix,
-                customHeaders);
-    }
-
-    public AzureOpenAiStreamingLanguageModel(
-            String endpoint,
-            String serviceVersion,
-            TokenCredential tokenCredential,
-            String deploymentName,
-            Tokenizer tokenizer,
-            Integer maxTokens,
-            Double temperature,
-            Double topP,
-            Map<String, Integer> logitBias,
-            String user,
-            Integer logprobs,
-            Boolean echo,
-            List<String> stop,
-            Double presencePenalty,
-            Double frequencyPenalty,
-            Duration timeout,
-            Integer maxRetries,
-            ProxyOptions proxyOptions,
-            boolean logRequestsAndResponses,
-            String userAgentSuffix,
-            Map<String, String> customHeaders) {
-
-        this(
-                deploymentName,
-                tokenizer,
-                maxTokens,
-                temperature,
-                topP,
-                logitBias,
-                user,
-                logprobs,
-                echo,
-                stop,
-                presencePenalty,
-                frequencyPenalty);
-        this.client = setupSyncClient(
-                endpoint,
-                serviceVersion,
-                tokenCredential,
-                timeout,
-                maxRetries,
-                proxyOptions,
-                logRequestsAndResponses,
-                userAgentSuffix,
-                customHeaders);
-    }
-
-    private AzureOpenAiStreamingLanguageModel(
-            String deploymentName,
-            Tokenizer tokenizer,
-            Integer maxTokens,
-            Double temperature,
-            Double topP,
-            Map<String, Integer> logitBias,
-            String user,
-            Integer logprobs,
-            Boolean echo,
-            List<String> stop,
-            Double presencePenalty,
-            Double frequencyPenalty) {
-
-        this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo-instruct");
-        this.tokenizer = getOrDefault(tokenizer, AzureOpenAiTokenizer::new);
-        this.maxTokens = maxTokens;
-        this.temperature = getOrDefault(temperature, 0.7);
-        this.topP = topP;
-        this.logitBias = logitBias;
-        this.user = user;
-        this.logprobs = logprobs;
-        this.echo = echo;
-        this.stop = stop;
-        this.presencePenalty = presencePenalty;
-        this.frequencyPenalty = frequencyPenalty;
+        this.deploymentName = ensureNotBlank(builder.deploymentName, "deploymentName");
+        this.maxTokens = builder.maxTokens;
+        this.temperature = builder.temperature;
+        this.topP = builder.topP;
+        this.logitBias = copyIfNotNull(builder.logitBias);
+        this.user = builder.user;
+        this.logprobs = builder.logprobs;
+        this.echo = builder.echo;
+        this.stop = copyIfNotNull(builder.stop);
+        this.presencePenalty = builder.presencePenalty;
+        this.frequencyPenalty = builder.frequencyPenalty;
     }
 
     @Override
@@ -289,39 +143,35 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                 .setPresencePenalty(presencePenalty)
                 .setFrequencyPenalty(frequencyPenalty);
 
-        Integer inputTokenCount = tokenizer == null ? null : tokenizer.estimateTokenCountInText(prompt);
-        AzureOpenAiStreamingResponseBuilder responseBuilder = new AzureOpenAiStreamingResponseBuilder(inputTokenCount);
+        ChatCompletionStreamOptions streamOptions = new ChatCompletionStreamOptions().setIncludeUsage(true);
+        CompletionsOptionsAccessHelper.setStreamOptions(options, streamOptions);
 
+        AzureOpenAiStreamingResponseBuilder responseBuilder = new AzureOpenAiStreamingResponseBuilder();
         try {
             client.getCompletionsStream(deploymentName, options).stream().forEach(completions -> {
                 responseBuilder.append(completions);
                 handle(completions, handler);
             });
 
-            Response<AiMessage> response = responseBuilder.build(tokenizer);
+            Response<AiMessage> response = responseBuilder.build();
 
             handler.onComplete(
                     Response.from(response.content().text(), response.tokenUsage(), response.finishReason()));
         } catch (Exception exception) {
-            handler.onError(exception);
+            handler.onError(AzureOpenAiExceptionMapper.INSTANCE.mapException(exception));
         }
     }
 
     private static void handle(Completions completions, StreamingResponseHandler<String> handler) {
 
         List<Choice> choices = completions.getChoices();
-        if (choices == null || choices.isEmpty()) {
+        if (isNullOrEmpty(choices)) {
             return;
         }
         String content = choices.get(0).getText();
         if (content != null) {
             handler.onNext(content);
         }
-    }
-
-    @Override
-    public int estimateTokenCount(String prompt) {
-        return tokenizer.estimateTokenCountInText(prompt);
     }
 
     public static Builder builder() {
@@ -339,8 +189,8 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
         private String apiKey;
         private KeyCredential keyCredential;
         private TokenCredential tokenCredential;
+        private HttpClientProvider httpClientProvider;
         private String deploymentName;
-        private Tokenizer tokenizer;
         private Integer maxTokens;
         private Double temperature;
         private Double topP;
@@ -353,6 +203,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
         private Double frequencyPenalty;
         private Duration timeout;
         private Integer maxRetries;
+        private RetryOptions retryOptions;
         private ProxyOptions proxyOptions;
         private boolean logRequestsAndResponses;
         private OpenAIClient openAIClient;
@@ -417,6 +268,17 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
         }
 
         /**
+         * Sets the {@code HttpClientProvider} to use for creating the HTTP client to communicate with the OpenAI api.
+         *
+         * @param httpClientProvider The {@code HttpClientProvider} to use
+         * @return builder
+         */
+        public Builder httpClientProvider(HttpClientProvider httpClientProvider) {
+            this.httpClientProvider = httpClientProvider;
+            return this;
+        }
+
+        /**
          * Sets the deployment name in Azure OpenAI. This is a mandatory parameter.
          *
          * @param deploymentName The Deployment name.
@@ -424,11 +286,6 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
          */
         public Builder deploymentName(String deploymentName) {
             this.deploymentName = deploymentName;
-            return this;
-        }
-
-        public Builder tokenizer(Tokenizer tokenizer) {
-            this.tokenizer = tokenizer;
             return this;
         }
 
@@ -492,6 +349,11 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
             return this;
         }
 
+        public Builder retryOptions(RetryOptions retryOptions) {
+            this.retryOptions = retryOptions;
+            return this;
+        }
+
         public Builder proxyOptions(ProxyOptions proxyOptions) {
             this.proxyOptions = proxyOptions;
             return this;
@@ -524,92 +386,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
         }
 
         public AzureOpenAiStreamingLanguageModel build() {
-            if (openAIClient == null) {
-                if (tokenCredential != null) {
-                    return new AzureOpenAiStreamingLanguageModel(
-                            endpoint,
-                            serviceVersion,
-                            tokenCredential,
-                            deploymentName,
-                            tokenizer,
-                            maxTokens,
-                            temperature,
-                            topP,
-                            logitBias,
-                            user,
-                            logprobs,
-                            echo,
-                            stop,
-                            presencePenalty,
-                            frequencyPenalty,
-                            timeout,
-                            maxRetries,
-                            proxyOptions,
-                            logRequestsAndResponses,
-                            userAgentSuffix,
-                            customHeaders);
-                } else if (keyCredential != null) {
-                    return new AzureOpenAiStreamingLanguageModel(
-                            endpoint,
-                            serviceVersion,
-                            keyCredential,
-                            deploymentName,
-                            tokenizer,
-                            maxTokens,
-                            temperature,
-                            topP,
-                            logitBias,
-                            user,
-                            logprobs,
-                            echo,
-                            stop,
-                            presencePenalty,
-                            frequencyPenalty,
-                            timeout,
-                            maxRetries,
-                            proxyOptions,
-                            logRequestsAndResponses,
-                            userAgentSuffix,
-                            customHeaders);
-                }
-                return new AzureOpenAiStreamingLanguageModel(
-                        endpoint,
-                        serviceVersion,
-                        apiKey,
-                        deploymentName,
-                        tokenizer,
-                        maxTokens,
-                        temperature,
-                        topP,
-                        logitBias,
-                        user,
-                        logprobs,
-                        echo,
-                        stop,
-                        presencePenalty,
-                        frequencyPenalty,
-                        timeout,
-                        maxRetries,
-                        proxyOptions,
-                        logRequestsAndResponses,
-                        userAgentSuffix,
-                        customHeaders);
-            } else {
-                return new AzureOpenAiStreamingLanguageModel(
-                        openAIClient,
-                        deploymentName,
-                        tokenizer,
-                        maxTokens,
-                        temperature,
-                        topP,
-                        logitBias,
-                        user,
-                        logprobs,
-                        echo,
-                        stop,
-                        presencePenalty,
-                        frequencyPenalty);
-            }
+            return new AzureOpenAiStreamingLanguageModel(this);
         }
     }
 }

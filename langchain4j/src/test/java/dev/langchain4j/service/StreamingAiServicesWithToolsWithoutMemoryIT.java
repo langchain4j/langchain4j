@@ -5,7 +5,7 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
@@ -36,7 +36,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 class StreamingAiServicesWithToolsWithoutMemoryIT {
 
     @Spy
-    StreamingChatLanguageModel spyModel = OpenAiStreamingChatModel.builder()
+    StreamingChatModel spyModel = OpenAiStreamingChatModel.builder()
             .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
@@ -71,7 +71,7 @@ class StreamingAiServicesWithToolsWithoutMemoryIT {
 
         Assistant assistant = AiServices
                 .builder(Assistant.class)
-                .streamingChatLanguageModel(spyModel)
+                .streamingChatModel(spyModel)
                 .tools(calculator)
                 .build();
 
@@ -121,7 +121,7 @@ class StreamingAiServicesWithToolsWithoutMemoryIT {
         // given
         Calculator calculator = spy(new Calculator());
 
-        StreamingChatLanguageModel model = OpenAiStreamingChatModel
+        StreamingChatModel model = OpenAiStreamingChatModel
                 .builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
@@ -133,11 +133,11 @@ class StreamingAiServicesWithToolsWithoutMemoryIT {
                 .logResponses(true)
                 .build();
 
-        StreamingChatLanguageModel spyModel = spy(model);
+        StreamingChatModel spyModel = spy(model);
 
         Assistant assistant = AiServices
                 .builder(Assistant.class)
-                .streamingChatLanguageModel(spyModel)
+                .streamingChatModel(spyModel)
                 .tools(calculator)
                 .build();
 
@@ -199,7 +199,7 @@ class StreamingAiServicesWithToolsWithoutMemoryIT {
 
         Assistant assistant = AiServices
                 .builder(Assistant.class)
-                .streamingChatLanguageModel(spyModel)
+                .streamingChatModel(spyModel)
                 .tools(calculator)
                 .build();
 

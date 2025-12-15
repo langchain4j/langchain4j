@@ -1,5 +1,6 @@
 package dev.langchain4j.mcp.client.integration;
 
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.File;
@@ -17,12 +18,18 @@ public class McpServerHelper {
     private static final Logger log = LoggerFactory.getLogger(McpToolsHttpTransportIT.class);
 
     static Process startServerHttp(String scriptName) throws InterruptedException, TimeoutException, IOException {
+        return startServerHttp(scriptName, 8080);
+    }
+
+    static Process startServerHttp(String scriptName, int port)
+            throws InterruptedException, TimeoutException, IOException {
         skipTestsIfJbangNotAvailable();
         String path = getPathToScript(scriptName);
-        String[] command = new String[] {getJBangCommand(), "--quiet", "--fresh", "run", path};
+        String[] command =
+                new String[] {getJBangCommand(), "--quiet", "--fresh", "run", "-Dquarkus.http.port=" + port, path};
         log.info("Starting the MCP server using command: " + Arrays.toString(command));
         Process process = new ProcessBuilder().command(command).inheritIO().start();
-        waitForPort(8080, 120);
+        waitForPort(port, 120);
         log.info("MCP server has started");
         return process;
     }
@@ -36,7 +43,7 @@ public class McpServerHelper {
 
     static String getJBangCommand() {
         String command = System.getProperty("jbang.command");
-        if (command == null || command.isEmpty()) {
+        if (isNullOrEmpty(command)) {
             command = isWindows() ? "jbang.cmd" : "jbang";
         }
         return command;

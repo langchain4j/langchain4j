@@ -1,33 +1,54 @@
 package dev.langchain4j.data.message;
 
-import dev.langchain4j.Experimental;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-
 import static dev.langchain4j.data.message.ChatMessageType.USER;
 import static dev.langchain4j.internal.Exceptions.runtime;
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.mutableCopy;
 import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static java.util.Arrays.asList;
-import static java.util.Collections.unmodifiableList;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import dev.langchain4j.Experimental;
+import dev.langchain4j.memory.ChatMemory;
 
 /**
  * Represents a message from a user, typically an end user of the application.
  * <br>
+ * <br>
  * Depending on the supported modalities (text, image, audio, video, etc.) of the model,
  * user messages can contain either a single text (a {@code String}) or multiple {@link Content}s,
  * which can be either {@link TextContent}, {@link ImageContent}, {@link AudioContent},
- * {@link VideoContent}, {@link PdfFileContent}, or {@link TextFileContent}.
+ * {@link VideoContent}, or {@link PdfFileContent}.
+ * <br>
  * <br>
  * Optionally, user message can contain a {@link #name} of the user.
  * Be aware that not all models support names in {@code UserMessage}.
+ * <br>
+ * <br>
+ * Optionally, user message can contain custom attributes represented by a mutable {@link Map}.
+ * Attributes are not sent to the model, but they are stored in the {@link ChatMemory}.
  */
 public class UserMessage implements ChatMessage {
 
     private final String name;
     private final List<Content> contents;
+    private final Map<String, Object> attributes;
+
+    /**
+     * Creates a {@link UserMessage} from a builder.
+     *
+     * @since 1.8.0
+     */
+    public UserMessage(Builder builder) {
+        this.name = builder.name;
+        this.contents = copy(ensureNotEmpty(builder.contents, "contents"));
+        this.attributes = mutableCopy(builder.attributes);
+    }
 
     /**
      * Creates a {@link UserMessage} from a text.
@@ -78,7 +99,8 @@ public class UserMessage implements ChatMessage {
      */
     public UserMessage(List<Content> contents) {
         this.name = null;
-        this.contents = unmodifiableList(ensureNotEmpty(contents, "contents"));
+        this.contents = copy(ensureNotEmpty(contents, "contents"));
+        this.attributes = new HashMap<>();
     }
 
     /**
@@ -89,7 +111,8 @@ public class UserMessage implements ChatMessage {
      */
     public UserMessage(String name, List<Content> contents) {
         this.name = name;
-        this.contents = unmodifiableList(ensureNotEmpty(contents, "contents"));
+        this.contents = copy(ensureNotEmpty(contents, "contents"));
+        this.attributes = new HashMap<>();
     }
 
     /**
@@ -137,20 +160,37 @@ public class UserMessage implements ChatMessage {
     }
 
     /**
-     * {@link UserMessage} can contain not just a single {@code String text}, but also multiple {@link Content}s.
-     * Therefore, this method is deprecated. Please use {@link #singleText()} if you only expect a single text,
-     * or use {@link #contents()} otherwise.
+     * Returns additional attributes.
      *
-     * @deprecated Use {@link #singleText()} or {@link #contents()} instead.
+     * @see #attribute(String, Class)
+     * @since 1.8.0
      */
-    @Deprecated(forRemoval = true)
-    public String text() {
-        return singleText();
+    @Experimental
+    public Map<String, Object> attributes() {
+        return attributes;
+    }
+
+    /**
+     * Returns additional attribute by it's key.
+     *
+     * @see #attributes()
+     * @since 1.8.0
+     */
+    @Experimental
+    public <T> T attribute(String key, Class<T> type) {
+        return (T) attributes.get(key);
     }
 
     @Override
     public ChatMessageType type() {
         return USER;
+    }
+
+    public Builder toBuilder() {
+        return builder()
+                .name(name)
+                .contents(mutableCopy(contents))
+                .attributes(attributes);
     }
 
     @Override
@@ -159,19 +199,21 @@ public class UserMessage implements ChatMessage {
         if (o == null || getClass() != o.getClass()) return false;
         UserMessage that = (UserMessage) o;
         return Objects.equals(this.name, that.name)
-                && Objects.equals(this.contents, that.contents);
+                && Objects.equals(this.contents, that.contents)
+                && Objects.equals(this.attributes, that.attributes);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(name, contents);
+        return Objects.hash(name, contents, attributes);
     }
 
     @Override
     public String toString() {
         return "UserMessage {" +
                 " name = " + quoted(name) +
-                " contents = " + contents +
+                ", contents = " + contents +
+                ", attributes = " + attributes +
                 " }";
     }
 
@@ -183,6 +225,7 @@ public class UserMessage implements ChatMessage {
 
         private String name;
         private List<Content> contents;
+        private Map<String, Object> attributes;
 
         public Builder name(String name) {
             this.name = name;
@@ -194,7 +237,6 @@ public class UserMessage implements ChatMessage {
             return this;
         }
 
-        @Experimental
         public Builder addContent(Content content) {
             if (this.contents == null) {
                 this.contents = new ArrayList<>();
@@ -203,8 +245,16 @@ public class UserMessage implements ChatMessage {
             return this;
         }
 
+        /**
+         * @since 1.8.0
+         */
+        public Builder attributes(Map<String, Object> attributes) {
+            this.attributes = attributes;
+            return this;
+        }
+
         public UserMessage build() {
-            return new UserMessage(name, contents);
+            return new UserMessage(this);
         }
     }
 

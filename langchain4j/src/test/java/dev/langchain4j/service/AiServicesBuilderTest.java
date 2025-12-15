@@ -1,55 +1,24 @@
 package dev.langchain4j.service;
 
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.mockito.Mockito.mock;
 
 import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
-import dev.langchain4j.retriever.Retriever;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 /**
- * Verify that the AIServices builder doesn't allow setting more than out of
+ * Verify that the AIServices builder doesn't allow setting more than one of
  * (retriever, contentRetriever, retrievalAugmentor).
  */
 class AiServicesBuilderTest {
 
-    @Test
-    void retrieverAndContentRetriever() {
-        Retriever retriever = mock(Retriever.class);
-        Mockito.when(retriever.toContentRetriever()).thenReturn((query) -> {
-            throw new RuntimeException("Should not be called");
-        });
-        ContentRetriever contentRetriever = mock(ContentRetriever.class);
-
-        assertThatExceptionOfType(IllegalConfigurationException.class).isThrownBy(() -> {
-            AiServices.builder(AiServices.class)
-                    .retriever(retriever)
-                    .contentRetriever(contentRetriever)
-                    .build();
-        });
-    }
-
-    @Test
-    void retrieverAndRetrievalAugmentor() {
-        Retriever retriever = mock(Retriever.class);
-        Mockito.when(retriever.toContentRetriever()).thenReturn((query) -> {
-            throw new RuntimeException("Should not be called");
-        });
-        RetrievalAugmentor retrievalAugmentor = mock(RetrievalAugmentor.class);
-
-        assertThatExceptionOfType(IllegalConfigurationException.class).isThrownBy(() -> {
-            AiServices.builder(AiServices.class)
-                    .retriever(retriever)
-                    .retrievalAugmentor(retrievalAugmentor)
-                    .build();
-        });
+    interface TestService {
+        String chat(String userMessage);
     }
 
     @Test
@@ -58,35 +27,9 @@ class AiServicesBuilderTest {
         RetrievalAugmentor retrievalAugmentor = mock(RetrievalAugmentor.class);
 
         assertThatExceptionOfType(IllegalConfigurationException.class).isThrownBy(() -> {
-            AiServices.builder(AiServices.class)
+            AiServices.builder(TestService.class)
                     .contentRetriever(contentRetriever)
                     .retrievalAugmentor(retrievalAugmentor)
-                    .build();
-        });
-    }
-
-    @Test
-    void contentRetrieverAndRetriever() {
-        Retriever retriever = mock(Retriever.class);
-        ContentRetriever contentRetriever = mock(ContentRetriever.class);
-
-        assertThatExceptionOfType(IllegalConfigurationException.class).isThrownBy(() -> {
-            AiServices.builder(AiServices.class)
-                    .contentRetriever(contentRetriever)
-                    .retriever(retriever)
-                    .build();
-        });
-    }
-
-    @Test
-    void retrievalAugmentorAndRetriever() {
-        Retriever retriever = mock(Retriever.class);
-        RetrievalAugmentor retrievalAugmentor = mock(RetrievalAugmentor.class);
-
-        assertThatExceptionOfType(IllegalConfigurationException.class).isThrownBy(() -> {
-            AiServices.builder(AiServices.class)
-                    .retrievalAugmentor(retrievalAugmentor)
-                    .retriever(retriever)
                     .build();
         });
     }
@@ -97,34 +40,58 @@ class AiServicesBuilderTest {
         RetrievalAugmentor retrievalAugmentor = mock(RetrievalAugmentor.class);
 
         assertThatExceptionOfType(IllegalConfigurationException.class).isThrownBy(() -> {
-            AiServices.builder(AiServices.class)
+            AiServices.builder(TestService.class)
                     .retrievalAugmentor(retrievalAugmentor)
                     .contentRetriever(contentRetriever)
                     .build();
         });
     }
 
-    static class HelloWorld {
-
-        @Tool("Say hello")
-        void add(String name) {
-            System.out.printf("Hello %s!", name);
+    @Test
+    void should_raise_an_error_when_tools_are_classes() {
+        class HelloWorld {
+            @Tool("Say hello")
+            void add(String name) {
+                System.out.printf("Hello %s!", name);
+            }
         }
-    }
 
-    interface Assistant {
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
-        Response<AiMessage> chat(String userMessage);
+        assertThatExceptionOfType(IllegalConfigurationException.class)
+                .isThrownBy(() -> AiServices.builder(TestService.class)
+                        .chatModel(chatModel)
+                        .tools(HelloWorld.class)
+                        .build());
     }
 
     @Test
-    void should_raise_an_error_when_tools_are_classes() {
-        ChatLanguageModel chatLanguageModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+    void should_throw_when_chat_model_is_null() {
+        assertThatExceptionOfType(IllegalConfigurationException.class)
+                .isThrownBy(() ->
+                        AiServices.builder(TestService.class).chatModel(null).build())
+                .withMessageContaining("chatModel");
+    }
+
+    @Test
+    void should_throw_when_multiple_retrievers_set() {
+        ContentRetriever contentRetriever1 = mock(ContentRetriever.class);
+        ContentRetriever contentRetriever2 = mock(ContentRetriever.class);
 
         assertThatExceptionOfType(IllegalConfigurationException.class)
-                .isThrownBy(() -> AiServices.builder(Assistant.class)
-                        .chatLanguageModel(chatLanguageModel)
-                        .tools(HelloWorld.class)
+                .isThrownBy(() -> AiServices.builder(TestService.class)
+                        .contentRetriever(contentRetriever1)
+                        .contentRetriever(contentRetriever2)
                         .build());
+    }
+
+    @Test
+    void should_allow_building_with_only_chat_model() {
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("response");
+
+        TestService service =
+                AiServices.builder(TestService.class).chatModel(chatModel).build();
+
+        assertThat(service).isNotNull();
     }
 }

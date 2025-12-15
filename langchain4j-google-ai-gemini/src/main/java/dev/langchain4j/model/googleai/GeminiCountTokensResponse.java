@@ -1,8 +1,6 @@
 package dev.langchain4j.model.googleai;
 
-import lombok.Data;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
-@Data
-class GeminiCountTokensResponse {
-    Integer totalTokens;
-}
+@JsonIgnoreProperties(ignoreUnknown = true)
+record GeminiCountTokensResponse(Integer totalTokens) {}

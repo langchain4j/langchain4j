@@ -16,13 +16,13 @@ For Maven project `pom.xml`
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>1.0.0-beta2</version>
+    <version>1.9.1</version>
 </dependency>
 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-jlama</artifactId>
-    <version>1.0.0-beta2</version>
+    <version>1.9.1-beta17</version>
 </dependency>
 
 <dependency>
@@ -39,9 +39,16 @@ For Maven project `pom.xml`
 For Gradle project `build.gradle`
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j:{your-version}'
-implementation 'dev.langchain4j:langchain4j-jlama:{your-version}'
+implementation 'dev.langchain4j:langchain4j:1.9.1'
+implementation 'dev.langchain4j:langchain4j-jlama:1.9.1-beta17'
 ```
+
+Jlama uses Java 21 preview features. You can enable the features globally with:
+
+`export JDK_JAVA_OPTIONS="--add-modules jdk.incubator.vector --enable-preview"`
+
+or enable the preview features by configuring maven compiler and failsafe plugins.
+
 
 ### Model Selection
 You can use most safetensor models on [HuggingFace](https://huggingface.co/models?library=safetensors&sort=trending) and specify them using the `owner/model-name` format.
@@ -62,12 +69,12 @@ The chat models allow you to generate human-like responses with a model fined-tu
 Create a class and add the following code.
 
 ```java
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.jlama.JlamaChatModel;
 
 public class HelloWorld {
     public static void main(String[] args) {
-        ChatLanguageModel model = JlamaChatLanguageModel.builder()
+        ChatModel model = JlamaChatModel.builder()
                 .modelName("tjake/TinyLlama-1.1B-Chat-v1.0-Jlama-Q4")
                 .build();
 
@@ -95,7 +102,7 @@ import java.util.concurrent.CompletableFuture;
 
 public class HelloWorld {
     public static void main(String[] args) {
-        StreamingChatLanguageModel model = JlamaStreamingChatLanguageModel.builder()
+        StreamingChatModel model = JlamaStreamingChatModel.builder()
                 .modelName("tjake/TinyLlama-1.1B-Chat-v1.0-Jlama-Q4")
                 .build();
 

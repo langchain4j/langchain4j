@@ -5,7 +5,6 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
 import java.util.UUID;
 
 import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
@@ -29,16 +28,21 @@ public abstract class EmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
         Embedding embedding = embeddingModel().embed(segment.text()).content();
 
         String id = embeddingStore().add(embedding, segment);
-        assertThat(id).isNotBlank();
-
         awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(1));
 
+        EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+                .queryEmbedding(embedding)
+                .maxResults(1)
+                .build();
+
         // when
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(embedding, 1);
+        EmbeddingSearchResult<TextSegment> searchResult = embeddingStore().search(searchRequest);
 
         // then
-        assertThat(relevant).hasSize(1);
-        EmbeddingMatch<TextSegment> match = relevant.get(0);
+        assertThat(id).isNotBlank();
+
+        assertThat(searchResult.matches()).hasSize(1);
+        EmbeddingMatch<TextSegment> match = searchResult.matches().get(0);
         assertThat(match.score()).isCloseTo(1, withPercentage(1));
         assertThat(match.embeddingId()).isEqualTo(id);
         if (assertEmbedding()) {
@@ -97,12 +101,6 @@ public abstract class EmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
             assertThat(match.embedded().metadata().getDouble("double_1")).isCloseTo(1d, withPercentage(doublePercentage));
             assertThat(match.embedded().metadata().getDouble("double_123")).isCloseTo(1.23456789d, withPercentage(doublePercentage));
         }
-
-        // new API
-        assertThat(embeddingStore().search(EmbeddingSearchRequest.builder()
-                .queryEmbedding(embedding)
-                .maxResults(1)
-                .build()).matches()).isEqualTo(relevant);
     }
 
     protected boolean testLong1746714878034235396() {

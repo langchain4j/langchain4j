@@ -1,20 +1,22 @@
 package dev.langchain4j.model.voyageai;
 
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.output.TokenUsage;
-import dev.langchain4j.model.scoring.ScoringModel;
-
-import java.time.Duration;
-import java.util.List;
-
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.voyageai.VoyageAiApi.DEFAULT_BASE_URL;
+import static dev.langchain4j.model.voyageai.VoyageAiClient.DEFAULT_BASE_URL;
 import static java.time.Duration.ofSeconds;
 import static java.util.Comparator.comparingInt;
 import static java.util.stream.Collectors.toList;
+
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.model.scoring.ScoringModel;
+import org.slf4j.Logger;
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
 
 /**
  * An implementation of a {@link ScoringModel} that uses
@@ -28,7 +30,10 @@ public class VoyageAiScoringModel implements ScoringModel {
     private final Integer topK;
     private final Boolean truncation;
 
+    @Deprecated(forRemoval = true, since = "1.4.0")
     public VoyageAiScoringModel(
+            HttpClientBuilder httpClientBuilder,
+            Map<String, String> customHeaders,
             String baseUrl,
             Duration timeout,
             Integer maxRetries,
@@ -37,21 +42,42 @@ public class VoyageAiScoringModel implements ScoringModel {
             Integer topK,
             Boolean truncation,
             Boolean logRequests,
-            Boolean logResponses
-    ) {
+            Boolean logResponses) {
         // Below attributes are force to non-null
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, 2);
         this.modelName = ensureNotBlank(modelName, "modelName");
         // Below attributes can be null
         this.truncation = truncation;
         this.topK = topK;
 
         this.client = VoyageAiClient.builder()
+                .httpClientBuilder(httpClientBuilder)
                 .baseUrl(getOrDefault(baseUrl, DEFAULT_BASE_URL))
                 .apiKey(ensureNotBlank(apiKey, "apiKey"))
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
+                .customHeaders(customHeaders)
+                .build();
+    }
+
+    public VoyageAiScoringModel(Builder builder) {
+        // Below attributes are force to non-null
+        this.maxRetries = getOrDefault(builder.maxRetries, 2);
+        this.modelName = ensureNotBlank(builder.modelName, "modelName");
+        // Below attributes can be null
+        this.truncation = builder.truncation;
+        this.topK = builder.topK;
+
+        this.client = VoyageAiClient.builder()
+                .httpClientBuilder(builder.httpClientBuilder)
+                .baseUrl(getOrDefault(builder.baseUrl, DEFAULT_BASE_URL))
+                .apiKey(ensureNotBlank(builder.apiKey, "apiKey"))
+                .timeout(getOrDefault(builder.timeout, ofSeconds(60)))
+                .logRequests(getOrDefault(builder.logRequests, false))
+                .logResponses(getOrDefault(builder.logResponses, false))
+                .logger(builder.logger)
+                .customHeaders(builder.customHeaders)
                 .build();
     }
 
@@ -60,9 +86,7 @@ public class VoyageAiScoringModel implements ScoringModel {
         RerankRequest request = RerankRequest.builder()
                 .model(modelName)
                 .query(query)
-                .documents(segments.stream()
-                        .map(TextSegment::text)
-                        .collect(toList()))
+                .documents(segments.stream().map(TextSegment::text).collect(toList()))
                 .topK(topK)
                 .truncation(truncation)
                 .build();
@@ -83,6 +107,8 @@ public class VoyageAiScoringModel implements ScoringModel {
 
     public static class Builder {
 
+        private HttpClientBuilder httpClientBuilder;
+        private Map<String, String> customHeaders;
         private String baseUrl;
         private Duration timeout;
         private Integer maxRetries;
@@ -92,6 +118,7 @@ public class VoyageAiScoringModel implements ScoringModel {
         private Boolean truncation;
         private Boolean logRequests;
         private Boolean logResponses;
+        private Logger logger;
 
         public Builder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
@@ -170,8 +197,17 @@ public class VoyageAiScoringModel implements ScoringModel {
             return this;
         }
 
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public Builder logger(Logger logger) {
+            this.logger = logger;
+            return this;
+        }
+
         public VoyageAiScoringModel build() {
-            return new VoyageAiScoringModel(baseUrl, timeout, maxRetries, apiKey, modelName, topK, truncation, logRequests, logResponses);
+            return new VoyageAiScoringModel(this);
         }
     }
 }

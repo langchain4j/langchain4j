@@ -1,13 +1,21 @@
 package dev.langchain4j.service.output;
 
+import dev.langchain4j.Internal;
+
+import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 
-import static java.util.Arrays.asList;
-
-class StringListOutputParser extends CollectionOutputParser<List<String>> {
+@Internal
+class StringListOutputParser extends StringCollectionOutputParser<List<String>> {
 
     @Override
-    public List<String> parse(String text) {
-        return asList(text.split("\n"));
+    Supplier<List<String>> emptyCollectionSupplier() {
+        return ArrayList::new;
+    }
+
+    @Override
+    Class<?> collectionType() {
+        return List.class;
     }
 }

@@ -1,7 +1,7 @@
 package dev.langchain4j.model.jlama;
 
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import org.junit.jupiter.api.BeforeAll;
@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class JlamaStreamingChatModelIT {
 
     static File tmpDir;
-    static StreamingChatLanguageModel model;
+    static StreamingChatModel model;
 
     @BeforeAll
     static void setup() {

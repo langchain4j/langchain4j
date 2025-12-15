@@ -7,7 +7,7 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.ovhai.internal.api.EmbeddingRequest;
 import dev.langchain4j.model.ovhai.internal.api.EmbeddingResponse;
 import dev.langchain4j.model.ovhai.internal.client.DefaultOvhAiClient;
-import lombok.Builder;
+import org.slf4j.Logger;
 
 import java.time.Duration;
 import java.util.List;
@@ -25,36 +25,18 @@ public class OvhAiEmbeddingModel implements EmbeddingModel {
     private final DefaultOvhAiClient client;
     private final int maxRetries;
 
-    /**
-     * Constructs an instance of an {@code OvhAiEmbeddingModel} with the specified parameters.
-     *
-     * @param baseUrl The base URL of the OVHcloud API. Default:
-     *        "https://multilingual-e5-base.endpoints.kepler.ai.cloud.ovh.net"
-     * @param apiKey The API key for authentication with the OVHcloud API.
-     * @param timeout The timeout for API requests. Default: 60 seconds
-     * @param maxRetries The maximum number of retries for API requests. Default: 3
-     * @param logRequests Whether to log the content of API requests using SLF4J. Default: false
-     * @param logResponses Whether to log the content of API responses using SLF4J. Default: false
-     */
-    @Builder
-    private OvhAiEmbeddingModel(
-            String baseUrl,
-            String apiKey,
-            Duration timeout,
-            Integer maxRetries,
-            Boolean logRequests,
-            Boolean logResponses) {
+    private OvhAiEmbeddingModel(OvhAiEmbeddingModelBuilder builder) {
         this.client =
                 DefaultOvhAiClient
                         .builder()
-                        .baseUrl(getOrDefault(baseUrl,
-                                "https://multilingual-e5-base.endpoints.kepler.ai.cloud.ovh.net"))
-                        .apiKey(apiKey)
-                        .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
-                        .logRequests(getOrDefault(logRequests, false))
-                        .logResponses(getOrDefault(logResponses, false))
+                        .baseUrl(builder.baseUrl)
+                        .apiKey(builder.apiKey)
+                        .timeout(getOrDefault(builder.timeout, Duration.ofSeconds(60)))
+                        .logRequests(getOrDefault(builder.logRequests, false))
+                        .logResponses(getOrDefault(builder.logResponses, false))
+                        .logger(builder.logger)
                         .build();
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(builder.maxRetries, 2);
     }
 
     /**
@@ -65,6 +47,10 @@ public class OvhAiEmbeddingModel implements EmbeddingModel {
     @Deprecated(forRemoval = true)
     public static OvhAiEmbeddingModel withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
+    }
+
+    public static OvhAiEmbeddingModelBuilder builder() {
+        return new OvhAiEmbeddingModelBuilder();
     }
 
     @Override
@@ -83,5 +69,65 @@ public class OvhAiEmbeddingModel implements EmbeddingModel {
                 .collect(toList());
 
         return Response.from(embeddings);
+    }
+
+    public static class OvhAiEmbeddingModelBuilder {
+        private String baseUrl;
+        private String apiKey;
+        private Duration timeout;
+        private Integer maxRetries;
+        private Boolean logRequests;
+        private Boolean logResponses;
+        private Logger logger;
+
+        OvhAiEmbeddingModelBuilder() {
+        }
+
+        public OvhAiEmbeddingModelBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public OvhAiEmbeddingModelBuilder apiKey(String apiKey) {
+            this.apiKey = apiKey;
+            return this;
+        }
+
+        public OvhAiEmbeddingModelBuilder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public OvhAiEmbeddingModelBuilder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public OvhAiEmbeddingModelBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public OvhAiEmbeddingModelBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public OvhAiEmbeddingModelBuilder logger(Logger logger) {
+            this.logger = logger;
+            return this;
+        }
+
+        public OvhAiEmbeddingModel build() {
+            return new OvhAiEmbeddingModel(this);
+        }
+
+        public String toString() {
+            return "OvhAiEmbeddingModel.OvhAiEmbeddingModelBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + this.apiKey + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
+        }
     }
 }

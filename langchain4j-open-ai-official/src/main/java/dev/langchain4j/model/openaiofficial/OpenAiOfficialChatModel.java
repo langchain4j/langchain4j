@@ -8,13 +8,13 @@ import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.
 import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.client.OpenAIClient;
 import com.openai.credential.Credential;
-import com.openai.models.ChatModel;
 import com.openai.models.chat.completions.ChatCompletion;
 import com.openai.models.chat.completions.ChatCompletionCreateParams;
 import dev.langchain4j.exception.UnsupportedFeatureException;
-import dev.langchain4j.model.Tokenizer;
+import dev.langchain4j.model.ModelProvider;
+import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.model.chat.Capability;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -26,47 +26,50 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel implements ChatLanguageModel {
+public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel implements ChatModel {
 
     public OpenAiOfficialChatModel(Builder builder) {
 
-        init(
-                builder.baseUrl,
-                builder.apiKey,
-                builder.credential,
-                builder.azureDeploymentName,
-                builder.azureOpenAIServiceVersion,
-                builder.organizationId,
-                builder.isAzure,
-                builder.isGitHubModels,
-                builder.openAIClient,
-                null,
-                builder.defaultRequestParameters,
-                builder.modelName,
-                builder.temperature,
-                builder.topP,
-                builder.stop,
-                builder.maxCompletionTokens,
-                builder.presencePenalty,
-                builder.frequencyPenalty,
-                builder.logitBias,
-                builder.responseFormat,
-                builder.strictJsonSchema,
-                builder.seed,
-                builder.user,
-                builder.strictTools,
-                builder.parallelToolCalls,
-                builder.store,
-                builder.metadata,
-                builder.serviceTier,
-                builder.timeout,
-                builder.maxRetries,
-                builder.proxy,
-                builder.tokenizer,
-                builder.customHeaders,
-                builder.listeners,
-                builder.capabilities,
-                false);
+        if (builder.openAIClient != null) {
+            this.client = builder.openAIClient;
+        } else {
+            init(
+                    builder.baseUrl,
+                    builder.apiKey,
+                    builder.credential,
+                    builder.azureDeploymentName,
+                    builder.azureOpenAIServiceVersion,
+                    builder.organizationId,
+                    builder.isAzure,
+                    builder.isGitHubModels,
+                    builder.defaultRequestParameters,
+                    builder.modelName,
+                    builder.temperature,
+                    builder.topP,
+                    builder.stop,
+                    builder.maxCompletionTokens,
+                    builder.presencePenalty,
+                    builder.frequencyPenalty,
+                    builder.logitBias,
+                    builder.responseFormat,
+                    builder.strictJsonSchema,
+                    builder.seed,
+                    builder.user,
+                    builder.strictTools,
+                    builder.parallelToolCalls,
+                    builder.store,
+                    builder.metadata,
+                    builder.serviceTier,
+                    builder.timeout,
+                    builder.maxRetries,
+                    builder.proxy,
+                    builder.tokenCountEstimator,
+                    builder.customHeaders,
+                    builder.listeners,
+                    builder.capabilities,
+                    false);
+        }
+        this.modelName = builder.modelName;
     }
 
     @Override
@@ -79,10 +82,9 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
                         chatRequest, parameters, strictTools, strictJsonSchema)
                 .build();
 
-        if (modelHost.equals(InternalOpenAiOfficialHelper.ModelHost.AZURE_OPENAI)
-                || modelHost.equals(InternalOpenAiOfficialHelper.ModelHost.GITHUB_MODELS)) {
+        if (modelProvider.equals(ModelProvider.AZURE_OPEN_AI) || modelProvider.equals(ModelProvider.GITHUB_MODELS)) {
             if (!parameters.modelName().equals(this.modelName)) {
-                // The model name can't be changed in Azure OpenAI, where it's part of the URL.
+                // The model name can't be changed in Microsoft Foundry, where it's part of the URL.
                 throw new UnsupportedFeatureException("Modifying the modelName is not supported");
             }
         }
@@ -164,7 +166,7 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
         private Duration timeout;
         private Integer maxRetries;
         private Proxy proxy;
-        private Tokenizer tokenizer;
+        private TokenCountEstimator tokenCountEstimator;
         private Map<String, String> customHeaders;
         private List<ChatModelListener> listeners;
         private Set<Capability> capabilities;
@@ -189,7 +191,7 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
             return this;
         }
 
-        public Builder modelName(ChatModel modelName) {
+        public Builder modelName(com.openai.models.ChatModel modelName) {
             this.modelName = modelName.toString();
             return this;
         }
@@ -334,8 +336,8 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
             return this;
         }
 
-        public Builder tokenizer(Tokenizer tokenizer) {
-            this.tokenizer = tokenizer;
+        public Builder tokenCountEstimator(TokenCountEstimator tokenCountEstimator) {
+            this.tokenCountEstimator = tokenCountEstimator;
             return this;
         }
 

@@ -4,7 +4,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agent.tool.ToolSpecifications;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModelName;
@@ -22,13 +22,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "GOOGLE_API_KEY", matches = ".*")
 @EnabledIfEnvironmentVariable(named = "GOOGLE_SEARCH_ENGINE_ID", matches = ".*")
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".*")
 class GoogleCustomWebSearchToolIT extends WebSearchToolIT {
 
     WebSearchEngine googleSearchEngine = GoogleCustomWebSearchEngine.withApiKeyAndCsi(
             System.getenv("GOOGLE_API_KEY"),
             System.getenv("GOOGLE_SEARCH_ENGINE_ID"));
 
-    ChatLanguageModel chatModel = OpenAiChatModel.builder()
+    ChatModel chatModel = OpenAiChatModel.builder()
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .modelName(OpenAiChatModelName.GPT_3_5_TURBO)
             .logRequests(true)
@@ -46,14 +47,13 @@ class GoogleCustomWebSearchToolIT extends WebSearchToolIT {
     }
 
     @Test
-    void should_execute_google_tool_with_chatLanguageModel_to_give_a_final_response(){
+    void should_execute_google_tool_with_chatModel_to_give_a_final_response(){
         // given
         googleSearchEngine = GoogleCustomWebSearchEngine.builder()
                 .apiKey(System.getenv("GOOGLE_API_KEY"))
                 .csi(System.getenv("GOOGLE_SEARCH_ENGINE_ID"))
                 .logRequests(true)
                 .logResponses(true)
-                .maxRetries(3)
                 .build();
 
         WebSearchTool webSearchTool = WebSearchTool.from(googleSearchEngine);
@@ -71,7 +71,7 @@ class GoogleCustomWebSearchToolIT extends WebSearchToolIT {
                 .build();
 
         // when
-        AiMessage aiMessage = chatLanguageModel().chat(request).aiMessage();
+        AiMessage aiMessage = chatModel().chat(request).aiMessage();
 
         // then
         assertThat(aiMessage.hasToolExecutionRequests()).isTrue();
@@ -90,7 +90,7 @@ class GoogleCustomWebSearchToolIT extends WebSearchToolIT {
         ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.from(aiMessage.toolExecutionRequests().get(0), strResult);
         messages.add(toolExecutionResultMessage);
 
-        AiMessage finalResponse = chatLanguageModel().chat(messages).aiMessage();
+        AiMessage finalResponse = chatModel().chat(messages).aiMessage();
 
         // then
         assertThat(finalResponse.text())
@@ -100,7 +100,7 @@ class GoogleCustomWebSearchToolIT extends WebSearchToolIT {
     }
 
     @Test
-    void should_execute_google_tool_with_chatLanguageModel_to_summary_response_in_images() {
+    void should_execute_google_tool_with_chatModel_to_summary_response_in_images() {
         // given
         googleSearchEngine = GoogleCustomWebSearchEngine.builder()
                 .apiKey(System.getenv("GOOGLE_API_KEY"))
@@ -124,7 +124,7 @@ class GoogleCustomWebSearchToolIT extends WebSearchToolIT {
                 .build();
 
         // when
-        AiMessage aiMessage = chatLanguageModel().chat(request).aiMessage();
+        AiMessage aiMessage = chatModel().chat(request).aiMessage();
 
         // then
         assertThat(aiMessage.hasToolExecutionRequests()).isTrue();
@@ -143,7 +143,7 @@ class GoogleCustomWebSearchToolIT extends WebSearchToolIT {
         ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.from(aiMessage.toolExecutionRequests().get(0), strResult);
         messages.add(toolExecutionResultMessage);
 
-        AiMessage finalResponse = chatLanguageModel().chat(messages).aiMessage();
+        AiMessage finalResponse = chatModel().chat(messages).aiMessage();
 
         // then
         assertThat(finalResponse.text())
@@ -158,7 +158,7 @@ class GoogleCustomWebSearchToolIT extends WebSearchToolIT {
         WebSearchTool webTool = WebSearchTool.from(googleSearchEngine);
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(chatModel)
+                .chatModel(chatModel)
                 .tools(webTool)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
                 .build();
@@ -175,7 +175,7 @@ class GoogleCustomWebSearchToolIT extends WebSearchToolIT {
     }
 
     @Override
-    protected ChatLanguageModel chatLanguageModel() {
+    protected ChatModel chatModel() {
         return chatModel;
     }
 }

@@ -1,7 +1,6 @@
 package dev.langchain4j.model.openaiofficial;
 
-import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.detectModelHost;
-import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.setupSyncClient;
+import static dev.langchain4j.model.openaiofficial.setup.OpenAiOfficialSetup.setupSyncClient;
 
 import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.client.OpenAIClient;
@@ -21,7 +20,6 @@ public class OpenAiOfficialImageModel implements ImageModel {
 
     private final OpenAIClient client;
     private final String modelName;
-    private InternalOpenAiOfficialHelper.ModelHost modelHost;
     private final ImageGenerateParams.Size size;
     private final ImageGenerateParams.Quality quality;
     private final ImageGenerateParams.Style style;
@@ -31,27 +29,24 @@ public class OpenAiOfficialImageModel implements ImageModel {
 
     public OpenAiOfficialImageModel(Builder builder) {
 
-        this.modelHost = detectModelHost(
-                builder.isAzure,
-                builder.isGitHubModels,
-                builder.baseUrl,
-                builder.azureDeploymentName,
-                builder.azureOpenAIServiceVersion);
-
-        this.client = setupSyncClient(
-                builder.baseUrl,
-                builder.apiKey,
-                builder.credential,
-                builder.azureDeploymentName,
-                builder.azureOpenAIServiceVersion,
-                builder.organizationId,
-                this.modelHost,
-                builder.openAIClient,
-                builder.modelName,
-                builder.timeout,
-                builder.maxRetries,
-                builder.proxy,
-                builder.customHeaders);
+        if (builder.openAIClient != null) {
+            this.client = builder.openAIClient;
+        } else {
+            this.client = setupSyncClient(
+                    builder.baseUrl,
+                    builder.apiKey,
+                    builder.credential,
+                    builder.azureDeploymentName,
+                    builder.azureOpenAIServiceVersion,
+                    builder.organizationId,
+                    builder.isAzure,
+                    builder.isGitHubModels,
+                    builder.modelName,
+                    builder.timeout,
+                    builder.maxRetries,
+                    builder.proxy,
+                    builder.customHeaders);
+        }
 
         this.modelName = builder.modelName;
         this.size = builder.size;
@@ -74,7 +69,10 @@ public class OpenAiOfficialImageModel implements ImageModel {
 
         ImagesResponse response = client.images().generate(imageGenerateParams, requestOptions());
 
-        return Response.from(fromOpenAiImage(response.data().get(0)));
+        if (response.data().isEmpty() && response.data().get().isEmpty()) {
+            throw new IllegalArgumentException("Image generation failed: no image returned");
+        }
+        return Response.from(fromOpenAiImage(response.data().get().get(0)));
     }
 
     @Override
@@ -85,7 +83,11 @@ public class OpenAiOfficialImageModel implements ImageModel {
 
         ImagesResponse response = client.images().generate(imageGenerateParams, requestOptions());
 
-        return Response.from(response.data().stream()
+        if (response.data().isEmpty()) {
+            throw new IllegalArgumentException("Image generation failed: no image returned");
+        }
+
+        return Response.from(response.data().get().stream()
                 .map(OpenAiOfficialImageModel::fromOpenAiImage)
                 .toList());
     }

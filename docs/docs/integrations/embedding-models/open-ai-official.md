@@ -39,7 +39,7 @@ It will also work with models supporting the OpenAI API.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-official</artifactId>
-    <version>1.0.0-beta2</version>
+    <version>1.9.1-beta17</version>
 </dependency>
 ```
 
@@ -55,12 +55,14 @@ import com.openai.models.embeddings.EmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialEmbeddingModel;
 
+import static com.openai.models.embeddings.EmbeddingModel.TEXT_EMBEDDING_3_SMALL;
+
 // ....
 
 EmbeddingModel model = OpenAiOfficialEmbeddingModel.builder()
         .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
         .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-        .modelName(EmbeddingModel.TEXT_EMBEDDING_3_SMALL)
+        .modelName(TEXT_EMBEDDING_3_SMALL)
         .build();
 ```
 
@@ -69,22 +71,24 @@ EmbeddingModel model = OpenAiOfficialEmbeddingModel.builder()
 Similar to configuring the [OpenAI Official Chat Model](/integrations/language-models/open-ai-official), you can configure the `OpenAiOfficialEmbeddingModel` with
 Azure OpenAI and GitHub Models, using the `isAzure()` and `isGitHubModels()` methods.
 
-For Azure OpenAI:
+#### Azure OpenAI
 
 ```java
 EmbeddingModel model = OpenAiOfficialEmbeddingModel.builder()
         .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
         .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-        .modelName(EmbeddingModel.TEXT_EMBEDDING_3_SMALL)
+        .modelName(TEXT_EMBEDDING_3_SMALL)
         .isAzure(true) // Not necessary if the base URL ends with `openai.azure.com`
         .build();
 ```
 
-For GitHub Models:
+You can also use "passwordless" authentication, as described in the [OpenAI Official Chat Model](/integrations/language-models/open-ai-official) documentation.
+
+#### GitHub Models
 
 ```java
 EmbeddingModel model = OpenAiOfficialEmbeddingModel.builder()
-        .modelName(EmbeddingModel.TEXT_EMBEDDING_3_SMALL)
+        .modelName(TEXT_EMBEDDING_3_SMALL)
         .isGitHubModels(true)
         .build();
 ```

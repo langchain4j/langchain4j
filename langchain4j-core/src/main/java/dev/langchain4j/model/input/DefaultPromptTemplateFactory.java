@@ -1,16 +1,17 @@
 package dev.langchain4j.model.input;
 
-import dev.langchain4j.spi.prompt.PromptTemplateFactory;
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
+import dev.langchain4j.Internal;
+import dev.langchain4j.spi.prompt.PromptTemplateFactory;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static dev.langchain4j.internal.Exceptions.illegalArgument;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-
+@Internal
 class DefaultPromptTemplateFactory implements PromptTemplateFactory {
 
     @Override
@@ -20,8 +21,16 @@ class DefaultPromptTemplateFactory implements PromptTemplateFactory {
 
     static class DefaultTemplate implements Template {
 
-        @SuppressWarnings("RegExpRedundantEscape")
-        private static final Pattern VARIABLE_PATTERN = Pattern.compile("\\{\\{(.+?)\\}\\}");
+        /**
+         * A regular expression pattern for identifying variable placeholders within double curly braces in a template string.
+         * Variables are denoted as <code>{{variable_name}}</code> or <code>{{ variable_name }}</code>,
+         * where spaces around the variable name are allowed.
+         * <p>
+         * This pattern is used to match and extract variables from a template string for further processing,
+         * such as replacing these placeholders with their corresponding values.
+         */
+        @SuppressWarnings({"RegExpRedundantEscape"})
+        private static final Pattern VARIABLE_PATTERN = Pattern.compile("\\{\\{\\s*(.+?)\\s*\\}\\}");
 
         private final String template;
         private final Set<String> allVariables;

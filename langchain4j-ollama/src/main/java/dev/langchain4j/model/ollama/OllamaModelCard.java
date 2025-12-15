@@ -1,15 +1,15 @@
 package dev.langchain4j.model.ollama;
 
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Map;
-
-import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(NON_NULL)
@@ -22,11 +22,13 @@ public class OllamaModelCard {
     private String template;
     private OllamaModelDetails details;
     private Map<String, Object> modelInfo;
+
     @JsonDeserialize(using = OllamaDateDeserializer.class)
     private OffsetDateTime modifiedAt;
 
-    OllamaModelCard() {
-    }
+    private List<String> capabilities;
+
+    OllamaModelCard() {}
 
     public OllamaModelCard(String modelfile, String parameters, String template, OllamaModelDetails details) {
         this.modelfile = modelfile;
@@ -95,6 +97,14 @@ public class OllamaModelCard {
         this.modifiedAt = modifiedAt;
     }
 
+    public List<String> getCapabilities() {
+        return capabilities;
+    }
+
+    public void setCapabilities(List<String> capabilities) {
+        this.capabilities = capabilities;
+    }
+
     public static class Builder {
 
         private String license;
@@ -104,6 +114,7 @@ public class OllamaModelCard {
         private OllamaModelDetails details;
         private Map<String, Object> modelInfo;
         private OffsetDateTime modifiedAt;
+        private List<String> capabilities;
 
         public Builder license(String license) {
             this.license = license;
@@ -132,6 +143,11 @@ public class OllamaModelCard {
 
         public Builder modelInfo(Map<String, Object> modelInfo) {
             this.modelInfo = modelInfo;
+            return this;
+        }
+
+        public Builder capabilities(List<String> capabilities) {
+            this.capabilities = capabilities;
             return this;
         }
 

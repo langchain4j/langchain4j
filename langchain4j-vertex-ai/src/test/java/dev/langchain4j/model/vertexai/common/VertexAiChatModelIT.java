@@ -1,24 +1,27 @@
 package dev.langchain4j.model.vertexai.common;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.vertexai.VertexAiChatModel;
+import org.junit.jupiter.api.Disabled;
 
 import java.util.List;
 
+@Disabled("TODO: configure custom model")
 class VertexAiChatModelIT extends AbstractChatModelIT {
 
     // TODO https://github.com/langchain4j/langchain4j/issues/2219
 
     @Override
-    protected List<ChatLanguageModel> models() {
+    protected List<ChatModel> models() {
         return List.of(
                 VertexAiChatModel.builder()
                         .endpoint(System.getenv("GCP_VERTEXAI_ENDPOINT"))
                         .project(System.getenv("GCP_PROJECT_ID"))
                         .location(System.getenv("GCP_LOCATION"))
                         .publisher("google")
-                        .modelName("chat-bison@001")
+                        .modelName("llama-3.3-70b-instruct-maas")
                         .build()
         );
     }
@@ -60,6 +63,11 @@ class VertexAiChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected boolean supportsJsonResponseFormatWithSchema() {
+        return false; // TODO check if supported
+    }
+
+    @Override
+    protected boolean supportsJsonResponseFormatWithRawSchema() {
         return false; // TODO check if supported
     }
 

@@ -2,9 +2,10 @@ package dev.langchain4j.store.memory.chat;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
-import java.util.Arrays;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
+
+import java.util.Arrays;
 
 class InMemoryChatMemoryStoreTest implements WithAssertions {
     @Test

@@ -1,16 +1,16 @@
 package dev.langchain4j.data.message;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 
 import java.util.Map;
 import java.util.Objects;
 
 import static dev.langchain4j.data.message.ChatMessageType.CUSTOM;
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.copy;
 
 /**
  * Represents a custom message.
- * Can be used only with {@link ChatLanguageModel} implementations that support this type of message.
+ * Can be used only with {@link ChatModel} implementations that support this type of message.
  */
 public class CustomMessage implements ChatMessage {
 
@@ -22,7 +22,7 @@ public class CustomMessage implements ChatMessage {
      * @param attributes the message attributes.
      */
     public CustomMessage(Map<String, Object> attributes) {
-        this.attributes = copyIfNotNull(attributes);
+        this.attributes = copy(attributes);
     }
 
     /**
@@ -37,11 +37,6 @@ public class CustomMessage implements ChatMessage {
     @Override
     public ChatMessageType type() {
         return CUSTOM;
-    }
-
-    @Override
-    public String text() {
-        throw new UnsupportedOperationException("use attributes() instead");
     }
 
     @Override

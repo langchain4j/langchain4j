@@ -1,82 +1,84 @@
 package dev.langchain4j.model.mistralai.common;
 
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
-import dev.langchain4j.model.mistralai.MistralAiStreamingChatModel;
+import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_SMALL_LATEST;
+import static dev.langchain4j.model.mistralai.MistralAiChatModelName.OPEN_MISTRAL_7B;
 
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.mistralai.MistralAiStreamingChatModel;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.mockito.InOrder;
 import java.util.List;
 
-import static dev.langchain4j.model.mistralai.MistralAiChatModelName.OPEN_MIXTRAL_8X22B;
-
+@EnabledIfEnvironmentVariable(named = "MISTRAL_AI_API_KEY", matches = ".+")
 class MistralAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
-    static final StreamingChatLanguageModel MISTRAL_STREAMING_CHAT_MODEL = MistralAiStreamingChatModel.builder()
+    static final StreamingChatModel MISTRAL_STREAMING_CHAT_MODEL = MistralAiStreamingChatModel.builder()
             .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-            .modelName(OPEN_MIXTRAL_8X22B)
+            .modelName(MISTRAL_SMALL_LATEST)
             .temperature(0.0)
-            .logRequests(true)
+            .logRequests(false) // images are huge in logs
             .logResponses(true)
             .build();
 
     @Override
-    protected List<StreamingChatLanguageModel> models() {
-        return List.of(
-                MISTRAL_STREAMING_CHAT_MODEL
-        );
+    protected List<StreamingChatModel> models() {
+        return List.of(MISTRAL_STREAMING_CHAT_MODEL);
     }
 
     @Override
-    protected boolean supportsDefaultRequestParameters() {
-        return false; // TODO implement
+    protected StreamingChatModel createModelWith(ChatRequestParameters parameters) {
+        var mistralAiChatModelBuilder = MistralAiStreamingChatModel.builder()
+                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .defaultRequestParameters(parameters)
+                .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true);
+
+        if (parameters.modelName() == null) {
+            mistralAiChatModelBuilder.modelName(OPEN_MISTRAL_7B);
+        }
+        return mistralAiChatModelBuilder.build();
     }
 
     @Override
-    protected boolean supportsModelNameParameter() {
-        return false; // TODO implement
+    protected String customModelName() {
+        return "open-mixtral-8x22b";
     }
 
     @Override
-    protected boolean supportsMaxOutputTokensParameter() {
-        return false; // TODO implement
+    protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
+        return ChatRequestParameters.builder()
+                .maxOutputTokens(maxOutputTokens)
+                .build();
     }
 
     @Override
-    protected boolean supportsStopSequencesParameter() {
-        return false; // TODO implement
+    public StreamingChatModel createModelWith(ChatModelListener listener) {
+        return MistralAiStreamingChatModel.builder()
+                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .modelName(MISTRAL_SMALL_LATEST)
+                .listeners(List.of(listener))
+                .build();
     }
 
     @Override
-    protected boolean supportsToolChoiceRequiredWithMultipleTools() {
-        return false; // TODO implement
+    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id) {
+        io.verify(handler).onCompleteToolCall(complete(0, id, "getWeather", "{\"city\": \"Munich\"}"));
     }
 
     @Override
-    protected boolean supportsJsonResponseFormat() {
-        return false; // TODO implement
+    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
+        verifyToolCallbacks(handler, io, id1);
+
+        io.verify(handler).onCompleteToolCall(complete(1, id2, "getTime", "{\"country\": \"France\"}"));
     }
 
     @Override
-    protected boolean supportsJsonResponseFormatWithSchema() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsSingleImageInputAsBase64EncodedString() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsSingleImageInputAsPublicURL() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertResponseId() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertResponseModel() {
-        return false; // TODO implement
+    protected boolean supportsPartialToolStreaming(StreamingChatModel model) {
+        return false;
     }
 }

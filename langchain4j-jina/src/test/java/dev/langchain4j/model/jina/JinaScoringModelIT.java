@@ -9,13 +9,13 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.scoring.ScoringModel;
 import java.time.Duration;
 import java.util.List;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+@EnabledIfEnvironmentVariable(named = "JINA_API_KEY", matches = ".+")
 class JinaScoringModelIT {
 
     @Test
-    @DisplayName("Single text to score, using Jina scoring model: jina-reranker-v2-base-multilingual")
     void should_score_single_text() {
 
         // given
@@ -39,7 +39,6 @@ class JinaScoringModelIT {
     }
 
     @Test
-    @DisplayName("Multiple text segments to score, using Jina scoring model: jina-reranker-v2-base-multilingual")
     void should_score_multiple_segments_with_all_parameters() {
 
         // given
@@ -50,19 +49,20 @@ class JinaScoringModelIT {
                 .logResponses(true)
                 .build();
 
-        TextSegment catSegment = TextSegment.from("main coon");
-        TextSegment dogSegment = TextSegment.from("labrador retriever");
-        List<TextSegment> segments = asList(catSegment, dogSegment);
+        TextSegment weatherSegment = TextSegment.from("sunny cloudy rainy");
+        TextSegment animalSegment = TextSegment.from("cat dog bird");
+        List<TextSegment> segments = asList(weatherSegment, weatherSegment, animalSegment);
 
-        String query = "tell me about dogs";
+        String query = "animal";
 
         // when
         Response<List<Double>> response = model.scoreAll(segments, query);
 
         // then
         List<Double> scores = response.content();
-        assertThat(scores).hasSize(2);
-        assertThat(scores.get(0)).isLessThan(scores.get(1));
+        assertThat(scores).hasSize(3);
+        assertThat(scores.get(2)).isGreaterThan(scores.get(0));
+        assertThat(scores.get(2)).isGreaterThan(scores.get(1));
 
         assertThat(response.tokenUsage().totalTokenCount()).isPositive();
 
@@ -70,8 +70,6 @@ class JinaScoringModelIT {
     }
 
     @Test
-    @DisplayName(
-            "Multiple text segments to score, using Jina scoring model: jina-reranker-v1-turbo-en. Note: latency could be quite high for v1, adjusted the timeout")
     void should_score_multiple_segments_with_all_parameters_v1_reranker() {
 
         // given

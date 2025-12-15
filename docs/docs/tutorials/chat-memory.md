@@ -46,7 +46,7 @@ Currently, LangChain4j offers 2 out-of-the-box implementations:
   which also operates as a sliding window but focuses on keeping the `N` most recent **tokens**,
   evicting older messages as needed.
   Messages are indivisible. If a message doesn't fit, it is evicted completely.
-  `TokenWindowChatMemory` requires a `Tokenizer` to count the tokens in each `ChatMessage`.
+  `TokenWindowChatMemory` requires a `TokenCountEstimator` to count the tokens in each `ChatMessage`.
 
 ## Persistence
 
@@ -133,6 +133,9 @@ that prohibit sending orphan `ToolExecutionResultMessage`(s) in the request.
 - With legacy `Chain`s
   - [Chat memory with ConversationalChain](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ChatMemoryExamples.java)
   - [Chat memory with ConversationalRetrievalChain](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ChatWithDocumentsExamples.java)
+
+All supported chat memory stores can be found [here](/integrations/chat-memory-stores/).
+
 
 ## Related Tutorials
 - [Generative AI Conversations using LangChain4j ChatMemory](https://www.sivalabs.in/generative-ai-conversations-using-langchain4j-chat-memory/) by [Siva](https://www.sivalabs.in/)

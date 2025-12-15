@@ -1,9 +1,14 @@
 package dev.langchain4j.agent.tool;
 
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.mutableCopy;
 import static dev.langchain4j.internal.Utils.quoted;
 
 /**
@@ -16,6 +21,7 @@ public class ToolSpecification {
     private final String name;
     private final String description;
     private final JsonObjectSchema parameters;
+    private final Map<String, Object> metadata;
 
     /**
      * Creates a {@link ToolSpecification} from a {@link Builder}.
@@ -26,6 +32,7 @@ public class ToolSpecification {
         this.name = builder.name;
         this.description = builder.description;
         this.parameters = builder.parameters;
+        this.metadata = copy(builder.metadata);
     }
 
     /**
@@ -53,6 +60,18 @@ public class ToolSpecification {
         return parameters;
     }
 
+    /**
+     * Returns the metadata relevant to the tool.
+     * <p>
+     * NOTE: this metadata is not sent to the LLM provider API by default,
+     * you must explicitly specify which metadata keys should be sent when creating a {@link ChatModel}.
+     * <p>
+     * NOTE: Currently, tool metadata is supported only by the {@code langchain4j-anthropic} module.
+     */
+    public Map<String, Object> metadata() {
+        return metadata;
+    }
+
     @Override
     public boolean equals(Object another) {
         if (this == another) return true;
@@ -63,7 +82,8 @@ public class ToolSpecification {
     private boolean equalTo(ToolSpecification another) {
         return Objects.equals(name, another.name)
                 && Objects.equals(description, another.description)
-                && Objects.equals(parameters, another.parameters);
+                && Objects.equals(parameters, another.parameters)
+                && Objects.equals(metadata, another.metadata);
     }
 
     @Override
@@ -72,6 +92,7 @@ public class ToolSpecification {
         h += (h << 5) + Objects.hashCode(name);
         h += (h << 5) + Objects.hashCode(description);
         h += (h << 5) + Objects.hashCode(parameters);
+        h += (h << 5) + Objects.hashCode(metadata);
         return h;
     }
 
@@ -81,7 +102,16 @@ public class ToolSpecification {
                 + " name = " + quoted(name)
                 + ", description = " + quoted(description)
                 + ", parameters = " + parameters
+                + ", metadata = " + metadata
                 + " }";
+    }
+
+    public Builder toBuilder() {
+        return builder()
+                .name(name)
+                .description(description)
+                .parameters(parameters)
+                .metadata(mutableCopy(metadata));
     }
 
     /**
@@ -101,11 +131,13 @@ public class ToolSpecification {
         private String name;
         private String description;
         private JsonObjectSchema parameters;
+        private Map<String, Object> metadata;
 
         /**
          * Creates a {@link Builder}.
          */
         private Builder() {
+            this.metadata = new HashMap<>();
         }
 
         /**
@@ -138,6 +170,25 @@ public class ToolSpecification {
          */
         public Builder parameters(JsonObjectSchema parameters) {
             this.parameters = parameters;
+            return this;
+        }
+
+        /**
+         * Sets the {@code metadata}.
+         *
+         * @param metadata
+         * @return {@code this}
+         */
+        public Builder metadata(Map<String, Object> metadata) {
+            this.metadata = metadata;
+            return this;
+        }
+
+        /**
+         * Adds a key-value pair to the tool's {@code metadata}.
+         */
+        public Builder addMetadata(String key, Object value) {
+            this.metadata.put(key, value);
             return this;
         }
 

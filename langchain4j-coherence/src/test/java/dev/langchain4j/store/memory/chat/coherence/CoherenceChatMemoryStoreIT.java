@@ -28,6 +28,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class CoherenceChatMemoryStoreIT {
 
@@ -74,7 +77,7 @@ class CoherenceChatMemoryStoreIT {
 
         // when
         List<ChatMessage> chatMessages = new ArrayList<>();
-        String sysMessage = "You are a large language model working with Langchain4j";
+        String sysMessage = "You are a large language model working with LangChain4j";
         chatMessages.add(new SystemMessage(sysMessage));
         List<Content> userMsgContents = new ArrayList<>();
         userMsgContents.add(new ImageContent("someCatImageUrl"));
@@ -99,7 +102,7 @@ class CoherenceChatMemoryStoreIT {
     void should_delete_messages_from_coherence() {
         // given
         List<ChatMessage> chatMessages = new ArrayList<>();
-        chatMessages.add(new SystemMessage("You are a large language model working with Langchain4j"));
+        chatMessages.add(new SystemMessage("You are a large language model working with LangChain4j"));
         memoryStore.updateMessages(userId, chatMessages);
         List<ChatMessage> messages = memoryStore.getMessages(userId);
         assertThat(messages).hasSize(1);
@@ -137,7 +140,7 @@ class CoherenceChatMemoryStoreIT {
     @Test
     void updateMessages_memoryId_null() {
         List<ChatMessage> chatMessages = new ArrayList<>();
-        chatMessages.add(new SystemMessage("You are a large language model working with Langchain4j"));
+        chatMessages.add(new SystemMessage("You are a large language model working with LangChain4j"));
         assertThatThrownBy(() -> memoryStore.updateMessages(null, chatMessages))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("memoryId cannot be null");
@@ -148,5 +151,26 @@ class CoherenceChatMemoryStoreIT {
         assertThatThrownBy(() -> memoryStore.deleteMessages(null))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("memoryId cannot be null");
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource // covers null and empty string ""
+    @ValueSource(strings = {"  ", "  \t\n "}) // strings with spaces, tabs, newlines
+    void should_use_default_map_name_when_name_is_blank(String name) {
+        CoherenceChatMemoryStore store =
+                CoherenceChatMemoryStore.builder().session(session).name(name).build();
+
+        assertThat(store.chatMemory.getName()).isEqualTo(CoherenceChatMemoryStore.DEFAULT_MAP_NAME);
+    }
+
+    @Test
+    void should_use_custom_name_when_set() {
+        String name = "custom-chat-memory";
+        CoherenceChatMemoryStore store = CoherenceChatMemoryStore.builder()
+                .session(session)
+                .name(name) // Custom Name
+                .build();
+
+        assertThat(store.chatMemory.getName()).isEqualTo(name);
     }
 }

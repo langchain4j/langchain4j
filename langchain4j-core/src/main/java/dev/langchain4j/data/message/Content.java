@@ -8,7 +8,6 @@ package dev.langchain4j.data.message;
  * @see AudioContent
  * @see VideoContent
  * @see PdfFileContent
- * @see TextFileContent
  */
 public interface Content {
     /**

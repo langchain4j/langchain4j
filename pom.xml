@@ -4,7 +4,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-aggregator</artifactId>
-    <version>1.0.0-beta3-SNAPSHOT</version>
+    <version>1.10.0-beta18-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>LangChain4j :: Aggregator</name>
 
@@ -14,9 +14,13 @@
         <module>langchain4j-bom</module>
 
         <module>langchain4j-core</module>
+        <module>langchain4j-test</module>
         <module>langchain4j</module>
+        <module>langchain4j-kotlin</module>
 
         <module>langchain4j-easy-rag</module>
+        <module>langchain4j-mcp</module>
+        <module>langchain4j-mcp-docker</module>
 
         <!-- http clients -->
         <module>langchain4j-http-client</module>
@@ -33,6 +37,7 @@
         <module>langchain4j-mistral-ai</module>
         <module>langchain4j-nomic</module>
         <module>langchain4j-ollama</module>
+        <module>langchain4j-onnx-scoring</module>
         <module>langchain4j-ovh-ai</module>
         <module>langchain4j-open-ai</module>
         <module>langchain4j-open-ai-official</module>
@@ -40,10 +45,25 @@
         <module>langchain4j-google-ai-gemini</module>
         <module>langchain4j-vertex-ai</module>
         <module>langchain4j-vertex-ai-gemini</module>
+        <module>langchain4j-vertex-ai-anthropic</module>
         <module>langchain4j-workers-ai</module>
         <module>langchain4j-voyage-ai</module>
+        <module>langchain4j-watsonx</module>
 
-        <!-- embedding stores -->
+        <!-- in-process embeddings -->
+        <module>embeddings/langchain4j-embeddings</module>
+        <module>embeddings/langchain4j-embeddings-all-minilm-l6-v2</module>
+        <module>embeddings/langchain4j-embeddings-all-minilm-l6-v2-q</module>
+        <module>embeddings/langchain4j-embeddings-bge-small-en</module>
+        <module>embeddings/langchain4j-embeddings-bge-small-en-q</module>
+        <module>embeddings/langchain4j-embeddings-bge-small-en-v15</module>
+        <module>embeddings/langchain4j-embeddings-bge-small-en-v15-q</module>
+        <module>embeddings/langchain4j-embeddings-bge-small-zh-v15</module>
+        <module>embeddings/langchain4j-embeddings-bge-small-zh-v15-q</module>
+        <module>embeddings/langchain4j-embeddings-e5-small-v2</module>
+        <module>embeddings/langchain4j-embeddings-e5-small-v2-q</module>
+
+        <!-- embedding / chat memory stores -->
         <module>langchain4j-azure-ai-search</module>
         <module>langchain4j-azure-cosmos-mongo-vcore</module>
         <module>langchain4j-azure-cosmos-nosql</module>
@@ -56,7 +76,6 @@
         <module>langchain4j-mariadb</module>
         <module>langchain4j-milvus</module>
         <module>langchain4j-mongodb-atlas</module>
-        <module>langchain4j-neo4j</module>
         <module>langchain4j-oracle</module>
         <module>langchain4j-opensearch</module>
         <module>langchain4j-pgvector</module>
@@ -71,6 +90,7 @@
         <module>document-loaders/langchain4j-document-loader-azure-storage-blob</module>
         <module>document-loaders/langchain4j-document-loader-github</module>
         <module>document-loaders/langchain4j-document-loader-selenium</module>
+        <module>document-loaders/langchain4j-document-loader-playwright</module>
         <module>document-loaders/langchain4j-document-loader-tencent-cos</module>
         <module>document-loaders/langchain4j-document-loader-google-cloud-storage</module>
 
@@ -78,6 +98,8 @@
         <module>document-parsers/langchain4j-document-parser-apache-pdfbox</module>
         <module>document-parsers/langchain4j-document-parser-apache-poi</module>
         <module>document-parsers/langchain4j-document-parser-apache-tika</module>
+        <module>document-parsers/langchain4j-document-parser-markdown</module>
+        <module>document-parsers/langchain4j-document-parser-yaml</module>
 
         <!-- document transformers -->
         <module>document-transformers/langchain4j-document-transformer-jsoup</module>
@@ -85,6 +107,7 @@
         <!-- code execution engines -->
         <module>code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot</module>
         <module>code-execution-engines/langchain4j-code-execution-engine-judge0</module>
+        <module>code-execution-engines/langchain4j-code-execution-engine-azure-acads</module>
 
         <!-- web search engines -->
         <module>web-search-engines/langchain4j-web-search-engine-google-custom</module>
@@ -94,14 +117,25 @@
         <!-- embedding store filter parsers -->
         <module>embedding-store-filter-parsers/langchain4j-embedding-store-filter-parser-sql</module>
 
+        <!-- guardrails -->
+        <module>langchain4j-guardrails</module>
+
         <!-- experimental -->
         <module>experimental/langchain4j-experimental-sql</module>
-        <module>langchain4j-onnx-scoring</module>
-        <module>langchain4j-mcp</module>
+        <module>langchain4j-agentic</module>
+        <module>langchain4j-agentic-a2a</module>
+        <module>langchain4j-agentic-patterns</module>
 
+        <!-- integration tests -->
+        <module>integration-tests</module>
+
+        <!-- internal -->
+        <module>internal/langchain4j-docu-chatbot-updater</module>
     </modules>
 
     <properties>
+        <langchain4j.stable.version>1.10.0-SNAPSHOT</langchain4j.stable.version>
+        <langchain4j.beta.version>1.10.0-beta18-SNAPSHOT</langchain4j.beta.version>
         <gib.disable>true</gib.disable>
     </properties>
 
@@ -110,7 +144,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-deploy-plugin</artifactId>
-                <version>3.1.3</version>
+                <version>3.1.4</version>
                 <configuration>
                     <!-- do not deploy langchain4j-aggregator's pom.xml (this file) -->
                     <skip>true</skip>
@@ -137,19 +171,6 @@
                 </executions>
             </plugin>
             <plugin>
-                <groupId>com.diffplug.spotless</groupId>
-                <artifactId>spotless-maven-plugin</artifactId>
-                <version>2.43.0</version>
-                <configuration>
-                    <ratchetFrom>origin/main</ratchetFrom>
-                    <pom>
-                        <sortPom>
-                            <nrOfIndentSpace>4</nrOfIndentSpace>
-                        </sortPom>
-                    </pom>
-                </configuration>
-            </plugin>
-            <plugin>
                 <groupId>com.simpligility.maven.plugins</groupId>
                 <artifactId>android-maven-plugin</artifactId>
                 <version>4.6.0</version>
@@ -167,9 +188,9 @@
         </plugins>
         <extensions>
             <extension>
-                <groupId>com.vackosar.gitflowincrementalbuilder</groupId>
+                <groupId>io.github.gitflow-incremental-builder</groupId>
                 <artifactId>gitflow-incremental-builder</artifactId>
-                <version>3.16.0</version>
+                <version>4.0.0</version>
             </extension>
         </extensions>
     </build>
@@ -187,6 +208,9 @@
                             <report>aggregate</report>
                         </reports>
                         <inherited>false</inherited>
+                        <configuration>
+                            <skippedModules>integration-tests</skippedModules>
+                        </configuration>
                     </reportSet>
                     <reportSet>
                         <id>default</id>
@@ -200,6 +224,7 @@
     </reporting>
 
     <profiles>
+
         <profile>
             <id>jdk21</id>
             <activation>
@@ -207,8 +232,10 @@
             </activation>
             <modules>
                 <module>langchain4j-jlama</module>
+                <module>langchain4j-gpu-llama3</module>
             </modules>
         </profile>
+
         <profile>
             <id>openrewrite</id>
             <!-- `mvn -Popenrewrite -Dspotless.check.skip=true org.openrewrite.maven:rewrite-maven-plugin:run` -->
@@ -217,7 +244,7 @@
                     <plugin>
                         <groupId>org.openrewrite.maven</groupId>
                         <artifactId>rewrite-maven-plugin</artifactId>
-                        <version>5.43.4</version>
+                        <version>5.47.3</version>
                         <configuration>
                             <activeRecipes>
                                 <recipe>org.openrewrite.java.testing.cleanup.TestsShouldNotBePublic</recipe>
@@ -237,6 +264,28 @@
                 </plugins>
             </build>
         </profile>
+
+        <profile>
+            <id>spotless</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.diffplug.spotless</groupId>
+                        <artifactId>spotless-maven-plugin</artifactId>
+                        <version>2.44.4</version>
+                        <configuration>
+                            <ratchetFrom>origin/main</ratchetFrom>
+                            <pom>
+                                <sortPom>
+                                    <nrOfIndentSpace>4</nrOfIndentSpace>
+                                </sortPom>
+                            </pom>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
     </profiles>
 
 </project>

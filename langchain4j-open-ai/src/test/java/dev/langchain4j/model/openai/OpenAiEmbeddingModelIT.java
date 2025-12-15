@@ -1,19 +1,18 @@
 package dev.langchain4j.model.openai;
 
+import static dev.langchain4j.model.openai.OpenAiEmbeddingModelName.TEXT_EMBEDDING_3_SMALL;
+import static java.util.Arrays.asList;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
 import java.util.List;
 import java.util.stream.Stream;
-
-import static dev.langchain4j.model.openai.OpenAiEmbeddingModelName.TEXT_EMBEDDING_3_SMALL;
-import static java.util.Arrays.asList;
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiEmbeddingModelIT {
@@ -24,7 +23,7 @@ class OpenAiEmbeddingModelIT {
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
             .modelName(TEXT_EMBEDDING_3_SMALL)
             .logRequests(true)
-            .logResponses(true)
+            .logResponses(false) // embeddings are huge in logs
             .build();
 
     @Test
@@ -51,10 +50,7 @@ class OpenAiEmbeddingModelIT {
     void should_embed_multiple_segments() {
 
         // given
-        List<TextSegment> segments = asList(
-                TextSegment.from("hello"),
-                TextSegment.from("world")
-        );
+        List<TextSegment> segments = asList(TextSegment.from("hello"), TextSegment.from("world"));
 
         // when
         Response<List<Embedding>> response = model.embedAll(segments);
@@ -85,7 +81,7 @@ class OpenAiEmbeddingModelIT {
                 .modelName(TEXT_EMBEDDING_3_SMALL)
                 .maxSegmentsPerBatch(maxSegmentsPerBatch)
                 .logRequests(true)
-                .logResponses(true)
+                .logResponses(false) // embeddings are huge in logs
                 .build();
 
         List<TextSegment> segments = Stream.generate(() -> TextSegment.from("hello"))
@@ -123,7 +119,7 @@ class OpenAiEmbeddingModelIT {
                 .modelName(TEXT_EMBEDDING_3_SMALL)
                 .dimensions(dimension)
                 .logRequests(true)
-                .logResponses(true)
+                .logResponses(false) // embeddings are huge in logs
                 .build();
 
         String text = "hello world";
@@ -133,6 +129,35 @@ class OpenAiEmbeddingModelIT {
 
         // then
         assertThat(response.content().dimension()).isEqualTo(dimension);
+
+        TokenUsage tokenUsage = response.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(2);
+        assertThat(tokenUsage.outputTokenCount()).isNull();
+        assertThat(tokenUsage.totalTokenCount()).isEqualTo(2);
+
+        assertThat(response.finishReason()).isNull();
+    }
+
+    @Test
+    void should_embed_single_text_with_base64_encoding_format() {
+        EmbeddingModel base64Model = OpenAiEmbeddingModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(TEXT_EMBEDDING_3_SMALL)
+                .encodingFormat("base64")
+                .logRequests(true)
+                .logResponses(false)
+                .build();
+
+        // given
+        String text = "hello world";
+
+        // when
+        Response<Embedding> response = base64Model.embed(text);
+
+        // then
+        assertThat(response.content().vector()).hasSize(1536);
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(2);

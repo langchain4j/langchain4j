@@ -1,7 +1,27 @@
 package dev.langchain4j.model.ollama;
 
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
+import static dev.langchain4j.http.client.HttpMethod.DELETE;
+import static dev.langchain4j.http.client.HttpMethod.GET;
+import static dev.langchain4j.http.client.HttpMethod.POST;
+import static dev.langchain4j.http.client.sse.ServerSentEventParsingHandleUtils.toStreamingHandle;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.model.ollama.InternalOllamaHelper.toOllamaChatRequest;
+import static dev.langchain4j.model.ollama.OllamaJsonUtils.fromJson;
+import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJson;
+import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJsonWithoutIdent;
+import static java.lang.Boolean.TRUE;
+import static java.time.Duration.ofSeconds;
+
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.HttpClientBuilderLoader;
@@ -9,33 +29,22 @@ import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
+import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
-import dev.langchain4j.model.ModelProvider;
+import dev.langchain4j.internal.ExceptionMapper;
+import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.http.client.sse.CancellationUnsupportedHandle;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-
+import org.slf4j.Logger;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
-import static dev.langchain4j.http.client.HttpMethod.DELETE;
-import static dev.langchain4j.http.client.HttpMethod.GET;
-import static dev.langchain4j.http.client.HttpMethod.POST;
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.createListenerRequest;
-import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.onListenError;
-import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.onListenRequest;
-import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.onListenResponse;
-import static dev.langchain4j.model.ollama.OllamaJsonUtils.fromJson;
-import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJson;
-import static java.lang.Boolean.TRUE;
-import static java.time.Duration.ofSeconds;
 
 class OllamaClient {
 
@@ -49,25 +58,27 @@ class OllamaClient {
                 getOrDefault(builder.httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder);
 
         HttpClient httpClient = httpClientBuilder
-                .connectTimeout(getOrDefault(getOrDefault(builder.timeout, httpClientBuilder.connectTimeout()), ofSeconds(15)))
-                .readTimeout(getOrDefault(getOrDefault(builder.timeout, httpClientBuilder.readTimeout()), ofSeconds(60)))
+                .connectTimeout(
+                        getOrDefault(getOrDefault(builder.timeout, httpClientBuilder.connectTimeout()), ofSeconds(15)))
+                .readTimeout(
+                        getOrDefault(getOrDefault(builder.timeout, httpClientBuilder.readTimeout()), ofSeconds(60)))
                 .build();
 
         if (builder.logRequests || builder.logResponses) {
-            this.httpClient = new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses);
+            this.httpClient = new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses, builder.logger);
         } else {
             this.httpClient = httpClient;
         }
 
         this.baseUrl = ensureNotBlank(builder.baseUrl, "baseUrl");
-        this.defaultHeaders = copyIfNotNull(builder.customHeaders);
+        this.defaultHeaders = copy(builder.customHeaders);
     }
 
     static Builder builder() {
         return new Builder();
     }
 
-    public CompletionResponse completion(CompletionRequest request) {
+    CompletionResponse completion(CompletionRequest request) {
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
@@ -82,7 +93,7 @@ class OllamaClient {
         return fromJson(successfulHttpResponse.body(), CompletionResponse.class);
     }
 
-    public ChatResponse chat(ChatRequest request) {
+    OllamaChatResponse chat(OllamaChatRequest request) {
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
@@ -94,10 +105,10 @@ class OllamaClient {
 
         SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
 
-        return fromJson(successfulHttpResponse.body(), ChatResponse.class);
+        return fromJson(successfulHttpResponse.body(), OllamaChatResponse.class);
     }
 
-    public void streamingCompletion(CompletionRequest request, StreamingResponseHandler<String> handler) {
+    void streamingCompletion(CompletionRequest request, StreamingResponseHandler<String> handler) {
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
@@ -120,69 +131,103 @@ class OllamaClient {
                 if (TRUE.equals(completionResponse.getDone())) {
                     Response<String> response = Response.from(
                             contentBuilder.toString(),
-                            new TokenUsage(
-                                    completionResponse.getPromptEvalCount(),
-                                    completionResponse.getEvalCount()
-                            )
-                    );
+                            new TokenUsage(completionResponse.getPromptEvalCount(), completionResponse.getEvalCount()));
                     handler.onComplete(response);
                 }
             }
 
             @Override
             public void onError(Throwable throwable) {
-                handler.onError(throwable);
+                handler.onError(ExceptionMapper.DEFAULT.mapException(throwable));
             }
         });
     }
 
-    public void streamingChat(
-            ChatRequest request,
-            StreamingResponseHandler<AiMessage> handler,
-            List<ChatModelListener> listeners,
-            ModelProvider modelProvider,
-            List<ChatMessage> messages) {
+    void streamingChat(ChatRequest request, boolean returnThinking, StreamingChatResponseHandler handler) {
+        ensureNotEmpty(request.messages(), "messages");
 
-        dev.langchain4j.model.chat.request.ChatRequest listenerRequest =
-                createListenerRequest(request, messages, new ArrayList<>());
-        Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        onListenRequest(listeners, listenerRequest, modelProvider, attributes);
+        OllamaChatRequest ollamaChatRequest = toOllamaChatRequest(request, true);
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl, "api/chat")
                 .addHeaders(defaultHeaders)
-                .body(toJson(request))
+                .body(toJson(ollamaChatRequest))
                 .build();
 
         httpClient.execute(httpRequest, new OllamaServerSentEventParser(), new ServerSentEventListener() {
 
-            final OllamaStreamingResponseBuilder responseBuilder = new OllamaStreamingResponseBuilder();
+            final ToolCallBuilder toolCallBuilder = new ToolCallBuilder();
+            final OllamaStreamingResponseBuilder responseBuilder = new OllamaStreamingResponseBuilder(toolCallBuilder, returnThinking);
+            volatile StreamingHandle streamingHandle;
 
             @Override
             public void onEvent(ServerSentEvent event) {
+                onEvent(event, new ServerSentEventContext(new CancellationUnsupportedHandle()));
+            }
 
-                ChatResponse chatResponse = fromJson(event.data(), ChatResponse.class);
-                String content = chatResponse.getMessage().getContent();
-                responseBuilder.append(chatResponse);
-                handler.onNext(content);
+            @Override
+            public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
+                if (streamingHandle == null) {
+                    streamingHandle = toStreamingHandle(context.parsingHandle());
+                }
 
-                if (TRUE.equals(chatResponse.getDone())) {
-                    Response<AiMessage> response = responseBuilder.build();
-                    onListenResponse(listeners, response, listenerRequest, modelProvider, attributes);
-                    handler.onComplete(response);
+                OllamaChatResponse ollamaChatResponse = fromJson(event.data(), OllamaChatResponse.class);
+                responseBuilder.append(ollamaChatResponse);
+
+                Message message = ollamaChatResponse.getMessage();
+                if (message == null) {
+                    return;
+                }
+
+                String content = message.getContent();
+                if (!isNullOrEmpty(content)) {
+                    onPartialResponse(handler, content, streamingHandle);
+                }
+
+                String thinking = message.getThinking();
+                if (returnThinking && !isNullOrEmpty(thinking)) {
+                    onPartialThinking(handler, thinking, streamingHandle);
+                }
+
+                List<ToolCall> toolCalls = message.getToolCalls();
+                if (toolCalls != null) {
+                    for (ToolCall toolCall : toolCalls) {
+
+                        int index = getOrDefault(toolCall.getFunction().getIndex(), 0);
+                        if (toolCallBuilder.index() != index) {
+                            onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
+                            toolCallBuilder.updateIndex(index);
+                        }
+
+                        toolCallBuilder.updateName(toolCall.getFunction().getName());
+
+                        String partialArguments = toJsonWithoutIdent(toolCall.getFunction().getArguments());
+                        if (isNotNullOrEmpty(partialArguments)) {
+                            toolCallBuilder.appendArguments(partialArguments);
+                        }
+                    }
+                }
+
+                if (TRUE.equals(ollamaChatResponse.getDone())) {
+                    if (toolCallBuilder.hasRequests()) {
+                        onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
+                    }
+
+                    ChatResponse completeResponse = responseBuilder.build(ollamaChatResponse);
+                    onCompleteResponse(handler, completeResponse);
                 }
             }
 
             @Override
             public void onError(Throwable throwable) {
-                onListenError(listeners, throwable, listenerRequest, modelProvider, attributes);
-                handler.onError(throwable);
+                RuntimeException mappedException = ExceptionMapper.DEFAULT.mapException(throwable);
+                withLoggingExceptions(() -> handler.onError(mappedException));
             }
         });
     }
 
-    public EmbeddingResponse embed(EmbeddingRequest request) {
+    EmbeddingResponse embed(EmbeddingRequest request) {
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
@@ -197,7 +242,7 @@ class OllamaClient {
         return fromJson(successfulHttpResponse.body(), EmbeddingResponse.class);
     }
 
-    public ModelsListResponse listModels() {
+    ModelsListResponse listModels() {
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(GET)
@@ -211,7 +256,7 @@ class OllamaClient {
         return fromJson(successfulHttpResponse.body(), ModelsListResponse.class);
     }
 
-    public OllamaModelCard showInformation(ShowModelInformationRequest showInformationRequest) {
+    OllamaModelCard showInformation(ShowModelInformationRequest showInformationRequest) {
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
@@ -226,7 +271,7 @@ class OllamaClient {
         return fromJson(successfulHttpResponse.body(), OllamaModelCard.class);
     }
 
-    public RunningModelsListResponse listRunningModels() {
+    RunningModelsListResponse listRunningModels() {
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(GET)
@@ -240,7 +285,7 @@ class OllamaClient {
         return fromJson(successfulHttpResponse.body(), RunningModelsListResponse.class);
     }
 
-    public Void deleteModel(DeleteModelRequest deleteModelRequest) {
+    Void deleteModel(DeleteModelRequest deleteModelRequest) {
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(DELETE)
@@ -262,8 +307,15 @@ class OllamaClient {
         private Duration timeout;
         private boolean logRequests;
         private boolean logResponses;
+        private Logger logger;
         private Map<String, String> customHeaders;
 
+        /**
+         * Sets the {@link HttpClientBuilder} that will be used to create the {@link HttpClient}
+         * that will be used to communicate with Ollama.
+         * <p>
+         * NOTE: {@link #timeout(Duration)} overrides timeouts set on the {@link HttpClientBuilder}.
+         */
         Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
             return this;
@@ -292,6 +344,15 @@ class OllamaClient {
                 logResponses = false;
             }
             this.logResponses = logResponses;
+            return this;
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        Builder logger(Logger logger) {
+            this.logger = logger;
             return this;
         }
 

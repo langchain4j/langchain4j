@@ -12,6 +12,7 @@ import dev.langchain4j.service.Result;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import static dev.langchain4j.service.output.JsonSchemas.jsonSchemaFrom;
@@ -33,12 +34,13 @@ class JsonSchemasTest {
 
     @Test
     void should_return_empty_for_not_pojos() {
+        assertThat(jsonSchemaFrom(void.class)).isEmpty();
         assertThat(jsonSchemaFrom(String.class)).isEmpty();
         assertThat(jsonSchemaFrom(AiMessage.class)).isEmpty();
         assertThat(jsonSchemaFrom(Response.class)).isEmpty();
         assertThat(jsonSchemaFrom(Integer.class)).isEmpty();
         assertThat(jsonSchemaFrom(LocalDate.class)).isEmpty();
-        assertThat(jsonSchemaFrom(new TypeReference<Result<String>>() {
+        assertThat(jsonSchemaFrom(new TypeReference<List<Pojo>>() {
         }.getType())).isEmpty();
     }
 

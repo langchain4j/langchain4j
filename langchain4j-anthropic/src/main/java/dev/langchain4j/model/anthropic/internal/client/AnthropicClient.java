@@ -1,18 +1,36 @@
 package dev.langchain4j.model.anthropic.internal.client;
 
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.Internal;
+import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicCountTokensRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
+import dev.langchain4j.model.anthropic.internal.api.MessageTokenCountResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.spi.ServiceHelper;
+import org.slf4j.Logger;
 
 import java.time.Duration;
 
+@Internal
 public abstract class AnthropicClient {
 
     public abstract AnthropicCreateMessageResponse createMessage(AnthropicCreateMessageRequest request);
 
-    public abstract void createMessage(AnthropicCreateMessageRequest request, StreamingResponseHandler<AiMessage> handler);
+    /**
+     * @since 1.2.0
+     */
+    public void createMessage(AnthropicCreateMessageRequest request,
+                              AnthropicCreateMessageOptions options,
+                              StreamingChatResponseHandler handler) {
+        createMessage(request, handler);
+    }
+
+    public abstract void createMessage(AnthropicCreateMessageRequest request, StreamingChatResponseHandler handler);
+
+    public MessageTokenCountResponse countTokens(AnthropicCountTokensRequest request){
+        throw new UnsupportedOperationException("Token counting is not implemented");
+    }
 
     @SuppressWarnings("rawtypes")
     public static AnthropicClient.Builder builder() {
@@ -25,37 +43,34 @@ public abstract class AnthropicClient {
 
     public abstract static class Builder<T extends AnthropicClient, B extends Builder<T, B>> {
 
+        public HttpClientBuilder httpClientBuilder;
         public String baseUrl;
         public String apiKey;
         public String version;
         public String beta;
         public Duration timeout;
+        public Logger logger;
         public Boolean logRequests;
         public Boolean logResponses;
 
         public abstract T build();
 
+        public B httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return (B) this;
+        }
+
         public B baseUrl(String baseUrl) {
-            if ((baseUrl == null) || baseUrl.trim().isEmpty()) {
-                throw new IllegalArgumentException("baseUrl cannot be null or empty");
-            }
             this.baseUrl = baseUrl;
             return (B) this;
         }
 
         public B apiKey(String apiKey) {
-            if (apiKey == null || apiKey.trim().isEmpty()) {
-                throw new IllegalArgumentException("Anthropic API key must be defined. " +
-                        "It can be generated here: https://console.anthropic.com/settings/keys");
-            }
             this.apiKey = apiKey;
             return (B) this;
         }
 
         public B version(String version) {
-            if (version == null) {
-                throw new IllegalArgumentException("version cannot be null or empty");
-            }
             this.version = version;
             return (B) this;
         }
@@ -66,9 +81,6 @@ public abstract class AnthropicClient {
         }
 
         public B timeout(Duration timeout) {
-            if (timeout == null) {
-                throw new IllegalArgumentException("timeout cannot be null");
-            }
             this.timeout = timeout;
             return (B) this;
         }
@@ -94,6 +106,15 @@ public abstract class AnthropicClient {
                 logResponses = false;
             }
             this.logResponses = logResponses;
+            return (B) this;
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public B logger(Logger logger) {
+            this.logger = logger;
             return (B) this;
         }
     }

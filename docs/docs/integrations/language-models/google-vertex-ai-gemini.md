@@ -68,14 +68,14 @@ To get started, add the following dependencies to your project's `pom.xml`:
 <dependency>
   <groupId>dev.langchain4j</groupId>
   <artifactId>langchain4j-vertex-ai-gemini</artifactId>
-  <version>1.0.0-beta2</version>
+  <version>1.9.1-beta17</version>
 </dependency>
 ```
 
 or project's `build.gradle`:
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j-vertex-ai-gemini:1.0.0-beta2'
+implementation 'dev.langchain4j:langchain4j-vertex-ai-gemini:1.9.1-beta17'
 ```
 
 ### Try out an example code:
@@ -91,9 +91,9 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.vertexai.VertexAiGeminiChatModel;
+import dev.langchain4j.model.vertexai.gemini.VertexAiGeminiChatModel;
 
 public class GeminiProVisionWithImageInput {
 
@@ -105,7 +105,7 @@ public class GeminiProVisionWithImageInput {
         "Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
 
     public static void main(String[] args) {
-        ChatLanguageModel visionModel = VertexAiGeminiChatModel.builder()
+        ChatModel visionModel = VertexAiGeminiChatModel.builder()
             .project(PROJECT_ID)
             .location(LOCATION)
             .modelName(MODEL_NAME)
@@ -193,7 +193,7 @@ ChatModel model = VertexAiGeminiChatModel.builder()
     .topP(0.95)                 // topP (between 0 and 1) — cumulative probability of the most probable tokens
     .topK(3)                    // topK (positive integer) — pick a token among the most probable ones
     .seed(1234)                 // seed for the random number generator
-    .maxRetries(3)              // maximum number of retries
+    .maxRetries(2)              // maximum number of retries
     .responseMimeType("application/json") // to get JSON structured outputs
     .responseSchema(/*...*/)    // structured output following the provided schema
     .safetySettings(/*...*/)    // specify safety settings to filter inappropriate content
@@ -204,6 +204,7 @@ ChatModel model = VertexAiGeminiChatModel.builder()
     .allowedFunctionNames(/*...*/) // when using ANY tool calling mode, 
                                 // specify the allowed function names to be called
     .listeners(/*...*/)         // list of listeners to receive model events
+    .credentials(credentials)   // custom Google Cloud credentials    
     .build();
 ```
 
@@ -216,7 +217,7 @@ Gemini is a `multimodal` model which accepts text, but also images, audio and vi
 ### Describing the content of an image
 
 ```java
-ChatLanguageModel model = VertexAiGeminiChatModel.builder()
+ChatModel model = VertexAiGeminiChatModel.builder()
     .project(PROJECT_ID)
     .location(LOCATION)
     .modelName(GEMINI_1_5_PRO)
@@ -265,7 +266,7 @@ ChatResponse response = model.chat(message);
 ### Tool calling
 
 ```java
-ChatLanguageModel model = VertexAiGeminiChatModel.builder()
+ChatModel model = VertexAiGeminiChatModel.builder()
         .project(PROJECT_ID)
         .location(LOCATION)
         .modelName(GEMINI_1_5_PRO)
@@ -322,7 +323,7 @@ interface Assistant {
 Calculator calculator = new Calculator();
 
 Assistant assistant = AiServices.builder(Assistant.class)
-        .chatLanguageModel(model)
+        .chatModel(model)
         .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
         .tools(calculator)
         .build();
@@ -477,6 +478,25 @@ var model = VertexAiGeminiChatModel.builder()
     .safetySettings(safetySettings)
     .logRequests(true)
     .logResponses(true)
+    .build();
+```
+
+### Custom authentication
+
+You can provide custom Google Cloud credentials:
+
+```java
+import com.google.auth.oauth2.GoogleCredentials;
+import java.io.FileInputStream;
+
+GoogleCredentials credentials = GoogleCredentials.fromStream(
+    new FileInputStream("path/to/service-account-key.json"));
+
+var model = VertexAiGeminiChatModel.builder()
+    .project(PROJECT_ID)
+    .location(LOCATION)
+    .modelName("gemini-1.5-flash-001")
+    .credentials(credentials)
     .build();
 ```
 

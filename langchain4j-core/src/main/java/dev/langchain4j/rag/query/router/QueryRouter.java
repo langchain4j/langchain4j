@@ -1,6 +1,5 @@
 package dev.langchain4j.rag.query.router;
 
-import dev.langchain4j.Experimental;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
@@ -24,7 +23,6 @@ import java.util.Collection;
  * @see DefaultQueryRouter
  * @see LanguageModelQueryRouter
  */
-@Experimental
 public interface QueryRouter {
 
     /**

@@ -20,7 +20,7 @@ class PdfFileContentTest {
         assertThat(pdfFileContent)
                 .hasToString("PdfFileContent { " + "pdfFile = PdfFile { "
                         + "url = \"https://example.com/pdfFile.pdf\", "
-                        + "base64Data = null } "
+                        + "base64Data = null, mimeType = \"application/pdf\" } "
                         + "}");
     }
 

@@ -1,26 +1,35 @@
 package dev.langchain4j.model.googleai.common;
 
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.googleai.GoogleAiGeminiStreamingChatModel;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.mockito.InOrder;
 
 import java.util.List;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeast;
 
+@EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     // TODO https://github.com/langchain4j/langchain4j/issues/2219
     // TODO https://github.com/langchain4j/langchain4j/issues/2220
 
-    static final StreamingChatLanguageModel GOOGLE_AI_GEMINI_STREAMING_CHAT_MODEL = GoogleAiGeminiStreamingChatModel.builder()
+    static final StreamingChatModel GOOGLE_AI_GEMINI_STREAMING_CHAT_MODEL = GoogleAiGeminiStreamingChatModel.builder()
             .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-            .modelName("gemini-1.5-flash-8b")
+            .modelName("gemini-2.0-flash-lite")
+            .logRequests(false) // images are huge in logs
+            .logResponses(false)
             .build();
 
     @Override
-    protected List<StreamingChatLanguageModel> models() {
+    protected List<StreamingChatModel> models() {
         return List.of(
                 GOOGLE_AI_GEMINI_STREAMING_CHAT_MODEL
                 // TODO add more model configs, see OpenAiChatModelIT
@@ -29,89 +38,69 @@ class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected String customModelName() {
-        return "gemini-1.5-flash";
+        return "gemini-2.0-flash";
     }
 
     @Override
-    protected StreamingChatLanguageModel createModelWith(ChatRequestParameters parameters) {
+    protected StreamingChatModel createModelWith(ChatRequestParameters parameters) {
         return GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-
-                // TODO re-implement, support .defaultRequestParameters(ChatRequestParameters)
-                .modelName(getOrDefault(parameters.modelName(), "gemini-1.5-flash-8b"))
-                .temperature(parameters.temperature())
-                .topP(parameters.topP())
-                .topK(parameters.topK())
-                .maxOutputTokens(parameters.maxOutputTokens())
-                .stopSequences(parameters.stopSequences())
-                .responseFormat(parameters.responseFormat())
-
+                .defaultRequestParameters(parameters)
+                .modelName(getOrDefault(parameters.modelName(), "gemini-2.0-flash-lite"))
+                .logRequests(true)
+                .logResponses(true)
                 .build();
     }
 
     @Override
     protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
-        return ChatRequestParameters.builder() // TODO return Gemini-specific params
+        return ChatRequestParameters.builder()
                 .maxOutputTokens(maxOutputTokens)
                 .build();
     }
 
     @Override
-    protected boolean supportsDefaultRequestParameters() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsModelNameParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsMaxOutputTokensParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsStopSequencesParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsToolChoiceRequired() {
-        return false; // TODO implement
-    }
-
-    @Override
     protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
-        return false; // TODO fix
+        return false; // Gemini does not support tools and response format simultaneously
+    }
+    
+    @Override
+    protected boolean supportsJsonResponseFormatWithRawSchema() {
+        return false; // not tested
     }
 
     @Override
-    protected boolean supportsSingleImageInputAsPublicURL() {
-        return false; // TODO check if supported
+    public StreamingChatModel createModelWith(ChatModelListener listener) {
+        return GoogleAiGeminiStreamingChatModel.builder()
+                .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+                .modelName("gemini-2.0-flash-lite")
+                .logRequests(true)
+                .logResponses(true)
+                .listeners(List.of(listener))
+                .build();
     }
 
     @Override
-    protected boolean assertResponseId() {
-        return false; // TODO implement
+    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id) {
+        io.verify(handler, atLeast(0)).onPartialResponse(any(), any()); // do not care if onPartialResponse was called
+        io.verify(handler).onCompleteToolCall(complete(0, id, "getWeather", "{\"city\":\"Munich\"}"));
     }
 
     @Override
-    protected boolean assertResponseModel() {
-        return false; // TODO implement
-    }
+    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
+        verifyToolCallbacks(handler, io, id1);
 
-    protected boolean assertFinishReason() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertThreads() {
-        return false; // TODO fix
+        io.verify(handler, atLeast(0)).onPartialResponse(any(), any()); // do not care if onPartialResponse was called
+        io.verify(handler).onCompleteToolCall(complete(1, id2, "getTime", "{\"country\":\"France\"}"));
     }
 
     @Override
-    protected boolean assertExceptionType() {
-        return false; // TODO fix
+    protected boolean supportsPartialToolStreaming(StreamingChatModel model) {
+        return false;
+    }
+
+    @Override
+    protected boolean assertToolId(StreamingChatModel model) {
+        return false; // Gemini does not provide a tool ID
     }
 }

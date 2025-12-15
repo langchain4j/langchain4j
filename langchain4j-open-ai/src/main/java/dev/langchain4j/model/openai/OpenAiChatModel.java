@@ -1,78 +1,64 @@
 package dev.langchain4j.model.openai;
 
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.exception.HttpException;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.ModelProvider.OPEN_AI;
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_OPENAI_URL;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_USER_AGENT;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.aiMessageFrom;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.finishReasonFrom;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.fromOpenAiResponseFormat;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.toOpenAiChatRequest;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.tokenUsageFrom;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.validate;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.time.Duration.ofSeconds;
+import static java.util.Arrays.asList;
+
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.Capability;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.TokenCountEstimator;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
+import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
+import dev.langchain4j.model.openai.internal.ParsedAndRawResponse;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.spi.OpenAiChatModelBuilderFactory;
-
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import static dev.langchain4j.internal.ExceptionMapper.mappingException;
-import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
-import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.ModelProvider.OPEN_AI;
-import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_OPENAI_URL;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.aiMessageFrom;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.fromOpenAiResponseFormat;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiChatRequest;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.tokenUsageFrom;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.time.Duration.ofSeconds;
-import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.emptySet;
+import org.slf4j.Logger;
 
 /**
- * Represents an OpenAI language model with a chat completion interface, such as gpt-3.5-turbo and gpt-4.
+ * Represents an OpenAI language model with a chat completion interface, such as gpt-4o-mini and o3.
  * You can find description of parameters <a href="https://platform.openai.com/docs/api-reference/chat/create">here</a>.
  */
-public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
+public class OpenAiChatModel implements ChatModel {
 
     private final OpenAiClient client;
     private final Integer maxRetries;
 
     private final OpenAiChatRequestParameters defaultRequestParameters;
-    private final String responseFormat;
+    private final String responseFormatString;
     private final Set<Capability> supportedCapabilities;
-    private final Boolean strictJsonSchema;
-    private final Boolean strictTools;
-
-    private final Tokenizer tokenizer;
+    private final boolean strictJsonSchema;
+    private final boolean strictTools;
+    private final boolean returnThinking;
 
     private final List<ChatModelListener> listeners;
 
     public OpenAiChatModel(OpenAiChatModelBuilder builder) {
-
-        if ("demo".equals(builder.apiKey)) {
-            // TODO remove before releasing 1.0.0
-            throw new RuntimeException("""
-                    If you wish to continue using the 'demo' key, please specify the base URL explicitly:
-                    OpenAiChatModel.builder().baseUrl("http://langchain4j.dev/demo/openai/v1").apiKey("demo").build();
-                    """);
-        }
 
         this.client = OpenAiClient.builder()
                 .httpClientBuilder(builder.httpClientBuilder)
@@ -84,24 +70,25 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                 .readTimeout(getOrDefault(builder.timeout, ofSeconds(60)))
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
+                .logger(builder.logger)
                 .userAgent(DEFAULT_USER_AGENT)
                 .customHeaders(builder.customHeaders)
+                .customQueryParams(builder.customQueryParams)
                 .build();
-        this.maxRetries = getOrDefault(builder.maxRetries, 3);
+        this.maxRetries = getOrDefault(builder.maxRetries, 2);
 
         ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
+            validate(builder.defaultRequestParameters);
             commonParameters = builder.defaultRequestParameters;
         } else {
-            commonParameters = DefaultChatRequestParameters.builder().build();
+            commonParameters = DefaultChatRequestParameters.EMPTY;
         }
 
-        OpenAiChatRequestParameters openAiParameters;
-        if (builder.defaultRequestParameters instanceof OpenAiChatRequestParameters openAiChatRequestParameters) {
-            openAiParameters = openAiChatRequestParameters;
-        } else {
-            openAiParameters = OpenAiChatRequestParameters.builder().build();
-        }
+        OpenAiChatRequestParameters openAiParameters =
+                builder.defaultRequestParameters instanceof OpenAiChatRequestParameters openAiChatRequestParameters
+                        ? openAiChatRequestParameters
+                        : OpenAiChatRequestParameters.EMPTY;
 
         this.defaultRequestParameters = OpenAiChatRequestParameters.builder()
                 // common parameters
@@ -111,37 +98,28 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                 .frequencyPenalty(getOrDefault(builder.frequencyPenalty, commonParameters.frequencyPenalty()))
                 .presencePenalty(getOrDefault(builder.presencePenalty, commonParameters.presencePenalty()))
                 .maxOutputTokens(getOrDefault(builder.maxTokens, commonParameters.maxOutputTokens()))
-                .stopSequences(getOrDefault(builder.stop, () -> copyIfNotNull(commonParameters.stopSequences())))
-                .toolSpecifications(copyIfNotNull(commonParameters.toolSpecifications()))
+                .stopSequences(getOrDefault(builder.stop, commonParameters.stopSequences()))
+                .toolSpecifications(commonParameters.toolSpecifications())
                 .toolChoice(commonParameters.toolChoice())
-                .responseFormat(getOrDefault(fromOpenAiResponseFormat(builder.responseFormat), commonParameters.responseFormat()))
+                .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
                 // OpenAI-specific parameters
                 .maxCompletionTokens(getOrDefault(builder.maxCompletionTokens, openAiParameters.maxCompletionTokens()))
-                .logitBias(getOrDefault(builder.logitBias, () -> copyIfNotNull(openAiParameters.logitBias())))
+                .logitBias(getOrDefault(builder.logitBias, openAiParameters.logitBias()))
                 .parallelToolCalls(getOrDefault(builder.parallelToolCalls, openAiParameters.parallelToolCalls()))
                 .seed(getOrDefault(builder.seed, openAiParameters.seed()))
                 .user(getOrDefault(builder.user, openAiParameters.user()))
                 .store(getOrDefault(builder.store, openAiParameters.store()))
-                .metadata(getOrDefault(builder.metadata, () -> copyIfNotNull(openAiParameters.metadata())))
+                .metadata(getOrDefault(builder.metadata, openAiParameters.metadata()))
                 .serviceTier(getOrDefault(builder.serviceTier, openAiParameters.serviceTier()))
-                .reasoningEffort(openAiParameters.reasoningEffort())
+                .reasoningEffort(getOrDefault(builder.reasoningEffort, openAiParameters.reasoningEffort()))
+                .customParameters(getOrDefault(builder.customParameters, openAiParameters.customParameters()))
                 .build();
-        this.responseFormat = builder.responseFormat;
-        this.supportedCapabilities = new HashSet<>(getOrDefault(builder.supportedCapabilities, emptySet()));
-        this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false); // TODO move into OpenAI-specific params?
-        this.strictTools = getOrDefault(builder.strictTools, false); // TODO move into OpenAI-specific params?
-
-        this.tokenizer = getOrDefault(builder.tokenizer, OpenAiTokenizer::new);
-
-        this.listeners = builder.listeners == null ? emptyList() : new ArrayList<>(builder.listeners);
-    }
-
-    /**
-     * @deprecated please use {@link #defaultRequestParameters()} and then {@link ChatRequestParameters#modelName()} instead
-     */
-    @Deprecated(forRemoval = true)
-    public String modelName() {
-        return defaultRequestParameters.modelName();
+        this.responseFormatString = builder.responseFormatString;
+        this.supportedCapabilities = copy(builder.supportedCapabilities);
+        this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
+        this.strictTools = getOrDefault(builder.strictTools, false);
+        this.returnThinking = getOrDefault(builder.returnThinking, false);
+        this.listeners = copy(builder.listeners);
     }
 
     @Override
@@ -152,7 +130,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     @Override
     public Set<Capability> supportedCapabilities() {
         Set<Capability> capabilities = new HashSet<>(supportedCapabilities);
-        if ("json_schema".equals(responseFormat)) {
+        if ("json_schema".equals(responseFormatString)) {
             capabilities.add(RESPONSE_FORMAT_JSON_SCHEMA);
         }
         return capabilities;
@@ -162,26 +140,30 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     public ChatResponse doChat(ChatRequest chatRequest) {
 
         OpenAiChatRequestParameters parameters = (OpenAiChatRequestParameters) chatRequest.parameters();
-        InternalOpenAiHelper.validate(parameters);
+        validate(parameters);
 
-        ChatCompletionRequest openAiRequest =
-                toOpenAiChatRequest(chatRequest, parameters, strictTools, strictJsonSchema).build();
+        ChatCompletionRequest openAiRequest = toOpenAiChatRequest(
+                        chatRequest, parameters, strictTools, strictJsonSchema)
+                .build();
 
-        ChatCompletionResponse openAiResponse = withRetryMappingExceptions(() ->
-                client.chatCompletion(openAiRequest).execute(), maxRetries);
+        ParsedAndRawResponse<ChatCompletionResponse> parsedAndRawResponse = withRetryMappingExceptions(
+                () -> client.chatCompletion(openAiRequest).executeRaw(), maxRetries);
+
+        ChatCompletionResponse openAiResponse = parsedAndRawResponse.parsedResponse();
 
         OpenAiChatResponseMetadata responseMetadata = OpenAiChatResponseMetadata.builder()
                 .id(openAiResponse.id())
                 .modelName(openAiResponse.model())
                 .tokenUsage(tokenUsageFrom(openAiResponse.usage()))
                 .finishReason(finishReasonFrom(openAiResponse.choices().get(0).finishReason()))
-                .created(openAiResponse.created().longValue())
+                .created(openAiResponse.created())
                 .serviceTier(openAiResponse.serviceTier())
                 .systemFingerprint(openAiResponse.systemFingerprint())
+                .rawHttpResponse(parsedAndRawResponse.rawHttpResponse())
                 .build();
 
         return ChatResponse.builder()
-                .aiMessage(aiMessageFrom(openAiResponse))
+                .aiMessage(aiMessageFrom(openAiResponse, returnThinking))
                 .metadata(responseMetadata)
                 .build();
     }
@@ -194,21 +176,6 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     @Override
     public ModelProvider provider() {
         return OPEN_AI;
-    }
-
-    @Override
-    public int estimateTokenCount(List<ChatMessage> messages) {
-        return tokenizer.estimateTokenCountInMessages(messages);
-    }
-
-    /**
-     * @deprecated Please use {@code builder()} instead, and explicitly set the model name and,
-     * if necessary, other parameters.
-     * <b>The default values for the model name and temperature will be removed in future releases!</b>
-     */
-    @Deprecated(forRemoval = true)
-    public static OpenAiChatModel withApiKey(String apiKey) {
-        return builder().apiKey(apiKey).build();
     }
 
     public static OpenAiChatModelBuilder builder() {
@@ -237,7 +204,8 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         private Double frequencyPenalty;
         private Map<String, Integer> logitBias;
         private Set<Capability> supportedCapabilities;
-        private String responseFormat;
+        private ResponseFormat responseFormat;
+        private String responseFormatString;
         private Boolean strictJsonSchema;
         private Integer seed;
         private String user;
@@ -246,12 +214,16 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         private Boolean store;
         private Map<String, String> metadata;
         private String serviceTier;
+        private String reasoningEffort;
+        private Boolean returnThinking;
         private Duration timeout;
         private Integer maxRetries;
         private Boolean logRequests;
         private Boolean logResponses;
-        private Tokenizer tokenizer;
+        private Logger logger;
         private Map<String, String> customHeaders;
+        private Map<String, String> customQueryParams;
+        private Map<String, Object> customParameters;
         private List<ChatModelListener> listeners;
 
         public OpenAiChatModelBuilder() {
@@ -344,8 +316,17 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
             return this;
         }
 
-        public OpenAiChatModelBuilder responseFormat(String responseFormat) {
+        public OpenAiChatModelBuilder responseFormat(ResponseFormat responseFormat) {
             this.responseFormat = responseFormat;
+            return this;
+        }
+
+        /**
+         * @see #responseFormat(ResponseFormat)
+         */
+        public OpenAiChatModelBuilder responseFormat(String responseFormat) {
+            this.responseFormat = fromOpenAiResponseFormat(responseFormat);
+            this.responseFormatString = responseFormat;
             return this;
         }
 
@@ -398,6 +379,27 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
             return this;
         }
 
+        public OpenAiChatModelBuilder reasoningEffort(String reasoningEffort) {
+            this.reasoningEffort = reasoningEffort;
+            return this;
+        }
+
+        /**
+         * This setting is intended for <a href="https://api-docs.deepseek.com/guides/reasoning_model">DeepSeek</a>.
+         * <p>
+         * Controls whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}.
+         * Please note that this does not enable thinking/reasoning for the LLM;
+         * it only controls whether to parse the {@code reasoning_content} field from the API response
+         * and return it inside the {@link AiMessage}.
+         * <p>
+         * Disabled by default.
+         * If enabled, the thinking text will be stored within the {@link AiMessage} and may be persisted.
+         */
+        public OpenAiChatModelBuilder returnThinking(Boolean returnThinking) {
+            this.returnThinking = returnThinking;
+            return this;
+        }
+
         public OpenAiChatModelBuilder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
@@ -418,13 +420,36 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
             return this;
         }
 
-        public OpenAiChatModelBuilder tokenizer(Tokenizer tokenizer) {
-            this.tokenizer = tokenizer;
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public OpenAiChatModelBuilder logger(Logger logger) {
+            this.logger = logger;
             return this;
         }
 
+        /**
+         * Sets custom HTTP headers
+         */
         public OpenAiChatModelBuilder customHeaders(Map<String, String> customHeaders) {
             this.customHeaders = customHeaders;
+            return this;
+        }
+
+        /**
+         * Sets custom URL query parameters
+         */
+        public OpenAiChatModelBuilder customQueryParams(Map<String, String> customQueryParams) {
+            this.customQueryParams = customQueryParams;
+            return this;
+        }
+
+        /**
+         * Sets custom HTTP body parameters
+         */
+        public OpenAiChatModelBuilder customParameters(Map<String, Object> customParameters) {
+            this.customParameters = customParameters;
             return this;
         }
 

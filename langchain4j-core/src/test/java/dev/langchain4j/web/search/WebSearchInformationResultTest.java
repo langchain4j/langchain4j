@@ -1,7 +1,7 @@
 package dev.langchain4j.web.search;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 
 import org.junit.jupiter.api.Test;
 
@@ -13,10 +13,10 @@ class WebSearchInformationResultTest {
 
         assertThat(webSearchInformationResult.totalResults()).isEqualTo(1L);
         assertThat(webSearchInformationResult.pageNumber()).isNull();
-        assertThat(webSearchInformationResult.metadata()).isNull();
+        assertThat(webSearchInformationResult.metadata()).isEmpty();
 
         assertThat(webSearchInformationResult)
-                .hasToString("WebSearchInformationResult{totalResults=1, pageNumber=null, metadata=null}");
+                .hasToString("WebSearchInformationResult{totalResults=1, pageNumber=null, metadata={}}");
     }
 
     @Test
@@ -25,10 +25,10 @@ class WebSearchInformationResultTest {
 
         assertThat(webSearchInformationResult.totalResults()).isEqualTo(1L);
         assertThat(webSearchInformationResult.pageNumber()).isNull();
-        assertThat(webSearchInformationResult.metadata()).isNull();
+        assertThat(webSearchInformationResult.metadata()).isEmpty();
 
         assertThat(webSearchInformationResult)
-                .hasToString("WebSearchInformationResult{totalResults=1, pageNumber=null, metadata=null}");
+                .hasToString("WebSearchInformationResult{totalResults=1, pageNumber=null, metadata={}}");
     }
 
     @Test
@@ -48,8 +48,9 @@ class WebSearchInformationResultTest {
 
     @Test
     void should_throw_illegalArgumentException() {
-        IllegalArgumentException exception =
-                assertThrows(IllegalArgumentException.class, () -> WebSearchInformationResult.from(null));
+        IllegalArgumentException exception = assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> WebSearchInformationResult.from(null))
+                .actual();
         assertThat(exception.getMessage()).isEqualTo("totalResults cannot be null");
     }
 }

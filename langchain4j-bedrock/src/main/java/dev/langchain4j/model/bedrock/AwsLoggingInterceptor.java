@@ -1,5 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
@@ -8,6 +9,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
+
+import dev.langchain4j.Internal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.interceptor.Context;
@@ -20,15 +23,19 @@ import software.amazon.awssdk.http.SdkHttpRequest;
 import software.amazon.awssdk.http.SdkHttpResponse;
 import software.amazon.awssdk.utils.IoUtils;
 
+@Internal
 class AwsLoggingInterceptor implements ExecutionInterceptor {
-    private static final Logger logger = LoggerFactory.getLogger(AwsLoggingInterceptor.class);
+
+    private static final Logger DEFAULT_LOGGER = LoggerFactory.getLogger(AwsLoggingInterceptor.class);
 
     private final boolean logRequests;
     private final boolean logResponses;
+    private final Logger logger;
 
-    public AwsLoggingInterceptor(final boolean logRequests, final boolean logResponses) {
+    AwsLoggingInterceptor(boolean logRequests, boolean logResponses, Logger logger) {
         this.logRequests = logRequests;
         this.logResponses = logResponses;
+        this.logger = getOrDefault(logger, DEFAULT_LOGGER);
     }
 
     @Override
@@ -44,20 +51,20 @@ class AwsLoggingInterceptor implements ExecutionInterceptor {
         if (logRequests) {
             if (request.method() == SdkHttpMethod.POST && request instanceof SdkHttpFullRequest sdkHttpFullRequest) {
                 try {
-                    final ContentStreamProvider csp =
-                            sdkHttpFullRequest.contentStreamProvider().orElse(null);
+                    ContentStreamProvider csp = sdkHttpFullRequest.contentStreamProvider().orElse(null);
                     if (nonNull(csp)) body = IoUtils.toUtf8String(csp.newStream());
                 } catch (IOException e) {
                     logger.warn("Unable to obtain request body", e);
                 }
             }
             logger.debug(
-                    "Request:\n- method: {}\n- url: {}\n- headers: {}\n- body: {}{}",
+                    "Request:\n- method: {}\n- url: {}\n- headers: {}\n- query parameters: {}\n- body: {}",
                     request.method(),
                     request.getUri(),
                     request.headers(),
-                    body,
-                    request.rawQueryParameters());
+                    request.rawQueryParameters(),
+                    body
+            );
         }
     }
 
@@ -84,7 +91,7 @@ class AwsLoggingInterceptor implements ExecutionInterceptor {
         byte[] content = null;
         if (logResponses) {
             try {
-                final InputStream responseContentStream = context.responseBody().orElse(InputStream.nullInputStream());
+                InputStream responseContentStream = context.responseBody().orElse(InputStream.nullInputStream());
                 content = IoUtils.toByteArray(responseContentStream);
                 logger.debug("Response Body: {}", new String(content, StandardCharsets.UTF_8));
             } catch (IOException e) {

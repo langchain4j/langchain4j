@@ -1,25 +1,26 @@
 package dev.langchain4j.model.mistralai;
 
+import static dev.langchain4j.model.mistralai.MistralAiEmbeddingModelName.MISTRAL_EMBED;
+import static java.util.Arrays.asList;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import org.junit.jupiter.api.Test;
-
 import java.util.List;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
-import static dev.langchain4j.model.mistralai.MistralAiEmbeddingModelName.MISTRAL_EMBED;
-import static java.util.Arrays.asList;
-import static org.assertj.core.api.Assertions.assertThat;
-
+@EnabledIfEnvironmentVariable(named = "MISTRAL_AI_API_KEY", matches = ".+")
 class MistralAiEmbeddingModelIT {
 
     EmbeddingModel model = MistralAiEmbeddingModel.builder()
             .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
             .modelName(MISTRAL_EMBED)
             .logRequests(true)
-            .logResponses(true)
+            .logResponses(false) // embeddings are huge in logs
             .build();
 
     @Test
@@ -63,6 +64,5 @@ class MistralAiEmbeddingModelIT {
         assertThat(tokenUsage.totalTokenCount()).isEqualTo(7 + 8);
 
         assertThat(response.finishReason()).isNull();
-
     }
 }

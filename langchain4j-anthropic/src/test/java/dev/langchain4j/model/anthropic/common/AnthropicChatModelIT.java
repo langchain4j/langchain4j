@@ -1,81 +1,78 @@
 package dev.langchain4j.model.anthropic.common;
 
-import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
-
 import dev.langchain4j.model.anthropic.AnthropicChatModel;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
-import java.util.List;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+
+import java.util.List;
+
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
 
 @EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".+")
 class AnthropicChatModelIT extends AbstractChatModelIT {
 
-    static final ChatLanguageModel ANTHROPIC_CHAT_MODEL = AnthropicChatModel.builder()
+    static final ChatModel ANTHROPIC_CHAT_MODEL = AnthropicChatModel.builder()
             .apiKey(System.getenv("ANTHROPIC_API_KEY"))
             .modelName(CLAUDE_3_5_HAIKU_20241022)
             .temperature(0.0)
-            .logRequests(true)
+            .logRequests(false) // images are huge in logs
             .logResponses(true)
             .build();
 
     @Override
-    protected List<ChatLanguageModel> models() {
+    protected List<ChatModel> models() {
         return List.of(ANTHROPIC_CHAT_MODEL);
     }
 
     @Override
-    protected boolean supportsDefaultRequestParameters() {
-        return false; // TODO implement
+    protected ChatModel createModelWith(ChatRequestParameters parameters) {
+        var anthropicChatModelBuilder = AnthropicChatModel.builder()
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .defaultRequestParameters(parameters)
+                .logRequests(true)
+                .logResponses(true);
+        if (parameters.modelName() == null) {
+            anthropicChatModelBuilder.modelName(CLAUDE_3_5_HAIKU_20241022);
+        }
+        return anthropicChatModelBuilder.build();
     }
 
     @Override
-    protected boolean supportsModelNameParameter() {
-        return false; // TODO implement
+    protected String customModelName() {
+        return "claude-sonnet-4-5-20250929";
     }
 
     @Override
-    protected boolean supportsMaxOutputTokensParameter() {
-        return false; // TODO implement
+    protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
+        return ChatRequestParameters.builder()
+                .maxOutputTokens(maxOutputTokens)
+                .build();
     }
 
     @Override
-    protected boolean supportsStopSequencesParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsToolChoiceRequired() {
-        return false; // TODO implement
+    protected Class<? extends TokenUsage> tokenUsageType(ChatModel chatModel) {
+        return AnthropicTokenUsage.class;
     }
 
     @Override
     protected boolean supportsJsonResponseFormat() {
+        // Anthropic does not support response format yet
         return false;
     }
 
     @Override
     protected boolean supportsJsonResponseFormatWithSchema() {
+        // Anthropic does not support response format yet
         return false;
     }
 
     @Override
-    protected boolean supportsSingleImageInputAsPublicURL() {
+    protected boolean supportsJsonResponseFormatWithRawSchema() {
+        // Anthropic does not support response format yet
         return false;
-    }
-
-    @Override
-    protected boolean supportsMultipleImageInputsAsPublicURLs() {
-        return false;
-    }
-
-    @Override
-    protected boolean assertResponseId() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean assertResponseModel() {
-        return false; // TODO implement
     }
 }

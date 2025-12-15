@@ -5,6 +5,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import java.util.Map;
 import java.util.Objects;
 
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
@@ -14,11 +15,14 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * This metadata is supplementary and is intentionally excluded from equality and hash calculations.
  * See {@link #equals(Object)} and {@link #hashCode()} for details.
  */
-public record DefaultContent(TextSegment textSegment, Map<ContentMetadata, Object> metadata) implements Content {
+public class DefaultContent implements Content {
 
-    public DefaultContent {
-        ensureNotNull(textSegment, "textSegment");
-        ensureNotNull(metadata, "metadata");
+    private final TextSegment textSegment;
+    private final Map<ContentMetadata, Object> metadata;
+
+    public DefaultContent(TextSegment textSegment, Map<ContentMetadata, Object> metadata) {
+        this.textSegment = ensureNotNull(textSegment, "textSegment");
+        this.metadata = copy(metadata);
     }
 
     public DefaultContent(String text) {
@@ -27,6 +31,16 @@ public record DefaultContent(TextSegment textSegment, Map<ContentMetadata, Objec
 
     public DefaultContent(TextSegment textSegment) {
         this(textSegment, Map.of());
+    }
+
+    @Override
+    public TextSegment textSegment() {
+        return textSegment;
+    }
+
+    @Override
+    public Map<ContentMetadata, Object> metadata() {
+        return metadata;
     }
 
     /**
@@ -53,5 +67,13 @@ public record DefaultContent(TextSegment textSegment, Map<ContentMetadata, Objec
     @Override
     public int hashCode() {
         return Objects.hash(textSegment);
+    }
+
+    @Override
+    public String toString() {
+        return "DefaultContent {" +
+                " textSegment = " + textSegment +
+                ", metadata = " + metadata +
+                " }";
     }
 }

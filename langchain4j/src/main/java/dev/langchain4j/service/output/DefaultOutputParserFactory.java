@@ -1,5 +1,7 @@
 package dev.langchain4j.service.output;
 
+import dev.langchain4j.Internal;
+
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.LocalDate;
@@ -9,9 +11,9 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
+@Internal
 class DefaultOutputParserFactory implements OutputParserFactory {
 
     private static final Map<Class<?>, OutputParser<?>> OUTPUT_PARSERS = new HashMap<>();
@@ -26,8 +28,8 @@ class DefaultOutputParserFactory implements OutputParserFactory {
         OUTPUT_PARSERS.put(short.class, new ShortOutputParser());
         OUTPUT_PARSERS.put(Short.class, new ShortOutputParser());
 
-        OUTPUT_PARSERS.put(int.class, new IntOutputParser());
-        OUTPUT_PARSERS.put(Integer.class, new IntOutputParser());
+        OUTPUT_PARSERS.put(int.class, new IntegerOutputParser());
+        OUTPUT_PARSERS.put(Integer.class, new IntegerOutputParser());
 
         OUTPUT_PARSERS.put(long.class, new LongOutputParser());
         OUTPUT_PARSERS.put(Long.class, new LongOutputParser());
@@ -49,36 +51,41 @@ class DefaultOutputParserFactory implements OutputParserFactory {
     }
 
     @Override
-    public Optional<OutputParser<?>> get(Class<?> rawClass, Class<?> typeArgumentClass) {
+    public OutputParser<?> get(Class<?> rawClass, Class<?> typeArgumentClass) {
+
         if (rawClass.isEnum()) {
-            return Optional.of(new EnumOutputParser(rawClass.asSubclass(Enum.class)));
+            return new EnumOutputParser<>(rawClass.asSubclass(Enum.class));
         }
 
         if (rawClass.equals(List.class)) {
             if (typeArgumentClass.isEnum()) {
-                return Optional.of(new EnumListOutputParser(typeArgumentClass.asSubclass(Enum.class)));
+                return new EnumListOutputParser<>(typeArgumentClass.asSubclass(Enum.class));
             }
 
             if (typeArgumentClass.equals(String.class)) {
-                return Optional.of(new StringListOutputParser());
+                return new StringListOutputParser();
             }
+
+            return new PojoListOutputParser<>(typeArgumentClass);
         }
 
         if (rawClass.equals(Set.class)) {
             if (typeArgumentClass.isEnum()) {
-                return Optional.of(new EnumSetOutputParser(typeArgumentClass.asSubclass(Enum.class)));
+                return new EnumSetOutputParser<>(typeArgumentClass.asSubclass(Enum.class));
             }
 
             if (typeArgumentClass.equals(String.class)) {
-                return Optional.of(new StringSetOutputParser());
+                return new StringSetOutputParser();
             }
+
+            return new PojoSetOutputParser<>(typeArgumentClass);
         }
 
         OutputParser<?> outputParser = OUTPUT_PARSERS.get(rawClass);
         if (outputParser != null) {
-            return Optional.of(outputParser);
+            return outputParser;
         } else {
-            return Optional.empty();
+            return new PojoOutputParser<>(rawClass);
         }
     }
 }

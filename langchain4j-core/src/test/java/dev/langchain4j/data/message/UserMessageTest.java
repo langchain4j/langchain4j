@@ -7,16 +7,24 @@ import java.util.List;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
-@SuppressWarnings("deprecation")
 class UserMessageTest implements WithAssertions {
+
+    @Test
+    void toBuilder() {
+        UserMessage message1 = UserMessage.from(TextContent.from("one"));
+        UserMessage message2 = message1.toBuilder().addContent(TextContent.from("two")).build();
+        assertThat(message1.contents()).containsExactly(TextContent.from("one"));
+        assertThat(message2.contents()).containsExactly(TextContent.from("one"), TextContent.from("two"));
+    }
+
     @Test
     void accessors() {
         UserMessage m = new UserMessage("name", "text");
         assertThat(m.type()).isEqualTo(ChatMessageType.USER);
-        assertThat(m.text()).isEqualTo("text");
+        assertThat(m.singleText()).isEqualTo("text");
         assertThat(m.contents()).containsExactly(TextContent.from("text"));
         assertThat(m.name()).isEqualTo("name");
-        assertThat(m).hasToString("UserMessage { name = \"name\" contents = [TextContent { text = \"text\" }] }");
+        assertThat(m).hasToString("UserMessage { name = \"name\", contents = [TextContent { text = \"text\" }], attributes = {} }");
     }
 
     @Test
@@ -63,11 +71,11 @@ class UserMessageTest implements WithAssertions {
         assertThat(new UserMessage(listOf(new TextContent("abc"), new TextContent("def"))).hasSingleText())
                 .isFalse();
 
-        assertThat(new UserMessage("text").text()).isEqualTo("text");
+        assertThat(new UserMessage("text").singleText()).isEqualTo("text");
 
         assertThatExceptionOfType(RuntimeException.class)
                 .isThrownBy(
-                        () -> new UserMessage("name", listOf(new TextContent("abc"), new TextContent("def"))).text())
+                        () -> new UserMessage("name", listOf(new TextContent("abc"), new TextContent("def"))).singleText())
                 .withMessageContaining("Expecting single text content, but got:");
     }
 

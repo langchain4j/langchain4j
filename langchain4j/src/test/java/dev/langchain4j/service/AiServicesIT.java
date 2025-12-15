@@ -3,6 +3,7 @@ package dev.langchain4j.service;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.service.AiServicesIT.Ingredient.OIL;
 import static dev.langchain4j.service.AiServicesIT.Ingredient.PEPPER;
 import static dev.langchain4j.service.AiServicesIT.Ingredient.SALT;
@@ -22,9 +23,10 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.moderation.ModerationModel;
@@ -38,6 +40,8 @@ import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiFunction;
+import java.util.function.UnaryOperator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -47,10 +51,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
-class AiServicesIT {
+public class AiServicesIT {
 
     @Spy
-    ChatLanguageModel chatLanguageModel = OpenAiChatModel.builder()
+    ChatModel chatModel = OpenAiChatModel.builder()
             .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
@@ -72,12 +76,12 @@ class AiServicesIT {
 
     @AfterEach
     void afterEach() {
-        verifyNoMoreInteractionsFor(chatLanguageModel);
+        verifyNoMoreInteractionsFor(chatModel);
         verifyNoMoreInteractions(chatMemory);
         verifyNoMoreInteractions(moderationModel);
     }
 
-    public static void verifyNoMoreInteractionsFor(ChatLanguageModel model) {
+    public static void verifyNoMoreInteractionsFor(ChatModel model) {
         try {
             verify(model, atLeastOnce()).doChat(any());
         } catch (Throwable ignored) {
@@ -114,14 +118,14 @@ class AiServicesIT {
 
     @Test
     void simple_instruction_with_primitive_return_type() {
-        EggCounter eggCounter = AiServices.create(EggCounter.class, chatLanguageModel);
+        EggCounter eggCounter = AiServices.create(EggCounter.class, chatModel);
 
         String sentence = "I have ten eggs in my basket and three in my pocket.";
 
         int count = eggCounter.count(sentence);
         assertThat(count).isEqualTo(13);
 
-        verify(chatLanguageModel)
+        verify(chatModel)
                 .chat(chatRequest("Count the number of eggs mentioned in this sentence:\n"
                         + "|||I have ten eggs in my basket and three in my pocket.|||\n"
                         + "You must answer strictly in the following format: integer number"));
@@ -136,13 +140,13 @@ class AiServicesIT {
     @Test
     void simple_instruction_with_single_argument() {
 
-        Humorist humorist = AiServices.create(Humorist.class, chatLanguageModel);
+        Humorist humorist = AiServices.create(Humorist.class, chatModel);
 
         String joke = humorist.joke("AI");
 
         assertThat(joke).isNotBlank();
 
-        verify(chatLanguageModel).chat(chatRequest("Tell me a joke about AI"));
+        verify(chatModel).chat(chatRequest("Tell me a joke about AI"));
     }
 
     interface DateTimeExtractor {
@@ -160,7 +164,7 @@ class AiServicesIT {
     @Test
     void extract_date() {
 
-        DateTimeExtractor dateTimeExtractor = AiServices.create(DateTimeExtractor.class, chatLanguageModel);
+        DateTimeExtractor dateTimeExtractor = AiServices.create(DateTimeExtractor.class, chatModel);
 
         String text =
                 "The tranquility pervaded the evening of 1968, just fifteen minutes shy of midnight, following the celebrations of Independence Day.";
@@ -169,7 +173,7 @@ class AiServicesIT {
 
         assertThat(date).isEqualTo(LocalDate.of(1968, JULY, 4));
 
-        verify(chatLanguageModel)
+        verify(chatModel)
                 .chat(chatRequest("Extract date from " + text + "\n"
                         + "You must answer strictly in the following format: yyyy-MM-dd"));
     }
@@ -177,7 +181,7 @@ class AiServicesIT {
     @Test
     void extract_time() {
 
-        DateTimeExtractor dateTimeExtractor = AiServices.create(DateTimeExtractor.class, chatLanguageModel);
+        DateTimeExtractor dateTimeExtractor = AiServices.create(DateTimeExtractor.class, chatModel);
 
         String text =
                 "The tranquility pervaded the evening of 1968, just fifteen minutes shy of midnight, following the celebrations of Independence Day.";
@@ -186,7 +190,7 @@ class AiServicesIT {
 
         assertThat(time).isEqualTo(LocalTime.of(23, 45, 0));
 
-        verify(chatLanguageModel)
+        verify(chatModel)
                 .chat(chatRequest("Extract time from " + text + "\n"
                         + "You must answer strictly in the following format: HH:mm:ss"));
     }
@@ -194,7 +198,7 @@ class AiServicesIT {
     @Test
     void extract_date_time() {
 
-        DateTimeExtractor dateTimeExtractor = AiServices.create(DateTimeExtractor.class, chatLanguageModel);
+        DateTimeExtractor dateTimeExtractor = AiServices.create(DateTimeExtractor.class, chatModel);
 
         String text =
                 "The tranquility pervaded the evening of 1968, just fifteen minutes shy of midnight, following the celebrations of Independence Day.";
@@ -203,7 +207,7 @@ class AiServicesIT {
 
         assertThat(dateTime).isEqualTo(LocalDateTime.of(1968, JULY, 4, 23, 45, 0));
 
-        verify(chatLanguageModel)
+        verify(chatModel)
                 .chat(chatRequest("Extract date and time from " + text + "\n"
                         + "You must answer strictly in the following format: yyyy-MM-ddTHH:mm:ss"));
     }
@@ -223,7 +227,7 @@ class AiServicesIT {
     @Test
     void extract_enum() {
 
-        SentimentAnalyzer sentimentAnalyzer = AiServices.create(SentimentAnalyzer.class, chatLanguageModel);
+        SentimentAnalyzer sentimentAnalyzer = AiServices.create(SentimentAnalyzer.class, chatModel);
 
         String customerReview = "This LaptopPro X15 is wicked fast and that 4K screen is a dream.";
 
@@ -231,7 +235,7 @@ class AiServicesIT {
 
         assertThat(sentiment).isEqualTo(POSITIVE);
 
-        verify(chatLanguageModel)
+        verify(chatModel)
                 .chat(chatRequest("Analyze sentiment of:\n|||" + customerReview + "|||\n"
                         + "You must answer strictly with one of these enums:\n"
                         + "POSITIVE\n"
@@ -259,8 +263,7 @@ class AiServicesIT {
     @Test
     void extract_single_enum_with_description() {
 
-        WeatherForecastAnalyzer weatherForecastAnalyzer =
-                AiServices.create(WeatherForecastAnalyzer.class, chatLanguageModel);
+        WeatherForecastAnalyzer weatherForecastAnalyzer = AiServices.create(WeatherForecastAnalyzer.class, chatModel);
 
         String weatherForecast =
                 "It will be cloudy and mostly rainy. No more rain early in the day but the sky remains overcast. Afternoon it is mostly cloudy. The sun will not be visible. The forecast has a moderate, 40% chance of Precipitation. Temperatures peaking at 17 °C.";
@@ -269,7 +272,7 @@ class AiServicesIT {
 
         assertThat(weather).isEqualTo(Weather.RAINY);
 
-        verify(chatLanguageModel)
+        verify(chatModel)
                 .chat(
                         chatRequest(
                                 "Analyze weather forecast for:\n" + "|||"
@@ -296,14 +299,14 @@ class AiServicesIT {
 
     @Test
     void extract_list_of_enums() {
-        IngredientsExtractor ingredientsExtractor = AiServices.create(IngredientsExtractor.class, chatLanguageModel);
+        IngredientsExtractor ingredientsExtractor = AiServices.create(IngredientsExtractor.class, chatModel);
 
         String recipe = "Just mix some salt, pepper and oil in the bowl. That will be a basis for...";
 
         List<Ingredient> ingredients = ingredientsExtractor.extractIngredients(recipe);
         assertThat(ingredients).isEqualTo(Arrays.asList(SALT, PEPPER, OIL));
 
-        verify(chatLanguageModel)
+        verify(chatModel)
                 .chat(chatRequest("Analyze the following recipe:\n" + "|||"
                         + recipe + "|||\n"
                         + "You must answer strictly with zero or more of these enums on a separate line:\n"
@@ -344,7 +347,7 @@ class AiServicesIT {
     @Test
     void extract_list_of_enums_with_descriptions() {
         HotelReviewIssueAnalyzer hotelReviewIssueAnalyzer =
-                AiServices.create(HotelReviewIssueAnalyzer.class, chatLanguageModel);
+                AiServices.create(HotelReviewIssueAnalyzer.class, chatModel);
 
         String review = "Our stay at hotel was a mixed experience. The location was perfect, just a stone's throw away "
                 + "from the beach, which made our daily outings very convenient. The rooms were spacious and well-decorated, "
@@ -357,7 +360,7 @@ class AiServicesIT {
         assertThat(issueCategories)
                 .isEqualTo(Arrays.asList(MAINTENANCE_ISSUE, SERVICE_ISSUE, COMFORT_ISSUE, OVERALL_EXPERIENCE_ISSUE));
 
-        verify(chatLanguageModel)
+        verify(chatModel)
                 .chat(
                         chatRequest(
                                 "Please analyse the following review: |||" + review + "|||\n"
@@ -381,7 +384,7 @@ class AiServicesIT {
     @Test
     void should_extract_map() {
 
-        MapExtractor mapExtractor = AiServices.create(MapExtractor.class, chatLanguageModel);
+        MapExtractor mapExtractor = AiServices.create(MapExtractor.class, chatModel);
 
         String text = "Klaus is 42 and Francine is 47";
 
@@ -389,7 +392,7 @@ class AiServicesIT {
 
         assertThat(ages).containsExactly(entry("Klaus", 42), entry("Francine", 47));
 
-        verify(chatLanguageModel)
+        verify(chatModel)
                 .chat(chatRequest("Return a JSON map with the age of each person in the following text: " + text));
     }
 
@@ -406,7 +409,7 @@ class AiServicesIT {
     @Test
     void should_extract_custom_POJO() {
 
-        PersonExtractor personExtractor = AiServices.create(PersonExtractor.class, chatLanguageModel);
+        PersonExtractor personExtractor = AiServices.create(PersonExtractor.class, chatModel);
 
         String text = "In 1968, amidst the fading echoes of Independence Day, "
                 + "a child named John arrived under the calm evening sky. "
@@ -424,7 +427,7 @@ class AiServicesIT {
         assertThat(person.address.street).isEqualTo("Whispering Pines Avenue");
         assertThat(person.address.city).isEqualTo("Springfield");
 
-        verify(chatLanguageModel)
+        verify(chatModel)
                 .chat(chatRequest("Extract information about a person from " + text + "\n"
                         + "You must answer strictly in the following JSON format: {\n"
                         + "\"firstName\": (type: string),\n"
@@ -441,7 +444,7 @@ class AiServicesIT {
     @Test
     void should_extract_custom_POJO_with_explicit_json_response_format() {
 
-        ChatLanguageModel chatLanguageModel = spy(OpenAiChatModel.builder()
+        ChatModel chatModel = spy(OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
@@ -452,7 +455,7 @@ class AiServicesIT {
                 .logResponses(true)
                 .build());
 
-        PersonExtractor personExtractor = AiServices.create(PersonExtractor.class, chatLanguageModel);
+        PersonExtractor personExtractor = AiServices.create(PersonExtractor.class, chatModel);
 
         String text = "In 1968, amidst the fading echoes of Independence Day, "
                 + "a child named John arrived under the calm evening sky. "
@@ -470,7 +473,7 @@ class AiServicesIT {
         assertThat(person.address.street).isEqualTo("Whispering Pines Avenue");
         assertThat(person.address.city).isEqualTo("Springfield");
 
-        verify(chatLanguageModel)
+        verify(chatModel)
                 .chat(chatRequest("Extract information about a person from " + text + "\n"
                         + "You must answer strictly in the following JSON format: {\n"
                         + "\"firstName\": (type: string),\n"
@@ -516,7 +519,7 @@ class AiServicesIT {
     @Test
     void create_recipe_from_list_of_ingredients() {
 
-        Chef chef = AiServices.create(Chef.class, chatLanguageModel);
+        Chef chef = AiServices.create(Chef.class, chatModel);
 
         Recipe recipe = chef.createRecipeFrom("cucumber", "tomato", "feta", "onion", "olives");
 
@@ -525,7 +528,7 @@ class AiServicesIT {
         assertThat(recipe.steps).isNotEmpty();
         assertThat(recipe.preparationTimeMinutes).isPositive();
 
-        verify(chatLanguageModel)
+        verify(chatModel)
                 .chat(chatRequest("Create recipe using only [cucumber, tomato, feta, onion, olives]\n"
                         + "You must answer strictly in the following JSON format: {\n"
                         + "\"title\": (type: string),\n"
@@ -538,7 +541,7 @@ class AiServicesIT {
     @Test
     void create_recipe_from_list_of_ingredients_using_resource() {
 
-        Chef chef = AiServices.create(Chef.class, chatLanguageModel);
+        Chef chef = AiServices.create(Chef.class, chatModel);
 
         Recipe recipe = chef.createRecipeFromUsingResource("cucumber", "tomato", "feta", "onion", "olives");
 
@@ -547,7 +550,7 @@ class AiServicesIT {
         assertThat(recipe.steps).isNotEmpty();
         assertThat(recipe.preparationTimeMinutes).isPositive();
 
-        verify(chatLanguageModel)
+        verify(chatModel)
                 .chat(chatRequest("Create recipe using only [cucumber, tomato, feta, onion, olives]\n"
                         + "You must answer strictly in the following JSON format: {\n"
                         + "\"title\": (type: string),\n"
@@ -560,7 +563,7 @@ class AiServicesIT {
     @Test
     void create_recipe_from_list_of_ingredients_using_resource_in_root() {
 
-        Chef chef = AiServices.create(Chef.class, chatLanguageModel);
+        Chef chef = AiServices.create(Chef.class, chatModel);
 
         Recipe recipe = chef.createRecipeFromUsingResourceInRoot("cucumber", "tomato", "feta", "onion", "olives");
 
@@ -569,7 +572,7 @@ class AiServicesIT {
         assertThat(recipe.steps).isNotEmpty();
         assertThat(recipe.preparationTimeMinutes).isPositive();
 
-        verify(chatLanguageModel)
+        verify(chatModel)
                 .chat(chatRequest("Create recipe using only [cucumber, tomato, feta, onion, olives]\n"
                         + "You must answer strictly in the following JSON format: {\n"
                         + "\"title\": (type: string),\n"
@@ -582,7 +585,7 @@ class AiServicesIT {
     @Test
     void create_recipe_from_list_of_ingredients_using_resource_in_subdirectory() {
 
-        Chef chef = AiServices.create(Chef.class, chatLanguageModel);
+        Chef chef = AiServices.create(Chef.class, chatModel);
 
         Recipe recipe =
                 chef.createRecipeFromUsingResourceInSubdirectory("cucumber", "tomato", "feta", "onion", "olives");
@@ -592,7 +595,7 @@ class AiServicesIT {
         assertThat(recipe.steps).isNotEmpty();
         assertThat(recipe.preparationTimeMinutes).isPositive();
 
-        verify(chatLanguageModel)
+        verify(chatModel)
                 .chat(chatRequest("Create recipe using only [cucumber, tomato, feta, onion, olives]\n"
                         + "You must answer strictly in the following JSON format: {\n"
                         + "\"title\": (type: string),\n"
@@ -617,7 +620,7 @@ class AiServicesIT {
 
     @Test
     void should_fail_when_user_message_resource_is_not_found() {
-        BadChef badChef = AiServices.create(BadChef.class, chatLanguageModel);
+        BadChef badChef = AiServices.create(BadChef.class, chatModel);
 
         assertThatThrownBy(() ->
                         badChef.createRecipeWithNonExistingResource("cucumber", "tomato", "feta", "onion", "olives"))
@@ -627,7 +630,7 @@ class AiServicesIT {
 
     @Test
     void should_fail_when_user_message_resource_is_empty() {
-        BadChef badChef = AiServices.create(BadChef.class, chatLanguageModel);
+        BadChef badChef = AiServices.create(BadChef.class, chatModel);
 
         assertThatThrownBy(() -> badChef.createRecipeWithEmptyResource("cucumber", "tomato", "feta", "onion", "olives"))
                 .isInstanceOf(IllegalConfigurationException.class)
@@ -636,7 +639,7 @@ class AiServicesIT {
 
     @Test
     void should_fail_when_user_message_resource_is_blank() {
-        BadChef badChef = AiServices.create(BadChef.class, chatLanguageModel);
+        BadChef badChef = AiServices.create(BadChef.class, chatModel);
 
         assertThatThrownBy(() -> badChef.createRecipeWithBlankResource("cucumber", "tomato", "feta", "onion", "olives"))
                 .isInstanceOf(IllegalConfigurationException.class)
@@ -649,7 +652,7 @@ class AiServicesIT {
     @Test
     void create_recipe_using_structured_prompt() {
 
-        Chef chef = AiServices.create(Chef.class, chatLanguageModel);
+        Chef chef = AiServices.create(Chef.class, chatModel);
 
         CreateRecipePrompt prompt =
                 new CreateRecipePrompt("salad", List.of("cucumber", "tomato", "feta", "onion", "olives"));
@@ -661,7 +664,7 @@ class AiServicesIT {
         assertThat(recipe.steps).isNotEmpty();
         assertThat(recipe.preparationTimeMinutes).isPositive();
 
-        verify(chatLanguageModel)
+        verify(chatModel)
                 .chat(chatRequest(
                         "Create a recipe of a salad that can be prepared using only [cucumber, tomato, feta, onion, olives]\n"
                                 + "You must answer strictly in the following JSON format: {\n"
@@ -675,7 +678,7 @@ class AiServicesIT {
     @Test
     void create_recipe_using_structured_prompt_and_system_message() {
 
-        Chef chef = AiServices.create(Chef.class, chatLanguageModel);
+        Chef chef = AiServices.create(Chef.class, chatModel);
 
         CreateRecipePrompt prompt =
                 new CreateRecipePrompt("salad", List.of("cucumber", "tomato", "feta", "onion", "olives"));
@@ -687,7 +690,7 @@ class AiServicesIT {
         assertThat(recipe.steps).isNotEmpty();
         assertThat(recipe.preparationTimeMinutes).isPositive();
 
-        verify(chatLanguageModel)
+        verify(chatModel)
                 .chat(ChatRequest.builder()
                         .messages(
                                 systemMessage("You are very funny chef"),
@@ -705,7 +708,7 @@ class AiServicesIT {
     @Test
     void create_recipe_using_structured_prompt_and_system_message_from_resource() {
 
-        Chef chef = AiServices.create(Chef.class, chatLanguageModel);
+        Chef chef = AiServices.create(Chef.class, chatModel);
 
         CreateRecipePrompt prompt =
                 new CreateRecipePrompt("salad", List.of("cucumber", "tomato", "feta", "onion", "olives"));
@@ -717,7 +720,7 @@ class AiServicesIT {
         assertThat(recipe.steps).isNotEmpty();
         assertThat(recipe.preparationTimeMinutes).isPositive();
 
-        verify(chatLanguageModel)
+        verify(chatModel)
                 .chat(ChatRequest.builder()
                         .messages(
                                 systemMessage("You are very funny chef"),
@@ -741,7 +744,7 @@ class AiServicesIT {
     @Test
     void with_system_message() {
 
-        ProfessionalChef chef = AiServices.create(ProfessionalChef.class, chatLanguageModel);
+        ProfessionalChef chef = AiServices.create(ProfessionalChef.class, chatModel);
 
         String question = "How long should I grill chicken?";
 
@@ -749,7 +752,7 @@ class AiServicesIT {
 
         assertThat(answer).isNotBlank();
 
-        verify(chatLanguageModel)
+        verify(chatModel)
                 .chat(ChatRequest.builder()
                         .messages(
                                 systemMessage("You are a professional chef. You are friendly, polite and concise."),
@@ -767,7 +770,7 @@ class AiServicesIT {
     @Test
     void with_system_and_user_messages() {
 
-        Translator translator = AiServices.create(Translator.class, chatLanguageModel);
+        Translator translator = AiServices.create(Translator.class, chatModel);
 
         String text = "Hello, how are you?";
 
@@ -775,7 +778,7 @@ class AiServicesIT {
 
         assertThat(translation).isEqualTo("Hallo, wie geht es dir?");
 
-        verify(chatLanguageModel)
+        verify(chatModel)
                 .chat(ChatRequest.builder()
                         .messages(
                                 systemMessage("You are a professional translator into german"),
@@ -792,7 +795,7 @@ class AiServicesIT {
     @Test
     void with_system_message_and_user_message_as_argument() {
 
-        Summarizer summarizer = AiServices.create(Summarizer.class, chatLanguageModel);
+        Summarizer summarizer = AiServices.create(Summarizer.class, chatModel);
 
         String text = "AI, or artificial intelligence, is a branch of computer science that aims to create "
                 + "machines that mimic human intelligence. This can range from simple tasks such as recognizing "
@@ -802,7 +805,7 @@ class AiServicesIT {
 
         assertThat(bulletPoints).hasSize(3);
 
-        verify(chatLanguageModel)
+        verify(chatModel)
                 .chat(ChatRequest.builder()
                         .messages(
                                 systemMessage(
@@ -821,7 +824,7 @@ class AiServicesIT {
     void should_throw_when_text_is_flagged() {
 
         ChatWithModeration chatWithModeration = AiServices.builder(ChatWithModeration.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(chatModel)
                 .moderationModel(moderationModel)
                 .build();
 
@@ -829,9 +832,15 @@ class AiServicesIT {
 
         assertThatThrownBy(() -> chatWithModeration.chat(message))
                 .isExactlyInstanceOf(ModerationException.class)
-                .hasMessage("Text \"" + message + "\" violates content policy");
+                .hasMessage("Text \"" + message + "\" violates content policy")
+                .satisfies(e -> {
+                    final var moderationException = (ModerationException) e;
+                    final var moderation = moderationException.moderation();
+                    assertThat(moderation.flagged()).isTrue();
+                    assertThat(moderation.flaggedText()).contains("I WILL KILL YOU!!!");
+                });
 
-        verify(chatLanguageModel).chat(chatRequest(message));
+        verify(chatModel).chat(chatRequest(message));
         verify(moderationModel).moderate(singletonList(userMessage(message)));
     }
 
@@ -839,7 +848,7 @@ class AiServicesIT {
     void should_not_throw_when_text_is_not_flagged() {
 
         ChatWithModeration chatWithModeration = AiServices.builder(ChatWithModeration.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(chatModel)
                 .moderationModel(moderationModel)
                 .build();
 
@@ -849,7 +858,7 @@ class AiServicesIT {
 
         assertThat(response).isNotBlank();
 
-        verify(chatLanguageModel).chat(chatRequest(message));
+        verify(chatModel).chat(chatRequest(message));
         verify(moderationModel).moderate(singletonList(userMessage(message)));
     }
 
@@ -862,7 +871,7 @@ class AiServicesIT {
     void should_return_result() {
 
         // given
-        AssistantReturningResult assistant = AiServices.create(AssistantReturningResult.class, chatLanguageModel);
+        AssistantReturningResult assistant = AiServices.create(AssistantReturningResult.class, chatModel);
 
         String userMessage = "What is the capital of Germany?";
 
@@ -873,15 +882,24 @@ class AiServicesIT {
         assertThat(result.content()).containsIgnoringCase("Berlin");
 
         TokenUsage tokenUsage = result.tokenUsage();
-        assertThat(tokenUsage).isNotNull();
         assertThat(tokenUsage.inputTokenCount()).isPositive();
         assertThat(tokenUsage.outputTokenCount()).isPositive();
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
-        assertThat(result.sources()).isNull();
+        assertThat(result.sources()).isEmpty();
 
-        verify(chatLanguageModel).chat(chatRequest(userMessage));
+        assertThat(result.finishReason()).isEqualTo(STOP);
+
+        assertThat(result.toolExecutions()).isEmpty();
+
+        assertThat(result.intermediateResponses()).isEmpty();
+
+        assertThat(result.finalResponse().aiMessage().text()).isEqualTo(result.content());
+        assertThat(result.finalResponse().tokenUsage()).isEqualTo(result.tokenUsage());
+        assertThat(result.finalResponse().finishReason()).isEqualTo(result.finishReason());
+
+        verify(chatModel).chat(chatRequest(userMessage));
     }
 
     interface AssistantReturningResultWithPojo {
@@ -900,7 +918,7 @@ class AiServicesIT {
 
         // given
         AssistantReturningResultWithPojo assistant =
-                AiServices.create(AssistantReturningResultWithPojo.class, chatLanguageModel);
+                AiServices.create(AssistantReturningResultWithPojo.class, chatModel);
 
         // when
         Result<Booking> result = assistant.answer("Give me an example of a booking");
@@ -911,9 +929,9 @@ class AiServicesIT {
         assertThat(booking.bookingId).isNotBlank();
 
         assertThat(result.tokenUsage()).isNotNull();
-        assertThat(result.sources()).isNull();
+        assertThat(result.sources()).isEmpty();
 
-        verify(chatLanguageModel)
+        verify(chatModel)
                 .chat(chatRequest("Give me an example of a booking\n"
                         + "You must answer strictly in the following JSON format: {\n"
                         + "\"userId\": (type: string),\n"
@@ -921,9 +939,60 @@ class AiServicesIT {
                         + "}"));
     }
 
+    @Test
+    void should_rewrite_chat_request() {
+        UserMessageTransformer requestTransformer = userMessage -> userMessage.replace("three", "four");
+
+        EggCounter eggCounter = AiServices.builder(EggCounter.class)
+                .chatModel(chatModel)
+                .chatRequestTransformer(requestTransformer)
+                .build();
+
+        String sentence = "I have ten eggs in my basket and three in my pocket.";
+
+        int count = eggCounter.count(sentence);
+        assertThat(count).isEqualTo(14);
+
+        verify(chatModel)
+                .chat(chatRequest("Count the number of eggs mentioned in this sentence:\n"
+                        + "|||I have ten eggs in my basket and four in my pocket.|||\n"
+                        + "You must answer strictly in the following format: integer number"));
+    }
+
     static ChatRequest chatRequest(String userMessage) {
         return ChatRequest.builder()
                 .messages(dev.langchain4j.data.message.UserMessage.from(userMessage))
                 .build();
+    }
+
+    @FunctionalInterface
+    public interface UserMessageTransformer extends UnaryOperator<ChatRequest> {
+
+        @Override
+        default ChatRequest apply(ChatRequest chatRequest) {
+            return chatRequest.messages().stream()
+                    .filter(dev.langchain4j.data.message.UserMessage.class::isInstance)
+                    .map(dev.langchain4j.data.message.UserMessage.class::cast)
+                    .findFirst()
+                    .map(userMessage -> {
+                        String originalMessage = userMessage.singleText();
+                        String transformedMessage = transformUserMessage(originalMessage);
+                        if (transformedMessage == null || transformedMessage.equals(originalMessage)) {
+                            return chatRequest; // No transformation needed
+                        }
+                        List<ChatMessage> messages = chatRequest.messages().stream()
+                                .map(message -> message == userMessage ?
+                                        dev.langchain4j.data.message.UserMessage.from(transformedMessage) :
+                                        message)
+                                .toList();
+                        return ChatRequest.builder()
+                                .messages(messages)
+                                .parameters(chatRequest.parameters())
+                                .build();
+                    })
+                    .orElse(chatRequest);
+        }
+
+        String transformUserMessage(String userMessage);
     }
 }

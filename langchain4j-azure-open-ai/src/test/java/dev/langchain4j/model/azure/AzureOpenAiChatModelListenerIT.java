@@ -1,19 +1,19 @@
 package dev.langchain4j.model.azure;
 
-import com.azure.core.exception.ClientAuthenticationException;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.ChatModelListenerIT;
-import dev.langchain4j.model.chat.listener.ChatModelListener;
-
 import static java.util.Collections.singletonList;
 
-class AzureOpenAiChatModelListenerIT extends ChatModelListenerIT {
+import dev.langchain4j.exception.AuthenticationException;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.common.AbstractChatModelListenerIT;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+
+@EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
+class AzureOpenAiChatModelListenerIT extends AbstractChatModelListenerIT {
 
     @Override
-    protected ChatLanguageModel createModel(ChatModelListener listener) {
-        return AzureOpenAiChatModel.builder()
-                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+    protected ChatModel createModel(ChatModelListener listener) {
+        return AzureModelBuilders.chatModelBuilder()
                 .deploymentName(modelName())
                 .temperature(temperature())
                 .topP(topP())
@@ -29,11 +29,12 @@ class AzureOpenAiChatModelListenerIT extends ChatModelListenerIT {
     }
 
     @Override
-    protected ChatLanguageModel createFailingModel(ChatModelListener listener) {
+    protected ChatModel createFailingModel(ChatModelListener listener) {
         return AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey("banana")
                 .deploymentName(modelName())
+                .maxRetries(0)
                 .logRequestsAndResponses(true)
                 .listeners(singletonList(listener))
                 .build();
@@ -41,6 +42,6 @@ class AzureOpenAiChatModelListenerIT extends ChatModelListenerIT {
 
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
-        return ClientAuthenticationException.class;
+        return AuthenticationException.class;
     }
 }

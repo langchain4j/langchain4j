@@ -3,7 +3,8 @@ package dev.langchain4j.model.jlama;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -21,7 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class JlamaChatModelToolsIT {
 
     static File tmpDir;
-    static ChatLanguageModel model;
+    static ChatModel model;
 
     @BeforeAll
     static void setup() {
@@ -81,6 +82,6 @@ class JlamaChatModelToolsIT {
         // then
         AiMessage secondAiMessage = secondResponse.aiMessage();
         assertThat(secondAiMessage.text()).contains("32");
-        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
+        assertThat(secondAiMessage.toolExecutionRequests()).isEmpty();
     }
 }

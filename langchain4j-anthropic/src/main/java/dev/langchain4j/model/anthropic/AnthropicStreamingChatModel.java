@@ -1,57 +1,43 @@
 package dev.langchain4j.model.anthropic;
 
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.ModelProvider.ANTHROPIC;
 import static dev.langchain4j.model.anthropic.AnthropicChatModel.toThinking;
-import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createListenerRequest;
+import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createAnthropicRequest;
+import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.validate;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType.EPHEMERAL;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType.NO_CACHE;
-import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicMessages;
-import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSystemPrompt;
-import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicTools;
-import static dev.langchain4j.model.anthropic.internal.sanitizer.MessageSanitizer.sanitizeMessages;
-import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
+import static java.util.Arrays.asList;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
-import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
-import dev.langchain4j.model.anthropic.internal.api.AnthropicToolChoice;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
+import dev.langchain4j.model.anthropic.internal.client.AnthropicCreateMessageOptions;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.ChatRequestValidator;
+import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ToolChoice;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.output.Response;
 import java.time.Duration;
-import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Set;
+
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Represents an Anthropic language model with a Messages (chat) API.
@@ -68,89 +54,69 @@ import org.slf4j.LoggerFactory;
  * The content of {@link SystemMessage}s is sent using the "system" parameter.
  * <br>
  * <br>
- * Sanitization is performed on the {@link ChatMessage}s provided to ensure conformity with Anthropic API requirements.
- * This includes ensuring the first message is a {@link UserMessage} and that there are no consecutive {@link UserMessage}s.
- * Any messages removed during sanitization are logged as warnings and not submitted to the API.
- * <br>
- * <br>
  * Supports caching {@link SystemMessage}s and {@link ToolSpecification}s.
  */
-public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
-
-    private static final Logger log = LoggerFactory.getLogger(AnthropicStreamingChatModel.class);
+public class AnthropicStreamingChatModel implements StreamingChatModel {
 
     private final AnthropicClient client;
-    private final String modelName;
-    private final Double temperature;
-    private final Double topP;
-    private final Integer topK;
-    private final int maxTokens;
-    private final List<String> stopSequences;
     private final boolean cacheSystemMessages;
     private final boolean cacheTools;
     private final String thinkingType;
     private final Integer thinkingBudgetTokens;
+    private final boolean returnThinking;
+    private final boolean sendThinking;
     private final List<ChatModelListener> listeners;
+    private final ChatRequestParameters defaultRequestParameters;
+    private final String toolChoiceName;
+    private final Boolean disableParallelToolUse;
+    private final List<AnthropicServerTool> serverTools;
+    private final Set<String> toolMetadataKeysToSend;
+    private final String userId;
+    private final Map<String, Object> customParameters;
 
     /**
      * Constructs an instance of an {@code AnthropicStreamingChatModel} with the specified parameters.
-     *
-     * @param baseUrl             The base URL of the Anthropic API. Default: "https://api.anthropic.com/v1/"
-     * @param apiKey              The API key for authentication with the Anthropic API.
-     * @param version             The value of the "anthropic-version" HTTP header. Default: "2023-06-01"
-     * @param beta                The value of the "anthropic-beta" HTTP header.
-     * @param modelName           The name of the Anthropic model to use.
-     * @param temperature         The temperature
-     * @param topP                The top-P
-     * @param topK                The top-K
-     * @param maxTokens           The maximum number of tokens to generate. Default: 1024
-     * @param stopSequences       The custom text sequences that will cause the model to stop generating
-     * @param cacheSystemMessages If true, it will add cache_control block to all system messages. Default: false
-     * @param cacheTools          If true, it will add cache_control block to all tools. Default: false
-     * @param timeout             The timeout for API requests. Default: 60 seconds
-     * @param logRequests         Whether to log the content of API requests using SLF4J. Default: false
-     * @param logResponses        Whether to log the content of API responses using SLF4J. Default: false
-     * @param listeners           A list of {@link ChatModelListener} instances to be notified.
      */
-    private AnthropicStreamingChatModel(
-            String baseUrl,
-            String apiKey,
-            String version,
-            String beta,
-            String modelName,
-            Double temperature,
-            Double topP,
-            Integer topK,
-            Integer maxTokens,
-            List<String> stopSequences,
-            Boolean cacheSystemMessages,
-            Boolean cacheTools,
-            String thinkingType,
-            Integer thinkingBudgetTokens,
-            Duration timeout,
-            Boolean logRequests,
-            Boolean logResponses,
-            List<ChatModelListener> listeners) {
+    public AnthropicStreamingChatModel(AnthropicStreamingChatModelBuilder builder) {
         this.client = AnthropicClient.builder()
-                .baseUrl(getOrDefault(baseUrl, "https://api.anthropic.com/v1/"))
-                .apiKey(apiKey)
-                .version(getOrDefault(version, "2023-06-01"))
-                .beta(beta)
-                .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
-                .logRequests(getOrDefault(logRequests, false))
-                .logResponses(getOrDefault(logResponses, false))
+                .httpClientBuilder(builder.httpClientBuilder)
+                .baseUrl(getOrDefault(builder.baseUrl, "https://api.anthropic.com/v1/"))
+                .apiKey(builder.apiKey)
+                .version(getOrDefault(builder.version, "2023-06-01"))
+                .beta(builder.beta)
+                .timeout(builder.timeout)
+                .logRequests(getOrDefault(builder.logRequests, false))
+                .logResponses(getOrDefault(builder.logResponses, false))
+                .logger(builder.logger)
                 .build();
-        this.modelName = ensureNotBlank(modelName, "modelName");
-        this.temperature = temperature;
-        this.topP = topP;
-        this.topK = topK;
-        this.maxTokens = getOrDefault(maxTokens, 1024);
-        this.stopSequences = stopSequences;
-        this.cacheSystemMessages = getOrDefault(cacheSystemMessages, false);
-        this.cacheTools = getOrDefault(cacheTools, false);
-        this.thinkingType = thinkingType;
-        this.thinkingBudgetTokens = thinkingBudgetTokens;
-        this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
+
+        ChatRequestParameters commonParameters = DefaultChatRequestParameters.EMPTY;
+
+        this.defaultRequestParameters = DefaultChatRequestParameters.builder()
+                .modelName(getOrDefault(builder.modelName, commonParameters.modelName()))
+                .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
+                .topP(getOrDefault(builder.topP, commonParameters.topP()))
+                .topK(getOrDefault(builder.topK, commonParameters.topK()))
+                .maxOutputTokens(
+                        getOrDefault(builder.maxTokens, getOrDefault(commonParameters.maxOutputTokens(), 1024)))
+                .stopSequences(getOrDefault(builder.stopSequences, commonParameters.stopSequences()))
+                .toolSpecifications(getOrDefault(builder.toolSpecifications, commonParameters.toolSpecifications()))
+                .toolChoice(getOrDefault(builder.toolChoice, commonParameters.toolChoice()))
+                .build();
+
+        this.cacheSystemMessages = getOrDefault(builder.cacheSystemMessages, false);
+        this.cacheTools = getOrDefault(builder.cacheTools, false);
+        this.thinkingType = builder.thinkingType;
+        this.thinkingBudgetTokens = builder.thinkingBudgetTokens;
+        this.returnThinking = getOrDefault(builder.returnThinking, false);
+        this.sendThinking = getOrDefault(builder.sendThinking, true);
+        this.listeners = copy(builder.listeners);
+        this.toolChoiceName = builder.toolChoiceName;
+        this.disableParallelToolUse = builder.disableParallelToolUse;
+        this.serverTools = copy(builder.serverTools);
+        this.toolMetadataKeysToSend = copy(builder.toolMetadataKeysToSend);
+        this.userId = builder.userId;
+        this.customParameters = copy(builder.customParameters);
     }
 
     public static AnthropicStreamingChatModelBuilder builder() {
@@ -159,6 +125,7 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
 
     public static class AnthropicStreamingChatModelBuilder {
 
+        private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private String apiKey;
         private String version;
@@ -169,14 +136,30 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
         private Integer topK;
         private Integer maxTokens;
         private List<String> stopSequences;
+        private List<ToolSpecification> toolSpecifications;
         private Boolean cacheSystemMessages;
         private Boolean cacheTools;
         private String thinkingType;
         private Integer thinkingBudgetTokens;
+        private Boolean returnThinking;
+        private Boolean sendThinking;
         private Duration timeout;
         private Boolean logRequests;
         private Boolean logResponses;
+        private Logger logger;
         private List<ChatModelListener> listeners;
+        private ToolChoice toolChoice;
+        private String toolChoiceName;
+        private Boolean disableParallelToolUse;
+        private List<AnthropicServerTool> serverTools;
+        private Set<String> toolMetadataKeysToSend;
+        private String userId;
+        private Map<String, Object> customParameters;
+
+        public AnthropicStreamingChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
 
         public AnthropicStreamingChatModelBuilder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
@@ -208,22 +191,22 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
             return this;
         }
 
-        public AnthropicStreamingChatModelBuilder temperature(double temperature) {
+        public AnthropicStreamingChatModelBuilder temperature(Double temperature) {
             this.temperature = temperature;
             return this;
         }
 
-        public AnthropicStreamingChatModelBuilder topP(double topP) {
+        public AnthropicStreamingChatModelBuilder topP(Double topP) {
             this.topP = topP;
             return this;
         }
 
-        public AnthropicStreamingChatModelBuilder topK(int topK) {
+        public AnthropicStreamingChatModelBuilder topK(Integer topK) {
             this.topK = topK;
             return this;
         }
 
-        public AnthropicStreamingChatModelBuilder maxTokens(int maxTokens) {
+        public AnthropicStreamingChatModelBuilder maxTokens(Integer maxTokens) {
             this.maxTokens = maxTokens;
             return this;
         }
@@ -233,23 +216,74 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
             return this;
         }
 
-        public AnthropicStreamingChatModelBuilder cacheSystemMessages(boolean cacheSystemMessages) {
+        public AnthropicStreamingChatModelBuilder toolSpecifications(List<ToolSpecification> toolSpecifications) {
+            this.toolSpecifications = toolSpecifications;
+            return this;
+        }
+
+        public AnthropicStreamingChatModelBuilder toolSpecifications(ToolSpecification... toolSpecifications) {
+            return toolSpecifications(asList(toolSpecifications));
+        }
+
+        public AnthropicStreamingChatModelBuilder cacheSystemMessages(Boolean cacheSystemMessages) {
             this.cacheSystemMessages = cacheSystemMessages;
             return this;
         }
 
-        public AnthropicStreamingChatModelBuilder cacheTools(boolean cacheTools) {
+        public AnthropicStreamingChatModelBuilder cacheTools(Boolean cacheTools) {
             this.cacheTools = cacheTools;
             return this;
         }
 
+        /**
+         * Enables <a href="https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking">thinking</a>.
+         */
         public AnthropicStreamingChatModelBuilder thinkingType(String thinkingType) {
             this.thinkingType = thinkingType;
             return this;
         }
 
-        public AnthropicStreamingChatModelBuilder thinkingBudgetTokens(int thinkingBudgetTokens) {
+        /**
+         * Configures <a href="https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking">thinking</a>.
+         */
+        public AnthropicStreamingChatModelBuilder thinkingBudgetTokens(Integer thinkingBudgetTokens) {
             this.thinkingBudgetTokens = thinkingBudgetTokens;
+            return this;
+        }
+
+        /**
+         * Controls whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}
+         * and whether to invoke the {@link StreamingChatResponseHandler#onPartialThinking(PartialThinking)} callback.
+         * Please note that this does not enable thinking/reasoning for the LLM;
+         * it only controls whether to parse the {@code thinking} field from the API response
+         * and return it inside the {@link AiMessage}.
+         * <p>
+         * Disabled by default.
+         * If enabled, the thinking text will be stored within the {@link AiMessage} and may be persisted.
+         * If enabled, thinking signatures will also be stored and returned inside the {@link AiMessage#attributes()}.
+         *
+         * @see #thinkingType(String)
+         * @see #thinkingBudgetTokens(Integer)
+         * @see #sendThinking(Boolean)
+         */
+        public AnthropicStreamingChatModelBuilder returnThinking(Boolean returnThinking) {
+            this.returnThinking = returnThinking;
+            return this;
+        }
+
+        /**
+         * Controls whether to send thinking/reasoning text to the LLM in follow-up requests.
+         * <p>
+         * Enabled by default.
+         * If enabled, the contents of {@link AiMessage#thinking()} will be sent in the API request.
+         * If enabled, thinking signatures (inside the {@link AiMessage#attributes()}) will also be sent.
+         *
+         * @see #thinkingType(String)
+         * @see #thinkingBudgetTokens(Integer)
+         * @see #returnThinking(Boolean)
+         */
+        public AnthropicStreamingChatModelBuilder sendThinking(Boolean sendThinking) {
+            this.sendThinking = sendThinking;
             return this;
         }
 
@@ -258,13 +292,22 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
             return this;
         }
 
-        public AnthropicStreamingChatModelBuilder logRequests(boolean logRequests) {
+        public AnthropicStreamingChatModelBuilder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
         }
 
-        public AnthropicStreamingChatModelBuilder logResponses(boolean logResponses) {
+        public AnthropicStreamingChatModelBuilder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
+            return this;
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public AnthropicStreamingChatModelBuilder logger(Logger logger) {
+            this.logger = logger;
             return this;
         }
 
@@ -273,182 +316,109 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
             return this;
         }
 
+        public AnthropicStreamingChatModelBuilder toolChoice(ToolChoice toolChoice) {
+            this.toolChoice = toolChoice;
+            return this;
+        }
+
+        public AnthropicStreamingChatModelBuilder toolChoiceName(String toolChoiceName) {
+            this.toolChoiceName = toolChoiceName;
+            return this;
+        }
+
+        public AnthropicStreamingChatModelBuilder disableParallelToolUse(Boolean disableParallelToolUse) {
+            this.disableParallelToolUse = disableParallelToolUse;
+            return this;
+        }
+
+        /**
+         * Specifies server tools to be included in each request to the Anthropic API. For example:
+         * <pre>
+         * AnthropicServerTool webSearchTool = AnthropicServerTool.builder()
+         *     .type("web_search_20250305")
+         *     .name("web_search")
+         *     .addAttribute("max_uses", 5)
+         *     .addAttribute("allowed_domains", List.of("accuweather.com"))
+         *     .build();
+         * </pre>
+         */
+        public AnthropicStreamingChatModelBuilder serverTools(List<AnthropicServerTool> serverTools) {
+            this.serverTools = serverTools;
+            return this;
+        }
+
+        /**
+         * Specifies server tools to be included in each request to the Anthropic API. For example:
+         * <pre>
+         * AnthropicServerTool webSearchTool = AnthropicServerTool.builder()
+         *     .type("web_search_20250305")
+         *     .name("web_search")
+         *     .addAttribute("max_uses", 5)
+         *     .addAttribute("allowed_domains", List.of("accuweather.com"))
+         *     .build();
+         * </pre>
+         */
+        public AnthropicStreamingChatModelBuilder serverTools(AnthropicServerTool... serverTools) {
+            return serverTools(asList(serverTools));
+        }
+
+        /**
+         * Specifies metadata keys from the {@link ToolSpecification#metadata()} to be included in the request.
+         */
+        public AnthropicStreamingChatModelBuilder toolMetadataKeysToSend(Set<String> toolMetadataKeysToSend) {
+            this.toolMetadataKeysToSend = toolMetadataKeysToSend;
+            return this;
+        }
+
+        /**
+         * Specifies metadata keys from the {@link ToolSpecification#metadata()} to be included in the request.
+         */
+        public AnthropicStreamingChatModelBuilder toolMetadataKeysToSend(String... toolMetadataKeysToSend) {
+            return toolMetadataKeysToSend(new HashSet<>(asList(toolMetadataKeysToSend)));
+        }
+
+        /**
+         * Sets the user ID for the requests.
+         * This should be a uuid, hash value, or other opaque identifier.
+         * Anthropic may use this id to help detect abuse.
+         * Do not include any identifying information such as name, email address, or phone number.
+         *
+         * @param userId the user identifier
+         * @return this builder
+         */
+        public AnthropicStreamingChatModelBuilder userId(String userId) {
+            this.userId = userId;
+            return this;
+        }
+
+        public AnthropicStreamingChatModelBuilder customParameters(Map<String, Object> customParameters) {
+            this.customParameters = customParameters;
+            return this;
+        }
+
         public AnthropicStreamingChatModel build() {
-            return new AnthropicStreamingChatModel(
-                    baseUrl,
-                    apiKey,
-                    version,
-                    beta,
-                    modelName,
-                    temperature,
-                    topP,
-                    topK,
-                    maxTokens,
-                    stopSequences,
-                    cacheSystemMessages,
-                    cacheTools,
-                    thinkingType,
-                    thinkingBudgetTokens,
-                    timeout,
-                    logRequests,
-                    logResponses,
-                    listeners);
+            return new AnthropicStreamingChatModel(this);
         }
     }
 
     @Override
-    public void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
-        ChatRequestParameters parameters = chatRequest.parameters();
-        ChatRequestValidator.validateParameters(parameters);
-        ChatRequestValidator.validate(parameters.responseFormat());
-
-        StreamingResponseHandler<AiMessage> legacyHandler = new StreamingResponseHandler<>() {
-
-            @Override
-            public void onNext(String token) {
-                handler.onPartialResponse(token);
-            }
-
-            @Override
-            public void onComplete(Response<AiMessage> response) {
-                ChatResponse chatResponse = ChatResponse.builder()
-                        .aiMessage(response.content())
-                        .metadata(ChatResponseMetadata.builder()
-                                .tokenUsage(response.tokenUsage())
-                                .finishReason(response.finishReason())
-                                .build())
-                        .build();
-                handler.onCompleteResponse(chatResponse);
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                handler.onError(error);
-            }
-        };
-
-        List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
-        if (isNullOrEmpty(toolSpecifications)) {
-            generate(chatRequest.messages(), legacyHandler);
-        } else {
-            if (parameters.toolChoice() == REQUIRED) {
-                if (toolSpecifications.size() != 1) {
-                    throw new UnsupportedFeatureException(String.format(
-                            "%s.%s is currently supported only when there is a single tool",
-                            ToolChoice.class.getSimpleName(), REQUIRED.name()));
-                }
-                generate(chatRequest.messages(), toolSpecifications.get(0), legacyHandler);
-            } else {
-                generate(chatRequest.messages(), toolSpecifications, legacyHandler);
-            }
-        }
-    }
-
-    private void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
-        generate(messages, null, null, handler);
-    }
-
-    private void generate(
-            List<ChatMessage> messages,
-            List<ToolSpecification> toolSpecifications,
-            StreamingResponseHandler<AiMessage> handler) {
-        generate(messages, toolSpecifications, null, handler);
-    }
-
-    private void generate(
-            List<ChatMessage> messages,
-            ToolSpecification toolSpecification,
-            StreamingResponseHandler<AiMessage> handler) {
-        generate(messages, null, toolSpecification, handler);
-    }
-
-    private void generate(
-            List<ChatMessage> messages,
-            List<ToolSpecification> toolSpecifications,
-            ToolSpecification toolThatMustBeExecuted,
-            StreamingResponseHandler<AiMessage> handler) {
-
-        List<ChatMessage> sanitizedMessages = sanitizeMessages(messages);
-        List<AnthropicTextContent> systemPrompt =
-                toAnthropicSystemPrompt(messages, cacheSystemMessages ? EPHEMERAL : NO_CACHE);
+    public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
         ensureNotNull(handler, "handler");
-
-        AnthropicCreateMessageRequest.Builder requestBuilder = AnthropicCreateMessageRequest.builder().stream(true)
-                .model(modelName)
-                .messages(toAnthropicMessages(sanitizedMessages))
-                .system(systemPrompt)
-                .maxTokens(maxTokens)
-                .stopSequences(stopSequences)
-                .temperature(temperature)
-                .topP(topP)
-                .topK(topK)
-                .thinking(toThinking(thinkingType, thinkingBudgetTokens));
-
-        AnthropicCacheType toolsCacheType = cacheTools ? EPHEMERAL : NO_CACHE;
-        if (toolThatMustBeExecuted != null) {
-            requestBuilder.tools(toAnthropicTools(singletonList(toolThatMustBeExecuted), toolsCacheType));
-            requestBuilder.toolChoice(AnthropicToolChoice.from(toolThatMustBeExecuted.name()));
-        } else if (!isNullOrEmpty(toolSpecifications)) {
-            requestBuilder.tools(toAnthropicTools(toolSpecifications, toolsCacheType));
-        }
-
-        AnthropicCreateMessageRequest request = requestBuilder.build();
-
-        ChatRequest listenerRequest = createListenerRequest(request, messages, toolSpecifications);
-        Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext requestContext = new ChatModelRequestContext(listenerRequest, provider(), attributes);
-        listeners.forEach(listener -> {
-            try {
-                listener.onRequest(requestContext);
-            } catch (Exception e) {
-                log.warn("Exception while calling model listener", e);
-            }
-        });
-
-        StreamingResponseHandler<AiMessage> listenerHandler = new StreamingResponseHandler<>() {
-            @Override
-            public void onNext(String token) {
-                handler.onNext(token);
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                ChatModelErrorContext errorContext =
-                        InternalAnthropicHelper.createErrorContext(error, listenerRequest, provider(), attributes);
-
-                listeners.forEach(listener -> {
-                    try {
-                        listener.onError(errorContext);
-                    } catch (Exception e2) {
-                        log.warn("Exception while calling model listener", e2);
-                    }
-                });
-
-                handler.onError(error);
-            }
-
-            @Override
-            public void onComplete(Response<AiMessage> response) {
-                ChatResponse listenerResponse = InternalAnthropicHelper.createListenerResponse(
-                        (String) response.metadata().get("id"),
-                        (String) response.metadata().get("model"),
-                        response);
-                ChatModelResponseContext responseContext =
-                        new ChatModelResponseContext(listenerResponse, listenerRequest, provider(), attributes);
-
-                listeners.forEach(listener -> {
-                    try {
-                        listener.onResponse(responseContext);
-                    } catch (Exception e) {
-                        log.warn("Exception while calling model listener", e);
-                    }
-                });
-                handler.onComplete(response);
-                StreamingResponseHandler.super.onComplete(response);
-            }
-        };
-
-        client.createMessage(request, listenerHandler);
+        validate(chatRequest.parameters());
+        AnthropicCreateMessageRequest anthropicRequest = createAnthropicRequest(
+                chatRequest,
+                toThinking(thinkingType, thinkingBudgetTokens),
+                sendThinking,
+                cacheSystemMessages ? EPHEMERAL : NO_CACHE,
+                cacheTools ? EPHEMERAL : NO_CACHE,
+                true,
+                toolChoiceName,
+                disableParallelToolUse,
+                serverTools,
+                toolMetadataKeysToSend,
+                userId,
+                customParameters);
+        client.createMessage(anthropicRequest, new AnthropicCreateMessageOptions(returnThinking), handler);
     }
 
     @Override
@@ -459,5 +429,10 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
     @Override
     public ModelProvider provider() {
         return ANTHROPIC;
+    }
+
+    @Override
+    public ChatRequestParameters defaultRequestParameters() {
+        return defaultRequestParameters;
     }
 }

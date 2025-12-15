@@ -8,14 +8,11 @@ import dev.langchain4j.rag.content.aggregator.DefaultContentAggregator;
 import dev.langchain4j.rag.content.injector.ContentInjector;
 import dev.langchain4j.rag.content.injector.DefaultContentInjector;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
-import dev.langchain4j.rag.query.Metadata;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.rag.query.router.DefaultQueryRouter;
 import dev.langchain4j.rag.query.router.QueryRouter;
 import dev.langchain4j.rag.query.transformer.DefaultQueryTransformer;
 import dev.langchain4j.rag.query.transformer.QueryTransformer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.List;
@@ -110,8 +107,6 @@ import static java.util.stream.Collectors.toMap;
  */
 public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
 
-    private static final Logger log = LoggerFactory.getLogger(DefaultRetrievalAugmentor.class);
-
     private final QueryTransformer queryTransformer;
     private final QueryRouter queryRouter;
     private final ContentAggregator contentAggregator;
@@ -138,34 +133,25 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         );
     }
 
-    /**
-     * @deprecated use {@link #augment(AugmentationRequest)} instead.
-     */
-    @Override
-    @Deprecated
-    public UserMessage augment(UserMessage userMessage, Metadata metadata) {
-        AugmentationRequest augmentationRequest = new AugmentationRequest(userMessage, metadata);
-        return (UserMessage) augment(augmentationRequest).chatMessage();
-    }
-
     @Override
     public AugmentationResult augment(AugmentationRequest augmentationRequest) {
 
         ChatMessage chatMessage = augmentationRequest.chatMessage();
-        Metadata metadata = augmentationRequest.metadata();
-
-        Query originalQuery = Query.from(chatMessage.text(), metadata);
+        String queryText;
+        if (chatMessage instanceof UserMessage userMessage) {
+            queryText = userMessage.singleText();
+        } else {
+            throw new IllegalArgumentException("Unsupported message type: " + chatMessage.type());
+        }
+        Query originalQuery = Query.from(queryText, augmentationRequest.metadata());
 
         Collection<Query> queries = queryTransformer.transform(originalQuery);
-        logQueries(originalQuery, queries);
 
         Map<Query, Collection<List<Content>>> queryToContents = process(queries);
 
         List<Content> contents = contentAggregator.aggregate(queryToContents);
-        log(queryToContents, contents);
 
         ChatMessage augmentedChatMessage = contentInjector.inject(contents, chatMessage);
-        log(augmentedChatMessage);
 
         return AugmentationResult.builder()
             .chatMessage(augmentedChatMessage)
@@ -191,13 +177,8 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
             Map<Query, CompletableFuture<Collection<List<Content>>>> queryToFutureContents = new ConcurrentHashMap<>();
             queries.forEach(query -> {
                 CompletableFuture<Collection<List<Content>>> futureContents =
-                    supplyAsync(() -> {
-                            Collection<ContentRetriever> retrievers = queryRouter.route(query);
-                            log(query, retrievers);
-                            return retrievers;
-                        },
-                        executor
-                    ).thenCompose(retrievers -> retrieveFromAll(retrievers, query));
+                        supplyAsync(() -> queryRouter.route(query), executor)
+                                .thenCompose(retrievers -> retrieveFromAll(retrievers, query));
                 queryToFutureContents.put(query, futureContents);
             });
             return join(queryToFutureContents);
@@ -209,7 +190,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
     private CompletableFuture<Collection<List<Content>>> retrieveFromAll(Collection<ContentRetriever> retrievers,
                                                                          Query query) {
         List<CompletableFuture<List<Content>>> futureContents = retrievers.stream()
-            .map(retriever -> supplyAsync(() -> retrieve(retriever, query), executor))
+            .map(retriever -> supplyAsync(() -> retriever.retrieve(query), executor))
             .collect(Collectors.toList());
 
         return allOf(futureContents.toArray(new CompletableFuture[0]))
@@ -217,12 +198,6 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
                 futureContents.stream()
                     .map(CompletableFuture::join)
                     .collect(Collectors.toList()));
-    }
-
-    private static List<Content> retrieve(ContentRetriever retriever, Query query) {
-        List<Content> contents = retriever.retrieve(query);
-        log(query, retriever, contents);
-        return contents;
     }
 
     private static Map<Query, Collection<List<Content>>> join(
@@ -235,97 +210,6 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
                         entry -> entry.getValue().join()
                     ))
             ).join();
-    }
-
-    private static void logQueries(Query originalQuery, Collection<Query> queries) {
-        if (queries.size() == 1) {
-            Query transformedQuery = queries.iterator().next();
-            if (!transformedQuery.equals(originalQuery)) {
-                log.debug("Transformed original query '{}' into '{}'",
-                    originalQuery.text(), transformedQuery.text());
-            }
-        } else if (log.isDebugEnabled()){
-            log.debug("Transformed original query '{}' into the following queries:\n{}",
-                originalQuery.text(), queries.stream()
-                    .map(Query::text)
-                    .map(query -> "- '" + query + "'")
-                    .collect(joining("\n")));
-        }
-    }
-
-    private static void log(Query query, Collection<ContentRetriever> retrievers) {
-        // TODO use retriever id
-        if (retrievers.size() == 1) {
-            log.debug("Routing query '{}' to the following retriever: {}",
-                query.text(), retrievers.iterator().next());
-        } else if (log.isDebugEnabled()) {
-            log.debug("Routing query '{}' to the following retrievers:\n{}",
-                query.text(), retrievers.stream()
-                    .map(retriever -> "- " + retriever.toString())
-                    .collect(joining("\n")));
-        }
-    }
-
-    private static void log(Query query, ContentRetriever retriever, List<Content> contents) {
-        // TODO use retriever id
-        log.debug("Retrieved {} contents using query '{}' and retriever '{}'",
-            contents.size(), query.text(), retriever);
-
-        if (!log.isTraceEnabled()) {
-            return;
-        }
-
-        if (!contents.isEmpty()) {
-            final var contentsSting = contents.stream()
-                .map(Content::textSegment)
-                .map(segment -> "- " + escapeNewlines(segment.text()))
-                .collect(joining("\n"));
-            log.trace("Retrieved {} contents using query '{}' and retriever '{}':\n{}",
-                contents.size(),
-                query.text(),
-                retriever.getClass().getName(),
-                contentsSting);
-        } else {
-            log.trace("Retrieved 0 contents using query '{}' and retriever '{}'",
-                query.text(),
-                retriever.getClass().getName());
-        }
-
-    }
-
-    private static void log(Map<Query, Collection<List<Content>>> queryToContents, List<Content> contents) {
-
-        int contentCount = 0;
-        for (Map.Entry<Query, Collection<List<Content>>> entry : queryToContents.entrySet()) {
-            for (List<Content> contentList : entry.getValue()) {
-                contentCount += contentList.size();
-            }
-        }
-        if (contentCount == contents.size()) {
-            return;
-        }
-
-        log.debug("Aggregated {} content(s) into {}", contentCount, contents.size());
-
-        if (log.isTraceEnabled()) {
-            log.trace("Aggregated {} content(s) into:\n{}",
-                contentCount, contents.stream()
-                    .map(Content::textSegment)
-                    .map(segment -> "- " + escapeNewlines(segment.text()))
-                    .collect(joining("\n")));
-        }
-    }
-
-    private static void log(ChatMessage augmentedChatMessage) {
-        if (log.isTraceEnabled()) {
-            log.trace("Augmented chat message: {}",
-                escapeNewlines(augmentedChatMessage.text())
-            );
-        }
-    }
-
-    private static String escapeNewlines(String text) {
-        return text.replace("\n", "\\n");
     }
 
     public static DefaultRetrievalAugmentorBuilder builder() {
@@ -375,10 +259,6 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
 
         public DefaultRetrievalAugmentor build() {
             return new DefaultRetrievalAugmentor(this.queryTransformer, this.queryRouter, this.contentAggregator, this.contentInjector, this.executor);
-        }
-
-        public String toString() {
-            return "DefaultRetrievalAugmentor.DefaultRetrievalAugmentorBuilder(queryTransformer=" + this.queryTransformer + ", queryRouter=" + this.queryRouter + ", contentAggregator=" + this.contentAggregator + ", contentInjector=" + this.contentInjector + ", executor=" + this.executor + ")";
         }
     }
 }

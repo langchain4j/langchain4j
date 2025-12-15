@@ -12,10 +12,12 @@ class AiMessageTest implements WithAssertions {
             AiMessage m = new AiMessage("text");
             assertThat(m.type()).isEqualTo(ChatMessageType.AI);
             assertThat(m.text()).isEqualTo("text");
-            assertThat(m.toolExecutionRequests()).isNull();
+            assertThat(m.toolExecutionRequests()).isEmpty();
             assertThat(m.hasToolExecutionRequests()).isFalse();
 
-            assertThat(m).hasToString("AiMessage { text = \"text\" toolExecutionRequests = null }");
+            assertThat(m)
+                    .hasToString(
+                            "AiMessage { text = \"text\", thinking = null, toolExecutionRequests = [], attributes = {} }");
         }
         {
             AiMessage m = new AiMessage(Arrays.asList(
@@ -28,7 +30,7 @@ class AiMessageTest implements WithAssertions {
 
             assertThat(m)
                     .hasToString(
-                            "AiMessage { text = null toolExecutionRequests = [ToolExecutionRequest { id = \"foo\", name = null, arguments = null }, ToolExecutionRequest { id = \"bar\", name = null, arguments = null }] }");
+                            "AiMessage { text = null, thinking = null, toolExecutionRequests = [ToolExecutionRequest { id = \"foo\", name = null, arguments = null }, ToolExecutionRequest { id = \"bar\", name = null, arguments = null }], attributes = {} }");
         }
     }
 
@@ -91,12 +93,12 @@ class AiMessageTest implements WithAssertions {
         {
             AiMessage m = AiMessage.from("text");
             assertThat(m.text()).isEqualTo("text");
-            assertThat(m.toolExecutionRequests()).isNull();
+            assertThat(m.toolExecutionRequests()).isEmpty();
         }
         {
             AiMessage m = AiMessage.aiMessage("text");
             assertThat(m.text()).isEqualTo("text");
-            assertThat(m.toolExecutionRequests()).isNull();
+            assertThat(m.toolExecutionRequests()).isEmpty();
         }
     }
 

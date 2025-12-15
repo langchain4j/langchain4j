@@ -7,7 +7,6 @@ import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.services.customsearch.v1.CustomSearchAPI;
 import com.google.api.services.customsearch.v1.CustomSearchAPIRequest;
 import com.google.api.services.customsearch.v1.model.Search;
-import lombok.Builder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,7 +15,7 @@ import java.security.GeneralSecurityException;
 import java.time.Duration;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 class GoogleCustomSearchApiClient {
 
@@ -26,7 +25,6 @@ class GoogleCustomSearchApiClient {
     private final CustomSearchAPIRequest<Search> customSearchRequest;
     private final boolean logResponses;
 
-    @Builder
     GoogleCustomSearchApiClient(String apiKey,
                                 String csi,
                                 Boolean siteRestrict,
@@ -36,14 +34,10 @@ class GoogleCustomSearchApiClient {
                                 boolean logResponses) {
 
         try {
-            if (isNullOrBlank(apiKey)) {
-                throw new IllegalArgumentException("Google Custom Search API Key must be defined. " +
-                        "It can be generated here: https://console.developers.google.com/apis/credentials");
-            }
-            if (isNullOrBlank(csi)) {
-                throw new IllegalArgumentException("Google Custom Search Engine ID must be defined. " +
-                        "It can be created here: https://cse.google.com/cse/create/new");
-            }
+            ensureNotBlank(apiKey, "%s", "Google Custom Search API Key must be defined. " +
+                    "It can be generated here: https://console.developers.google.com/apis/credentials");
+            ensureNotBlank(csi, "%s", "Google Custom Search Engine ID must be defined. " +
+                    "It can be created here: https://cse.google.com/cse/create/new");
 
             this.logResponses = logResponses;
 
@@ -77,6 +71,10 @@ class GoogleCustomSearchApiClient {
             LOGGER.error("Error occurred while creating Google Custom Search API client using GoogleNetHttpTransport.newTrustedTransport()", e);
             throw new RuntimeException(e);
         }
+    }
+
+    public static GoogleCustomSearchApiClientBuilder builder() {
+        return new GoogleCustomSearchApiClientBuilder();
     }
 
     Search searchResults(Search.Queries.Request requestQuery) {
@@ -186,5 +184,61 @@ class GoogleCustomSearchApiClient {
     private static Integer calculateIndexStartPage(Integer pageNumber, Integer index) {
         int indexStartPage = ((pageNumber - 1) * MAXIMUM_VALUE_NUM) + 1;
         return indexStartPage >= index ? indexStartPage : index;
+    }
+
+    public static class GoogleCustomSearchApiClientBuilder {
+        private String apiKey;
+        private String csi;
+        private Boolean siteRestrict;
+        private Duration timeout;
+        private Integer maxRetries;
+        private boolean logRequests;
+        private boolean logResponses;
+
+        GoogleCustomSearchApiClientBuilder() {
+        }
+
+        public GoogleCustomSearchApiClientBuilder apiKey(String apiKey) {
+            this.apiKey = apiKey;
+            return this;
+        }
+
+        public GoogleCustomSearchApiClientBuilder csi(String csi) {
+            this.csi = csi;
+            return this;
+        }
+
+        public GoogleCustomSearchApiClientBuilder siteRestrict(Boolean siteRestrict) {
+            this.siteRestrict = siteRestrict;
+            return this;
+        }
+
+        public GoogleCustomSearchApiClientBuilder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public GoogleCustomSearchApiClientBuilder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public GoogleCustomSearchApiClientBuilder logRequests(boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public GoogleCustomSearchApiClientBuilder logResponses(boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        public GoogleCustomSearchApiClient build() {
+            return new GoogleCustomSearchApiClient(this.apiKey, this.csi, this.siteRestrict, this.timeout, this.maxRetries, this.logRequests, this.logResponses);
+        }
+
+        public String toString() {
+            return "GoogleCustomSearchApiClient.GoogleCustomSearchApiClientBuilder(apiKey=" + this.apiKey + ", csi=" + this.csi + ", siteRestrict=" + this.siteRestrict + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
+        }
     }
 }

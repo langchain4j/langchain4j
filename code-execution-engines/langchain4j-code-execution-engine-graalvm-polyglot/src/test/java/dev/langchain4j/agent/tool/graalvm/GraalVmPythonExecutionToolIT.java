@@ -8,7 +8,9 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.service.AiServices;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class GraalVmPythonExecutionToolIT {
 
     OpenAiChatModel model = OpenAiChatModel.builder()
@@ -29,7 +31,7 @@ class GraalVmPythonExecutionToolIT {
         GraalVmPythonExecutionTool tool = spy(new GraalVmPythonExecutionTool());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .tools(tool)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
                 .build();

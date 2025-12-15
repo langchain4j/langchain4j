@@ -27,13 +27,13 @@ Azure OpenAI provides language models from OpenAI (`gpt-4`, `gpt-4o`, etc.) host
 
 ### Plain Java
 
-The `langchain4j-azure-open-ai` library is availlable on Maven Central.
+The `langchain4j-azure-open-ai` library is available on Maven Central.
 
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-open-ai</artifactId>
-    <version>1.0.0-beta2</version>
+    <version>1.9.1</version>
 </dependency>
 ```
 
@@ -45,7 +45,7 @@ A Spring Boot starter is available to configure the `langchain4j-azure-open-ai` 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-open-ai-spring-boot-starter</artifactId>
-    <version>1.0.0-beta2</version>
+    <version>1.9.1-beta17</version>
 </dependency>
 ```
 
@@ -58,7 +58,7 @@ Before using any of the Azure OpenAI models, you need to [deploy](https://learn.
 ### Plain Java
 
 ```java
-ChatLanguageModel model = AzureOpenAiChatModel.builder()
+ChatModel model = AzureOpenAiChatModel.builder()
         .endpoint(System.getenv("AZURE_OPENAI_URL"))
         .apiKey(System.getenv("AZURE_OPENAI_KEY"))
         .deploymentName("gpt-4o")
@@ -66,9 +66,8 @@ ChatLanguageModel model = AzureOpenAiChatModel.builder()
         .build();
 ```
 
-This will create an instance of `AzureOpenAiChatModel` with default model parameters (e.g. `0.7` temperature, etc.)
-and an API key stored in the `AZURE_OPENAI_KEY` environment variable.
-Default model parameters can be customized by providing values in the builder.
+This will create an instance of `AzureOpenAiChatModel` with the specified endpoint, API key and deployment name.
+Other parameters can be customized by providing values in the builder.
 
 ### Spring Boot
 
@@ -79,6 +78,7 @@ langchain4j.azure-open-ai.chat-model.service-version=...
 langchain4j.azure-open-ai.chat-model.api-key=${AZURE_OPENAI_KEY}
 langchain4j.azure-open-ai.chat-model.non-azure-api-key=${OPENAI_API_KEY}
 langchain4j.azure-open-ai.chat-model.deployment-name=gpt-4o
+langchain4j.azure-open-ai.chat-model.max-completion-tokens=...
 langchain4j.azure-open-ai.chat-model.max-tokens=...
 langchain4j.azure-open-ai.chat-model.temperature=...
 langchain4j.azure-open-ai.chat-model.top-p=
@@ -94,6 +94,7 @@ langchain4j.azure-open-ai.chat-model.max-retries=...
 langchain4j.azure-open-ai.chat-model.log-requests-and-responses=...
 langchain4j.azure-open-ai.chat-model.user-agent-suffix=
 langchain4j.azure-open-ai.chat-model.custom-headers=...
+langchain4j.azure-open-ai.chat-model.reasoningEffort=...
 ```
 See the description of some of the parameters above [here](https://learn.microsoft.com/en-us/azure/ai-services/openai/reference#completions).
 
@@ -103,17 +104,17 @@ or autowired where needed, for example:
 
 ```java
 @RestController
-class ChatLanguageModelController {
+class ChatModelController {
 
-    ChatLanguageModel chatLanguageModel;
+    ChatModel chatModel;
 
-    ChatLanguageModelController(ChatLanguageModel chatLanguageModel) {
-        this.chatLanguageModel = chatLanguageModel;
+    ChatModelController(ChatModel chatModel) {
+        this.chatModel = chatModel;
     }
 
     @GetMapping("/model")
     public String model(@RequestParam(value = "message", defaultValue = "Hello") String message) {
-        return chatLanguageModel.chat(message);
+        return chatModel.chat(message);
     }
 }
 ```
@@ -135,7 +136,7 @@ For that, it is necessary to add the `azure-identity` dependency to the project.
 Then, you can create an `AzureOpenAiChatModel` using the [DefaultAzureCredentialBuilder](https://learn.microsoft.com/en-us/java/api/com.azure.identity.defaultazurecredentialbuilder?view=azure-java-stable) API:  
 
 ```java
-ChatLanguageModel model = AzureOpenAiChatModel.builder()
+ChatModel model = AzureOpenAiChatModel.builder()
         .deploymentName("gpt-4o")
         .endpoint(System.getenv("AZURE_OPENAI_URL"))
         .tokenCredential(new DefaultAzureCredentialBuilder().build())
@@ -188,7 +189,7 @@ public class Demo {
         StockPriceService stockPriceService = new StockPriceService();
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .tools(stockPriceService)
                 .build();
 
@@ -211,7 +212,7 @@ The documentation for using Structured Outputs in LangChain4j is available [here
 The model needs to be configured with the `strictJsonSchema` parameter set to `true` in order to force the adherence to a JSON Schema:
 
 ```java
-ChatLanguageModel model = AzureOpenAiChatModel.builder()
+ChatModel model = AzureOpenAiChatModel.builder()
         .endpoint(System.getenv("AZURE_OPENAI_URL"))
         .apiKey(System.getenv("AZURE_OPENAI_KEY"))
         .deploymentName("gpt-4o")
@@ -224,7 +225,7 @@ ChatLanguageModel model = AzureOpenAiChatModel.builder()
 If `strictJsonSchema` is set to `false` and you provide a JSON Schema, the model will still try to generate a response that adheres to the schema, but it will not fail if the response does not adhere to the schema. One reason to do this is for better performance.
 :::
 
-You can then use this model either with the high level `Assistant` API or the low level `ChatLanguageModel` API, as detailed below.
+You can then use this model either with the high level `Assistant` API or the low level `ChatModel` API, as detailed below.
 When using it with the high level `Assistant` API, configure `supportedCapabilities(Set.of(RESPONSE_FORMAT_JSON_SCHEMA))` to enable structured outputs with a JSON schema.
 
 ### Using the high level `Assistant` API
@@ -262,13 +263,13 @@ This `Assistant` will make sure that the response adheres to a JSON schema corre
 String question = "Julien likes the colors blue, white and red";
 
 PersonAssistant assistant = AiServices.builder(PersonAssistant.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatModel(chatModel)
                 .build();
 
 Person person = assistant.extractPerson(question);
 ```
 
-### Using the low level `ChatLanguageModel` API
+### Using the low level `ChatModel` API
 
 This is a similar process to the high level API, but this time the JSON schema needs to be configured manually, as well as mapping the JSON response to a Java object.
 
@@ -293,7 +294,7 @@ ChatRequest chatRequest = ChatRequest.builder()
         .build())
     .build();
 
-String answer = chatLanguageModel.chat(chatRequest).aiMessage().text();
+String answer = chatModel.chat(chatRequest).aiMessage().text();
 ```
 
 In this example, the `answer` will be:
@@ -312,7 +313,7 @@ This implementation is similar to the `AzureOpenAiChatModel` above, but it strea
 
 ### Plain Java
 ```java
-StreamingChatLanguageModel model = AzureOpenAiStreamingChatModel.builder()
+StreamingChatModel model = AzureOpenAiStreamingChatModel.builder()
         .endpoint(System.getenv("AZURE_OPENAI_URL"))
         .apiKey(System.getenv("AZURE_OPENAI_KEY"))
         .deploymentName("gpt-4o")
@@ -327,6 +328,7 @@ langchain4j.azure-open-ai.streaming-chat-model.endpoint=${AZURE_OPENAI_URL}
 langchain4j.azure-open-ai.streaming-chat-model.service-version=...
 langchain4j.azure-open-ai.streaming-chat-model.api-key=${AZURE_OPENAI_KEY}
 langchain4j.azure-open-ai.streaming-chat-model.deployment-name=gpt-4o
+langchain4j.azure-open-ai.streaming-chat-model.max-completion-tokens=...
 langchain4j.azure-open-ai.streaming-chat-model.max-tokens=...
 langchain4j.azure-open-ai.streaming-chat-model.temperature=...
 langchain4j.azure-open-ai.streaming-chat-model.top-p=...
@@ -341,7 +343,72 @@ langchain4j.azure-open-ai.streaming-chat-model.max-retries=...
 langchain4j.azure-open-ai.streaming-chat-model.log-requests-and-responses=...
 langchain4j.azure-open-ai.streaming-chat-model.user-agent-suffix=...
 langchain4j.azure-open-ai.streaming-chat-model.customHeaders=...
+langchain4j.azure-open-ai.streaming-chat-model.reasoningEffort=...
 ```
+
+
+## Audio Transcription
+
+Azure OpenAI now supports audio transcription, enabling you to convert spoken language from audio files into text using state-of-the-art models hosted on Azure.
+
+### Maven Dependency
+
+The audio transcription feature is included in the main `langchain4j-azure-open-ai` package:
+
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-azure-open-ai</artifactId>
+    <version>1.9.1</version>
+</dependency>
+```
+
+### Plain Java Usage
+
+You can transcribe audio files with the `AzureOpenAiAudioTranscriptionModel`:
+
+```java
+import dev.langchain4j.data.audio.Audio;
+import dev.langchain4j.model.audio.AudioTranscriptionRequest;
+import dev.langchain4j.model.audio.AudioTranscriptionResponse;
+import java.io.File;
+import java.nio.file.Files;
+
+AzureOpenAiAudioTranscriptionModel model = AzureOpenAiAudioTranscriptionModel.builder()
+    .endpoint(System.getenv("AZURE_OPENAI_URL"))
+    .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+    .deploymentName("your-audio-model-deployment-name") // e.g., "whisper"
+    .build();
+
+// Read audio file as binary data
+File audioFile = new File("path/to/audio-file.wav");
+byte[] audioData = Files.readAllBytes(audioFile.toPath());
+
+// Create Audio object with binary data
+Audio audio = Audio.builder()
+    .binaryData(audioData)
+    .build();
+
+// Create transcription request
+AudioTranscriptionRequest request = AudioTranscriptionRequest.builder()
+    .audio(audio)
+    .prompt("This is an audio file containing ...") // optional
+    .language("en") // optional
+    .temperature(0.0) // optional
+    .build();
+
+// Transcribe audio
+AudioTranscriptionResponse response = model.transcribe(request);
+String transcript = response.text();
+System.out.println(transcript);
+```
+
+### Notes
+
+- **Deployment**: You must deploy an audio transcription model (such as Whisper) in your Azure OpenAI resource. See the [Azure OpenAI documentation](https://learn.microsoft.com/en-us/azure/ai-services/openai/) for details.
+- **Supported Formats**: Common audio formats such as WAV, MP3, and FLAC are supported.
+- **Quotas and Pricing**: Audio transcription consumes resources from your Azure subscription. Review the applicable quotas and pricing in your Azure portal.
+
 
 ## Examples
 

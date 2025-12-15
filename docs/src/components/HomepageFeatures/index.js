@@ -17,7 +17,7 @@ const FeatureList = [
         Svg: require('@site/static/img/framework-logos.svg').default,
         description: (
             <>
-                Smooth integration into your Java applications is made possible thanks to Quarkus and Spring Boot integrations. There is two-way integration between LLMs and Java: you can call LLMs from Java and allow LLMs to call your Java code in return.
+                Smooth integration into your Java applications is made possible thanks to Quarkus, Spring Boot and Helidon integrations. There is two-way integration between LLMs and Java: you can call LLMs from Java and allow LLMs to call your Java code in return.
             </>
         ),
     },
@@ -34,13 +34,20 @@ const FeatureList = [
 
 function Feature({Svg, title, description}) {
     return (
-        <div className={clsx('col col--4')}>
-            <div className="text--center">
-                <Svg className={styles.featureSvg} role="img"/>
-            </div>
-            <div className="text--center padding-horiz--md">
-                <Heading as="h3">{title}</Heading>
-                <p>{description}</p>
+        <div
+            className={clsx(
+                'col col--4',
+                styles.featureCard
+            )}
+        >
+            <div className='card shadow--md hover:shadow--lg transition-all duration-200 h-full'>
+                <div className='card__body text--center'>
+                    <Svg className={styles.featureSvg} role='img' />
+                    <Heading as='h3' className='margin-top--sm'>
+                        {title}
+                    </Heading>
+                    <p className='margin-top--sm'>{description}</p>
+                </div>
             </div>
         </div>
     );
@@ -48,7 +55,7 @@ function Feature({Svg, title, description}) {
 
 export default function HomepageFeatures() {
     return (
-        <section className={styles.features}>
+        <section className={clsx(styles.features, 'padding-vert--xl')}>
             <div className="container">
                 <div className="row">
                     {FeatureList.map((props, idx) => (

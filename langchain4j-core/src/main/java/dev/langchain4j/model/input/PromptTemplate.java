@@ -1,18 +1,17 @@
 package dev.langchain4j.model.input;
 
-import dev.langchain4j.spi.prompt.PromptTemplateFactory;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.util.Collections.singletonMap;
 
+import dev.langchain4j.spi.prompt.PromptTemplateFactory;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.Map;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.util.Collections.singletonMap;
 
 /**
  * Represents a template of a prompt that can be reused multiple times.
@@ -48,7 +47,19 @@ public class PromptTemplate {
      * @param template the template string of the prompt.
      */
     public PromptTemplate(String template) {
-        this(template, Clock.systemDefaultZone());
+        this(template, (String) null);
+    }
+
+    /**
+     * Create a new PromptTemplate.
+     *
+     * <p>The {@code Clock} will be the system clock.</p>
+     *
+     * @param template the template string of the prompt.
+     * @param name the template name of the prompt.
+     */
+    public PromptTemplate(String template, String name) {
+        this(template, name, Clock.systemDefaultZone());
     }
 
     /**
@@ -57,20 +68,35 @@ public class PromptTemplate {
      * @param template the template string of the prompt.
      * @param clock    the clock to use for the special variables.
      */
-    PromptTemplate(String template, Clock clock) {
+    public PromptTemplate(String template, Clock clock) {
+        this(template, null, clock);
+    }
+
+    /**
+     * Create a new PromptTemplate.
+     *
+     * @param template the template string of the prompt.
+     * @param name the template name of the prompt.
+     * @param clock    the clock to use for the special variables.
+     */
+    public PromptTemplate(String template, String name, Clock clock) {
         this.templateString = ensureNotBlank(template, "template");
-        this.template = FACTORY.create(new PromptTemplateFactory.Input() {
+        if (name == null) {
+            this.template = FACTORY.create(() -> template);
+        } else {
+            this.template = FACTORY.create(new PromptTemplateFactory.Input() {
 
-            @Override
-            public String getTemplate() {
-                return template;
-            }
+                @Override
+                public String getTemplate() {
+                    return template;
+                }
 
-            @Override
-            public String getName() {
-                return "template";
-            }
-        });
+                @Override
+                public String getName() {
+                    return name;
+                }
+            });
+        }
         this.clock = ensureNotNull(clock, "clock");
     }
 
@@ -123,6 +149,40 @@ public class PromptTemplate {
      * @return the PromptTemplate.
      */
     public static PromptTemplate from(String template) {
-        return new PromptTemplate(template);
+        return from(template, null, null);
+    }
+
+    /**
+     * Create a new PromptTemplate.
+     *
+     * @param template the template string of the prompt.
+     * @param name the template name of the prompt.
+     * @return the PromptTemplate.
+     */
+    public static PromptTemplate from(String template, String name) {
+        return from(template, name, null);
+    }
+
+    /**
+     * Create a new PromptTemplate.
+     *
+     * @param template the template string of the prompt.
+     * @param clock    the clock to use for the special variables.
+     * @return the PromptTemplate.
+     */
+    public static PromptTemplate from(String template, Clock clock) {
+        return from(template, null, clock);
+    }
+
+    /**
+     * Create a new PromptTemplate.
+     *
+     * @param template the template string of the prompt.
+     * @param name the template name of the prompt.
+     * @param clock    the clock to use for the special variables.
+     * @return the PromptTemplate.
+     */
+    public static PromptTemplate from(String template, String name, Clock clock) {
+        return new PromptTemplate(template, name, clock != null ? clock : Clock.systemDefaultZone());
     }
 }
