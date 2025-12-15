@@ -73,6 +73,8 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
     private final Set<String> toolMetadataKeysToSend;
     private final String userId;
     private final Map<String, Object> customParameters;
+    private final Boolean strictTools;
+
 
     /**
      * Constructs an instance of an {@code AnthropicStreamingChatModel} with the specified parameters.
@@ -117,6 +119,8 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         this.toolMetadataKeysToSend = copy(builder.toolMetadataKeysToSend);
         this.userId = builder.userId;
         this.customParameters = copy(builder.customParameters);
+        this.strictTools= builder.strictTools;
+
     }
 
     public static AnthropicStreamingChatModelBuilder builder() {
@@ -155,6 +159,8 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         private Set<String> toolMetadataKeysToSend;
         private String userId;
         private Map<String, Object> customParameters;
+        private Boolean strictTools;
+
 
         public AnthropicStreamingChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
@@ -396,6 +402,11 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
+        public AnthropicStreamingChatModelBuilder strictTools(Boolean strictTools) {
+            this.strictTools = strictTools;
+            return this;
+        }
+
         public AnthropicStreamingChatModel build() {
             return new AnthropicStreamingChatModel(this);
         }
@@ -417,7 +428,8 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
                 serverTools,
                 toolMetadataKeysToSend,
                 userId,
-                customParameters);
+                customParameters,
+                strictTools);
         client.createMessage(anthropicRequest, new AnthropicCreateMessageOptions(returnThinking), handler);
     }
 
