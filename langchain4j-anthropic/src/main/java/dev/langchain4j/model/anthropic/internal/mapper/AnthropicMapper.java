@@ -337,7 +337,7 @@ public class AnthropicMapper {
                         .build());
 
         if (cacheToolsPrompt != AnthropicCacheType.NO_CACHE) {
-            return toolBuilder.cacheControl(cacheToolsPrompt.cacheControl()).build();
+            toolBuilder.cacheControl(cacheToolsPrompt.cacheControl());
         }
 
         if (!toolMetadataKeysToSend.isEmpty()) {
