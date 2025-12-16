@@ -84,7 +84,7 @@ public class OpenAiOfficialChatRequestParameters extends DefaultChatRequestParam
     }
 
     @Override
-    public ChatRequestParameters defaultedBy(ChatRequestParameters that) {
+    public OpenAiOfficialChatRequestParameters defaultedBy(ChatRequestParameters that) {
         return OpenAiOfficialChatRequestParameters.builder()
                 .overrideWith(that)
                 .overrideWith(this)

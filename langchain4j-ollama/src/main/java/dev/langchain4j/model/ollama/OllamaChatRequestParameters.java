@@ -146,7 +146,7 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
     }
 
     @Override
-    public ChatRequestParameters defaultedBy(ChatRequestParameters that) {
+    public OllamaChatRequestParameters defaultedBy(ChatRequestParameters that) {
         return OllamaChatRequestParameters.builder()
                 .overrideWith(that)
                 .overrideWith(this)

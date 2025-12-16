@@ -119,7 +119,7 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
     }
 
     @Override
-    public ChatRequestParameters defaultedBy(ChatRequestParameters that) {
+    public WatsonxChatRequestParameters defaultedBy(ChatRequestParameters that) {
         return WatsonxChatRequestParameters.builder()
                 .overrideWith(that)
                 .overrideWith(this)
