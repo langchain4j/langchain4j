@@ -26,7 +26,7 @@
         <dependency>
             <groupId>io.github.beehive-lab</groupId>
             <artifactId>gpu-llama3</artifactId>
-            <version>0.2.2</version>
+            <version>0.3.1</version>
         </dependency>
 
         <dependency>
@@ -88,6 +88,15 @@
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <configuration>
+                    <additionalOptions>--enable-preview</additionalOptions>
+                    <source>21</source>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
                 <executions>
                     <execution>
@@ -116,6 +125,12 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <compilerArgs>
+                        <arg>--enable-preview</arg>
+                    </compilerArgs>
+                    <release>21</release>
+                </configuration>
                 <executions>
                     <execution>
                         <id>default-testCompile</id>
@@ -199,6 +214,45 @@
             </properties>
             <build>
                 <defaultGoal>clean generate-test-resources compile test-compile exec:exec</defaultGoal>
+            </build>
+        </profile>
+        <profile>
+            <id>jdk25</id>
+            <activation>
+                <jdk>[25,)</jdk>
+            </activation>
+            <properties>
+                <maven.compiler.release>25</maven.compiler.release>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <configuration>
+                            <!-- Excluded because it doesn't work on java 25 -->
+                            <excludedClasses>
+                                <excludedClass>dev.langchain4j.model.gpullama3.*</excludedClass>
+                            </excludedClasses>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <configuration>
+                            <release>25</release>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>default-testCompile</id>
+                                <goals>
+                                    <goal>testCompile</goal>
+                                </goals>
+                                <phase>test-compile</phase>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
             </build>
         </profile>
     </profiles>
