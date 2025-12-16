@@ -137,7 +137,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         // TODO do it once, when creating AI Service?
                         validateParameters(context.aiServiceClass, method);
 
-                        InvocationParameters invocationParameters = findParamOfType(InvocationParameters.class, args, method.getParameters())
+                        InvocationParameters invocationParameters = findArgumentOfType(InvocationParameters.class, args, method.getParameters())
                                 .orElseGet(InvocationParameters::new);
 
                         InvocationContext invocationContext = InvocationContext.builder()
@@ -383,12 +383,12 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .toolSpecifications(toolServiceContext.toolSpecifications())
                                 .responseFormat(responseFormat)
                                 .build();
-                        return findParamOfType(ChatRequestParameters.class, args, method.getParameters())
-                                .map(p -> ((DefaultChatRequestParameters) p).defaultedBy(defaultParams))
+                        return findArgumentOfType(ChatRequestParameters.class, args, method.getParameters())
+                                .map(p -> p.defaultedBy(defaultParams))
                                 .orElse(defaultParams);
                     }
 
-                    private <P> Optional<P> findParamOfType(Class<P> paramType, Object[] args, Parameter[] params) {
+                    private <P> Optional<P> findArgumentOfType(Class<P> paramType, Object[] args, Parameter[] params) {
                         if (args == null) {
                             return Optional.empty();
                         }

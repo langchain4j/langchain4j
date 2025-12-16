@@ -104,6 +104,7 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
                 .build();
     }
 
+    @Override
     public ChatRequestParameters defaultedBy(ChatRequestParameters that) {
         return DefaultChatRequestParameters.builder()
                 .overrideWith(that)
