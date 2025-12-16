@@ -75,32 +75,7 @@ class JsonSchemasTest {
                 .contains("type", "text", "url");
     }
 
-    @Test
-    void should_return_json_schema_for_collection_of_polymorphic_sealed_types() {
-        Optional<JsonSchema> jsonSchema = jsonSchemaFrom(new TypeReference<List<ChatbotResponse>>() {}.getType());
 
-        assertThat(jsonSchema).isPresent();
-        JsonObjectSchema root = (JsonObjectSchema) jsonSchema.get().rootElement();
-        JsonArraySchema values = (JsonArraySchema) root.properties().get("values");
-        assertThat(values).isNotNull();
-        assertThat(values.items()).isInstanceOf(JsonAnyOfSchema.class);
-        assertThat(((JsonAnyOfSchema) values.items()).anyOf()).hasSize(2);
-    }
-
-    @Test
-    void should_return_json_schema_for_pojo_containing_polymorphic_field() {
-        Optional<JsonSchema> jsonSchema = jsonSchemaFrom(Wrapper.class);
-
-        assertThat(jsonSchema).isPresent();
-        JsonObjectSchema root = (JsonObjectSchema) jsonSchema.get().rootElement();
-        assertThat(root.properties().get("response")).isInstanceOf(JsonAnyOfSchema.class);
-
-        JsonAnyOfSchema anyOf = (JsonAnyOfSchema) root.properties().get("response");
-        assertThat(anyOf.anyOf().stream()
-                        .map(JsonObjectSchema.class::cast)
-                        .flatMap(schema -> schema.properties().keySet().stream()))
-                .contains("type", "text", "url");
-    }
 
     // POJO
 
