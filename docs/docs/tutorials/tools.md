@@ -784,7 +784,7 @@ ToolProvider toolProvider = (toolProviderRequest) -> {
 };
 ```
 
-The `.withImmediateReturn()` method applies to the most recently added tool. You can also mark multiple tools by name:
+You can also mark multiple tools by name:
 
 ```java
 ToolProvider toolProvider = (toolProviderRequest) -> {
