@@ -2,21 +2,32 @@ package dev.langchain4j.service.tool;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
-
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 @Internal
 public class ToolServiceContext {
 
     private final List<ToolSpecification> toolSpecifications;
     private final Map<String, ToolExecutor> toolExecutors;
+    private final Set<String> immediateReturnTools;
 
     public ToolServiceContext(List<ToolSpecification> toolSpecifications, Map<String, ToolExecutor> toolExecutors) {
         this.toolSpecifications = toolSpecifications;
         this.toolExecutors = toolExecutors;
+        this.immediateReturnTools = Set.of();
+    }
+
+    public ToolServiceContext(Builder builder) {
+        this.toolSpecifications = builder.toolSpecifications;
+        this.toolExecutors = builder.toolExecutors;
+        this.immediateReturnTools = builder.immediateReturnTools;
+    }
+
+    public Set<String> immediateReturnTools() {
+        return immediateReturnTools;
     }
 
     public List<ToolSpecification> toolSpecifications() {
@@ -32,8 +43,8 @@ public class ToolServiceContext {
         if (obj == this) return true;
         if (obj == null || obj.getClass() != this.getClass()) return false;
         var that = (ToolServiceContext) obj;
-        return Objects.equals(this.toolSpecifications, that.toolSpecifications) &&
-                Objects.equals(this.toolExecutors, that.toolExecutors);
+        return Objects.equals(this.toolSpecifications, that.toolSpecifications)
+                && Objects.equals(this.toolExecutors, that.toolExecutors);
     }
 
     @Override
@@ -43,9 +54,38 @@ public class ToolServiceContext {
 
     @Override
     public String toString() {
-        return "ToolServiceContext[" +
-                "toolSpecifications=" + toolSpecifications + ", " +
-                "toolExecutors=" + toolExecutors + ']';
+        return "ToolServiceContext[" + "toolSpecifications="
+                + toolSpecifications + ", " + "toolExecutors="
+                + toolExecutors + ']';
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+        private List<ToolSpecification> toolSpecifications;
+        private Map<String, ToolExecutor> toolExecutors;
+        private Set<String> immediateReturnTools = Set.of();
+
+        public Builder toolSpecifications(List<ToolSpecification> toolSpecifications) {
+            this.toolSpecifications = toolSpecifications;
+            return this;
+        }
+
+        public Builder toolExecutors(Map<String, ToolExecutor> toolExecutors) {
+            this.toolExecutors = toolExecutors;
+            return this;
+        }
+
+        public Builder immediateReturnTools(Set<String> immediateReturnTools) {
+            this.immediateReturnTools = immediateReturnTools;
+            return this;
+        }
+
+        public ToolServiceContext build() {
+            return new ToolServiceContext(this);
+        }
     }
 
     public static class Empty extends ToolServiceContext {
