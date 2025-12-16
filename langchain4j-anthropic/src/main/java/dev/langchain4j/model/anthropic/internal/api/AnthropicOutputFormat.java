@@ -16,10 +16,10 @@ import dev.langchain4j.model.chat.request.json.JsonSchema;
 import java.util.Map;
 import java.util.Objects;
 
-@JsonDeserialize(builder = AnthropicResponseFormat.Builder.class)
+@JsonDeserialize(builder = AnthropicOutputFormat.Builder.class)
 @JsonInclude(NON_NULL)
 @JsonNaming(SnakeCaseStrategy.class)
-public class AnthropicResponseFormat {
+public class AnthropicOutputFormat {
 
     @JsonProperty
     private final AnthropicResponseFormatType type;
@@ -27,7 +27,7 @@ public class AnthropicResponseFormat {
     @JsonProperty
     private final Map<String, Object> schema;
 
-    private AnthropicResponseFormat(Builder builder) {
+    private AnthropicOutputFormat(Builder builder) {
         this.type = builder.type;
         this.schema = builder.schema;
     }
@@ -40,8 +40,8 @@ public class AnthropicResponseFormat {
         return schema;
     }
 
-    public static AnthropicResponseFormat fromJsonSchema(JsonSchema schema) {
-        return AnthropicResponseFormat.builder()
+    public static AnthropicOutputFormat fromJsonSchema(JsonSchema schema) {
+        return AnthropicOutputFormat.builder()
                 .type(JSON_SCHEMA)
                 .schema(toAnthropicMap(schema.rootElement()))
                 .build();
@@ -63,10 +63,10 @@ public class AnthropicResponseFormat {
 
     @Override
     public boolean equals(Object other) {
-        return other instanceof AnthropicResponseFormat responseFormat && equalsTo(responseFormat);
+        return other instanceof AnthropicOutputFormat responseFormat && equalsTo(responseFormat);
     }
 
-    public boolean equalsTo(AnthropicResponseFormat other) {
+    public boolean equalsTo(AnthropicOutputFormat other) {
         return Objects.equals(type, other.type) && Objects.equals(schema, other.schema);
     }
 
@@ -87,8 +87,8 @@ public class AnthropicResponseFormat {
             return this;
         }
 
-        public AnthropicResponseFormat build() {
-            return new AnthropicResponseFormat(this);
+        public AnthropicOutputFormat build() {
+            return new AnthropicOutputFormat(this);
         }
     }
 }

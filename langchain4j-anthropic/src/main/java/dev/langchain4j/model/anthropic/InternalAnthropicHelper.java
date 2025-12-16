@@ -12,7 +12,7 @@ import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicMetadata;
-import dev.langchain4j.model.anthropic.internal.api.AnthropicResponseFormat;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicOutputFormat;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicThinking;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTool;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -97,11 +97,11 @@ class InternalAnthropicHelper {
         return requestBuilder.build();
     }
 
-    public static AnthropicResponseFormat toAnthropicResponseFormat(ResponseFormat responseFormat) {
+    public static AnthropicOutputFormat toAnthropicResponseFormat(ResponseFormat responseFormat) {
         if (responseFormat == null || responseFormat.type() == TEXT || responseFormat.jsonSchema() == null) {
             return null;
         }
 
-        return AnthropicResponseFormat.fromJsonSchema(responseFormat.jsonSchema());
+        return AnthropicOutputFormat.fromJsonSchema(responseFormat.jsonSchema());
     }
 }

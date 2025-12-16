@@ -26,7 +26,7 @@ public class AnthropicCreateMessageRequest {
     public Integer topK;
     public List<AnthropicTool> tools;
     public AnthropicToolChoice toolChoice;
-    public AnthropicResponseFormat outputFormat;
+    public AnthropicOutputFormat outputFormat;
     public AnthropicThinking thinking;
     public AnthropicMetadata metadata;
     public Map<String, Object> customParameters;
@@ -169,11 +169,11 @@ public class AnthropicCreateMessageRequest {
         this.toolChoice = toolChoice;
     }
 
-    public AnthropicResponseFormat getOutputFormat() {
+    public AnthropicOutputFormat getOutputFormat() {
         return outputFormat;
     }
 
-    public void setOutputFormat(AnthropicResponseFormat outputFormat) {
+    public void setOutputFormat(AnthropicOutputFormat outputFormat) {
         this.outputFormat = outputFormat;
     }
 
@@ -237,7 +237,7 @@ public class AnthropicCreateMessageRequest {
         private Integer topK;
         private List<AnthropicTool> tools;
         private AnthropicToolChoice toolChoice;
-        private AnthropicResponseFormat outputFormat;
+        private AnthropicOutputFormat outputFormat;
         private AnthropicThinking thinking;
         private AnthropicMetadata metadata;
         private Map<String, Object> customParameters;
@@ -297,7 +297,7 @@ public class AnthropicCreateMessageRequest {
             return this;
         }
 
-        public Builder outputFormat(AnthropicResponseFormat outputFormat) {
+        public Builder outputFormat(AnthropicOutputFormat outputFormat) {
             this.outputFormat = outputFormat;
             return this;
         }

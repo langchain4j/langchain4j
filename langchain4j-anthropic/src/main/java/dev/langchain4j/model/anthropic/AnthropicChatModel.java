@@ -442,7 +442,7 @@ public class AnthropicChatModel implements ChatModel {
         }
 
         public AnthropicChatModelBuilder supportedCapabilities(Set<Capability> supportedCapabilities) {
-            this.supportedCapabilities = Set.copyOf(supportedCapabilities);
+            this.supportedCapabilities = supportedCapabilities;
             return this;
         }
 

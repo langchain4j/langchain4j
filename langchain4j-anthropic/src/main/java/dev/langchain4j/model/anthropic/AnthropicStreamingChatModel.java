@@ -423,7 +423,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         }
 
         public AnthropicStreamingChatModelBuilder supportedCapabilities(Set<Capability> supportedCapabilities) {
-            this.supportedCapabilities = Set.copyOf(supportedCapabilities);
+            this.supportedCapabilities = supportedCapabilities;
             return this;
         }
 
