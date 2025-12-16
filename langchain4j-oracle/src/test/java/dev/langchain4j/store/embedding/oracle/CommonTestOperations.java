@@ -43,7 +43,7 @@ final class CommonTestOperations {
     private static final PoolDataSource DATA_SOURCE = PoolDataSourceFactory.getPoolDataSource();
     private static final PoolDataSource SYSDBA_DATA_SOURCE = PoolDataSourceFactory.getPoolDataSource();
 
-    private static final String ORACLE_IMAGE_NAME = "gvenzl/oracle-free:23.6-slim-faststart";
+    private static final String ORACLE_IMAGE_NAME = "gvenzl/oracle-free:23.6-faststart";
 
     /**
      * Seed for random numbers. When a test fails, "-Ddev.langchain4j.store.embedding.oracle.SEED=..." can be used to

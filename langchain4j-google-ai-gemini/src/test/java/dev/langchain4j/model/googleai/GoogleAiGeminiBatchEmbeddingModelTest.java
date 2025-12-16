@@ -18,6 +18,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.http.client.MockHttpClient;
+import dev.langchain4j.http.client.MockHttpClientBuilder;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateFileRequest;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateRequest;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateResponse;
@@ -57,6 +60,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class GoogleAiGeminiBatchEmbeddingModelTest {
     public static final String MODEL_NAME = "gemini-embedding-001";
+    public static final String API_KEY = "test-api-key";
 
     @Mock
     private GeminiService mockGeminiService;
@@ -1080,6 +1084,118 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
                 String name, BatchJobState state) {
             // Helper method to create mock operations for embedding testing
             return new BatchRequestResponse.Operation<>(name, Map.of("state", state), false, null, null);
+        }
+    }
+
+    @Nested
+    class BatchEmbeddingSerialization {
+
+        private static final String EMBEDDING_PENDING_RESPONSE =
+                """
+                {
+                  "name": "batches/embed-test-123",
+                  "metadata": {
+                    "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.EmbedContentBatch",
+                    "model": "models/text-embedding-004",
+                    "displayName": "embeddings-batch",
+                    "state": "BATCH_STATE_PENDING",
+                    "name": "batches/embed-test-123"
+                  }
+                }
+                """;
+
+        private static final String EMBEDDING_SUCCEEDED_RESPONSE =
+                """
+                {
+                  "name": "batches/embed-test-123",
+                  "metadata": {
+                    "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.EmbedContentBatch",
+                    "model": "models/text-embedding-004",
+                    "displayName": "embeddings-batch",
+                    "state": "BATCH_STATE_SUCCEEDED",
+                    "name": "batches/embed-test-123"
+                  },
+                  "done": true,
+                  "response": {
+                    "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.EmbedContentBatchOutput",
+                    "inlinedResponses": {
+                      "inlinedResponses": [
+                        {
+                          "response": {
+                            "embedding": {
+                              "values": [0.1, 0.2, 0.3, 0.4, 0.5]
+                            }
+                          }
+                        },
+                        {
+                          "response": {
+                            "embedding": {
+                              "values": [0.6, 0.7, 0.8, 0.9, 1.0]
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+                """;
+
+        @Test
+        void should_deserialize_pending_embedding_batch_response() {
+            // given
+            var mockHttpClient = MockHttpClient.thatAlwaysResponds(SuccessfulHttpResponse.builder()
+                    .statusCode(200)
+                    .body(EMBEDDING_PENDING_RESPONSE)
+                    .build());
+            var subject = GoogleAiGeminiBatchEmbeddingModel.builder()
+                    .apiKey(API_KEY)
+                    .modelName("gemini-embedding-001")
+                    .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                    .build();
+
+            var segments = List.of(TextSegment.from("Test segment 1"), TextSegment.from("Test segment 2"));
+
+            // when
+            var result = subject.createBatchInline("embeddings-batch", 0L, segments);
+
+            // then
+            assertThat(result).isInstanceOf(BatchIncomplete.class);
+            var incomplete = (BatchIncomplete<?>) result;
+            assertThat(incomplete.batchName().value()).isEqualTo("batches/embed-test-123");
+            assertThat(incomplete.state()).isEqualTo(BATCH_STATE_PENDING);
+        }
+
+        @Test
+        void should_deserialize_succeeded_embedding_batch_response() {
+            // given
+            var mockHttpClient = MockHttpClient.thatAlwaysResponds(SuccessfulHttpResponse.builder()
+                    .statusCode(200)
+                    .body(EMBEDDING_SUCCEEDED_RESPONSE)
+                    .build());
+            var subject = GoogleAiGeminiBatchEmbeddingModel.builder()
+                    .apiKey(API_KEY)
+                    .modelName("gemini-embedding-001")
+                    .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                    .build();
+
+            var batchName = new BatchName("batches/embed-test-123");
+
+            // when
+            var result = subject.retrieveBatchResults(batchName);
+
+            // then
+            assertThat(result).isInstanceOf(BatchSuccess.class);
+            var success = (BatchSuccess<Embedding>) result;
+            assertThat(success.batchName().value()).isEqualTo("batches/embed-test-123");
+
+            var results = success.responses();
+            assertThat(results).hasSize(2);
+
+            assertThat(results.get(0).dimension()).isEqualTo(5);
+            assertThat(results.get(0).vector()).containsExactly(0.1f, 0.2f, 0.3f, 0.4f, 0.5f);
+
+            assertThat(results.get(1).dimension()).isEqualTo(5);
+            assertThat(results.get(1).vector()).containsExactly(0.6f, 0.7f, 0.8f, 0.9f, 1.0f);
         }
     }
 

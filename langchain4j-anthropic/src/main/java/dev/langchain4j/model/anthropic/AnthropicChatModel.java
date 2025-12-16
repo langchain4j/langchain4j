@@ -80,6 +80,7 @@ public class AnthropicChatModel implements ChatModel {
     private final Set<String> toolMetadataKeysToSend;
     private final String userId;
     private final Map<String, Object> customParameters;
+    private final Boolean strictTools;
     private final Set<Capability> supportedCapabilities;
 
     public AnthropicChatModel(AnthropicChatModelBuilder builder) {
@@ -109,6 +110,7 @@ public class AnthropicChatModel implements ChatModel {
         this.toolMetadataKeysToSend = copy(builder.toolMetadataKeysToSend);
         this.userId = builder.userId;
         this.customParameters = copy(builder.customParameters);
+        this.strictTools= builder.strictTools;
         this.supportedCapabilities = copy(builder.supportedCapabilities);
 
         ChatRequestParameters commonParameters;
@@ -172,6 +174,7 @@ public class AnthropicChatModel implements ChatModel {
         private ChatRequestParameters defaultRequestParameters;
         private String userId;
         private Map<String, Object> customParameters;
+        private Boolean strictTools;
         private Set<Capability> supportedCapabilities;
 
         public AnthropicChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
@@ -428,6 +431,11 @@ public class AnthropicChatModel implements ChatModel {
             return this;
         }
 
+        public AnthropicChatModelBuilder strictTools(Boolean strictTools) {
+            this.strictTools = strictTools;
+            return this;
+        }
+
         public AnthropicChatModelBuilder supportedCapabilities(Capability... supportedCapabilities) {
             this.supportedCapabilities = Arrays.stream(supportedCapabilities).collect(Collectors.toSet());
             return this;
@@ -459,7 +467,8 @@ public class AnthropicChatModel implements ChatModel {
                 serverTools,
                 toolMetadataKeysToSend,
                 userId,
-                customParameters);
+                customParameters,
+                strictTools);
 
         AnthropicCreateMessageResponse response =
                 withRetryMappingExceptions(() -> client.createMessage(anthropicRequest), maxRetries);

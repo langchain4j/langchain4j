@@ -23,6 +23,7 @@ public class AnthropicTool {
     public AnthropicCacheControl cacheControl;
     @JsonIgnore
     public Map<String, Object> customParameters;
+    public Boolean strict;
 
     public AnthropicTool() {}
 
@@ -32,6 +33,7 @@ public class AnthropicTool {
         this.inputSchema = builder.inputSchema;
         this.cacheControl = builder.cacheControl;
         this.customParameters = builder.customParameters;
+        this.strict= builder.strict;
     }
 
     /**
@@ -59,12 +61,13 @@ public class AnthropicTool {
                 && Objects.equals(description, that.description)
                 && Objects.equals(inputSchema, that.inputSchema)
                 && Objects.equals(cacheControl, that.cacheControl)
-                && Objects.equals(customParameters, that.customParameters);
+                && Objects.equals(customParameters, that.customParameters)
+                && Objects.equals(strict, that.strict);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(name, description, inputSchema, cacheControl, customParameters);
+        return Objects.hash(name, description, inputSchema, cacheControl, customParameters, strict);
     }
 
     @Override
@@ -75,6 +78,7 @@ public class AnthropicTool {
                 ", inputSchema=" + inputSchema +
                 ", cacheControl=" + cacheControl +
                 ", customParameters=" + customParameters +
+                ", strict=" + strict +
                 '}';
     }
 
@@ -89,6 +93,7 @@ public class AnthropicTool {
         private AnthropicToolSchema inputSchema;
         private AnthropicCacheControl cacheControl;
         private Map<String, Object> customParameters;
+        private Boolean strict;
 
         public Builder name(String name) {
             this.name = name;
@@ -112,6 +117,11 @@ public class AnthropicTool {
 
         public Builder customParameters(Map<String, Object> customParameters) {
             this.customParameters = customParameters;
+            return this;
+        }
+
+        public Builder strict(Boolean strict) {
+            this.strict = strict;
             return this;
         }
 

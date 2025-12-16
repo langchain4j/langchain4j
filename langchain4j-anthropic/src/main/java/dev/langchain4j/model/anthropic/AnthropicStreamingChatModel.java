@@ -76,6 +76,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
     private final Set<String> toolMetadataKeysToSend;
     private final String userId;
     private final Map<String, Object> customParameters;
+    private final Boolean strictTools;
     private final Set<Capability> supportedCapabilities;
 
     /**
@@ -122,6 +123,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         this.toolMetadataKeysToSend = copy(builder.toolMetadataKeysToSend);
         this.userId = builder.userId;
         this.customParameters = copy(builder.customParameters);
+        this.strictTools= builder.strictTools;
         this.supportedCapabilities = copy(builder.supportedCapabilities);
     }
 
@@ -162,6 +164,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         private Set<String> toolMetadataKeysToSend;
         private String userId;
         private Map<String, Object> customParameters;
+        private Boolean strictTools;
         private Set<Capability> supportedCapabilities;
 
         public AnthropicStreamingChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
@@ -409,6 +412,11 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
+        public AnthropicStreamingChatModelBuilder strictTools(Boolean strictTools) {
+            this.strictTools = strictTools;
+            return this;
+        }
+
         public AnthropicStreamingChatModelBuilder supportedCapabilities(Capability... supportedCapabilities) {
             this.supportedCapabilities = Arrays.stream(supportedCapabilities).collect(Collectors.toSet());
             return this;
@@ -440,7 +448,8 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
                 serverTools,
                 toolMetadataKeysToSend,
                 userId,
-                customParameters);
+                customParameters,
+                strictTools);
         client.createMessage(anthropicRequest, new AnthropicCreateMessageOptions(returnThinking), handler);
     }
 
