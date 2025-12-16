@@ -227,7 +227,7 @@ ChatRequestParameters customParams = ChatRequestParameters.builder()
 String answer = assistant.chat("Hi there!", customParams);
 ```
 
-The `ChatRequestParameters` passed as an argument to the AI Service method is also propagated to the eventually configured to the `chatRequestTransformer` discussed in the former section, so it can be also accessed and modified there if necessary.
+The `ChatRequestParameters` passed as an argument to the AI Service method is also propagated to the `chatRequestTransformer` discussed in the former section, so it can be also accessed and modified there if necessary.
 
 ## Examples of valid AI Service methods
 
