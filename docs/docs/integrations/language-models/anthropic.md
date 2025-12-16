@@ -415,6 +415,34 @@ ChatModel model = AnthropicChatModel.builder()
         .build();
 ```
 
+## PDF Support
+
+Anthropic Claude supports processing PDF documents. You can send PDFs either via URL or base64-encoded data.
+
+### Sending PDF via URL
+```java
+UserMessage message = UserMessage.from(
+    PdfFileContent.from(URI.create("https://example.com/document.pdf")),
+    TextContent.from("What are the key findings in this document?")
+);
+
+ChatResponse response = model.chat(message);
+```
+
+### Sending PDF via Base64
+```java
+String base64Data = Base64.getEncoder().encodeToString(Files.readAllBytes(Path.of("document.pdf")));
+
+UserMessage message = UserMessage.from(
+    PdfFileContent.from(base64Data, "application/pdf"),
+    TextContent.from("Summarize this document.")
+);
+
+ChatResponse response = model.chat(message);
+```
+
+More info on PDF support can be found [here](https://docs.anthropic.com/en/docs/build-with-claude/pdf-support).
+
 ## Setting custom chat request parameters
 
 When building `AnthropicChatModel` and `AnthropicStreamingChatModel`,
@@ -510,3 +538,4 @@ langchain4j.anthropic.streaming-chat-model.api-key = ${ANTHROPIC_API_KEY}
 - [AnthropicChatModelTest](https://github.com/langchain4j/langchain4j-examples/blob/main/anthropic-examples/src/main/java/AnthropicChatModelTest.java)
 - [AnthropicStreamingChatModelTest](https://github.com/langchain4j/langchain4j-examples/blob/main/anthropic-examples/src/main/java/AnthropicStreamingChatModelTest.java)
 - [AnthropicToolsTest](https://github.com/langchain4j/langchain4j-examples/blob/main/anthropic-examples/src/main/java/AnthropicToolsTest.java)
+- [AnthropicPdfExample](https://github.com/langchain4j/langchain4j-examples/blob/main/anthropic-examples/src/main/java/AnthropicPdfExample.java)

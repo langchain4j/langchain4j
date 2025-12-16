@@ -15,6 +15,7 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import dev.langchain4j.agentic.agent.AgentBuilder;
 import dev.langchain4j.agentic.declarative.AgentListenerSupplier;
+import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
@@ -693,7 +694,7 @@ public class AgenticServices {
         AgentBuilder<?> agentBuilder = agentBuilder(subgentClass);
         configureAgent(subgentClass, chatModel, agentBuilder, agentConfigurator);
 
-        return agentToExecutor((AgentInstance) agentBuilder.build());
+        return agentToExecutor(agentBuilder.build());
     }
 
     private static AgentExecutor createBuiltInAgentExecutor(
@@ -703,32 +704,32 @@ public class AgenticServices {
         Optional<Method> sequenceMethod = getAnnotatedMethodOnClass(agentServiceClass, SequenceAgent.class);
         if (sequenceMethod.isPresent()) {
             Method method = sequenceMethod.get();
-            AgentInstance agent =
-                    (AgentInstance) buildSequentialAgent(agentServiceClass, method, chatModel, agentConfigurator);
+            InternalAgent agent =
+                    (InternalAgent) buildSequentialAgent(agentServiceClass, method, chatModel, agentConfigurator);
             return new AgentExecutor(AgentInvoker.fromMethod(agent, method), agent);
         }
 
         Optional<Method> loopMethod = getAnnotatedMethodOnClass(agentServiceClass, LoopAgent.class);
         if (loopMethod.isPresent()) {
             Method method = loopMethod.get();
-            AgentInstance agent =
-                    (AgentInstance) buildLoopAgent(agentServiceClass, method, chatModel, agentConfigurator);
+            InternalAgent agent =
+                    (InternalAgent) buildLoopAgent(agentServiceClass, method, chatModel, agentConfigurator);
             return new AgentExecutor(AgentInvoker.fromMethod(agent, method), agent);
         }
 
         Optional<Method> conditionalMethod = getAnnotatedMethodOnClass(agentServiceClass, ConditionalAgent.class);
         if (conditionalMethod.isPresent()) {
             Method method = conditionalMethod.get();
-            AgentInstance agent =
-                    (AgentInstance) buildConditionalAgent(agentServiceClass, method, chatModel, agentConfigurator);
+            InternalAgent agent =
+                    (InternalAgent) buildConditionalAgent(agentServiceClass, method, chatModel, agentConfigurator);
             return new AgentExecutor(AgentInvoker.fromMethod(agent, method), agent);
         }
 
         Optional<Method> parallelMethod = getAnnotatedMethodOnClass(agentServiceClass, ParallelAgent.class);
         if (parallelMethod.isPresent()) {
             Method method = parallelMethod.get();
-            AgentInstance agent =
-                    (AgentInstance) buildParallelAgent(agentServiceClass, method, chatModel, agentConfigurator);
+            InternalAgent agent =
+                    (InternalAgent) buildParallelAgent(agentServiceClass, method, chatModel, agentConfigurator);
             return new AgentExecutor(AgentInvoker.fromMethod(agent, method), agent);
         }
 
@@ -736,8 +737,8 @@ public class AgenticServices {
                 getAnnotatedMethodOnClass(agentServiceClass, dev.langchain4j.agentic.declarative.SupervisorAgent.class);
         if (supervisorMethod.isPresent()) {
             Method method = supervisorMethod.get();
-            AgentInstance agent =
-                    (AgentInstance) buildSupervisorAgent(agentServiceClass, method, chatModel, agentConfigurator);
+            InternalAgent agent =
+                    (InternalAgent) buildSupervisorAgent(agentServiceClass, method, chatModel, agentConfigurator);
             return new AgentExecutor(AgentInvoker.fromMethod(agent, method), agent);
         }
 
