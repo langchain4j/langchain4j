@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.Utils.copy;
 import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.service.IllegalConfigurationException;
+
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -16,12 +17,12 @@ public class ToolProviderResult {
     private final Map<String, ToolSpecification> toolsByName;
     private final Set<String> immediateReturnToolNames;
 
-    public ToolProviderResult(Map<ToolSpecification, ToolExecutor> tools) {
-        this(tools, indexTools(tools), new HashSet<>());
-    }
-
     public ToolProviderResult(Builder builder) {
         this(builder.tools, builder.toolsByName, builder.immediateReturnToolNames);
+    }
+
+    public ToolProviderResult(Map<ToolSpecification, ToolExecutor> tools) {
+        this(tools, indexTools(tools), Set.of());
     }
 
     private ToolProviderResult(
@@ -85,15 +86,15 @@ public class ToolProviderResult {
             return this;
         }
 
-        public Builder withImmediateReturn(Set<String> toolNames) {
-            if (toolNames != null) {
-                immediateReturnToolNames.addAll(toolNames);
-            }
+        public Builder addAll(Map<ToolSpecification, ToolExecutor> tools) {
+            tools.forEach((tool, executor) -> add(tool, executor));
             return this;
         }
 
-        public Builder addAll(Map<ToolSpecification, ToolExecutor> tools) {
-            tools.forEach((tool, executor) -> add(tool, executor));
+        public Builder immediateReturnToolNames(Set<String> immediateReturnToolNames) {
+            if (immediateReturnToolNames != null) {
+                this.immediateReturnToolNames.addAll(immediateReturnToolNames);
+            }
             return this;
         }
 

@@ -790,7 +790,7 @@ You can also mark multiple tools by name:
 ToolProvider toolProvider = (toolProviderRequest) -> {
     return ToolProviderResult.builder()
         .addAll(allTools)
-        .withImmediateReturn(Set.of("get_booking_details", "cancel_booking"))
+        .immediateReturnToolNames(Set.of("get_booking_details", "cancel_booking"))
         .build();
 };
 ```
