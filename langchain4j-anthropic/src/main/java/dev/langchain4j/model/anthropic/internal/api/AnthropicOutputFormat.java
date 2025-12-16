@@ -1,8 +1,8 @@
 package dev.langchain4j.model.anthropic.internal.api;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
-import static dev.langchain4j.model.anthropic.internal.api.AnthropicResponseFormatType.JSON_SCHEMA;
-import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicMap;
+import static dev.langchain4j.model.anthropic.internal.api.AnthropicOutputFormatType.JSON_SCHEMA;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSchema;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -22,7 +22,7 @@ import java.util.Objects;
 public class AnthropicOutputFormat {
 
     @JsonProperty
-    private final AnthropicResponseFormatType type;
+    private final AnthropicOutputFormatType type;
 
     @JsonProperty
     private final Map<String, Object> schema;
@@ -32,7 +32,7 @@ public class AnthropicOutputFormat {
         this.schema = builder.schema;
     }
 
-    public AnthropicResponseFormatType getType() {
+    public AnthropicOutputFormatType getType() {
         return type;
     }
 
@@ -43,7 +43,7 @@ public class AnthropicOutputFormat {
     public static AnthropicOutputFormat fromJsonSchema(JsonSchema schema) {
         return AnthropicOutputFormat.builder()
                 .type(JSON_SCHEMA)
-                .schema(toAnthropicMap(schema.rootElement()))
+                .schema(toAnthropicSchema(schema.rootElement()))
                 .build();
     }
 
@@ -74,10 +74,10 @@ public class AnthropicOutputFormat {
     @JsonIgnoreProperties(ignoreUnknown = true)
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public static class Builder {
-        private AnthropicResponseFormatType type;
+        private AnthropicOutputFormatType type;
         private Map<String, Object> schema;
 
-        public Builder type(AnthropicResponseFormatType type) {
+        public Builder type(AnthropicOutputFormatType type) {
             this.type = type;
             return this;
         }

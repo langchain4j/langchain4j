@@ -219,6 +219,7 @@ public class AnthropicCreateMessageRequest {
                         .topK(this.topK)
                         .tools(this.tools)
                         .toolChoice(this.toolChoice)
+                        .outputFormat(this.outputFormat)
                         .thinking(this.thinking)
                         .metadata(this.metadata)
                         .customParameters(this.customParameters);

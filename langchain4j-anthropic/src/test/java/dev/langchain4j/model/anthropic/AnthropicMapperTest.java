@@ -3,7 +3,7 @@ package dev.langchain4j.model.anthropic;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.ASSISTANT;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.USER;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.retainKeys;
-import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicMap;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSchema;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicMessages;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicTool;
 import static java.util.Arrays.asList;
@@ -266,7 +266,7 @@ class AnthropicMapperTest {
                 .build();
 
         // when
-        Map<String, Object> map = toAnthropicMap(jsonSchemaElement);
+        Map<String, Object> map = toAnthropicSchema(jsonSchemaElement);
 
         // then
         assertThat(new ObjectMapper().writeValueAsString(map))
@@ -299,7 +299,7 @@ class AnthropicMapperTest {
                 .build();
 
         // when
-        Map<String, Object> map = toAnthropicMap(bookRecord);
+        Map<String, Object> map = toAnthropicSchema(bookRecord);
 
         // then
         assertThat(new ObjectMapper().writeValueAsString(map))

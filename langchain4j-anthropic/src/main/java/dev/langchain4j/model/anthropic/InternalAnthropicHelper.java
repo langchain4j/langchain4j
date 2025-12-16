@@ -71,7 +71,7 @@ class InternalAnthropicHelper {
                 .topP(chatRequest.topP())
                 .topK(chatRequest.topK())
                 .thinking(thinking)
-                .outputFormat(toAnthropicResponseFormat(chatRequest.responseFormat()))
+                .outputFormat(toAnthropicOutputFormat(chatRequest.responseFormat()))
                 .customParameters(customParameters);
 
         List<AnthropicTool> tools = new ArrayList<>();
@@ -97,7 +97,7 @@ class InternalAnthropicHelper {
         return requestBuilder.build();
     }
 
-    public static AnthropicOutputFormat toAnthropicResponseFormat(ResponseFormat responseFormat) {
+    public static AnthropicOutputFormat toAnthropicOutputFormat(ResponseFormat responseFormat) {
         if (responseFormat == null || responseFormat.type() == TEXT || responseFormat.jsonSchema() == null) {
             return null;
         }

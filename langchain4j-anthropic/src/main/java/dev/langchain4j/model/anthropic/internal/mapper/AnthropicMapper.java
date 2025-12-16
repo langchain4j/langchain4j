@@ -385,11 +385,11 @@ public class AnthropicMapper {
                 .build();
     }
 
-    public static Map<String, Object> toAnthropicMap(JsonSchemaElement schemaElement) {
-        return toAnthropicMap(schemaElement, true);
+    public static Map<String, Object> toAnthropicSchema(JsonSchemaElement schemaElement) {
+        return toAnthropicSchema(schemaElement, true);
     }
 
-    private static Map<String, Object> toAnthropicMap(JsonSchemaElement schemaElement, boolean required) {
+    private static Map<String, Object> toAnthropicSchema(JsonSchemaElement schemaElement, boolean required) {
         if (schemaElement instanceof JsonObjectSchema objectSchema) {
             Map<String, Object> map = new LinkedHashMap<>();
 
@@ -404,7 +404,7 @@ public class AnthropicMapper {
                     .properties()
                     .forEach((property, value) -> properties.put(
                             property,
-                            toAnthropicMap(value, objectSchema.required().contains(property))));
+                            toAnthropicSchema(value, objectSchema.required().contains(property))));
             map.put("properties", properties);
 
             if (objectSchema.required() != null) {
@@ -431,7 +431,7 @@ public class AnthropicMapper {
             }
 
             if (arraySchema.items() != null) {
-                map.put("items", toAnthropicMap(arraySchema.items()));
+                map.put("items", toAnthropicSchema(arraySchema.items()));
             } else {
                 map.put("items", Collections.emptyMap());
             }
@@ -446,7 +446,7 @@ public class AnthropicMapper {
 
     private static Map<String, Map<String, Object>> mapDefs(Map<String, JsonSchemaElement> defs) {
         Map<String, Map<String, Object>> map = new LinkedHashMap<>();
-        defs.forEach((property, schema) -> map.put(property, toAnthropicMap(schema)));
+        defs.forEach((property, schema) -> map.put(property, toAnthropicSchema(schema)));
 
         return map;
     }
