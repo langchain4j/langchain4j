@@ -91,6 +91,8 @@ class GoogleAiGeminiBatchChatModelIT {
                 uploadedFile = filesClient.uploadFile(tempFile, "IT Chat Batch File");
                 assertThat(uploadedFile.state()).isIn("ACTIVE");
 
+                sleep();
+
                 // 3. Create batch from the uploaded file
                 var response = chatModel.createBatchFromFile("IT Chat File Batch", uploadedFile);
 
@@ -312,6 +314,10 @@ class GoogleAiGeminiBatchChatModelIT {
 
     @AfterEach
     void afterEach() throws InterruptedException {
+        sleep();
+    }
+
+    private static void sleep() throws InterruptedException {
         String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_GOOGLE_AI_GEMINI_BATCH");
         if (ciDelaySeconds != null) {
             Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);

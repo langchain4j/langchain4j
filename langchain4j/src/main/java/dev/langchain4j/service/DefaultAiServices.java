@@ -317,7 +317,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 messages,
                                 chatMemory,
                                 invocationContext,
-                                toolServiceContext.toolExecutors(),
+                                toolServiceContext,
                                 isReturnTypeResult);
 
                         if (toolServiceResult.immediateToolReturn() && isReturnTypeResult) {
