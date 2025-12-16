@@ -75,8 +75,6 @@ class JsonSchemasTest {
                 .contains("type", "text", "url");
     }
 
-
-
     // POJO
 
     @Test
