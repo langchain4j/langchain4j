@@ -174,14 +174,29 @@ This annotation is necessary only when the `-parameters` option is *not* enabled
 `@UserMessage` can also load a prompt template from resources:
 `@UserMessage(fromResource = "my-prompt-template.txt")`
 
+## Programmatic ChatRequest rewriting
+
+In some circumstances it can be useful to modify the `ChatRequest` before it is sent to the LLM. For instance, it may be necessary to append some additional context to the user message or modify the system message based on some external conditions.
+
+It is possible to do so by configuring the AI Service with a `UnaryOperator<ChatRequest>` implementing the transformation that be applied to the `ChatRequest`:
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+    .chatModel(model)
+    .chatRequestTransformer(transformingFunction)  // Configures the transformation function to be applied to the ChatRequest
+    .build();
+```
+
+In case it is needed to also access the `ChatMemory` to implement the required `ChatRequest` transformation, it is also possible to configure the `chatRequestTransformer` method with a `BiFunction<ChatRequest, Object, ChatRequest>`, where the second parameter passed to this function is the memory ID.
+
 ## ChatRequestParameters
 
-In some cases, you may want to configure parameters (e.g., temperature, toolsChoice, maximum tokens, etc.) on a per-call basis. For example, you might want some requests to be more “creative” (higher temperature) and others to be more deterministic (lower temperature).
+Another degree of freedom is the possibility to configure parameters (e.g., temperature, toolsChoice, maximum tokens, etc.) on a per-call basis. For example, you might want some requests to be more “creative” (higher temperature) and others to be more deterministic (lower temperature).
 
 To achieve this, you can create an AI Service method that also accepts an argument of type ChatRequestParams. This tells LangChain4j to accept and merge these parameters during each invocation.
 
 :::note
-Note that ChatRequestParameters toolsSpecification and responseFormat will override parameters set on AiContext. If not set by ChatRequestParameters, AiContext definition will be used.
+Note that `ChatRequestParameters` toolsSpecification and responseFormat will override parameters set on AiContext. If not set by ChatRequestParameters, AiContext definition will be used.
 :::
 
 Define your interface with a second parameter:
@@ -198,19 +213,21 @@ Build the AI Service:
 java
 ```java
 AssistantWithChatParams assistant = AiServices.builder(AssistantWithChatParams.class)
-.chatModel(openAiChatModel)  // or whichever model
-.build();
+    .chatModel(openAiChatModel)  // or whichever model
+    .build();
 ```
 
 Call it with any per-call parameters:
 
 ```java
 ChatRequestParameters customParams = ChatRequestParameters.builder()
-.temperature(0.85)
-.build();
+    .temperature(0.85)
+    .build();
 
 String answer = assistant.chat("Hi there!", customParams);
 ```
+
+The `ChatRequestParameters` passed as an argument to the AI Service method is also propagated to the eventually configured to the `chatRequestTransformer` discussed in the former section, so it can be also accessed and modified there if necessary.
 
 ## Examples of valid AI Service methods
 
@@ -801,21 +818,6 @@ Assistant assistant = AiServices.builder(Assistant.class)
 
 
 [Example](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithAutoModerationExample.java)
-
-## Programmatic ChatRequest rewriting
-
-In some circumstances it can be useful to modify the `ChatRequest` before it is sent to the LLM. For instance, it may be necessary to append some additional context to the user message or modify the system message based on some external conditions.
-
-It is possible to do so by configuring the AI Service with a `UnaryOperator<ChatRequest>` implementing the transformation that be applied to the `ChatRequest`:
-
-```java
-Assistant assistant = AiServices.builder(Assistant.class)
-    .chatModel(model)
-    .chatRequestTransformer(transformingFunction)  // Configures the transformation function to be applied to the ChatRequest
-    .build();
-```
-
-In case it is needed to also access the `ChatMemory` to implement the required `ChatRequest` transformation, it is also possible to configure the `chatRequestTransformer` method with a `BiFunction<ChatRequest, Object, ChatRequest>`, where the second parameter passed to this function is the memory ID.
 
 ## Chaining multiple AI Services
 The more complex the logic of your LLM-powered application becomes,

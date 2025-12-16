@@ -1015,6 +1015,11 @@ public class AiServicesIT {
     void should_use_custom_chat_request_parameters_passed_in_method() {
         AssistantWithChatRequestParams assistant = AiServices.builder(AssistantWithChatRequestParams.class)
                 .chatModel(chatModel)
+                .chatRequestTransformer(chatRequest -> {
+                    assertThat(chatRequest.parameters().temperature()).isEqualTo(0.76);
+                    assertThat(chatRequest.parameters().stopSequences()).containsExactly("DONE");
+                    return chatRequest;
+                })
                 .build();
 
         ChatRequestParameters customParams = ChatRequestParameters.builder()
