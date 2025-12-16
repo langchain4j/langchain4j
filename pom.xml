@@ -228,7 +228,7 @@
         <profile>
             <id>jdk21</id>
             <activation>
-                <jdk>[21,)</jdk>
+                <jdk>[21,24]</jdk>
             </activation>
             <modules>
                 <module>langchain4j-jlama</module>
@@ -242,6 +242,28 @@
                         <configuration>
                             <additionalOptions>--enable-preview</additionalOptions>
                             <source>21</source>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <profile>
+            <id>jdk25</id>
+            <activation>
+                <jdk>[25,)</jdk>
+            </activation>
+            <modules>
+                <module>langchain4j-jlama</module>
+                <module>langchain4j-gpu-llama3</module>
+            </modules>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <configuration>
+                            <source>25</source>
                         </configuration>
                     </plugin>
                 </plugins>
