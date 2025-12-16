@@ -234,6 +234,18 @@
                 <module>langchain4j-jlama</module>
                 <module>langchain4j-gpu-llama3</module>
             </modules>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <configuration>
+                            <additionalOptions>--enable-preview</additionalOptions>
+                            <source>21</source>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
 
         <profile>
