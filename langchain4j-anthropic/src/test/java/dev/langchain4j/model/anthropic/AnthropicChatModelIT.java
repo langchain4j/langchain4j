@@ -706,6 +706,65 @@ class AnthropicChatModelIT {
          assertThat(toolExecutionRequests.get(0).name()).isEqualTo(weatherTool.name());
      }
 
+    @Test
+    void should_send_strict_true_in_tools_definition() {
+        // given
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+
+        ChatModel model = AnthropicChatModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(CLAUDE_SONNET_4_5_20250929)
+                .temperature(0.0)
+                .toolChoice(ToolChoice.REQUIRED)
+                .disableParallelToolUse(true)
+                //when
+                .beta("structured-outputs-2025-11-13")
+                .strictTools(true)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        ToolSpecification weatherTool = ToolSpecification.builder()
+                .name("get_weather")
+                .description("Get the current weather in a given location")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("location")
+                        .required("location")
+                        .build())
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from(
+                        "What's the weather in Munich? " +
+                                "When calling tools, include a parameter unit='celsius' in the tool input."))
+                .toolSpecifications(weatherTool)
+                .build();
+
+        // when
+        ChatResponse chatResponse = model.chat(chatRequest);
+
+        // then
+        String body = spyingHttpClient.request().body();
+
+        assertThat(body)
+                .contains("\"name\" : \"get_weather\"")
+                .contains("\"strict\" : true")
+                .contains("\"additionalProperties\" : false");
+
+        AiMessage aiMessage = chatResponse.aiMessage();
+        List<ToolExecutionRequest> toolCalls = aiMessage.toolExecutionRequests();
+        assertThat(toolCalls).hasSize(1);
+
+        ToolExecutionRequest call = toolCalls.get(0);
+        assertThat(call.name()).isEqualTo("get_weather");
+
+        assertThat(call.arguments())
+                .contains("\"location\"")
+                .doesNotContain("\"unit\"");
+    }
+
+
     static String randomString(int length) {
         String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
         Random random = new Random();
