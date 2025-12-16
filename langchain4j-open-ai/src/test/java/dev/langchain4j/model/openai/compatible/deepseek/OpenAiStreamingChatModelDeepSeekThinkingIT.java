@@ -108,7 +108,7 @@ class OpenAiStreamingChatModelDeepSeekThinkingIT {
                 .modelName("deepseek-reasoner")
 
                 .returnThinking(returnThinking)
-                .sendThinking(true, "reasoning_content")
+                .sendThinking(true)
                 .logRequests(true)
                 .logResponses(true)
                 .build();

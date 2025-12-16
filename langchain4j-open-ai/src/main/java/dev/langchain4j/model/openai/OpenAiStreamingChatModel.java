@@ -457,6 +457,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         }
 
 
+
         /**
          * Controls whether to include reasoning content in assistant messages when sending requests to the API.
          * This is needed for some APIs (like DeepSeek) when using reasoning mode with tool calls.
@@ -473,6 +474,25 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         public OpenAiStreamingChatModelBuilder sendThinking(Boolean sendThinking, String reasoningContentFieldName) {
             this.sendThinking = sendThinking;
             this.reasoningContentFieldName = reasoningContentFieldName;
+            return this;
+        }
+
+        /**
+         * Controls whether to include reasoning content in assistant messages when sending requests to the API.
+         * This is needed for some APIs (like DeepSeek) when using reasoning mode with tool calls.
+         * Uses the default field name "reasoning_content" for the reasoning content field.
+         * <p>
+         * Disabled by default.
+         * <p>
+         * When enabled, the reasoning content from previous assistant messages (stored in {@link AiMessage#thinking()})
+         * will be included in the request during message conversion to API format.
+         *
+         * @param sendThinking whether to send reasoning content
+         * @return {@code this}
+         */
+        public OpenAiStreamingChatModelBuilder sendThinking(Boolean sendThinking) {
+            this.sendThinking = sendThinking;
+            this.reasoningContentFieldName = "reasoning_content";
             return this;
         }
 

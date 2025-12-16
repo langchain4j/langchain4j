@@ -86,7 +86,7 @@ class OpenAiChatModelDeepSeekThinkingIT {
                 .apiKey(System.getenv("DEEPSEEK_API_KEY"))
                 .modelName("deepseek-reasoner")
                 .returnThinking(returnThinking)
-                .sendThinking(true, "reasoning_content")
+                .sendThinking(true)
                 .timeout(ofSeconds(60))
                 .logRequests(true)
                 .logResponses(true)
