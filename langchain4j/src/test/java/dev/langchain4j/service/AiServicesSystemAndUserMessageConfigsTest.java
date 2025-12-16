@@ -11,6 +11,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.service.AiServicesUserMessageConfigTest.VALIDATION_ERROR_MESSAGE_SUFFIX;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -550,7 +551,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
         // when-then
         assertThatThrownBy(() -> aiService.illegalChat1("a name of it's capital", "Country: Germany"))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage("The parameter 'arg1' in the method 'illegalChat1' of the class dev.langchain4j.service.AiServicesSystemAndUserMessageConfigsTest$AiService must be annotated with either dev.langchain4j.service.UserMessage, dev.langchain4j.service.V, dev.langchain4j.service.MemoryId, or dev.langchain4j.service.UserName, or it should be of type dev.langchain4j.invocation.InvocationParameters");
+                .hasMessage("The parameter 'arg1' in the method 'illegalChat1' of the class dev.langchain4j.service.AiServicesSystemAndUserMessageConfigsTest$AiService" + VALIDATION_ERROR_MESSAGE_SUFFIX);
     }
 
     @Test
@@ -565,6 +566,6 @@ class AiServicesSystemAndUserMessageConfigsTest {
         // when-then
         assertThatThrownBy(() -> aiService.illegalChat2("a name of it's capital", "Country: Germany"))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage("The parameter 'arg1' in the method 'illegalChat2' of the class dev.langchain4j.service.AiServicesSystemAndUserMessageConfigsTest$AiService must be annotated with either dev.langchain4j.service.UserMessage, dev.langchain4j.service.V, dev.langchain4j.service.MemoryId, or dev.langchain4j.service.UserName, or it should be of type dev.langchain4j.invocation.InvocationParameters");
+                .hasMessage("The parameter 'arg1' in the method 'illegalChat2' of the class dev.langchain4j.service.AiServicesSystemAndUserMessageConfigsTest$AiService" + VALIDATION_ERROR_MESSAGE_SUFFIX);
     }
 }
