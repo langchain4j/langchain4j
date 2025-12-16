@@ -386,10 +386,6 @@ public class AnthropicMapper {
     }
 
     public static Map<String, Object> toAnthropicSchema(JsonSchemaElement schemaElement) {
-        return toAnthropicSchema(schemaElement, true);
-    }
-
-    private static Map<String, Object> toAnthropicSchema(JsonSchemaElement schemaElement, boolean required) {
         if (schemaElement instanceof JsonObjectSchema objectSchema) {
             Map<String, Object> map = new LinkedHashMap<>();
 
@@ -404,7 +400,7 @@ public class AnthropicMapper {
                     .properties()
                     .forEach((property, value) -> properties.put(
                             property,
-                            toAnthropicSchema(value, objectSchema.required().contains(property))));
+                            toAnthropicSchema(value)));
             map.put("properties", properties);
 
             if (objectSchema.required() != null) {
