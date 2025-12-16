@@ -63,6 +63,9 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
     private final boolean returnThinking;
     private final List<ChatModelListener> listeners;
 
+    private final Boolean sendThinking;
+    private final String reasoningContentFieldName;
+
     public OpenAiStreamingChatModel(OpenAiStreamingChatModelBuilder builder) {
         this.client = OpenAiClient.builder()
                 .httpClientBuilder(builder.httpClientBuilder)
@@ -117,13 +120,13 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 .metadata(getOrDefault(builder.metadata, openAiParameters.metadata()))
                 .serviceTier(getOrDefault(builder.serviceTier, openAiParameters.serviceTier()))
                 .reasoningEffort(getOrDefault(builder.reasoningEffort, openAiParameters.reasoningEffort()))
-                .sendThinking(getOrDefault(builder.sendThinking, openAiParameters.sendThinking()))
-                .reasoningContentFieldName(getOrDefault(builder.reasoningContentFieldName, openAiParameters.reasoningContentFieldName()))
                 .customParameters(getOrDefault(builder.customParameters, openAiParameters.customParameters()))
                 .build();
         this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
         this.strictTools = getOrDefault(builder.strictTools, false);
         this.returnThinking = getOrDefault(builder.returnThinking, false);
+        this.sendThinking = getOrDefault(builder.sendThinking, false);
+        this.reasoningContentFieldName = getOrDefault(builder.reasoningContentFieldName, "reasoning_content");
         this.listeners = copy(builder.listeners);
     }
 
@@ -139,7 +142,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         validate(parameters);
 
         ChatCompletionRequest openAiRequest =
-                toOpenAiChatRequest(chatRequest, parameters, strictTools, strictJsonSchema).stream(true)
+                toOpenAiChatRequest(chatRequest, parameters, sendThinking, reasoningContentFieldName,strictTools, strictJsonSchema).stream(true)
                         .streamOptions(
                                 StreamOptions.builder().includeUsage(true).build())
                         .build();
@@ -453,29 +456,22 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
+
         /**
-         * Controls whether to include reasoning_content in assistant messages when sending requests to the API.
-         * This is required for some APIs (like DeepSeek) when using thinking mode with tool calls.
+         * Controls whether to include reasoning content in assistant messages when sending requests to the API.
+         * This is needed for some APIs (like DeepSeek) when using reasoning mode with tool calls.
          * <p>
          * Disabled by default.
          * <p>
          * When enabled, the reasoning content from previous assistant messages (stored in {@link AiMessage#thinking()})
-         * will be included in the request when converting messages to API format.
+         * will be included in the request during message conversion to API format.
+         *
+         * @param sendThinking whether to send reasoning content
+         * @param reasoningContentFieldName the field name for reasoning content
+         * @return {@code this}
          */
-        public OpenAiStreamingChatModelBuilder sendThinking(Boolean sendThinking) {
+        public OpenAiStreamingChatModelBuilder sendThinking(Boolean sendThinking, String reasoningContentFieldName) {
             this.sendThinking = sendThinking;
-            return this;
-        }
-
-        /**
-         * Sets the field name to use for reasoning content in API requests.
-         * <p>
-         * Defaults to "reasoning_content" (snake_case).
-         * <p>
-         * Note: Currently, only "reasoning_content" is fully supported. Custom field names may require
-         * additional serialization configuration.
-         */
-        public OpenAiStreamingChatModelBuilder reasoningContentFieldName(String reasoningContentFieldName) {
             this.reasoningContentFieldName = reasoningContentFieldName;
             return this;
         }

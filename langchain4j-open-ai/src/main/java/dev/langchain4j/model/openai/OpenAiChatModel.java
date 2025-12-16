@@ -56,6 +56,9 @@ public class OpenAiChatModel implements ChatModel {
     private final boolean strictTools;
     private final boolean returnThinking;
 
+    private final Boolean sendThinking;
+    private final String reasoningContentFieldName;
+
     private final List<ChatModelListener> listeners;
 
     public OpenAiChatModel(OpenAiChatModelBuilder builder) {
@@ -112,8 +115,6 @@ public class OpenAiChatModel implements ChatModel {
                 .metadata(getOrDefault(builder.metadata, openAiParameters.metadata()))
                 .serviceTier(getOrDefault(builder.serviceTier, openAiParameters.serviceTier()))
                 .reasoningEffort(getOrDefault(builder.reasoningEffort, openAiParameters.reasoningEffort()))
-                .sendThinking(getOrDefault(builder.sendThinking, openAiParameters.sendThinking()))
-                .reasoningContentFieldName(getOrDefault(builder.reasoningContentFieldName, openAiParameters.reasoningContentFieldName()))
                 .customParameters(getOrDefault(builder.customParameters, openAiParameters.customParameters()))
                 .build();
         this.responseFormatString = builder.responseFormatString;
@@ -121,6 +122,8 @@ public class OpenAiChatModel implements ChatModel {
         this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
         this.strictTools = getOrDefault(builder.strictTools, false);
         this.returnThinking = getOrDefault(builder.returnThinking, false);
+        this.sendThinking = getOrDefault(builder.sendThinking, false);
+        this.reasoningContentFieldName = getOrDefault(builder.reasoningContentFieldName, "reasoning_content");
         this.listeners = copy(builder.listeners);
     }
 
@@ -145,7 +148,7 @@ public class OpenAiChatModel implements ChatModel {
         validate(parameters);
 
         ChatCompletionRequest openAiRequest = toOpenAiChatRequest(
-                        chatRequest, parameters, strictTools, strictJsonSchema)
+                        chatRequest, parameters, sendThinking, reasoningContentFieldName,strictTools, strictJsonSchema)
                 .build();
 
         ParsedAndRawResponse<ChatCompletionResponse> parsedAndRawResponse = withRetryMappingExceptions(
@@ -405,26 +408,20 @@ public class OpenAiChatModel implements ChatModel {
         }
 
         /**
-         * Controls whether to include reasoning_content in assistant messages when sending requests to the API.
-         * This is required for some APIs (like DeepSeek) when using thinking mode with tool calls.
+         * Controls whether to include reasoning content in assistant messages when sending requests to the API.
+         * This is needed for some APIs (like DeepSeek) when using reasoning mode with tool calls.
          * <p>
          * Disabled by default.
          * <p>
          * When enabled, the reasoning content from previous assistant messages (stored in {@link AiMessage#thinking()})
-         * will be included in the request when converting messages to API format.
+         * will be included in the request during message conversion to API format.
+         *
+         * @param sendThinking whether to send reasoning content
+         * @param reasoningContentFieldName the field name for reasoning content
+         * @return {@code this}
          */
-        public OpenAiChatModelBuilder sendThinking(Boolean sendThinking) {
+        public OpenAiChatModelBuilder sendThinking(Boolean sendThinking, String reasoningContentFieldName) {
             this.sendThinking = sendThinking;
-            return this;
-        }
-
-        /**
-         * Sets the field name to use for reasoning content in API requests.
-         * <p>
-         * Defaults to "reasoning_content".
-         * <p>
-         */
-        public OpenAiChatModelBuilder reasoningContentFieldName(String reasoningContentFieldName) {
             this.reasoningContentFieldName = reasoningContentFieldName;
             return this;
         }

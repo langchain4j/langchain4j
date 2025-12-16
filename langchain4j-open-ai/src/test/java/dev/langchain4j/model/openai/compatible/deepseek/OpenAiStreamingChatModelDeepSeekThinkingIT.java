@@ -108,8 +108,7 @@ class OpenAiStreamingChatModelDeepSeekThinkingIT {
                 .modelName("deepseek-reasoner")
 
                 .returnThinking(returnThinking)
-                .sendThinking(true)
-
+                .sendThinking(true, "reasoning_content")
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -154,9 +153,7 @@ class OpenAiStreamingChatModelDeepSeekThinkingIT {
                 .modelName("deepseek-reasoner")
 
                 .returnThinking(returnThinking)
-                .sendThinking(true)
-                .reasoningContentFieldName("my_reason")
-
+                .sendThinking(true, "my_reason")
                 .logRequests(true)
                 .logResponses(true)
                 .build();

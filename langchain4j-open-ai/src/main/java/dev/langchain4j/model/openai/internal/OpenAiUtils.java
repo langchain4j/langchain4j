@@ -97,10 +97,6 @@ public class OpenAiUtils {
                 .collect(toList());
     }
 
-    public static Message toOpenAiMessage(ChatMessage message) {
-        return toOpenAiMessage(message, false, null);
-    }
-
     public static Message toOpenAiMessage(
             ChatMessage message,
             Boolean includeReasoningContentInRequests,
@@ -523,14 +519,10 @@ public class OpenAiUtils {
     public static ChatCompletionRequest.Builder toOpenAiChatRequest(
             ChatRequest chatRequest,
             OpenAiChatRequestParameters parameters,
+            boolean sendThinking,
+            String reasoningContentFieldName,
             Boolean strictTools,
             Boolean strictJsonSchema) {
-        Boolean sendThinking = parameters.sendThinking();
-        String reasoningContentFieldName = parameters.reasoningContentFieldName();
-        // Default to "reasoning_content" if not specified
-        if (reasoningContentFieldName == null) {
-            reasoningContentFieldName = "reasoning_content";
-        }
 
         return ChatCompletionRequest.builder()
                 .messages(toOpenAiMessages(
