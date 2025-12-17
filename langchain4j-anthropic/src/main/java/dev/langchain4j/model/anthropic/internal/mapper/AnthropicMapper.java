@@ -52,10 +52,13 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicToolSchema;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicUsage;
 import dev.langchain4j.model.chat.request.ToolChoice;
+import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -380,5 +383,67 @@ public class AnthropicMapper {
                 .name(serverTool.name())
                 .customParameters(customParameters)
                 .build();
+    }
+
+    public static Map<String, Object> toAnthropicSchema(JsonSchemaElement schemaElement) {
+        if (schemaElement instanceof JsonObjectSchema objectSchema) {
+            Map<String, Object> map = new LinkedHashMap<>();
+
+            map.put("type", "object");
+
+            if (objectSchema.description() != null) {
+                map.put("description", objectSchema.description());
+            }
+
+            Map<String, Map<String, Object>> properties = new LinkedHashMap<>();
+            objectSchema
+                    .properties()
+                    .forEach((property, value) -> properties.put(
+                            property,
+                            toAnthropicSchema(value)));
+            map.put("properties", properties);
+
+            if (objectSchema.required() != null) {
+                map.put("required", objectSchema.required());
+            }
+
+            // All Anthropic object schemas require setting additionalProperties=false
+            // https://platform.claude.com/docs/en/build-with-claude/structured-outputs#json-schema-limitations
+            map.put("additionalProperties", false);
+
+            if (!objectSchema.definitions().isEmpty()) {
+                map.put("$defs", mapDefs(objectSchema.definitions()));
+            }
+
+            return map;
+        }
+        if (schemaElement instanceof JsonArraySchema arraySchema) {
+            Map<String, Object> map = new LinkedHashMap<>();
+
+            map.put("type", "array");
+
+            if (arraySchema.description() != null) {
+                map.put("description", arraySchema.description());
+            }
+
+            if (arraySchema.items() != null) {
+                map.put("items", toAnthropicSchema(arraySchema.items()));
+            } else {
+                map.put("items", Collections.emptyMap());
+            }
+
+            return map;
+        }
+
+        // Run with strict=false to avoid unsupported features, like union types in enum schemas
+        // https://platform.claude.com/docs/en/build-with-claude/structured-outputs#json-schema-limitations
+        return toMap(schemaElement);
+    }
+
+    private static Map<String, Map<String, Object>> mapDefs(Map<String, JsonSchemaElement> defs) {
+        Map<String, Map<String, Object>> map = new LinkedHashMap<>();
+        defs.forEach((property, schema) -> map.put(property, toAnthropicSchema(schema)));
+
+        return map;
     }
 }

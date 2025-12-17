@@ -1,6 +1,7 @@
 package dev.langchain4j.model.anthropic.common;
 
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_HAIKU_4_5_20251001;
 import static java.lang.System.getenv;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -11,14 +12,17 @@ import dev.langchain4j.model.anthropic.AnthropicStreamingChatModel;
 import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
-import java.util.List;
-
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
+import java.util.List;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InOrder;
 
 @EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".+")
@@ -32,11 +36,19 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
             .logResponses(true)
             .build();
 
+    static final StreamingChatModel ANTHROPIC_STREAMING_SCHEMA_MODEL = AnthropicStreamingChatModel.builder()
+            .apiKey(getenv("ANTHROPIC_API_KEY"))
+            .modelName(CLAUDE_HAIKU_4_5_20251001)
+            .beta("structured-outputs-2025-11-13")
+            .temperature(0.0)
+            .logRequests(false)
+            .logResponses(true)
+            .build();
+
     @Override
     protected List<StreamingChatModel> models() {
         return List.of(ANTHROPIC_STREAMING_CHAT_MODEL);
     }
-
 
     @Override
     protected StreamingChatModel createModelWith(ChatRequestParameters parameters) {
@@ -77,19 +89,7 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected boolean supportsJsonResponseFormat() {
-        // Anthropic does not support response format yet
-        return false;
-    }
-
-    @Override
-    protected boolean supportsJsonResponseFormatWithSchema() {
-        // Anthropic does not support response format yet
-        return false;
-    }
-
-    @Override
-    protected boolean supportsJsonResponseFormatWithRawSchema() {
-        // Anthropic does not support response format yet
+        // Anthropic does not support JSON response format without schemas yet
         return false;
     }
 
@@ -129,5 +129,33 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
                         && !toolCall.partialArguments().isBlank()
         ), any());
         io.verify(handler).onCompleteToolCall(complete(1, id2, "getTime", "{\"country\": \"France\"}"));
+    }
+
+    @Override
+    protected List<StreamingChatModel> modelsSupportingStructuredOutputs() {
+        return List.of(ANTHROPIC_STREAMING_SCHEMA_MODEL);
+    }
+
+    @Override
+    @ParameterizedTest
+    @MethodSource("modelsSupportingStructuredOutputs")
+    @EnabledIf("supportsToolsAndJsonResponseFormatWithSchema")
+    protected void should_execute_a_tool_then_answer_respecting_JSON_response_format_with_schema(
+            StreamingChatModel model) {
+        // Anthropic structured outputs are a public beta and only supported by
+        // Claude Sonnet 4.5, Opus 4.1/4.5, and Haiku 4.5 when the
+        // 'structured-outputs-2025-11-13' beta header is enabled.
+        super.should_execute_a_tool_then_answer_respecting_JSON_response_format_with_schema(model);
+    }
+
+    @Override
+    @ParameterizedTest
+    @MethodSource("modelsSupportingStructuredOutputs")
+    @EnabledIf("supportsJsonResponseFormatWithRawSchema")
+    protected void should_respect_JsonRawSchema_responseFormat(StreamingChatModel model) {
+        // Anthropic structured outputs are a public beta and only supported by
+        // Claude Sonnet 4.5, Opus 4.1/4.5, and Haiku 4.5 when the
+        // 'structured-outputs-2025-11-13' beta header is enabled.
+        super.should_respect_JsonRawSchema_responseFormat(model);
     }
 }
