@@ -19,9 +19,9 @@ class AzureOpenAiModelDiscoveryIT {
     @Test
     void should_discover_azure_openai_models() {
         AzureOpenAiModelDiscovery discovery = AzureOpenAiModelDiscovery.builder()
-            .endpoint(ENDPOINT)
-            .apiKey(API_KEY)
-            .build();
+                .endpoint(ENDPOINT)
+                .apiKey(API_KEY)
+                .build();
 
         List<ModelDescription> models = discovery.discoverModels();
 
@@ -34,9 +34,9 @@ class AzureOpenAiModelDiscoveryIT {
     @Test
     void should_return_azure_openai_provider() {
         AzureOpenAiModelDiscovery discovery = AzureOpenAiModelDiscovery.builder()
-            .endpoint(ENDPOINT)
-            .apiKey(API_KEY)
-            .build();
+                .endpoint(ENDPOINT)
+                .apiKey(API_KEY)
+                .build();
 
         assertThat(discovery.provider()).isEqualTo(ModelProvider.AZURE_OPEN_AI);
     }
@@ -44,9 +44,9 @@ class AzureOpenAiModelDiscoveryIT {
     @Test
     void should_not_support_server_side_filtering() {
         AzureOpenAiModelDiscovery discovery = AzureOpenAiModelDiscovery.builder()
-            .endpoint(ENDPOINT)
-            .apiKey(API_KEY)
-            .build();
+                .endpoint(ENDPOINT)
+                .apiKey(API_KEY)
+                .build();
 
         assertThat(discovery.supportsFiltering()).isFalse();
     }
@@ -54,9 +54,9 @@ class AzureOpenAiModelDiscoveryIT {
     @Test
     void should_discover_models_with_null_filter() {
         AzureOpenAiModelDiscovery discovery = AzureOpenAiModelDiscovery.builder()
-            .endpoint(ENDPOINT)
-            .apiKey(API_KEY)
-            .build();
+                .endpoint(ENDPOINT)
+                .apiKey(API_KEY)
+                .build();
 
         List<ModelDescription> modelsWithoutFilter = discovery.discoverModels();
         List<ModelDescription> modelsWithNullFilter = discovery.discoverModels(null);
@@ -67,13 +67,12 @@ class AzureOpenAiModelDiscoveryIT {
     @Test
     void should_filter_by_name_pattern() {
         AzureOpenAiModelDiscovery discovery = AzureOpenAiModelDiscovery.builder()
-            .endpoint(ENDPOINT)
-            .apiKey(API_KEY)
-            .build();
+                .endpoint(ENDPOINT)
+                .apiKey(API_KEY)
+                .build();
 
-        ModelDiscoveryFilter filter = ModelDiscoveryFilter.builder()
-            .namePattern("gpt.*")
-            .build();
+        ModelDiscoveryFilter filter =
+                ModelDiscoveryFilter.builder().namePattern("gpt.*").build();
 
         List<ModelDescription> models = discovery.discoverModels(filter);
 
@@ -85,9 +84,9 @@ class AzureOpenAiModelDiscoveryIT {
     @Test
     void should_have_creation_timestamp() {
         AzureOpenAiModelDiscovery discovery = AzureOpenAiModelDiscovery.builder()
-            .endpoint(ENDPOINT)
-            .apiKey(API_KEY)
-            .build();
+                .endpoint(ENDPOINT)
+                .apiKey(API_KEY)
+                .build();
 
         List<ModelDescription> models = discovery.discoverModels();
 
@@ -98,18 +97,16 @@ class AzureOpenAiModelDiscoveryIT {
     @Test
     void should_handle_deprecated_filter() {
         AzureOpenAiModelDiscovery discovery = AzureOpenAiModelDiscovery.builder()
-            .endpoint(ENDPOINT)
-            .apiKey(API_KEY)
-            .build();
+                .endpoint(ENDPOINT)
+                .apiKey(API_KEY)
+                .build();
 
-        ModelDiscoveryFilter excludeDeprecated = ModelDiscoveryFilter.builder()
-            .includeDeprecated(false)
-            .build();
+        ModelDiscoveryFilter excludeDeprecated =
+                ModelDiscoveryFilter.builder().includeDeprecated(false).build();
 
         List<ModelDescription> withoutDeprecated = discovery.discoverModels(excludeDeprecated);
 
         // Verify no deprecated models when excluded
-        assertThat(withoutDeprecated)
-            .noneMatch(m -> Boolean.TRUE.equals(m.isDeprecated()));
+        assertThat(withoutDeprecated).noneMatch(m -> Boolean.TRUE.equals(m.isDeprecated()));
     }
 }

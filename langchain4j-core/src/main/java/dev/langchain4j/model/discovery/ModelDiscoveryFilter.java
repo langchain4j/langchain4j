@@ -27,7 +27,8 @@ public class ModelDiscoveryFilter {
     /**
      * A pre-built filter that matches all models (no filtering).
      */
-    public static final ModelDiscoveryFilter ALL = ModelDiscoveryFilter.builder().build();
+    public static final ModelDiscoveryFilter ALL =
+            ModelDiscoveryFilter.builder().build();
 
     private final Set<ModelType> types;
     private final Set<Capability> requiredCapabilities;
@@ -37,10 +38,10 @@ public class ModelDiscoveryFilter {
     private final Boolean includeDeprecated;
 
     private ModelDiscoveryFilter(Builder builder) {
-        this.types = builder.types != null ?
-            Collections.unmodifiableSet(new HashSet<>(builder.types)) : null;
-        this.requiredCapabilities = builder.requiredCapabilities != null ?
-            Collections.unmodifiableSet(new HashSet<>(builder.requiredCapabilities)) : null;
+        this.types = builder.types != null ? Collections.unmodifiableSet(new HashSet<>(builder.types)) : null;
+        this.requiredCapabilities = builder.requiredCapabilities != null
+                ? Collections.unmodifiableSet(new HashSet<>(builder.requiredCapabilities))
+                : null;
         this.minContextWindow = builder.minContextWindow;
         this.maxContextWindow = builder.maxContextWindow;
         this.namePattern = builder.namePattern;
@@ -119,12 +120,12 @@ public class ModelDiscoveryFilter {
      * @return true if no filtering criteria are set, false otherwise
      */
     public boolean matchesAll() {
-        return types == null &&
-               requiredCapabilities == null &&
-               minContextWindow == null &&
-               maxContextWindow == null &&
-               namePattern == null &&
-               includeDeprecated == null;
+        return types == null
+                && requiredCapabilities == null
+                && minContextWindow == null
+                && maxContextWindow == null
+                && namePattern == null
+                && includeDeprecated == null;
     }
 
     @Override
@@ -132,29 +133,29 @@ public class ModelDiscoveryFilter {
         if (this == o) return true;
         if (!(o instanceof ModelDiscoveryFilter)) return false;
         ModelDiscoveryFilter that = (ModelDiscoveryFilter) o;
-        return Objects.equals(types, that.types) &&
-               Objects.equals(requiredCapabilities, that.requiredCapabilities) &&
-               Objects.equals(minContextWindow, that.minContextWindow) &&
-               Objects.equals(maxContextWindow, that.maxContextWindow) &&
-               Objects.equals(namePattern, that.namePattern) &&
-               Objects.equals(includeDeprecated, that.includeDeprecated);
+        return Objects.equals(types, that.types)
+                && Objects.equals(requiredCapabilities, that.requiredCapabilities)
+                && Objects.equals(minContextWindow, that.minContextWindow)
+                && Objects.equals(maxContextWindow, that.maxContextWindow)
+                && Objects.equals(namePattern, that.namePattern)
+                && Objects.equals(includeDeprecated, that.includeDeprecated);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(types, requiredCapabilities, minContextWindow, maxContextWindow, namePattern, includeDeprecated);
+        return Objects.hash(
+                types, requiredCapabilities, minContextWindow, maxContextWindow, namePattern, includeDeprecated);
     }
 
     @Override
     public String toString() {
-        return "ModelDiscoveryFilter{" +
-               "types=" + types +
-               ", requiredCapabilities=" + requiredCapabilities +
-               ", minContextWindow=" + minContextWindow +
-               ", maxContextWindow=" + maxContextWindow +
-               ", namePattern='" + namePattern + '\'' +
-               ", includeDeprecated=" + includeDeprecated +
-               '}';
+        return "ModelDiscoveryFilter{" + "types="
+                + types + ", requiredCapabilities="
+                + requiredCapabilities + ", minContextWindow="
+                + minContextWindow + ", maxContextWindow="
+                + maxContextWindow + ", namePattern='"
+                + namePattern + '\'' + ", includeDeprecated="
+                + includeDeprecated + '}';
     }
 
     public static class Builder {

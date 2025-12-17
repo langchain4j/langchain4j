@@ -34,20 +34,20 @@ public class OpenAiModelDiscovery implements ModelDiscovery {
 
     private OpenAiModelDiscovery(Builder builder) {
         this.client = OpenAiClient.builder()
-            .httpClientBuilder(builder.httpClientBuilder)
-            .baseUrl(builder.baseUrl)
-            .apiKey(builder.apiKey)
-            .organizationId(builder.organizationId)
-            .projectId(builder.projectId)
-            .connectTimeout(builder.connectTimeout)
-            .readTimeout(builder.readTimeout)
-            .userAgent(builder.userAgent)
-            .logRequests(builder.logRequests)
-            .logResponses(builder.logResponses)
-            .logger(builder.logger)
-            .customHeaders(builder.customHeaders)
-            .customQueryParams(builder.customQueryParams)
-            .build();
+                .httpClientBuilder(builder.httpClientBuilder)
+                .baseUrl(builder.baseUrl)
+                .apiKey(builder.apiKey)
+                .organizationId(builder.organizationId)
+                .projectId(builder.projectId)
+                .connectTimeout(builder.connectTimeout)
+                .readTimeout(builder.readTimeout)
+                .userAgent(builder.userAgent)
+                .logRequests(builder.logRequests)
+                .logResponses(builder.logResponses)
+                .logger(builder.logger)
+                .customHeaders(builder.customHeaders)
+                .customQueryParams(builder.customQueryParams)
+                .build();
     }
 
     public static Builder builder() {
@@ -62,9 +62,8 @@ public class OpenAiModelDiscovery implements ModelDiscovery {
     @Override
     public List<ModelDescription> discoverModels(ModelDiscoveryFilter filter) {
         ModelsListResponse response = client.listModels().execute();
-        List<ModelDescription> models = response.getData().stream()
-            .map(this::mapToModelDescription)
-            .collect(Collectors.toList());
+        List<ModelDescription> models =
+                response.getData().stream().map(this::mapToModelDescription).collect(Collectors.toList());
 
         // OpenAI doesn't support server-side filtering, so filter client-side
         if (filter != null && !filter.matchesAll()) {
@@ -86,19 +85,16 @@ public class OpenAiModelDiscovery implements ModelDiscovery {
 
     private ModelDescription mapToModelDescription(OpenAiModelInfo modelInfo) {
         return ModelDescription.builder()
-            .id(modelInfo.getId())
-            .name(modelInfo.getId()) // OpenAI uses id as name
-            .provider(ModelProvider.OPEN_AI)
-            .owner(modelInfo.getOwnedBy())
-            .createdAt(modelInfo.getCreated() != null ?
-                Instant.ofEpochSecond(modelInfo.getCreated()) : null)
-            .build();
+                .id(modelInfo.getId())
+                .name(modelInfo.getId()) // OpenAI uses id as name
+                .provider(ModelProvider.OPEN_AI)
+                .owner(modelInfo.getOwnedBy())
+                .createdAt(modelInfo.getCreated() != null ? Instant.ofEpochSecond(modelInfo.getCreated()) : null)
+                .build();
     }
 
     private List<ModelDescription> filterModels(List<ModelDescription> models, ModelDiscoveryFilter filter) {
-        return models.stream()
-            .filter(model -> matchesFilter(model, filter))
-            .collect(Collectors.toList());
+        return models.stream().filter(model -> matchesFilter(model, filter)).collect(Collectors.toList());
     }
 
     private boolean matchesFilter(ModelDescription model, ModelDiscoveryFilter filter) {
@@ -110,25 +106,24 @@ public class OpenAiModelDiscovery implements ModelDiscovery {
         }
 
         // Filter by required capabilities
-        if (filter.getRequiredCapabilities() != null && !filter.getRequiredCapabilities().isEmpty()) {
-            if (model.getCapabilities() == null ||
-                !model.getCapabilities().containsAll(filter.getRequiredCapabilities())) {
+        if (filter.getRequiredCapabilities() != null
+                && !filter.getRequiredCapabilities().isEmpty()) {
+            if (model.getCapabilities() == null
+                    || !model.getCapabilities().containsAll(filter.getRequiredCapabilities())) {
                 return false;
             }
         }
 
         // Filter by minimum context window
         if (filter.getMinContextWindow() != null) {
-            if (model.getContextWindow() == null ||
-                model.getContextWindow() < filter.getMinContextWindow()) {
+            if (model.getContextWindow() == null || model.getContextWindow() < filter.getMinContextWindow()) {
                 return false;
             }
         }
 
         // Filter by maximum context window
         if (filter.getMaxContextWindow() != null) {
-            if (model.getContextWindow() == null ||
-                model.getContextWindow() > filter.getMaxContextWindow()) {
+            if (model.getContextWindow() == null || model.getContextWindow() > filter.getMaxContextWindow()) {
                 return false;
             }
         }

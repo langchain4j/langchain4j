@@ -67,9 +67,9 @@ public class ModelPricing {
         if (this == o) return true;
         if (!(o instanceof ModelPricing)) return false;
         ModelPricing that = (ModelPricing) o;
-        return Objects.equals(inputPricePerMillionTokens, that.inputPricePerMillionTokens) &&
-               Objects.equals(outputPricePerMillionTokens, that.outputPricePerMillionTokens) &&
-               Objects.equals(currency, that.currency);
+        return Objects.equals(inputPricePerMillionTokens, that.inputPricePerMillionTokens)
+                && Objects.equals(outputPricePerMillionTokens, that.outputPricePerMillionTokens)
+                && Objects.equals(currency, that.currency);
     }
 
     @Override
@@ -79,12 +79,11 @@ public class ModelPricing {
 
     @Override
     public String toString() {
-        return "ModelPricing{" +
-               "input=" + inputPricePerMillionTokens +
-               ", output=" + outputPricePerMillionTokens +
-               " " + currency.getCurrencyCode() +
-               " per 1M tokens" +
-               '}';
+        return "ModelPricing{" + "input="
+                + inputPricePerMillionTokens + ", output="
+                + outputPricePerMillionTokens + " "
+                + currency.getCurrencyCode() + " per 1M tokens"
+                + '}';
     }
 
     public static class Builder {

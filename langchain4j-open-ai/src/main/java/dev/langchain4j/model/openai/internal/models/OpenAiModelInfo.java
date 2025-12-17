@@ -1,11 +1,11 @@
 package dev.langchain4j.model.openai.internal.models;
 
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Objects;
-
-import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 @JsonInclude(NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -23,8 +23,7 @@ public class OpenAiModelInfo {
     @JsonProperty("owned_by")
     private String ownedBy;
 
-    public OpenAiModelInfo() {
-    }
+    public OpenAiModelInfo() {}
 
     public OpenAiModelInfo(String id, String object, Long created, String ownedBy) {
         this.id = id;
@@ -70,10 +69,10 @@ public class OpenAiModelInfo {
         if (this == o) return true;
         if (!(o instanceof OpenAiModelInfo)) return false;
         OpenAiModelInfo that = (OpenAiModelInfo) o;
-        return Objects.equals(id, that.id) &&
-               Objects.equals(object, that.object) &&
-               Objects.equals(created, that.created) &&
-               Objects.equals(ownedBy, that.ownedBy);
+        return Objects.equals(id, that.id)
+                && Objects.equals(object, that.object)
+                && Objects.equals(created, that.created)
+                && Objects.equals(ownedBy, that.ownedBy);
     }
 
     @Override
@@ -83,11 +82,10 @@ public class OpenAiModelInfo {
 
     @Override
     public String toString() {
-        return "OpenAiModelInfo{" +
-               "id='" + id + '\'' +
-               ", object='" + object + '\'' +
-               ", created=" + created +
-               ", ownedBy='" + ownedBy + '\'' +
-               '}';
+        return "OpenAiModelInfo{" + "id='"
+                + id + '\'' + ", object='"
+                + object + '\'' + ", created="
+                + created + ", ownedBy='"
+                + ownedBy + '\'' + '}';
     }
 }

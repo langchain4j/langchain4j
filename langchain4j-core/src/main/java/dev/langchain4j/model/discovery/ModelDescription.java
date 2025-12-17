@@ -41,18 +41,21 @@ public class ModelDescription {
         this.provider = Objects.requireNonNull(builder.provider, "provider must not be null");
         this.description = builder.description;
         this.type = builder.type;
-        this.capabilities = builder.capabilities != null ?
-            Collections.unmodifiableSet(new HashSet<>(builder.capabilities)) : Set.of();
+        this.capabilities = builder.capabilities != null
+                ? Collections.unmodifiableSet(new HashSet<>(builder.capabilities))
+                : Set.of();
         this.pricing = builder.pricing;
         this.contextWindow = builder.contextWindow;
         this.maxOutputTokens = builder.maxOutputTokens;
         this.createdAt = builder.createdAt;
         this.owner = builder.owner;
         this.deprecated = builder.deprecated;
-        this.supportedLanguages = builder.supportedLanguages != null ?
-            Collections.unmodifiableSet(new HashSet<>(builder.supportedLanguages)) : Set.of();
-        this.additionalMetadata = builder.additionalMetadata != null ?
-            Collections.unmodifiableMap(new HashMap<>(builder.additionalMetadata)) : Map.of();
+        this.supportedLanguages = builder.supportedLanguages != null
+                ? Collections.unmodifiableSet(new HashSet<>(builder.supportedLanguages))
+                : Set.of();
+        this.additionalMetadata = builder.additionalMetadata != null
+                ? Collections.unmodifiableMap(new HashMap<>(builder.additionalMetadata))
+                : Map.of();
     }
 
     public static Builder builder() {
@@ -176,8 +179,7 @@ public class ModelDescription {
         if (this == o) return true;
         if (!(o instanceof ModelDescription)) return false;
         ModelDescription that = (ModelDescription) o;
-        return Objects.equals(id, that.id) &&
-               Objects.equals(provider, that.provider);
+        return Objects.equals(id, that.id) && Objects.equals(provider, that.provider);
     }
 
     @Override
@@ -187,13 +189,12 @@ public class ModelDescription {
 
     @Override
     public String toString() {
-        return "ModelDescription{" +
-               "id='" + id + '\'' +
-               ", name='" + name + '\'' +
-               ", provider=" + provider +
-               ", type=" + type +
-               ", contextWindow=" + contextWindow +
-               '}';
+        return "ModelDescription{" + "id='"
+                + id + '\'' + ", name='"
+                + name + '\'' + ", provider="
+                + provider + ", type="
+                + type + ", contextWindow="
+                + contextWindow + '}';
     }
 
     public static class Builder {

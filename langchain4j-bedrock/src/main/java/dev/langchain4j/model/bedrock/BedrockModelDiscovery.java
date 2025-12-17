@@ -13,10 +13,9 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.bedrock.BedrockClient;
+import software.amazon.awssdk.services.bedrock.BedrockClientBuilder;
 import software.amazon.awssdk.services.bedrock.model.FoundationModelSummary;
-import software.amazon.awssdk.services.bedrock.model.InferenceType;
 import software.amazon.awssdk.services.bedrock.model.ListFoundationModelsRequest;
-import software.amazon.awssdk.services.bedrock.model.ModelCustomization;
 import software.amazon.awssdk.services.bedrock.model.ModelModality;
 
 /**
@@ -38,22 +37,17 @@ public class BedrockModelDiscovery implements ModelDiscovery {
     private final BedrockClient client;
 
     private BedrockModelDiscovery(Builder builder) {
-        AwsCredentialsProvider credentialsProvider = builder.credentialsProvider != null
-                ? builder.credentialsProvider
-                : DefaultCredentialsProvider.create();
+        AwsCredentialsProvider credentialsProvider =
+                builder.credentialsProvider != null ? builder.credentialsProvider : DefaultCredentialsProvider.create();
 
         Region region = builder.region != null ? builder.region : Region.US_EAST_1;
 
-        BedrockClient.Builder clientBuilder = BedrockClient.builder()
-                .credentialsProvider(credentialsProvider)
-                .region(region);
+        BedrockClientBuilder clientBuilder =
+                BedrockClient.builder().credentialsProvider(credentialsProvider).region(region);
 
         if (builder.logger != null) {
             clientBuilder.overrideConfiguration(c -> c.addExecutionInterceptor(
-                    new AwsLoggingInterceptor(
-                            builder.logRequests,
-                            builder.logResponses,
-                            builder.logger)));
+                    new AwsLoggingInterceptor(builder.logRequests, builder.logResponses, builder.logger)));
         }
 
         this.client = clientBuilder.build();
@@ -77,12 +71,11 @@ public class BedrockModelDiscovery implements ModelDiscovery {
             applyServerSideFilter(requestBuilder, filter);
         }
 
-        List<FoundationModelSummary> models = client.listFoundationModels(requestBuilder.build())
-                .modelSummaries();
+        List<FoundationModelSummary> models =
+                client.listFoundationModels(requestBuilder.build()).modelSummaries();
 
-        List<ModelDescription> descriptions = models.stream()
-                .map(this::mapToModelDescription)
-                .collect(Collectors.toList());
+        List<ModelDescription> descriptions =
+                models.stream().map(this::mapToModelDescription).collect(Collectors.toList());
 
         // Apply client-side filters for unsupported filter criteria
         if (filter != null && !filter.matchesAll()) {
@@ -102,8 +95,8 @@ public class BedrockModelDiscovery implements ModelDiscovery {
         return true; // Bedrock supports some server-side filtering
     }
 
-    private void applyServerSideFilter(ListFoundationModelsRequest.Builder requestBuilder,
-            ModelDiscoveryFilter filter) {
+    private void applyServerSideFilter(
+            ListFoundationModelsRequest.Builder requestBuilder, ModelDiscoveryFilter filter) {
         // Filter by output modality (maps to type)
         if (filter.getTypes() != null && !filter.getTypes().isEmpty()) {
             if (filter.getTypes().size() == 1) {
@@ -112,7 +105,7 @@ public class BedrockModelDiscovery implements ModelDiscovery {
                     requestBuilder.byOutputModality(ModelModality.TEXT);
                 } else if (type == ModelType.EMBEDDING) {
                     requestBuilder.byOutputModality(ModelModality.EMBEDDING);
-                } else if (type == ModelType.IMAGE) {
+                } else if (type == ModelType.IMAGE_GENERATION) {
                     requestBuilder.byOutputModality(ModelModality.IMAGE);
                 }
             }
@@ -120,9 +113,8 @@ public class BedrockModelDiscovery implements ModelDiscovery {
     }
 
     private ModelDescription mapToModelDescription(FoundationModelSummary modelSummary) {
-        ModelDescription.Builder builder = ModelDescription.builder()
-                .id(modelSummary.modelId())
-                .provider(ModelProvider.AMAZON_BEDROCK);
+        ModelDescription.Builder builder =
+                ModelDescription.builder().id(modelSummary.modelId()).provider(ModelProvider.AMAZON_BEDROCK);
 
         // Use modelName if available, otherwise use modelId
         if (modelSummary.modelName() != null && !modelSummary.modelName().isEmpty()) {
@@ -144,7 +136,7 @@ public class BedrockModelDiscovery implements ModelDiscovery {
             } else if (outputModalities.contains(ModelModality.EMBEDDING)) {
                 builder.type(ModelType.EMBEDDING);
             } else if (outputModalities.contains(ModelModality.IMAGE)) {
-                builder.type(ModelType.IMAGE);
+                builder.type(ModelType.IMAGE_GENERATION);
             }
         }
 
@@ -160,9 +152,7 @@ public class BedrockModelDiscovery implements ModelDiscovery {
     }
 
     private List<ModelDescription> filterModels(List<ModelDescription> models, ModelDiscoveryFilter filter) {
-        return models.stream()
-                .filter(model -> matchesFilter(model, filter))
-                .collect(Collectors.toList());
+        return models.stream().filter(model -> matchesFilter(model, filter)).collect(Collectors.toList());
     }
 
     private boolean matchesFilter(ModelDescription model, ModelDiscoveryFilter filter) {
@@ -174,7 +164,8 @@ public class BedrockModelDiscovery implements ModelDiscovery {
         }
 
         // Filter by required capabilities
-        if (filter.getRequiredCapabilities() != null && !filter.getRequiredCapabilities().isEmpty()) {
+        if (filter.getRequiredCapabilities() != null
+                && !filter.getRequiredCapabilities().isEmpty()) {
             if (model.getCapabilities() == null
                     || !model.getCapabilities().containsAll(filter.getRequiredCapabilities())) {
                 return false;

@@ -1,12 +1,12 @@
 package dev.langchain4j.model.openai.internal.models;
 
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 import java.util.Objects;
-
-import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 @JsonInclude(NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -18,8 +18,7 @@ public class ModelsListResponse {
     @JsonProperty("data")
     private List<OpenAiModelInfo> data;
 
-    public ModelsListResponse() {
-    }
+    public ModelsListResponse() {}
 
     public ModelsListResponse(String object, List<OpenAiModelInfo> data) {
         this.object = object;
@@ -47,8 +46,7 @@ public class ModelsListResponse {
         if (this == o) return true;
         if (!(o instanceof ModelsListResponse)) return false;
         ModelsListResponse that = (ModelsListResponse) o;
-        return Objects.equals(object, that.object) &&
-               Objects.equals(data, that.data);
+        return Objects.equals(object, that.object) && Objects.equals(data, that.data);
     }
 
     @Override
@@ -58,9 +56,6 @@ public class ModelsListResponse {
 
     @Override
     public String toString() {
-        return "ModelsListResponse{" +
-               "object='" + object + '\'' +
-               ", data=" + data +
-               '}';
+        return "ModelsListResponse{" + "object='" + object + '\'' + ", data=" + data + '}';
     }
 }

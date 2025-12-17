@@ -33,14 +33,14 @@ public class MistralAiModelDiscovery implements ModelDiscovery {
 
     private MistralAiModelDiscovery(Builder builder) {
         this.client = MistralAiClient.builder()
-            .baseUrl(builder.baseUrl)
-            .apiKey(builder.apiKey)
-            .timeout(builder.timeout)
-            .logRequests(builder.logRequests)
-            .logResponses(builder.logResponses)
-            .logger(builder.logger)
-            .httpClientBuilder(builder.httpClientBuilder)
-            .build();
+                .baseUrl(builder.baseUrl)
+                .apiKey(builder.apiKey)
+                .timeout(builder.timeout)
+                .logRequests(builder.logRequests)
+                .logResponses(builder.logResponses)
+                .logger(builder.logger)
+                .httpClientBuilder(builder.httpClientBuilder)
+                .build();
     }
 
     public static Builder builder() {
@@ -55,9 +55,8 @@ public class MistralAiModelDiscovery implements ModelDiscovery {
     @Override
     public List<ModelDescription> discoverModels(ModelDiscoveryFilter filter) {
         MistralAiModelResponse response = client.listModels();
-        List<ModelDescription> models = response.getData().stream()
-            .map(this::mapFromMistralAiModelCard)
-            .collect(Collectors.toList());
+        List<ModelDescription> models =
+                response.getData().stream().map(this::mapFromMistralAiModelCard).collect(Collectors.toList());
 
         // Mistral AI doesn't support server-side filtering, so filter client-side
         if (filter != null && !filter.matchesAll()) {
@@ -79,19 +78,16 @@ public class MistralAiModelDiscovery implements ModelDiscovery {
 
     private ModelDescription mapFromMistralAiModelCard(MistralAiModelCard card) {
         return ModelDescription.builder()
-            .id(card.getId())
-            .name(card.getId()) // Mistral AI uses id as name
-            .provider(ModelProvider.MISTRAL_AI)
-            .owner(card.getOwnerBy())
-            .createdAt(card.getCreated() != null ?
-                Instant.ofEpochSecond(card.getCreated()) : null)
-            .build();
+                .id(card.getId())
+                .name(card.getId()) // Mistral AI uses id as name
+                .provider(ModelProvider.MISTRAL_AI)
+                .owner(card.getOwnerBy())
+                .createdAt(card.getCreated() != null ? Instant.ofEpochSecond(card.getCreated()) : null)
+                .build();
     }
 
     private List<ModelDescription> filterModels(List<ModelDescription> models, ModelDiscoveryFilter filter) {
-        return models.stream()
-            .filter(model -> matchesFilter(model, filter))
-            .collect(Collectors.toList());
+        return models.stream().filter(model -> matchesFilter(model, filter)).collect(Collectors.toList());
     }
 
     private boolean matchesFilter(ModelDescription model, ModelDiscoveryFilter filter) {
@@ -103,25 +99,24 @@ public class MistralAiModelDiscovery implements ModelDiscovery {
         }
 
         // Filter by required capabilities
-        if (filter.getRequiredCapabilities() != null && !filter.getRequiredCapabilities().isEmpty()) {
-            if (model.getCapabilities() == null ||
-                !model.getCapabilities().containsAll(filter.getRequiredCapabilities())) {
+        if (filter.getRequiredCapabilities() != null
+                && !filter.getRequiredCapabilities().isEmpty()) {
+            if (model.getCapabilities() == null
+                    || !model.getCapabilities().containsAll(filter.getRequiredCapabilities())) {
                 return false;
             }
         }
 
         // Filter by minimum context window
         if (filter.getMinContextWindow() != null) {
-            if (model.getContextWindow() == null ||
-                model.getContextWindow() < filter.getMinContextWindow()) {
+            if (model.getContextWindow() == null || model.getContextWindow() < filter.getMinContextWindow()) {
                 return false;
             }
         }
 
         // Filter by maximum context window
         if (filter.getMaxContextWindow() != null) {
-            if (model.getContextWindow() == null ||
-                model.getContextWindow() > filter.getMaxContextWindow()) {
+            if (model.getContextWindow() == null || model.getContextWindow() > filter.getMaxContextWindow()) {
                 return false;
             }
         }

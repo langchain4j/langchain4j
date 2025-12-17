@@ -2,16 +2,14 @@ package dev.langchain4j.model.googleai;
 
 import static org.assertj.core.api.Assertions.*;
 
-import java.util.List;
-import java.util.Set;
-
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.discovery.ModelDescription;
 import dev.langchain4j.model.discovery.ModelDiscoveryFilter;
 import dev.langchain4j.model.discovery.ModelType;
+import java.util.List;
+import java.util.Set;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 class GoogleAiGeminiModelDiscoveryIT {
@@ -20,9 +18,8 @@ class GoogleAiGeminiModelDiscoveryIT {
 
     @Test
     void should_discover_gemini_models() {
-        GoogleAiGeminiModelDiscovery discovery = GoogleAiGeminiModelDiscovery.builder()
-            .apiKey(API_KEY)
-            .build();
+        GoogleAiGeminiModelDiscovery discovery =
+                GoogleAiGeminiModelDiscovery.builder().apiKey(API_KEY).build();
 
         List<ModelDescription> models = discovery.discoverModels();
 
@@ -34,27 +31,24 @@ class GoogleAiGeminiModelDiscoveryIT {
 
     @Test
     void should_return_google_provider() {
-        GoogleAiGeminiModelDiscovery discovery = GoogleAiGeminiModelDiscovery.builder()
-            .apiKey(API_KEY)
-            .build();
+        GoogleAiGeminiModelDiscovery discovery =
+                GoogleAiGeminiModelDiscovery.builder().apiKey(API_KEY).build();
 
         assertThat(discovery.provider()).isEqualTo(ModelProvider.GOOGLE_AI_GEMINI);
     }
 
     @Test
     void should_not_support_server_side_filtering() {
-        GoogleAiGeminiModelDiscovery discovery = GoogleAiGeminiModelDiscovery.builder()
-            .apiKey(API_KEY)
-            .build();
+        GoogleAiGeminiModelDiscovery discovery =
+                GoogleAiGeminiModelDiscovery.builder().apiKey(API_KEY).build();
 
         assertThat(discovery.supportsFiltering()).isFalse();
     }
 
     @Test
     void should_discover_models_with_null_filter() {
-        GoogleAiGeminiModelDiscovery discovery = GoogleAiGeminiModelDiscovery.builder()
-            .apiKey(API_KEY)
-            .build();
+        GoogleAiGeminiModelDiscovery discovery =
+                GoogleAiGeminiModelDiscovery.builder().apiKey(API_KEY).build();
 
         List<ModelDescription> modelsWithoutFilter = discovery.discoverModels();
         List<ModelDescription> modelsWithNullFilter = discovery.discoverModels(null);
@@ -64,13 +58,11 @@ class GoogleAiGeminiModelDiscoveryIT {
 
     @Test
     void should_filter_by_name_pattern() {
-        GoogleAiGeminiModelDiscovery discovery = GoogleAiGeminiModelDiscovery.builder()
-            .apiKey(API_KEY)
-            .build();
+        GoogleAiGeminiModelDiscovery discovery =
+                GoogleAiGeminiModelDiscovery.builder().apiKey(API_KEY).build();
 
-        ModelDiscoveryFilter filter = ModelDiscoveryFilter.builder()
-            .namePattern(".*[Gg]emini.*")
-            .build();
+        ModelDiscoveryFilter filter =
+                ModelDiscoveryFilter.builder().namePattern(".*[Gg]emini.*").build();
 
         List<ModelDescription> models = discovery.discoverModels(filter);
 
@@ -79,13 +71,11 @@ class GoogleAiGeminiModelDiscoveryIT {
 
     @Test
     void should_filter_by_type() {
-        GoogleAiGeminiModelDiscovery discovery = GoogleAiGeminiModelDiscovery.builder()
-            .apiKey(API_KEY)
-            .build();
+        GoogleAiGeminiModelDiscovery discovery =
+                GoogleAiGeminiModelDiscovery.builder().apiKey(API_KEY).build();
 
-        ModelDiscoveryFilter filter = ModelDiscoveryFilter.builder()
-            .types(Set.of(ModelType.CHAT))
-            .build();
+        ModelDiscoveryFilter filter =
+                ModelDiscoveryFilter.builder().types(Set.of(ModelType.CHAT)).build();
 
         List<ModelDescription> models = discovery.discoverModels(filter);
 
@@ -95,9 +85,8 @@ class GoogleAiGeminiModelDiscoveryIT {
 
     @Test
     void should_have_context_window_information() {
-        GoogleAiGeminiModelDiscovery discovery = GoogleAiGeminiModelDiscovery.builder()
-            .apiKey(API_KEY)
-            .build();
+        GoogleAiGeminiModelDiscovery discovery =
+                GoogleAiGeminiModelDiscovery.builder().apiKey(API_KEY).build();
 
         List<ModelDescription> models = discovery.discoverModels();
 
@@ -107,9 +96,8 @@ class GoogleAiGeminiModelDiscoveryIT {
 
     @Test
     void should_have_max_output_tokens() {
-        GoogleAiGeminiModelDiscovery discovery = GoogleAiGeminiModelDiscovery.builder()
-            .apiKey(API_KEY)
-            .build();
+        GoogleAiGeminiModelDiscovery discovery =
+                GoogleAiGeminiModelDiscovery.builder().apiKey(API_KEY).build();
 
         List<ModelDescription> models = discovery.discoverModels();
 
@@ -119,20 +107,16 @@ class GoogleAiGeminiModelDiscoveryIT {
 
     @Test
     void should_filter_by_context_window() {
-        GoogleAiGeminiModelDiscovery discovery = GoogleAiGeminiModelDiscovery.builder()
-            .apiKey(API_KEY)
-            .build();
+        GoogleAiGeminiModelDiscovery discovery =
+                GoogleAiGeminiModelDiscovery.builder().apiKey(API_KEY).build();
 
-        ModelDiscoveryFilter filter = ModelDiscoveryFilter.builder()
-            .minContextWindow(100000)
-            .build();
+        ModelDiscoveryFilter filter =
+                ModelDiscoveryFilter.builder().minContextWindow(100000).build();
 
         List<ModelDescription> models = discovery.discoverModels(filter);
 
         // For models with context window information, verify filtering
-        models.stream()
-            .filter(m -> m.getContextWindow() != null)
-            .forEach(m -> assertThat(m.getContextWindow())
+        models.stream().filter(m -> m.getContextWindow() != null).forEach(m -> assertThat(m.getContextWindow())
                 .isGreaterThanOrEqualTo(100000));
     }
 }

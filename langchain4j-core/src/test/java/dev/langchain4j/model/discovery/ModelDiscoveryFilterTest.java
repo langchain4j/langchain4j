@@ -24,13 +24,13 @@ class ModelDiscoveryFilterTest {
     @Test
     void should_build_with_all_fields() {
         ModelDiscoveryFilter filter = ModelDiscoveryFilter.builder()
-            .types(Set.of(ModelType.CHAT, ModelType.EMBEDDING))
-            .requiredCapabilities(Set.of(Capability.RESPONSE_FORMAT_JSON_SCHEMA))
-            .minContextWindow(100000)
-            .maxContextWindow(200000)
-            .namePattern("gpt.*")
-            .includeDeprecated(false)
-            .build();
+                .types(Set.of(ModelType.CHAT, ModelType.EMBEDDING))
+                .requiredCapabilities(Set.of(Capability.RESPONSE_FORMAT_JSON_SCHEMA))
+                .minContextWindow(100000)
+                .maxContextWindow(200000)
+                .namePattern("gpt.*")
+                .includeDeprecated(false)
+                .build();
 
         assertThat(filter.getTypes()).containsExactlyInAnyOrder(ModelType.CHAT, ModelType.EMBEDDING);
         assertThat(filter.getRequiredCapabilities()).containsExactly(Capability.RESPONSE_FORMAT_JSON_SCHEMA);
@@ -52,53 +52,48 @@ class ModelDiscoveryFilterTest {
         ModelDiscoveryFilter emptyFilter = ModelDiscoveryFilter.builder().build();
         assertThat(emptyFilter.matchesAll()).isTrue();
 
-        ModelDiscoveryFilter filterWithTypes = ModelDiscoveryFilter.builder()
-            .types(Set.of(ModelType.CHAT))
-            .build();
+        ModelDiscoveryFilter filterWithTypes =
+                ModelDiscoveryFilter.builder().types(Set.of(ModelType.CHAT)).build();
         assertThat(filterWithTypes.matchesAll()).isFalse();
 
         ModelDiscoveryFilter filterWithCapabilities = ModelDiscoveryFilter.builder()
-            .requiredCapabilities(Set.of(Capability.RESPONSE_FORMAT_JSON_SCHEMA))
-            .build();
+                .requiredCapabilities(Set.of(Capability.RESPONSE_FORMAT_JSON_SCHEMA))
+                .build();
         assertThat(filterWithCapabilities.matchesAll()).isFalse();
 
-        ModelDiscoveryFilter filterWithMinContext = ModelDiscoveryFilter.builder()
-            .minContextWindow(100000)
-            .build();
+        ModelDiscoveryFilter filterWithMinContext =
+                ModelDiscoveryFilter.builder().minContextWindow(100000).build();
         assertThat(filterWithMinContext.matchesAll()).isFalse();
 
-        ModelDiscoveryFilter filterWithMaxContext = ModelDiscoveryFilter.builder()
-            .maxContextWindow(200000)
-            .build();
+        ModelDiscoveryFilter filterWithMaxContext =
+                ModelDiscoveryFilter.builder().maxContextWindow(200000).build();
         assertThat(filterWithMaxContext.matchesAll()).isFalse();
 
-        ModelDiscoveryFilter filterWithPattern = ModelDiscoveryFilter.builder()
-            .namePattern("test")
-            .build();
+        ModelDiscoveryFilter filterWithPattern =
+                ModelDiscoveryFilter.builder().namePattern("test").build();
         assertThat(filterWithPattern.matchesAll()).isFalse();
 
-        ModelDiscoveryFilter filterWithDeprecated = ModelDiscoveryFilter.builder()
-            .includeDeprecated(false)
-            .build();
+        ModelDiscoveryFilter filterWithDeprecated =
+                ModelDiscoveryFilter.builder().includeDeprecated(false).build();
         assertThat(filterWithDeprecated.matchesAll()).isFalse();
     }
 
     @Test
     void should_implement_equals_and_hashCode() {
         ModelDiscoveryFilter filter1 = ModelDiscoveryFilter.builder()
-            .types(Set.of(ModelType.CHAT))
-            .minContextWindow(100000)
-            .build();
+                .types(Set.of(ModelType.CHAT))
+                .minContextWindow(100000)
+                .build();
 
         ModelDiscoveryFilter filter2 = ModelDiscoveryFilter.builder()
-            .types(Set.of(ModelType.CHAT))
-            .minContextWindow(100000)
-            .build();
+                .types(Set.of(ModelType.CHAT))
+                .minContextWindow(100000)
+                .build();
 
         ModelDiscoveryFilter filter3 = ModelDiscoveryFilter.builder()
-            .types(Set.of(ModelType.EMBEDDING))
-            .minContextWindow(100000)
-            .build();
+                .types(Set.of(ModelType.EMBEDDING))
+                .minContextWindow(100000)
+                .build();
 
         assertThat(filter1).isEqualTo(filter2);
         assertThat(filter1).hasSameHashCodeAs(filter2);
@@ -108,10 +103,10 @@ class ModelDiscoveryFilterTest {
     @Test
     void should_implement_toString() {
         ModelDiscoveryFilter filter = ModelDiscoveryFilter.builder()
-            .types(Set.of(ModelType.CHAT))
-            .minContextWindow(100000)
-            .includeDeprecated(false)
-            .build();
+                .types(Set.of(ModelType.CHAT))
+                .minContextWindow(100000)
+                .includeDeprecated(false)
+                .build();
 
         String str = filter.toString();
 
@@ -126,9 +121,9 @@ class ModelDiscoveryFilterTest {
         Set<Capability> capabilities = Set.of(Capability.RESPONSE_FORMAT_JSON_SCHEMA);
 
         ModelDiscoveryFilter filter = ModelDiscoveryFilter.builder()
-            .types(types)
-            .requiredCapabilities(capabilities)
-            .build();
+                .types(types)
+                .requiredCapabilities(capabilities)
+                .build();
 
         assertThat(filter.getTypes()).isNotSameAs(types);
         assertThat(filter.getRequiredCapabilities()).isNotSameAs(capabilities);

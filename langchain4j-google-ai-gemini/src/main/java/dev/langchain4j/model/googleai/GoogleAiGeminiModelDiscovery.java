@@ -1,19 +1,17 @@
 package dev.langchain4j.model.googleai;
 
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-
-import org.slf4j.Logger;
-
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.discovery.ModelDescription;
 import dev.langchain4j.model.discovery.ModelDiscovery;
 import dev.langchain4j.model.discovery.ModelDiscoveryFilter;
 import dev.langchain4j.model.discovery.ModelType;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import org.slf4j.Logger;
 
 /**
  * Google AI Gemini implementation of {@link ModelDiscovery}.
@@ -90,14 +88,12 @@ public class GoogleAiGeminiModelDiscovery implements ModelDiscovery {
     }
 
     private ModelDescription mapToModelDescription(GeminiModelInfo modelInfo) {
-        ModelDescription.Builder builder = ModelDescription.builder()
-                .provider(ModelProvider.GOOGLE_AI_GEMINI);
+        ModelDescription.Builder builder = ModelDescription.builder().provider(ModelProvider.GOOGLE_AI_GEMINI);
 
         // Model ID: extract from name (format: "models/gemini-1.5-pro")
         if (modelInfo.name() != null) {
-            String id = modelInfo.name().startsWith("models/")
-                    ? modelInfo.name().substring(7)
-                    : modelInfo.name();
+            String id =
+                    modelInfo.name().startsWith("models/") ? modelInfo.name().substring(7) : modelInfo.name();
             builder.id(id);
         }
 
@@ -136,9 +132,7 @@ public class GoogleAiGeminiModelDiscovery implements ModelDiscovery {
     }
 
     private List<ModelDescription> filterModels(List<ModelDescription> models, ModelDiscoveryFilter filter) {
-        return models.stream()
-                .filter(model -> matchesFilter(model, filter))
-                .collect(Collectors.toList());
+        return models.stream().filter(model -> matchesFilter(model, filter)).collect(Collectors.toList());
     }
 
     private boolean matchesFilter(ModelDescription model, ModelDiscoveryFilter filter) {
@@ -150,25 +144,24 @@ public class GoogleAiGeminiModelDiscovery implements ModelDiscovery {
         }
 
         // Filter by required capabilities
-        if (filter.getRequiredCapabilities() != null && !filter.getRequiredCapabilities().isEmpty()) {
-            if (model.getCapabilities() == null ||
-                !model.getCapabilities().containsAll(filter.getRequiredCapabilities())) {
+        if (filter.getRequiredCapabilities() != null
+                && !filter.getRequiredCapabilities().isEmpty()) {
+            if (model.getCapabilities() == null
+                    || !model.getCapabilities().containsAll(filter.getRequiredCapabilities())) {
                 return false;
             }
         }
 
         // Filter by minimum context window
         if (filter.getMinContextWindow() != null) {
-            if (model.getContextWindow() == null ||
-                model.getContextWindow() < filter.getMinContextWindow()) {
+            if (model.getContextWindow() == null || model.getContextWindow() < filter.getMinContextWindow()) {
                 return false;
             }
         }
 
         // Filter by maximum context window
         if (filter.getMaxContextWindow() != null) {
-            if (model.getContextWindow() == null ||
-                model.getContextWindow() > filter.getMaxContextWindow()) {
+            if (model.getContextWindow() == null || model.getContextWindow() > filter.getMaxContextWindow()) {
                 return false;
             }
         }

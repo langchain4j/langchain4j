@@ -16,9 +16,8 @@ class AnthropicModelDiscoveryIT {
 
     @Test
     void should_discover_anthropic_models() {
-        AnthropicModelDiscovery discovery = AnthropicModelDiscovery.builder()
-            .apiKey(API_KEY)
-            .build();
+        AnthropicModelDiscovery discovery =
+                AnthropicModelDiscovery.builder().apiKey(API_KEY).build();
 
         List<ModelDescription> models = discovery.discoverModels();
 
@@ -30,27 +29,24 @@ class AnthropicModelDiscoveryIT {
 
     @Test
     void should_return_anthropic_provider() {
-        AnthropicModelDiscovery discovery = AnthropicModelDiscovery.builder()
-            .apiKey(API_KEY)
-            .build();
+        AnthropicModelDiscovery discovery =
+                AnthropicModelDiscovery.builder().apiKey(API_KEY).build();
 
         assertThat(discovery.provider()).isEqualTo(ModelProvider.ANTHROPIC);
     }
 
     @Test
     void should_not_support_server_side_filtering() {
-        AnthropicModelDiscovery discovery = AnthropicModelDiscovery.builder()
-            .apiKey(API_KEY)
-            .build();
+        AnthropicModelDiscovery discovery =
+                AnthropicModelDiscovery.builder().apiKey(API_KEY).build();
 
         assertThat(discovery.supportsFiltering()).isFalse();
     }
 
     @Test
     void should_discover_models_with_null_filter() {
-        AnthropicModelDiscovery discovery = AnthropicModelDiscovery.builder()
-            .apiKey(API_KEY)
-            .build();
+        AnthropicModelDiscovery discovery =
+                AnthropicModelDiscovery.builder().apiKey(API_KEY).build();
 
         List<ModelDescription> modelsWithoutFilter = discovery.discoverModels();
         List<ModelDescription> modelsWithNullFilter = discovery.discoverModels(null);
@@ -60,13 +56,11 @@ class AnthropicModelDiscoveryIT {
 
     @Test
     void should_filter_by_name_pattern() {
-        AnthropicModelDiscovery discovery = AnthropicModelDiscovery.builder()
-            .apiKey(API_KEY)
-            .build();
+        AnthropicModelDiscovery discovery =
+                AnthropicModelDiscovery.builder().apiKey(API_KEY).build();
 
-        ModelDiscoveryFilter filter = ModelDiscoveryFilter.builder()
-            .namePattern(".*laude.*")
-            .build();
+        ModelDiscoveryFilter filter =
+                ModelDiscoveryFilter.builder().namePattern(".*laude.*").build();
 
         List<ModelDescription> models = discovery.discoverModels(filter);
 
@@ -75,9 +69,8 @@ class AnthropicModelDiscoveryIT {
 
     @Test
     void should_have_display_name() {
-        AnthropicModelDiscovery discovery = AnthropicModelDiscovery.builder()
-            .apiKey(API_KEY)
-            .build();
+        AnthropicModelDiscovery discovery =
+                AnthropicModelDiscovery.builder().apiKey(API_KEY).build();
 
         List<ModelDescription> models = discovery.discoverModels();
 
@@ -87,9 +80,8 @@ class AnthropicModelDiscoveryIT {
 
     @Test
     void should_have_creation_timestamp() {
-        AnthropicModelDiscovery discovery = AnthropicModelDiscovery.builder()
-            .apiKey(API_KEY)
-            .build();
+        AnthropicModelDiscovery discovery =
+                AnthropicModelDiscovery.builder().apiKey(API_KEY).build();
 
         List<ModelDescription> models = discovery.discoverModels();
 

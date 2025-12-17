@@ -62,10 +62,8 @@ public class AzureOpenAiModelDiscovery implements ModelDiscovery {
                 : HttpClientBuilderLoader.loadHttpClientBuilder();
 
         Duration timeout = builder.timeout != null ? builder.timeout : DEFAULT_TIMEOUT;
-        HttpClient httpClient = httpClientBuilder
-                .connectTimeout(timeout)
-                .readTimeout(timeout)
-                .build();
+        HttpClient httpClient =
+                httpClientBuilder.connectTimeout(timeout).readTimeout(timeout).build();
 
         if (builder.logRequestsAndResponses || builder.logRequests || builder.logResponses) {
             this.httpClient = new LoggingHttpClient(
@@ -90,9 +88,8 @@ public class AzureOpenAiModelDiscovery implements ModelDiscovery {
     @Override
     public List<ModelDescription> discoverModels(ModelDiscoveryFilter filter) {
         ModelsListResponse response = listModels();
-        List<ModelDescription> models = response.data.stream()
-                .map(this::mapToModelDescription)
-                .collect(Collectors.toList());
+        List<ModelDescription> models =
+                response.data.stream().map(this::mapToModelDescription).collect(Collectors.toList());
 
         // Azure OpenAI doesn't support server-side filtering, so filter client-side
         if (filter != null && !filter.matchesAll()) {
@@ -132,9 +129,8 @@ public class AzureOpenAiModelDiscovery implements ModelDiscovery {
     }
 
     private ModelDescription mapToModelDescription(ModelInfo modelInfo) {
-        ModelDescription.Builder builder = ModelDescription.builder()
-                .id(modelInfo.id)
-                .provider(ModelProvider.AZURE_OPEN_AI);
+        ModelDescription.Builder builder =
+                ModelDescription.builder().id(modelInfo.id).provider(ModelProvider.AZURE_OPEN_AI);
 
         // Azure OpenAI uses id as name
         builder.name(modelInfo.id);
@@ -148,9 +144,7 @@ public class AzureOpenAiModelDiscovery implements ModelDiscovery {
     }
 
     private List<ModelDescription> filterModels(List<ModelDescription> models, ModelDiscoveryFilter filter) {
-        return models.stream()
-                .filter(model -> matchesFilter(model, filter))
-                .collect(Collectors.toList());
+        return models.stream().filter(model -> matchesFilter(model, filter)).collect(Collectors.toList());
     }
 
     private boolean matchesFilter(ModelDescription model, ModelDiscoveryFilter filter) {
@@ -162,7 +156,8 @@ public class AzureOpenAiModelDiscovery implements ModelDiscovery {
         }
 
         // Filter by required capabilities
-        if (filter.getRequiredCapabilities() != null && !filter.getRequiredCapabilities().isEmpty()) {
+        if (filter.getRequiredCapabilities() != null
+                && !filter.getRequiredCapabilities().isEmpty()) {
             if (model.getCapabilities() == null
                     || !model.getCapabilities().containsAll(filter.getRequiredCapabilities())) {
                 return false;
