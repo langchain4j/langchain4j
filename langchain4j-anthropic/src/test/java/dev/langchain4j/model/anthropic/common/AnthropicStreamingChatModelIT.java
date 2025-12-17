@@ -89,19 +89,7 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected boolean supportsJsonResponseFormat() {
-        // Anthropic does not support response format yet
-        return false;
-    }
-
-    @Override
-    protected boolean supportsJsonResponseFormatWithSchema() {
-        // Anthropic does not support response format yet
-        return false;
-    }
-
-    @Override
-    protected boolean supportsJsonResponseFormatWithRawSchema() {
-        // Anthropic does not support response format yet
+        // Anthropic does not support JSON response format without schemas yet
         return false;
     }
 
@@ -158,13 +146,6 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
         // Claude Sonnet 4.5, Opus 4.1/4.5, and Haiku 4.5 when the
         // 'structured-outputs-2025-11-13' beta header is enabled.
         super.should_execute_a_tool_then_answer_respecting_JSON_response_format_with_schema(model);
-    }
-
-    @Override
-    @Disabled("Anthropic does not reliably support schemaless JSON structured outputs.")
-    protected void should_respect_JSON_response_format(StreamingChatModel model) {
-        // Anthropic does not support schemaless structured outputs - this test would be flaky.
-        // https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/increase-consistency
     }
 
     @Override

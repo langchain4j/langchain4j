@@ -3,6 +3,7 @@ package dev.langchain4j.model.anthropic.common;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_HAIKU_4_5_20251001;
 
+import java.util.List;
 import dev.langchain4j.model.anthropic.AnthropicChatModel;
 import dev.langchain4j.model.anthropic.AnthropicChatResponseMetadata;
 import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
@@ -11,8 +12,6 @@ import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.TokenUsage;
-import java.util.List;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -84,6 +83,12 @@ class AnthropicChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
+    protected boolean supportsJsonResponseFormat() {
+        // Anthropic does not support JSON response format without a schema yet
+        return false;
+    }
+
+    @Override
     @ParameterizedTest
     @MethodSource("modelsSupportingStructuredOutputs")
     @EnabledIf("supportsToolsAndJsonResponseFormatWithSchema")
@@ -92,19 +97,6 @@ class AnthropicChatModelIT extends AbstractChatModelIT {
         // Claude Sonnet 4.5, Opus 4.1/4.5, and Haiku 4.5 when the
         // 'structured-outputs-2025-11-13' beta header is enabled.
         super.should_execute_a_tool_then_answer_respecting_JSON_response_format_with_schema(model);
-    }
-
-    @Override
-    protected boolean supportsJsonResponseFormat() {
-        // Anthropic does not support response format yet
-        return false;
-    }
-
-    @Override
-    @Disabled("Anthropic does not reliably support schemaless JSON structured outputs.")
-    protected void should_respect_JSON_response_format(ChatModel model) {
-        // Anthropic does not support schemaless structured outputs - this test would be flaky.
-        // https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/increase-consistency
     }
 
     @Override
