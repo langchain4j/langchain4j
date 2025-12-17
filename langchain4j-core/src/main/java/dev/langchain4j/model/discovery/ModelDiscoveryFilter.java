@@ -188,7 +188,7 @@ public class ModelDiscoveryFilter {
         }
 
         /**
-         * Filter by minimum context window size. Only models with context windows >= this value will be returned.
+         * Filter by minimum context window size. Only models with context windows greater than or equal to this value will be returned.
          *
          * @param minContextWindow Minimum context window in tokens
          * @return this builder
@@ -199,7 +199,7 @@ public class ModelDiscoveryFilter {
         }
 
         /**
-         * Filter by maximum context window size. Only models with context windows <= this value will be returned.
+         * Filter by maximum context window size. Only models with context windows less than or equal to this value will be returned.
          *
          * @param maxContextWindow Maximum context window in tokens
          * @return this builder
