@@ -2,6 +2,7 @@ package dev.langchain4j.model.anthropic.internal.client;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
+import dev.langchain4j.model.anthropic.AnthropicChatResponseMetadata;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCountTokensRequest;
 import dev.langchain4j.http.client.sse.CancellationUnsupportedHandle;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
@@ -37,6 +38,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -108,9 +111,15 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
     @Override
     public AnthropicCreateMessageResponse createMessage(AnthropicCreateMessageRequest request) {
+        return createMessageWithRawResponse(request).parsedResponse();
+    }
+
+    @Override
+    public ParsedAndRawResponse createMessageWithRawResponse(AnthropicCreateMessageRequest request) {
         HttpRequest httpRequest = toHttpRequest(toJson(request), "messages");
-        SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
-        return fromJson(successfulHttpResponse.body(), AnthropicCreateMessageResponse.class);
+        SuccessfulHttpResponse rawResponse = httpClient.execute(httpRequest);
+        AnthropicCreateMessageResponse parsedResponse = fromJson(rawResponse.body(), AnthropicCreateMessageResponse.class);
+        return new ParsedAndRawResponse(parsedResponse, rawResponse);
     }
 
     @Override
@@ -144,6 +153,14 @@ public class DefaultAnthropicClient extends AnthropicClient {
             volatile String stopReason;
             volatile StreamingHandle streamingHandle;
 
+            final AtomicReference<SuccessfulHttpResponse> rawHttpResponse = new AtomicReference<>();
+            final Queue<ServerSentEvent> rawServerSentEvents = new ConcurrentLinkedQueue<>();
+
+            @Override
+            public void onOpen(SuccessfulHttpResponse response) {
+                rawHttpResponse.set(response);
+            }
+
             @Override
             public void onEvent(ServerSentEvent event) {
                 onEvent(event, new ServerSentEventContext(new CancellationUnsupportedHandle()));
@@ -172,6 +189,8 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 } else if ("error".equals(event.event())) {
                     handleError(event.data());
                 }
+
+                rawServerSentEvents.add(event);
             }
 
             private void handleMessageStart(AnthropicStreamingData data) {
@@ -373,7 +392,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
             }
 
             private ChatResponseMetadata createMetadata(AnthropicTokenUsage tokenUsage, FinishReason finishReason) {
-                var metadataBuilder = ChatResponseMetadata.builder();
+                var metadataBuilder = AnthropicChatResponseMetadata.builder();
                 if (responseId.get() != null) {
                     metadataBuilder.id(responseId.get());
                 }
@@ -385,6 +404,12 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 }
                 if (finishReason != null) {
                     metadataBuilder.finishReason(finishReason);
+                }
+                if (rawHttpResponse.get() != null) {
+                    metadataBuilder.rawHttpResponse(rawHttpResponse.get());
+                }
+                if (!rawServerSentEvents.isEmpty()) {
+                    metadataBuilder.rawServerSentEvents(new ArrayList<>(rawServerSentEvents));
                 }
                 return metadataBuilder.build();
             }

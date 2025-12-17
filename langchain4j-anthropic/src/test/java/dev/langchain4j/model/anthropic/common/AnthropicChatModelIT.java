@@ -4,10 +4,12 @@ import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_HAIKU_4_5_20251001;
 
 import dev.langchain4j.model.anthropic.AnthropicChatModel;
+import dev.langchain4j.model.anthropic.AnthropicChatResponseMetadata;
 import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.List;
 import org.junit.jupiter.api.Disabled;
@@ -72,6 +74,11 @@ class AnthropicChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
+    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(ChatModel model) {
+        return AnthropicChatResponseMetadata.class;
+    }
+
+    @Override
     protected List<ChatModel> modelsSupportingStructuredOutputs() {
         return List.of(ANTHROPIC_SCHEMA_MODEL);
     }
@@ -85,6 +92,12 @@ class AnthropicChatModelIT extends AbstractChatModelIT {
         // Claude Sonnet 4.5, Opus 4.1/4.5, and Haiku 4.5 when the
         // 'structured-outputs-2025-11-13' beta header is enabled.
         super.should_execute_a_tool_then_answer_respecting_JSON_response_format_with_schema(model);
+    }
+
+    @Override
+    protected boolean supportsJsonResponseFormat() {
+        // Anthropic does not support response format yet
+        return false;
     }
 
     @Override
