@@ -43,6 +43,7 @@ import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
+import dev.langchain4j.service.tool.ToolSearchStrategy;
 import dev.langchain4j.spi.services.AiServicesFactory;
 import java.util.Collection;
 import java.util.List;
@@ -539,6 +540,12 @@ public abstract class AiServices<T> {
      */
     public AiServices<T> toolExecutionErrorHandler(ToolExecutionErrorHandler handler) {
         context.toolService.executionErrorHandler(handler);
+        return this;
+    }
+
+    // TODO
+    public AiServices<T> toolSearchStrategy(ToolSearchStrategy toolSearchStrategy) {
+        context.toolService.toolSearchStrategy(toolSearchStrategy);
         return this;
     }
 

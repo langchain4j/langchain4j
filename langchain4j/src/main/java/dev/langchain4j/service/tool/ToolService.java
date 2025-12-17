@@ -5,7 +5,10 @@ import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
+import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toSet;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ReturnBehavior;
@@ -69,6 +72,7 @@ public class ToolService {
     private ToolExecutionErrorHandler executionErrorHandler;
     private Function<ToolExecutionRequest, ToolExecutionResultMessage> toolHallucinationStrategy =
             HallucinatedToolNameStrategy.THROW_EXCEPTION;
+    private ToolSearchStrategy toolSearchStrategy; // TODO default?
 
     public void hallucinatedToolNameStrategy(
             Function<ToolExecutionRequest, ToolExecutionResultMessage> toolHallucinationStrategy) {
@@ -183,12 +187,21 @@ public class ToolService {
         return getOrDefault(executionErrorHandler, DEFAULT_TOOL_EXECUTION_ERROR_HANDLER);
     }
 
+    /**
+     * @since 1.10.0
+     */
+    public void toolSearchStrategy(ToolSearchStrategy toolSearchStrategy) {
+        this.toolSearchStrategy = toolSearchStrategy;
+    }
+
     public ToolServiceContext createContext(InvocationContext invocationContext, UserMessage userMessage) {
         if (this.toolProvider == null) {
             return this.toolSpecifications.isEmpty()
                     ? ToolServiceContext.Empty.INSTANCE
                     : ToolServiceContext.builder()
-                            .toolSpecifications(this.toolSpecifications)
+                            // TODO include all tools that were used in the current conversation?
+                            .toolSpecifications(this.toolSearchStrategy != null ? toolSearchStrategy.toolSearchTools() : this.toolSpecifications)
+                            .allToolSpecifications(this.toolSpecifications)
                             .toolExecutors(this.toolExecutors)
                             .immediateReturnTools(this.immediateReturnTools)
                             .build();
@@ -218,7 +231,9 @@ public class ToolService {
             }
         }
         return ToolServiceContext.builder()
-                .toolSpecifications(toolSpecifications)
+                // TODO include all tools that were used in the current conversation?
+                .toolSpecifications(toolSearchStrategy != null ? toolSearchStrategy.toolSearchTools() : toolSpecifications)
+                .allToolSpecifications(toolSpecifications)
                 .toolExecutors(toolExecutors)
                 .immediateReturnTools(immediateReturnTools)
                 .build();
@@ -248,6 +263,7 @@ public class ToolService {
 
             AiMessage aiMessage = chatResponse.aiMessage();
 
+            // TODO should tool search tool call be persisted? Only when other tools are called as well?
             if (chatMemory != null) {
                 chatMemory.add(aiMessage);
             } else {
@@ -259,12 +275,62 @@ public class ToolService {
                 break;
             }
 
+            // TODO should we return intermediate response with tool search tool?
             intermediateResponses.add(chatResponse);
+
+            // TODO refactor
+            List<ToolSpecification> foundTools = new ArrayList<>();
+            if (toolSearchStrategy != null) {
+
+                // TODO cache?
+                Set<String> toolSearchToolNames = toolSearchStrategy.toolSearchTools().stream()
+                        .map(ToolSpecification::name)
+                        .collect(toSet());
+
+                List<ToolExecutionRequest> toolSearches = aiMessage.toolExecutionRequests().stream()
+                        .filter(it -> toolSearchToolNames.contains(it.name()))
+                        .toList();
+                if (!toolSearches.isEmpty()) {
+
+                    ToolSearchRequest toolSearchRequest = ToolSearchRequest.builder()
+                            .toolSearchRequests(toolSearches)
+                            .availableTools(toolServiceContext.allToolSpecifications())
+                            .invocationContext(invocationContext)
+                            .build();
+                    ToolSearchResult toolSearchResult = toolSearchStrategy.search(toolSearchRequest);
+                    foundTools.addAll(toolSearchResult.foundTools());
+
+                    // TODO instead remove toolSearch request from AiMessage or the whole AiMessage altogether?
+                    List<ToolExecutionResultMessage> searchResultMessages = toolSearchResult.searchResultMessages();
+                    if (searchResultMessages.isEmpty()) {
+                        // TODO good idea?
+                        searchResultMessages = new ArrayList<>();
+                        for (ToolExecutionRequest toolSearch : toolSearches) {
+                            searchResultMessages.add(ToolExecutionResultMessage.from(toolSearch, "Found following tools: " + toolSearchResult.foundTools().stream().map(ToolSpecification::name).collect(joining(", ")))); // TODO
+                        }
+                    }
+                    if (!isNullOrEmpty(searchResultMessages)) { // TODO remove check?
+                        if (chatMemory != null) {
+                            chatMemory.add(new ArrayList<>(searchResultMessages)); // TODO
+                        } else {
+                            messages.addAll(searchResultMessages);
+                        }
+                    }
+
+                    // TODO test when there are actual tool requests. Either with eager tools or later in the conversation
+                    List<ToolExecutionRequest> realToolRequests = aiMessage.toolExecutionRequests().stream()
+                            .filter(it -> !toolSearchToolNames.contains(it.name()))
+                            .toList();
+                    aiMessage = aiMessage.toBuilder()
+                            .toolExecutionRequests(realToolRequests)
+                            .build();
+                }
+            }
 
             Map<ToolExecutionRequest, ToolExecutionResult> toolResults =
                     execute(aiMessage.toolExecutionRequests(), toolServiceContext.toolExecutors(), invocationContext);
 
-            boolean immediateToolReturn = true;
+            boolean immediateToolReturn = !aiMessage.toolExecutionRequests().isEmpty();
             for (Map.Entry<ToolExecutionRequest, ToolExecutionResult> entry : toolResults.entrySet()) {
                 ToolExecutionRequest request = entry.getKey();
                 ToolExecutionResult result = entry.getValue();
@@ -313,6 +379,16 @@ public class ToolService {
 
             if (chatMemory != null) {
                 messages = chatMemory.messages();
+            }
+
+            if (!foundTools.isEmpty()) {
+                List<ToolSpecification> allTools = new ArrayList<>();
+                // TODO check for duplication/overlap
+                allTools.addAll(parameters.toolSpecifications()); // TODO?
+                allTools.addAll(foundTools);
+                parameters = parameters.overrideWith(ChatRequestParameters.builder() // TODO toBuilder instead?
+                        .toolSpecifications(allTools)
+                        .build());
             }
 
             ChatRequest chatRequest = context.chatRequestTransformer.apply(

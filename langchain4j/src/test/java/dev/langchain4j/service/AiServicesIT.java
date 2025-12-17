@@ -1,5 +1,6 @@
 package dev.langchain4j.service;
 
+import static dev.langchain4j.MockitoUtils.ignoreInteractions;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O;
@@ -91,32 +92,12 @@ public class AiServicesIT {
         verifyNoMoreInteractions(moderationModel);
     }
 
-    public static void verifyNoMoreInteractionsFor(ChatModel model) {
-        try {
-            verify(model, atLeastOnce()).doChat(any());
-        } catch (Throwable ignored) {
-            // don't care if it was called or not
-        }
-        try {
-            verify(model, atLeastOnce()).defaultRequestParameters();
-        } catch (Throwable ignored) {
-            // don't care if it was called or not
-        }
-        try {
-            verify(model, atLeastOnce()).supportedCapabilities();
-        } catch (Throwable ignored) {
-            // don't care if it was called or not
-        }
-        try {
-            verify(model, atLeastOnce()).listeners();
-        } catch (Throwable ignored) {
-            // don't care if it was called or not
-        }
-        try {
-            verify(model, atLeastOnce()).provider();
-        } catch (Throwable ignored) {
-            // don't care if it was called or not
-        }
+    public static void verifyNoMoreInteractionsFor(ChatModel model) { // TODO name: verifyNoMoreImportantInteractions
+        ignoreInteractions(model).doChat(any());
+        ignoreInteractions(model).defaultRequestParameters();
+        ignoreInteractions(model).supportedCapabilities();
+        ignoreInteractions(model).listeners();
+        ignoreInteractions(model).provider();
         verifyNoMoreInteractions(model);
     }
 

@@ -22,6 +22,10 @@ import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.service.Result;
+import dev.langchain4j.service.SystemMessage;
+import dev.langchain4j.service.tool.ToolSearchRequest;
+import dev.langchain4j.service.tool.ToolSearchResult;
+import dev.langchain4j.service.tool.ToolSearchStrategy;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,6 +33,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
+import org.mockito.InOrder;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalTime;
@@ -38,6 +43,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import static dev.langchain4j.MockitoUtils.ignoreInteractions;
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
 import static dev.langchain4j.service.common.AbstractAiServiceWithToolsIT.ToolWithEnumParameter.TemperatureUnit.CELSIUS;
@@ -49,6 +55,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -1145,5 +1152,184 @@ public abstract class AbstractAiServiceWithToolsIT {
         assertThatThrownBy(() -> assistant.chat(text))
                 .isInstanceOf(IllegalConfigurationException.class)
                 .hasMessageContaining("add");
+    }
+
+    // TODO for streaming as well
+    // TODO test with ToolProvider (e.g., MCP)
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_support_tool_search_tool(ChatModel chatModel) {
+
+        // given
+        class Tools {
+
+            @Tool
+            int add(int a, int b) {
+                return a + b;
+            }
+
+            @Tool
+            String getWeather(String city) {
+                if (city.equals("London")) { // TODO simplify
+                    return "rainy";
+                } else if (city.equals("Barcelona")) {
+                    return "sunny";
+                } else {
+                    return "cloudy";
+                }
+            }
+
+            @Tool
+            String getTime(String city) {
+                return "12:34:56";
+            }
+        }
+
+        String toolSearchToolName = "search_tools";
+
+        ToolSpecification toolSearchTool = ToolSpecification.builder()
+                .name(toolSearchToolName)
+                .description("Searches for relevant tools for the given search query")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("query")
+                        .required("query")
+                        .build())
+                .build();
+
+        ToolSearchStrategy toolSearchStrategy = new ToolSearchStrategy() {
+
+            @Override
+            public List<ToolSpecification> toolSearchTools() {
+                return List.of(toolSearchTool);
+            }
+
+            @Override
+            public ToolSearchResult search(ToolSearchRequest request) {
+                assertThat(request.toolSearchRequests()).hasSize(1);
+
+                if (request.toolSearchRequests().get(0).arguments().toLowerCase().contains("weather")) {
+                    List<ToolSpecification> foundTools = request.availableTools().stream()
+                            .filter(tool -> tool.name().toLowerCase().contains("weather"))
+                            .toList();
+                    return new ToolSearchResult(foundTools);
+                }
+
+                if (request.toolSearchRequests().get(0).arguments().toLowerCase().contains("time")) {
+                    List<ToolSpecification> foundTools = request.availableTools().stream()
+                            .filter(tool -> tool.name().toLowerCase().contains("time"))
+                            .toList();
+                    return new ToolSearchResult(foundTools);
+                }
+
+                throw new IllegalStateException();
+            }
+        };
+
+        ChatModel spyChatModel = spy(chatModel);
+        Tools spyTools = spy(new Tools());
+        ToolSearchStrategy spyToolSearchStrategy = spy(toolSearchStrategy);
+
+        interface Assistant {
+
+            @SystemMessage("Use search_tools if you need to discover other available tools")
+            String chat(String userMessage);
+        }
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(spyChatModel)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
+                .tools(spyTools)
+                .toolSearchStrategy(spyToolSearchStrategy)
+                .build();
+
+        // when
+        String answer = assistant.chat("What is the weather in London?");
+
+        // then
+        assertThat(answer).contains("rain");
+
+        InOrder inOrder = inOrder(spyChatModel, spyToolSearchStrategy, spyTools);
+
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                request.toolSpecifications().size() == 1
+                        && containsTool(request, toolSearchTool)));
+
+        inOrder.verify(spyToolSearchStrategy).search(argThat(request ->
+                request.toolSearchRequests().size() == 1
+                        && request.toolSearchRequests().get(0).name().equals(toolSearchTool.name())
+                        && request.toolSearchRequests().get(0).arguments().toLowerCase().contains("weather")
+        ));
+
+        // TODO verify messages
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                request.toolSpecifications().size() == 2
+                        && containsTool(request, toolSearchTool)
+                        && containsTool(request, "getWeather")
+        ));
+
+        inOrder.verify(spyTools).getWeather("London");
+
+        // TODO verify messages
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                request.toolSpecifications().size() == 2
+                        && containsTool(request, toolSearchTool)
+                        && containsTool(request, "getWeather")
+        ));
+
+        verifyNoMoreInteractionsFor(spyChatModel);
+        ignoreInteractions(spyToolSearchStrategy).toolSearchTools();
+        verifyNoMoreInteractions(spyToolSearchStrategy);
+        verifyNoMoreInteractions(spyTools);
+
+        // when
+        String answer2 = assistant.chat("What is the time in London?");
+
+        // then
+        assertThat(answer2).contains("12", "34");
+
+        // TODO verify messages
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                request.toolSpecifications().size() == 1 // TODO 2?
+                        && containsTool(request, toolSearchTool)
+//                        && containsTool(request, "getWeather")
+        ));
+
+        inOrder.verify(spyToolSearchStrategy).search(argThat(request ->
+                request.toolSearchRequests().size() == 1
+                        && request.toolSearchRequests().get(0).name().equals(toolSearchTool.name())
+                        && request.toolSearchRequests().get(0).arguments().toLowerCase().contains("time")
+        ));
+
+        // TODO verify messages
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                request.toolSpecifications().size() == 2 // TODO 3?
+                        && containsTool(request, toolSearchTool)
+//                        && containsTool(request, "getWeather")
+                        && containsTool(request, "getTime")
+        ));
+
+        inOrder.verify(spyTools).getTime("London");
+
+        // TODO verify messages
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                request.toolSpecifications().size() == 2 // TODO 3
+                        && containsTool(request, toolSearchTool)
+//                        && containsTool(request, "getWeather")
+                        && containsTool(request, "getTime")
+        ));
+
+         verifyNoMoreInteractionsFor(spyChatModel);
+        ignoreInteractions(spyToolSearchStrategy).toolSearchTools();
+        verifyNoMoreInteractions(spyToolSearchStrategy);
+        verifyNoMoreInteractions(spyTools);
+    }
+
+    private static boolean containsTool(ChatRequest chatRequest, ToolSpecification toolSpecification) {
+        return chatRequest.toolSpecifications().stream().anyMatch(t -> t.equals(toolSpecification));
+    }
+
+    private static boolean containsTool(ChatRequest chatRequest, String toolName) {
+        return chatRequest.toolSpecifications().stream().anyMatch(t -> t.name().equals(toolName));
     }
 }
