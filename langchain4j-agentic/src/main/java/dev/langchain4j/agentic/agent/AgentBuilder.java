@@ -246,6 +246,10 @@ public class AgentBuilder<T> {
         return this;
     }
 
+    boolean hasNonDefaultChatMemory() {
+        return chatMemoryProvider != null;
+    }
+
     public AgentBuilder<T> tools(Object... objectsWithTools) {
         this.objectsWithTools = objectsWithTools;
         return this;

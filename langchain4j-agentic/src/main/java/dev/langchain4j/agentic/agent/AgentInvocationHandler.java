@@ -10,6 +10,7 @@ import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.service.AiServiceContext;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
+import dev.langchain4j.service.memory.ChatMemoryService;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
@@ -75,7 +76,9 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
         if (method.getDeclaringClass() == ChatMemoryAccess.class) {
             return switch (method.getName()) {
                 case "getChatMemory" ->
-                    context.hasChatMemory() ? context.chatMemoryService.getChatMemory(args[0]) : null;
+                    context.hasChatMemory() && (ChatMemoryService.DEFAULT.equals(args[0]) || builder.hasNonDefaultChatMemory()) ?
+                            context.chatMemoryService.getChatMemory(args[0]) :
+                            null;
                 case "evictChatMemory" ->
                     context.hasChatMemory() && context.chatMemoryService.evictChatMemory(args[0]) != null;
                 default ->
