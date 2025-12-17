@@ -24,6 +24,23 @@ class InternalAnthropicHelperTest {
     }
 
     @Test
+    void validate_WithSchemalessJsonResponseFormat_ShouldThrowException() {
+        // Given
+        ChatRequestParameters parameters = ChatRequestParameters.builder()
+                .responseFormat(ResponseFormat.JSON)
+                .build();
+
+        // When
+        UnsupportedFeatureException exception =
+                assertThrows(UnsupportedFeatureException.class, () -> validate(parameters));
+
+        // Then
+        assertEquals(
+                "Schemaless JSON response format is not supported by Anthropic",
+                exception.getMessage());
+    }
+
+    @Test
     void validate_WithFrequencyPenalty_ShouldThrowException() {
         // Given
         ChatRequestParameters parameters = ChatRequestParameters.builder()
@@ -68,6 +85,8 @@ class InternalAnthropicHelperTest {
                 assertThrows(UnsupportedFeatureException.class, () -> validate(parameters));
 
         // Then
-        assertEquals("Frequency Penalty, Presence Penalty are not supported by Anthropic", exception.getMessage());
+        assertEquals(
+                "Frequency Penalty, Presence Penalty are not supported by Anthropic",
+                exception.getMessage());
     }
 }

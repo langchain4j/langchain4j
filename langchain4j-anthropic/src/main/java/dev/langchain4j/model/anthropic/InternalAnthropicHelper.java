@@ -5,6 +5,7 @@ import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.to
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSystemPrompt;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicToolChoice;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicTools;
+import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.TEXT;
 
 import dev.langchain4j.Internal;
@@ -35,6 +36,10 @@ class InternalAnthropicHelper {
         }
         if (parameters.presencePenalty() != null) {
             unsupportedFeatures.add("Presence Penalty");
+        }
+        if (parameters.responseFormat() != null && parameters.responseFormat().type() == JSON
+                && parameters.responseFormat().jsonSchema() == null) {
+            unsupportedFeatures.add("Schemaless JSON response format");
         }
 
         if (!unsupportedFeatures.isEmpty()) {
