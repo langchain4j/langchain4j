@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.atLeast;
 
+import dev.langchain4j.model.anthropic.AnthropicChatResponseMetadata;
 import dev.langchain4j.model.anthropic.AnthropicStreamingChatModel;
 import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -14,6 +15,7 @@ import java.util.List;
 
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -64,8 +66,13 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected Class<? extends TokenUsage> tokenUsageType(StreamingChatModel streamingChatModel) {
+    protected Class<? extends TokenUsage> tokenUsageType(StreamingChatModel model) {
         return AnthropicTokenUsage.class;
+    }
+
+    @Override
+    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(StreamingChatModel model) {
+        return AnthropicChatResponseMetadata.class;
     }
 
     @Override

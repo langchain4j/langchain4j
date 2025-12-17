@@ -13,7 +13,7 @@
     <name>LangChain4j :: Integration :: OVHcloud AI</name>
 
     <properties>
-        <skipOvhAIITs>false</skipOvhAIITs>
+        <skipOvhAIITs>${skipITs}</skipOvhAIITs>
     </properties>
 
     <dependencies>
@@ -46,18 +46,6 @@
 
 
         <!-- test dependencies -->
-
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-engine</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-params</artifactId>
-            <scope>test</scope>
-        </dependency>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>

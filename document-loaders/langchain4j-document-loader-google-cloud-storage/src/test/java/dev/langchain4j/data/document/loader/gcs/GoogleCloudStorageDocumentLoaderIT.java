@@ -8,7 +8,9 @@ import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.parser.TextDocumentParser;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+@EnabledIfEnvironmentVariable(named = "GCP_PROJECT_ID", matches = ".+")
 public class GoogleCloudStorageDocumentLoaderIT {
 
     public static final String BUCKET_NAME = "genai-java-demos-langchain4j-test-bucket";

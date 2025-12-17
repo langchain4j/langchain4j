@@ -14,9 +14,25 @@
     <name>LangChain4j :: Integration :: Azure ACADS</name>
     <description>Implementation of a code execution engine using Azure ACA Dynamic Sessions</description>
 
-    <properties>
-        <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
-    </properties>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>net.java.dev.jna</groupId>
+                <artifactId>jna</artifactId>
+                <version>5.17.0</version>
+            </dependency>
+            <dependency>
+                <groupId>net.java.dev.jna</groupId>
+                <artifactId>jna-platform</artifactId>
+                <version>5.17.0</version>
+            </dependency>
+            <dependency>
+                <groupId>com.microsoft.azure</groupId>
+                <artifactId>msal4j</artifactId>
+                <version>1.23.1</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
 
@@ -52,32 +68,6 @@
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-        </dependency>
-
-        <!-- Test dependencies -->
-
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-api</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-engine</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-core</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.assertj</groupId>
-            <artifactId>assertj-core</artifactId>
-            <scope>test</scope>
         </dependency>
 
     </dependencies>

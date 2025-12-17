@@ -11,10 +11,6 @@
     <artifactId>langchain4j-mongodb-atlas</artifactId>
     <name>LangChain4j :: Integration :: MongoDB Atlas</name>
 
-    <properties>
-        <skipMongoDbAtlasITs>false</skipMongoDbAtlasITs>
-    </properties>
-
     <dependencies>
 
         <dependency>
@@ -46,20 +42,6 @@
         </dependency>
 
         <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-engine</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <!-- junit-jupiter-params should be declared explicitly
-        to run parameterized tests inherited from EmbeddingStore*IT-->
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-params</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-embeddings-all-minilm-l6-v2-q</artifactId>
             <scope>test</scope>
@@ -78,17 +60,5 @@
         </dependency>
 
     </dependencies>
-
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-failsafe-plugin</artifactId>
-                <configuration>
-                    <skipTests>${skipMongoDbAtlasITs}</skipTests>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
 
 </project>

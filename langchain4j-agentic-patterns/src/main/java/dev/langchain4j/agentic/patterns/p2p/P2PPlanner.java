@@ -3,6 +3,7 @@ package dev.langchain4j.agentic.patterns.p2p;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
 import dev.langchain4j.agentic.planner.PlanningContext;
 import dev.langchain4j.agentic.planner.Planner;
@@ -157,5 +158,10 @@ public class P2PPlanner implements Planner {
             throw new IllegalArgumentException("ChatModel must be provided for P2PAgent to extract variables from user's prompt.");
         }
         return AiServices.builder(VariablesExtractorAgent.class).chatModel(chatModel).build();
+    }
+
+    @Override
+    public AgenticSystemTopology topology() {
+        return AgenticSystemTopology.STAR;
     }
 }

@@ -2,6 +2,7 @@ package dev.langchain4j.model.anthropic;
 
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.ASSISTANT;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.USER;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.retainKeys;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicMessages;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicTool;
 import static java.util.Arrays.asList;
@@ -19,7 +20,9 @@ import java.net.URI;
 import java.util.AbstractMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -196,7 +199,25 @@ class AnthropicMapperTest {
                                 USER,
                                 asList(
                                         new AnthropicTextContent("Describe this image"),
-                                        AnthropicImageContent.fromUrl(DICE_IMAGE_URL))))));
+                                        AnthropicImageContent.fromUrl(DICE_IMAGE_URL))))),
+                Arguments.of(
+                        singletonList(
+                                UserMessage.from(PdfFileContent.from(URI.create("https://example.com/document.pdf")))),
+                        singletonList(new AnthropicMessage(
+                                USER, singletonList(AnthropicPdfContent.fromUrl("https://example.com/document.pdf"))))),
+                Arguments.of(
+                        singletonList(UserMessage.from(PdfFileContent.from("base64data", "application/pdf"))),
+                        singletonList(new AnthropicMessage(
+                                USER, singletonList(AnthropicPdfContent.fromBase64("application/pdf", "base64data"))))),
+                Arguments.of(
+                        singletonList(UserMessage.from(
+                                TextContent.from("Analyze this document"),
+                                PdfFileContent.from(URI.create("https://example.com/document.pdf")))),
+                        singletonList(new AnthropicMessage(
+                                USER,
+                                asList(
+                                        new AnthropicTextContent("Analyze this document"),
+                                        AnthropicPdfContent.fromUrl("https://example.com/document.pdf"))))));
     }
 
     @ParameterizedTest
@@ -238,6 +259,15 @@ class AnthropicMapperTest {
                                         .required(emptyList())
                                         .build())
                                 .build()));
+    }
+
+    @Test
+    void should_retain_keys() {
+        assertThat(retainKeys(Map.of(), Set.of())).isEqualTo(Map.of());
+        assertThat(retainKeys(Map.of("one", "one"), Set.of("one"))).isEqualTo(Map.of("one", "one"));
+        assertThat(retainKeys(Map.of("one", "one"), Set.of("two"))).isEqualTo(Map.of());
+        assertThat(retainKeys(Map.of("one", "one", "two", "two"), Set.of("one")))
+                .isEqualTo(Map.of("one", "one"));
     }
 
     @SafeVarargs

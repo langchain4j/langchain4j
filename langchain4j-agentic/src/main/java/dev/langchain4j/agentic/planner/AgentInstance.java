@@ -17,7 +17,16 @@ public interface AgentInstance {
 
     String outputKey();
 
+    boolean async();
+
     List<AgentArgument> arguments();
 
+    AgentInstance parent();
     List<AgentInstance> subagents();
+
+    default boolean leaf() {
+        return subagents().isEmpty();
+    }
+
+    AgenticSystemTopology topology();
 }

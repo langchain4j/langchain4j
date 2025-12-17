@@ -23,7 +23,7 @@ jobs:
           echo "$modules"
 
           # number of parallel groups
-          N=10
+          N=7
 
           # round-robin grouping
           matrix=$(echo "$modules" | awk -v N="$N" '
@@ -62,7 +62,7 @@ jobs:
           cache: 'maven'
 
       - name: Authenticate to Google Cloud
-        # Required for Google modules
+        # Required for Google modules (e.g., langchain4j-vertex-ai)
         uses: google-github-actions/auth@v2
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
@@ -77,18 +77,15 @@ jobs:
           modules="${{ join(matrix.modules, ',') }}"
           echo "Building modules: $modules"
           
-          ## compile and verify javadocs
-          mvn -B -U -T8C test javadoc:aggregate \
-            -pl "${modules}" -am \
-            --fail-at-end
+          ## compile and install ALL modules to avoid running integration tests on dependent modules in the step below
+          mvn -B -U -T8C -DskipTests -DskipITs -DembeddingsSkipCache install
 
-          ## run integration tests
           mvn -B -U verify \
-            -pl "${modules}" -am \
-            --fail-at-end \
-            -DskipLocalAiITs -DskipMilvusITs -DskipOllamaITs -DskipJlamaITs \
-            -Dmaven.test.failure.ignore=true \
+            -pl "${modules}" \
+            -DskipAzureAiSearchITs -DskipJlamaITs -DskipLocalAiITs -DskipMilvusITs -DskipOllamaITs -DskipOracleITs -DskipVespaITs \
+            --fail-at-end -Dmaven.test.failure.ignore=true \
             -Djunit.jupiter.extensions.autodetection.enabled=true \
+            -DembeddingsSkipCache \
             -Dtinylog.writer.level=info
 
         env:
@@ -129,7 +126,7 @@ jobs:
           WEAVIATE_API_KEY: ${{ secrets.WEAVIATE_API_KEY }}
           WEAVIATE_HOST: ${{ secrets.WEAVIATE_HOST }}
           CI_DELAY_SECONDS_AZURE_AI_SEARCH: 4
-          CI_DELAY_SECONDS_AZURE_OPENAI: 2
+          CI_DELAY_SECONDS_AZURE_OPENAI: 3
           CI_DELAY_SECONDS_BEDROCK: 3
           CI_DELAY_SECONDS_GITHUB_MODELS: 7
           CI_DELAY_SECONDS_GOOGLE_AI_GEMINI_BATCH: 5
