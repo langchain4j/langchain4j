@@ -7,7 +7,10 @@ import dev.langchain4j.model.anthropic.AnthropicChatModelName;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceWithJsonSchemaIT;
 import java.util.List;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 @EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".+")
 public class AnthropicAiServiceWithJsonSchemaIT extends AbstractAiServiceWithJsonSchemaIT {
@@ -23,4 +26,10 @@ public class AnthropicAiServiceWithJsonSchemaIT extends AbstractAiServiceWithJso
                 .logRequests(true)
                 .build());
     }
+
+    @Disabled("Claude cannot do it properly.")
+    @Override
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_extract_pojo_with_local_date_time_fields(ChatModel model) {}
 }
