@@ -6,7 +6,7 @@ import dev.langchain4j.agentic.internal.A2AClientBuilder;
 import dev.langchain4j.agentic.internal.A2AService;
 import dev.langchain4j.agentic.internal.AgentExecutor;
 import dev.langchain4j.agentic.internal.AgentInvoker;
-import dev.langchain4j.agentic.internal.AgentSpecification;
+import dev.langchain4j.agentic.internal.InternalAgent;
 import java.lang.reflect.Method;
 import java.util.Optional;
 
@@ -20,13 +20,13 @@ public class DefaultA2AService implements A2AService {
     }
 
     @Override
-    public <T> A2AClientBuilder<T> a2aBuilder(final String a2aServerUrl, final Class<T> agentServiceClass) {
+    public <T> A2AClientBuilder<T> a2aBuilder(String a2aServerUrl, Class<T> agentServiceClass) {
         return new DefaultA2AClientBuilder<>(a2aServerUrl, agentServiceClass);
     }
 
     @Override
-    public Optional<AgentExecutor> methodToAgentExecutor(final AgentSpecification agent, final Method method) {
-        if (agent instanceof A2AClientSpecification a2aAgent) {
+    public Optional<AgentExecutor> methodToAgentExecutor(InternalAgent agent, Method method) {
+        if (agent instanceof A2AClientInstance a2aAgent) {
             Optional<AgentExecutor> a2aAgentExecutor = getAnnotatedMethod(method, Agent.class)
                     .map(agentMethod -> new AgentExecutor(new A2AClientAgentInvoker(a2aAgent, agentMethod), a2aAgent));
             if (a2aAgentExecutor.isEmpty()) {

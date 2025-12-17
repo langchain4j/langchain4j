@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Execute this script to deploy the needed Azure OpenAI models to execute the integration tests.
+# Execute this script to deploy the needed Microsoft Foundry models to execute the integration tests.
 #
 # For this, you need to have Azure CLI installed: https://learn.microsoft.com/cli/azure/install-azure-cli
 #
@@ -91,17 +91,17 @@ az cognitiveservices account deployment create \
 echo "Deploying Image Models"
 echo "======================"
 
-echo "Deploying a dall-e-3 model..."
+echo "Deploying a gpt-image-1-mini model..."
 echo "----------------------"
 az cognitiveservices account deployment create \
   --name "$AI_SERVICE" \
   --resource-group "$RESOURCE_GROUP" \
-  --deployment-name "dall-e-3" \
-  --model-name "dall-e-3" \
-  --model-version "3.0"  \
+  --deployment-name "gpt-image-1-mini" \
+  --model-name "gpt-image-1-mini" \
+  --model-version "2025-10-06"  \
   --model-format "OpenAI" \
   --sku-capacity 1 \
-  --sku-name "Standard"
+  --sku-name "GlobalStandard"
 
 echo "Storing the key and endpoint in environment variables..."
 echo "--------------------------------------------------------"

@@ -1,6 +1,8 @@
 package dev.langchain4j.agentic;
 
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
@@ -76,6 +78,15 @@ public class Models {
             case OPENAI -> OPENAI_PLANNER_MODEL;
             case OLLAMA -> OLLAMA_PLANNER_MODEL;
             case GEMINI -> GEMINI_PLANNER_MODEL;
+        };
+    }
+
+    public static ChatModel throwingModel() {
+        return new ChatModel() {
+            @Override
+            public ChatResponse chat(final ChatRequest chatRequest) {
+                throw new RuntimeException("ERROR");
+            }
         };
     }
 }

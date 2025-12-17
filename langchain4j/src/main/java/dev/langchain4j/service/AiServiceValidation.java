@@ -2,6 +2,7 @@ package dev.langchain4j.service;
 
 import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.invocation.LangChain4jManaged;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -82,17 +83,15 @@ public class AiServiceValidation {
         }
 
         boolean invocationParametersExist = false;
+        boolean chatRequestParametersExist = false;
 
         for (Parameter p : parameters) {
-            if (InvocationParameters.class.isAssignableFrom(p.getType())) {
-                if (invocationParametersExist) {
-                    throw illegalConfiguration(
-                            "The method '%s' of the class %s has more than one parameter of type %s",
-                            method.getName(),
-                            serviceClass.getName(),
-                            InvocationParameters.class.getName());
-                }
+            if (checkParamTypeUniqueness(InvocationParameters.class, p, serviceClass, method, invocationParametersExist)) {
                 invocationParametersExist = true;
+                continue;
+            }
+            if (checkParamTypeUniqueness(ChatRequestParameters.class, p, serviceClass, method, chatRequestParametersExist)) {
+                chatRequestParametersExist = true;
                 continue;
             }
 
@@ -104,7 +103,7 @@ public class AiServiceValidation {
                     p.getAnnotation(MemoryId.class) == null && p.getAnnotation(UserName.class) == null) {
                 throw illegalConfiguration(
                         "The parameter '%s' in the method '%s' of the class %s must be annotated with either "
-                                + "%s, %s, %s, or %s, or it should be of type %s",
+                                + "%s, %s, %s, or %s, or it should be of type %s or %s",
                         p.getName(),
                         method.getName(),
                         serviceClass.getName(),
@@ -112,8 +111,23 @@ public class AiServiceValidation {
                         V.class.getName(),
                         MemoryId.class.getName(),
                         UserName.class.getName(),
-                        InvocationParameters.class.getName());
+                        InvocationParameters.class.getName(),
+                        ChatRequestParameters.class.getName());
             }
         }
+    }
+
+    private static boolean checkParamTypeUniqueness(Class<?> paramType, Parameter p, Class<?> serviceClass, Method method, boolean paramExists) {
+        if (paramType.isAssignableFrom(p.getType())) {
+            if (paramExists) {
+                throw illegalConfiguration(
+                        "The method '%s' of the class %s has more than one parameter of type %s",
+                        method.getName(),
+                        serviceClass.getName(),
+                        paramType.getName());
+            }
+            return true;
+        }
+        return false;
     }
 }
