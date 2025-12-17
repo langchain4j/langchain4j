@@ -151,6 +151,10 @@ public class ToolService {
         this.maxSequentialToolsInvocations = maxSequentialToolsInvocations;
     }
 
+    public Integer maxSequentialToolsInvocations() {
+        return maxSequentialToolsInvocations;
+    }
+
     /**
      * @since 1.4.0
      */
