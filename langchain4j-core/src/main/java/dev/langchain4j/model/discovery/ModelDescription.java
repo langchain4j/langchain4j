@@ -3,6 +3,9 @@ package dev.langchain4j.model.discovery;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import java.time.Instant;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -38,15 +41,18 @@ public class ModelDescription {
         this.provider = Objects.requireNonNull(builder.provider, "provider must not be null");
         this.description = builder.description;
         this.type = builder.type;
-        this.capabilities = builder.capabilities != null ? Set.copyOf(builder.capabilities) : Set.of();
+        this.capabilities = builder.capabilities != null ?
+            Collections.unmodifiableSet(new HashSet<>(builder.capabilities)) : Set.of();
         this.pricing = builder.pricing;
         this.contextWindow = builder.contextWindow;
         this.maxOutputTokens = builder.maxOutputTokens;
         this.createdAt = builder.createdAt;
         this.owner = builder.owner;
         this.deprecated = builder.deprecated;
-        this.supportedLanguages = builder.supportedLanguages != null ? Set.copyOf(builder.supportedLanguages) : Set.of();
-        this.additionalMetadata = builder.additionalMetadata != null ? Map.copyOf(builder.additionalMetadata) : Map.of();
+        this.supportedLanguages = builder.supportedLanguages != null ?
+            Collections.unmodifiableSet(new HashSet<>(builder.supportedLanguages)) : Set.of();
+        this.additionalMetadata = builder.additionalMetadata != null ?
+            Collections.unmodifiableMap(new HashMap<>(builder.additionalMetadata)) : Map.of();
     }
 
     public static Builder builder() {

@@ -1,6 +1,8 @@
 package dev.langchain4j.model.discovery;
 
 import dev.langchain4j.model.chat.Capability;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
@@ -35,8 +37,10 @@ public class ModelDiscoveryFilter {
     private final Boolean includeDeprecated;
 
     private ModelDiscoveryFilter(Builder builder) {
-        this.types = builder.types != null ? Set.copyOf(builder.types) : null;
-        this.requiredCapabilities = builder.requiredCapabilities != null ? Set.copyOf(builder.requiredCapabilities) : null;
+        this.types = builder.types != null ?
+            Collections.unmodifiableSet(new HashSet<>(builder.types)) : null;
+        this.requiredCapabilities = builder.requiredCapabilities != null ?
+            Collections.unmodifiableSet(new HashSet<>(builder.requiredCapabilities)) : null;
         this.minContextWindow = builder.minContextWindow;
         this.maxContextWindow = builder.maxContextWindow;
         this.namePattern = builder.namePattern;
