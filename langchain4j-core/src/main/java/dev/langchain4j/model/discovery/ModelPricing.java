@@ -28,18 +28,36 @@ public class ModelPricing {
         return new Builder();
     }
 
+    /**
+     * Cost per 1 million input (prompt) tokens.
+     * May be null if input pricing is not available or not applicable.
+     */
     public BigDecimal getInputPricePerMillionTokens() {
         return inputPricePerMillionTokens;
     }
 
+    /**
+     * Cost per 1 million output (completion) tokens.
+     * May be null if output pricing is not available or not applicable.
+     */
     public BigDecimal getOutputPricePerMillionTokens() {
         return outputPricePerMillionTokens;
     }
 
+    /**
+     * Currency in which prices are denominated.
+     * Defaults to USD if not explicitly set.
+     *
+     * @return the currency, never null
+     */
     public Currency getCurrency() {
         return currency;
     }
 
+    /**
+     * URL to the provider's official pricing page for detailed or updated pricing information.
+     * May be null if no pricing URL is available.
+     */
     public String getPricingUrl() {
         return pricingUrl;
     }
@@ -75,26 +93,54 @@ public class ModelPricing {
         private Currency currency;
         private String pricingUrl;
 
+        /**
+         * Sets the cost per 1 million input (prompt) tokens.
+         *
+         * @param inputPricePerMillionTokens the price, may be null
+         */
         public Builder inputPricePerMillionTokens(BigDecimal inputPricePerMillionTokens) {
             this.inputPricePerMillionTokens = inputPricePerMillionTokens;
             return this;
         }
 
+        /**
+         * Sets the cost per 1 million output (completion) tokens.
+         *
+         * @param outputPricePerMillionTokens the price, may be null
+         */
         public Builder outputPricePerMillionTokens(BigDecimal outputPricePerMillionTokens) {
             this.outputPricePerMillionTokens = outputPricePerMillionTokens;
             return this;
         }
 
+        /**
+         * Sets the currency in which prices are denominated.
+         * If not set, defaults to USD.
+         *
+         * @param currency the currency
+         */
         public Builder currency(Currency currency) {
             this.currency = currency;
             return this;
         }
 
+        /**
+         * Sets the currency in which prices are denominated using an ISO 4217 currency code.
+         * If not set, defaults to USD.
+         *
+         * @param currencyCode ISO 4217 currency code (e.g., "USD", "EUR")
+         * @throws IllegalArgumentException if the currency code is invalid
+         */
         public Builder currency(String currencyCode) {
             this.currency = Currency.getInstance(currencyCode);
             return this;
         }
 
+        /**
+         * Sets the URL to the provider's official pricing page.
+         *
+         * @param pricingUrl the URL, may be null
+         */
         public Builder pricingUrl(String pricingUrl) {
             this.pricingUrl = pricingUrl;
             return this;

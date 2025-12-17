@@ -47,26 +47,64 @@ public class ModelDiscoveryFilter {
         return new Builder();
     }
 
+    /**
+     * Model types to include in results.
+     * If null or empty, type filtering is not applied.
+     *
+     * @return set of model types, or null if not filtering by type
+     */
     public Set<ModelType> getTypes() {
         return types;
     }
 
+    /**
+     * Capabilities that models must support.
+     * Models must support ALL specified capabilities to match.
+     * If null or empty, capability filtering is not applied.
+     *
+     * @return set of required capabilities, or null if not filtering by capabilities
+     */
     public Set<Capability> getRequiredCapabilities() {
         return requiredCapabilities;
     }
 
+    /**
+     * Minimum context window size (inclusive).
+     * Models with smaller context windows are excluded.
+     *
+     * @return minimum context window in tokens, or null if no minimum is set
+     */
     public Integer getMinContextWindow() {
         return minContextWindow;
     }
 
+    /**
+     * Maximum context window size (inclusive).
+     * Models with larger context windows are excluded.
+     *
+     * @return maximum context window in tokens, or null if no maximum is set
+     */
     public Integer getMaxContextWindow() {
         return maxContextWindow;
     }
 
+    /**
+     * Regular expression pattern for matching model names.
+     * Only models whose names match this pattern are included.
+     *
+     * @return regex pattern string, or null if not filtering by name
+     */
     public String getNamePattern() {
         return namePattern;
     }
 
+    /**
+     * Whether to include deprecated models in results.
+     * If false, deprecated models are excluded.
+     * If null (default), deprecation status is ignored.
+     *
+     * @return true to include, false to exclude, or null to ignore deprecation status
+     */
     public Boolean getIncludeDeprecated() {
         return includeDeprecated;
     }

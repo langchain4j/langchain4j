@@ -53,14 +53,25 @@ public class ModelDescription {
         return new Builder();
     }
 
+    /**
+     * Unique identifier for the model as defined by the provider.
+     * For example: "gpt-4", "claude-3-opus-20240229", "llama2".
+     */
     public String getId() {
         return id;
     }
 
+    /**
+     * Human-readable display name for the model.
+     * May be the same as the ID for some providers.
+     */
     public String getName() {
         return name;
     }
 
+    /**
+     * Optional textual description of the model's characteristics and intended use cases.
+     */
     public String getDescription() {
         return description;
     }
@@ -69,42 +80,87 @@ public class ModelDescription {
         return provider;
     }
 
+    /**
+     * Category of the model (e.g., CHAT, EMBEDDING, IMAGE_GENERATION).
+     * May be null if the provider doesn't categorize models or the type is unknown.
+     */
     public ModelType getType() {
         return type;
     }
 
+    /**
+     * Set of features supported by this model (e.g., JSON schema response format, tool calling).
+     * Returns an empty set if capabilities are unknown, never null.
+     */
     public Set<Capability> getCapabilities() {
         return capabilities;
     }
 
+    /**
+     * Cost information for using this model, typically per million tokens.
+     * May be null if pricing information is not available or not applicable.
+     */
     public ModelPricing getPricing() {
         return pricing;
     }
 
+    /**
+     * Maximum number of tokens that can be processed in a single request (input + output).
+     * Also known as the token window or context length.
+     * May be null if this information is not provided by the provider.
+     */
     public Integer getContextWindow() {
         return contextWindow;
     }
 
+    /**
+     * Maximum number of tokens the model can generate in a single response.
+     * This is typically smaller than the context window.
+     * May be null if this information is not provided by the provider.
+     */
     public Integer getMaxOutputTokens() {
         return maxOutputTokens;
     }
 
+    /**
+     * Timestamp when the model was created or released by the provider.
+     * May be null if this information is not available.
+     */
     public Instant getCreatedAt() {
         return createdAt;
     }
 
+    /**
+     * Organization or entity that created or owns the model.
+     * For example: "openai", "anthropic", "meta".
+     * May be null if this information is not provided.
+     */
     public String getOwner() {
         return owner;
     }
 
+    /**
+     * Indicates whether this model has been deprecated by the provider.
+     * A value of true means the model may be removed in the future.
+     * Null indicates deprecation status is unknown.
+     */
     public Boolean isDeprecated() {
         return deprecated;
     }
 
+    /**
+     * Set of natural language codes (e.g., "en", "fr", "ja") that the model supports.
+     * Returns an empty set if language information is not available, never null.
+     */
     public Set<String> getSupportedLanguages() {
         return supportedLanguages;
     }
 
+    /**
+     * Provider-specific metadata that doesn't fit into standard fields.
+     * Allows providers to include custom information about their models.
+     * Returns an empty map if no additional metadata is available, never null.
+     */
     public Map<String, Object> getAdditionalMetadata() {
         return additionalMetadata;
     }
@@ -150,11 +206,17 @@ public class ModelDescription {
         private Set<String> supportedLanguages;
         private Map<String, Object> additionalMetadata;
 
+        /**
+         * Required. Unique identifier for the model as defined by the provider.
+         */
         public Builder id(String id) {
             this.id = id;
             return this;
         }
 
+        /**
+         * Required. Human-readable display name for the model.
+         */
         public Builder name(String name) {
             this.name = name;
             return this;
@@ -165,6 +227,9 @@ public class ModelDescription {
             return this;
         }
 
+        /**
+         * Required. The provider that offers this model.
+         */
         public Builder provider(ModelProvider provider) {
             this.provider = provider;
             return this;
@@ -185,11 +250,17 @@ public class ModelDescription {
             return this;
         }
 
+        /**
+         * Maximum number of tokens (input + output) that can be processed in a single request.
+         */
         public Builder contextWindow(Integer contextWindow) {
             this.contextWindow = contextWindow;
             return this;
         }
 
+        /**
+         * Maximum number of tokens the model can generate in a single response.
+         */
         public Builder maxOutputTokens(Integer maxOutputTokens) {
             this.maxOutputTokens = maxOutputTokens;
             return this;
@@ -205,21 +276,35 @@ public class ModelDescription {
             return this;
         }
 
+        /**
+         * Whether this model has been deprecated and may be removed in the future.
+         */
         public Builder deprecated(Boolean deprecated) {
             this.deprecated = deprecated;
             return this;
         }
 
+        /**
+         * Natural language codes (e.g., "en", "fr") that the model supports.
+         */
         public Builder supportedLanguages(Set<String> supportedLanguages) {
             this.supportedLanguages = supportedLanguages;
             return this;
         }
 
+        /**
+         * Provider-specific metadata that doesn't fit into standard fields.
+         */
         public Builder additionalMetadata(Map<String, Object> additionalMetadata) {
             this.additionalMetadata = additionalMetadata;
             return this;
         }
 
+        /**
+         * Constructs a ModelDescription instance.
+         *
+         * @throws NullPointerException if id, name, or provider is null
+         */
         public ModelDescription build() {
             return new ModelDescription(this);
         }
