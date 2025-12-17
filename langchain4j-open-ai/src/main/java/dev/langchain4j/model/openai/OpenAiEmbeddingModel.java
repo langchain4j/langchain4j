@@ -74,6 +74,7 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         return OpenAiEmbeddingModelName.knownDimension(modelName());
     }
 
+    @Override
     public String modelName() {
         return modelName;
     }

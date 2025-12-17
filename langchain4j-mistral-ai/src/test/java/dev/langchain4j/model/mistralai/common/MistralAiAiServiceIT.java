@@ -4,8 +4,11 @@ import static dev.langchain4j.model.mistralai.common.MistralAiChatModelIT.MISTRA
 
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceIT;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+
 import java.util.List;
 
+@EnabledIfEnvironmentVariable(named = "MISTRAL_AI_API_KEY", matches = ".+")
 class MistralAiAiServiceIT extends AbstractAiServiceIT {
 
     @Override

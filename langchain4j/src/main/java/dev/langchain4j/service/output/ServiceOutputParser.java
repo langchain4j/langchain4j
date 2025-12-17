@@ -37,11 +37,7 @@ public class ServiceOutputParser {
             returnType = resolveFirstGenericParameterType(returnType);
         }
 
-        // In the case of returnType = List<String> these two would be set like:
-        // rawClass = List.class
-        // typeArgumentClass = String.class
         Class<?> rawClass = getRawClass(returnType);
-        Class<?> typeArgumentClass = resolveFirstGenericParameterClass(returnType);
 
         if (rawClass == Response.class) {
             // legacy
@@ -57,11 +53,19 @@ public class ServiceOutputParser {
             return aiMessage;
         }
 
-        String text = aiMessage.text();
+        return parseText(returnType, rawClass, aiMessage.text());
+    }
+
+    public Object parseText(Type returnType, String text) {
+        return parseText(returnType, getRawClass(returnType), text);
+    }
+
+    private Object parseText(Type returnType, Class<?> rawClass, String text) {
         if (rawClass == String.class) {
             return text;
         }
 
+        Class<?> typeArgumentClass = resolveFirstGenericParameterClass(returnType);
         OutputParser<?> outputParser = outputParserFactory.get(rawClass, typeArgumentClass);
         return outputParser.parse(text);
     }

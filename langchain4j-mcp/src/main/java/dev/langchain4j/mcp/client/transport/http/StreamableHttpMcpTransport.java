@@ -24,6 +24,8 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
+import javax.net.ssl.SSLContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,7 +34,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
     private static final Logger DEFAULT_TRAFFIC_LOG = LoggerFactory.getLogger("MCP");
     private static final Logger LOG = LoggerFactory.getLogger(StreamableHttpMcpTransport.class);
     private final String url;
-    private final Map<String, String> customHeaders;
+    private final Supplier<Map<String, String>> customHeadersSupplier;
     private final boolean logResponses;
     private final boolean logRequests;
     private final Logger trafficLog;
@@ -40,6 +42,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
     private final AtomicReference<CompletableFuture<JsonNode>> initializeInProgress = new AtomicReference<>(null);
     private volatile McpOperationHandler operationHandler;
     private final HttpClient httpClient;
+    private final SSLContext sslContext;
     private McpInitializeRequest initializeRequest;
     private final AtomicReference<String> mcpSessionId = new AtomicReference<>();
 
@@ -49,12 +52,16 @@ public class StreamableHttpMcpTransport implements McpTransport {
         logResponses = builder.logResponses;
         trafficLog = getOrDefault(builder.logger, DEFAULT_TRAFFIC_LOG);
         Duration timeout = getOrDefault(builder.timeout, Duration.ofSeconds(60));
-        customHeaders = getOrDefault(builder.customHeaders, Map.of());
-        HttpClient.Builder clientBuilder = HttpClient.newBuilder();
+        customHeadersSupplier = getOrDefault(builder.customHeadersSupplier, () -> Map::of);
+        sslContext = builder.sslContext;
+        HttpClient.Builder clientBuilder = HttpClient.newBuilder().connectTimeout(timeout);
         if (builder.executor != null) {
             clientBuilder.executor(builder.executor);
         }
-        httpClient = clientBuilder.connectTimeout(timeout).build();
+        if (sslContext != null) {
+            clientBuilder.sslContext(sslContext);
+        }
+        httpClient = clientBuilder.build();
     }
 
     @Override
@@ -87,7 +94,10 @@ public class StreamableHttpMcpTransport implements McpTransport {
         if (sessionId != null && !(message instanceof McpInitializeRequest)) {
             builder.header("Mcp-Session-Id", sessionId);
         }
-        customHeaders.forEach(builder::header);
+        Map<String, String> headers = customHeadersSupplier.get();
+        if (headers != null) {
+            headers.forEach(builder::header);
+        }
         return builder.uri(URI.create(url))
                 .header("Content-Type", "application/json")
                 .header("Accept", "application/json,text/event-stream")
@@ -215,15 +225,20 @@ public class StreamableHttpMcpTransport implements McpTransport {
         }
     }
 
+    public static Builder builder() {
+        return new Builder();
+    }
+
     public static class Builder {
 
         private Executor executor;
         private String url;
-        private Map<String, String> customHeaders;
+        private Supplier<Map<String, String>> customHeadersSupplier;
         private Duration timeout;
         private boolean logRequests = false;
         private boolean logResponses = false;
         private Logger logger;
+        private SSLContext sslContext;
 
         /**
          * The URL of the MCP server.
@@ -237,7 +252,16 @@ public class StreamableHttpMcpTransport implements McpTransport {
          * The request headers of the MCP server.
          */
         public StreamableHttpMcpTransport.Builder customHeaders(Map<String, String> customHeaders) {
-            this.customHeaders = customHeaders;
+            this.customHeadersSupplier = () -> customHeaders;
+            return this;
+        }
+
+        /**
+         * A supplier for dynamic request headers of the MCP server.
+         * The supplier is called for each request, allowing headers to be updated dynamically.
+         */
+        public StreamableHttpMcpTransport.Builder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
             return this;
         }
 
@@ -284,6 +308,15 @@ public class StreamableHttpMcpTransport implements McpTransport {
          */
         public StreamableHttpMcpTransport.Builder executor(Executor executor) {
             this.executor = executor;
+            return this;
+        }
+
+        /**
+         * Supplies a custom {@link SSLContext} used when establishing HTTPS connections to the MCP server,
+         * allowing private CAs or certificates.
+         */
+        public StreamableHttpMcpTransport.Builder sslContext(SSLContext sslContext) {
+            this.sslContext = sslContext;
             return this;
         }
 

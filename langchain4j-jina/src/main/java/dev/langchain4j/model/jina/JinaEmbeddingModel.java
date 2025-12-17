@@ -95,6 +95,11 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
         return Response.from(embeddings, tokenUsage);
     }
 
+    @Override
+    public String modelName() {
+        return this.modelName;
+    }
+
     public static class JinaEmbeddingModelBuilder {
         private String baseUrl;
         private String apiKey;

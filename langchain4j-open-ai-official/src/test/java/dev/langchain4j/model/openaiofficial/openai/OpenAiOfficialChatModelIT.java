@@ -9,11 +9,10 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatRequestParameters;
-import java.util.List;
-
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatResponseMetadata;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -57,6 +56,16 @@ class OpenAiOfficialChatModelIT extends AbstractChatModelIT {
     @Override
     protected Class<? extends TokenUsage> tokenUsageType(ChatModel chatModel) {
         return OpenAiOfficialTokenUsage.class;
+    }
+
+    @Override
+    protected String catImageUrl() {
+        return "https://images.all-free-download.com/images/graphicwebp/cat_hangover_relax_213869.webp";
+    }
+
+    @Override
+    protected String diceImageUrl() {
+        return "https://images.all-free-download.com/images/graphicwebp/double_six_dice_196084.webp";
     }
 
     @Test

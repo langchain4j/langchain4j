@@ -91,7 +91,7 @@ Just point to your document(s), and LangChain4j will do its magic.
 If you need a customizable RAG, skip to the [next section](/tutorials/rag#core-rag-apis).
 
 If you are using Quarkus, there is an even easier way to do Easy RAG.
-Please read [Quarkus documentation](https://docs.quarkiverse.io/quarkus-langchain4j/dev/easy-rag.html).
+Please read [Quarkus documentation](https://docs.quarkiverse.io/quarkus-langchain4j/dev/rag-easy-rag.html).
 
 :::note
 The quality of such "Easy RAG" will, of course, be lower than that of a tailored RAG setup.
@@ -105,7 +105,7 @@ adjusting and customizing more and more aspects.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>1.8.0-beta15</version>
+    <version>1.9.1-beta17</version>
 </dependency>
 ```
 
@@ -171,8 +171,8 @@ Therefore, we can easily load it into memory and run it in the same process usin
 
 Yes, that's right, you can convert text into embeddings entirely offline, without any external services,
 in the same JVM process.
-LangChain4j offers 5 popular embedding models
-[out-of-the-box](https://github.com/langchain4j/langchain4j-embeddings).
+LangChain4j offers some popular embedding models
+[out-of-the-box](/integrations/embedding-models/in-process).
 :::
 
 3. All `TextSegment`-`Embedding` pairs are stored in the `EmbeddingStore`.

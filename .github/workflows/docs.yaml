@@ -1,6 +1,11 @@
 name: "Documentation: build and deploy"
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
   repository_dispatch:
     types: [ trigger-docs-build-and-deploy ]
   workflow_dispatch:

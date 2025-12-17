@@ -35,6 +35,7 @@ import java.net.URI;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.skyscreamer.jsonassert.JSONAssert;
 
@@ -274,7 +275,7 @@ public class ConverterTest {
                 .temperature(0.3)
                 .toolChoice(ToolChoice.AUTO)
                 .responseFormat(ResponseFormat.TEXT)
-                .timeLimit(Duration.ofMillis(30))
+                .timeout(Duration.ofMillis(30))
                 .topK(1)
                 .topP(0.4)
                 .projectId("projectId")
@@ -285,6 +286,11 @@ public class ConverterTest {
                 .toolChoiceName("toolChoiceName")
                 .toolSpecifications(ToolSpecification.builder().name("test").build())
                 .topLogprobs(10)
+                .guidedChoice("a", "b")
+                .guidedGrammar("guidedGrammar")
+                .guidedRegex("guidedRegex")
+                .lengthPenalty(1.1)
+                .repetitionPenalty(1.2)
                 .build();
 
         var p = Converter.toChatParameters(parameters);
@@ -303,6 +309,11 @@ public class ConverterTest {
         assertEquals(5, p.getSeed());
         assertEquals("spaceId", p.getSpaceId());
         assertEquals(10, p.getTopLogprobs());
+        assertEquals(Set.of("a", "b"), p.getGuidedChoice());
+        assertEquals("guidedGrammar", p.getGuidedGrammar());
+        assertEquals("guidedRegex", p.getGuidedRegex());
+        assertEquals(1.1f, p.getLengthPenalty());
+        assertEquals(1.2f, p.getRepetitionPenalty());
         assertNull(p.getResponseFormat());
     }
 

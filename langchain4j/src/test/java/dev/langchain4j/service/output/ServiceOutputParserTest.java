@@ -256,7 +256,8 @@ class ServiceOutputParserTest {
 
         // When / Then
         assertThatThrownBy(() -> sut.parse(chatResponseStub, KeyProperty.class))
-                .isExactlyInstanceOf(OutputParsingException.class);
+                .isExactlyInstanceOf(OutputParsingException.class)
+                .hasRootCauseInstanceOf(JsonProcessingException.class);
     }
 
     static class KeyPropertyWrapper {

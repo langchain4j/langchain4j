@@ -1,6 +1,3 @@
-<!-- Please note that the maintainer of this repository (@dliubarskyi) will be offline from 25 October till 10 November.
-Please expect delays with processing. Thank you for your understanding. -->
-
 <!--
 Thank you so much for your contribution!
 

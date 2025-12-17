@@ -123,7 +123,7 @@ public class WatsonxStreamingChatModelTest {
 
         withChatServiceMock(() -> {
             var streamingChatModel = WatsonxStreamingChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelId")
                     .projectId("projectId")
                     .spaceId("spaceId")
@@ -176,11 +176,16 @@ public class WatsonxStreamingChatModelTest {
                 assertEquals("spaceId", parameters.getSpaceId());
                 assertEquals(List.of(), parameters.getStop());
                 assertNull(parameters.getTemperature());
-                assertEquals(10000, parameters.getTimeLimit());
+                assertNull(parameters.getTimeLimit());
                 assertNull(parameters.getToolChoice());
                 assertNull(parameters.getToolChoiceOption());
                 assertNull(parameters.getTopLogprobs());
                 assertNull(parameters.getTopP());
+                assertNull(parameters.getGuidedChoice());
+                assertNull(parameters.getGuidedGrammar());
+                assertNull(parameters.getGuidedRegex());
+                assertNull(parameters.getRepetitionPenalty());
+                assertNull(parameters.getLengthPenalty());
             } catch (Exception e) {
                 fail(e);
             }
@@ -219,7 +224,7 @@ public class WatsonxStreamingChatModelTest {
 
         withChatServiceMock(() -> {
             StreamingChatModel streamingChatModel = WatsonxStreamingChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelId")
                     .projectId("projectId")
                     .spaceId("spaceId")
@@ -301,7 +306,7 @@ public class WatsonxStreamingChatModelTest {
 
         withChatServiceMock(() -> {
             StreamingChatModel streamingChatModel = WatsonxStreamingChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelId")
                     .projectId("projectId")
                     .spaceId("spaceId")
@@ -377,7 +382,7 @@ public class WatsonxStreamingChatModelTest {
 
         withChatServiceMock(() -> {
             var streamingChatModel = WatsonxStreamingChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelId")
                     .projectId("projectId")
                     .spaceId("spaceId")
@@ -432,7 +437,7 @@ public class WatsonxStreamingChatModelTest {
                 assertEquals("spaceId", parameters.getSpaceId());
                 assertEquals(List.of(), parameters.getStop());
                 assertNull(parameters.getTemperature());
-                assertEquals(10000, parameters.getTimeLimit());
+                assertNull(parameters.getTimeLimit());
                 assertNull(parameters.getToolChoice());
                 assertNull(parameters.getToolChoiceOption());
                 assertNull(parameters.getTopLogprobs());
@@ -466,7 +471,7 @@ public class WatsonxStreamingChatModelTest {
 
         withChatServiceMock(() -> {
             StreamingChatModel streamingChatModel = WatsonxStreamingChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelId")
                     .projectId("projectId")
                     .spaceId("spaceId")
@@ -590,7 +595,7 @@ public class WatsonxStreamingChatModelTest {
 
         withChatServiceMock(() -> {
             var streamingChatModel = WatsonxStreamingChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelId")
                     .projectId("projectId")
                     .spaceId("spaceId")
@@ -644,7 +649,7 @@ public class WatsonxStreamingChatModelTest {
     void testChatRequestWithTopK() {
 
         var streamingChatModel = WatsonxStreamingChatModel.builder()
-                .url("https://test.com")
+                .baseUrl("https://test.com")
                 .modelName("modelId")
                 .projectId("project-id")
                 .spaceId("space-id")
@@ -678,7 +683,7 @@ public class WatsonxStreamingChatModelTest {
                         }));
 
         assertThrows(UnsupportedFeatureException.class, () -> WatsonxStreamingChatModel.builder()
-                .url("https://test.com")
+                .baseUrl("https://test.com")
                 .modelName("modelId")
                 .projectId("project-id")
                 .spaceId("space-id")
@@ -692,7 +697,7 @@ public class WatsonxStreamingChatModelTest {
     void testSupportCapabilities() {
 
         var chatModel = WatsonxStreamingChatModel.builder()
-                .url("https://test.com")
+                .baseUrl("https://test.com")
                 .modelName("modelId")
                 .projectId("project-id")
                 .spaceId("space-id")
