@@ -53,7 +53,7 @@ public class AnthropicOutputFormat {
 
     @Override
     public String toString() {
-        return "AnthropicResponseFormat[" + "type" + type + ", jsonSchema" + schema + "]";
+        return "AnthropicOutputFormat[" + "type" + type + ", jsonSchema" + schema + "]";
     }
 
     @Override
