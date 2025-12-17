@@ -151,7 +151,7 @@ public class ToolService {
         this.maxSequentialToolsInvocations = maxSequentialToolsInvocations;
     }
 
-    public Integer maxSequentialToolsInvocations() {
+    public int maxSequentialToolsInvocations() {
         return maxSequentialToolsInvocations;
     }
 
@@ -238,12 +238,12 @@ public class ToolService {
         List<ToolExecution> toolExecutions = new ArrayList<>();
         List<ChatResponse> intermediateResponses = new ArrayList<>();
 
-        int executionsLeft = maxSequentialToolsInvocations;
+        int sequentialToolsInvocationsLeft = maxSequentialToolsInvocations;
         while (true) {
 
-            if (executionsLeft-- == 0) {
+            if (sequentialToolsInvocationsLeft-- == 0) {
                 throw runtime(
-                        "Something is wrong, exceeded %s sequential tool executions", maxSequentialToolsInvocations);
+                        "Something is wrong, exceeded %s sequential tool invocations", maxSequentialToolsInvocations);
             }
 
             AiMessage aiMessage = chatResponse.aiMessage();

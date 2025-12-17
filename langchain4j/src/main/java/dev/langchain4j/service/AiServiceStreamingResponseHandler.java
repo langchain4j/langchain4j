@@ -88,7 +88,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private final List<String> responseBuffer = new ArrayList<>();
     private final boolean hasOutputGuardrails;
 
-    private int executionsLeft;
+    private int sequentialToolsInvocationsLeft;
 
     private record ToolRequestResult(ToolExecutionRequest request, ToolExecutionResult result) {}
 
@@ -109,7 +109,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             TokenUsage tokenUsage,
             List<ToolSpecification> toolSpecifications,
             Map<String, ToolExecutor> toolExecutors,
-            Integer executionsLeft,
+            int sequentialToolsInvocationsLeft,
             ToolArgumentsErrorHandler toolArgumentsErrorHandler,
             ToolExecutionErrorHandler toolExecutionErrorHandler,
             Executor toolExecutor,
@@ -142,7 +142,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
         this.hasOutputGuardrails = context.guardrailService().hasOutputGuardrails(methodKey);
 
-        this.executionsLeft = executionsLeft;
+        this.sequentialToolsInvocationsLeft = sequentialToolsInvocationsLeft;
     }
 
     @Override
@@ -240,9 +240,9 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
         if (aiMessage.hasToolExecutionRequests()) {
 
-            if (executionsLeft-- == 0) {
+            if (sequentialToolsInvocationsLeft-- == 0) {
                 throw runtime(
-                        "Something is wrong, exceeded %s sequential tool executions",
+                        "Something is wrong, exceeded %s sequential tool invocations",
                         context.toolService.maxSequentialToolsInvocations());
             }
 
@@ -317,7 +317,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     TokenUsage.sum(tokenUsage, chatResponse.metadata().tokenUsage()),
                     toolSpecifications,
                     toolExecutors,
-                    executionsLeft,
+                    sequentialToolsInvocationsLeft,
                     toolArgumentsErrorHandler,
                     toolExecutionErrorHandler,
                     toolExecutor,

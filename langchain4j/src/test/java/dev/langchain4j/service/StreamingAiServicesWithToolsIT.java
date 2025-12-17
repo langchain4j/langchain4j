@@ -84,6 +84,19 @@ class StreamingAiServicesWithToolsIT {
                 .build());
     }
 
+    static Stream<StreamingChatModel> modelsWithoutParallelToolCalling() {
+        return Stream.of(OpenAiStreamingChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(GPT_4_O_MINI)
+                .parallelToolCalls(false) // to force the model to call tools sequentially
+                .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
+                .build());
+    }
+
     interface Assistant {
 
         TokenStream chat(String userMessage);
@@ -1313,6 +1326,48 @@ class StreamingAiServicesWithToolsIT {
         verify(spyTools).getWeather(invocationParameters2);
     }
 
+    @ParameterizedTest
+    @MethodSource("modelsWithoutParallelToolCalling")
+    public void should_not_execute_multiple_tools_sequentially_when_maxSequentialToolsInvocations_is_exceeded(
+            StreamingChatModel model) throws Exception {
+
+        // given
+        int maxSequentialToolsInvocations = 1; // only one sequential tool call allowed, the test makes 3
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .streamingChatModel(model)
+                .tools(new TransactionService())
+                .maxSequentialToolsInvocations(maxSequentialToolsInvocations)
+                .build();
+
+        AtomicInteger n = new AtomicInteger(0);
+        CompletableFuture<Throwable> future = new CompletableFuture<>();
+
+        // when
+        assistant
+                .chat("What are the amounts of transactions T001 and T002?")
+                .beforeToolExecution(toolExecutionRequest -> {
+                    final int index = n.incrementAndGet();
+                    assertThat(index).isLessThanOrEqualTo(maxSequentialToolsInvocations);
+                })
+                .onToolExecuted(toolExecutionResult -> {
+                    final int index = n.get();
+                    assertThat(index).isLessThanOrEqualTo(maxSequentialToolsInvocations);
+                })
+                .onError(future::complete)
+                .onCompleteResponse(ignored -> {
+                    future.completeExceptionally(new IllegalStateException("onCompleteResponse must not be called"));
+                })
+                .start();
+
+        // then
+        assertThat(future.get(30, SECONDS))
+                .isExactlyInstanceOf(RuntimeException.class)
+                .hasMessage("Something is wrong, exceeded 1 sequential tool invocations");
+    }
+
+    // TODO all other tests from sync version
+
     public static void verifyNoMoreInteractionsFor(StreamingChatModel model) {
         try {
             verify(model, atLeastOnce()).doChat(any(), any());
@@ -1341,109 +1396,4 @@ class StreamingAiServicesWithToolsIT {
         }
         verifyNoMoreInteractions(model);
     }
-
-    interface DemoService {
-        @SystemMessage("You are a helpful assistant. Please answer in English.")
-        TokenStream chat(@UserMessage String msg);
-    }
-
-    public static class MathTools {
-
-        @Tool(
-                name = "add",
-                value =
-                        """
-                                Add two numbers. The result should be like this:
-                                The sum is {result}.
-                                e.g.
-                                Q: add 2 and 3
-                                A: The sum is 5.
-                                """)
-        public Integer add(Integer a, Integer b) {
-            return a + b;
-        }
-
-        @Tool(
-                name = "subtract",
-                value =
-                        """
-                                Subtract two numbers. The result should be like this:
-                                The difference is {result}.
-                                e.g.
-                                Q: subtract 2 and 3
-                                A: The difference is -1.
-                                """)
-        public Integer subtract(Integer a, Integer b) {
-            return a - b;
-        }
-    }
-
-    @ParameterizedTest
-    @MethodSource("models")
-    public void shouldCompleteToolCallNormally(StreamingChatModel model) throws Exception {
-
-        StreamingChatModel spyModel = spy(model);
-
-        final int maxSequentialToolsInvocations = 2;
-
-        final DemoService demoService = AiServices.builder(DemoService.class)
-                .streamingChatModel(spyModel)
-                .tools(new MathTools())
-                .maxSequentialToolsInvocations(maxSequentialToolsInvocations)
-                .build();
-        final AtomicInteger n = new AtomicInteger(0);
-        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
-        demoService
-                .chat("add 10 and 6")
-                .beforeToolExecution(toolExecutionRequest -> {
-                    final int index = n.incrementAndGet();
-                    assertThat(index).isLessThanOrEqualTo(maxSequentialToolsInvocations);
-                })
-                .onToolExecuted(toolExecutionResult -> {
-                    final int index = n.get();
-                    assertThat(index).isLessThanOrEqualTo(maxSequentialToolsInvocations);
-                })
-                .onError(future::completeExceptionally)
-                .onCompleteResponse(future::complete)
-                .start();
-        assertThat(future.get(30, SECONDS).aiMessage().text()).contains("16");
-    }
-
-    @ParameterizedTest
-    @MethodSource("models")
-    public void shouldTerminateWhenMaxToolCallsReached(StreamingChatModel model) throws Exception {
-
-        StreamingChatModel spyModel = spy(model);
-
-        final int maxSequentialToolsInvocations = 2;
-
-        final DemoService demoService = AiServices.builder(DemoService.class)
-                .streamingChatModel(spyModel)
-                .tools(new MathTools())
-                .maxSequentialToolsInvocations(maxSequentialToolsInvocations)
-                .executeToolsConcurrently()
-                .build();
-        final AtomicInteger n = new AtomicInteger(0);
-        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
-        demoService
-                .chat("calculate the result of (1+5)-(2+6)")
-                .beforeToolExecution(toolExecutionRequest -> {
-                    final int index = n.incrementAndGet();
-                    assertThat(index).isLessThanOrEqualTo(maxSequentialToolsInvocations);
-                })
-                .onToolExecuted(toolExecutionResult -> {
-                    final int index = n.get();
-                    assertThat(index).isLessThanOrEqualTo(maxSequentialToolsInvocations);
-                })
-                .onError(future::completeExceptionally)
-                .onCompleteResponse(future::complete)
-                .start();
-        try {
-            future.get();
-        } catch (Exception e) {
-            assertThat(e.getMessage()).contains("Something is wrong, exceeded 2 sequential tool executions");
-        }
-    }
-
-    // TODO all other tests from sync version
 }
