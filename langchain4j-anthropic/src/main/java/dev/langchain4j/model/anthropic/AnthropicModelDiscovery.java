@@ -1,42 +1,53 @@
 package dev.langchain4j.model.anthropic;
 
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.discovery.ModelDescription;
 import dev.langchain4j.model.discovery.ModelDiscovery;
 import dev.langchain4j.model.discovery.ModelDiscoveryFilter;
-import dev.langchain4j.model.discovery.ModelPricing;
-import dev.langchain4j.model.discovery.ModelType;
-import java.math.BigDecimal;
-import java.util.ArrayList;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicModelInfo;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicModelsListResponse;
+import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
+import org.slf4j.Logger;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
-import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
  * Anthropic implementation of {@link ModelDiscovery}.
  *
- * <p>Since Anthropic does not provide a model listing API endpoint,
- * this implementation returns a curated list of known Anthropic models
- * based on their public documentation.
- *
- * <p>Note: This list may not be exhaustive and is updated periodically.
- * For the most current model information, please refer to Anthropic's
- * official documentation at https://docs.anthropic.com/
+ * <p>Uses the Anthropic Models API to dynamically discover available models.
  *
  * <p>Example:
  * <pre>{@code
- * AnthropicModelDiscovery discovery = AnthropicModelDiscovery.builder().build();
+ * AnthropicModelDiscovery discovery = AnthropicModelDiscovery.builder()
+ *     .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+ *     .build();
+ *
  * List<ModelDescription> models = discovery.discoverModels();
  * }</pre>
  */
 public class AnthropicModelDiscovery implements ModelDiscovery {
 
-    private static final List<ModelDescription> KNOWN_MODELS = buildKnownModels();
+    private final AnthropicClient client;
 
     private AnthropicModelDiscovery(Builder builder) {
-        // No configuration needed for static registry
+        this.client = AnthropicClient.builder()
+                .httpClientBuilder(builder.httpClientBuilder)
+                .baseUrl(builder.baseUrl)
+                .apiKey(builder.apiKey)
+                .version(builder.version)
+                .beta(builder.beta)
+                .timeout(builder.timeout)
+                .logRequests(builder.logRequests)
+                .logResponses(builder.logResponses)
+                .logger(builder.logger)
+                .build();
     }
 
     public static Builder builder() {
@@ -45,18 +56,22 @@ public class AnthropicModelDiscovery implements ModelDiscovery {
 
     @Override
     public List<ModelDescription> discoverModels() {
-        return new ArrayList<>(KNOWN_MODELS);
+        return discoverModels(null);
     }
 
     @Override
     public List<ModelDescription> discoverModels(ModelDiscoveryFilter filter) {
-        if (filter == null || filter.matchesAll()) {
-            return discoverModels();
+        AnthropicModelsListResponse response = client.listModels();
+        List<ModelDescription> models = response.data.stream()
+                .map(this::mapToModelDescription)
+                .collect(Collectors.toList());
+
+        // Anthropic doesn't support server-side filtering, so filter client-side
+        if (filter != null && !filter.matchesAll()) {
+            return filterModels(models, filter);
         }
 
-        return KNOWN_MODELS.stream()
-            .filter(model -> matchesFilter(model, filter))
-            .collect(Collectors.toList());
+        return models;
     }
 
     @Override
@@ -66,128 +81,38 @@ public class AnthropicModelDiscovery implements ModelDiscovery {
 
     @Override
     public boolean supportsFiltering() {
-        return false; // Client-side filtering only
+        return false; // Anthropic doesn't support server-side filtering
     }
 
-    private static List<ModelDescription> buildKnownModels() {
-        List<ModelDescription> models = new ArrayList<>();
+    private ModelDescription mapToModelDescription(AnthropicModelInfo modelInfo) {
+        ModelDescription.Builder builder = ModelDescription.builder()
+                .id(modelInfo.id)
+                .provider(ModelProvider.ANTHROPIC);
 
-        // Claude 3.5 Sonnet (Latest)
-        models.add(ModelDescription.builder()
-            .id("claude-3-5-sonnet-20241022")
-            .name("Claude 3.5 Sonnet")
-            .description("Most intelligent model, combining high intelligence with improved speed")
-            .provider(ModelProvider.ANTHROPIC)
-            .type(ModelType.CHAT)
-            .capabilities(Set.of(Capability.RESPONSE_FORMAT_JSON_SCHEMA))
-            .contextWindow(200000)
-            .maxOutputTokens(8192)
-            .pricing(ModelPricing.builder()
-                .inputPricePerMillionTokens(new BigDecimal("3.00"))
-                .outputPricePerMillionTokens(new BigDecimal("15.00"))
-                .currency("USD")
-                .pricingUrl("https://www.anthropic.com/pricing")
-                .build())
-            .owner("Anthropic")
-            .deprecated(false)
-            .build());
+        // Use display_name if available, otherwise use id
+        if (modelInfo.displayName != null && !modelInfo.displayName.isEmpty()) {
+            builder.name(modelInfo.displayName);
+        } else {
+            builder.name(modelInfo.id);
+        }
 
-        // Claude 3.5 Sonnet (Previous version)
-        models.add(ModelDescription.builder()
-            .id("claude-3-5-sonnet-20240620")
-            .name("Claude 3.5 Sonnet (June 2024)")
-            .description("Previous version of Claude 3.5 Sonnet")
-            .provider(ModelProvider.ANTHROPIC)
-            .type(ModelType.CHAT)
-            .contextWindow(200000)
-            .maxOutputTokens(8192)
-            .pricing(ModelPricing.builder()
-                .inputPricePerMillionTokens(new BigDecimal("3.00"))
-                .outputPricePerMillionTokens(new BigDecimal("15.00"))
-                .currency("USD")
-                .pricingUrl("https://www.anthropic.com/pricing")
-                .build())
-            .owner("Anthropic")
-            .deprecated(false)
-            .build());
+        // Parse created_at timestamp if available
+        if (modelInfo.createdAt != null) {
+            try {
+                Instant createdAt = Instant.from(DateTimeFormatter.ISO_INSTANT.parse(modelInfo.createdAt));
+                builder.createdAt(createdAt);
+            } catch (DateTimeParseException e) {
+                // Ignore parsing errors and leave createdAt null
+            }
+        }
 
-        // Claude 3.5 Haiku
-        models.add(ModelDescription.builder()
-            .id("claude-3-5-haiku-20241022")
-            .name("Claude 3.5 Haiku")
-            .description("Fastest and most compact model for near-instant responsiveness")
-            .provider(ModelProvider.ANTHROPIC)
-            .type(ModelType.CHAT)
-            .contextWindow(200000)
-            .maxOutputTokens(8192)
-            .pricing(ModelPricing.builder()
-                .inputPricePerMillionTokens(new BigDecimal("0.80"))
-                .outputPricePerMillionTokens(new BigDecimal("4.00"))
-                .currency("USD")
-                .pricingUrl("https://www.anthropic.com/pricing")
-                .build())
-            .owner("Anthropic")
-            .deprecated(false)
-            .build());
+        return builder.build();
+    }
 
-        // Claude 3 Opus
-        models.add(ModelDescription.builder()
-            .id("claude-3-opus-20240229")
-            .name("Claude 3 Opus")
-            .description("Top-level performance, intelligence, fluency, and understanding")
-            .provider(ModelProvider.ANTHROPIC)
-            .type(ModelType.CHAT)
-            .contextWindow(200000)
-            .maxOutputTokens(4096)
-            .pricing(ModelPricing.builder()
-                .inputPricePerMillionTokens(new BigDecimal("15.00"))
-                .outputPricePerMillionTokens(new BigDecimal("75.00"))
-                .currency("USD")
-                .pricingUrl("https://www.anthropic.com/pricing")
-                .build())
-            .owner("Anthropic")
-            .deprecated(false)
-            .build());
-
-        // Claude 3 Sonnet
-        models.add(ModelDescription.builder()
-            .id("claude-3-sonnet-20240229")
-            .name("Claude 3 Sonnet")
-            .description("Balance of intelligence and speed")
-            .provider(ModelProvider.ANTHROPIC)
-            .type(ModelType.CHAT)
-            .contextWindow(200000)
-            .maxOutputTokens(4096)
-            .pricing(ModelPricing.builder()
-                .inputPricePerMillionTokens(new BigDecimal("3.00"))
-                .outputPricePerMillionTokens(new BigDecimal("15.00"))
-                .currency("USD")
-                .pricingUrl("https://www.anthropic.com/pricing")
-                .build())
-            .owner("Anthropic")
-            .deprecated(false)
-            .build());
-
-        // Claude 3 Haiku
-        models.add(ModelDescription.builder()
-            .id("claude-3-haiku-20240307")
-            .name("Claude 3 Haiku")
-            .description("Fast and compact model")
-            .provider(ModelProvider.ANTHROPIC)
-            .type(ModelType.CHAT)
-            .contextWindow(200000)
-            .maxOutputTokens(4096)
-            .pricing(ModelPricing.builder()
-                .inputPricePerMillionTokens(new BigDecimal("0.25"))
-                .outputPricePerMillionTokens(new BigDecimal("1.25"))
-                .currency("USD")
-                .pricingUrl("https://www.anthropic.com/pricing")
-                .build())
-            .owner("Anthropic")
-            .deprecated(false)
-            .build());
-
-        return models;
+    private List<ModelDescription> filterModels(List<ModelDescription> models, ModelDiscoveryFilter filter) {
+        return models.stream()
+                .filter(model -> matchesFilter(model, filter))
+                .collect(Collectors.toList());
     }
 
     private boolean matchesFilter(ModelDescription model, ModelDiscoveryFilter filter) {
@@ -241,9 +166,59 @@ public class AnthropicModelDiscovery implements ModelDiscovery {
     }
 
     public static class Builder {
+        private HttpClientBuilder httpClientBuilder;
+        private String baseUrl = "https://api.anthropic.com/v1/";
+        private String apiKey;
+        private String version = "2023-06-01";
+        private String beta;
+        private Duration timeout;
+        private Boolean logRequests;
+        private Boolean logResponses;
+        private Logger logger;
 
-        public Builder() {
-            // No configuration needed for static registry
+        public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
+
+        public Builder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public Builder apiKey(String apiKey) {
+            this.apiKey = apiKey;
+            return this;
+        }
+
+        public Builder version(String version) {
+            this.version = version;
+            return this;
+        }
+
+        public Builder beta(String beta) {
+            this.beta = beta;
+            return this;
+        }
+
+        public Builder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public Builder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public Builder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        public Builder logger(Logger logger) {
+            this.logger = logger;
+            return this;
         }
 
         public AnthropicModelDiscovery build() {

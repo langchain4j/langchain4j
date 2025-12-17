@@ -5,6 +5,7 @@ import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCountTokensRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicModelsListResponse;
 import dev.langchain4j.model.anthropic.internal.api.MessageTokenCountResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.spi.ServiceHelper;
@@ -31,6 +32,8 @@ public abstract class AnthropicClient {
     public MessageTokenCountResponse countTokens(AnthropicCountTokensRequest request){
         throw new UnsupportedOperationException("Token counting is not implemented");
     }
+
+    public abstract AnthropicModelsListResponse listModels();
 
     @SuppressWarnings("rawtypes")
     public static AnthropicClient.Builder builder() {

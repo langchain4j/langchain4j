@@ -22,6 +22,7 @@ import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicDelta;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicModelsListResponse;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicResponseMessage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicStreamingData;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicUsage;
@@ -40,6 +41,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static dev.langchain4j.http.client.HttpMethod.GET;
 import static dev.langchain4j.http.client.HttpMethod.POST;
 import static dev.langchain4j.http.client.sse.ServerSentEventParsingHandleUtils.toStreamingHandle;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
@@ -410,6 +412,18 @@ public class DefaultAnthropicClient extends AnthropicClient {
         HttpRequest httpRequest = toHttpRequest(toJson(request), "messages/count_tokens");
         SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
         return fromJson(successfulHttpResponse.body(), MessageTokenCountResponse.class);
+    }
+
+    @Override
+    public AnthropicModelsListResponse listModels() {
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(GET)
+                .url(baseUrl, "models")
+                .addHeader("x-api-key", apiKey)
+                .addHeader("anthropic-version", version)
+                .build();
+        SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
+        return fromJson(successfulHttpResponse.body(), AnthropicModelsListResponse.class);
     }
 
     public void createMessage(AnthropicCreateMessageRequest request, StreamingChatResponseHandler handler) {
