@@ -1,15 +1,17 @@
 package dev.langchain4j.model.googleai;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.*;
+
+import java.util.List;
+import java.util.Set;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.discovery.ModelDescription;
 import dev.langchain4j.model.discovery.ModelDiscoveryFilter;
 import dev.langchain4j.model.discovery.ModelType;
-import java.util.List;
-import java.util.Set;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 class GoogleAiGeminiModelDiscoveryIT {
@@ -27,7 +29,7 @@ class GoogleAiGeminiModelDiscoveryIT {
         assertThat(models).isNotEmpty();
         assertThat(models).allMatch(m -> m.getId() != null);
         assertThat(models).allMatch(m -> m.getName() != null);
-        assertThat(models).allMatch(m -> m.getProvider() == ModelProvider.GOOGLE);
+        assertThat(models).allMatch(m -> m.getProvider() == ModelProvider.GOOGLE_AI_GEMINI);
     }
 
     @Test
@@ -36,7 +38,7 @@ class GoogleAiGeminiModelDiscoveryIT {
             .apiKey(API_KEY)
             .build();
 
-        assertThat(discovery.provider()).isEqualTo(ModelProvider.GOOGLE);
+        assertThat(discovery.provider()).isEqualTo(ModelProvider.GOOGLE_AI_GEMINI);
     }
 
     @Test

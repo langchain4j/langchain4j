@@ -1,18 +1,19 @@
 package dev.langchain4j.model.googleai;
 
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+import org.slf4j.Logger;
+
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.discovery.ModelDescription;
 import dev.langchain4j.model.discovery.ModelDiscovery;
 import dev.langchain4j.model.discovery.ModelDiscoveryFilter;
 import dev.langchain4j.model.discovery.ModelType;
-import org.slf4j.Logger;
-
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 /**
  * Google AI Gemini implementation of {@link ModelDiscovery}.
@@ -80,7 +81,7 @@ public class GoogleAiGeminiModelDiscovery implements ModelDiscovery {
 
     @Override
     public ModelProvider provider() {
-        return ModelProvider.GOOGLE;
+        return ModelProvider.GOOGLE_AI_GEMINI;
     }
 
     @Override
@@ -90,7 +91,7 @@ public class GoogleAiGeminiModelDiscovery implements ModelDiscovery {
 
     private ModelDescription mapToModelDescription(GeminiModelInfo modelInfo) {
         ModelDescription.Builder builder = ModelDescription.builder()
-                .provider(ModelProvider.GOOGLE);
+                .provider(ModelProvider.GOOGLE_AI_GEMINI);
 
         // Model ID: extract from name (format: "models/gemini-1.5-pro")
         if (modelInfo.name() != null) {
