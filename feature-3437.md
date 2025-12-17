@@ -743,8 +743,6 @@ public class ModelPricing {
 3. `ModelPricingTest.java` - Unit tests for builder, currency handling
 4. `ModelTypeTest.java` - Verify all enum values
 
-**Estimated Effort:** 1-2 days
-
 ### Phase 2: Provider Implementations
 
 #### 2.1 OpenAI Implementation (langchain4j-open-ai)
@@ -916,8 +914,6 @@ public class OpenAiModelDiscovery implements ModelDiscovery {
 - `langchain4j-open-ai/src/test/java/dev/langchain4j/model/openai/OpenAiModelDiscoveryTest.java` (unit tests)
 - `langchain4j-open-ai/src/test/java/dev/langchain4j/model/openai/OpenAiModelDiscoveryIT.java` (integration tests)
 
-**Estimated Effort:** 2-3 days
-
 #### 2.2 Mistral AI Implementation (langchain4j-mistral-ai)
 
 **Current State:** Already has `listModels()` in client
@@ -999,8 +995,6 @@ public class MistralAiModelDiscovery implements ModelDiscovery {
 **Files to Create:**
 - `langchain4j-mistral-ai/src/main/java/dev/langchain4j/model/mistralai/MistralAiModelDiscovery.java`
 - Integration and unit tests
-
-**Estimated Effort:** 1 day
 
 #### 2.3 Ollama Implementation (langchain4j-ollama)
 
@@ -1123,8 +1117,6 @@ public class OllamaModelDiscovery implements ModelDiscovery {
 **Files to Create:**
 - `langchain4j-ollama/src/main/java/dev/langchain4j/model/ollama/OllamaModelDiscovery.java`
 - Integration and unit tests
-
-**Estimated Effort:** 1-2 days
 
 #### 2.4 Anthropic Implementation (langchain4j-anthropic)
 
@@ -1265,8 +1257,6 @@ public class AnthropicModelDiscovery implements ModelDiscovery {
 **Files to Create:**
 - `langchain4j-anthropic/src/main/java/dev/langchain4j/model/anthropic/AnthropicModelDiscovery.java`
 - Unit tests (no integration tests needed for static registry)
-
-**Estimated Effort:** 1 day
 
 ### Phase 3: Testing Infrastructure (langchain4j-core)
 
@@ -1412,8 +1402,6 @@ public abstract class AbstractModelDiscoveryIT {
 - `langchain4j-core/src/test/java/dev/langchain4j/model/discovery/AbstractModelDiscoveryIT.java`
 - Example concrete implementations in each provider module
 
-**Estimated Effort:** 1 day
-
 ### Phase 4: Documentation and Examples
 
 **Documentation Updates:**
@@ -1480,7 +1468,6 @@ if (discovery.supportsFiltering()) {
 } else {
     // Filtering may be done client-side or ignored
 }
-```
 ```
 
 2. **Create provider-specific documentation** in each provider's docs file
@@ -1590,8 +1577,6 @@ public class OpenAiModelDiscoveryExample {
 }
 ```
 
-**Estimated Effort:** 2-3 days
-
 ## Design Decisions and Rationale
 
 ### Why Separate Interface?
@@ -1659,211 +1644,9 @@ List<ModelDescription> models = discovery.discoverModels();
 
 **No Breaking Changes:** Existing APIs remain unchanged and fully functional. The new `ModelDiscovery` interface provides a consistent alternative.
 
-## Timeline and Milestones
-
-| Phase | Components | Duration | Dependencies |
-|-------|-----------|----------|--------------|
-| Phase 1 | Core interfaces and classes | 1-2 days | None |
-| Phase 2.1 | OpenAI implementation | 2-3 days | Phase 1 |
-| Phase 2.2 | Mistral implementation | 1 day | Phase 1 |
-| Phase 2.3 | Ollama implementation | 1-2 days | Phase 1 |
-| Phase 2.4 | Anthropic implementation | 1 day | Phase 1 |
-| Phase 3 | Testing infrastructure | 1 day | Phase 1 |
-| Phase 4 | Documentation & examples | 2-3 days | Phase 2 |
-
-**Total Estimated Duration:** 9-13 days for complete implementation
-
-### Deliverables by Phase
-
-**Phase 1 Deliverables:**
-- [ ] `ModelDiscovery` interface
-- [ ] `ModelDescription` class
-- [ ] `ModelType` enum
-- [ ] `ModelDiscoveryFilter` class
-- [ ] `ModelPricing` class
-- [ ] Unit tests for all core classes
-- [ ] Package documentation
-
-**Phase 2 Deliverables:**
-- [ ] OpenAI implementation with tests
-- [ ] Mistral AI implementation with tests
-- [ ] Ollama implementation with tests
-- [ ] Anthropic implementation with tests
-
-**Phase 3 Deliverables:**
-- [ ] `AbstractModelDiscoveryIT` base test class
-- [ ] Concrete integration tests for all providers
-- [ ] Test coverage >= 75%
-
-**Phase 4 Deliverables:**
-- [ ] Updated integration docs
-- [ ] Provider-specific documentation
-- [ ] Updated CONTRIBUTING.md
-- [ ] Example code in langchain4j-examples
-- [ ] Comprehensive Javadoc
-
-## Success Criteria
-
-- [x] Core `ModelDiscovery` interface and related classes in langchain4j-core
-- [x] Working implementations for OpenAI, Mistral, Ollama, and Anthropic
-- [x] Comprehensive unit and integration tests (>75% coverage)
-- [x] Documentation with clear examples
-- [x] Examples in langchain4j-examples repository
-- [x] No breaking changes to existing APIs
-- [x] Consistent builder patterns across all implementations
-- [x] All code formatted with spotless (`make format`)
-- [x] All tests passing (`mvn test`)
-- [x] Integration tests passing with appropriate API keys
-
-## Risk Mitigation
-
-### Risk: Provider API Changes
-**Impact:** High
-**Probability:** Medium
-**Mitigation:**
-- Use provider-specific response classes with `@JsonIgnoreProperties(ignoreUnknown = true)`
-- Isolate mapping logic in dedicated methods
-- Version provider APIs when possible
-- Document API version dependencies
-
-### Risk: Rate Limiting
-**Impact:** Medium
-**Probability:** Medium
-**Mitigation:**
-- Document rate limit considerations in Javadoc
-- Consider implementing optional caching layer in future phase
-- Provide retry configuration options
-- Use exponential backoff where appropriate
-
-### Risk: Incomplete Model Metadata
-**Impact:** Low
-**Probability:** High
-**Mitigation:**
-- Make all `ModelDescription` fields optional except id, name, provider
-- Use builder pattern with sensible defaults
-- Document which fields are guaranteed vs optional per provider
-- Handle missing data gracefully
-
-### Risk: Provider-Specific Features
-**Impact:** Low
-**Probability:** High
-**Mitigation:**
-- Use `additionalMetadata` map for provider-specific fields
-- Document provider-specific features in class-level Javadoc
-- Consider adding common fields to `ModelDescription` in future releases
-- Allow extensibility through inheritance if needed
-
-### Risk: Static Registry Staleness (Anthropic)
-**Impact:** Medium
-**Probability:** Medium
-**Mitigation:**
-- Include update timestamp in Javadoc
-- Document that list may not be exhaustive
-- Provide link to official Anthropic documentation
-- Update registry with each library release
-- Consider community contributions for updates
-
-## Future Enhancements (Phase 5+)
-
-### Advanced Filtering
-- Pricing-based filtering (e.g., max cost per million tokens)
-- Performance metrics (if providers expose them)
-- Model families (e.g., all GPT-4 variants)
-
-### Model Recommendations
-```java
-public interface ModelDiscovery {
-    default ModelDescription recommendModel(ModelRequirements requirements) {
-        // Intelligent model selection based on requirements
-    }
-}
-```
-
-### Model Comparison
-```java
-public class ModelComparator {
-    public static ComparisonResult compare(ModelDescription m1, ModelDescription m2) {
-        // Compare features, pricing, capabilities
-    }
-
-    public static List<ModelDescription> rankByCost(List<ModelDescription> models) {
-        // Rank models by cost-effectiveness
-    }
-}
-```
-
-### Caching Layer
-```java
-public class CachedModelDiscovery implements ModelDiscovery {
-    private final ModelDiscovery delegate;
-    private final Cache<String, List<ModelDescription>> cache;
-
-    // Wrap any ModelDiscovery with caching to reduce API calls
-}
-```
-
-### Async Support
-```java
-public interface AsyncModelDiscovery {
-    CompletableFuture<List<ModelDescription>> discoverModelsAsync();
-    CompletableFuture<List<ModelDescription>> discoverModelsAsync(ModelDiscoveryFilter filter);
-}
-```
-
-### Spring Boot Integration
-```java
-@ConfigurationProperties("langchain4j.model-discovery")
-public class ModelDiscoveryProperties {
-    private boolean enabled = true;
-    private Duration cacheDuration = Duration.ofHours(24);
-    private Map<String, ProviderConfig> providers = new HashMap<>();
-
-    // Auto-configuration for Spring Boot applications
-}
-```
-
-### Model Benchmarking
-- Integration with third-party benchmarking services
-- Performance metrics (tokens/sec, latency percentiles)
-- Quality metrics (MMLU, HumanEval scores)
-
-## Open Questions for Discussion
-
-1. **Should ModelDiscovery be synchronous only, or support async/streaming?**
-   - **Recommendation:** Start with synchronous, add async in Phase 5 if there's demand
-   - **Rationale:** Simpler implementation, most use cases are startup/configuration time
-
-2. **Should we include model benchmarks/performance metrics?**
-   - **Recommendation:** Out of scope initially; can add via `additionalMetadata`
-   - **Rationale:** Metrics vary by source, change frequently, hard to keep current
-
-3. **How to handle model deprecation?**
-   - **Recommendation:** Add `deprecated` boolean flag to `ModelDescription`
-   - **Rationale:** Simple, allows filtering, clear semantics
-
-4. **Should filtering be done client-side or encourage provider-side?**
-   - **Recommendation:** Support both; providers indicate capability via `supportsFiltering()`
-   - **Rationale:** Flexibility for different provider capabilities
-
-5. **Should we support model deployment (for providers like Azure)?**
-   - **Recommendation:** Out of scope; this is discovery, not management
-   - **Rationale:** Deployment is a different concern; may add in future if requested
-
-6. **How frequently should static registries (Anthropic) be updated?**
-   - **Recommendation:** With each library release; accept community PRs for updates
-   - **Rationale:** Balances freshness with maintenance burden
-
-7. **Should we add a model registry/catalog service?**
-   - **Recommendation:** Phase 5+ enhancement if there's demand
-   - **Rationale:** Would require infrastructure beyond library scope
-
 ## References
 
 - OpenAI Models API: https://platform.openai.com/docs/api-reference/models
 - Mistral AI Models API: https://docs.mistral.ai/api/#tag/models
 - Ollama Models API: https://github.com/ollama/ollama/blob/main/docs/api.md#list-local-models
 - Anthropic Models: https://docs.anthropic.com/en/docs/about-claude/models
-
-## Change Log
-
-- 2025-12-17: Initial plan created
