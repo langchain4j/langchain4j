@@ -2,7 +2,6 @@ package dev.langchain4j.service;
 
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.O3_MINI;
 import static dev.langchain4j.model.output.FinishReason.STOP;
@@ -991,9 +990,9 @@ public class AiServicesIT {
                             return chatRequest; // No transformation needed
                         }
                         List<ChatMessage> messages = chatRequest.messages().stream()
-                                .map(message -> message == userMessage ?
-                                        dev.langchain4j.data.message.UserMessage.from(transformedMessage) :
-                                        message)
+                                .map(message -> message == userMessage
+                                        ? dev.langchain4j.data.message.UserMessage.from(transformedMessage)
+                                        : message)
                                 .toList();
                         return ChatRequest.builder()
                                 .messages(messages)
@@ -1053,9 +1052,8 @@ public class AiServicesIT {
                 .chatModel(modelWithReasoningEffort)
                 .build();
 
-        OpenAiChatRequestParameters openAiParams = OpenAiChatRequestParameters.builder()
-                .reasoningEffort("low")
-                .build();
+        OpenAiChatRequestParameters openAiParams =
+                OpenAiChatRequestParameters.builder().reasoningEffort("low").build();
 
         Response<AiMessage> response = assistant.chat("Hello, I'm passing custom parameters!", openAiParams);
 
@@ -1063,7 +1061,8 @@ public class AiServicesIT {
         ChatRequest actualRequest = chatRequestCaptor.getValue();
 
         assertThat(actualRequest.parameters()).isInstanceOf(OpenAiChatRequestParameters.class);
-        assertThat(((OpenAiChatRequestParameters)actualRequest.parameters()).reasoningEffort()).isEqualTo("low");
+        assertThat(((OpenAiChatRequestParameters) actualRequest.parameters()).reasoningEffort())
+                .isEqualTo("low");
 
         assertThat(response.content()).isNotNull();
     }

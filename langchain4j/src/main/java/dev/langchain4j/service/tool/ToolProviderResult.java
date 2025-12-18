@@ -5,7 +5,6 @@ import static dev.langchain4j.internal.Utils.copy;
 import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.service.IllegalConfigurationException;
-
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;

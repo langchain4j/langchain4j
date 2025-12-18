@@ -1,14 +1,5 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Spy;
-import org.mockito.junit.jupiter.MockitoExtension;
-
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.service.AiServicesUserMessageConfigTest.VALIDATION_ERROR_MESSAGE_SUFFIX;
@@ -18,6 +9,15 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
+
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Spy;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class AiServicesSystemAndUserMessageConfigsTest {
@@ -150,9 +150,8 @@ class AiServicesSystemAndUserMessageConfigsTest {
     void system_message_configuration_1() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(model)
-                .build();
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(model).build();
 
         // when-then
         assertThat(aiService.chat1("Country: Germany")).containsIgnoringCase("Berlin");
@@ -168,9 +167,8 @@ class AiServicesSystemAndUserMessageConfigsTest {
     void system_message_configuration_2() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(model)
-                .build();
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(model).build();
 
         // when-then
         assertThat(aiService.chat2("Country: Germany")).containsIgnoringCase("Berlin");
@@ -186,9 +184,8 @@ class AiServicesSystemAndUserMessageConfigsTest {
     void system_message_configuration_3() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(model)
-                .build();
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(model).build();
 
         // when-then
         assertThat(aiService.chat3("a name of it's capital", "Country: Germany"))
@@ -205,9 +202,8 @@ class AiServicesSystemAndUserMessageConfigsTest {
     void system_message_configuration_4() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(model)
-                .build();
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(model).build();
 
         // when-then
         assertThat(aiService.chat4("Country: {{country}}", "Germany")).containsIgnoringCase("Berlin");
@@ -223,9 +219,8 @@ class AiServicesSystemAndUserMessageConfigsTest {
     void system_message_configuration_5() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(model)
-                .build();
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(model).build();
 
         // when-then
         assertThat(aiService.chat5("a name of it's capital", "Country: {{country}}", "Germany"))
@@ -242,9 +237,8 @@ class AiServicesSystemAndUserMessageConfigsTest {
     void system_message_configuration_6() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(model)
-                .build();
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(model).build();
 
         // when-then
         assertThat(aiService.chat6()).containsIgnoringCase("Berlin");
@@ -260,9 +254,8 @@ class AiServicesSystemAndUserMessageConfigsTest {
     void system_message_configuration_7() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(model)
-                .build();
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(model).build();
 
         // when-then
         assertThat(aiService.chat7("a name of it's capital")).containsIgnoringCase("Berlin");
@@ -278,9 +271,8 @@ class AiServicesSystemAndUserMessageConfigsTest {
     void system_message_configuration_8() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(model)
-                .build();
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(model).build();
 
         // when-then
         assertThat(aiService.chat8("Germany")).containsIgnoringCase("Berlin");
@@ -296,9 +288,8 @@ class AiServicesSystemAndUserMessageConfigsTest {
     void system_message_configuration_9() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(model)
-                .build();
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(model).build();
 
         // when-then
         assertThat(aiService.chat9("Germany")).containsIgnoringCase("Berlin");
@@ -314,9 +305,8 @@ class AiServicesSystemAndUserMessageConfigsTest {
     void system_message_configuration_10() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(model)
-                .build();
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(model).build();
 
         // when-then
         assertThat(aiService.chat10("a name of it's capital", "Germany")).containsIgnoringCase("Berlin");
@@ -544,14 +534,15 @@ class AiServicesSystemAndUserMessageConfigsTest {
     void illegal_system_message_configuration_1() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(model)
-                .build();
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(model).build();
 
         // when-then
         assertThatThrownBy(() -> aiService.illegalChat1("a name of it's capital", "Country: Germany"))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage("The parameter 'arg1' in the method 'illegalChat1' of the class dev.langchain4j.service.AiServicesSystemAndUserMessageConfigsTest$AiService" + VALIDATION_ERROR_MESSAGE_SUFFIX);
+                .hasMessage(
+                        "The parameter 'arg1' in the method 'illegalChat1' of the class dev.langchain4j.service.AiServicesSystemAndUserMessageConfigsTest$AiService"
+                                + VALIDATION_ERROR_MESSAGE_SUFFIX);
     }
 
     @Test
@@ -566,6 +557,8 @@ class AiServicesSystemAndUserMessageConfigsTest {
         // when-then
         assertThatThrownBy(() -> aiService.illegalChat2("a name of it's capital", "Country: Germany"))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage("The parameter 'arg1' in the method 'illegalChat2' of the class dev.langchain4j.service.AiServicesSystemAndUserMessageConfigsTest$AiService" + VALIDATION_ERROR_MESSAGE_SUFFIX);
+                .hasMessage(
+                        "The parameter 'arg1' in the method 'illegalChat2' of the class dev.langchain4j.service.AiServicesSystemAndUserMessageConfigsTest$AiService"
+                                + VALIDATION_ERROR_MESSAGE_SUFFIX);
     }
 }

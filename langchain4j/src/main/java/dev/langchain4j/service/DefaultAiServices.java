@@ -27,7 +27,6 @@ import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -75,11 +74,8 @@ class DefaultAiServices<T> extends AiServices<T> {
     private final ServiceOutputParser serviceOutputParser = new ServiceOutputParser();
     private final Collection<TokenStreamAdapter> tokenStreamAdapters = loadFactories(TokenStreamAdapter.class);
 
-    private static final Set<Class<? extends Annotation>> VALID_PARAM_ANNOTATIONS = Set.of(
-            dev.langchain4j.service.UserMessage.class,
-            V.class,
-            MemoryId.class,
-            UserName.class);
+    private static final Set<Class<? extends Annotation>> VALID_PARAM_ANNOTATIONS =
+            Set.of(dev.langchain4j.service.UserMessage.class, V.class, MemoryId.class, UserName.class);
 
     DefaultAiServices(AiServiceContext context) {
         super(context);
@@ -137,7 +133,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                         // TODO do it once, when creating AI Service?
                         validateParameters(context.aiServiceClass, method);
 
-                        InvocationParameters invocationParameters = findArgumentOfType(InvocationParameters.class, args, method.getParameters())
+                        InvocationParameters invocationParameters = findArgumentOfType(
+                                        InvocationParameters.class, args, method.getParameters())
                                 .orElseGet(InvocationParameters::new);
 
                         InvocationContext invocationContext = InvocationContext.builder()
@@ -283,7 +280,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .build();
                         }
 
-                        ChatRequestParameters parameters = chatRequestParameters(method, args, toolServiceContext, responseFormat);
+                        ChatRequestParameters parameters =
+                                chatRequestParameters(method, args, toolServiceContext, responseFormat);
 
                         ChatRequest chatRequest = context.chatRequestTransformer.apply(
                                 ChatRequest.builder()
@@ -379,7 +377,11 @@ class DefaultAiServices<T> extends AiServices<T> {
                         return actualResponse;
                     }
 
-                    private ChatRequestParameters chatRequestParameters(Method method, Object[] args, ToolServiceContext toolServiceContext, ResponseFormat responseFormat) {
+                    private ChatRequestParameters chatRequestParameters(
+                            Method method,
+                            Object[] args,
+                            ToolServiceContext toolServiceContext,
+                            ResponseFormat responseFormat) {
                         ChatRequestParameters defaultParams = ChatRequestParameters.builder()
                                 .toolSpecifications(toolServiceContext.toolSpecifications())
                                 .responseFormat(responseFormat)
