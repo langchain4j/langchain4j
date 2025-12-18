@@ -306,6 +306,7 @@ public class ToolService {
                         // TODO good idea?
                         searchResultMessages = new ArrayList<>();
                         for (ToolExecutionRequest toolSearch : toolSearches) {
+                            // TODO separate found tools
                             searchResultMessages.add(ToolExecutionResultMessage.from(toolSearch, "Found following tools: " + toolSearchResult.foundTools().stream().map(ToolSpecification::name).collect(joining(", ")))); // TODO
                         }
                     }

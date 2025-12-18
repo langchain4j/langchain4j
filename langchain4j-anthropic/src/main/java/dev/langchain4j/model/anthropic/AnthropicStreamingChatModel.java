@@ -332,6 +332,10 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
+        public AnthropicStreamingChatModelBuilder listeners(ChatModelListener... listeners) {
+            return listeners(asList(listeners));
+        }
+
         public AnthropicStreamingChatModelBuilder toolChoice(ToolChoice toolChoice) {
             this.toolChoice = toolChoice;
             return this;
