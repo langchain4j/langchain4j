@@ -3,19 +3,41 @@ package dev.langchain4j.model.anthropic;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.ASSISTANT;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.USER;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.retainKeys;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSchema;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicMessages;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicTool;
 import static java.util.Arrays.asList;
-import static java.util.Collections.*;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.emptyMap;
+import static java.util.Collections.singletonList;
+import static java.util.Collections.singletonMap;
 import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
-import dev.langchain4j.data.message.*;
-import dev.langchain4j.model.anthropic.internal.api.*;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.PdfFileContent;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicImageContent;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicMessage;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicPdfContent;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicTool;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicToolResultContent;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicToolSchema;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import java.net.URI;
 import java.util.AbstractMap;
 import java.util.List;
@@ -229,6 +251,75 @@ class AnthropicMapperTest {
 
         // then
         assertThat(anthropicTool).isEqualTo(expectedAnthropicTool);
+    }
+
+    @Test
+    void test_toAnthropicSchema_with_objects() throws JsonProcessingException {
+
+        // given
+        JsonSchemaElement jsonSchemaElement = JsonObjectSchema.builder()
+                .addStringProperty("name")
+                .addStringProperty("email")
+                .addStringProperty("plan_interest")
+                .addBooleanProperty("demo_requested")
+                .required("name", "email", "plan_interest", "demo_requested")
+                .build();
+
+        // when
+        Map<String, Object> map = toAnthropicSchema(jsonSchemaElement);
+
+        // then
+        assertThat(new ObjectMapper().writeValueAsString(map))
+                .isEqualToIgnoringWhitespace(
+                        """
+                        {
+                          "type": "object",
+                          "properties": {
+                              "name": {"type": "string"},
+                              "email": {"type": "string"},
+                              "plan_interest": {"type": "string"},
+                              "demo_requested": {"type": "boolean"}
+                          },
+                          "required": ["name", "email", "plan_interest", "demo_requested"],
+                          "additionalProperties": false
+                        }
+                       """);
+    }
+
+    @Test
+    void test_toAnthropicSchema_with_optional_fields() throws JsonProcessingException {
+
+        // given
+        JsonSchemaElement bookRecord = JsonObjectSchema.builder()
+                .addStringProperty("author")
+                .addStringProperty("title")
+                .addEnumProperty("style", List.of("classical", "modern"))
+                .addIntegerProperty("publicationYear")
+                .required("author", "title")
+                .build();
+
+        // when
+        Map<String, Object> map = toAnthropicSchema(bookRecord);
+
+        // then
+        assertThat(new ObjectMapper().writeValueAsString(map))
+                .isEqualToIgnoringWhitespace(
+                        """
+                        {
+                          "type": "object",
+                          "properties": {
+                              "author": { "type": "string" },
+                              "title": { "type": "string" },
+                              "style": {
+                                "type": "string",
+                                "enum": ["classical", "modern"]
+                              },
+                              "publicationYear": { "type": "integer" }
+                          },
+                          "required": ["author", "title"],
+                          "additionalProperties": false
+                        }
+                       """);
     }
 
     static Stream<Arguments> test_toAnthropicTool() {

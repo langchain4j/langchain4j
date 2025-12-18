@@ -17,6 +17,11 @@ public abstract class AnthropicClient {
 
     public abstract AnthropicCreateMessageResponse createMessage(AnthropicCreateMessageRequest request);
 
+    public ParsedAndRawResponse createMessageWithRawResponse(AnthropicCreateMessageRequest request) {
+        AnthropicCreateMessageResponse parsedResponse = createMessage(request);
+        return new ParsedAndRawResponse(parsedResponse, null);
+    }
+
     /**
      * @since 1.2.0
      */
