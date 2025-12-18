@@ -30,7 +30,6 @@ import dev.langchain4j.mcp.client.protocol.McpReadResourceRequest;
 import dev.langchain4j.mcp.client.protocol.McpRootsListChangedNotification;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
-import dev.langchain4j.mcp.client.transport.websocket.WebSocketMcpTransport;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -428,6 +427,8 @@ public class DefaultMcpClient implements McpClient {
         if (initializationLock.tryLock()) {
             try {
                 initialize();
+            } catch (Exception e) {
+                log.warn("mcp server reconnection failed", e);
             } finally {
                 initializationLock.unlock();
             }
