@@ -132,9 +132,9 @@ public class InternalStreamingChatResponseHandlerUtils {
     }
 
     public static void onCompleteResponse(
-            StreamingChatResponseHandler handler, ChatRequest chatRequest, ChatResponse completeResponse) {
+            StreamingChatResponseHandler handler, ChatResponse completeResponse) {
         try {
-            handler.onCompleteResponse(chatRequest, completeResponse);
+            handler.onCompleteResponse(completeResponse);
         } catch (Exception e) {
             withLoggingExceptions(() -> handler.onError(e));
         }

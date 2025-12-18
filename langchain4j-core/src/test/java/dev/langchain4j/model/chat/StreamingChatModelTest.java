@@ -23,7 +23,7 @@ class StreamingChatModelTest implements WithAssertions {
             ChatResponse chatResponse = ChatResponse.builder()
                     .aiMessage(new AiMessage(lastMessage.singleText().toUpperCase(Locale.ROOT)))
                     .build();
-            handler.onCompleteResponse(chatRequest, chatResponse);
+            handler.onCompleteResponse(chatResponse);
         }
     }
 
@@ -39,7 +39,7 @@ class StreamingChatModelTest implements WithAssertions {
         public void onPartialResponse(String partialResponse) {}
 
         @Override
-        public void onCompleteResponse(ChatRequest chatRequest, ChatResponse completeResponse) {
+        public void onCompleteResponse(ChatResponse completeResponse) {
             responses.add(completeResponse);
         }
 

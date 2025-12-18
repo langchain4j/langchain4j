@@ -50,7 +50,7 @@ public class TestStreamingChatResponseHandler implements StreamingChatResponseHa
     public void onPartialToolCall(PartialToolCall partialToolCall, PartialToolCallContext context) {}
 
     @Override
-    public void onCompleteResponse(ChatRequest chatRequest, ChatResponse completeResponse) {
+    public void onCompleteResponse(ChatResponse completeResponse) {
         AiMessage aiMessage = completeResponse.aiMessage();
         if (!aiMessage.hasToolExecutionRequests()) {
             assertThat(aiMessage.text()).isEqualTo(responseBuilder.toString());

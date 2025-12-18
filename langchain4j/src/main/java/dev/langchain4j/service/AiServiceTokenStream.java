@@ -186,6 +186,7 @@ public class AiServiceTokenStream implements TokenStream {
                 .build();
 
         var handler = new AiServiceStreamingResponseHandler(
+                chatRequest,
                 chatExecutor,
                 context,
                 invocationContext,

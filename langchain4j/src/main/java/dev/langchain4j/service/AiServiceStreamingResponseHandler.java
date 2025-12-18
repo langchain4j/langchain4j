@@ -58,6 +58,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private static final Logger LOG = LoggerFactory.getLogger(AiServiceStreamingResponseHandler.class);
 
     private final ChatExecutor chatExecutor;
+    private final ChatRequest chatRequest;
     private final AiServiceContext context;
     private final InvocationContext invocationContext;
     private final GuardrailRequestParams commonGuardrailParams;
@@ -90,6 +91,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private record ToolRequestResult(ToolExecutionRequest request, ToolExecutionResult result) {}
 
     AiServiceStreamingResponseHandler(
+            ChatRequest chatRequest,
             ChatExecutor chatExecutor,
             AiServiceContext context,
             InvocationContext invocationContext,
@@ -111,6 +113,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             Executor toolExecutor,
             GuardrailRequestParams commonGuardrailParams,
             Object methodKey) {
+        this.chatRequest = ensureNotNull(chatRequest, "chatRequest");
         this.chatExecutor = ensureNotNull(chatExecutor, "chatExecutor");
         this.context = ensureNotNull(context, "context");
         this.invocationContext = ensureNotNull(invocationContext, "invocationContext");
@@ -212,7 +215,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 .build());
     }
 
-    private void fireResponseReceivedEvent(ChatRequest chatRequest, ChatResponse chatResponse) {
+    private void fireResponseReceivedEvent(ChatResponse chatResponse) {
         context.eventListenerRegistrar.fireEvent(AiServiceResponseReceivedEvent.builder()
                 .invocationContext(invocationContext)
                 .request(chatRequest)
@@ -228,8 +231,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     @Override
-    public void onCompleteResponse(ChatRequest chatRequest, ChatResponse chatResponse) {
-        fireResponseReceivedEvent(chatRequest, chatResponse);
+    public void onCompleteResponse(ChatResponse chatResponse) {
+        fireResponseReceivedEvent(chatResponse);
         AiMessage aiMessage = chatResponse.aiMessage();
         addToMemory(aiMessage);
 
@@ -290,6 +293,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     .build();
 
             var handler = new AiServiceStreamingResponseHandler(
+                    chatRequest,
                     chatExecutor,
                     context,
                     invocationContext,

@@ -45,7 +45,7 @@ public class StreamingChatResponseHandlerIT {
             }
 
             @Override
-            public void onCompleteResponse(ChatRequest chatRequest, ChatResponse completeResponse) {
+            public void onCompleteResponse(ChatResponse completeResponse) {
                 completableFuture.complete(completeResponse);
             }
 
@@ -65,7 +65,7 @@ public class StreamingChatResponseHandlerIT {
 
         verify(handler, atLeastOnce()).onPartialResponse(any(), any()); // LC4j will always call this callback
         verify(handler, atLeastOnce()).onPartialResponse(any());
-        verify(handler).onCompleteResponse(any(), any());
+        verify(handler).onCompleteResponse(any());
         verifyNoMoreInteractions(handler);
     }
 
@@ -84,7 +84,7 @@ public class StreamingChatResponseHandlerIT {
             }
 
             @Override
-            public void onCompleteResponse(ChatRequest chatRequest, ChatResponse completeResponse) {
+            public void onCompleteResponse(ChatResponse completeResponse) {
                 completableFuture.complete(completeResponse);
             }
 
@@ -104,7 +104,7 @@ public class StreamingChatResponseHandlerIT {
 
         verify(handler, atLeastOnce()).onPartialResponse(any(), any());
         verify(handler, never()).onPartialResponse(any());
-        verify(handler).onCompleteResponse(any(), any());
+        verify(handler).onCompleteResponse(any());
         verifyNoMoreInteractions(handler);
     }
 
@@ -129,7 +129,7 @@ public class StreamingChatResponseHandlerIT {
             }
 
             @Override
-            public void onCompleteResponse(ChatRequest chatRequest, ChatResponse completeResponse) {
+            public void onCompleteResponse(ChatResponse completeResponse) {
                 completableFuture.complete(completeResponse);
             }
 
@@ -149,7 +149,7 @@ public class StreamingChatResponseHandlerIT {
 
         verify(handler, atLeastOnce()).onPartialResponse(any(), any());
         verify(handler, never()).onPartialResponse(any());
-        verify(handler).onCompleteResponse(any(), any());
+        verify(handler).onCompleteResponse(any());
         verifyNoMoreInteractions(handler);
     }
 }

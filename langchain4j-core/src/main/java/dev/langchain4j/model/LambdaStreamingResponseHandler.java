@@ -45,7 +45,7 @@ public class LambdaStreamingResponseHandler {
             }
 
             @Override
-            public void onCompleteResponse(ChatRequest chatRequest, ChatResponse completeResponse) {}
+            public void onCompleteResponse(ChatResponse completeResponse) {}
 
             @Override
             public void onError(Throwable error) {
@@ -64,7 +64,7 @@ public class LambdaStreamingResponseHandler {
             }
 
             @Override
-            public void onCompleteResponse(ChatRequest chatRequest, ChatResponse completeResponse) {}
+            public void onCompleteResponse(ChatResponse completeResponse) {}
 
             @Override
             public void onError(Throwable error) {
@@ -111,7 +111,7 @@ public class LambdaStreamingResponseHandler {
             }
 
             @Override
-            public void onCompleteResponse(ChatRequest chatRequest, ChatResponse completeResponse) {
+            public void onCompleteResponse(ChatResponse completeResponse) {
                 completionLatch.countDown();
             }
 

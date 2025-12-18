@@ -78,7 +78,7 @@ public class StreamingChatModelMock implements StreamingChatModel {
                     ChatResponse chatResponse =
                             ChatResponse.builder().aiMessage(aiMessage).build();
 
-                    onCompleteResponse(handler, chatRequest, chatResponse);
+                    onCompleteResponse(handler, chatResponse);
                 });
             } finally {
                 executor.shutdown();
