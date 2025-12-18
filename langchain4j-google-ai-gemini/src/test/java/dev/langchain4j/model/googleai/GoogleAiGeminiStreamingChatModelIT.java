@@ -49,7 +49,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.junitpioneer.jupiter.RetryingTest;
 
 @EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 class GoogleAiGeminiStreamingChatModelIT {
@@ -142,7 +141,6 @@ class GoogleAiGeminiStreamingChatModelIT {
         // ToDo waiting for the normal GoogleAiGeminiChatModel to implement the test
     }
 
-    @RetryingTest(3)
     void should_execute_python_code() {
         // given
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
@@ -169,7 +167,6 @@ class GoogleAiGeminiStreamingChatModelIT {
     }
 
     @Disabled("TODO fix")
-    @RetryingTest(5)
     void should_support_safety_settings() {
         // given
         Map<GeminiHarmCategory, GeminiHarmBlockThreshold> mapSafetySettings = new HashMap<>();
@@ -473,7 +470,6 @@ class GoogleAiGeminiStreamingChatModelIT {
         assertThat(error).isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class);
     }
 
-    @RetryingTest(3)
     void should_generate_image_streaming() {
         // given
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()

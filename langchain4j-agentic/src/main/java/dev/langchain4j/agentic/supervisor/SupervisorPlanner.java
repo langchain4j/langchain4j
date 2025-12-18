@@ -137,10 +137,11 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         if (output != null) {
             return output.apply(agenticScope);
         }
-        String doneResponse = done != null ? done.getArguments().get("response").toString() : null;
-        if (doneResponse == null) {
+        if (done == null || done.getArguments() == null || done.getArguments().get("response") == null) {
             return lastResponse;
         }
+        String doneResponse = done.getArguments().get("response").toString();
+
         return switch (responseStrategy) {
             case LAST -> lastResponse;
             case SUMMARY -> doneResponse;

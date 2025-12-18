@@ -367,4 +367,23 @@ class ToolSpecificationsTest implements WithAssertions {
                 .containsExactlyInAnyOrder(
                         "name", "aliases", "active", "parent", "currentAddress", "previousAddresses");
     }
+
+    @Test
+    void parses_tool_metadata_correctly() throws NoSuchMethodException {
+
+        // given
+        class Tools {
+
+            @Tool(metadata = "{\"one\": \"one\", \"two\": 2}")
+            public void tool() {}
+        }
+
+        Method method = Tools.class.getMethod("tool");
+
+        // when
+        ToolSpecification toolSpecification = ToolSpecifications.toolSpecificationFrom(method);
+
+        // then
+        assertThat(toolSpecification.metadata()).containsExactly(Map.entry("one", "one"), Map.entry("two", 2));
+    }
 }

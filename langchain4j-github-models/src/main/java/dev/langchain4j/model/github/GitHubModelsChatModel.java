@@ -69,7 +69,10 @@ import org.slf4j.LoggerFactory;
  * You can also provide your own ChatCompletionsClient instance, if you need more flexibility.
  * <p>
  * The list of models, as well as the documentation and a playground to test them, can be found at https://github.com/marketplace/models
+ *
+ * @deprecated This module is deprecated and will be removed in a future release. Please use the langchain4j-openai-official module instead.
  */
+@Deprecated(since = "1.10.0", forRemoval = true)
 public class GitHubModelsChatModel implements ChatModel {
 
     private static final Logger logger = LoggerFactory.getLogger(GitHubModelsChatModel.class);

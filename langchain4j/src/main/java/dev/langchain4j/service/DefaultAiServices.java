@@ -6,10 +6,10 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
+import static dev.langchain4j.service.AiServiceValidation.validateParameters;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.lang.reflect.Modifier.isStatic;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.data.message.ChatMessage;
@@ -21,12 +21,13 @@ import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
-import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
+import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -48,6 +49,7 @@ import dev.langchain4j.service.tool.ToolServiceContext;
 import dev.langchain4j.service.tool.ToolServiceResult;
 import dev.langchain4j.spi.services.TokenStreamAdapter;
 import java.io.InputStream;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -56,7 +58,6 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -74,102 +75,19 @@ class DefaultAiServices<T> extends AiServices<T> {
     private final ServiceOutputParser serviceOutputParser = new ServiceOutputParser();
     private final Collection<TokenStreamAdapter> tokenStreamAdapters = loadFactories(TokenStreamAdapter.class);
 
+    private static final Set<Class<? extends Annotation>> VALID_PARAM_ANNOTATIONS = Set.of(
+            dev.langchain4j.service.UserMessage.class,
+            V.class,
+            MemoryId.class,
+            UserName.class);
+
     DefaultAiServices(AiServiceContext context) {
         super(context);
     }
 
-    static void validateParameters(Class<?> aiServiceClass, Method method) {
-        Parameter[] parameters = method.getParameters();
-        if (parameters == null || parameters.length < 2) {
-            return;
-        }
-
-        boolean invocationParametersExist = false;
-
-        for (Parameter parameter : parameters) {
-            V v = parameter.getAnnotation(V.class);
-            dev.langchain4j.service.UserMessage userMessage =
-                    parameter.getAnnotation(dev.langchain4j.service.UserMessage.class);
-            MemoryId memoryId = parameter.getAnnotation(MemoryId.class);
-            UserName userName = parameter.getAnnotation(UserName.class);
-
-            if (InvocationParameters.class.isAssignableFrom(parameter.getType())) {
-                if (invocationParametersExist) {
-                    throw illegalConfiguration(
-                            "There can be at most one parameter of type %s", InvocationParameters.class.getName());
-                }
-                invocationParametersExist = true;
-                continue;
-            }
-
-            if (LangChain4jManaged.class.isAssignableFrom(parameter.getType())) {
-                continue;
-            }
-
-            if (userMessage == null && v == null && memoryId == null && userName == null) {
-                throw illegalConfiguration(
-                        "The parameter '%s' in the method '%s' of the class %s must be annotated with either "
-                                + "%s, %s, %s, or %s, or it should be of type %s",
-                        parameter.getName(),
-                        method.getName(),
-                        aiServiceClass.getName(),
-                        dev.langchain4j.service.UserMessage.class.getName(),
-                        V.class.getName(),
-                        MemoryId.class.getName(),
-                        UserName.class.getName(),
-                        InvocationParameters.class.getName());
-            }
-        }
-    }
-
-    private void validateContextMemory() {
-        if (!context.hasChatMemory() && ChatMemoryAccess.class.isAssignableFrom(context.aiServiceClass)) {
-            throw illegalConfiguration(
-                    "In order to have a service implementing ChatMemoryAccess, please configure the ChatMemoryProvider on the '%s'.",
-                    context.aiServiceClass.getName());
-        }
-    }
-
-    private void validateMethods() {
-        if (!context.aiServiceClass.isInterface()) {
-            throw illegalConfiguration(
-                    "The type implemented by the AI Service must be an interface, found '%s'",
-                    context.aiServiceClass.getName());
-        }
-
-        for (Method method : context.aiServiceClass.getMethods()) {
-            if (isStatic(method.getModifiers())) {
-                // ignore static methods
-                continue;
-            }
-
-            if (method.isAnnotationPresent(Moderate.class) && context.moderationModel == null) {
-                throw illegalConfiguration(
-                        "The @Moderate annotation is present, but the moderationModel is not set up. "
-                                + "Please ensure a valid moderationModel is configured before using the @Moderate annotation.");
-            }
-
-            Class<?> returnType = method.getReturnType();
-            if (returnType == Result.class || returnType == List.class || returnType == Set.class) {
-                TypeUtils.validateReturnTypesAreProperlyParametrized(method.getName(), method.getGenericReturnType());
-            }
-
-            if (!context.hasChatMemory()) {
-                for (Parameter parameter : method.getParameters()) {
-                    if (parameter.isAnnotationPresent(MemoryId.class)) {
-                        throw illegalConfiguration(
-                                "In order to use @MemoryId, please configure the ChatMemoryProvider on the '%s'.",
-                                context.aiServiceClass.getName());
-                    }
-                }
-            }
-        }
-    }
-
     protected void validate() {
         performBasicValidation();
-        validateContextMemory();
-        validateMethods();
+        AiServiceValidation.validate(context);
     }
 
     private Object handleChatMemoryAccess(Method method, Object[] args) {
@@ -219,7 +137,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         // TODO do it once, when creating AI Service?
                         validateParameters(context.aiServiceClass, method);
 
-                        InvocationParameters invocationParameters = findInvocationParams(args, method.getParameters())
+                        InvocationParameters invocationParameters = findArgumentOfType(InvocationParameters.class, args, method.getParameters())
                                 .orElseGet(InvocationParameters::new);
 
                         InvocationContext invocationContext = InvocationContext.builder()
@@ -261,6 +179,10 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .systemMessage(systemMessage)
                                 .userMessage(userMessage)
                                 .build());
+
+                        if (context.hasChatMemory()) {
+                            systemMessage.ifPresent(chatMemory::add);
+                        }
 
                         AugmentationResult augmentationResult = null;
                         if (context.retrievalAugmentor != null) {
@@ -316,7 +238,6 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         List<ChatMessage> messages = new ArrayList<>();
                         if (context.hasChatMemory()) {
-                            systemMessage.ifPresent(chatMemory::add);
                             chatMemory.add(userMessage);
                             messages.addAll(chatMemory.messages());
                         } else {
@@ -362,10 +283,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .build();
                         }
 
-                        ChatRequestParameters parameters = ChatRequestParameters.builder()
-                                .toolSpecifications(toolServiceContext.toolSpecifications())
-                                .responseFormat(responseFormat)
-                                .build();
+                        ChatRequestParameters parameters = chatRequestParameters(method, args, toolServiceContext, responseFormat);
 
                         ChatRequest chatRequest = context.chatRequestTransformer.apply(
                                 ChatRequest.builder()
@@ -397,7 +315,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 messages,
                                 chatMemory,
                                 invocationContext,
-                                toolServiceContext.toolExecutors(),
+                                toolServiceContext,
                                 isReturnTypeResult);
 
                         if (toolServiceResult.immediateToolReturn() && isReturnTypeResult) {
@@ -460,16 +378,26 @@ class DefaultAiServices<T> extends AiServices<T> {
                         return actualResponse;
                     }
 
-                    private Optional<InvocationParameters> findInvocationParams(Object[] args, Parameter[] params) {
+                    private ChatRequestParameters chatRequestParameters(Method method, Object[] args, ToolServiceContext toolServiceContext, ResponseFormat responseFormat) {
+                        ChatRequestParameters defaultParams = ChatRequestParameters.builder()
+                                .toolSpecifications(toolServiceContext.toolSpecifications())
+                                .responseFormat(responseFormat)
+                                .build();
+                        return findArgumentOfType(ChatRequestParameters.class, args, method.getParameters())
+                                .map(p -> p.defaultedBy(defaultParams))
+                                .orElse(defaultParams);
+                    }
+
+                    private <P> Optional<P> findArgumentOfType(Class<P> paramType, Object[] args, Parameter[] params) {
                         if (args == null) {
                             return Optional.empty();
                         }
                         for (int i = 0; i < params.length; i++) {
                             Parameter parameter = params[i];
-                            if (InvocationParameters.class.isAssignableFrom(parameter.getType())) {
-                                InvocationParameters invocationParameters = (InvocationParameters) args[i];
-                                ensureNotNull(invocationParameters, "InvocationParameters");
-                                return Optional.of(invocationParameters);
+                            if (paramType.isAssignableFrom(parameter.getType())) {
+                                P param = (P) args[i];
+                                ensureNotNull(param, paramType.getSimpleName());
+                                return Optional.of(param);
                             }
                         }
                         return Optional.empty();
@@ -504,10 +432,23 @@ class DefaultAiServices<T> extends AiServices<T> {
                             return userMessage;
                         }
 
-                        String newText = userMessage.singleText() + outputFormatInstructions;
-                        return userMessage.toBuilder()
-                                .contents(List.of(TextContent.from(newText)))
-                                .build();
+                        List<Content> contents = new ArrayList<>(userMessage.contents());
+
+                        boolean appended = false;
+                        for (int i = contents.size() - 1; i >= 0; i--) {
+                            if (contents.get(i) instanceof TextContent lastTextContent) {
+                                String newText = lastTextContent.text() + outputFormatInstructions;
+                                contents.set(i, TextContent.from(newText));
+                                appended = true;
+                                break;
+                            }
+                        }
+
+                        if (!appended) {
+                            contents.add(TextContent.from(outputFormatInstructions));
+                        }
+
+                        return userMessage.toBuilder().contents(contents).build();
                     }
 
                     private Future<Moderation> triggerModerationIfNeeded(Method method, List<ChatMessage> messages) {
@@ -636,8 +577,18 @@ class DefaultAiServices<T> extends AiServices<T> {
         return Optional.empty();
     }
 
+    private static boolean hasAnyValidAnnotation(Parameter parameter) {
+        for (Class<? extends Annotation> a : VALID_PARAM_ANNOTATIONS) {
+            if (parameter.getAnnotation(a) != null) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private static Optional<String> findUserMessageTemplateFromTheOnlyArgument(Parameter[] parameters, Object[] args) {
-        if (parameters != null && parameters.length == 1 && parameters[0].getAnnotations().length == 0) {
+        if (parameters != null && parameters.length == 1 && !hasAnyValidAnnotation(parameters[0])) {
             return Optional.of(InternalReflectionVariableResolver.asString(args[0]));
         }
         return Optional.empty();

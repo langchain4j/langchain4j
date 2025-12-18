@@ -4,15 +4,16 @@ import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.scope.AgentInvocation;
-import dev.langchain4j.agentic.scope.AgentInvocationListener;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.util.List;
 
-public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements AgentInstance {
+public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements AgentInstance, InternalAgent {
 
     private static final Logger LOG = LoggerFactory.getLogger(AgentExecutor.class);
 
@@ -106,5 +107,44 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
     @Override
     public List<AgentInstance> subagents() {
         return agentInvoker.subagents();
+    }
+
+    @Override
+    public boolean async() {
+        return agentInvoker.async();
+    }
+
+    @Override
+    public AgenticSystemTopology topology() {
+        return agentInvoker.topology();
+    }
+
+    @Override
+    public AgentInstance parent() {
+        return agentInvoker.parent();
+    }
+
+    @Override
+    public void setParent(final AgentInstance parent) {
+        agentInvoker.setParent(parent);
+    }
+
+    @Override
+    public void appendId(final String idSuffix) {
+        agentInvoker.appendId(idSuffix);
+    }
+
+    void setParent(AgentInstance parent, int index) {
+        setParent(parent);
+        propagateParentIndex(agentInvoker, index);
+    }
+
+    private void propagateParentIndex(InternalAgent agent, int index) {
+        agent.appendId("$" + index);
+        for (AgentInstance subagent : agent.subagents()) {
+            if (subagent instanceof InternalAgent internalAgent) {
+                propagateParentIndex(internalAgent, index);
+            }
+        }
     }
 }

@@ -6,8 +6,10 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
+import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.declarative.LoopCounter;
+import dev.langchain4j.agentic.observability.AgentListenerProvider;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
@@ -57,7 +59,7 @@ public class AgentUtil {
 
     public static String outputKey(String outputKey, Class<? extends TypedKey<?>> typedOutputKey) {
         if (isNullOrBlank(outputKey)) {
-            return typedOutputKey != Agent.NoTypedKey.class ? stateName(typedOutputKey) : null;
+            return typedOutputKey != Agent.NoTypedKey.class ? keyName(typedOutputKey) : null;
         }
         if (typedOutputKey != Agent.NoTypedKey.class) {
             throw new AgenticSystemConfigurationException("Both outputKey and typedOutputKey are set. Please set only one of them.");
@@ -65,16 +67,12 @@ public class AgentUtil {
         return outputKey;
     }
 
-    public static <T> T stateDefaultValue(Class<? extends TypedKey<T>> key) {
+    public static <T> T keyDefaultValue(Class<? extends TypedKey<T>> key) {
         return stateInstance(key).defaultValue();
     }
 
-    public static String stateName(Class<? extends TypedKey<?>> key) {
+    public static String keyName(Class<? extends TypedKey<?>> key) {
         return stateInstance(key).name();
-    }
-
-    public static String uniqueAgentName(Class<?> agentClass, String agentName) {
-        return agentName + "_" + agentClass.getSimpleName();
     }
 
     public static List<AgentExecutor> agentsToExecutors(Object... agents) {
@@ -85,8 +83,8 @@ public class AgentUtil {
         if (agent instanceof Class c) {
             agent = AgenticServices.agentBuilder(c).build();
         }
-        return agent instanceof AgentSpecification agentSpecification
-                ? agentToExecutor(agentSpecification)
+        return agent instanceof InternalAgent internalAgent
+                ? agentToExecutor(internalAgent)
                 : nonAiAgentToExecutor(agent);
     }
 
@@ -94,23 +92,21 @@ public class AgentUtil {
         Method agenticMethod = validateAgentClass(agent.getClass());
         Agent annotation = agenticMethod.getAnnotation(Agent.class);
         String name = isNullOrBlank(annotation.name()) ? agenticMethod.getName() : annotation.name();
-        String agentId = uniqueAgentName(agent.getClass(), name);
         String description = isNullOrBlank(annotation.description()) ? annotation.value() : annotation.description();
-        return new AgentExecutor(nonAiAgentInvoker(agent, agenticMethod, name, agentId, description, annotation), agent);
+        return new AgentExecutor(nonAiAgentInvoker(agent, agenticMethod, name, description, annotation), agent);
     }
 
-    private static AgentInvoker nonAiAgentInvoker(Object agent, Method agenticMethod, String name, String agentId, String description, Agent annotation) {
+    private static AgentInvoker nonAiAgentInvoker(Object agent, Method agenticMethod, String name, String description, Agent annotation) {
         return agent instanceof AgentSpecsProvider spec
-                ? AgentInvoker.fromSpec(spec, agenticMethod, name, agentId)
+                ? AgentInvoker.fromSpec(spec, agenticMethod, name)
                 : AgentInvoker.fromMethod(
-                        new NonAiAgentSpecification(agenticMethod.getDeclaringClass(),
-                                name, agentId, description, agenticMethod.getGenericReturnType(), annotation.outputKey(), annotation.async(),
-                                argumentsFromMethod(agenticMethod),
-                                x -> {},x -> {}),
+                        new NonAiAgentInstance(agenticMethod.getDeclaringClass(),
+                                name, description, agenticMethod.getGenericReturnType(), annotation.outputKey(), annotation.async(),
+                                argumentsFromMethod(agenticMethod), null),
                 agenticMethod);
     }
 
-    public static AgentExecutor agentToExecutor(AgentSpecification agent) {
+    public static AgentExecutor agentToExecutor(InternalAgent agent) {
         for (Method method : agent.getClass().getMethods()) {
             Optional<AgentExecutor> executor = A2AService.get().isPresent()
                     ? A2AService.get().methodToAgentExecutor(agent, method)
@@ -128,14 +124,22 @@ public class AgentUtil {
                 .findFirst();
     }
 
-    private static Optional<AgentExecutor> methodToAgentExecutor(AgentSpecification agent, Method method) {
+    private static Optional<AgentExecutor> methodToAgentExecutor(InternalAgent agent, Method method) {
         return getAnnotatedMethod(method, Agent.class)
                 .map(agentMethod -> new AgentExecutor(AgentInvoker.fromMethod(agent, agentMethod), agent));
     }
 
     public static List<AgentArgument> argumentsFromMethod(Method method) {
+        return argumentsFromMethod(method, Map.of());
+    }
+
+    public static List<AgentArgument> argumentsFromMethod(Method method, Map<String, Object> defaultValues) {
         return Stream.of(method.getParameters())
-                .map(p -> new AgentArgument(p.getParameterizedType(), parameterName(p)))
+                .map(p -> {
+                    String argName = parameterName(p);
+                    Object defaultValue = defaultValues.getOrDefault(argName, parameterDefaultValue(p));
+                    return new AgentArgument(p.getParameterizedType(), argName, defaultValue);
+                })
                 .toList();
     }
 
@@ -150,6 +154,11 @@ public class AgentUtil {
             return AGENTIC_SCOPE_ARG_NAME;
         }
         return AgentInvoker.parameterName(p);
+    }
+
+    private static Object parameterDefaultValue(Parameter p) {
+        K k = p.getAnnotation(K.class);
+        return k != null ? stateInstance(k.value()).defaultValue() : null;
     }
 
     public static AgentInvocationArguments agentInvocationArguments(
@@ -178,21 +187,25 @@ public class AgentUtil {
                 positionalArgs[i++] = additionalArgs.get(argName);
                 continue;
             }
-            Object argValue = argumentFromAgenticScope(agenticScope, arg.rawType(), argName);
+
+            Object argValue = argumentFromAgenticScope(agenticScope, arg);
             positionalArgs[i++] = argValue;
             namedArgs.put(argName, argValue);
         }
         return new AgentInvocationArguments(namedArgs, positionalArgs);
     }
 
-    public static Object argumentFromAgenticScope(AgenticScope agenticScope, Class<?> argType, String argName) {
-        Object argValue = agenticScope.readState(argName);
+    private static Object argumentFromAgenticScope(AgenticScope agenticScope, AgentArgument arg) {
+        Object argValue = agenticScope.readState(arg.name());
         if (argValue == null) {
-            throw new MissingArgumentException(argName);
+            argValue = arg.defaultValue();
+            if (argValue == null) {
+                throw new MissingArgumentException(arg.name());
+            }
         }
-        Object parsedArgument = adaptValueToType(argValue, argType);
+        Object parsedArgument = adaptValueToType(argValue, arg.rawType());
         if (argValue != parsedArgument) {
-            agenticScope.writeState(argName, parsedArgument);
+            agenticScope.writeState(arg.name(), parsedArgument);
         }
         return parsedArgument;
     }
@@ -249,7 +262,7 @@ public class AgentUtil {
     public static <T> T buildAgent(Class<T> agentServiceClass, InvocationHandler invocationHandler) {
         return (T) Proxy.newProxyInstance(
                 agentServiceClass.getClassLoader(),
-                new Class<?>[] { agentServiceClass, AgentSpecification.class, AgenticScopeOwner.class, AgenticScopeAccess.class },
+                new Class<?>[] { agentServiceClass, InternalAgent.class, AgentListenerProvider.class, AgenticScopeOwner.class, AgenticScopeAccess.class },
                 invocationHandler);
     }
 

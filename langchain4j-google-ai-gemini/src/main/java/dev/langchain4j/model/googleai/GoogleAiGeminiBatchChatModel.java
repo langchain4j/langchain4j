@@ -3,6 +3,7 @@ package dev.langchain4j.model.googleai;
 import static dev.langchain4j.model.googleai.BaseGeminiChatModel.buildGeminiService;
 import static dev.langchain4j.model.googleai.GeminiService.BatchOperationType.BATCH_GENERATE_CONTENT;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -16,7 +17,9 @@ import dev.langchain4j.model.googleai.GeminiFiles.GeminiFile;
 import dev.langchain4j.model.googleai.jsonl.JsonLinesWriter;
 import java.io.IOException;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -86,9 +89,9 @@ public final class GoogleAiGeminiBatchChatModel {
      * to create properly formatted JSONL files.</p>
      *
      * @param displayName a user-defined name for the batch, used for identification
-     * @param file the GeminiFile object representing the uploaded file containing batch requests
+     * @param file        the GeminiFile object representing the uploaded file containing batch requests
      * @return a {@link BatchResponse} representing the initial state of the batch operation,
-     *         typically {@link BatchIncomplete}
+     * typically {@link BatchIncomplete}
      * @see #writeBatchToFile(JsonLinesWriter, Iterable)
      * @see GeminiFiles#uploadFile(java.nio.file.Path, String)
      */
@@ -122,7 +125,7 @@ public final class GoogleAiGeminiBatchChatModel {
      * }
      * }</pre>
      *
-     * @param writer the JsonLinesWriter to which the batch requests will be written
+     * @param writer   the JsonLinesWriter to which the batch requests will be written
      * @param requests an iterable collection of BatchFileRequest objects containing ChatRequest instances,
      *                 each with a unique key identifier
      * @throws IOException if an I/O error occurs while writing to the writer
@@ -200,16 +203,18 @@ public final class GoogleAiGeminiBatchChatModel {
     }
 
     private static void validateModelInChatRequests(String modelName, List<ChatRequest> requests) {
-        var modelNames = requests.stream().map(ChatRequest::modelName).collect(Collectors.toUnmodifiableSet());
+        var modelNames = Stream.concat(requests.stream().map(ChatRequest::modelName), Stream.of(modelName))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
 
-        if (modelNames.size() != 1 || !modelNames.contains(modelName)) {
+        if (modelNames.size() != 1) {
             throw new IllegalArgumentException(
                     "Batch requests cannot contain ChatRequest objects with different models; "
-                            + "all requests must use the same model: " + modelName);
+                            + "all requests must use the same model: " + modelNames);
         }
     }
 
-    static Builder builder() {
+    public static Builder builder() {
         return new Builder();
     }
 
@@ -224,6 +229,8 @@ public final class GoogleAiGeminiBatchChatModel {
     private class ChatRequestPreparer
             implements GeminiBatchProcessor.RequestPreparer<
                     ChatRequest, GeminiGenerateContentRequest, GeminiGenerateContentResponse, ChatResponse> {
+        private static final TypeReference<BatchCreateResponse.InlinedResponseWrapper<GeminiGenerateContentResponse>>
+                responseWrapperType = new TypeReference<>() {};
 
         @Override
         public ChatRequest prepareRequest(ChatRequest request) {
@@ -243,8 +250,8 @@ public final class GoogleAiGeminiBatchChatModel {
             if (response == null || response.inlinedResponses() == null) {
                 return List.of();
             }
-
             return response.inlinedResponses().inlinedResponses().stream()
+                    .map(wrapper -> Json.convertValue(wrapper, responseWrapperType))
                     .map(BatchCreateResponse.InlinedResponseWrapper::response)
                     .map(chatModel::processResponse)
                     .toList();

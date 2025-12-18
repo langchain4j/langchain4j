@@ -5,17 +5,32 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.10.0-beta17-SNAPSHOT</version>
+        <version>1.10.0-beta18-SNAPSHOT</version>
         <relativePath>../../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>langchain4j-document-loader-azure-storage-blob</artifactId>
     <name>LangChain4j :: Document Loader :: Azure Blob Storage</name>
 
-    <properties>
-        <!-- TODO: remove enforcer.skipRules -->
-        <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
-    </properties>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>net.java.dev.jna</groupId>
+                <artifactId>jna</artifactId>
+                <version>5.17.0</version>
+            </dependency>
+            <dependency>
+                <groupId>net.java.dev.jna</groupId>
+                <artifactId>jna-platform</artifactId>
+                <version>5.17.0</version>
+            </dependency>
+            <dependency>
+                <groupId>com.microsoft.azure</groupId>
+                <artifactId>msal4j</artifactId>
+                <version>1.23.1</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
 
@@ -55,7 +70,6 @@
             <artifactId>slf4j-api</artifactId>
         </dependency>
 
-
         <!-- test dependencies -->
 
         <dependency>
@@ -80,12 +94,6 @@
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-slf4j2-impl</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-engine</artifactId>
             <scope>test</scope>
         </dependency>
 

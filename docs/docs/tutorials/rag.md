@@ -105,7 +105,7 @@ adjusting and customizing more and more aspects.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>1.9.0-beta16</version>
+    <version>1.9.1-beta17</version>
 </dependency>
 ```
 
@@ -171,8 +171,8 @@ Therefore, we can easily load it into memory and run it in the same process usin
 
 Yes, that's right, you can convert text into embeddings entirely offline, without any external services,
 in the same JVM process.
-LangChain4j offers 5 popular embedding models
-[out-of-the-box](https://github.com/langchain4j/langchain4j-embeddings).
+LangChain4j offers some popular embedding models
+[out-of-the-box](/integrations/embedding-models/in-process).
 :::
 
 3. All `TextSegment`-`Embedding` pairs are stored in the `EmbeddingStore`.

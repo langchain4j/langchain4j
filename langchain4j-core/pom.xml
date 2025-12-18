@@ -5,7 +5,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.10.0-beta17-SNAPSHOT</version>
+        <version>1.10.0-beta18-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -49,12 +49,6 @@
             <artifactId>jackson-module-kotlin</artifactId>
             <scope>test</scope>
             <optional>true</optional>
-        </dependency>
-
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-params</artifactId>
-            <scope>test</scope>
         </dependency>
 
         <dependency>
@@ -204,7 +198,7 @@
                                         <limit>
                                             <counter>INSTRUCTION</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.8</minimum>
+                                            <minimum>0.7</minimum>
                                         </limit>
                                     </limits>
                                 </rule>

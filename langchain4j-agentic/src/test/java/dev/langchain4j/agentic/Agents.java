@@ -136,6 +136,17 @@ public class Agents {
         String generateStory(@V("topic") String topic);
     }
 
+    public interface CreativeWriterWithArgMessage {
+
+        @Agent(description = "Generate a story based on the given topic", outputKey = "story")
+        String generateStory(@UserMessage @V("userMessage") String userMessage, @V("topic") String topic);
+    }
+
+    public interface ReviewedWriter {
+        @Agent
+        String writeStory(@V("topic") String topic, @V("audience") String audience, @V("style") String style);
+    }
+
     public interface AudienceEditor {
 
         @UserMessage("""

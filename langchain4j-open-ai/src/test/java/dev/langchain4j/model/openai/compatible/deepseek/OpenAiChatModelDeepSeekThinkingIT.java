@@ -1,6 +1,7 @@
 package dev.langchain4j.model.openai.compatible.deepseek;
 
 import static dev.langchain4j.JsonTestUtils.jsonify;
+import static java.time.Duration.ofSeconds;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
@@ -38,9 +39,8 @@ class OpenAiChatModelDeepSeekThinkingIT {
                 .baseUrl("https://api.deepseek.com/v1")
                 .apiKey(System.getenv("DEEPSEEK_API_KEY"))
                 .modelName("deepseek-reasoner")
-
                 .returnThinking(returnThinking)
-
+                .timeout(ofSeconds(60))
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -84,9 +84,8 @@ class OpenAiChatModelDeepSeekThinkingIT {
                 .baseUrl("https://api.deepseek.com/v1")
                 .apiKey(System.getenv("DEEPSEEK_API_KEY"))
                 .modelName("deepseek-reasoner")
-
                 .returnThinking(returnThinking)
-
+                .timeout(ofSeconds(60))
                 .logRequests(true)
                 .logResponses(true)
                 .build();

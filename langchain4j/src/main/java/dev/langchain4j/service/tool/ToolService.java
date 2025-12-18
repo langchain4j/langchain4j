@@ -20,7 +20,6 @@ import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -55,7 +54,8 @@ public class ToolService {
         }
     };
     private static final ToolExecutionErrorHandler DEFAULT_TOOL_EXECUTION_ERROR_HANDLER = (error, context) -> {
-        String errorMessage = isNullOrBlank(error.getMessage()) ? error.getClass().getName() : error.getMessage();
+        String errorMessage =
+                isNullOrBlank(error.getMessage()) ? error.getClass().getName() : error.getMessage();
         return ToolErrorHandlerResult.text(errorMessage);
     };
 
@@ -151,6 +151,10 @@ public class ToolService {
         this.maxSequentialToolsInvocations = maxSequentialToolsInvocations;
     }
 
+    public int maxSequentialToolsInvocations() {
+        return maxSequentialToolsInvocations;
+    }
+
     /**
      * @since 1.4.0
      */
@@ -183,11 +187,16 @@ public class ToolService {
         if (this.toolProvider == null) {
             return this.toolSpecifications.isEmpty()
                     ? ToolServiceContext.Empty.INSTANCE
-                    : new ToolServiceContext(this.toolSpecifications, this.toolExecutors);
+                    : ToolServiceContext.builder()
+                            .toolSpecifications(this.toolSpecifications)
+                            .toolExecutors(this.toolExecutors)
+                            .immediateReturnTools(this.immediateReturnTools)
+                            .build();
         }
 
-        List<ToolSpecification> toolsSpecs = new ArrayList<>(this.toolSpecifications);
-        Map<String, ToolExecutor> toolExecs = new HashMap<>(this.toolExecutors);
+        List<ToolSpecification> toolSpecifications = new ArrayList<>(this.toolSpecifications);
+        Map<String, ToolExecutor> toolExecutors = new HashMap<>(this.toolExecutors);
+        Set<String> immediateReturnTools = new HashSet<>(this.immediateReturnTools);
         ToolProviderRequest toolProviderRequest = ToolProviderRequest.builder()
                 .invocationContext(invocationContext)
                 .userMessage(userMessage)
@@ -196,15 +205,23 @@ public class ToolService {
         if (toolProviderResult != null) {
             for (Map.Entry<ToolSpecification, ToolExecutor> entry :
                     toolProviderResult.tools().entrySet()) {
-                if (toolExecs.putIfAbsent(entry.getKey().name(), entry.getValue()) == null) {
-                    toolsSpecs.add(entry.getKey());
+                String toolName = entry.getKey().name();
+                if (toolExecutors.putIfAbsent(toolName, entry.getValue()) == null) {
+                    toolSpecifications.add(entry.getKey());
                 } else {
                     throw new IllegalConfigurationException(
                             "Duplicated definition for tool: " + entry.getKey().name());
                 }
             }
+            if (toolProviderResult.immediateReturnToolNames() != null) {
+                immediateReturnTools.addAll(toolProviderResult.immediateReturnToolNames());
+            }
         }
-        return new ToolServiceContext(toolsSpecs, toolExecs);
+        return ToolServiceContext.builder()
+                .toolSpecifications(toolSpecifications)
+                .toolExecutors(toolExecutors)
+                .immediateReturnTools(immediateReturnTools)
+                .build();
     }
 
     public ToolServiceResult executeInferenceAndToolsLoop(
@@ -215,18 +232,18 @@ public class ToolService {
             List<ChatMessage> messages,
             ChatMemory chatMemory,
             InvocationContext invocationContext,
-            Map<String, ToolExecutor> toolExecutors,
+            ToolServiceContext toolServiceContext,
             boolean isReturnTypeResult) {
         TokenUsage aggregateTokenUsage = chatResponse.metadata().tokenUsage();
         List<ToolExecution> toolExecutions = new ArrayList<>();
         List<ChatResponse> intermediateResponses = new ArrayList<>();
 
-        int executionsLeft = maxSequentialToolsInvocations;
+        int sequentialToolsInvocationsLeft = maxSequentialToolsInvocations;
         while (true) {
 
-            if (executionsLeft-- == 0) {
+            if (sequentialToolsInvocationsLeft-- == 0) {
                 throw runtime(
-                        "Something is wrong, exceeded %s sequential tool executions", maxSequentialToolsInvocations);
+                        "Something is wrong, exceeded %s sequential tool invocations", maxSequentialToolsInvocations);
             }
 
             AiMessage aiMessage = chatResponse.aiMessage();
@@ -245,7 +262,7 @@ public class ToolService {
             intermediateResponses.add(chatResponse);
 
             Map<ToolExecutionRequest, ToolExecutionResult> toolResults =
-                    execute(aiMessage.toolExecutionRequests(), toolExecutors, invocationContext);
+                    execute(aiMessage.toolExecutionRequests(), toolServiceContext.toolExecutors(), invocationContext);
 
             boolean immediateToolReturn = true;
             for (Map.Entry<ToolExecutionRequest, ToolExecutionResult> entry : toolResults.entrySet()) {
@@ -271,7 +288,7 @@ public class ToolService {
                 }
 
                 if (immediateToolReturn) {
-                    if (isImmediateTool(request.name())) {
+                    if (toolServiceContext.immediateReturnTools().contains(request.name())) {
                         if (!isReturnTypeResult) {
                             throw illegalConfiguration(
                                     "Tool '%s' with immediate return is not allowed on a AI service not returning Result.",

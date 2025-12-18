@@ -5,11 +5,12 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.10.0-beta17-SNAPSHOT</version>
+        <version>1.10.0-beta18-SNAPSHOT</version>
         <relativePath>../../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>langchain4j-docu-chatbot-updater</artifactId>
+    <name>LangChain4j :: Internal :: Documentation Chatbot Updater</name>
 
     <properties>
         <enforcer.skipRules>dependencyConvergence,requireUpperBoundDeps</enforcer.skipRules>
