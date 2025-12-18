@@ -264,10 +264,14 @@ public class ToolService {
             AiMessage aiMessage = chatResponse.aiMessage();
 
             // TODO should tool search tool call be persisted? Only when other tools are called as well?
+            if (chatMemory != null) {
+                chatMemory.add(aiMessage);
+            } else {
+                messages = new ArrayList<>(messages);
+                messages.add(aiMessage);
+            }
+
             if (!aiMessage.hasToolExecutionRequests()) {
-                if (chatMemory != null) {
-                    chatMemory.add(aiMessage);
-                }
                 break;
             }
 
@@ -275,11 +279,10 @@ public class ToolService {
             intermediateResponses.add(chatResponse);
 
             // TODO refactor
-            boolean discardAiMessage = false;
             List<ToolSpecification> foundTools = new ArrayList<>();
-            if (toolSearchStrategy != null && aiMessage.hasToolExecutionRequests()) {
+            if (toolSearchStrategy != null) {
 
-                // TODO cache? no, if it will accept invocation context
+                // TODO cache?
                 Set<String> toolSearchToolNames = toolSearchStrategy.toolSearchTools().stream()
                         .map(ToolSpecification::name)
                         .collect(toSet());
@@ -298,21 +301,21 @@ public class ToolService {
                     foundTools.addAll(toolSearchResult.foundTools());
 
                     // TODO instead remove toolSearch request from AiMessage or the whole AiMessage altogether?
-//                    List<ToolExecutionResultMessage> searchResultMessages = toolSearchResult.searchResultMessages();
-//                    if (searchResultMessages.isEmpty()) {
-//                        // TODO good idea?
-//                        searchResultMessages = new ArrayList<>();
-//                        for (ToolExecutionRequest toolSearch : toolSearches) {
-//                            searchResultMessages.add(ToolExecutionResultMessage.from(toolSearch, "Found following tools: " + toolSearchResult.foundTools().stream().map(ToolSpecification::name).collect(joining(", ")))); // TODO
-//                        }
-//                    }
-//                    if (!isNullOrEmpty(searchResultMessages)) { // TODO remove check?
-//                        if (chatMemory != null) {
-//                            chatMemory.add(new ArrayList<>(searchResultMessages)); // TODO
-//                        } else {
-//                            messages.addAll(searchResultMessages);
-//                        }
-//                    }
+                    List<ToolExecutionResultMessage> searchResultMessages = toolSearchResult.searchResultMessages();
+                    if (searchResultMessages.isEmpty()) {
+                        // TODO good idea?
+                        searchResultMessages = new ArrayList<>();
+                        for (ToolExecutionRequest toolSearch : toolSearches) {
+                            searchResultMessages.add(ToolExecutionResultMessage.from(toolSearch, "Found following tools: " + toolSearchResult.foundTools().stream().map(ToolSpecification::name).collect(joining(", ")))); // TODO
+                        }
+                    }
+                    if (!isNullOrEmpty(searchResultMessages)) { // TODO remove check?
+                        if (chatMemory != null) {
+                            chatMemory.add(new ArrayList<>(searchResultMessages)); // TODO
+                        } else {
+                            messages.addAll(searchResultMessages);
+                        }
+                    }
 
                     // TODO test when there are actual tool requests. Either with eager tools or later in the conversation
                     List<ToolExecutionRequest> realToolRequests = aiMessage.toolExecutionRequests().stream()
@@ -321,18 +324,6 @@ public class ToolService {
                     aiMessage = aiMessage.toBuilder()
                             .toolExecutionRequests(realToolRequests)
                             .build();
-                    if (realToolRequests.isEmpty()) {
-                        discardAiMessage = true;
-                    }
-                }
-            }
-
-            if (!discardAiMessage) {
-                if (chatMemory != null) {
-                    chatMemory.add(aiMessage);
-                } else {
-                    messages = new ArrayList<>(messages);
-                    messages.add(aiMessage);
                 }
             }
 

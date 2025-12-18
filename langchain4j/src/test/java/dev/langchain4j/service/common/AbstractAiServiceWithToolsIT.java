@@ -1261,7 +1261,7 @@ public abstract class AbstractAiServiceWithToolsIT {
                         && request.toolSearchRequests().get(0).arguments().toLowerCase().contains("weather")
         ));
 
-        // TODO verify messages for both strategies
+        // TODO verify messages
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 2
                         && containsTool(request, toolSearchTool)
