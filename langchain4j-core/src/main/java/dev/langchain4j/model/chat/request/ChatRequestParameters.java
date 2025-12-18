@@ -1,7 +1,6 @@
 package dev.langchain4j.model.chat.request;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
-
 import java.util.List;
 
 /**
@@ -85,7 +84,8 @@ public interface ChatRequestParameters {
      * @return a new {@link ChatRequestParameters} instance combining both sets of parameters
      */
     default ChatRequestParameters defaultedBy(ChatRequestParameters parameters) {
-        throw new UnsupportedOperationException("Missing implementation, please override this method in " + this.getClass().getName());
+        throw new UnsupportedOperationException("Missing implementation, please override this method in "
+                + this.getClass().getName());
     }
 
     static DefaultChatRequestParameters.Builder<?> builder() {
