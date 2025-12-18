@@ -3,13 +3,13 @@ package dev.langchain4j.agentic.agent;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureAgent;
 import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.keyName;
-import static dev.langchain4j.agentic.internal.AgentUtil.uniqueAgentName;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.declarative.TypedKey;
+import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentListenerProvider;
 import dev.langchain4j.agentic.observability.ComposedAgentListener;
@@ -54,7 +54,6 @@ public class AgentBuilder<T> {
     List<AgentArgument> arguments;
 
     String name;
-    String agentId;
     String description;
     String outputKey;
     boolean async;
@@ -103,7 +102,6 @@ public class AgentBuilder<T> {
         configureAgent(agentServiceClass, this);
 
         this.name = !isNullOrBlank(agent.name()) ? agent.name() : agenticMethod.getName();
-        this.agentId = uniqueAgentName(agentServiceClass, this.name);
 
         if (!isNullOrBlank(agent.description())) {
             this.description = agent.description();
@@ -170,7 +168,7 @@ public class AgentBuilder<T> {
                 agentServiceClass.getClassLoader(),
                 new Class<?>[] {
                     agentServiceClass,
-                    AgentInstance.class, AgentListenerProvider.class,
+                    InternalAgent.class, AgentListenerProvider.class,
                     ChatMemoryAccess.class, AgenticScopeOwner.class,
                     ChatMessagesAccess.class
                 },
@@ -246,6 +244,10 @@ public class AgentBuilder<T> {
     public AgentBuilder<T> chatMemoryProvider(ChatMemoryProvider chatMemoryProvider) {
         this.chatMemoryProvider = chatMemoryProvider;
         return this;
+    }
+
+    boolean hasNonDefaultChatMemory() {
+        return chatMemoryProvider != null;
     }
 
     public AgentBuilder<T> tools(Object... objectsWithTools) {
@@ -324,7 +326,6 @@ public class AgentBuilder<T> {
 
     public AgentBuilder<T> name(String name) {
         this.name = name;
-        this.agentId = uniqueAgentName(agentServiceClass, this.name);
         return this;
     }
 

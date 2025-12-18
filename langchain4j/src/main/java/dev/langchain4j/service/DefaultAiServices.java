@@ -27,6 +27,7 @@ import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -76,9 +77,9 @@ class DefaultAiServices<T> extends AiServices<T> {
 
     private static final Set<Class<? extends Annotation>> VALID_PARAM_ANNOTATIONS = Set.of(
             dev.langchain4j.service.UserMessage.class,
-            dev.langchain4j.service.V.class,
-            dev.langchain4j.service.MemoryId.class,
-            dev.langchain4j.service.UserName.class);
+            V.class,
+            MemoryId.class,
+            UserName.class);
 
     DefaultAiServices(AiServiceContext context) {
         super(context);
@@ -136,7 +137,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         // TODO do it once, when creating AI Service?
                         validateParameters(context.aiServiceClass, method);
 
-                        InvocationParameters invocationParameters = findInvocationParams(args, method.getParameters())
+                        InvocationParameters invocationParameters = findArgumentOfType(InvocationParameters.class, args, method.getParameters())
                                 .orElseGet(InvocationParameters::new);
 
                         InvocationContext invocationContext = InvocationContext.builder()
@@ -282,10 +283,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .build();
                         }
 
-                        ChatRequestParameters parameters = ChatRequestParameters.builder()
-                                .toolSpecifications(toolServiceContext.toolSpecifications())
-                                .responseFormat(responseFormat)
-                                .build();
+                        ChatRequestParameters parameters = chatRequestParameters(method, args, toolServiceContext, responseFormat);
 
                         ChatRequest chatRequest = context.chatRequestTransformer.apply(
                                 ChatRequest.builder()
@@ -318,7 +316,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 messages,
                                 chatMemory,
                                 invocationContext,
-                                toolServiceContext.toolExecutors(),
+                                toolServiceContext,
                                 isReturnTypeResult);
 
                         if (toolServiceResult.immediateToolReturn() && isReturnTypeResult) {
@@ -381,16 +379,26 @@ class DefaultAiServices<T> extends AiServices<T> {
                         return actualResponse;
                     }
 
-                    private Optional<InvocationParameters> findInvocationParams(Object[] args, Parameter[] params) {
+                    private ChatRequestParameters chatRequestParameters(Method method, Object[] args, ToolServiceContext toolServiceContext, ResponseFormat responseFormat) {
+                        ChatRequestParameters defaultParams = ChatRequestParameters.builder()
+                                .toolSpecifications(toolServiceContext.toolSpecifications())
+                                .responseFormat(responseFormat)
+                                .build();
+                        return findArgumentOfType(ChatRequestParameters.class, args, method.getParameters())
+                                .map(p -> p.defaultedBy(defaultParams))
+                                .orElse(defaultParams);
+                    }
+
+                    private <P> Optional<P> findArgumentOfType(Class<P> paramType, Object[] args, Parameter[] params) {
                         if (args == null) {
                             return Optional.empty();
                         }
                         for (int i = 0; i < params.length; i++) {
                             Parameter parameter = params[i];
-                            if (InvocationParameters.class.isAssignableFrom(parameter.getType())) {
-                                InvocationParameters invocationParameters = (InvocationParameters) args[i];
-                                ensureNotNull(invocationParameters, "InvocationParameters");
-                                return Optional.of(invocationParameters);
+                            if (paramType.isAssignableFrom(parameter.getType())) {
+                                P param = (P) args[i];
+                                ensureNotNull(param, paramType.getSimpleName());
+                                return Optional.of(param);
                             }
                         }
                         return Optional.empty();

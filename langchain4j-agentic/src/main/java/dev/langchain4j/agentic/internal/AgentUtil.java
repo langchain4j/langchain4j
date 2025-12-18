@@ -75,10 +75,6 @@ public class AgentUtil {
         return stateInstance(key).name();
     }
 
-    public static String uniqueAgentName(Class<?> agentClass, String agentName) {
-        return agentName + "_" + agentClass.getSimpleName();
-    }
-
     public static List<AgentExecutor> agentsToExecutors(Object... agents) {
         return Stream.of(agents).map(AgentUtil::agentToExecutor).toList();
     }
@@ -87,8 +83,8 @@ public class AgentUtil {
         if (agent instanceof Class c) {
             agent = AgenticServices.agentBuilder(c).build();
         }
-        return agent instanceof AgentInstance agentInstance
-                ? agentToExecutor(agentInstance)
+        return agent instanceof InternalAgent internalAgent
+                ? agentToExecutor(internalAgent)
                 : nonAiAgentToExecutor(agent);
     }
 
@@ -96,23 +92,21 @@ public class AgentUtil {
         Method agenticMethod = validateAgentClass(agent.getClass());
         Agent annotation = agenticMethod.getAnnotation(Agent.class);
         String name = isNullOrBlank(annotation.name()) ? agenticMethod.getName() : annotation.name();
-        String agentId = uniqueAgentName(agent.getClass(), name);
         String description = isNullOrBlank(annotation.description()) ? annotation.value() : annotation.description();
-        return new AgentExecutor(nonAiAgentInvoker(agent, agenticMethod, name, agentId, description, annotation), agent);
+        return new AgentExecutor(nonAiAgentInvoker(agent, agenticMethod, name, description, annotation), agent);
     }
 
-    private static AgentInvoker nonAiAgentInvoker(Object agent, Method agenticMethod, String name, String agentId, String description, Agent annotation) {
+    private static AgentInvoker nonAiAgentInvoker(Object agent, Method agenticMethod, String name, String description, Agent annotation) {
         return agent instanceof AgentSpecsProvider spec
-                ? AgentInvoker.fromSpec(spec, agenticMethod, name, agentId)
+                ? AgentInvoker.fromSpec(spec, agenticMethod, name)
                 : AgentInvoker.fromMethod(
                         new NonAiAgentInstance(agenticMethod.getDeclaringClass(),
-                                name, agentId, description, agenticMethod.getGenericReturnType(), annotation.outputKey(), annotation.async(),
-                                argumentsFromMethod(agenticMethod),
-                                x -> {},x -> {}, null),
+                                name, description, agenticMethod.getGenericReturnType(), annotation.outputKey(), annotation.async(),
+                                argumentsFromMethod(agenticMethod), null),
                 agenticMethod);
     }
 
-    public static AgentExecutor agentToExecutor(AgentInstance agent) {
+    public static AgentExecutor agentToExecutor(InternalAgent agent) {
         for (Method method : agent.getClass().getMethods()) {
             Optional<AgentExecutor> executor = A2AService.get().isPresent()
                     ? A2AService.get().methodToAgentExecutor(agent, method)
@@ -130,7 +124,7 @@ public class AgentUtil {
                 .findFirst();
     }
 
-    private static Optional<AgentExecutor> methodToAgentExecutor(AgentInstance agent, Method method) {
+    private static Optional<AgentExecutor> methodToAgentExecutor(InternalAgent agent, Method method) {
         return getAnnotatedMethod(method, Agent.class)
                 .map(agentMethod -> new AgentExecutor(AgentInvoker.fromMethod(agent, agentMethod), agent));
     }
@@ -268,7 +262,7 @@ public class AgentUtil {
     public static <T> T buildAgent(Class<T> agentServiceClass, InvocationHandler invocationHandler) {
         return (T) Proxy.newProxyInstance(
                 agentServiceClass.getClassLoader(),
-                new Class<?>[] { agentServiceClass, AgentInstance.class, AgentListenerProvider.class, AgenticScopeOwner.class, AgenticScopeAccess.class },
+                new Class<?>[] { agentServiceClass, InternalAgent.class, AgentListenerProvider.class, AgenticScopeOwner.class, AgenticScopeAccess.class },
                 invocationHandler);
     }
 
