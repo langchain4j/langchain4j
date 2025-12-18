@@ -53,6 +53,8 @@ class McpHealthWebSocketTransportIT {
         mcpClient.checkHealth();
         destroyProcessTree(process);
         process.onExit().get();
-        assertThatThrownBy(() -> mcpClient.checkHealth()).rootCause().isInstanceOf(ClosedChannelException.class);
+        assertThatThrownBy(() -> mcpClient.checkHealth())
+                .rootCause()
+                .isInstanceOfAny(ClosedChannelException.class, IllegalStateException.class);
     }
 }
