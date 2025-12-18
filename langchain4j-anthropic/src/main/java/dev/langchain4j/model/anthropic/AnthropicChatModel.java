@@ -70,6 +70,7 @@ public class AnthropicChatModel implements ChatModel {
     private final String thinkingType;
     private final Integer thinkingBudgetTokens;
     private final boolean returnThinking;
+    private final boolean returnServerToolResults;
     private final boolean sendThinking;
     private final int maxRetries;
     private final List<ChatModelListener> listeners;
@@ -101,6 +102,7 @@ public class AnthropicChatModel implements ChatModel {
         this.thinkingType = builder.thinkingType;
         this.thinkingBudgetTokens = builder.thinkingBudgetTokens;
         this.returnThinking = getOrDefault(builder.returnThinking, false);
+        this.returnServerToolResults = getOrDefault(builder.returnServerToolResults, false);
         this.sendThinking = getOrDefault(builder.sendThinking, true);
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.listeners = copy(builder.listeners);
@@ -110,7 +112,7 @@ public class AnthropicChatModel implements ChatModel {
         this.toolMetadataKeysToSend = copy(builder.toolMetadataKeysToSend);
         this.userId = builder.userId;
         this.customParameters = copy(builder.customParameters);
-        this.strictTools= builder.strictTools;
+        this.strictTools = builder.strictTools;
         this.supportedCapabilities = copy(builder.supportedCapabilities);
 
         ChatRequestParameters commonParameters;
@@ -164,6 +166,7 @@ public class AnthropicChatModel implements ChatModel {
         private String thinkingType;
         private Integer thinkingBudgetTokens;
         private Boolean returnThinking;
+        private Boolean returnServerToolResults;
         private Boolean sendThinking;
         private Duration timeout;
         private Integer maxRetries;
@@ -277,7 +280,7 @@ public class AnthropicChatModel implements ChatModel {
          *     .build();
          * </pre>
          */
-        public  AnthropicChatModelBuilder serverTools(List<AnthropicServerTool> serverTools) {
+        public AnthropicChatModelBuilder serverTools(List<AnthropicServerTool> serverTools) {
             this.serverTools = serverTools;
             return this;
         }
@@ -293,7 +296,7 @@ public class AnthropicChatModel implements ChatModel {
          *     .build();
          * </pre>
          */
-        public  AnthropicChatModelBuilder serverTools(AnthropicServerTool... serverTools) {
+        public AnthropicChatModelBuilder serverTools(AnthropicServerTool... serverTools) {
             return serverTools(asList(serverTools));
         }
 
@@ -354,6 +357,21 @@ public class AnthropicChatModel implements ChatModel {
          */
         public AnthropicChatModelBuilder returnThinking(Boolean returnThinking) {
             this.returnThinking = returnThinking;
+            return this;
+        }
+
+        /**
+         * Controls whether to return server tool results (e.g., web_search, code_execution)
+         * inside {@link AiMessage#attributes()} under the key "server_tool_results".
+         * <p>
+         * Disabled by default to avoid polluting ChatMemory with potentially large data.
+         * If enabled, server tool results will be stored as a {@code List<AnthropicServerToolResult>}
+         * within the AiMessage attributes.
+         *
+         * @see #serverTools(List)
+         */
+        public AnthropicChatModelBuilder returnServerToolResults(Boolean returnServerToolResults) {
+            this.returnServerToolResults = returnServerToolResults;
             return this;
         }
 
@@ -487,7 +505,7 @@ public class AnthropicChatModel implements ChatModel {
                 .build();
 
         return ChatResponse.builder()
-                .aiMessage(toAiMessage(response.content, returnThinking))
+                .aiMessage(toAiMessage(response.content, returnThinking, returnServerToolResults))
                 .metadata(responseMetadata)
                 .build();
     }
