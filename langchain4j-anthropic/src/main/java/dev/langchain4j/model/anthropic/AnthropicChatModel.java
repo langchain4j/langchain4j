@@ -70,7 +70,6 @@ public class AnthropicChatModel implements ChatModel {
     private final String thinkingType;
     private final Integer thinkingBudgetTokens;
     private final boolean returnThinking;
-    private final boolean returnServerToolResults;
     private final boolean sendThinking;
     private final int maxRetries;
     private final List<ChatModelListener> listeners;
@@ -78,6 +77,7 @@ public class AnthropicChatModel implements ChatModel {
     private final String toolChoiceName;
     private final Boolean disableParallelToolUse;
     private final List<AnthropicServerTool> serverTools;
+    private final boolean returnServerToolResults;
     private final Set<String> toolMetadataKeysToSend;
     private final String userId;
     private final Map<String, Object> customParameters;
@@ -102,13 +102,13 @@ public class AnthropicChatModel implements ChatModel {
         this.thinkingType = builder.thinkingType;
         this.thinkingBudgetTokens = builder.thinkingBudgetTokens;
         this.returnThinking = getOrDefault(builder.returnThinking, false);
-        this.returnServerToolResults = getOrDefault(builder.returnServerToolResults, false);
         this.sendThinking = getOrDefault(builder.sendThinking, true);
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.listeners = copy(builder.listeners);
         this.toolChoiceName = builder.toolChoiceName;
         this.disableParallelToolUse = builder.disableParallelToolUse;
         this.serverTools = copy(builder.serverTools);
+        this.returnServerToolResults = getOrDefault(builder.returnServerToolResults, false);
         this.toolMetadataKeysToSend = copy(builder.toolMetadataKeysToSend);
         this.userId = builder.userId;
         this.customParameters = copy(builder.customParameters);
@@ -160,13 +160,13 @@ public class AnthropicChatModel implements ChatModel {
         private String toolChoiceName;
         private Boolean disableParallelToolUse;
         private List<AnthropicServerTool> serverTools;
+        private Boolean returnServerToolResults;
         private Set<String> toolMetadataKeysToSend;
         private Boolean cacheSystemMessages;
         private Boolean cacheTools;
         private String thinkingType;
         private Integer thinkingBudgetTokens;
         private Boolean returnThinking;
-        private Boolean returnServerToolResults;
         private Boolean sendThinking;
         private Duration timeout;
         private Integer maxRetries;
@@ -286,6 +286,21 @@ public class AnthropicChatModel implements ChatModel {
         }
 
         /**
+         * Controls whether to return server tool results (e.g., web_search, code_execution)
+         * inside {@link AiMessage#attributes()} under the key "server_tool_results".
+         * <p>
+         * Disabled by default to avoid polluting ChatMemory with potentially large data.
+         * If enabled, server tool results will be stored as a {@code List<AnthropicServerToolResult>}
+         * within the AiMessage attributes.
+         *
+         * @see #serverTools(List)
+         */
+        public AnthropicChatModelBuilder returnServerToolResults(Boolean returnServerToolResults) {
+            this.returnServerToolResults = returnServerToolResults;
+            return this;
+        }
+
+        /**
          * Specifies server tools to be included in each request to the Anthropic API. For example:
          * <pre>
          * AnthropicServerTool webSearchTool = AnthropicServerTool.builder()
@@ -357,21 +372,6 @@ public class AnthropicChatModel implements ChatModel {
          */
         public AnthropicChatModelBuilder returnThinking(Boolean returnThinking) {
             this.returnThinking = returnThinking;
-            return this;
-        }
-
-        /**
-         * Controls whether to return server tool results (e.g., web_search, code_execution)
-         * inside {@link AiMessage#attributes()} under the key "server_tool_results".
-         * <p>
-         * Disabled by default to avoid polluting ChatMemory with potentially large data.
-         * If enabled, server tool results will be stored as a {@code List<AnthropicServerToolResult>}
-         * within the AiMessage attributes.
-         *
-         * @see #serverTools(List)
-         */
-        public AnthropicChatModelBuilder returnServerToolResults(Boolean returnServerToolResults) {
-            this.returnServerToolResults = returnServerToolResults;
             return this;
         }
 

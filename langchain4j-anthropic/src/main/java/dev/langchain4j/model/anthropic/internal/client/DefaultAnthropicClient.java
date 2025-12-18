@@ -140,11 +140,11 @@ public class DefaultAnthropicClient extends AnthropicClient {
             final StringBuffer thinkingBuilder = new StringBuffer();
             final List<String> thinkingSignatures = synchronizedList(new ArrayList<>());
             final List<String> redactedThinkings = synchronizedList(new ArrayList<>());
-            final List<AnthropicServerToolResult> serverToolResults = synchronizedList(new ArrayList<>());
 
             volatile String currentContentBlockStartType;
 
             final ToolCallBuilder toolCallBuilder = new ToolCallBuilder(-1);
+            final List<AnthropicServerToolResult> serverToolResults = synchronizedList(new ArrayList<>());
 
             final AtomicInteger inputTokenCount = new AtomicInteger();
             final AtomicInteger outputTokenCount = new AtomicInteger();
