@@ -202,8 +202,9 @@ public abstract class AbstractBaseChatModelIT<M> {
         String modelName = customModelName();
         ensureModelNameIsDifferentFromDefault(modelName, model);
 
-        ChatRequestParameters parameters =
-                ChatRequestParameters.builder().modelName(modelName).build();
+        ChatRequestParameters parameters = ChatRequestParameters.builder()
+                .modelName(modelName)
+                .build();
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from(WHAT_IS_THE_CAPITAL_OF_GERMANY))
@@ -238,8 +239,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     protected ChatRequestParameters saveTokens(ChatRequestParameters parameters) {
         // TODO slight optimization: check model.parameters().modelName() instead?
         if (supportsMaxOutputTokensParameter()) {
-            return parameters.overrideWith(
-                    ChatRequestParameters.builder().maxOutputTokens(1).build());
+            return parameters.overrideWith(ChatRequestParameters.builder().maxOutputTokens(1).build());
         } else {
             return parameters;
         }
@@ -251,8 +251,9 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // given
         String modelName = customModelName();
-        ChatRequestParameters parameters =
-                ChatRequestParameters.builder().modelName(modelName).build();
+        ChatRequestParameters parameters = ChatRequestParameters.builder()
+                .modelName(modelName)
+                .build();
         M model = createModelWith(saveTokens(parameters));
 
         ChatRequest chatRequest = ChatRequest.builder()
@@ -351,7 +352,9 @@ public abstract class AbstractBaseChatModelIT<M> {
     }
 
     protected ChatRequestParameters createParameters(int maxOutputTokens) {
-        return ChatRequestParameters.builder().maxOutputTokens(maxOutputTokens).build();
+        return ChatRequestParameters.builder()
+                .maxOutputTokens(maxOutputTokens)
+                .build();
     }
 
     protected Set<FinishReason> finishReasonForMaxOutputTokens() {
@@ -364,8 +367,9 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // given
         int maxOutputTokens = maxOutputTokens();
-        ChatRequestParameters parameters =
-                ChatRequestParameters.builder().maxOutputTokens(maxOutputTokens).build();
+        ChatRequestParameters parameters = ChatRequestParameters.builder()
+                .maxOutputTokens(maxOutputTokens)
+                .build();
         M model = createModelWith(parameters);
 
         ChatRequest chatRequest = ChatRequest.builder()
@@ -564,7 +568,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     @Test
     @EnabledIf("supportsMaxOutputTokensParameter")
     protected void
-            should_respect_common_parameters_wrapped_in_integration_specific_class_in_default_model_parameters() {
+    should_respect_common_parameters_wrapped_in_integration_specific_class_in_default_model_parameters() {
 
         // given
         // TODO test more/all common params?
@@ -943,8 +947,8 @@ public abstract class AbstractBaseChatModelIT<M> {
 
                 assertThat(metadata.partialToolCalls().get(0).index()).isEqualTo(0);
                 assertThat(metadata.partialToolCalls()
-                                .get(metadata.partialToolCalls().size() - 1)
-                                .index())
+                        .get(metadata.partialToolCalls().size() - 1)
+                        .index())
                         .isEqualTo(1);
 
                 List<List<PartialToolCall>> partialToolCallPartitions = partitionByIndex(metadata.partialToolCalls());
