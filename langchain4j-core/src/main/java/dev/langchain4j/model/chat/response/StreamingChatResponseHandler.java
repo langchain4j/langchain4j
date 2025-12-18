@@ -2,7 +2,6 @@ package dev.langchain4j.model.chat.response;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.chat.request.ChatRequest;
 
 /**
  * Represents a handler for a {@link StreamingChatModel} response.
