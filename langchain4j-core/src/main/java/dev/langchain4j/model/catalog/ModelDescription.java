@@ -29,7 +29,6 @@ public class ModelDescription {
     private final Integer maxOutputTokens;
     private final Instant createdAt;
     private final String owner;
-    private final Boolean deprecated;
     private final Set<String> supportedLanguages;
     private final Map<String, Object> additionalMetadata;
 
@@ -43,7 +42,6 @@ public class ModelDescription {
         this.maxOutputTokens = builder.maxOutputTokens;
         this.createdAt = builder.createdAt;
         this.owner = builder.owner;
-        this.deprecated = builder.deprecated;
         this.supportedLanguages = copy(builder.supportedLanguages);
         this.additionalMetadata = copy(builder.additionalMetadata);
     }
@@ -126,15 +124,6 @@ public class ModelDescription {
     }
 
     /**
-     * Indicates whether this model has been deprecated by the provider.
-     * A value of true means the model may be removed in the future.
-     * Null indicates deprecation status is unknown.
-     */
-    public Boolean isDeprecated() {
-        return deprecated;
-    }
-
-    /**
      * Set of natural language codes (e.g., "en", "fr", "ja") that the model supports.
      * Returns an empty set if language information is not available, never null.
      */
@@ -185,7 +174,6 @@ public class ModelDescription {
         private Integer maxOutputTokens;
         private Instant createdAt;
         private String owner;
-        private Boolean deprecated;
         private Set<String> supportedLanguages;
         private Map<String, Object> additionalMetadata;
 
@@ -246,14 +234,6 @@ public class ModelDescription {
 
         public Builder owner(String owner) {
             this.owner = owner;
-            return this;
-        }
-
-        /**
-         * Whether this model has been deprecated and may be removed in the future.
-         */
-        public Builder deprecated(Boolean deprecated) {
-            this.deprecated = deprecated;
             return this;
         }
 

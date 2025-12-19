@@ -29,7 +29,6 @@ class ModelDescriptionTest {
         assertThat(description.maxOutputTokens()).isNull();
         assertThat(description.createdAt()).isNull();
         assertThat(description.getOwner()).isNull();
-        assertThat(description.isDeprecated()).isNull();
         assertThat(description.getSupportedLanguages()).isEmpty();
         assertThat(description.getAdditionalMetadata()).isEmpty();
     }
@@ -48,7 +47,6 @@ class ModelDescriptionTest {
                 .maxOutputTokens(4096)
                 .createdAt(now)
                 .owner("test-org")
-                .deprecated(false)
                 .supportedLanguages(Set.of("en", "fr", "es"))
                 .additionalMetadata(Map.of("custom", "value"))
                 .build();
@@ -62,7 +60,6 @@ class ModelDescriptionTest {
         assertThat(description.maxOutputTokens()).isEqualTo(4096);
         assertThat(description.createdAt()).isEqualTo(now);
         assertThat(description.getOwner()).isEqualTo("test-org");
-        assertThat(description.isDeprecated()).isFalse();
         assertThat(description.getSupportedLanguages()).containsExactlyInAnyOrder("en", "fr", "es");
         assertThat(description.getAdditionalMetadata()).containsEntry("custom", "value");
     }
