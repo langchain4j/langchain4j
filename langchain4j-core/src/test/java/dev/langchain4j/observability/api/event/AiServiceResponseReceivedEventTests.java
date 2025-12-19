@@ -17,33 +17,47 @@ import org.junit.jupiter.api.function.Executable;
 
 class AiServiceResponseReceivedEventTests {
 
-    private static final InvocationContext INVOCATION_CONTEXT = InvocationContext.builder().interfaceName("SomeInterface").methodName("someMethod").methodArgument("one").methodArgument("two").chatMemoryId("one").build();
+    private static final InvocationContext INVOCATION_CONTEXT = InvocationContext.builder()
+            .interfaceName("SomeInterface")
+            .methodName("someMethod")
+            .methodArgument("one")
+            .methodArgument("two")
+            .chatMemoryId("one")
+            .build();
 
-    private static final ChatRequest CHAT_REQUEST = ChatRequest.builder().messages(UserMessage.userMessage("Hi")).build();
-    public static final ChatResponse CHAT_RESPONSE = ChatResponse.builder().aiMessage(AiMessage.from("Message!")).build();
+    private static final ChatRequest CHAT_REQUEST =
+            ChatRequest.builder().messages(UserMessage.userMessage("Hi")).build();
+    public static final ChatResponse CHAT_RESPONSE =
+            ChatResponse.builder().aiMessage(AiMessage.from("Message!")).build();
 
     @Test
     void buildWithoutChatRequestThrowsIllegalArgumentException() {
-        assertIaeWithMessage(() -> AiServiceResponseReceivedEvent.builder()
-                .invocationContext(INVOCATION_CONTEXT)
-                .response(CHAT_RESPONSE).build(), "request cannot be null");
+        assertIaeWithMessage(
+                () -> AiServiceResponseReceivedEvent.builder()
+                        .invocationContext(INVOCATION_CONTEXT)
+                        .response(CHAT_RESPONSE)
+                        .build(),
+                "request cannot be null");
     }
-
 
     @Test
     void buildWithoutChatResponseThrowsIllegalArgumentException() {
-        assertIaeWithMessage(() -> AiServiceResponseReceivedEvent.builder()
-                .invocationContext(INVOCATION_CONTEXT)
-                .request(CHAT_REQUEST)
-                .build(), "response cannot be null");
+        assertIaeWithMessage(
+                () -> AiServiceResponseReceivedEvent.builder()
+                        .invocationContext(INVOCATION_CONTEXT)
+                        .request(CHAT_REQUEST)
+                        .build(),
+                "response cannot be null");
     }
 
     @Test
     void buildWithoutContextThrowsIllegalArgumentException() {
-        assertIaeWithMessage(() -> AiServiceResponseReceivedEvent.builder()
-                .request(CHAT_REQUEST)
-                .response(CHAT_RESPONSE)
-                .build(), "invocationContext cannot be null");
+        assertIaeWithMessage(
+                () -> AiServiceResponseReceivedEvent.builder()
+                        .request(CHAT_REQUEST)
+                        .response(CHAT_RESPONSE)
+                        .build(),
+                "invocationContext cannot be null");
     }
 
     @Test
@@ -63,7 +77,8 @@ class AiServiceResponseReceivedEventTests {
                 .invocationContext(INVOCATION_CONTEXT)
                 .response(CHAT_RESPONSE);
 
-        assertIaeWithMessage(() -> new DefaultAiServiceResponseReceivedEvent(noRequestBuilder), "request cannot be null");
+        assertIaeWithMessage(
+                () -> new DefaultAiServiceResponseReceivedEvent(noRequestBuilder), "request cannot be null");
     }
 
     @Test
@@ -73,16 +88,18 @@ class AiServiceResponseReceivedEventTests {
                 .invocationContext(INVOCATION_CONTEXT)
                 .request(CHAT_REQUEST);
 
-        assertIaeWithMessage(() -> new DefaultAiServiceResponseReceivedEvent(noRequestBuilder), "response cannot be null");
+        assertIaeWithMessage(
+                () -> new DefaultAiServiceResponseReceivedEvent(noRequestBuilder), "response cannot be null");
     }
 
     @Test
     void createWithoutContextThrowsIllegalArgumentException() {
 
-        final AiServiceResponseReceivedEventBuilder noRequestBuilder = AiServiceResponseReceivedEvent.builder()
-                .response(CHAT_RESPONSE).request(CHAT_REQUEST);
+        final AiServiceResponseReceivedEventBuilder noRequestBuilder =
+                AiServiceResponseReceivedEvent.builder().response(CHAT_RESPONSE).request(CHAT_REQUEST);
 
-        assertIaeWithMessage(() -> new DefaultAiServiceResponseReceivedEvent(noRequestBuilder), "invocationContext cannot be null");
+        assertIaeWithMessage(
+                () -> new DefaultAiServiceResponseReceivedEvent(noRequestBuilder), "invocationContext cannot be null");
     }
 
     @Test
@@ -103,6 +120,4 @@ class AiServiceResponseReceivedEventTests {
         final String message = exception.getMessage();
         assertThat(message, message.contains(expectedMessage));
     }
-
-
 }
