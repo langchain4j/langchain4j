@@ -13,7 +13,7 @@ import dev.langchain4j.observability.event.DefaultAiServiceResponseReceivedEvent
 public interface AiServiceResponseReceivedEvent extends AiServiceEvent {
 
     /**
-     * Retries the chat request from the AI Service invocation event.
+     * Retrieves the chat request from the AI Service invocation event.
      *
      * @return the {@link ChatRequest} object containing the request sent to the LLM.
      */
