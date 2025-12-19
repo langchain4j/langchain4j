@@ -1,7 +1,7 @@
 package dev.langchain4j.model.discovery;
 
-import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.model.chat.Capability;
+import static dev.langchain4j.internal.ValidationUtils.*;
+
 import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
@@ -9,6 +9,9 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+
+import dev.langchain4j.model.ModelProvider;
+import dev.langchain4j.model.chat.Capability;
 
 /**
  * Represents metadata about an available model from a provider.
@@ -36,9 +39,9 @@ public class ModelDescription {
     private final Map<String, Object> additionalMetadata;
 
     private ModelDescription(Builder builder) {
-        this.id = Objects.requireNonNull(builder.id, "id must not be null");
-        this.name = Objects.requireNonNull(builder.name, "name must not be null");
-        this.provider = Objects.requireNonNull(builder.provider, "provider must not be null");
+        this.id = ensureNotNull(builder.id, "id");
+        this.name = ensureNotNull(builder.name, "name");
+        this.provider = ensureNotNull(builder.provider, "provider");
         this.description = builder.description;
         this.type = builder.type;
         this.capabilities = builder.capabilities != null
