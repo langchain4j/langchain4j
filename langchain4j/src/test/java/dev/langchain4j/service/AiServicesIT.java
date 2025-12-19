@@ -633,7 +633,7 @@ public class AiServicesIT {
         BadChef badChef = AiServices.create(BadChef.class, chatModel);
 
         assertThatThrownBy(() ->
-                badChef.createRecipeWithNonExistingResource("cucumber", "tomato", "feta", "onion", "olives"))
+                        badChef.createRecipeWithNonExistingResource("cucumber", "tomato", "feta", "onion", "olives"))
                 .isInstanceOf(IllegalConfigurationException.class)
                 .hasMessage("@UserMessage's resource '" + BadChef.CHEFS_PROMPT_DOES_NOT_EXIST_TXT + "' not found");
     }
