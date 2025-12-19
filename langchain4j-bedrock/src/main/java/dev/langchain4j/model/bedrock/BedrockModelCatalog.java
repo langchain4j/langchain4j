@@ -6,9 +6,9 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 
 import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.model.discovery.ModelDescription;
-import dev.langchain4j.model.discovery.ModelDiscovery;
-import dev.langchain4j.model.discovery.ModelType;
+import dev.langchain4j.model.catalog.ModelDescription;
+import dev.langchain4j.model.catalog.ModelCatalog;
+import dev.langchain4j.model.catalog.ModelType;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
@@ -19,24 +19,24 @@ import software.amazon.awssdk.services.bedrock.model.ListFoundationModelsRequest
 import software.amazon.awssdk.services.bedrock.model.ModelModality;
 
 /**
- * AWS Bedrock implementation of {@link ModelDiscovery}.
+ * AWS Bedrock implementation of {@link ModelCatalog}.
  *
  * <p>Uses the AWS Bedrock API to dynamically discover available foundation models.
  *
  * <p>Example:
  * <pre>{@code
- * BedrockModelDiscovery discovery = BedrockModelDiscovery.builder()
+ * BedrockModelCatalog catalog = BedrockModelCatalog.builder()
  *     .region(Region.US_EAST_1)
  *     .build();
  *
- * List<ModelDescription> models = discovery.discoverModels();
+ * List<ModelDescription> models = catalog.listModels();
  * }</pre>
  */
-public class BedrockModelDiscovery implements ModelDiscovery {
+public class BedrockModelCatalog implements ModelCatalog {
 
     private final BedrockClient client;
 
-    private BedrockModelDiscovery(Builder builder) {
+    private BedrockModelCatalog(Builder builder) {
         AwsCredentialsProvider credentialsProvider =
                 builder.credentialsProvider != null ? builder.credentialsProvider : DefaultCredentialsProvider.create();
 
@@ -58,7 +58,7 @@ public class BedrockModelDiscovery implements ModelDiscovery {
     }
 
     @Override
-    public List<ModelDescription> discoverModels() {
+    public List<ModelDescription> listModels() {
         ListFoundationModelsRequest.Builder requestBuilder = ListFoundationModelsRequest.builder();
 
         List<FoundationModelSummary> models =
@@ -146,8 +146,8 @@ public class BedrockModelDiscovery implements ModelDiscovery {
             return this;
         }
 
-        public BedrockModelDiscovery build() {
-            return new BedrockModelDiscovery(this);
+        public BedrockModelCatalog build() {
+            return new BedrockModelCatalog(this);
         }
     }
 }

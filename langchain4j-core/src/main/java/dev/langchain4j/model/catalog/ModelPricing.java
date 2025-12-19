@@ -1,4 +1,4 @@
-package dev.langchain4j.model.discovery;
+package dev.langchain4j.model.catalog;
 
 import java.math.BigDecimal;
 import java.util.Currency;

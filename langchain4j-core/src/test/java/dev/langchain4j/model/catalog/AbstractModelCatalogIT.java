@@ -1,4 +1,4 @@
-package dev.langchain4j.model.discovery;
+package dev.langchain4j.model.catalog;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -9,22 +9,22 @@ import org.junit.jupiter.api.Test;
 import dev.langchain4j.model.ModelProvider;
 
 /**
- * Abstract base class for {@link ModelDiscovery} integration tests.
+ * Abstract base class for {@link ModelCatalog} integration tests.
  * Provider-specific implementations should extend this class and implement
- * {@link #createModelDiscovery()}.
+ * {@link #createModelCatalog()}.
  */
-public abstract class AbstractModelDiscoveryIT {
+public abstract class AbstractModelCatalogIT {
 
     /**
-     * Create an instance of the ModelDiscovery implementation to test.
+     * Create an instance of the ModelCatalog implementation to test.
      * This should be properly configured with credentials, URLs, etc.
      *
-     * @return Configured ModelDiscovery instance
+     * @return Configured ModelCatalog instance
      */
-    protected abstract ModelDiscovery createModelDiscovery();
+    protected abstract ModelCatalog createModelCatalog();
 
     /**
-     * Returns the expected provider for this discovery implementation.
+     * Returns the expected provider for this catalog implementation.
      *
      * @return Expected ModelProvider
      */
@@ -32,9 +32,9 @@ public abstract class AbstractModelDiscoveryIT {
 
     @Test
     void should_discover_models() {
-        ModelDiscovery discovery = createModelDiscovery();
+        ModelCatalog catalog = createModelCatalog();
 
-        List<ModelDescription> models = discovery.discoverModels();
+        List<ModelDescription> models = catalog.listModels();
 
         assertThat(models).isNotEmpty();
         assertThat(models).allMatch(m -> m.name() != null, "All models should have a name");
@@ -45,9 +45,9 @@ public abstract class AbstractModelDiscoveryIT {
 
     @Test
     void should_return_correct_provider() {
-        ModelDiscovery discovery = createModelDiscovery();
+        ModelCatalog catalog = createModelCatalog();
 
-        assertThat(discovery.provider()).isEqualTo(expectedProvider());
+        assertThat(catalog.provider()).isEqualTo(expectedProvider());
     }
 
 }

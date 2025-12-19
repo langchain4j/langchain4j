@@ -1,4 +1,4 @@
-package dev.langchain4j.model.discovery;
+package dev.langchain4j.model.catalog;
 
 import java.util.List;
 
@@ -11,38 +11,32 @@ import dev.langchain4j.model.ModelProvider;
  *
  * <p>Similar to {@link dev.langchain4j.model.chat.ChatModel} and
  * {@link dev.langchain4j.model.chat.StreamingChatModel}, each provider should
- * implement this interface to enable model discovery.
+ * implement this interface to enable model listing.
  *
  * <p>Example usage:
  * <pre>{@code
- * OpenAiModelDiscovery discovery = OpenAiModelDiscovery.builder()
+ * OpenAiModelCatalog catalog = OpenAiModelCatalog.builder()
  *     .apiKey(apiKey)
  *     .build();
  *
- * List<ModelDescription> models = discovery.discoverModels();
+ * List<ModelDescription> models = catalog.listModels();
  *
- * // Filter for specific models
- * ModelDiscoveryFilter filter = ModelDiscoveryFilter.builder()
- *     .types(Set.of(ModelType.CHAT))
- *     .requiredCapabilities(Set.of(Capability.RESPONSE_FORMAT_JSON_SCHEMA))
- *     .build();
- * List<ModelDescription> chatModels = discovery.discoverModels(filter);
  * }</pre>
  *
  * @see ModelDescription
  */
-public interface ModelDiscovery {
+public interface ModelCatalog {
 
     /**
      * Retrieves a list of available models from the provider.
      *
      * @return A list of model descriptions
-     * @throws RuntimeException if the discovery operation fails
+     * @throws RuntimeException if the listing operation fails
      */
-    List<ModelDescription> discoverModels();
+    List<ModelDescription> listModels();
 
     /**
-     * Returns the provider for this discovery service.
+     * Returns the provider for this catalog service.
      *
      * @return The model provider
      */

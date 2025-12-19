@@ -14,28 +14,28 @@ import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicModelInfo;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicModelsListResponse;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
-import dev.langchain4j.model.discovery.ModelDescription;
-import dev.langchain4j.model.discovery.ModelDiscovery;
+import dev.langchain4j.model.catalog.ModelDescription;
+import dev.langchain4j.model.catalog.ModelCatalog;
 
 /**
- * Anthropic implementation of {@link ModelDiscovery}.
+ * Anthropic implementation of {@link ModelCatalog}.
  *
  * <p>Uses the Anthropic Models API to dynamically discover available models.
  *
  * <p>Example:
  * <pre>{@code
- * AnthropicModelDiscovery discovery = AnthropicModelDiscovery.builder()
+ * AnthropicModelCatalog catalog = AnthropicModelCatalog.builder()
  *     .apiKey(System.getenv("ANTHROPIC_API_KEY"))
  *     .build();
  *
- * List<ModelDescription> models = discovery.discoverModels();
+ * List<ModelDescription> models = catalog.listModels();
  * }</pre>
  */
-public class AnthropicModelDiscovery implements ModelDiscovery {
+public class AnthropicModelCatalog implements ModelCatalog {
 
     private final AnthropicClient client;
 
-    private AnthropicModelDiscovery(Builder builder) {
+    private AnthropicModelCatalog(Builder builder) {
         this.client = AnthropicClient.builder()
                 .httpClientBuilder(builder.httpClientBuilder)
                 .baseUrl(builder.baseUrl)
@@ -54,7 +54,7 @@ public class AnthropicModelDiscovery implements ModelDiscovery {
     }
 
     @Override
-    public List<ModelDescription> discoverModels() {
+    public List<ModelDescription> listModels() {
         AnthropicModelsListResponse response = client.listModels();
         List<ModelDescription> models =
                 response.data.stream().map(this::mapToModelDescription).collect(Collectors.toList());
@@ -147,8 +147,8 @@ public class AnthropicModelDiscovery implements ModelDiscovery {
             return this;
         }
 
-        public AnthropicModelDiscovery build() {
-            return new AnthropicModelDiscovery(this);
+        public AnthropicModelCatalog build() {
+            return new AnthropicModelCatalog(this);
         }
     }
 }

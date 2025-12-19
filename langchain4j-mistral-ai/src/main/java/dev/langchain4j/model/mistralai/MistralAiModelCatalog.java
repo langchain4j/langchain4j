@@ -9,29 +9,29 @@ import org.slf4j.Logger;
 
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.model.discovery.ModelDescription;
-import dev.langchain4j.model.discovery.ModelDiscovery;
+import dev.langchain4j.model.catalog.ModelDescription;
+import dev.langchain4j.model.catalog.ModelCatalog;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiModelCard;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiModelResponse;
 import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
 
 /**
- * Mistral AI implementation of {@link ModelDiscovery}.
+ * Mistral AI implementation of {@link ModelCatalog}.
  *
  * <p>Example:
  * <pre>{@code
- * MistralAiModelDiscovery discovery = MistralAiModelDiscovery.builder()
+ * MistralAiModelCatalog catalog = MistralAiModelCatalog.builder()
  *     .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
  *     .build();
  *
- * List<ModelDescription> models = discovery.discoverModels();
+ * List<ModelDescription> models = catalog.listModels();
  * }</pre>
  */
-public class MistralAiModelDiscovery implements ModelDiscovery {
+public class MistralAiModelCatalog implements ModelCatalog {
 
     private final MistralAiClient client;
 
-    private MistralAiModelDiscovery(Builder builder) {
+    private MistralAiModelCatalog(Builder builder) {
         this.client = MistralAiClient.builder()
                 .baseUrl(builder.baseUrl)
                 .apiKey(builder.apiKey)
@@ -48,7 +48,7 @@ public class MistralAiModelDiscovery implements ModelDiscovery {
     }
 
     @Override
-    public List<ModelDescription> discoverModels() {
+    public List<ModelDescription> listModels() {
         MistralAiModelResponse response = client.listModels();
         List<ModelDescription> models =
                 response.getData().stream().map(this::mapFromMistralAiModelCard).collect(Collectors.toList());
@@ -115,8 +115,8 @@ public class MistralAiModelDiscovery implements ModelDiscovery {
             return this;
         }
 
-        public MistralAiModelDiscovery build() {
-            return new MistralAiModelDiscovery(this);
+        public MistralAiModelCatalog build() {
+            return new MistralAiModelCatalog(this);
         }
     }
 }

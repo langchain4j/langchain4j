@@ -1,4 +1,4 @@
-package dev.langchain4j.model.discovery;
+package dev.langchain4j.model.catalog;
 
 import static org.assertj.core.api.Assertions.*;
 

@@ -8,19 +8,19 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.model.discovery.ModelDescription;
+import dev.langchain4j.model.catalog.ModelDescription;
 
 @EnabledIfEnvironmentVariable(named = "MISTRAL_AI_API_KEY", matches = ".+")
-class MistralAiModelDiscoveryIT {
+class MistralAiModelCatalogIT {
 
     private static final String API_KEY = System.getenv("MISTRAL_AI_API_KEY");
 
     @Test
     void should_discover_mistral_models() {
-        MistralAiModelDiscovery discovery =
-                MistralAiModelDiscovery.builder().apiKey(API_KEY).build();
+        MistralAiModelCatalog catalog =
+                MistralAiModelCatalog.builder().apiKey(API_KEY).build();
 
-        List<ModelDescription> models = discovery.discoverModels();
+        List<ModelDescription> models = catalog.listModels();
 
         assertThat(models).isNotEmpty();
         assertThat(models).allMatch(m -> m.name() != null);
@@ -30,18 +30,18 @@ class MistralAiModelDiscoveryIT {
 
     @Test
     void should_return_mistral_provider() {
-        MistralAiModelDiscovery discovery =
-                MistralAiModelDiscovery.builder().apiKey(API_KEY).build();
+        MistralAiModelCatalog catalog =
+                MistralAiModelCatalog.builder().apiKey(API_KEY).build();
 
-        assertThat(discovery.provider()).isEqualTo(ModelProvider.MISTRAL_AI);
+        assertThat(catalog.provider()).isEqualTo(ModelProvider.MISTRAL_AI);
     }
 
     @Test
     void should_have_owner_information() {
-        MistralAiModelDiscovery discovery =
-                MistralAiModelDiscovery.builder().apiKey(API_KEY).build();
+        MistralAiModelCatalog catalog =
+                MistralAiModelCatalog.builder().apiKey(API_KEY).build();
 
-        List<ModelDescription> models = discovery.discoverModels();
+        List<ModelDescription> models = catalog.listModels();
 
         assertThat(models).isNotEmpty();
 

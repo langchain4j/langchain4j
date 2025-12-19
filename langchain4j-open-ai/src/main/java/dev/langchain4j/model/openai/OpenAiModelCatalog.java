@@ -10,29 +10,29 @@ import org.slf4j.Logger;
 
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.model.discovery.ModelDescription;
-import dev.langchain4j.model.discovery.ModelDiscovery;
+import dev.langchain4j.model.catalog.ModelDescription;
+import dev.langchain4j.model.catalog.ModelCatalog;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
 import dev.langchain4j.model.openai.internal.models.ModelsListResponse;
 import dev.langchain4j.model.openai.internal.models.OpenAiModelInfo;
 
 /**
- * OpenAI implementation of {@link ModelDiscovery}.
+ * OpenAI implementation of {@link ModelCatalog}.
  *
  * <p>Example:
  * <pre>{@code
- * OpenAiModelDiscovery discovery = OpenAiModelDiscovery.builder()
+ * OpenAiModelCatalog catalog = OpenAiModelCatalog.builder()
  *     .apiKey(System.getenv("OPENAI_API_KEY"))
  *     .build();
  *
- * List<ModelDescription> models = discovery.discoverModels();
+ * List<ModelDescription> models = catalog.listModels();
  * }</pre>
  */
-public class OpenAiModelDiscovery implements ModelDiscovery {
+public class OpenAiModelCatalog implements ModelCatalog {
 
     private final OpenAiClient client;
 
-    private OpenAiModelDiscovery(Builder builder) {
+    private OpenAiModelCatalog(Builder builder) {
         this.client = OpenAiClient.builder()
                 .httpClientBuilder(builder.httpClientBuilder)
                 .baseUrl(builder.baseUrl)
@@ -55,7 +55,7 @@ public class OpenAiModelDiscovery implements ModelDiscovery {
     }
 
     @Override
-    public List<ModelDescription> discoverModels() {
+    public List<ModelDescription> listModels() {
         ModelsListResponse response = client.listModels().execute();
         List<ModelDescription> models =
                 response.getData().stream().map(this::mapToModelDescription).collect(Collectors.toList());
@@ -158,8 +158,8 @@ public class OpenAiModelDiscovery implements ModelDiscovery {
             return this;
         }
 
-        public OpenAiModelDiscovery build() {
-            return new OpenAiModelDiscovery(this);
+        public OpenAiModelCatalog build() {
+            return new OpenAiModelCatalog(this);
         }
     }
 }

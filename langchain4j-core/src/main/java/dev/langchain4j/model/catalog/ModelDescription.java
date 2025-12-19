@@ -1,4 +1,4 @@
-package dev.langchain4j.model.discovery;
+package dev.langchain4j.model.catalog;
 
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.*;

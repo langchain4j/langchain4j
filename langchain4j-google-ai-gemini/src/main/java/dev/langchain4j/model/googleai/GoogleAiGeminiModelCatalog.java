@@ -9,29 +9,29 @@ import org.slf4j.Logger;
 
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.model.discovery.ModelDescription;
-import dev.langchain4j.model.discovery.ModelDiscovery;
-import dev.langchain4j.model.discovery.ModelType;
+import dev.langchain4j.model.catalog.ModelDescription;
+import dev.langchain4j.model.catalog.ModelCatalog;
+import dev.langchain4j.model.catalog.ModelType;
 
 /**
- * Google AI Gemini implementation of {@link ModelDiscovery}.
+ * Google AI Gemini implementation of {@link ModelCatalog}.
  *
  * <p>Uses the Gemini Models API to dynamically discover available models.
  *
  * <p>Example:
  * <pre>{@code
- * GoogleAiGeminiModelDiscovery discovery = GoogleAiGeminiModelDiscovery.builder()
+ * GoogleAiGeminiModelCatalog catalog = GoogleAiGeminiModelCatalog.builder()
  *     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
  *     .build();
  *
- * List<ModelDescription> models = discovery.discoverModels();
+ * List<ModelDescription> models = catalog.listModels();
  * }</pre>
  */
-public class GoogleAiGeminiModelDiscovery implements ModelDiscovery {
+public class GoogleAiGeminiModelCatalog implements ModelCatalog {
 
     private final GeminiService geminiService;
 
-    private GoogleAiGeminiModelDiscovery(Builder builder) {
+    private GoogleAiGeminiModelCatalog(Builder builder) {
         this.geminiService = new GeminiService(
                 builder.httpClientBuilder,
                 builder.apiKey,
@@ -48,7 +48,7 @@ public class GoogleAiGeminiModelDiscovery implements ModelDiscovery {
     }
 
     @Override
-    public List<ModelDescription> discoverModels() {
+    public List<ModelDescription> listModels() {
         List<ModelDescription> allModels = new ArrayList<>();
         String pageToken = null;
 
@@ -166,8 +166,8 @@ public class GoogleAiGeminiModelDiscovery implements ModelDiscovery {
             return this;
         }
 
-        public GoogleAiGeminiModelDiscovery build() {
-            return new GoogleAiGeminiModelDiscovery(this);
+        public GoogleAiGeminiModelCatalog build() {
+            return new GoogleAiGeminiModelCatalog(this);
         }
     }
 }

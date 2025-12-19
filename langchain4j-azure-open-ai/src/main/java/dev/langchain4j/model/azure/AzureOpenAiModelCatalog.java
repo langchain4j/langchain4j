@@ -21,25 +21,25 @@ import dev.langchain4j.http.client.HttpClientBuilderLoader;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
 import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.model.discovery.ModelDescription;
-import dev.langchain4j.model.discovery.ModelDiscovery;
+import dev.langchain4j.model.catalog.ModelDescription;
+import dev.langchain4j.model.catalog.ModelCatalog;
 
 /**
- * Azure OpenAI implementation of {@link ModelDiscovery}.
+ * Azure OpenAI implementation of {@link ModelCatalog}.
  *
  * <p>Uses the Azure OpenAI Models API to dynamically discover available models.
  *
  * <p>Example:
  * <pre>{@code
- * AzureOpenAiModelDiscovery discovery = AzureOpenAiModelDiscovery.builder()
+ * AzureOpenAiModelCatalog catalog = AzureOpenAiModelCatalog.builder()
  *     .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
  *     .apiKey(System.getenv("AZURE_OPENAI_KEY"))
  *     .build();
  *
- * List<ModelDescription> models = discovery.discoverModels();
+ * List<ModelDescription> models = catalog.listModels();
  * }</pre>
  */
-public class AzureOpenAiModelDiscovery implements ModelDiscovery {
+public class AzureOpenAiModelCatalog implements ModelCatalog {
 
     private static final Duration DEFAULT_TIMEOUT = ofSeconds(60);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -48,7 +48,7 @@ public class AzureOpenAiModelDiscovery implements ModelDiscovery {
     private final String endpoint;
     private final String apiKey;
 
-    private AzureOpenAiModelDiscovery(Builder builder) {
+    private AzureOpenAiModelCatalog(Builder builder) {
         if (builder.endpoint == null || builder.endpoint.trim().isEmpty()) {
             throw new IllegalArgumentException("endpoint cannot be null or blank");
         }
@@ -82,7 +82,7 @@ public class AzureOpenAiModelDiscovery implements ModelDiscovery {
     }
 
     @Override
-    public List<ModelDescription> discoverModels() {
+    public List<ModelDescription> listModels() {
         ModelsListResponse response = listModels();
         List<ModelDescription> models =
                 response.data.stream().map(this::mapToModelDescription).collect(Collectors.toList());
@@ -205,8 +205,8 @@ public class AzureOpenAiModelDiscovery implements ModelDiscovery {
             return this;
         }
 
-        public AzureOpenAiModelDiscovery build() {
-            return new AzureOpenAiModelDiscovery(this);
+        public AzureOpenAiModelCatalog build() {
+            return new AzureOpenAiModelCatalog(this);
         }
     }
 }

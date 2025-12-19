@@ -8,23 +8,23 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.model.discovery.ModelDescription;
+import dev.langchain4j.model.catalog.ModelDescription;
 
 @EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_ENDPOINT", matches = ".+")
 @EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
-class AzureOpenAiModelDiscoveryIT {
+class AzureOpenAiModelCatalogIT {
 
     private static final String ENDPOINT = System.getenv("AZURE_OPENAI_ENDPOINT");
     private static final String API_KEY = System.getenv("AZURE_OPENAI_KEY");
 
     @Test
     void should_discover_azure_openai_models() {
-        AzureOpenAiModelDiscovery discovery = AzureOpenAiModelDiscovery.builder()
+        AzureOpenAiModelCatalog catalog = AzureOpenAiModelCatalog.builder()
                 .endpoint(ENDPOINT)
                 .apiKey(API_KEY)
                 .build();
 
-        List<ModelDescription> models = discovery.discoverModels();
+        List<ModelDescription> models = catalog.listModels();
 
         assertThat(models).isNotEmpty();
         assertThat(models).allMatch(m -> m.name() != null);
@@ -34,22 +34,22 @@ class AzureOpenAiModelDiscoveryIT {
 
     @Test
     void should_return_azure_openai_provider() {
-        AzureOpenAiModelDiscovery discovery = AzureOpenAiModelDiscovery.builder()
+        AzureOpenAiModelCatalog catalog = AzureOpenAiModelCatalog.builder()
                 .endpoint(ENDPOINT)
                 .apiKey(API_KEY)
                 .build();
 
-        assertThat(discovery.provider()).isEqualTo(ModelProvider.AZURE_OPEN_AI);
+        assertThat(catalog.provider()).isEqualTo(ModelProvider.AZURE_OPEN_AI);
     }
 
     @Test
     void should_have_creation_timestamp() {
-        AzureOpenAiModelDiscovery discovery = AzureOpenAiModelDiscovery.builder()
+        AzureOpenAiModelCatalog catalog = AzureOpenAiModelCatalog.builder()
                 .endpoint(ENDPOINT)
                 .apiKey(API_KEY)
                 .build();
 
-        List<ModelDescription> models = discovery.discoverModels();
+        List<ModelDescription> models = catalog.listModels();
 
         assertThat(models).isNotEmpty();
         assertThat(models).anyMatch(m -> m.createdAt() != null);
