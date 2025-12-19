@@ -44,7 +44,7 @@ public class EmbeddingSearchRequest {
     /**
      * Creates an instance of an EmbeddingSearchRequest.
      *
-     * @param query          The content used as a reference.
+     * @param query          The query used for search. This is an optional parameter that can be used by {@code EmbeddingStore} implementations to support hybrid search.
      * @param queryEmbedding The embedding used as a reference. Found embeddings should be similar to this one.
      *                       This is a mandatory parameter.
      * @param maxResults     The maximum number of embeddings to return. This is an optional parameter. Default: 3
