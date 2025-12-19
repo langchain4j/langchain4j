@@ -55,8 +55,6 @@ public class WatsonxStreamingChatModelListenerIT extends AbstractStreamingChatMo
                 .apiKey(API_KEY)
                 .projectId(PROJECT_ID)
                 .modelName(model)
-                .logRequests(true)
-                .logResponses(true)
                 .timeout(Duration.ofSeconds(30));
     }
 }
