@@ -27,7 +27,6 @@ public class ModelDescription {
     private final ModelProvider provider;
     private final ModelType type;
     private final Set<Capability> capabilities;
-    private final ModelPricing pricing;
     private final Integer maxInputTokens;
     private final Integer maxOutputTokens;
     private final Instant createdAt;
@@ -43,7 +42,6 @@ public class ModelDescription {
         this.description = builder.description;
         this.type = builder.type;
         this.capabilities = copy(builder.capabilities);
-        this.pricing = builder.pricing;
         this.maxInputTokens = builder.maxInputTokens;
         this.maxOutputTokens = builder.maxOutputTokens;
         this.createdAt = builder.createdAt;
@@ -98,14 +96,6 @@ public class ModelDescription {
      */
     public Set<Capability> capabilities() {
         return capabilities;
-    }
-
-    /**
-     * Cost information for using this model, typically per million tokens.
-     * May be null if pricing information is not available or not applicable.
-     */
-    public ModelPricing pricing() {
-        return pricing;
     }
 
     /**
@@ -203,7 +193,6 @@ public class ModelDescription {
         private ModelProvider provider;
         private ModelType type;
         private Set<Capability> capabilities;
-        private ModelPricing pricing;
         private Integer maxInputTokens;
         private Integer maxOutputTokens;
         private Instant createdAt;
@@ -248,11 +237,6 @@ public class ModelDescription {
 
         public Builder capabilities(Set<Capability> capabilities) {
             this.capabilities = capabilities;
-            return this;
-        }
-
-        public Builder pricing(ModelPricing pricing) {
-            this.pricing = pricing;
             return this;
         }
 

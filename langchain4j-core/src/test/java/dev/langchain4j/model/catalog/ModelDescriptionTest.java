@@ -2,7 +2,6 @@ package dev.langchain4j.model.catalog;
 
 import static org.assertj.core.api.Assertions.*;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Set;
@@ -28,7 +27,6 @@ class ModelDescriptionTest {
         assertThat(description.description()).isNull();
         assertThat(description.type()).isNull();
         assertThat(description.capabilities()).isEmpty();
-        assertThat(description.pricing()).isNull();
         assertThat(description.maxInputTokens()).isNull();
         assertThat(description.maxOutputTokens()).isNull();
         assertThat(description.createdAt()).isNull();
@@ -41,10 +39,6 @@ class ModelDescriptionTest {
     @Test
     void should_build_with_all_fields() {
         Instant now = Instant.now();
-        ModelPricing pricing = ModelPricing.builder()
-                .inputPricePerMillionTokens(new BigDecimal("3.00"))
-                .outputPricePerMillionTokens(new BigDecimal("15.00"))
-                .build();
 
         ModelDescription description = ModelDescription.builder()
                 .name("model-123")
@@ -53,7 +47,6 @@ class ModelDescriptionTest {
                 .provider(ModelProvider.OPEN_AI)
                 .type(ModelType.CHAT)
                 .capabilities(Set.of(Capability.RESPONSE_FORMAT_JSON_SCHEMA))
-                .pricing(pricing)
                 .maxInputTokens(120000)
                 .maxOutputTokens(4096)
                 .createdAt(now)
@@ -69,7 +62,6 @@ class ModelDescriptionTest {
         assertThat(description.provider()).isEqualTo(ModelProvider.OPEN_AI);
         assertThat(description.type()).isEqualTo(ModelType.CHAT);
         assertThat(description.capabilities()).containsExactly(Capability.RESPONSE_FORMAT_JSON_SCHEMA);
-        assertThat(description.pricing()).isEqualTo(pricing);
         assertThat(description.maxInputTokens()).isEqualTo(120000);
         assertThat(description.maxOutputTokens()).isEqualTo(4096);
         assertThat(description.createdAt()).isEqualTo(now);

@@ -6,11 +6,9 @@
  *
  * <p>Key interfaces and classes:
  * <ul>
- *   <li>{@link dev.langchain4j.model.catalog.ModelCatalog} - Main interface for discovering models</li>
+ *   <li>{@link dev.langchain4j.model.catalog.ModelCatalog} - Main interface for listing models</li>
  *   <li>{@link dev.langchain4j.model.catalog.ModelDescription} - Represents metadata about a model</li>
- *   <li>{@link dev.langchain4j.model.catalog.ModelCatalogFilter} - Filter criteria for catalog</li>
  *   <li>{@link dev.langchain4j.model.catalog.ModelType} - Enum of model types</li>
- *   <li>{@link dev.langchain4j.model.catalog.ModelPricing} - Pricing information for models</li>
  * </ul>
  */
 package dev.langchain4j.model.catalog;
