@@ -69,7 +69,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     // TODO https://github.com/langchain4j/langchain4j/issues/2220
 
     static final String WHAT_IS_THE_CAPITAL_OF_GERMANY = "What is the capital of Germany?";
-
+    
     static final String CAT_IMAGE_URL =
             "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
     static final String DICE_IMAGE_URL =
@@ -368,8 +368,8 @@ public abstract class AbstractBaseChatModelIT<M> {
         // given
         int maxOutputTokens = maxOutputTokens();
         ChatRequestParameters parameters = ChatRequestParameters.builder()
-                .maxOutputTokens(maxOutputTokens)
-                .build();
+                        .maxOutputTokens(maxOutputTokens)
+                        .build();
         M model = createModelWith(parameters);
 
         ChatRequest chatRequest = ChatRequest.builder()
@@ -568,7 +568,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     @Test
     @EnabledIf("supportsMaxOutputTokensParameter")
     protected void
-    should_respect_common_parameters_wrapped_in_integration_specific_class_in_default_model_parameters() {
+            should_respect_common_parameters_wrapped_in_integration_specific_class_in_default_model_parameters() {
 
         // given
         // TODO test more/all common params?
@@ -947,8 +947,8 @@ public abstract class AbstractBaseChatModelIT<M> {
 
                 assertThat(metadata.partialToolCalls().get(0).index()).isEqualTo(0);
                 assertThat(metadata.partialToolCalls()
-                        .get(metadata.partialToolCalls().size() - 1)
-                        .index())
+                                .get(metadata.partialToolCalls().size() - 1)
+                                .index())
                         .isEqualTo(1);
 
                 List<List<PartialToolCall>> partialToolCallPartitions = partitionByIndex(metadata.partialToolCalls());
