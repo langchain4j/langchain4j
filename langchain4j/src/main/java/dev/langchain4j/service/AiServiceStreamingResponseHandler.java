@@ -5,17 +5,6 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.tool.ToolService.executeWithErrorHandling;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Future;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -46,6 +35,17 @@ import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Future;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,6 +59,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private static final Logger LOG = LoggerFactory.getLogger(AiServiceStreamingResponseHandler.class);
 
     private final ChatExecutor chatExecutor;
+    private final ChatRequest chatRequest;
     private final AiServiceContext context;
     private final InvocationContext invocationContext;
     private final GuardrailRequestParams commonGuardrailParams;
@@ -93,6 +94,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private record ToolRequestResult(ToolExecutionRequest request, ToolExecutionResult result) {}
 
     AiServiceStreamingResponseHandler(
+            ChatRequest chatRequest,
             ChatExecutor chatExecutor,
             AiServiceContext context,
             InvocationContext invocationContext,
@@ -115,6 +117,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             Executor toolExecutor,
             GuardrailRequestParams commonGuardrailParams,
             Object methodKey) {
+        this.chatRequest = ensureNotNull(chatRequest, "chatRequest");
         this.chatExecutor = ensureNotNull(chatExecutor, "chatExecutor");
         this.context = ensureNotNull(context, "context");
         this.invocationContext = ensureNotNull(invocationContext, "invocationContext");
@@ -221,6 +224,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private void fireResponseReceivedEvent(ChatResponse chatResponse) {
         context.eventListenerRegistrar.fireEvent(AiServiceResponseReceivedEvent.builder()
                 .invocationContext(invocationContext)
+                .request(chatRequest)
                 .response(chatResponse)
                 .build());
     }
@@ -295,12 +299,13 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 return;
             }
 
-            ChatRequest chatRequest = ChatRequest.builder()
+            ChatRequest nextChatRequest = ChatRequest.builder()
                     .messages(messagesToSend(invocationContext.chatMemoryId()))
                     .toolSpecifications(toolSpecifications)
                     .build();
 
             var handler = new AiServiceStreamingResponseHandler(
+                    nextChatRequest,
                     chatExecutor,
                     context,
                     invocationContext,
@@ -324,7 +329,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     commonGuardrailParams,
                     methodKey);
 
-            context.streamingChatModel.chat(chatRequest, handler);
+            context.streamingChatModel.chat(nextChatRequest, handler);
         } else {
             ChatResponse finalChatResponse = finalResponse(chatResponse, aiMessage);
 
