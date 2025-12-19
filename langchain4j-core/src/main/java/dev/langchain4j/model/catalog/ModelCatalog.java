@@ -30,18 +30,10 @@ public interface ModelCatalog {
     /**
      * Retrieves a list of available models from the provider.
      *
-     * <p>Implementations should override this method to provide actual model listing functionality.
-     * The default implementation throws {@link UnsupportedOperationException}.
-     *
      * @return A list of model descriptions
      * @throws RuntimeException if the listing operation fails
-     * @throws UnsupportedOperationException if the provider does not support model listing
      */
-    default List<ModelDescription> listModels() {
-        throw new UnsupportedOperationException(
-                "Model listing is not supported by " + provider() + ". "
-                        + "Please check the provider's documentation for available models.");
-    }
+    List<ModelDescription> listModels();
 
     /**
      * Returns the provider for this catalog service.
