@@ -47,6 +47,7 @@ AnthropicChatModel model = AnthropicChatModel.builder()
     .toolChoiceName(...)
     .disableParallelToolUse(...)
     .serverTools(...)
+    .returnServerToolResults(...)
     .toolMetadataKeysToSend(...)
     .cacheSystemMessages(...)
     .cacheTools(...)
@@ -138,6 +139,33 @@ String answer = model.chat("What is the weather in Munich?");
 ```
 
 Tools specified via `serverTools` will be included in every request to the Anthropic API.
+
+### Retrieving Server Tool Results
+
+To access the raw results from server tools (e.g., web search results, code execution output,
+fileIds from generated files), enable `returnServerToolResults(true)`.
+The results will be available in `AiMessage.attributes()` under the key `"server_tool_results"`:
+
+```java
+ChatModel model = AnthropicChatModel.builder()
+        .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+        .modelName("claude-sonnet-4-5")
+        .serverTools(webSearchTool)
+        .returnServerToolResults(true)
+        .build();
+
+ChatResponse response = model.chat("What is the weather in Munich?");
+AiMessage aiMessage = response.aiMessage();
+
+List<AnthropicServerToolResult> results = aiMessage.attribute("server_tool_results", List.class);
+for (AnthropicServerToolResult result : results) {
+    System.out.println("Type: " + result.type());
+    System.out.println("Tool Use ID: " + result.toolUseId());
+    System.out.println("Content: " + result.content());
+}
+```
+
+This is disabled by default to avoid storing potentially large data in ChatMemory.
 
 ## Tool Search Tool
 

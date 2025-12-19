@@ -13,7 +13,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.ibm.watsonx.ai.core.auth.iam.IAMAuthenticator;
 import com.ibm.watsonx.ai.core.exception.WatsonxException;
 import com.ibm.watsonx.ai.detection.DetectionResponse;
 import com.ibm.watsonx.ai.detection.DetectionService;
@@ -61,6 +60,8 @@ public class WatsonxModerationTest {
         when(mockDetectionServiceBuilder.version(any())).thenReturn(mockDetectionServiceBuilder);
         when(mockDetectionServiceBuilder.logRequests(any())).thenReturn(mockDetectionServiceBuilder);
         when(mockDetectionServiceBuilder.logResponses(any())).thenReturn(mockDetectionServiceBuilder);
+        when(mockDetectionServiceBuilder.apiKey(any())).thenReturn(mockDetectionServiceBuilder);
+        when(mockDetectionServiceBuilder.httpClient(any())).thenReturn(mockDetectionServiceBuilder);
         when(mockDetectionServiceBuilder.build()).thenReturn(mockDetectionService);
     }
 
@@ -89,13 +90,7 @@ public class WatsonxModerationTest {
     @Test
     void should_flag_content_and_include_metadata_from_detection() {
 
-        var response = new DetectionTextResponse();
-        response.setDetection("xxx");
-        response.setDetectionType("Pii");
-        response.setText("input");
-        response.setEnd(5);
-        response.setStart(0);
-        response.setScore(0.3f);
+        var response = new DetectionTextResponse("input", "Pii", "xxx", 0.3, 0, 5);
 
         when(mockDetectionService.detect(detectionTextRequest.capture()))
                 .thenReturn(new DetectionResponse<>(List.of(response)));
@@ -103,8 +98,7 @@ public class WatsonxModerationTest {
         withDetectionServiceMock(() -> {
             ModerationModel model = WatsonxModerationModel.builder()
                     .baseUrl("https://test.com")
-                    .authenticationProvider(
-                            IAMAuthenticator.builder().apiKey("api-key").build())
+                    .apiKey("api-key")
                     .projectId("project-id")
                     .detectors(Pii.ofDefaults(), GraniteGuardian.ofDefaults())
                     .build();
@@ -120,31 +114,18 @@ public class WatsonxModerationTest {
             assertEquals("Pii", metadata.get("detection_type"));
             assertEquals(5, metadata.get("end"));
             assertEquals(0, metadata.get("start"));
-            assertEquals(0.3f, metadata.get("score"));
+            assertEquals(0.3, metadata.get("score"));
 
-            assertEquals("input", detectionTextRequest.getValue().getInput());
-            assertEquals(2, detectionTextRequest.getValue().getDetectors().size());
+            assertEquals("input", detectionTextRequest.getValue().input());
+            assertEquals(2, detectionTextRequest.getValue().detectors().size());
         });
     }
 
     @Test
     void should_return_one_of_the_flagged_response() {
 
-        var response_1 = new DetectionTextResponse();
-        response_1.setDetection("xxx");
-        response_1.setDetectionType("Pii");
-        response_1.setText("input");
-        response_1.setEnd(5);
-        response_1.setStart(0);
-        response_1.setScore(0.3f);
-
-        var response_2 = new DetectionTextResponse();
-        response_2.setDetection("xxx");
-        response_2.setDetectionType("Pii");
-        response_2.setText("input1");
-        response_2.setEnd(5);
-        response_2.setStart(0);
-        response_2.setScore(0.3f);
+        var response_1 = new DetectionTextResponse("input", "Pii", "xxx", 0.3, 0, 5);
+        var response_2 = new DetectionTextResponse("input1", "Pii", "xxx", 0.3, 0, 5);
 
         when(mockDetectionService.detect(detectionTextRequest.capture()))
                 .thenAnswer(invocation -> new DetectionResponse<>(List.of()))
@@ -181,9 +162,9 @@ public class WatsonxModerationTest {
             assertEquals("Pii", metadata.get("detection_type"));
             assertEquals(5, metadata.get("end"));
             assertEquals(0, metadata.get("start"));
-            assertEquals(0.3f, metadata.get("score"));
+            assertEquals(0.3, metadata.get("score"));
 
-            calls = detectionTextRequest.getValue().getDetectors().size();
+            calls = detectionTextRequest.getValue().detectors().size();
             assertTrue(calls == 1 || calls == 2);
         });
     }

@@ -130,9 +130,11 @@ public class StreamableHttpMcpTransport implements McpTransport {
     }
 
     private CompletableFuture<JsonNode> execute(McpClientMessage message, Long id, boolean isRetry) {
-        CompletableFuture<JsonNode> reinitializeInProgress = this.initializeInProgress.get();
-        if (reinitializeInProgress != null) {
-            reinitializeInProgress.join();
+        if (!(message instanceof McpInitializeRequest)) {
+            CompletableFuture<JsonNode> reinitializeInProgress = this.initializeInProgress.get();
+            if (reinitializeInProgress != null) {
+                reinitializeInProgress.join();
+            }
         }
         HttpRequest request = null;
         try {
