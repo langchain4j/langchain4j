@@ -9,7 +9,6 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.model.chat.Capability;
 
 class ModelDescriptionTest {
 
@@ -26,7 +25,6 @@ class ModelDescriptionTest {
         assertThat(description.provider()).isEqualTo(ModelProvider.OPEN_AI);
         assertThat(description.description()).isNull();
         assertThat(description.type()).isNull();
-        assertThat(description.capabilities()).isEmpty();
         assertThat(description.maxInputTokens()).isNull();
         assertThat(description.maxOutputTokens()).isNull();
         assertThat(description.createdAt()).isNull();
@@ -46,7 +44,6 @@ class ModelDescriptionTest {
                 .description("A test model")
                 .provider(ModelProvider.OPEN_AI)
                 .type(ModelType.CHAT)
-                .capabilities(Set.of(Capability.RESPONSE_FORMAT_JSON_SCHEMA))
                 .maxInputTokens(120000)
                 .maxOutputTokens(4096)
                 .createdAt(now)
@@ -61,7 +58,6 @@ class ModelDescriptionTest {
         assertThat(description.description()).isEqualTo("A test model");
         assertThat(description.provider()).isEqualTo(ModelProvider.OPEN_AI);
         assertThat(description.type()).isEqualTo(ModelType.CHAT);
-        assertThat(description.capabilities()).containsExactly(Capability.RESPONSE_FORMAT_JSON_SCHEMA);
         assertThat(description.maxInputTokens()).isEqualTo(120000);
         assertThat(description.maxOutputTokens()).isEqualTo(4096);
         assertThat(description.createdAt()).isEqualTo(now);
@@ -154,7 +150,6 @@ class ModelDescriptionTest {
 
     @Test
     void should_make_immutable_copies_of_collections() {
-        Set<Capability> capabilities = Set.of(Capability.RESPONSE_FORMAT_JSON_SCHEMA);
         Set<String> languages = Set.of("en", "fr");
         Map<String, Object> metadata = Map.of("key", "value");
 
@@ -162,12 +157,10 @@ class ModelDescriptionTest {
                 .name("model-123")
                 .displayName("Test Model")
                 .provider(ModelProvider.OPEN_AI)
-                .capabilities(capabilities)
                 .supportedLanguages(languages)
                 .additionalMetadata(metadata)
                 .build();
 
-        assertThat(description.capabilities()).isNotSameAs(capabilities);
         assertThat(description.getSupportedLanguages()).isNotSameAs(languages);
         assertThat(description.getAdditionalMetadata()).isNotSameAs(metadata);
     }

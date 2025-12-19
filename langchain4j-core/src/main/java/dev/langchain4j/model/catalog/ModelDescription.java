@@ -9,7 +9,6 @@ import java.util.Objects;
 import java.util.Set;
 
 import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.model.chat.Capability;
 
 /**
  * Represents metadata about an available model from a provider.
@@ -26,7 +25,6 @@ public class ModelDescription {
     private final String description;
     private final ModelProvider provider;
     private final ModelType type;
-    private final Set<Capability> capabilities;
     private final Integer maxInputTokens;
     private final Integer maxOutputTokens;
     private final Instant createdAt;
@@ -41,7 +39,6 @@ public class ModelDescription {
         this.provider = ensureNotNull(builder.provider, "provider");
         this.description = builder.description;
         this.type = builder.type;
-        this.capabilities = copy(builder.capabilities);
         this.maxInputTokens = builder.maxInputTokens;
         this.maxOutputTokens = builder.maxOutputTokens;
         this.createdAt = builder.createdAt;
@@ -88,14 +85,6 @@ public class ModelDescription {
      */
     public ModelType type() {
         return type;
-    }
-
-    /**
-     * Set of features supported by this model (e.g., JSON schema response format, tool calling).
-     * Returns an empty set if capabilities are unknown, never null.
-     */
-    public Set<Capability> capabilities() {
-        return capabilities;
     }
 
     /**
@@ -192,7 +181,6 @@ public class ModelDescription {
         private String description;
         private ModelProvider provider;
         private ModelType type;
-        private Set<Capability> capabilities;
         private Integer maxInputTokens;
         private Integer maxOutputTokens;
         private Instant createdAt;
@@ -232,11 +220,6 @@ public class ModelDescription {
 
         public Builder type(ModelType type) {
             this.type = type;
-            return this;
-        }
-
-        public Builder capabilities(Set<Capability> capabilities) {
-            this.capabilities = capabilities;
             return this;
         }
 
