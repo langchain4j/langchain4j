@@ -33,8 +33,8 @@ class AiServicesUserMessageConfigTest {
 
     static final String VALIDATION_ERROR_MESSAGE_SUFFIX =
             " must be annotated with either " + UserMessage.class.getName() + ", " + V.class.getName() + ", " +
-                    MemoryId.class.getName() + ", or " + UserName.class.getName() + ", or it should be of type " +
-                    InvocationParameters.class.getName() + " or " + ChatRequestParameters.class.getName();
+            MemoryId.class.getName() + ", or " + UserName.class.getName() + ", or it should be of type " +
+            InvocationParameters.class.getName() + " or " + ChatRequestParameters.class.getName();
 
     private static final Image image = Image.builder()
             .url("https://en.wikipedia.org/wiki/Llama#/media/File:Llamas,_Vernagt-Stausee,_Italy.jpg")
