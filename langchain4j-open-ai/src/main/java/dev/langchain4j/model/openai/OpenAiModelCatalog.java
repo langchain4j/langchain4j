@@ -70,11 +70,11 @@ public class OpenAiModelCatalog implements ModelCatalog {
 
     private ModelDescription mapToModelDescription(OpenAiModelInfo modelInfo) {
         return ModelDescription.builder()
-                .name(modelInfo.getId())
-                .displayName(modelInfo.getId()) // OpenAI uses id as name
+                .name(modelInfo.id())
+                .displayName(modelInfo.id()) // OpenAI uses id as name
                 .provider(ModelProvider.OPEN_AI)
-                .owner(modelInfo.getOwnedBy())
-                .createdAt(modelInfo.getCreated() != null ? Instant.ofEpochSecond(modelInfo.getCreated()) : null)
+                .owner(modelInfo.ownedBy())
+                .createdAt(modelInfo.created() != null ? Instant.ofEpochSecond(modelInfo.created()) : null)
                 .build();
     }
 

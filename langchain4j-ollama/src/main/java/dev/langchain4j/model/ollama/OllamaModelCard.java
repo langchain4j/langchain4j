@@ -41,7 +41,7 @@ public class OllamaModelCard {
         return new Builder();
     }
 
-    public String getLicense() {
+    public String license() {
         return license;
     }
 
@@ -49,7 +49,7 @@ public class OllamaModelCard {
         this.license = license;
     }
 
-    public String getModelfile() {
+    public String modelfile() {
         return modelfile;
     }
 
@@ -57,7 +57,7 @@ public class OllamaModelCard {
         this.modelfile = modelfile;
     }
 
-    public String getParameters() {
+    public String parameters() {
         return parameters;
     }
 
@@ -65,7 +65,7 @@ public class OllamaModelCard {
         this.parameters = parameters;
     }
 
-    public String getTemplate() {
+    public String template() {
         return template;
     }
 
@@ -73,7 +73,7 @@ public class OllamaModelCard {
         this.template = template;
     }
 
-    public OllamaModelDetails getDetails() {
+    public OllamaModelDetails details() {
         return details;
     }
 
@@ -81,7 +81,7 @@ public class OllamaModelCard {
         this.details = details;
     }
 
-    public Map<String, Object> getModelInfo() {
+    public Map<String, Object> modelInfo() {
         return modelInfo;
     }
 
@@ -89,7 +89,7 @@ public class OllamaModelCard {
         this.modelInfo = modelInfo;
     }
 
-    public OffsetDateTime getModifiedAt() {
+    public OffsetDateTime modifiedAt() {
         return modifiedAt;
     }
 
@@ -97,7 +97,7 @@ public class OllamaModelCard {
         this.modifiedAt = modifiedAt;
     }
 
-    public List<String> getCapabilities() {
+    public List<String> capabilities() {
         return capabilities;
     }
 

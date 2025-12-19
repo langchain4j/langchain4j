@@ -32,7 +32,7 @@ public class OpenAiModelInfo {
         this.ownedBy = ownedBy;
     }
 
-    public String getId() {
+    public String id() {
         return id;
     }
 
@@ -40,7 +40,7 @@ public class OpenAiModelInfo {
         this.id = id;
     }
 
-    public String getObject() {
+    public String object() {
         return object;
     }
 
@@ -48,7 +48,7 @@ public class OpenAiModelInfo {
         this.object = object;
     }
 
-    public Long getCreated() {
+    public Long created() {
         return created;
     }
 
@@ -56,7 +56,7 @@ public class OpenAiModelInfo {
         this.created = created;
     }
 
-    public String getOwnedBy() {
+    public String ownedBy() {
         return ownedBy;
     }
 

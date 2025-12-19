@@ -63,11 +63,11 @@ public class MistralAiModelCatalog implements ModelCatalog {
 
     private ModelDescription mapFromMistralAiModelCard(MistralAiModelCard card) {
         return ModelDescription.builder()
-                .name(card.getId())
-                .displayName(card.getId()) // Mistral AI uses id as name
+                .name(card.id())
+                .displayName(card.id()) // Mistral AI uses id as name
                 .provider(ModelProvider.MISTRAL_AI)
-                .owner(card.getOwnerBy())
-                .createdAt(card.getCreated() != null ? Instant.ofEpochSecond(card.getCreated()) : null)
+                .owner(card.ownerBy())
+                .createdAt(card.created() != null ? Instant.ofEpochSecond(card.created()) : null)
                 .build();
     }
 

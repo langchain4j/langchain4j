@@ -46,12 +46,12 @@ class OllamaModelsIT extends AbstractOllamaLanguageModelInfrastructure {
         Response<OllamaModelCard> response = ollamaModels.modelCard(ollamaModel);
 
         // then
-        assertThat(response.content().getModelfile()).isNotBlank();
-        assertThat(response.content().getTemplate()).isNotBlank();
-        assertThat(response.content().getParameters()).isNotBlank();
-        assertThat(response.content().getModifiedAt()).isNotNull();
-        assertThat(response.content().getDetails().getFamily()).isEqualTo("llama");
-        assertThat(response.content().getCapabilities()).contains("completion");
+        assertThat(response.content().modelfile()).isNotBlank();
+        assertThat(response.content().template()).isNotBlank();
+        assertThat(response.content().parameters()).isNotBlank();
+        assertThat(response.content().modifiedAt()).isNotNull();
+        assertThat(response.content().details().getFamily()).isEqualTo("llama");
+        assertThat(response.content().capabilities()).contains("completion");
     }
 
     @Test
@@ -62,13 +62,13 @@ class OllamaModelsIT extends AbstractOllamaLanguageModelInfrastructure {
         Response<OllamaModelCard> response = ollamaModels.modelCard(TINY_DOLPHIN_MODEL);
 
         // then
-        assertThat(response.content().getModelfile()).isNotBlank();
-        assertThat(response.content().getTemplate()).isNotBlank();
-        assertThat(response.content().getParameters()).isNotBlank();
-        assertThat(response.content().getModifiedAt()).isNotNull();
-        assertThat(response.content().getModelInfo().keySet().size()).isPositive();
-        assertThat(response.content().getModelInfo()).containsKey("general.architecture");
-        assertThat(response.content().getDetails().getFamily()).isEqualTo("llama");
+        assertThat(response.content().modelfile()).isNotBlank();
+        assertThat(response.content().template()).isNotBlank();
+        assertThat(response.content().parameters()).isNotBlank();
+        assertThat(response.content().modifiedAt()).isNotNull();
+        assertThat(response.content().modelInfo().keySet().size()).isPositive();
+        assertThat(response.content().modelInfo()).containsKey("general.architecture");
+        assertThat(response.content().details().getFamily()).isEqualTo("llama");
     }
 
     @Test

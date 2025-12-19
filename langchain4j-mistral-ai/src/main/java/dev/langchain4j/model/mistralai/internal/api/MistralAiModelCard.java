@@ -35,31 +35,31 @@ public class MistralAiModelCard {
         this.permission = builder.permission;
     }
 
-    public String getId() {
+    public String id() {
         return this.id;
     }
 
-    public String getObject() {
+    public String object() {
         return this.object;
     }
 
-    public Integer getCreated() {
+    public Integer created() {
         return this.created;
     }
 
-    public String getOwnerBy() {
+    public String ownerBy() {
         return this.ownerBy;
     }
 
-    public String getRoot() {
+    public String root() {
         return this.root;
     }
 
-    public String getParent() {
+    public String parent() {
         return this.parent;
     }
 
-    public List<MistralAiModelPermission> getPermission() {
+    public List<MistralAiModelPermission> permission() {
         return this.permission;
     }
 
@@ -93,13 +93,13 @@ public class MistralAiModelCard {
     @Override
     public String toString() {
         return new StringJoiner(", ", "MistralAiModelCard [", "]")
-                .add("id=" + this.getId())
-                .add("object=" + this.getObject())
-                .add("created=" + this.getCreated())
-                .add("ownerBy=" + this.getOwnerBy())
-                .add("root=" + this.getRoot())
-                .add("parent=" + this.getParent())
-                .add("permission=" + this.getPermission())
+                .add("id=" + this.id())
+                .add("object=" + this.object())
+                .add("created=" + this.created())
+                .add("ownerBy=" + this.ownerBy())
+                .add("root=" + this.root())
+                .add("parent=" + this.parent())
+                .add("permission=" + this.permission())
                 .toString();
     }
 
