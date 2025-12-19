@@ -38,7 +38,9 @@ public abstract class AnthropicClient {
         throw new UnsupportedOperationException("Token counting is not implemented");
     }
 
-    public abstract AnthropicModelsListResponse listModels();
+    public AnthropicModelsListResponse listModels() {
+        throw new UnsupportedOperationException("Model listing is not supported by this client implementation");
+    }
 
     @SuppressWarnings("rawtypes")
     public static AnthropicClient.Builder builder() {

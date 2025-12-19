@@ -21,8 +21,8 @@ import dev.langchain4j.http.client.HttpClientBuilderLoader;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
 import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.model.catalog.ModelDescription;
 import dev.langchain4j.model.catalog.ModelCatalog;
+import dev.langchain4j.model.catalog.ModelDescription;
 
 /**
  * Azure OpenAI implementation of {@link ModelCatalog}.
@@ -83,7 +83,7 @@ public class AzureOpenAiModelCatalog implements ModelCatalog {
 
     @Override
     public List<ModelDescription> listModels() {
-        ModelsListResponse response = listModels();
+        ModelsListResponse response = queryModels();
         List<ModelDescription> models =
                 response.data.stream().map(this::mapToModelDescription).collect(Collectors.toList());
 
@@ -95,7 +95,7 @@ public class AzureOpenAiModelCatalog implements ModelCatalog {
         return ModelProvider.AZURE_OPEN_AI;
     }
 
-    private ModelsListResponse listModels() {
+    private ModelsListResponse queryModels() {
         // Ensure endpoint doesn't have trailing slash
         String baseEndpoint = endpoint.endsWith("/") ? endpoint.substring(0, endpoint.length() - 1) : endpoint;
         String url = baseEndpoint + "/openai/v1/models";

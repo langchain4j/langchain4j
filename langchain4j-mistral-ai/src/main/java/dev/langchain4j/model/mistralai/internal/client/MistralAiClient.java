@@ -21,7 +21,9 @@ public abstract class MistralAiClient {
 
     public abstract MistralAiModerationResponse moderation(MistralAiModerationRequest request);
 
-    public abstract MistralAiModelResponse listModels();
+    public MistralAiModelResponse listModels() {
+        throw new UnsupportedOperationException("Model listing is not supported by this client implementation");
+    }
 
     public abstract MistralAiChatCompletionResponse fimCompletion(MistralAiFimCompletionRequest request);
 

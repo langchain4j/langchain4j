@@ -30,7 +30,9 @@ public abstract class OpenAiClient {
 
     public abstract SyncOrAsync<GenerateImagesResponse> imagesGeneration(GenerateImagesRequest request);
 
-    public abstract SyncOrAsync<ModelsListResponse> listModels();
+    public SyncOrAsync<ModelsListResponse> listModels() {
+        throw new UnsupportedOperationException("Model listing is not supported by this client implementation");
+    }
 
     @SuppressWarnings("rawtypes")
     public static Builder builder() {
