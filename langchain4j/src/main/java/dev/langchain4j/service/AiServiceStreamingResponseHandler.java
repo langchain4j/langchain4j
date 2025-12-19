@@ -305,7 +305,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     .build();
 
             var handler = new AiServiceStreamingResponseHandler(
-                    chatRequest,
+                    nextChatRequest,
                     chatExecutor,
                     context,
                     invocationContext,
