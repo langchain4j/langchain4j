@@ -1,11 +1,9 @@
 package dev.langchain4j.model.discovery;
 
+import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.*;
 
 import java.time.Instant;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -44,21 +42,15 @@ public class ModelDescription {
         this.provider = ensureNotNull(builder.provider, "provider");
         this.description = builder.description;
         this.type = builder.type;
-        this.capabilities = builder.capabilities != null
-                ? Collections.unmodifiableSet(new HashSet<>(builder.capabilities))
-                : Set.of();
+        this.capabilities = copy(builder.capabilities);
         this.pricing = builder.pricing;
         this.contextWindow = builder.contextWindow;
         this.maxOutputTokens = builder.maxOutputTokens;
         this.createdAt = builder.createdAt;
         this.owner = builder.owner;
         this.deprecated = builder.deprecated;
-        this.supportedLanguages = builder.supportedLanguages != null
-                ? Collections.unmodifiableSet(new HashSet<>(builder.supportedLanguages))
-                : Set.of();
-        this.additionalMetadata = builder.additionalMetadata != null
-                ? Collections.unmodifiableMap(new HashMap<>(builder.additionalMetadata))
-                : Map.of();
+        this.supportedLanguages = copy(builder.supportedLanguages);
+        this.additionalMetadata = copy(builder.additionalMetadata);
     }
 
     public static Builder builder() {
