@@ -1,36 +1,37 @@
 package dev.langchain4j.model.discovery;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.*;
 
-import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.model.chat.Capability;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Set;
+
 import org.junit.jupiter.api.Test;
+
+import dev.langchain4j.model.ModelProvider;
+import dev.langchain4j.model.chat.Capability;
 
 class ModelDescriptionTest {
 
     @Test
     void should_build_with_required_fields_only() {
         ModelDescription description = ModelDescription.builder()
-                .id("model-123")
-                .name("Test Model")
+                .name("model-123")
+                .displayName("Test Model")
                 .provider(ModelProvider.OPEN_AI)
                 .build();
 
-        assertThat(description.getId()).isEqualTo("model-123");
-        assertThat(description.getName()).isEqualTo("Test Model");
-        assertThat(description.getProvider()).isEqualTo(ModelProvider.OPEN_AI);
-        assertThat(description.getDescription()).isNull();
-        assertThat(description.getType()).isNull();
-        assertThat(description.getCapabilities()).isEmpty();
-        assertThat(description.getPricing()).isNull();
-        assertThat(description.getContextWindow()).isNull();
-        assertThat(description.getMaxOutputTokens()).isNull();
-        assertThat(description.getCreatedAt()).isNull();
+        assertThat(description.name()).isEqualTo("model-123");
+        assertThat(description.displayName()).isEqualTo("Test Model");
+        assertThat(description.provider()).isEqualTo(ModelProvider.OPEN_AI);
+        assertThat(description.description()).isNull();
+        assertThat(description.type()).isNull();
+        assertThat(description.capabilities()).isEmpty();
+        assertThat(description.pricing()).isNull();
+        assertThat(description.contextWindow()).isNull();
+        assertThat(description.maxOutputTokens()).isNull();
+        assertThat(description.createdAt()).isNull();
         assertThat(description.getOwner()).isNull();
         assertThat(description.isDeprecated()).isNull();
         assertThat(description.getSupportedLanguages()).isEmpty();
@@ -46,8 +47,8 @@ class ModelDescriptionTest {
                 .build();
 
         ModelDescription description = ModelDescription.builder()
-                .id("model-123")
-                .name("Test Model")
+                .name("model-123")
+                .displayName("Test Model")
                 .description("A test model")
                 .provider(ModelProvider.OPEN_AI)
                 .type(ModelType.CHAT)
@@ -62,16 +63,16 @@ class ModelDescriptionTest {
                 .additionalMetadata(Map.of("custom", "value"))
                 .build();
 
-        assertThat(description.getId()).isEqualTo("model-123");
-        assertThat(description.getName()).isEqualTo("Test Model");
-        assertThat(description.getDescription()).isEqualTo("A test model");
-        assertThat(description.getProvider()).isEqualTo(ModelProvider.OPEN_AI);
-        assertThat(description.getType()).isEqualTo(ModelType.CHAT);
-        assertThat(description.getCapabilities()).containsExactly(Capability.RESPONSE_FORMAT_JSON_SCHEMA);
-        assertThat(description.getPricing()).isEqualTo(pricing);
-        assertThat(description.getContextWindow()).isEqualTo(128000);
-        assertThat(description.getMaxOutputTokens()).isEqualTo(4096);
-        assertThat(description.getCreatedAt()).isEqualTo(now);
+        assertThat(description.name()).isEqualTo("model-123");
+        assertThat(description.displayName()).isEqualTo("Test Model");
+        assertThat(description.description()).isEqualTo("A test model");
+        assertThat(description.provider()).isEqualTo(ModelProvider.OPEN_AI);
+        assertThat(description.type()).isEqualTo(ModelType.CHAT);
+        assertThat(description.capabilities()).containsExactly(Capability.RESPONSE_FORMAT_JSON_SCHEMA);
+        assertThat(description.pricing()).isEqualTo(pricing);
+        assertThat(description.contextWindow()).isEqualTo(128000);
+        assertThat(description.maxOutputTokens()).isEqualTo(4096);
+        assertThat(description.createdAt()).isEqualTo(now);
         assertThat(description.getOwner()).isEqualTo("test-org");
         assertThat(description.isDeprecated()).isFalse();
         assertThat(description.getSupportedLanguages()).containsExactlyInAnyOrder("en", "fr", "es");
@@ -81,7 +82,7 @@ class ModelDescriptionTest {
     @Test
     void should_require_id() {
         assertThatThrownBy(() -> ModelDescription.builder()
-                        .name("Test Model")
+                        .displayName("Test Model")
                         .provider(ModelProvider.OPEN_AI)
                         .build())
                 .isInstanceOf(NullPointerException.class)
@@ -91,7 +92,7 @@ class ModelDescriptionTest {
     @Test
     void should_require_name() {
         assertThatThrownBy(() -> ModelDescription.builder()
-                        .id("model-123")
+                        .name("model-123")
                         .provider(ModelProvider.OPEN_AI)
                         .build())
                 .isInstanceOf(NullPointerException.class)
@@ -101,8 +102,8 @@ class ModelDescriptionTest {
     @Test
     void should_require_provider() {
         assertThatThrownBy(() -> ModelDescription.builder()
-                        .id("model-123")
-                        .name("Test Model")
+                        .name("model-123")
+                        .displayName("Test Model")
                         .build())
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("provider must not be null");
@@ -111,26 +112,26 @@ class ModelDescriptionTest {
     @Test
     void should_implement_equals_based_on_id_and_provider() {
         ModelDescription description1 = ModelDescription.builder()
-                .id("model-123")
-                .name("Test Model")
+                .name("model-123")
+                .displayName("Test Model")
                 .provider(ModelProvider.OPEN_AI)
                 .build();
 
         ModelDescription description2 = ModelDescription.builder()
-                .id("model-123")
-                .name("Different Name")
+                .name("model-123")
+                .displayName("Different Name")
                 .provider(ModelProvider.OPEN_AI)
                 .build();
 
         ModelDescription description3 = ModelDescription.builder()
-                .id("model-456")
-                .name("Test Model")
+                .name("model-456")
+                .displayName("Test Model")
                 .provider(ModelProvider.OPEN_AI)
                 .build();
 
         ModelDescription description4 = ModelDescription.builder()
-                .id("model-123")
-                .name("Test Model")
+                .name("model-123")
+                .displayName("Test Model")
                 .provider(ModelProvider.ANTHROPIC)
                 .build();
 
@@ -143,8 +144,8 @@ class ModelDescriptionTest {
     @Test
     void should_implement_toString() {
         ModelDescription description = ModelDescription.builder()
-                .id("model-123")
-                .name("Test Model")
+                .name("model-123")
+                .displayName("Test Model")
                 .provider(ModelProvider.OPEN_AI)
                 .type(ModelType.CHAT)
                 .contextWindow(128000)
@@ -166,15 +167,15 @@ class ModelDescriptionTest {
         Map<String, Object> metadata = Map.of("key", "value");
 
         ModelDescription description = ModelDescription.builder()
-                .id("model-123")
-                .name("Test Model")
+                .name("model-123")
+                .displayName("Test Model")
                 .provider(ModelProvider.OPEN_AI)
                 .capabilities(capabilities)
                 .supportedLanguages(languages)
                 .additionalMetadata(metadata)
                 .build();
 
-        assertThat(description.getCapabilities()).isNotSameAs(capabilities);
+        assertThat(description.capabilities()).isNotSameAs(capabilities);
         assertThat(description.getSupportedLanguages()).isNotSameAs(languages);
         assertThat(description.getAdditionalMetadata()).isNotSameAs(metadata);
     }

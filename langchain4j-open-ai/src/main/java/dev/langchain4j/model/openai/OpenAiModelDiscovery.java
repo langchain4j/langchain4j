@@ -1,20 +1,20 @@
 package dev.langchain4j.model.openai;
 
-import dev.langchain4j.http.client.HttpClientBuilder;
-import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.model.discovery.ModelDescription;
-import dev.langchain4j.model.discovery.ModelDiscovery;
-import dev.langchain4j.model.discovery.ModelDiscoveryFilter;
-import dev.langchain4j.model.openai.internal.OpenAiClient;
-import dev.langchain4j.model.openai.internal.models.ModelsListResponse;
-import dev.langchain4j.model.openai.internal.models.OpenAiModelInfo;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
 import org.slf4j.Logger;
+
+import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.model.ModelProvider;
+import dev.langchain4j.model.discovery.ModelDescription;
+import dev.langchain4j.model.discovery.ModelDiscovery;
+import dev.langchain4j.model.openai.internal.OpenAiClient;
+import dev.langchain4j.model.openai.internal.models.ModelsListResponse;
+import dev.langchain4j.model.openai.internal.models.OpenAiModelInfo;
 
 /**
  * OpenAI implementation of {@link ModelDiscovery}.
@@ -56,19 +56,9 @@ public class OpenAiModelDiscovery implements ModelDiscovery {
 
     @Override
     public List<ModelDescription> discoverModels() {
-        return discoverModels(null);
-    }
-
-    @Override
-    public List<ModelDescription> discoverModels(ModelDiscoveryFilter filter) {
         ModelsListResponse response = client.listModels().execute();
         List<ModelDescription> models =
                 response.getData().stream().map(this::mapToModelDescription).collect(Collectors.toList());
-
-        // OpenAI doesn't support server-side filtering, so filter client-side
-        if (filter != null && !filter.matchesAll()) {
-            return filterModels(models, filter);
-        }
 
         return models;
     }
@@ -78,72 +68,14 @@ public class OpenAiModelDiscovery implements ModelDiscovery {
         return ModelProvider.OPEN_AI;
     }
 
-    @Override
-    public boolean supportsFiltering() {
-        return false; // OpenAI doesn't support server-side filtering
-    }
-
     private ModelDescription mapToModelDescription(OpenAiModelInfo modelInfo) {
         return ModelDescription.builder()
-                .id(modelInfo.getId())
-                .name(modelInfo.getId()) // OpenAI uses id as name
+                .name(modelInfo.getId())
+                .displayName(modelInfo.getId()) // OpenAI uses id as name
                 .provider(ModelProvider.OPEN_AI)
                 .owner(modelInfo.getOwnedBy())
                 .createdAt(modelInfo.getCreated() != null ? Instant.ofEpochSecond(modelInfo.getCreated()) : null)
                 .build();
-    }
-
-    private List<ModelDescription> filterModels(List<ModelDescription> models, ModelDiscoveryFilter filter) {
-        return models.stream().filter(model -> matchesFilter(model, filter)).collect(Collectors.toList());
-    }
-
-    private boolean matchesFilter(ModelDescription model, ModelDiscoveryFilter filter) {
-        // Filter by type
-        if (filter.getTypes() != null && !filter.getTypes().isEmpty()) {
-            if (model.getType() == null || !filter.getTypes().contains(model.getType())) {
-                return false;
-            }
-        }
-
-        // Filter by required capabilities
-        if (filter.getRequiredCapabilities() != null
-                && !filter.getRequiredCapabilities().isEmpty()) {
-            if (model.getCapabilities() == null
-                    || !model.getCapabilities().containsAll(filter.getRequiredCapabilities())) {
-                return false;
-            }
-        }
-
-        // Filter by minimum context window
-        if (filter.getMinContextWindow() != null) {
-            if (model.getContextWindow() == null || model.getContextWindow() < filter.getMinContextWindow()) {
-                return false;
-            }
-        }
-
-        // Filter by maximum context window
-        if (filter.getMaxContextWindow() != null) {
-            if (model.getContextWindow() == null || model.getContextWindow() > filter.getMaxContextWindow()) {
-                return false;
-            }
-        }
-
-        // Filter by name pattern
-        if (filter.getNamePattern() != null) {
-            Pattern pattern = Pattern.compile(filter.getNamePattern());
-            if (!pattern.matcher(model.getName()).matches()) {
-                return false;
-            }
-        }
-
-        // Filter by deprecated status
-        if (filter.getIncludeDeprecated() != null && !filter.getIncludeDeprecated()) {
-            if (Boolean.TRUE.equals(model.isDeprecated())) {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     public static class Builder {

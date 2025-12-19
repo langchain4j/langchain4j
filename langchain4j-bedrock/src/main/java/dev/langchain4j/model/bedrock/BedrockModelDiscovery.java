@@ -1,14 +1,14 @@
 package dev.langchain4j.model.bedrock;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.slf4j.Logger;
+
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.discovery.ModelDescription;
 import dev.langchain4j.model.discovery.ModelDiscovery;
-import dev.langchain4j.model.discovery.ModelDiscoveryFilter;
 import dev.langchain4j.model.discovery.ModelType;
-import java.util.List;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-import org.slf4j.Logger;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
@@ -59,28 +59,13 @@ public class BedrockModelDiscovery implements ModelDiscovery {
 
     @Override
     public List<ModelDescription> discoverModels() {
-        return discoverModels(null);
-    }
-
-    @Override
-    public List<ModelDescription> discoverModels(ModelDiscoveryFilter filter) {
         ListFoundationModelsRequest.Builder requestBuilder = ListFoundationModelsRequest.builder();
-
-        // Apply server-side filters if available
-        if (filter != null && !filter.matchesAll()) {
-            applyServerSideFilter(requestBuilder, filter);
-        }
 
         List<FoundationModelSummary> models =
                 client.listFoundationModels(requestBuilder.build()).modelSummaries();
 
         List<ModelDescription> descriptions =
                 models.stream().map(this::mapToModelDescription).collect(Collectors.toList());
-
-        // Apply client-side filters for unsupported filter criteria
-        if (filter != null && !filter.matchesAll()) {
-            return filterModels(descriptions, filter);
-        }
 
         return descriptions;
     }
@@ -90,37 +75,15 @@ public class BedrockModelDiscovery implements ModelDiscovery {
         return ModelProvider.AMAZON_BEDROCK;
     }
 
-    @Override
-    public boolean supportsFiltering() {
-        return true; // Bedrock supports some server-side filtering
-    }
-
-    private void applyServerSideFilter(
-            ListFoundationModelsRequest.Builder requestBuilder, ModelDiscoveryFilter filter) {
-        // Filter by output modality (maps to type)
-        if (filter.getTypes() != null && !filter.getTypes().isEmpty()) {
-            if (filter.getTypes().size() == 1) {
-                ModelType type = filter.getTypes().iterator().next();
-                if (type == ModelType.CHAT) {
-                    requestBuilder.byOutputModality(ModelModality.TEXT);
-                } else if (type == ModelType.EMBEDDING) {
-                    requestBuilder.byOutputModality(ModelModality.EMBEDDING);
-                } else if (type == ModelType.IMAGE_GENERATION) {
-                    requestBuilder.byOutputModality(ModelModality.IMAGE);
-                }
-            }
-        }
-    }
-
     private ModelDescription mapToModelDescription(FoundationModelSummary modelSummary) {
         ModelDescription.Builder builder =
-                ModelDescription.builder().id(modelSummary.modelId()).provider(ModelProvider.AMAZON_BEDROCK);
+                ModelDescription.builder().name(modelSummary.modelId()).provider(ModelProvider.AMAZON_BEDROCK);
 
         // Use modelName if available, otherwise use modelId
         if (modelSummary.modelName() != null && !modelSummary.modelName().isEmpty()) {
-            builder.name(modelSummary.modelName());
+            builder.displayName(modelSummary.modelName());
         } else {
-            builder.name(modelSummary.modelId());
+            builder.displayName(modelSummary.modelId());
         }
 
         // Set provider name as owner
@@ -149,59 +112,6 @@ public class BedrockModelDiscovery implements ModelDiscovery {
         }
 
         return builder.build();
-    }
-
-    private List<ModelDescription> filterModels(List<ModelDescription> models, ModelDiscoveryFilter filter) {
-        return models.stream().filter(model -> matchesFilter(model, filter)).collect(Collectors.toList());
-    }
-
-    private boolean matchesFilter(ModelDescription model, ModelDiscoveryFilter filter) {
-        // Filter by type (already applied server-side, but check for completeness)
-        if (filter.getTypes() != null && !filter.getTypes().isEmpty()) {
-            if (model.getType() == null || !filter.getTypes().contains(model.getType())) {
-                return false;
-            }
-        }
-
-        // Filter by required capabilities
-        if (filter.getRequiredCapabilities() != null
-                && !filter.getRequiredCapabilities().isEmpty()) {
-            if (model.getCapabilities() == null
-                    || !model.getCapabilities().containsAll(filter.getRequiredCapabilities())) {
-                return false;
-            }
-        }
-
-        // Filter by minimum context window
-        if (filter.getMinContextWindow() != null) {
-            if (model.getContextWindow() == null || model.getContextWindow() < filter.getMinContextWindow()) {
-                return false;
-            }
-        }
-
-        // Filter by maximum context window
-        if (filter.getMaxContextWindow() != null) {
-            if (model.getContextWindow() == null || model.getContextWindow() > filter.getMaxContextWindow()) {
-                return false;
-            }
-        }
-
-        // Filter by name pattern
-        if (filter.getNamePattern() != null) {
-            Pattern pattern = Pattern.compile(filter.getNamePattern());
-            if (!pattern.matcher(model.getName()).matches()) {
-                return false;
-            }
-        }
-
-        // Filter by deprecated status
-        if (filter.getIncludeDeprecated() != null && !filter.getIncludeDeprecated()) {
-            if (Boolean.TRUE.equals(model.isDeprecated())) {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     public static class Builder {

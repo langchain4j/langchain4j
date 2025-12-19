@@ -21,8 +21,8 @@ import dev.langchain4j.model.chat.Capability;
  */
 public class ModelDescription {
 
-    private final String id;
     private final String name;
+    private final String displayName;
     private final String description;
     private final ModelProvider provider;
     private final ModelType type;
@@ -37,8 +37,8 @@ public class ModelDescription {
     private final Map<String, Object> additionalMetadata;
 
     private ModelDescription(Builder builder) {
-        this.id = ensureNotNull(builder.id, "id");
-        this.name = ensureNotNull(builder.name, "name");
+        this.name = ensureNotNull(builder.name, "id");
+        this.displayName = ensureNotNull(builder.displayName, "name");
         this.provider = ensureNotNull(builder.provider, "provider");
         this.description = builder.description;
         this.type = builder.type;
@@ -61,26 +61,26 @@ public class ModelDescription {
      * Unique identifier for the model as defined by the provider.
      * For example: "gpt-4", "claude-3-opus-20240229", "llama2".
      */
-    public String getId() {
-        return id;
+    public String name() {
+        return name;
     }
 
     /**
      * Human-readable display name for the model.
      * May be the same as the ID for some providers.
      */
-    public String getName() {
-        return name;
+    public String displayName() {
+        return displayName;
     }
 
     /**
      * Optional textual description of the model's characteristics and intended use cases.
      */
-    public String getDescription() {
+    public String description() {
         return description;
     }
 
-    public ModelProvider getProvider() {
+    public ModelProvider provider() {
         return provider;
     }
 
@@ -88,7 +88,7 @@ public class ModelDescription {
      * Category of the model (e.g., CHAT, EMBEDDING, IMAGE_GENERATION).
      * May be null if the provider doesn't categorize models or the type is unknown.
      */
-    public ModelType getType() {
+    public ModelType type() {
         return type;
     }
 
@@ -96,7 +96,7 @@ public class ModelDescription {
      * Set of features supported by this model (e.g., JSON schema response format, tool calling).
      * Returns an empty set if capabilities are unknown, never null.
      */
-    public Set<Capability> getCapabilities() {
+    public Set<Capability> capabilities() {
         return capabilities;
     }
 
@@ -104,7 +104,7 @@ public class ModelDescription {
      * Cost information for using this model, typically per million tokens.
      * May be null if pricing information is not available or not applicable.
      */
-    public ModelPricing getPricing() {
+    public ModelPricing pricing() {
         return pricing;
     }
 
@@ -113,7 +113,7 @@ public class ModelDescription {
      * Also known as the token window or context length.
      * May be null if this information is not provided by the provider.
      */
-    public Integer getContextWindow() {
+    public Integer contextWindow() {
         return contextWindow;
     }
 
@@ -122,7 +122,7 @@ public class ModelDescription {
      * This is typically smaller than the context window.
      * May be null if this information is not provided by the provider.
      */
-    public Integer getMaxOutputTokens() {
+    public Integer maxOutputTokens() {
         return maxOutputTokens;
     }
 
@@ -130,7 +130,7 @@ public class ModelDescription {
      * Timestamp when the model was created or released by the provider.
      * May be null if this information is not available.
      */
-    public Instant getCreatedAt() {
+    public Instant createdAt() {
         return createdAt;
     }
 
@@ -174,27 +174,27 @@ public class ModelDescription {
         if (this == o) return true;
         if (!(o instanceof ModelDescription)) return false;
         ModelDescription that = (ModelDescription) o;
-        return Objects.equals(id, that.id) && Objects.equals(provider, that.provider);
+        return Objects.equals(name, that.name) && Objects.equals(provider, that.provider);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, provider);
+        return Objects.hash(name, provider);
     }
 
     @Override
     public String toString() {
-        return "ModelDescription{" + "id='"
-                + id + '\'' + ", name='"
-                + name + '\'' + ", provider="
+        return "ModelDescription{" + "name='"
+                + name + '\'' + ", displayName='"
+                + displayName + '\'' + ", provider="
                 + provider + ", type="
                 + type + ", contextWindow="
                 + contextWindow + '}';
     }
 
     public static class Builder {
-        private String id;
         private String name;
+        private String displayName;
         private String description;
         private ModelProvider provider;
         private ModelType type;
@@ -211,16 +211,16 @@ public class ModelDescription {
         /**
          * Required. Unique identifier for the model as defined by the provider.
          */
-        public Builder id(String id) {
-            this.id = id;
+        public Builder name(String name) {
+            this.name = name;
             return this;
         }
 
         /**
          * Required. Human-readable display name for the model.
          */
-        public Builder name(String name) {
-            this.name = name;
+        public Builder displayName(String name) {
+            this.displayName = name;
             return this;
         }
 

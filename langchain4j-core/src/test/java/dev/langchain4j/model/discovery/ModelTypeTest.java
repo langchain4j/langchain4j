@@ -1,6 +1,6 @@
 package dev.langchain4j.model.discovery;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.*;
 
 import org.junit.jupiter.api.Test;
 
@@ -15,12 +15,9 @@ class ModelTypeTest {
                         ModelType.CHAT,
                         ModelType.EMBEDDING,
                         ModelType.IMAGE_GENERATION,
-                        ModelType.IMAGE_UNDERSTANDING,
                         ModelType.AUDIO_TRANSCRIPTION,
                         ModelType.AUDIO_GENERATION,
-                        ModelType.VIDEO_UNDERSTANDING,
                         ModelType.MODERATION,
-                        ModelType.CODE_COMPLETION,
                         ModelType.RERANKING,
                         ModelType.OTHER);
     }
