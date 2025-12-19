@@ -2,13 +2,11 @@ package dev.langchain4j.model.googleai;
 
 import static org.assertj.core.api.Assertions.*;
 
-import java.util.List;
-
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.catalog.ModelDescription;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 class GoogleAiGeminiModelCatalogIT {
@@ -57,5 +55,4 @@ class GoogleAiGeminiModelCatalogIT {
         assertThat(models).isNotEmpty();
         assertThat(models).anyMatch(m -> m.maxOutputTokens() != null && m.maxOutputTokens() > 0);
     }
-
 }
