@@ -2,10 +2,9 @@ package dev.langchain4j.model.catalog;
 
 import static dev.langchain4j.internal.ValidationUtils.*;
 
+import dev.langchain4j.model.ModelProvider;
 import java.time.Instant;
 import java.util.Objects;
-
-import dev.langchain4j.model.ModelProvider;
 
 /**
  * Represents metadata about an available model from a provider.
@@ -131,13 +130,13 @@ public class ModelDescription {
 
     @Override
     public String toString() {
-        return "ModelDescription{" + 
-        		"name='" + name + '\'' + 
-        		", displayName='" + displayName + '\'' + 
-        		", provider=" + provider + 
-        		", type=" + type + 
-        		", maxInputTokens=" + maxInputTokens + 
-                ", maxOutputTokens=" + maxOutputTokens + '}';
+        return "ModelDescription{" + "name='"
+                + name + '\'' + ", displayName='"
+                + displayName + '\'' + ", provider="
+                + provider + ", type="
+                + type + ", maxInputTokens="
+                + maxInputTokens + ", maxOutputTokens="
+                + maxOutputTokens + '}';
     }
 
     public static class Builder {

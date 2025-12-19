@@ -2,11 +2,9 @@ package dev.langchain4j.model.catalog;
 
 import static org.assertj.core.api.Assertions.*;
 
-import java.time.Instant;
-
-import org.junit.jupiter.api.Test;
-
 import dev.langchain4j.model.ModelProvider;
+import java.time.Instant;
+import org.junit.jupiter.api.Test;
 
 class ModelDescriptionTest {
 

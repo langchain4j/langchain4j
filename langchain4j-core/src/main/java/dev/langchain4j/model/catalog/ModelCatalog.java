@@ -1,8 +1,7 @@
 package dev.langchain4j.model.catalog;
 
-import java.util.List;
-
 import dev.langchain4j.model.ModelProvider;
+import java.util.List;
 
 /**
  * Represents a service that can discover available models from an LLM provider.

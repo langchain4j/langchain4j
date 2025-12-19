@@ -2,11 +2,9 @@ package dev.langchain4j.model.catalog;
 
 import static org.assertj.core.api.Assertions.*;
 
-import java.util.List;
-
-import org.junit.jupiter.api.Test;
-
 import dev.langchain4j.model.ModelProvider;
+import java.util.List;
+import org.junit.jupiter.api.Test;
 
 /**
  * Abstract base class for {@link ModelCatalog} integration tests.
@@ -49,5 +47,4 @@ public abstract class AbstractModelCatalogIT {
 
         assertThat(catalog.provider()).isEqualTo(expectedProvider());
     }
-
 }
