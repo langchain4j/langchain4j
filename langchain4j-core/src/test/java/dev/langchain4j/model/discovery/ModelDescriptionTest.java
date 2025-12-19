@@ -29,7 +29,7 @@ class ModelDescriptionTest {
         assertThat(description.type()).isNull();
         assertThat(description.capabilities()).isEmpty();
         assertThat(description.pricing()).isNull();
-        assertThat(description.contextWindow()).isNull();
+        assertThat(description.maxInputTokens()).isNull();
         assertThat(description.maxOutputTokens()).isNull();
         assertThat(description.createdAt()).isNull();
         assertThat(description.getOwner()).isNull();
@@ -54,7 +54,7 @@ class ModelDescriptionTest {
                 .type(ModelType.CHAT)
                 .capabilities(Set.of(Capability.RESPONSE_FORMAT_JSON_SCHEMA))
                 .pricing(pricing)
-                .contextWindow(128000)
+                .maxInputTokens(120000)
                 .maxOutputTokens(4096)
                 .createdAt(now)
                 .owner("test-org")
@@ -70,7 +70,7 @@ class ModelDescriptionTest {
         assertThat(description.type()).isEqualTo(ModelType.CHAT);
         assertThat(description.capabilities()).containsExactly(Capability.RESPONSE_FORMAT_JSON_SCHEMA);
         assertThat(description.pricing()).isEqualTo(pricing);
-        assertThat(description.contextWindow()).isEqualTo(128000);
+        assertThat(description.maxInputTokens()).isEqualTo(120000);
         assertThat(description.maxOutputTokens()).isEqualTo(4096);
         assertThat(description.createdAt()).isEqualTo(now);
         assertThat(description.getOwner()).isEqualTo("test-org");
@@ -148,7 +148,7 @@ class ModelDescriptionTest {
                 .displayName("Test Model")
                 .provider(ModelProvider.OPEN_AI)
                 .type(ModelType.CHAT)
-                .contextWindow(128000)
+                .maxInputTokens(128000)
                 .build();
 
         String str = description.toString();

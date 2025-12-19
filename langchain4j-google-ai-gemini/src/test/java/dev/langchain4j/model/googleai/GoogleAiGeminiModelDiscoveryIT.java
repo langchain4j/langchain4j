@@ -44,7 +44,7 @@ class GoogleAiGeminiModelDiscoveryIT {
         List<ModelDescription> models = discovery.discoverModels();
 
         assertThat(models).isNotEmpty();
-        assertThat(models).anyMatch(m -> m.contextWindow() != null && m.contextWindow() > 0);
+        assertThat(models).anyMatch(m -> m.maxInputTokens() != null && m.maxInputTokens() > 0);
     }
 
     @Test

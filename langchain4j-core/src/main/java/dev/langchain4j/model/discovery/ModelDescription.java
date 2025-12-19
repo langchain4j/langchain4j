@@ -28,7 +28,7 @@ public class ModelDescription {
     private final ModelType type;
     private final Set<Capability> capabilities;
     private final ModelPricing pricing;
-    private final Integer contextWindow;
+    private final Integer maxInputTokens;
     private final Integer maxOutputTokens;
     private final Instant createdAt;
     private final String owner;
@@ -44,7 +44,7 @@ public class ModelDescription {
         this.type = builder.type;
         this.capabilities = copy(builder.capabilities);
         this.pricing = builder.pricing;
-        this.contextWindow = builder.contextWindow;
+        this.maxInputTokens = builder.maxInputTokens;
         this.maxOutputTokens = builder.maxOutputTokens;
         this.createdAt = builder.createdAt;
         this.owner = builder.owner;
@@ -109,12 +109,15 @@ public class ModelDescription {
     }
 
     /**
-     * Maximum number of tokens that can be processed in a single request (input + output).
-     * Also known as the token window or context length.
+     * Maximum number of input tokens the model can accept in a single request.
+     * This represents the limit on the size of the prompt/input that can be sent to the model.
      * May be null if this information is not provided by the provider.
+     *
+     * <p>Note: For some models, this may be the same as the context window if the provider
+     * doesn't distinguish between input and output token limits separately.
      */
-    public Integer contextWindow() {
-        return contextWindow;
+    public Integer maxInputTokens() {
+        return maxInputTokens;
     }
 
     /**
@@ -184,12 +187,13 @@ public class ModelDescription {
 
     @Override
     public String toString() {
-        return "ModelDescription{" + "name='"
-                + name + '\'' + ", displayName='"
-                + displayName + '\'' + ", provider="
-                + provider + ", type="
-                + type + ", contextWindow="
-                + contextWindow + '}';
+        return "ModelDescription{" + 
+        		"name='" + name + '\'' + 
+        		", displayName='" + displayName + '\'' + 
+        		", provider=" + provider + 
+        		", type=" + type + 
+        		", maxInputTokens=" + maxInputTokens + 
+                ", maxOutputTokens=" + maxOutputTokens + '}';
     }
 
     public static class Builder {
@@ -200,7 +204,7 @@ public class ModelDescription {
         private ModelType type;
         private Set<Capability> capabilities;
         private ModelPricing pricing;
-        private Integer contextWindow;
+        private Integer maxInputTokens;
         private Integer maxOutputTokens;
         private Instant createdAt;
         private String owner;
@@ -253,10 +257,10 @@ public class ModelDescription {
         }
 
         /**
-         * Maximum number of tokens (input + output) that can be processed in a single request.
+         * Maximum number of input tokens the model can accept in a single request.
          */
-        public Builder contextWindow(Integer contextWindow) {
-            this.contextWindow = contextWindow;
+        public Builder maxInputTokens(Integer maxInputTokens) {
+            this.maxInputTokens = maxInputTokens;
             return this;
         }
 

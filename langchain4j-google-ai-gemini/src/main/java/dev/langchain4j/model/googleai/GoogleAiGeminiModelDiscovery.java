@@ -94,9 +94,9 @@ public class GoogleAiGeminiModelDiscovery implements ModelDiscovery {
             builder.description(modelInfo.description());
         }
 
-        // Context window (input token limit)
+        // Context window and max input tokens (input token limit)
         if (modelInfo.inputTokenLimit() != null) {
-            builder.contextWindow(modelInfo.inputTokenLimit());
+            builder.maxInputTokens(modelInfo.inputTokenLimit());
         }
 
         // Max output tokens
