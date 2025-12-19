@@ -1,21 +1,19 @@
 package dev.langchain4j.model.anthropic;
 
+import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.model.ModelProvider;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicModelInfo;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicModelsListResponse;
+import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
+import dev.langchain4j.model.catalog.ModelCatalog;
+import dev.langchain4j.model.catalog.ModelDescription;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.stream.Collectors;
-
 import org.slf4j.Logger;
-
-import dev.langchain4j.http.client.HttpClientBuilder;
-import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.model.anthropic.internal.api.AnthropicModelInfo;
-import dev.langchain4j.model.anthropic.internal.api.AnthropicModelsListResponse;
-import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
-import dev.langchain4j.model.catalog.ModelDescription;
-import dev.langchain4j.model.catalog.ModelCatalog;
 
 /**
  * Anthropic implementation of {@link ModelCatalog}.

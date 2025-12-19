@@ -1,19 +1,17 @@
 package dev.langchain4j.model.mistralai;
 
+import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.model.ModelProvider;
+import dev.langchain4j.model.catalog.ModelCatalog;
+import dev.langchain4j.model.catalog.ModelDescription;
+import dev.langchain4j.model.mistralai.internal.api.MistralAiModelCard;
+import dev.langchain4j.model.mistralai.internal.api.MistralAiModelResponse;
+import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
-
 import org.slf4j.Logger;
-
-import dev.langchain4j.http.client.HttpClientBuilder;
-import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.model.catalog.ModelDescription;
-import dev.langchain4j.model.catalog.ModelCatalog;
-import dev.langchain4j.model.mistralai.internal.api.MistralAiModelCard;
-import dev.langchain4j.model.mistralai.internal.api.MistralAiModelResponse;
-import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
 
 /**
  * Mistral AI implementation of {@link ModelCatalog}.
