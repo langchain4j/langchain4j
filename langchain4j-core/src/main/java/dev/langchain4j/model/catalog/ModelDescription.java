@@ -29,7 +29,6 @@ public class ModelDescription {
     private final Integer maxOutputTokens;
     private final Instant createdAt;
     private final String owner;
-    private final Set<String> supportedLanguages;
     private final Map<String, Object> additionalMetadata;
 
     private ModelDescription(Builder builder) {
@@ -42,7 +41,6 @@ public class ModelDescription {
         this.maxOutputTokens = builder.maxOutputTokens;
         this.createdAt = builder.createdAt;
         this.owner = builder.owner;
-        this.supportedLanguages = copy(builder.supportedLanguages);
         this.additionalMetadata = copy(builder.additionalMetadata);
     }
 
@@ -124,14 +122,6 @@ public class ModelDescription {
     }
 
     /**
-     * Set of natural language codes (e.g., "en", "fr", "ja") that the model supports.
-     * Returns an empty set if language information is not available, never null.
-     */
-    public Set<String> getSupportedLanguages() {
-        return supportedLanguages;
-    }
-
-    /**
      * Provider-specific metadata that doesn't fit into standard fields.
      * Allows providers to include custom information about their models.
      * Returns an empty map if no additional metadata is available, never null.
@@ -174,7 +164,6 @@ public class ModelDescription {
         private Integer maxOutputTokens;
         private Instant createdAt;
         private String owner;
-        private Set<String> supportedLanguages;
         private Map<String, Object> additionalMetadata;
 
         /**
@@ -234,14 +223,6 @@ public class ModelDescription {
 
         public Builder owner(String owner) {
             this.owner = owner;
-            return this;
-        }
-
-        /**
-         * Natural language codes (e.g., "en", "fr") that the model supports.
-         */
-        public Builder supportedLanguages(Set<String> supportedLanguages) {
-            this.supportedLanguages = supportedLanguages;
             return this;
         }
 
