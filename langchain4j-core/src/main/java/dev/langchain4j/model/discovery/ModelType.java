@@ -20,11 +20,6 @@ public enum ModelType {
     IMAGE_GENERATION,
 
     /**
-     * Image understanding/vision models
-     */
-    IMAGE_UNDERSTANDING,
-
-    /**
      * Audio transcription models (speech-to-text)
      */
     AUDIO_TRANSCRIPTION,
@@ -35,19 +30,9 @@ public enum ModelType {
     AUDIO_GENERATION,
 
     /**
-     * Video understanding models
-     */
-    VIDEO_UNDERSTANDING,
-
-    /**
      * Content moderation models
      */
     MODERATION,
-
-    /**
-     * Code completion/generation models
-     */
-    CODE_COMPLETION,
 
     /**
      * Document reranking models
