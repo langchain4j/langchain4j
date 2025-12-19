@@ -97,9 +97,25 @@ public class ToolService {
                 throw illegalConfiguration("Tool '%s' must be an object, not a class", objectWithTool);
             }
 
+            if (objectWithTool instanceof Iterable) {
+                throw illegalConfiguration(
+                        "Tool '%s' is an Iterable (likely a nested collection). "
+                                + "Please pass tool objects directly, not wrapped in collections.",
+                        objectWithTool.getClass().getName());
+            }
+
+            boolean hasToolMethod = false;
             for (Method method : objectWithTool.getClass().getDeclaredMethods()) {
-                getAnnotatedMethod(method, Tool.class)
-                        .ifPresent(toolMethod -> processToolMethod(objectWithTool, toolMethod));
+                if (getAnnotatedMethod(method, Tool.class).isPresent()) {
+                    hasToolMethod = true;
+                    processToolMethod(objectWithTool, method);
+                }
+            }
+
+            if (!hasToolMethod) {
+                throw illegalConfiguration(
+                        "Object '%s' does not have any methods annotated with @Tool",
+                        objectWithTool.getClass().getName());
             }
         }
     }
