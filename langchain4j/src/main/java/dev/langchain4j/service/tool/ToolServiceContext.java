@@ -1,13 +1,13 @@
 package dev.langchain4j.service.tool;
 
-import static dev.langchain4j.internal.Utils.copy;
-
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+
+import static dev.langchain4j.internal.Utils.copy;
 
 @Internal
 public class ToolServiceContext {
@@ -56,10 +56,11 @@ public class ToolServiceContext {
 
     @Override
     public String toString() {
-        return "ToolServiceContext{" + "toolSpecifications="
-                + toolSpecifications + ", toolExecutors="
-                + toolExecutors + ", immediateReturnTools="
-                + immediateReturnTools + '}';
+        return "ToolServiceContext{" +
+                "toolSpecifications=" + toolSpecifications +
+                ", toolExecutors=" + toolExecutors +
+                ", immediateReturnTools=" + immediateReturnTools +
+                '}';
     }
 
     public static Builder builder() {

@@ -15,12 +15,12 @@ import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.List;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,10 +31,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class AiServicesUserMessageConfigTest {
 
-    static final String VALIDATION_ERROR_MESSAGE_SUFFIX = " must be annotated with either "
-            + UserMessage.class.getName() + ", " + V.class.getName() + ", " + MemoryId.class.getName()
-            + ", or " + UserName.class.getName() + ", or it should be of type " + InvocationParameters.class.getName()
-            + " or " + ChatRequestParameters.class.getName();
+    static final String VALIDATION_ERROR_MESSAGE_SUFFIX =
+            " must be annotated with either " + UserMessage.class.getName() + ", " + V.class.getName() + ", " +
+                    MemoryId.class.getName() + ", or " + UserName.class.getName() + ", or it should be of type " +
+                    InvocationParameters.class.getName() + " or " + ChatRequestParameters.class.getName();
 
     private static final Image image = Image.builder()
             .url("https://en.wikipedia.org/wiki/Llama#/media/File:Llamas,_Vernagt-Stausee,_Italy.jpg")
@@ -486,8 +486,7 @@ class AiServicesUserMessageConfigTest {
         assertThatThrownBy(() -> aiService.illegalChat3("What is the capital of {{it}}?", "Germany"))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
                 .hasMessage(
-                        "The parameter 'arg0' in the method 'illegalChat3' of the class dev.langchain4j.service.AiServicesUserMessageConfigTest$AiService"
-                                + VALIDATION_ERROR_MESSAGE_SUFFIX);
+                        "The parameter 'arg0' in the method 'illegalChat3' of the class dev.langchain4j.service.AiServicesUserMessageConfigTest$AiService" + VALIDATION_ERROR_MESSAGE_SUFFIX);
     }
 
     @Test
@@ -501,8 +500,7 @@ class AiServicesUserMessageConfigTest {
         assertThatThrownBy(() -> aiService.illegalChat4("What is the capital of {{it}}?", "Germany"))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
                 .hasMessage(
-                        "The parameter 'arg1' in the method 'illegalChat4' of the class dev.langchain4j.service.AiServicesUserMessageConfigTest$AiService"
-                                + VALIDATION_ERROR_MESSAGE_SUFFIX);
+                        "The parameter 'arg1' in the method 'illegalChat4' of the class dev.langchain4j.service.AiServicesUserMessageConfigTest$AiService" + VALIDATION_ERROR_MESSAGE_SUFFIX);
     }
 
     @Test
@@ -569,8 +567,7 @@ class AiServicesUserMessageConfigTest {
         AiService aiService =
                 AiServices.builder(AiService.class).chatModel(chatModel).build();
 
-        ChatRequestParameters chatRequestParameters =
-                ChatRequestParameters.builder().build();
+        ChatRequestParameters chatRequestParameters = ChatRequestParameters.builder().build();
 
         // when-then
         assertThatThrownBy(() -> aiService.illegalChat9("Hello", chatRequestParameters, chatRequestParameters))
