@@ -41,6 +41,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
 @Internal
@@ -104,15 +105,15 @@ public class ToolService {
                         objectWithTool.getClass().getName());
             }
 
-            boolean hasToolMethod = false;
+            AtomicBoolean hasToolMethods = new AtomicBoolean(false);
             for (Method method : objectWithTool.getClass().getDeclaredMethods()) {
-                if (getAnnotatedMethod(method, Tool.class).isPresent()) {
-                    hasToolMethod = true;
-                    processToolMethod(objectWithTool, method);
-                }
+                getAnnotatedMethod(method, Tool.class).ifPresent(toolMethod -> {
+                    hasToolMethods.set(true);
+                    processToolMethod(objectWithTool, toolMethod);
+                });
             }
 
-            if (!hasToolMethod) {
+            if (!hasToolMethods.get()) {
                 throw illegalConfiguration(
                         "Object '%s' does not have any methods annotated with @Tool",
                         objectWithTool.getClass().getName());
