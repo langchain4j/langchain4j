@@ -1,22 +1,22 @@
 package dev.langchain4j.store.embedding;
 
-import dev.langchain4j.data.document.Metadata;
-import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.store.embedding.filter.Filter;
-
-import java.util.Objects;
-
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
+import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.store.embedding.filter.Filter;
+import java.util.Objects;
 
 /**
  * Represents a request to search in an {@link EmbeddingStore}.
  */
 public class EmbeddingSearchRequest {
 
+    private final String query;
     private final Embedding queryEmbedding;
     private final int maxResults;
     private final double minScore;
@@ -38,14 +38,53 @@ public class EmbeddingSearchRequest {
      *                       This is an optional parameter. Default: no filtering
      */
     public EmbeddingSearchRequest(Embedding queryEmbedding, Integer maxResults, Double minScore, Filter filter) {
+        this(null, queryEmbedding, maxResults, minScore, filter);
+    }
+
+    /**
+     * Creates an instance of an EmbeddingSearchRequest.
+     *
+     * @param query          The query used for search. This is an optional parameter that can be used by {@code EmbeddingStore} implementations to support hybrid search.
+     * @param queryEmbedding The embedding used as a reference. Found embeddings should be similar to this one.
+     *                       This is a mandatory parameter.
+     * @param maxResults     The maximum number of embeddings to return. This is an optional parameter. Default: 3
+     * @param minScore       The minimum score, ranging from 0 to 1 (inclusive).
+     *                       Only embeddings with a score &gt;= minScore will be returned.
+     *                       This is an optional parameter. Default: 0
+     * @param filter         The filter to be applied to the {@link Metadata} during search.
+     *                       Only {@link TextSegment}s whose {@link Metadata}
+     *                       matches the {@link Filter} will be returned.
+     *                       Please note that not all {@link EmbeddingStore}s support this feature yet.
+     *                       This is an optional parameter. Default: no filtering
+     */
+    public EmbeddingSearchRequest(
+            String query, Embedding queryEmbedding, Integer maxResults, Double minScore, Filter filter) {
+        this.query = query;
         this.queryEmbedding = ensureNotNull(queryEmbedding, "queryEmbedding");
         this.maxResults = ensureGreaterThanZero(getOrDefault(maxResults, 3), "maxResults");
         this.minScore = ensureBetween(getOrDefault(minScore, 0.0), 0.0, 1.0, "minScore");
         this.filter = filter;
     }
 
+    /**
+     * Creates an instance of an EmbeddingSearchRequest.
+     *
+     * @param builder The builder used to create the instance.
+     */
+    public EmbeddingSearchRequest(EmbeddingSearchRequestBuilder builder) {
+        this.query = builder.query;
+        this.queryEmbedding = ensureNotNull(builder.queryEmbedding, "queryEmbedding");
+        this.maxResults = ensureGreaterThanZero(getOrDefault(builder.maxResults, 3), "maxResults");
+        this.minScore = ensureBetween(getOrDefault(builder.minScore, 0.0), 0.0, 1.0, "minScore");
+        this.filter = builder.filter;
+    }
+
     public static EmbeddingSearchRequestBuilder builder() {
         return new EmbeddingSearchRequestBuilder();
+    }
+
+    public String query() {
+        return query;
     }
 
     public Embedding queryEmbedding() {
@@ -67,7 +106,8 @@ public class EmbeddingSearchRequest {
     public boolean equals(final Object o) {
         if (o == this) return true;
         if (!(o instanceof EmbeddingSearchRequest other)) return false;
-        return this.maxResults == other.maxResults
+        return Objects.equals(this.query, other.query)
+                && this.maxResults == other.maxResults
                 && this.minScore == other.minScore
                 && Objects.equals(this.queryEmbedding, other.queryEmbedding)
                 && Objects.equals(this.filter, other.filter);
@@ -78,16 +118,22 @@ public class EmbeddingSearchRequest {
     }
 
     public String toString() {
-        return "EmbeddingSearchRequest(queryEmbedding=" + this.queryEmbedding + ", maxResults=" + this.maxResults + ", minScore=" + this.minScore + ", filter=" + this.filter + ")";
+        return "EmbeddingSearchRequest(query=" + this.query + ", queryEmbedding=" + this.queryEmbedding
+                + ", maxResults=" + this.maxResults + ", minScore=" + this.minScore + ", filter=" + this.filter + ")";
     }
 
     public static class EmbeddingSearchRequestBuilder {
+        private String query;
         private Embedding queryEmbedding;
         private Integer maxResults;
         private Double minScore;
         private Filter filter;
 
-        EmbeddingSearchRequestBuilder() {
+        EmbeddingSearchRequestBuilder() {}
+
+        public EmbeddingSearchRequestBuilder query(String query) {
+            this.query = query;
+            return this;
         }
 
         public EmbeddingSearchRequestBuilder queryEmbedding(Embedding queryEmbedding) {
@@ -111,7 +157,7 @@ public class EmbeddingSearchRequest {
         }
 
         public EmbeddingSearchRequest build() {
-            return new EmbeddingSearchRequest(this.queryEmbedding, this.maxResults, this.minScore, this.filter);
+            return new EmbeddingSearchRequest(this);
         }
     }
 }
