@@ -3,8 +3,6 @@ package dev.langchain4j.model.catalog;
 import static org.assertj.core.api.Assertions.*;
 
 import java.time.Instant;
-import java.util.Map;
-import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
@@ -29,7 +27,6 @@ class ModelDescriptionTest {
         assertThat(description.maxOutputTokens()).isNull();
         assertThat(description.createdAt()).isNull();
         assertThat(description.getOwner()).isNull();
-        assertThat(description.getAdditionalMetadata()).isEmpty();
     }
 
     @Test
@@ -46,7 +43,6 @@ class ModelDescriptionTest {
                 .maxOutputTokens(4096)
                 .createdAt(now)
                 .owner("test-org")
-                .additionalMetadata(Map.of("custom", "value"))
                 .build();
 
         assertThat(description.name()).isEqualTo("model-123");
@@ -58,7 +54,6 @@ class ModelDescriptionTest {
         assertThat(description.maxOutputTokens()).isEqualTo(4096);
         assertThat(description.createdAt()).isEqualTo(now);
         assertThat(description.getOwner()).isEqualTo("test-org");
-        assertThat(description.getAdditionalMetadata()).containsEntry("custom", "value");
     }
 
     @Test
@@ -140,19 +135,5 @@ class ModelDescriptionTest {
         assertThat(str).contains("OPEN_AI");
         assertThat(str).contains("CHAT");
         assertThat(str).contains("128000");
-    }
-
-    @Test
-    void should_make_immutable_copies_of_collections() {
-        Map<String, Object> metadata = Map.of("key", "value");
-
-        ModelDescription description = ModelDescription.builder()
-                .name("model-123")
-                .displayName("Test Model")
-                .provider(ModelProvider.OPEN_AI)
-                .additionalMetadata(metadata)
-                .build();
-
-        assertThat(description.getAdditionalMetadata()).isNotSameAs(metadata);
     }
 }

@@ -1,12 +1,9 @@
 package dev.langchain4j.model.catalog;
 
-import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.*;
 
 import java.time.Instant;
-import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 import dev.langchain4j.model.ModelProvider;
 
@@ -29,7 +26,6 @@ public class ModelDescription {
     private final Integer maxOutputTokens;
     private final Instant createdAt;
     private final String owner;
-    private final Map<String, Object> additionalMetadata;
 
     private ModelDescription(Builder builder) {
         this.name = ensureNotNull(builder.name, "id");
@@ -41,7 +37,6 @@ public class ModelDescription {
         this.maxOutputTokens = builder.maxOutputTokens;
         this.createdAt = builder.createdAt;
         this.owner = builder.owner;
-        this.additionalMetadata = copy(builder.additionalMetadata);
     }
 
     public static Builder builder() {
@@ -121,15 +116,6 @@ public class ModelDescription {
         return owner;
     }
 
-    /**
-     * Provider-specific metadata that doesn't fit into standard fields.
-     * Allows providers to include custom information about their models.
-     * Returns an empty map if no additional metadata is available, never null.
-     */
-    public Map<String, Object> getAdditionalMetadata() {
-        return additionalMetadata;
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -164,7 +150,6 @@ public class ModelDescription {
         private Integer maxOutputTokens;
         private Instant createdAt;
         private String owner;
-        private Map<String, Object> additionalMetadata;
 
         /**
          * Required. Unique identifier for the model as defined by the provider.
@@ -223,14 +208,6 @@ public class ModelDescription {
 
         public Builder owner(String owner) {
             this.owner = owner;
-            return this;
-        }
-
-        /**
-         * Provider-specific metadata that doesn't fit into standard fields.
-         */
-        public Builder additionalMetadata(Map<String, Object> additionalMetadata) {
-            this.additionalMetadata = additionalMetadata;
             return this;
         }
 
