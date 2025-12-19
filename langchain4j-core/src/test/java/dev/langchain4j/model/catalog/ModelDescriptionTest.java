@@ -62,8 +62,8 @@ class ModelDescriptionTest {
                         .displayName("Test Model")
                         .provider(ModelProvider.OPEN_AI)
                         .build())
-                .isInstanceOf(NullPointerException.class)
-                .hasMessageContaining("id must not be null");
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("id cannot be null");
     }
 
     @Test
@@ -72,8 +72,8 @@ class ModelDescriptionTest {
                         .name("model-123")
                         .provider(ModelProvider.OPEN_AI)
                         .build())
-                .isInstanceOf(NullPointerException.class)
-                .hasMessageContaining("name must not be null");
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("name cannot be null");
     }
 
     @Test
@@ -82,8 +82,8 @@ class ModelDescriptionTest {
                         .name("model-123")
                         .displayName("Test Model")
                         .build())
-                .isInstanceOf(NullPointerException.class)
-                .hasMessageContaining("provider must not be null");
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("provider cannot be null");
     }
 
     @Test
