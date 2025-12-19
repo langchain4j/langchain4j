@@ -323,7 +323,7 @@ public class ToolService {
                     memoryId);
 
             chatResponse = context.chatModel.chat(chatRequest);
-            fireResponseReceivedEvent(chatResponse, invocationContext, context.eventListenerRegistrar);
+            fireResponseReceivedEvent(chatRequest, chatResponse, invocationContext, context.eventListenerRegistrar);
             aggregateTokenUsage =
                     TokenUsage.sum(aggregateTokenUsage, chatResponse.metadata().tokenUsage());
         }
@@ -337,11 +337,13 @@ public class ToolService {
     }
 
     private void fireResponseReceivedEvent(
+            ChatRequest chatRequest,
             ChatResponse chatResponse,
             InvocationContext invocationContext,
             AiServiceListenerRegistrar listenerRegistrar) {
         listenerRegistrar.fireEvent(AiServiceResponseReceivedEvent.builder()
                 .invocationContext(invocationContext)
+                .request(chatRequest)
                 .response(chatResponse)
                 .build());
     }
