@@ -3,6 +3,7 @@ package dev.langchain4j.service;
 import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.service.AiServiceParamsUtil.chatRequestParameters;
 import static dev.langchain4j.service.tool.ToolService.executeWithErrorHandling;
 
 import dev.langchain4j.Internal;
@@ -299,10 +300,12 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 return;
             }
 
-            ChatRequest nextChatRequest = ChatRequest.builder()
-                    .messages(messagesToSend(invocationContext.chatMemoryId()))
-                    .toolSpecifications(toolSpecifications)
-                    .build();
+            ChatRequest nextChatRequest = context.chatRequestTransformer.apply(
+                    ChatRequest.builder()
+                            .messages(messagesToSend(invocationContext.chatMemoryId()))
+                            .parameters(chatRequestParameters(invocationContext.methodArguments(), toolSpecifications))
+                            .build(),
+                    invocationContext.chatMemoryId());
 
             var handler = new AiServiceStreamingResponseHandler(
                     nextChatRequest,
