@@ -518,8 +518,7 @@ class DefaultAiServices<T> extends AiServices<T> {
         dev.langchain4j.service.SystemMessage annotation =
                 method.getAnnotation(dev.langchain4j.service.SystemMessage.class);
         if (annotation != null) {
-            return Optional.of(getTemplate(
-                    method, "System", annotation.fromResource(), annotation.value(), annotation.delimiter()));
+            return Optional.of(getTemplate(method, "System", annotation.fromResource(), annotation.value()));
         }
 
         return context.systemMessageProvider.apply(memoryId);
@@ -565,7 +564,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
     private static Optional<String> findUserMessageTemplateFromMethodAnnotation(Method method) {
         return Optional.ofNullable(method.getAnnotation(dev.langchain4j.service.UserMessage.class))
-                .map(a -> getTemplate(method, "User", a.fromResource(), a.value(), a.delimiter()));
+                .map(a -> getTemplate(method, "User", a.fromResource(), a.value()));
     }
 
     private static Optional<String> findUserMessageTemplateFromAnnotatedParameter(
@@ -639,7 +638,7 @@ class DefaultAiServices<T> extends AiServices<T> {
         return o instanceof List<?> list && list.stream().allMatch(Content.class::isInstance);
     }
 
-    private static String getTemplate(Method method, String type, String resource, String[] value, String delimiter) {
+    private static String getTemplate(Method method, String type, String resource, String value) {
         String messageTemplate;
         if (!resource.trim().isEmpty()) {
             messageTemplate = getResourceText(method.getDeclaringClass(), resource);
@@ -647,7 +646,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                 throw illegalConfiguration("@%sMessage's resource '%s' not found", type, resource);
             }
         } else {
-            messageTemplate = String.join(delimiter, value);
+            messageTemplate = value;
         }
         if (messageTemplate.trim().isEmpty()) {
             throw illegalConfiguration("@%sMessage's template cannot be empty", type);

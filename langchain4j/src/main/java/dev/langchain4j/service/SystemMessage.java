@@ -15,7 +15,9 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  * <pre>
  * interface Assistant {
  *
- *     {@code @SystemMessage}("You are a helpful assistant")
+ *     {@code @SystemMessage}("""
+ *         You are a helpful assistant
+ *         """)
  *     String chat(String userMessage);
  * }
  * </pre>
@@ -26,7 +28,9 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  * <pre>
  * interface Assistant {
  *
- *     {@code @SystemMessage}("You are a {{characteristic}} assistant")
+ *     {@code @SystemMessage}("""
+ *         You are a {{characteristic}} assistant
+ *         """)
  *     String chat(@UserMessage String userMessage, @V("characteristic") String characteristic);
  * }
  * </pre>
@@ -40,12 +44,11 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 public @interface SystemMessage {
 
     /**
-     * Prompt template can be defined in one line or multiple lines.
-     * If the template is defined in multiple lines, the lines will be joined with a delimiter defined below.
+     * Prompt template to be used as the system message.
+     * <p>
+     * Can be a single-line string or a Java text block (recommended for multi-line templates).
      */
-    String[] value() default "";
-
-    String delimiter() default "\n";
+    String value() default "";
 
     /**
      * The resource from which to read the prompt template.

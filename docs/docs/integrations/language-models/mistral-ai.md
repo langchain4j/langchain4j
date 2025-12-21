@@ -226,11 +226,11 @@ Create an interface `PaymentTransactionAgent`.
 import dev.langchain4j.service.SystemMessage;
 
 interface PaymentTransactionAgent {
-    @SystemMessage({
-            "You are a payment transaction support agent.",
-            "You MUST use the payment transaction tool to search the payment transaction data.",
-            "If there a date convert it in a human readable format."
-    })
+    @SystemMessage("""
+            You are a payment transaction support agent.
+            You MUST use the payment transaction tool to search the payment transaction data.
+            If there a date convert it in a human readable format.
+            """)
     String chat(String userMessage);
 }
 ```
