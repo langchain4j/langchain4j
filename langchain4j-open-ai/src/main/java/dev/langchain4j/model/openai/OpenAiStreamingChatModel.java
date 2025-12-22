@@ -63,6 +63,9 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
     private final boolean returnThinking;
     private final List<ChatModelListener> listeners;
 
+    private final Boolean sendThinking;
+    private final String reasoningContentFieldName;
+
     public OpenAiStreamingChatModel(OpenAiStreamingChatModelBuilder builder) {
         this.client = OpenAiClient.builder()
                 .httpClientBuilder(builder.httpClientBuilder)
@@ -122,6 +125,8 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
         this.strictTools = getOrDefault(builder.strictTools, false);
         this.returnThinking = getOrDefault(builder.returnThinking, false);
+        this.sendThinking = getOrDefault(builder.sendThinking, false);
+        this.reasoningContentFieldName = getOrDefault(builder.reasoningContentFieldName, "reasoning_content");
         this.listeners = copy(builder.listeners);
     }
 
@@ -137,7 +142,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         validate(parameters);
 
         ChatCompletionRequest openAiRequest =
-                toOpenAiChatRequest(chatRequest, parameters, strictTools, strictJsonSchema).stream(true)
+                toOpenAiChatRequest(chatRequest, parameters, sendThinking, reasoningContentFieldName,strictTools, strictJsonSchema).stream(true)
                         .streamOptions(
                                 StreamOptions.builder().includeUsage(true).build())
                         .build();
@@ -274,6 +279,8 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         private Map<String, String> metadata;
         private String serviceTier;
         private String reasoningEffort;
+        private Boolean sendThinking;
+        private String reasoningContentFieldName;
         private Boolean returnThinking;
         private Duration timeout;
         private Boolean logRequests;
@@ -446,6 +453,46 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
          */
         public OpenAiStreamingChatModelBuilder returnThinking(Boolean returnThinking) {
             this.returnThinking = returnThinking;
+            return this;
+        }
+
+
+
+        /**
+         * Controls whether to include reasoning content in assistant messages when sending requests to the API.
+         * This is needed for some APIs (like DeepSeek) when using reasoning mode with tool calls.
+         * <p>
+         * Disabled by default.
+         * <p>
+         * When enabled, the reasoning content from previous assistant messages (stored in {@link AiMessage#thinking()})
+         * will be included in the request during message conversion to API format.
+         *
+         * @param sendThinking whether to send reasoning content
+         * @param reasoningContentFieldName the field name for reasoning content
+         * @return {@code this}
+         */
+        public OpenAiStreamingChatModelBuilder sendThinking(Boolean sendThinking, String reasoningContentFieldName) {
+            this.sendThinking = sendThinking;
+            this.reasoningContentFieldName = reasoningContentFieldName;
+            return this;
+        }
+
+        /**
+         * Controls whether to include reasoning content in assistant messages when sending requests to the API.
+         * This is needed for some APIs (like DeepSeek) when using reasoning mode with tool calls.
+         * Uses the default field name "reasoning_content" for the reasoning content field.
+         * <p>
+         * Disabled by default.
+         * <p>
+         * When enabled, the reasoning content from previous assistant messages (stored in {@link AiMessage#thinking()})
+         * will be included in the request during message conversion to API format.
+         *
+         * @param sendThinking whether to send reasoning content
+         * @return {@code this}
+         */
+        public OpenAiStreamingChatModelBuilder sendThinking(Boolean sendThinking) {
+            this.sendThinking = sendThinking;
+            this.reasoningContentFieldName = "reasoning_content";
             return this;
         }
 

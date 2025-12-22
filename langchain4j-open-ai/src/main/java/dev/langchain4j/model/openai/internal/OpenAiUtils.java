@@ -85,10 +85,22 @@ public class OpenAiUtils {
     public static final String DEFAULT_USER_AGENT = "langchain4j-openai";
 
     public static List<Message> toOpenAiMessages(List<ChatMessage> messages) {
-        return messages.stream().map(OpenAiUtils::toOpenAiMessage).collect(toList());
+        return toOpenAiMessages(messages, false, null);
     }
 
-    public static Message toOpenAiMessage(ChatMessage message) {
+    public static List<Message> toOpenAiMessages(
+            List<ChatMessage> messages,
+            Boolean includeReasoningContentInRequests,
+            String reasoningContentFieldName) {
+        return messages.stream()
+                .map(message -> toOpenAiMessage(message, includeReasoningContentInRequests, reasoningContentFieldName))
+                .collect(toList());
+    }
+
+    public static Message toOpenAiMessage(
+            ChatMessage message,
+            Boolean includeReasoningContentInRequests,
+            String reasoningContentFieldName) {
         if (message instanceof SystemMessage) {
             return dev.langchain4j.model.openai.internal.chat.SystemMessage.from(((SystemMessage) message).text());
         }
@@ -111,9 +123,29 @@ public class OpenAiUtils {
         }
 
         if (message instanceof AiMessage aiMessage) {
+            String reasoningContent = null;
+            if (Boolean.TRUE.equals(includeReasoningContentInRequests)) {
+                String thinking = aiMessage.thinking();
+                if (!isNullOrEmpty(thinking)) {
+                    reasoningContent = thinking;
+                }
+            }
+
+            // Default field name is "reasoning_content" (snake_case)
+            String fieldName = reasoningContentFieldName != null ? reasoningContentFieldName : "reasoning_content";
+            boolean useStandardField = "reasoning_content".equals(fieldName);
 
             if (!aiMessage.hasToolExecutionRequests()) {
-                return AssistantMessage.from(aiMessage.text());
+                AssistantMessage.Builder builder = AssistantMessage.builder()
+                        .content(aiMessage.text());
+                if (reasoningContent != null) {
+                    if (useStandardField) {
+                        builder.reasoningContent(reasoningContent);
+                    } else {
+                        builder.additionalProperty(fieldName, reasoningContent);
+                    }
+                }
+                return builder.build();
             }
 
             ToolExecutionRequest toolExecutionRequest =
@@ -124,7 +156,15 @@ public class OpenAiUtils {
                         .arguments(toolExecutionRequest.arguments())
                         .build();
 
-                return AssistantMessage.builder().functionCall(functionCall).build();
+                AssistantMessage.Builder builder = AssistantMessage.builder().functionCall(functionCall);
+                if (reasoningContent != null) {
+                    if (useStandardField) {
+                        builder.reasoningContent(reasoningContent);
+                    } else {
+                        builder.additionalProperty(fieldName, reasoningContent);
+                    }
+                }
+                return builder.build();
             }
 
             List<ToolCall> toolCalls = aiMessage.toolExecutionRequests().stream()
@@ -138,10 +178,17 @@ public class OpenAiUtils {
                             .build())
                     .collect(toList());
 
-            return AssistantMessage.builder()
+            AssistantMessage.Builder builder = AssistantMessage.builder()
                     .content(aiMessage.text())
-                    .toolCalls(toolCalls)
-                    .build();
+                    .toolCalls(toolCalls);
+            if (reasoningContent != null) {
+                if (useStandardField) {
+                    builder.reasoningContent(reasoningContent);
+                } else {
+                    builder.additionalProperty(fieldName, reasoningContent);
+                }
+            }
+            return builder.build();
         }
 
         if (message instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
@@ -472,10 +519,16 @@ public class OpenAiUtils {
     public static ChatCompletionRequest.Builder toOpenAiChatRequest(
             ChatRequest chatRequest,
             OpenAiChatRequestParameters parameters,
+            boolean sendThinking,
+            String reasoningContentFieldName,
             Boolean strictTools,
             Boolean strictJsonSchema) {
+
         return ChatCompletionRequest.builder()
-                .messages(toOpenAiMessages(chatRequest.messages()))
+                .messages(toOpenAiMessages(
+                        chatRequest.messages(),
+                        sendThinking,
+                        reasoningContentFieldName))
                 // common parameters
                 .model(parameters.modelName())
                 .temperature(parameters.temperature())
