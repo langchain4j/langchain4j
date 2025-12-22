@@ -335,7 +335,7 @@ System.out.println(chatResponse.aiMessage().text());
 ```
 
 #### Raw Response Schema
-Another example shows how we can use the `responseJsonSchema` of the Gemini API to provide a raw JSON schema, without needing to declare the schema structure using the corresponding Java objects.  
+Another example shows how we can use the `responseJsonSchema` of the Gemini API to provide a raw JSON schema using `JsonRawSchema` class.  
 Please be cautious to use only the [supported types](https://ai.google.dev/gemini-api/docs/structured-output?example=recipe#json_schema_support) of the Gemini API.
 ```
 String rawSchema = """
