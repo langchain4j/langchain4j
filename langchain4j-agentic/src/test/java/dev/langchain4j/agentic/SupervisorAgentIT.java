@@ -6,7 +6,6 @@ import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.offset;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.assertj.core.data.MapEntry.entry;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -35,7 +34,6 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
@@ -46,13 +44,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import dev.langchain4j.service.tool.ToolExecutor;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
+@EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 public class SupervisorAgentIT {
 
     @Test
@@ -615,8 +615,6 @@ public class SupervisorAgentIT {
 
     @Test
     void subagent_unique_name_test() {
-        Map<String, List<ChatMessage>> messageMap = new ConcurrentHashMap<>();
-
         JokesterAssistant jokesterAssistant = AgenticServices.agentBuilder(JokesterAssistant.class)
                 .chatModel(baseModel())
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
@@ -673,7 +671,7 @@ public class SupervisorAgentIT {
         // only 2 agents, the jokester and done
         assertThat(agentNames)
                 .hasSize(2)
-                .containsExactly("JokesterAgent_JokesterAssistant", "done");
+                .containsExactly("JokesterAgent$1", "done");
     }
 
     @Test

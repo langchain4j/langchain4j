@@ -13,6 +13,10 @@
     <name>LangChain4j :: Embeddings :: e5-small-v2 (quantized)</name>
     <description>In-process e5-small-v2 (quantized) embedding model</description>
 
+    <properties>
+        <embeddingsSkipCache>false</embeddingsSkipCache>
+    </properties>
+
     <dependencies>
 
         <dependency>
@@ -41,6 +45,7 @@
                             <outputDirectory>${project.build.directory}/classes</outputDirectory>
                             <outputFileName>e5-small-v2-q.onnx</outputFileName>
                             <sha256>7d9092cb25f2bd1c023b7e8d2aa459044a02030ac880e5a59fdaf27af69f1ded</sha256>
+                            <skipCache>${embeddingsSkipCache}</skipCache>
                         </configuration>
                     </execution>
                 </executions>

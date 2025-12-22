@@ -2,10 +2,11 @@ package dev.langchain4j.service;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
+import static dev.langchain4j.service.AiServiceParamsUtil.chatRequestParameters;
+import static dev.langchain4j.service.AiServiceParamsUtil.findArgumentOfType;
 import static dev.langchain4j.service.AiServiceValidation.validateParameters;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
@@ -74,11 +75,8 @@ class DefaultAiServices<T> extends AiServices<T> {
     private final ServiceOutputParser serviceOutputParser = new ServiceOutputParser();
     private final Collection<TokenStreamAdapter> tokenStreamAdapters = loadFactories(TokenStreamAdapter.class);
 
-    private static final Set<Class<? extends Annotation>> VALID_PARAM_ANNOTATIONS = Set.of(
-            dev.langchain4j.service.UserMessage.class,
-            dev.langchain4j.service.V.class,
-            dev.langchain4j.service.MemoryId.class,
-            dev.langchain4j.service.UserName.class);
+    private static final Set<Class<? extends Annotation>> VALID_PARAM_ANNOTATIONS =
+            Set.of(dev.langchain4j.service.UserMessage.class, V.class, MemoryId.class, UserName.class);
 
     DefaultAiServices(AiServiceContext context) {
         super(context);
@@ -136,7 +134,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                         // TODO do it once, when creating AI Service?
                         validateParameters(context.aiServiceClass, method);
 
-                        InvocationParameters invocationParameters = findInvocationParams(args, method.getParameters())
+                        InvocationParameters invocationParameters = findArgumentOfType(
+                                        InvocationParameters.class, args, method.getParameters())
                                 .orElseGet(InvocationParameters::new);
 
                         InvocationContext invocationContext = InvocationContext.builder()
@@ -282,10 +281,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .build();
                         }
 
-                        ChatRequestParameters parameters = ChatRequestParameters.builder()
-                                .toolSpecifications(toolServiceContext.toolSpecifications())
-                                .responseFormat(responseFormat)
-                                .build();
+                        ChatRequestParameters parameters =
+                                chatRequestParameters(method, args, toolServiceContext, responseFormat);
 
                         ChatRequest chatRequest = context.chatRequestTransformer.apply(
                                 ChatRequest.builder()
@@ -303,6 +300,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         context.eventListenerRegistrar.fireEvent(AiServiceResponseReceivedEvent.builder()
                                 .invocationContext(invocationContext)
                                 .response(chatResponse)
+                                .request(chatRequest)
                                 .build());
 
                         verifyModerationIfNeeded(moderationFuture);
@@ -317,7 +315,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 messages,
                                 chatMemory,
                                 invocationContext,
-                                toolServiceContext.toolExecutors(),
+                                toolServiceContext,
                                 isReturnTypeResult);
 
                         if (toolServiceResult.immediateToolReturn() && isReturnTypeResult) {
@@ -378,21 +376,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .build());
 
                         return actualResponse;
-                    }
-
-                    private Optional<InvocationParameters> findInvocationParams(Object[] args, Parameter[] params) {
-                        if (args == null) {
-                            return Optional.empty();
-                        }
-                        for (int i = 0; i < params.length; i++) {
-                            Parameter parameter = params[i];
-                            if (InvocationParameters.class.isAssignableFrom(parameter.getType())) {
-                                InvocationParameters invocationParameters = (InvocationParameters) args[i];
-                                ensureNotNull(invocationParameters, "InvocationParameters");
-                                return Optional.of(invocationParameters);
-                            }
-                        }
-                        return Optional.empty();
                     }
 
                     private boolean canAdaptTokenStreamTo(Type returnType) {

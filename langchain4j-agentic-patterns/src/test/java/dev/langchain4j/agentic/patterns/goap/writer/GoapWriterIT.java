@@ -1,5 +1,8 @@
 package dev.langchain4j.agentic.patterns.goap.writer;
 
+import dev.langchain4j.agentic.observability.AgentRequest;
+import dev.langchain4j.agentic.observability.AgentResponse;
+import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.patterns.goap.GoalOrientedPlanner;
 import dev.langchain4j.agentic.patterns.goap.writer.WriterAgents.StoryGenerator;
 import dev.langchain4j.agentic.patterns.goap.writer.WriterAgents.StyleEditor;
@@ -11,17 +14,36 @@ import dev.langchain4j.agentic.patterns.goap.writer.WriterAgents.Writer;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static dev.langchain4j.agentic.patterns.Models.baseModel;
 import static org.assertj.core.api.Assertions.assertThat;
 
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 public class GoapWriterIT {
 
     @Test
     void goap_tests() {
-        AtomicBoolean styleEditorCalled = new AtomicBoolean(false);
+        class GoapListener implements AgentListener {
+            AtomicBoolean styleEditorCalled = new AtomicBoolean(false);
+
+            @Override
+            public void beforeAgentInvocation(AgentRequest request) {
+                // Ensure StyleEditor was called before AudienceEditor
+                if (request.agentName().equals("audienceEditor")) {
+                    assertThat(styleEditorCalled.get()).isTrue();
+                }
+            }
+
+            @Override
+            public void afterAgentInvocation(AgentResponse response) {
+                if (response.agentName().equals("styleEditor")) {
+                    styleEditorCalled.set(true);
+                }
+            }
+        }
 
         StoryGenerator storyGenerator = AgenticServices.agentBuilder(StoryGenerator.class)
                 .chatModel(baseModel())
@@ -30,14 +52,14 @@ public class GoapWriterIT {
 
         AudienceEditor audienceEditor = AgenticServices.agentBuilder(AudienceEditor.class)
                 .chatModel(baseModel())
+                .name("audienceEditor")
                 .outputKey("finalStory")
-                .beforeAgentInvocation(agentResponse -> assertThat(styleEditorCalled.get()).isTrue()) // Ensure StyleEditor was called before AudienceEditor
                 .build();
 
         StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
                 .chatModel(baseModel())
+                .name("styleEditor")
                 .outputKey("styledStory")
-                .afterAgentInvocation(agentResponse -> styleEditorCalled.set(true))
                 .build();
 
         StyleScorer styleScorer = AgenticServices.agentBuilder(StyleScorer.class)
@@ -54,6 +76,7 @@ public class GoapWriterIT {
 
         Writer writer = AgenticServices.plannerBuilder(Writer.class)
                 .subAgents(storyGenerator, audienceEditor, styleReviewLoop)
+                .listener(new GoapListener())
                 .outputKey("finalStory")
                 .planner(GoalOrientedPlanner::new)
                 .build();

@@ -1,9 +1,16 @@
 ---
-sidebar_position: 1
+sidebar_position: 2
 ---
 
 # GraalVM Polyglot/Truffle
 
+:::danger
+⚠️ Security Warning: High-Risk Code Execution
+
+This module enables execution of arbitrary Python/JavaScript code via GraalVM and is inherently dangerous.
+
+❗ Do NOT use in production environments!
+:::
 
 ## Maven Dependency
 

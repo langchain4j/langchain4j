@@ -2,7 +2,9 @@
 sidebar_position: 6
 ---
 
-# GitHub Models
+# GitHub Models [Deprecated]
+
+This module is deprecated, please use the [OpenAI Official SDK module](/integrations/language-models/open-ai-official) instead.
 
 :::note
 

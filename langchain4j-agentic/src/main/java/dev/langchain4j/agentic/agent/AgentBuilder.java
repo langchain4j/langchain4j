@@ -3,15 +3,17 @@ package dev.langchain4j.agentic.agent;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureAgent;
 import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.keyName;
-import static dev.langchain4j.agentic.internal.AgentUtil.uniqueAgentName;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agentic.Agent;
-import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.agentic.declarative.TypedKey;
-import dev.langchain4j.agentic.internal.AgentSpecification;
+import dev.langchain4j.agentic.internal.InternalAgent;
+import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.observability.AgentListenerProvider;
+import dev.langchain4j.agentic.observability.ComposedAgentListener;
+import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.internal.AgentUtil;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.internal.Context;
@@ -43,7 +45,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executor;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class AgentBuilder<T> {
@@ -53,13 +54,9 @@ public class AgentBuilder<T> {
     List<AgentArgument> arguments;
 
     String name;
-    String agentId;
     String description;
     String outputKey;
     boolean async;
-
-    Consumer<AgentRequest> beforeListener = request -> {};
-    Consumer<AgentResponse> afterListener = response -> {};
 
     private final Map<String, Object> defaultValues = new HashMap<>();
 
@@ -90,6 +87,8 @@ public class AgentBuilder<T> {
     private ToolArgumentsErrorHandler toolArgumentsErrorHandler;
     private ToolExecutionErrorHandler toolExecutionErrorHandler;
 
+    AgentListener agentListener;
+
     public AgentBuilder(Class<T> agentServiceClass, Method agenticMethod) {
         this.agentServiceClass = agentServiceClass;
         this.agenticMethod = agenticMethod;
@@ -103,7 +102,6 @@ public class AgentBuilder<T> {
         configureAgent(agentServiceClass, this);
 
         this.name = !isNullOrBlank(agent.name()) ? agent.name() : agenticMethod.getName();
-        this.agentId = uniqueAgentName(agentServiceClass, this.name);
 
         if (!isNullOrBlank(agent.description())) {
             this.description = agent.description();
@@ -170,9 +168,8 @@ public class AgentBuilder<T> {
                 agentServiceClass.getClassLoader(),
                 new Class<?>[] {
                     agentServiceClass,
-                    AgentSpecification.class,
-                    ChatMemoryAccess.class,
-                    AgenticScopeOwner.class,
+                    InternalAgent.class, AgentListenerProvider.class,
+                    ChatMemoryAccess.class, AgenticScopeOwner.class,
                     ChatMessagesAccess.class
                 },
                 new AgentInvocationHandler(context, aiServices.build(), this, messageRecorder, agenticScopeDependent));
@@ -247,6 +244,10 @@ public class AgentBuilder<T> {
     public AgentBuilder<T> chatMemoryProvider(ChatMemoryProvider chatMemoryProvider) {
         this.chatMemoryProvider = chatMemoryProvider;
         return this;
+    }
+
+    boolean hasNonDefaultChatMemory() {
+        return chatMemoryProvider != null;
     }
 
     public AgentBuilder<T> tools(Object... objectsWithTools) {
@@ -325,7 +326,6 @@ public class AgentBuilder<T> {
 
     public AgentBuilder<T> name(String name) {
         this.name = name;
-        this.agentId = uniqueAgentName(agentServiceClass, this.name);
         return this;
     }
 
@@ -384,16 +384,6 @@ public class AgentBuilder<T> {
         return this;
     }
 
-    public AgentBuilder<T> beforeAgentInvocation(Consumer<AgentRequest> beforeListener) {
-        this.beforeListener = this.beforeListener.andThen(beforeListener);
-        return this;
-    }
-
-    public AgentBuilder<T> afterAgentInvocation(Consumer<AgentResponse> afterListener) {
-        this.afterListener = this.afterListener.andThen(afterListener);
-        return this;
-    }
-
     public AgentBuilder<T> defaultKeyValue(String key, Object value) {
         this.defaultValues.put(key, value);
         return this;
@@ -402,4 +392,16 @@ public class AgentBuilder<T> {
     public <K> AgentBuilder<T> defaultKeyValue(Class<? extends TypedKey<K>> key, K value) {
         return defaultKeyValue(keyName(key), value);
     }
+
+    public AgentBuilder<T> listener(AgentListener agentListener) {
+        if (this.agentListener == null) {
+            this.agentListener = agentListener;
+        } else if (this.agentListener instanceof ComposedAgentListener composed) {
+            composed.addListener(agentListener);
+        } else {
+            this.agentListener = new ComposedAgentListener(this.agentListener, agentListener);
+        }
+        return this;
+    }
+
 }
