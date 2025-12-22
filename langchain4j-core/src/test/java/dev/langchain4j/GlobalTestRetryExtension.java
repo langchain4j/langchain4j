@@ -10,13 +10,25 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+
+/**
+ * JUnit extension that retries tests multiple times (3 by default) in case of exceptions.
+ * Disabled by default. To enable, set the "LC4J_GLOBAL_TEST_RETRY_ENABLED" environment variable to "true".
+ */
 public class GlobalTestRetryExtension implements InvocationInterceptor {
 
     private static final Logger LOG = LoggerFactory.getLogger(GlobalTestRetryExtension.class);
-    private static final int MAX_ATTEMPTS = 3;
+
+    private static final boolean ENABLED = "true".equals(System.getenv("LC4J_GLOBAL_TEST_RETRY_ENABLED"));
+    private static final int MAX_ATTEMPTS = Integer.parseInt(getOrDefault(System.getenv("LC4J_GLOBAL_TEST_RETRY_MAX_ATTEMPTS"), "3"));
 
     @Override
     public <T> T interceptTestClassConstructor(Invocation<T> invocation, ReflectiveInvocationContext<Constructor<T>> invocationContext, ExtensionContext extensionContext) throws Throwable {
+        if (!ENABLED) {
+            return invocation.proceed();
+        }
+
         Constructor<T> testConstructor = invocationContext.getExecutable();
         Object[] arguments = invocationContext.getArguments().toArray(new Object[0]);
 
@@ -32,8 +44,10 @@ public class GlobalTestRetryExtension implements InvocationInterceptor {
             } catch (Throwable t) {
                 lastThrowable = getActualCause(t);
                 attempt++;
-                LOG.warn("Attempt {}/{} for creating an instance of '{}' failed because of",
-                        attempt, MAX_ATTEMPTS, extensionContext.getDisplayName(), lastThrowable);
+                LOG.warn("Attempt {}/{} for creating an instance of {} ({}) failed because of",
+                        attempt, MAX_ATTEMPTS,
+                        testConstructor.getDeclaringClass().getName(), extensionContext.getDisplayName(),
+                        lastThrowable);
                 Thread.sleep(attempt * 1000L);
             }
         } while (attempt < MAX_ATTEMPTS);
@@ -43,6 +57,11 @@ public class GlobalTestRetryExtension implements InvocationInterceptor {
 
     @Override
     public void interceptBeforeEachMethod(Invocation<Void> invocation, ReflectiveInvocationContext<Method> invocationContext, ExtensionContext extensionContext) throws Throwable {
+        if (!ENABLED) {
+            invocation.proceed();
+            return;
+        }
+
         executeWithRetry(invocation, invocationContext, extensionContext);
     }
 
@@ -50,6 +69,11 @@ public class GlobalTestRetryExtension implements InvocationInterceptor {
     public void interceptTestMethod(Invocation<Void> invocation,
                                     ReflectiveInvocationContext<Method> invocationContext,
                                     ExtensionContext extensionContext) throws Throwable {
+        if (!ENABLED) {
+            invocation.proceed();
+            return;
+        }
+
         executeWithRetry(invocation, invocationContext, extensionContext);
     }
 
@@ -57,6 +81,11 @@ public class GlobalTestRetryExtension implements InvocationInterceptor {
     public void interceptTestTemplateMethod(Invocation<Void> invocation,
                                             ReflectiveInvocationContext<Method> invocationContext,
                                             ExtensionContext extensionContext) throws Throwable {
+        if (!ENABLED) {
+            invocation.proceed();
+            return;
+        }
+
         executeWithRetry(invocation, invocationContext, extensionContext);
     }
 
@@ -80,8 +109,10 @@ public class GlobalTestRetryExtension implements InvocationInterceptor {
             } catch (Throwable t) {
                 lastThrowable = getActualCause(t);
                 attempt++;
-                LOG.warn("Attempt {}/{} for test '{}' failed because of",
-                        attempt, MAX_ATTEMPTS, extensionContext.getDisplayName(), lastThrowable);
+                LOG.warn("Attempt {}/{} for test {}.{} ({}) failed because of",
+                        attempt, MAX_ATTEMPTS,
+                        testObject.getClass().getName(), testMethod.getName(), extensionContext.getDisplayName(),
+                        lastThrowable);
                 Thread.sleep(attempt * 1000L);
             }
         } while (attempt < MAX_ATTEMPTS);

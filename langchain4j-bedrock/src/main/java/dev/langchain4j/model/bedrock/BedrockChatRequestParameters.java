@@ -32,6 +32,14 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
                 .build();
     }
 
+    @Override
+    public BedrockChatRequestParameters defaultedBy(ChatRequestParameters that) {
+        return BedrockChatRequestParameters.builder()
+                .overrideWith(that)
+                .overrideWith(this)
+                .build();
+    }
+
     public static Builder builder() {
         return new Builder();
     }

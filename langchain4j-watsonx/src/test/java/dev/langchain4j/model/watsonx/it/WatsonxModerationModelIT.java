@@ -29,8 +29,6 @@ public class WatsonxModerationModelIT {
             .apiKey(API_KEY)
             .projectId(PROJECT_ID)
             .detectors(Hap.ofDefaults())
-            .logRequests(true)
-            .logResponses(true)
             .build();
 
     @Test
@@ -45,7 +43,7 @@ public class WatsonxModerationModelIT {
         assertEquals(11, metadata.get("end"));
         assertEquals("hap", metadata.get("detection_type"));
         assertEquals("has_HAP", metadata.get("detection"));
-        assertEquals(0.98, (float) metadata.get("score"), 0.01);
+        assertEquals(0.98, (double) metadata.get("score"), 0.01);
     }
 
     @Test
@@ -78,6 +76,6 @@ public class WatsonxModerationModelIT {
         assertEquals(11, metadata.get("end"));
         assertEquals("hap", metadata.get("detection_type"));
         assertEquals("has_HAP", metadata.get("detection"));
-        assertEquals(0.98, (float) metadata.get("score"), 0.01);
+        assertEquals(0.98, (double) metadata.get("score"), 0.01);
     }
 }

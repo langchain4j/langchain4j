@@ -4,12 +4,17 @@ import static dev.langchain4j.data.segment.TextSegment.textSegment;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.condition.JRE.JAVA_17;
 
 import dev.langchain4j.data.embedding.Embedding;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.api.condition.EnabledOnJre;
 
+@EnabledIf(value = "dev.langchain4j.model.huggingface.HuggingFaceChatModelIT#isMonday", disabledReason = "Not enough credits in the HF plan to run it more often")
+@EnabledOnJre(value = JAVA_17, disabledReason = "Not enough credits in the HF plan to run it more often")
 @EnabledIfEnvironmentVariable(named = "HF_API_KEY", matches = ".+")
 class HuggingFaceEmbeddingModelIT {
 

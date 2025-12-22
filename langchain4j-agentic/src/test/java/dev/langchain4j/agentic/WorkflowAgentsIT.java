@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic;
 
 import static dev.langchain4j.agentic.Models.baseModel;
+import static dev.langchain4j.agentic.Models.throwingModel;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -12,6 +13,7 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agentic.Agents.AudienceEditor;
 import dev.langchain4j.agentic.Agents.CategoryRouter;
 import dev.langchain4j.agentic.Agents.CreativeWriter;
+import dev.langchain4j.agentic.Agents.CreativeWriterWithArgMessage;
 import dev.langchain4j.agentic.Agents.EveningPlan;
 import dev.langchain4j.agentic.Agents.EveningPlannerAgent;
 import dev.langchain4j.agentic.Agents.ExpertRouterAgent;
@@ -23,6 +25,7 @@ import dev.langchain4j.agentic.Agents.MedicalExpert;
 import dev.langchain4j.agentic.Agents.MedicalExpertWithMemory;
 import dev.langchain4j.agentic.Agents.MovieExpert;
 import dev.langchain4j.agentic.Agents.RequestCategory;
+import dev.langchain4j.agentic.Agents.ReviewedWriter;
 import dev.langchain4j.agentic.Agents.StyleEditor;
 import dev.langchain4j.agentic.Agents.StyleScorer;
 import dev.langchain4j.agentic.Agents.StyledWriter;
@@ -32,10 +35,16 @@ import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
+import dev.langchain4j.agentic.observability.AgentInvocation;
+import dev.langchain4j.agentic.observability.AgentMonitor;
+import dev.langchain4j.agentic.observability.AgentRequest;
+import dev.langchain4j.agentic.observability.AgentResponse;
+import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.observability.MonitoredExecution;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
-import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
+import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.AgenticScopePersister;
 import dev.langchain4j.agentic.scope.AgenticScopeRegistry;
@@ -56,7 +65,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
+@EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 public class WorkflowAgentsIT {
 
     public interface CreativeWriterWithModel extends CreativeWriter {
@@ -121,6 +133,85 @@ public class WorkflowAgentsIT {
         System.out.println(story);
 
         verify(creativeWriter).generateStory("dragons and wizards");
+        verify(audienceEditor).editStory(any(), eq("young adults"));
+        verify(styleEditor).editStory(any(), eq("fantasy"));
+    }
+
+    @Test
+    void agent_with_programmatic_user_message_test() {
+        // the UserMessage is passed as an argument when invoking the agent
+
+        CreativeWriterWithArgMessage creativeWriter = AgenticServices.agentBuilder(CreativeWriterWithArgMessage.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build();
+
+        AudienceEditor audienceEditor = spy(AgenticServices.agentBuilder(AudienceEditor.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build());
+
+        StyleEditor styleEditor = spy(AgenticServices.agentBuilder(StyleEditor.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build());
+
+        UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
+                        .subAgents(creativeWriter, audienceEditor, styleEditor)
+                        .outputKey("story")
+                        .build();
+
+        Map<String, Object> input = Map.of(
+                "userMessage", """
+                               You are a creative writer.
+                               Generate a draft of a story long no more than 3 sentence around the given topic.
+                               Return only the story and nothing else.
+                               The topic is {{topic}}.
+                               """,
+                "topic", "dragons and wizards",
+                "style", "fantasy",
+                "audience", "young adults");
+
+        String story = (String) novelCreator.invoke(input);
+        assertThat(story).containsIgnoringCase("dragon");
+
+        verify(audienceEditor).editStory(any(), eq("young adults"));
+        verify(styleEditor).editStory(any(), eq("fantasy"));
+    }
+
+    @Test
+    void agent_with_default_value_test() {
+        // the UserMessage is set as a default value in the agent builder
+
+        CreativeWriterWithArgMessage creativeWriter = AgenticServices.agentBuilder(CreativeWriterWithArgMessage.class)
+                .chatModel(baseModel())
+                .defaultKeyValue("userMessage", """
+                               You are a creative writer.
+                               Generate a draft of a story long no more than 3 sentence around the given topic.
+                               Return only the story and nothing else.
+                               The topic is {{topic}}.
+                               """)
+                .outputKey("story")
+                .build();
+
+        AudienceEditor audienceEditor = spy(AgenticServices.agentBuilder(AudienceEditor.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build());
+
+        StyleEditor styleEditor = spy(AgenticServices.agentBuilder(StyleEditor.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build());
+
+        ReviewedWriter novelCreator = AgenticServices.sequenceBuilder(ReviewedWriter.class)
+                        .subAgents(creativeWriter, audienceEditor, styleEditor)
+                        .outputKey("story")
+                        .build();
+
+        String story = novelCreator.writeStory("dragons and wizards", "young adults", "fantasy");
+        assertThat(story).containsIgnoringCase("dragon");
+
         verify(audienceEditor).editStory(any(), eq("young adults"));
         verify(styleEditor).editStory(any(), eq("fantasy"));
     }
@@ -261,6 +352,7 @@ public class WorkflowAgentsIT {
         CyclicBarrier barrier = new CyclicBarrier(2);
         AtomicReference<String> request = new AtomicReference<>();
         AtomicReference<String> audience = new AtomicReference<>();
+        AtomicReference<String> hitlResult = new AtomicReference<>();
 
         HumanInTheLoop humanInTheLoop = AgenticServices.humanInTheLoopBuilder()
                 .description("An agent that asks the audience for the story")
@@ -279,6 +371,12 @@ public class WorkflowAgentsIT {
                     verify(creativeWriter).generateStory("dragons and wizards");
 
                     return "young adults";
+                })
+                .listener(new AgentListener() {
+                    @Override
+                    public void afterAgentInvocation(final AgentResponse agentResponse) {
+                        hitlResult.set(agentResponse.output().toString());
+                    }
                 })
                 .build();
 
@@ -307,19 +405,74 @@ public class WorkflowAgentsIT {
 
         assertThat(request.get()).isEqualTo("Which audience for topic dragons and wizards?");
         assertThat(audience.get()).isEqualTo("young adults");
+        assertThat(hitlResult.get()).isEqualTo("young adults");
         verify(audienceEditor).editStory(any(), eq("young adults"));
     }
 
     @Test
     void loop_agents_tests() {
-        AtomicReference<Object> requestedTopic = new AtomicReference<>();
-        AtomicReference<Double> finalScore = new AtomicReference<>();
+        class AllLevelsListener implements AgentListener {
+            int invocationsCounter = 0;
+            int loopCounter = 0;
+            double finalScore = 0.0;
+            Object createdScopeId;
+            Object destroyedScopeId;
+
+            @Override
+            public void afterAgentInvocation(AgentResponse response) {
+                invocationsCounter++;
+                if (StyleScorer.class.isAssignableFrom(response.agent().type())) {
+                    loopCounter++;
+                    finalScore = (double) response.output();
+                }
+            }
+
+            @Override
+            public void afterAgenticScopeCreated(AgenticScope agenticScope) {
+                createdScopeId = agenticScope.memoryId();
+            }
+
+            @Override
+            public void beforeAgenticScopeDestroyed(AgenticScope agenticScope) {
+                destroyedScopeId = agenticScope.memoryId();
+            }
+
+            @Override
+            public boolean inheritedBySubagents() {
+                return true;
+            }
+        }
+
+        class TopLevelListener implements AgentListener {
+            int invocationsCounter = 0;
+
+            @Override
+            public void afterAgentInvocation(AgentResponse response) {
+                invocationsCounter++;
+                if (StyleScorer.class.isAssignableFrom(response.agent().type())) {
+                    throw new RuntimeException("It should not be called for a subagent");
+                }
+            }
+        }
+
+        class WriterListener implements AgentListener {
+            Object requestedTopic;
+
+            @Override
+            public void beforeAgentInvocation(AgentRequest request) {
+                requestedTopic = request.inputs().get("topic");
+            }
+        }
+
+        TopLevelListener topLevelListener = new TopLevelListener();
+        AllLevelsListener allLevelsListener = new AllLevelsListener();
+        WriterListener writerListener = new WriterListener();
+        AgentMonitor monitor = new AgentMonitor();
 
         CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
+                .listener(writerListener)
                 .chatModel(baseModel())
                 .outputKey("story")
-                .beforeAgentInvocation(
-                        request -> requestedTopic.set(request.inputs().get("topic")))
                 .build();
 
         StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
@@ -333,15 +486,18 @@ public class WorkflowAgentsIT {
                 .build();
 
         UntypedAgent styleReviewLoop = AgenticServices.loopBuilder()
+                .name("reviewLoop")
                 .subAgents(styleScorer, styleEditor)
+                .listener(new AgentListener() {}) // empty listener to test inheritance
                 .maxIterations(5)
                 .exitCondition(agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
-                .afterAgentInvocation(
-                        response -> finalScore.set(response.agenticScope().readState("score", 0.0)))
                 .build();
 
         UntypedAgent styledWriter = AgenticServices.sequenceBuilder()
                 .subAgents(creativeWriter, styleReviewLoop)
+                .listener(topLevelListener)
+                .listener(allLevelsListener)
+                .listener(monitor)
                 .outputKey("story")
                 .build();
 
@@ -362,8 +518,70 @@ public class WorkflowAgentsIT {
                 .isEqualTo(agenticScope.contextAsConversation(styleEditor));
         assertThat(agenticScope.contextAsConversation("notExistingAgent")).isBlank();
 
-        assertThat(requestedTopic.get()).isEqualTo("dragons and wizards");
-        assertThat(finalScore.get()).isGreaterThanOrEqualTo(0.8);
+        assertThat(topLevelListener.invocationsCounter).isEqualTo(1);
+        assertThat(writerListener.requestedTopic).isEqualTo("dragons and wizards");
+        assertThat(allLevelsListener.finalScore).isGreaterThanOrEqualTo(0.8);
+        assertThat(allLevelsListener.createdScopeId).isNotNull().isEqualTo(allLevelsListener.destroyedScopeId);
+        assertThat(allLevelsListener.invocationsCounter).isEqualTo((allLevelsListener.loopCounter*2)-1 + 3);
+
+        assertThat(monitor.successfulExecutionsFor(agenticScope)).hasSize(1);
+        MonitoredExecution execution = monitor.successfulExecutionsFor(agenticScope).get(0);
+        assertThat(execution.done()).isTrue();
+        assertThat(execution.ongoingInvocations()).isEmpty();
+        AgentInvocation topLevelInvocation = execution.topLevelInvocations();
+        assertThat(topLevelInvocation.inputs()).containsKey("topic").containsKey("style");
+
+        assertThat(topLevelInvocation.nestedInvocations()).hasSize(2);
+        assertThat(topLevelInvocation.nestedInvocations().get(0).agent().name()).isEqualTo("generateStory");
+        assertThat(topLevelInvocation.nestedInvocations().get(1).agent().name()).isEqualTo("reviewLoop");
+
+        System.out.println(execution);
+    }
+
+    @Test
+    void loop_agents_with_error_tests() {
+        AgentMonitor monitor = new AgentMonitor();
+
+        CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build();
+
+        StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build();
+
+        StyleScorer styleScorer = AgenticServices.agentBuilder(StyleScorer.class)
+                .chatModel(throwingModel())
+                .outputKey("score")
+                .build();
+
+        UntypedAgent styleReviewLoop = AgenticServices.loopBuilder()
+                .name("reviewLoop")
+                .subAgents(styleScorer, styleEditor)
+                .maxIterations(5)
+                .exitCondition(agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
+                .build();
+
+        UntypedAgent styledWriter = AgenticServices.sequenceBuilder()
+                .subAgents(creativeWriter, styleReviewLoop)
+                .listener(monitor)
+                .outputKey("story")
+                .build();
+
+        Map<String, Object> input = Map.of(
+                "topic", "dragons and wizards",
+                "style", "comedy");
+
+        assertThrows(AgentInvocationException.class, () -> styledWriter.invokeWithAgenticScope(input));
+
+        assertThat(monitor.successfulExecutions()).isEmpty();
+        MonitoredExecution failed = monitor.failedExecutions().get(0);
+        assertThat(failed.done()).isFalse();
+        assertThat(failed.hasError()).isTrue();
+        assertThat(failed.error().error()).isInstanceOf(AgentInvocationException.class);
+        assertThat(failed.error().agent().name()).isEqualTo("scoreStyle");
     }
 
     @Test
@@ -424,14 +642,14 @@ public class WorkflowAgentsIT {
 
         assertThat(agenticScope.agentInvocations("generateStory")).hasSize(1);
 
-        List<AgentInvocation> scoreAgentCalls = agenticScope.agentInvocations(StyleScorer.class);
-        assertThat(scoreAgentCalls).hasSizeBetween(1, 5).hasSize(loopCount.get());
-        System.out.println("Score agent invocations: " + scoreAgentCalls);
-        assertThat((Double) scoreAgentCalls.get(scoreAgentCalls.size() - 1).output())
+        List<dev.langchain4j.agentic.scope.AgentInvocation> scoreAgentInvocations = agenticScope.agentInvocations(StyleScorer.class);
+        assertThat(scoreAgentInvocations).hasSizeBetween(1, 5).hasSize(loopCount.get());
+        System.out.println("Score agent invocations: " + scoreAgentInvocations);
+        assertThat((Double) scoreAgentInvocations.get(scoreAgentInvocations.size() - 1).output())
                 .isGreaterThanOrEqualTo(0.8);
 
-        List<AgentInvocation> styleEditorAgentCalls = agenticScope.agentInvocations(StyleEditor.class);
-        assertThat(styleEditorAgentCalls).hasSize(testExitAtLoopEnd ? loopCount.get() : loopCount.get() - 1);
+        List<dev.langchain4j.agentic.scope.AgentInvocation> styleEditorAgentInvocations = agenticScope.agentInvocations(StyleEditor.class);
+        assertThat(styleEditorAgentInvocations).hasSize(testExitAtLoopEnd ? loopCount.get() : loopCount.get() - 1);
     }
 
     @Test
@@ -459,6 +677,8 @@ public class WorkflowAgentsIT {
 
         assertThat(score).isGreaterThanOrEqualTo(0.8);
     }
+
+    interface ExpertRouterAgentInstance extends ExpertRouterAgent, AgentInstance { }
 
     @Test
     void conditional_agents_tests() {
@@ -495,52 +715,96 @@ public class WorkflowAgentsIT {
                         technicalExpert)
                 .build();
 
-        ExpertRouterAgent expertRouterAgent = AgenticServices.sequenceBuilder(ExpertRouterAgent.class)
+        var agentInstance = AgenticServices.sequenceBuilder(ExpertRouterAgentInstance.class)
                 .subAgents(routerAgent, expertsAgent)
                 .outputKey("response")
                 .build();
 
-        AgentInstance rootAgent = (AgentInstance) expertRouterAgent;
-        assertThat(rootAgent.name()).isEqualTo("ask");
-        assertThat(rootAgent.outputType()).isEqualTo(String.class);
-        assertThat(rootAgent.outputKey()).isEqualTo("response");
-        assertThat(rootAgent.arguments()).hasSize(1);
-        assertThat(rootAgent.arguments().get(0).name()).isEqualTo("request");
-        assertThat(rootAgent.arguments().get(0).type()).isEqualTo(String.class);
-        assertThat(rootAgent.subagents()).hasSize(2);
+        assertThat(agentInstance.name()).isEqualTo("ask");
+        assertThat(agentInstance.outputType()).isEqualTo(String.class);
+        assertThat(agentInstance.outputKey()).isEqualTo("response");
+        assertThat(agentInstance.topology()).isEqualTo(AgenticSystemTopology.SEQUENCE);
+        assertThat(agentInstance.arguments()).hasSize(1);
+        assertThat(agentInstance.arguments().get(0).name()).isEqualTo("request");
+        assertThat(agentInstance.arguments().get(0).type()).isEqualTo(String.class);
+        assertThat(agentInstance.subagents()).hasSize(2);
 
-        AgentInstance routerAgentInstance = rootAgent.subagents().get(0);
+        AgentInstance routerAgentInstance = agentInstance.subagents().get(0);
         assertThat(routerAgentInstance.name()).isEqualTo("classify");
+        assertThat(routerAgentInstance.agentId()).isEqualTo("classify$0");
         assertThat(routerAgentInstance.outputType()).isEqualTo(RequestCategory.class);
         assertThat(routerAgentInstance.outputKey()).isEqualTo("category");
+        assertThat(routerAgentInstance.topology()).isEqualTo(AgenticSystemTopology.SINGLE_AGENT);
         assertThat(routerAgentInstance.arguments()).hasSize(1);
         assertThat(routerAgentInstance.arguments().get(0).name()).isEqualTo("request");
         assertThat(routerAgentInstance.arguments().get(0).type()).isEqualTo(String.class);
         assertThat(routerAgentInstance.subagents()).isEmpty();
+        assertThat(routerAgentInstance.parent().agentId()).isEqualTo(agentInstance.agentId());
 
-        AgentInstance conditionalAgentInstance = rootAgent.subagents().get(1);
+        AgentInstance conditionalAgentInstance = agentInstance.subagents().get(1);
         assertThat(conditionalAgentInstance.outputType()).isEqualTo(Object.class);
         assertThat(conditionalAgentInstance.outputKey()).isNull();
+        assertThat(conditionalAgentInstance.topology()).isEqualTo(AgenticSystemTopology.ROUTER);
         assertThat(conditionalAgentInstance.arguments()).isEmpty(); // untyped agent does not know its arguments
         assertThat(conditionalAgentInstance.subagents()).hasSize(3);
+        assertThat(conditionalAgentInstance.parent().agentId()).isEqualTo(agentInstance.agentId());
 
-        checkExpertAgent(conditionalAgentInstance.subagents().get(0), "medical");
-        checkExpertAgent(conditionalAgentInstance.subagents().get(1), "legal");
-        checkExpertAgent(conditionalAgentInstance.subagents().get(2), "technical");
+        checkExpertAgent(conditionalAgentInstance, "medical", 0);
+        checkExpertAgent(conditionalAgentInstance, "legal", 1);
+        checkExpertAgent(conditionalAgentInstance, "technical", 2);
 
-        System.out.println(expertRouterAgent.ask("I broke my leg what should I do"));
+        System.out.println(agentInstance.ask("I broke my leg what should I do"));
 
         verify(medicalExpert).medical("I broke my leg what should I do");
     }
 
-    private static void checkExpertAgent(AgentInstance medicalAgentInstance, String name) {
-        assertThat(medicalAgentInstance.name()).isEqualTo(name);
-        assertThat(medicalAgentInstance.outputType()).isEqualTo(String.class);
-        assertThat(medicalAgentInstance.outputKey()).isEqualTo("response");
-        assertThat(medicalAgentInstance.arguments()).hasSize(1);
-        assertThat(medicalAgentInstance.arguments().get(0).name()).isEqualTo("request");
-        assertThat(medicalAgentInstance.arguments().get(0).type()).isEqualTo(String.class);
-        assertThat(medicalAgentInstance.subagents()).hasSize(0);
+    private static void checkExpertAgent(AgentInstance parent, String name, int index) {
+        AgentInstance expertAgentInstance = parent.subagents().get(index);
+        assertThat(expertAgentInstance.name()).isEqualTo(name);
+        assertThat(expertAgentInstance.agentId()).isEqualTo(name + "$" + index + "$1");
+        assertThat(expertAgentInstance.outputType()).isEqualTo(String.class);
+        assertThat(expertAgentInstance.outputKey()).isEqualTo("response");
+        assertThat(expertAgentInstance.topology()).isEqualTo(AgenticSystemTopology.SINGLE_AGENT);
+        assertThat(expertAgentInstance.arguments()).hasSize(1);
+        assertThat(expertAgentInstance.arguments().get(0).name()).isEqualTo("request");
+        assertThat(expertAgentInstance.arguments().get(0).type()).isEqualTo(String.class);
+        assertThat(expertAgentInstance.subagents()).isEmpty();
+        assertThat(expertAgentInstance.parent().agentId()).isEqualTo(parent.agentId());
+    }
+
+    @Test
+    void no_matching_condition_tests() {
+        CategoryRouter routerAgent = AgenticServices.agentBuilder(CategoryRouter.class)
+                .chatModel(baseModel())
+                .outputKey("category")
+                .build();
+
+        LegalExpert legalExpert = spy(AgenticServices.agentBuilder(LegalExpert.class)
+                .chatModel(baseModel())
+                .outputKey("response")
+                .build());
+        TechnicalExpert technicalExpert = spy(AgenticServices.agentBuilder(TechnicalExpert.class)
+                .chatModel(baseModel())
+                .outputKey("response")
+                .build());
+
+        UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
+                .subAgents(
+                        agenticScope ->
+                                agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.LEGAL,
+                        legalExpert)
+                .subAgents(
+                        agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN)
+                                == RequestCategory.TECHNICAL,
+                        technicalExpert)
+                .build();
+
+        var agentInstance = AgenticServices.sequenceBuilder(ExpertRouterAgentInstance.class)
+                .subAgents(routerAgent, expertsAgent)
+                .outputKey("response")
+                .build();
+
+        assertThat(agentInstance.ask("I broke my leg what should I do")).isNull();
     }
 
     @Test
@@ -578,8 +842,6 @@ public class WorkflowAgentsIT {
                         technicalExpert)
                 .build();
 
-
-
         assertThat(assertThrows(AgenticSystemConfigurationException.class, () ->
                 AgenticServices.sequenceBuilder(ExpertRouterAgent.class)
                     .subAgents(routerAgent, expertsAgent)
@@ -590,6 +852,8 @@ public class WorkflowAgentsIT {
 
     @Test
     void memory_agents_tests() {
+        AgentMonitor monitor = new AgentMonitor();
+
         CategoryRouter routerAgent = AgenticServices.agentBuilder(CategoryRouter.class)
                 .chatModel(baseModel())
                 .outputKey("category")
@@ -613,6 +877,7 @@ public class WorkflowAgentsIT {
                 .build();
 
         UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
+                .name("router")
                 .subAgents(agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.MEDICAL, medicalExpert)
                 .subAgents(agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.TECHNICAL, technicalExpert)
                 .subAgents(agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.LEGAL, legalExpert)
@@ -621,6 +886,7 @@ public class WorkflowAgentsIT {
         ExpertRouterAgentWithMemory expertRouterAgent = AgenticServices.sequenceBuilder(
                         ExpertRouterAgentWithMemory.class)
                 .subAgents(routerAgent, expertsAgent)
+                .listener(monitor)
                 .outputKey("response")
                 .build();
 
@@ -640,6 +906,9 @@ public class WorkflowAgentsIT {
 
         AgenticScope agenticScope2 = expertRouterAgent.getAgenticScope("2");
         assertThat(agenticScope2.readState("category", RequestCategory.UNKNOWN)).isEqualTo(RequestCategory.TECHNICAL);
+
+        checkMonitoredExecution(monitor, "1", "medical");
+        checkMonitoredExecution(monitor, "2", "technical");
 
         AgenticScopeRegistry registry = ((AgenticScopeOwner) expertRouterAgent).registry();
         assertThat(store.getAllKeys()).isEqualTo(registry.getAllAgenticScopeKeysInMemory());
@@ -672,6 +941,18 @@ public class WorkflowAgentsIT {
         assertThat(expertRouterAgent.evictAgenticScope("2")).isFalse();
 
         AgenticScopePersister.setStore(null);
+    }
+
+    private static void checkMonitoredExecution(AgentMonitor monitor, Object memoryId, String expertName) {
+        List<MonitoredExecution> executions1 = monitor.successfulExecutionsFor(memoryId);
+        assertThat(executions1).hasSize(1);
+        List<AgentInvocation> sequenceInvocations = executions1.get(0).topLevelInvocations().nestedInvocations();
+        assertThat(sequenceInvocations).hasSize(2);
+        assertThat(sequenceInvocations.get(0).agent().name()).isEqualTo("classify");
+        assertThat(sequenceInvocations.get(1).agent().name()).isEqualTo("router");
+        List<AgentInvocation> routerInvocations = sequenceInvocations.get(1).nestedInvocations();
+        assertThat(routerInvocations).hasSize(1);
+        assertThat(routerInvocations.get(0).agent().name()).isEqualTo(expertName);
     }
 
     @Test

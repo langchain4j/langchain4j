@@ -82,8 +82,6 @@ public class WatsonxStreamingChatModelThinkingIT {
                 .apiKey(API_KEY)
                 .projectId(PROJECT_ID)
                 .modelName("ibm/granite-3-3-8b-instruct")
-                .logRequests(true)
-                .logResponses(true)
                 .build();
 
         CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();
@@ -165,8 +163,6 @@ public class WatsonxStreamingChatModelThinkingIT {
                 .projectId(PROJECT_ID)
                 .modelName("ibm/granite-3-3-8b-instruct")
                 .thinking(ExtractionTags.of("think", "response"))
-                .logRequests(true)
-                .logResponses(true)
                 .maxOutputTokens(0)
                 .timeout(Duration.ofSeconds(30));
     }

@@ -21,6 +21,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HexFormat;
@@ -416,6 +417,22 @@ public class Utils {
         }
 
         return unmodifiableList(list);
+    }
+
+    /**
+     * Returns a mutable copy of the provided list.
+     * Returns an empty list if the provided list is <code>null</code>.
+     *
+     * @param list The list to copy.
+     * @param <T>  Generic type of the list.
+     * @return The copy of the provided list or an empty list.
+     */
+    public static <T> List<T> mutableCopy(List<T> list) {
+        if (list == null) {
+            return new ArrayList<>();
+        }
+
+        return new ArrayList<>(list);
     }
 
     /**

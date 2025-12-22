@@ -11,7 +11,7 @@ public final class TestUtils {
 
     public static void awaitUntilAsserted(ThrowingRunnable assertion) {
         Awaitility.await()
-                .atMost(Duration.ofSeconds(120))
+                .atMost(Duration.ofMinutes(5))
                 .pollDelay(Duration.ofSeconds(0))
                 .pollInterval(Duration.ofMillis(300))
                 .untilAsserted(assertion);

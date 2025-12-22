@@ -5,7 +5,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.9.0-beta16-SNAPSHOT</version>
+        <version>1.10.0-beta18-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -13,7 +13,7 @@
     <name>LangChain4j :: Integration :: Milvus</name>
 
     <properties>
-        <skipMilvusITs>false</skipMilvusITs>
+        <skipMilvusITs>${skipITs}</skipMilvusITs>
         <!-- TODO: remove enforcer.skipRules -->
         <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
     </properties>
@@ -33,7 +33,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.9.0-SNAPSHOT</version>
+            <version>1.10.0-SNAPSHOT</version>
         </dependency>
 
         <dependency>
@@ -45,23 +45,9 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.9.0-SNAPSHOT</version>
+            <version>1.10.0-SNAPSHOT</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-api</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <!-- junit-jupiter-params should be declared explicitly
-                to run parameterized tests inherited from EmbeddingStore*IT-->
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-params</artifactId>
             <scope>test</scope>
         </dependency>
 
@@ -96,7 +82,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <configuration>
-                    <skipTests>${skipMilvusITs}</skipTests>
+                    <skipITs>${skipMilvusITs}</skipITs>
                 </configuration>
             </plugin>
         </plugins>

@@ -2,6 +2,7 @@ package dev.langchain4j.agentic.workflow;
 
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.internal.AgentSpecsProvider;
+import dev.langchain4j.agentic.observability.AgentListener;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -11,7 +12,8 @@ public record HumanInTheLoop(
         String description,
         Consumer<?> requestWriter,
         boolean async,
-        Supplier<?> responseReader)
+        Supplier<?> responseReader,
+        AgentListener listener)
         implements AgentSpecsProvider {
 
     @Agent("An agent that asks the user for missing information")
@@ -28,6 +30,7 @@ public record HumanInTheLoop(
         private boolean async = false;
         private Consumer<?> requestWriter;
         private Supplier<?> responseReader;
+        private AgentListener agentListener;
 
         public HumanInTheLoopBuilder requestWriter(Consumer<?> requestWriter) {
             this.requestWriter = requestWriter;
@@ -59,8 +62,13 @@ public record HumanInTheLoop(
             return this;
         }
 
+        public HumanInTheLoopBuilder listener(AgentListener agentListener) {
+            this.agentListener = agentListener;
+            return this;
+        }
+
         public HumanInTheLoop build() {
-            return new HumanInTheLoop(inputKey, outputKey, description, requestWriter, async, responseReader);
+            return new HumanInTheLoop(inputKey, outputKey, description, requestWriter, async, responseReader, agentListener);
         }
     }
 }

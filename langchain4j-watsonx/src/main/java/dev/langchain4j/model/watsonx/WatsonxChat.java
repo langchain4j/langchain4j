@@ -12,7 +12,6 @@ import com.ibm.watsonx.ai.chat.ChatService;
 import com.ibm.watsonx.ai.chat.model.ExtractionTags;
 import com.ibm.watsonx.ai.chat.model.Thinking;
 import com.ibm.watsonx.ai.chat.model.ThinkingEffort;
-import com.ibm.watsonx.ai.core.auth.iam.IAMAuthenticator;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
@@ -83,15 +82,16 @@ abstract class WatsonxChat {
                 .toolChoiceName(getOrDefault(builder.toolChoiceName, watsonxParameters.toolChoiceName()))
                 .timeout(timeout)
                 .thinking(thinking)
+                .guidedChoice(getOrDefault(builder.guidedChoice, watsonxParameters.guidedChoice()))
+                .guidedGrammar(getOrDefault(builder.guidedGrammar, watsonxParameters.guidedGrammar()))
+                .guidedRegex(getOrDefault(builder.guidedRegex, watsonxParameters.guidedRegex()))
+                .lengthPenalty(getOrDefault(builder.lengthPenalty, watsonxParameters.lengthPenalty()))
+                .repetitionPenalty(getOrDefault(builder.repetitionPenalty, watsonxParameters.repetitionPenalty()))
                 .build();
 
-        var chatServiceBuilder = ChatService.builder();
-        if (nonNull(builder.authenticationProvider)) {
-            chatServiceBuilder.authenticationProvider(builder.authenticationProvider);
-        } else {
-            chatServiceBuilder.authenticationProvider(
-                    IAMAuthenticator.builder().apiKey(builder.apiKey).build());
-        }
+        var chatServiceBuilder = nonNull(builder.authenticator)
+                ? ChatService.builder().authenticator(builder.authenticator)
+                : ChatService.builder().apiKey(builder.apiKey);
 
         chatService = chatServiceBuilder
                 .baseUrl(builder.baseUrl)
@@ -102,6 +102,7 @@ abstract class WatsonxChat {
                 .timeout(timeout)
                 .logRequests(builder.logRequests)
                 .logResponses(builder.logResponses)
+                .httpClient(builder.httpClient)
                 .build();
     }
 
@@ -145,6 +146,11 @@ abstract class WatsonxChat {
         private List<ChatModelListener> listeners;
         private ChatRequestParameters defaultRequestParameters;
         private Set<Capability> supportedCapabilities;
+        private Set<String> guidedChoice;
+        private String guidedRegex;
+        private String guidedGrammar;
+        private Double repetitionPenalty;
+        private Double lengthPenalty;
         private Thinking thinking;
 
         public T baseUrl(CloudRegion cloudRegion) {
@@ -283,6 +289,35 @@ abstract class WatsonxChat {
 
         public T thinking(Thinking thinking) {
             this.thinking = thinking;
+            return (T) this;
+        }
+
+        public T guidedChoice(String... guidedChoice) {
+            return guidedChoice(Set.of(guidedChoice));
+        }
+
+        public T guidedChoice(Set<String> guidedChoices) {
+            this.guidedChoice = guidedChoices;
+            return (T) this;
+        }
+
+        public T guidedRegex(String guidedRegex) {
+            this.guidedRegex = guidedRegex;
+            return (T) this;
+        }
+
+        public T guidedGrammar(String guidedGrammar) {
+            this.guidedGrammar = guidedGrammar;
+            return (T) this;
+        }
+
+        public T repetitionPenalty(Double repetitionPenalty) {
+            this.repetitionPenalty = repetitionPenalty;
+            return (T) this;
+        }
+
+        public T lengthPenalty(Double lengthPenalty) {
+            this.lengthPenalty = lengthPenalty;
             return (T) this;
         }
     }

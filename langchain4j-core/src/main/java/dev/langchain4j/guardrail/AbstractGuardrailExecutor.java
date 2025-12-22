@@ -8,6 +8,7 @@ import dev.langchain4j.guardrail.config.GuardrailsConfig;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.observability.api.event.GuardrailExecutedEvent;
 import dev.langchain4j.observability.api.event.GuardrailExecutedEvent.GuardrailExecutedEventBuilder;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -115,7 +116,8 @@ public abstract sealed class AbstractGuardrailExecutor<
         return result;
     }
 
-    protected void fireObservabilityEvent(InvocationContext invocationContext, P request, R result, G guardrail) {
+    protected void fireObservabilityEvent(
+            InvocationContext invocationContext, P request, R result, G guardrail, Duration duration) {
         request.requestParams()
                 .aiservicelistenerregistrar()
                 .fireEvent(createEmptyObservabilityEventBuilderInstance()
@@ -123,6 +125,7 @@ public abstract sealed class AbstractGuardrailExecutor<
                         .request(request)
                         .result(result)
                         .guardrailClass((Class<G>) guardrail.getClass())
+                        .duration(duration)
                         .build());
     }
 
@@ -134,9 +137,12 @@ public abstract sealed class AbstractGuardrailExecutor<
 
         for (var guardrail : this.guardrails) {
             if (guardrail != null) {
+                var before = System.nanoTime();
                 var result = validate(accumulatedRequest, guardrail);
+                var after = System.nanoTime();
+                Duration duration = Duration.ofNanos(after - before);
                 fireObservabilityEvent(
-                        request.requestParams().invocationContext(), accumulatedRequest, result, guardrail);
+                        request.requestParams().invocationContext(), accumulatedRequest, result, guardrail, duration);
 
                 if (result.isFatal()) {
                     // Fatal result, so stop right here and don't do any more processing

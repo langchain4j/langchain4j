@@ -53,10 +53,11 @@ import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.junitpioneer.jupiter.RetryingTest;
 
+@EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 class GoogleAiGeminiChatModelIT {
 
     private static final String GOOGLE_AI_GEMINI_API_KEY = System.getenv("GOOGLE_AI_GEMINI_API_KEY");
@@ -171,7 +172,6 @@ class GoogleAiGeminiChatModelIT {
         assertThat(response.aiMessage().text()).containsIgnoringCase("example");
     }
 
-    @RetryingTest(3)
     void should_execute_python_code() {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
@@ -192,7 +192,6 @@ class GoogleAiGeminiChatModelIT {
     }
 
     @Disabled("TODO fix")
-    @RetryingTest(5)
     void should_support_safety_settings() {
         // given
         Map<GeminiHarmCategory, GeminiHarmBlockThreshold> mapSafetySettings = new HashMap<>();

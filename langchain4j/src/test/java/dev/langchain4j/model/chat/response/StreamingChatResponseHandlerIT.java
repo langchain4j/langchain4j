@@ -14,7 +14,9 @@ import java.util.concurrent.CompletableFuture;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 public class StreamingChatResponseHandlerIT {
 
     StreamingChatModel model = OpenAiStreamingChatModel.builder()

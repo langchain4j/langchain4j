@@ -13,39 +13,83 @@ sidebar_position: 22
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-watsonx</artifactId>
-    <version>1.8.0-beta15</version>
+    <version>1.9.1-beta17</version>
 </dependency>
 ```
 
-## WatsonxChatModel
+## Authentication
 
-The `WatsonxChatModel` class allows you to create an instance of the `ChatModel` interface fully encapsulated within LangChain4j.  
-To create an instance, you must specify the mandatory parameters:
+Watsonx.ai supports authentication via the `Authenticator` interface.
 
-- `baseUrl(...)` – IBM Cloud endpoint URL (as `String`, `URI`, or `CloudRegion`);
-- `apiKey(...)` – IBM Cloud IAM API key;
-- `projectId(...)` – IBM Cloud Project ID (or use `spaceId(...)`);
-- `modelName(...)` – Foundation model ID for inference;
+This allows to use different authentication mechanisms depending on your deployment:
+
+- **IBMCloudAuthenticator** – authenticates with **IBM Cloud** using an API key. This is the simplest approach and is used when you provide the `apiKey(...)` builder method.
+- **CP4DAuthenticator** – authenticates with **Cloud Pak for Data** deployments.
+- **Custom authenticators** – any implementation of the `Authenticator` interface can be used.
+
+The `WatsonxChatModel`, `WatsonxStreamingChatModel`, and other service builders accept either a shortcut via `.apiKey(...)` or a full `Authenticator` instance via `.authenticator(...)`.
 
 ### Example
-
 ```java
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.watsonx.WatsonxChatModel;
+import com.ibm.watsonx.ai.core.auth.cp4d.CP4DAuthenticator;
+import com.ibm.watsonx.ai.core.auth.cp4d.AuthMode;
 import com.ibm.watsonx.ai.CloudRegion;
 
-ChatModel chatModel = WatsonxChatModel.builder()
+WatsonxChatModel.builder()
     .baseUrl(CloudRegion.FRANKFURT)
-    .apiKey("your-api-key")
+    .apiKey("your-api-key") // Simple IBM Cloud authentication
     .projectId("your-project-id")
-    .modelName("ibm/granite-3-3-8b-instruct")
-    .temperature(0.7)
-    .maxOutputTokens(0)
+    .modelName("ibm/granite-4-h-small")
     .build();
 
-String answer = chatModel.chat("Hello from watsonx.ai");
-System.out.println(answer);
+WatsonxChatModel.builder()
+    .baseUrl("https://my-instance-url")
+    .authenticator( // For Cloud Pak for Data deployments
+        CP4DAuthenticator.builder()
+            .baseUrl("https://my-instance-url")
+            .username("username")
+            .apiKey("api-key")
+            .authMode(AuthMode.LEGACY)
+            .build()
+    )
+    .projectId("my-project-id")
+    .modelName("ibm/granite-4-h-small")
+    .build();
 ```
+
+### Custom HttpClient
+
+All services and authenticators support a custom `HttpClient` instance through the builder pattern. This is particularly useful for Cloud Pak for Data environments where you may need to configure custom TLS/SSL settings, proxy configuration, or other HTTP client properties.
+```java
+import java.net.http.HttpClient;
+import com.ibm.watsonx.ai.chat.ChatService;
+import com.ibm.watsonx.ai.core.auth.cp4d.CP4DAuthenticator;
+
+HttpClient httpClient = HttpClient.newBuilder()
+    .sslContext(createCustomSSLContext())
+    .build();
+
+ChatService chatService = ChatService.builder()
+    .baseUrl("https://my-instance-url")
+    .modelId("ibm/granite-4-h-small")
+    .projectId("my-project-id")
+    .httpClient(httpClient)
+    .authenticator(
+        CP4DAuthenticator.builder()
+            .baseUrl("https://my-instance-url")
+            .username("username")
+            .apiKey("api-key")
+            .httpClient(httpClient)
+            .build()
+    )
+    .build();
+
+var response = chatService.chat("How are you?");
+```
+
+> **Note:** When using a custom `HttpClient` with Cloud Pak for Data, make sure to set it on both the service builder and the authenticator builder to ensure consistent HTTP behavior across all requests.
 
 ### How to create an IBM Cloud API Key
 
@@ -58,9 +102,39 @@ You can create an API key at [https://cloud.ibm.com/iam/apikeys](https://cloud.i
 3. Go to the **Manage** tab  
 4. Copy the **Project ID** from the **Details** section  
 
-### How to find the model name
+## WatsonxChatModel
 
-Available foundation models are listed [here](https://dataplatform.cloud.ibm.com/docs/content/wsj/analyze-data/fm-models.html?context=wx#ibm-provided).
+The `WatsonxChatModel` class allows you to create an instance of the `ChatModel` interface fully encapsulated within LangChain4j.  
+To create an instance, you must specify the mandatory parameters:
+
+- `baseUrl(...)` – IBM Cloud endpoint URL (as `String`, `URI`, or `CloudRegion`);
+- `apiKey(...)` – IBM Cloud IAM API key;
+- `projectId(...)` – IBM Cloud Project ID (or use `spaceId(...)`);
+- `modelName(...)` – Foundation model ID for inference;
+
+> You can authenticate using either `.apiKey(...)` or a full `Authenticator` instance via `.authenticator(...)`.
+
+### Example
+
+```java
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.watsonx.WatsonxChatModel;
+import com.ibm.watsonx.ai.CloudRegion;
+
+ChatModel chatModel = WatsonxChatModel.builder()
+    .baseUrl(CloudRegion.FRANKFURT)
+    .apiKey("your-api-key")
+    .projectId("your-project-id")
+    .modelName("ibm/granite-4-h-small")
+    .temperature(0.7)
+    .maxOutputTokens(0)
+    .build();
+
+String answer = chatModel.chat("Hello from watsonx.ai");
+System.out.println(answer);
+```
+
+> 🔗 [View available models](https://dataplatform.cloud.ibm.com/docs/content/wsj/analyze-data/fm-models.html?context=wx#ibm-provided)
 
 ## WatsonxStreamingChatModel
 
@@ -81,7 +155,7 @@ StreamingChatModel model = WatsonxStreamingChatModel.builder()
     .baseUrl(CloudRegion.FRANKFURT)
     .apiKey("your-api-key")
     .projectId("your-project-id")
-    .modelName("ibm/granite-3-3-8b-instruct")
+    .modelName("ibm/granite-4-h-small")
     .maxOutputTokens(0)
     .build();
 
@@ -103,6 +177,8 @@ model.chat("What is the capital of Italy?", new StreamingChatResponseHandler() {
     }
 });
 ```
+
+> 🔗 [View available models](https://dataplatform.cloud.ibm.com/docs/content/wsj/analyze-data/fm-models.html?context=wx#ibm-provided)
 
 ## Tool Integration
 
