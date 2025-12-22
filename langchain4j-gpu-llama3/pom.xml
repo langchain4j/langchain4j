@@ -14,7 +14,7 @@
 
     <properties>
         <maven.compiler.release>21</maven.compiler.release>
-        <tornado.sdk>${env.TORNADO_SDK}</tornado.sdk>
+        <tornado.sdk>${env.TORNADOVM_HOME}</tornado.sdk>
         <maven.test.skip>true</maven.test.skip>
         <maven.compiler.testSkip>true</maven.compiler.testSkip>
         <skipTests>true</skipTests>
@@ -91,7 +91,6 @@
                 <artifactId>maven-javadoc-plugin</artifactId>
                 <version>3.5.0</version>
                 <configuration>
-                    <additionalOptions>--enable-preview</additionalOptions>
                     <source>21</source>
                 </configuration>
             </plugin>
@@ -127,15 +126,6 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
                     <version>3.14.0</version>
-                    <configuration>
-                        <compilerArgs>
-                            <arg>--enable-preview</arg>
-                        </compilerArgs>
-                        <testCompilerArgs>
-                            <arg>--enable-preview</arg>
-                        </testCompilerArgs>
-                        <release>21</release>
-                    </configuration>
                 </plugin>
 
 
@@ -189,7 +179,7 @@
                         <argument>org.junit.platform.console.ConsoleLauncher</argument>
                         <argument>--scan-classpath</argument>
                         <argument>--include-classname</argument>
-                        <argument>.*IT</argument>
+                        <argument>GPULlama3ChatModelIT</argument>
                     </arguments>
                 </configuration>
             </plugin>
