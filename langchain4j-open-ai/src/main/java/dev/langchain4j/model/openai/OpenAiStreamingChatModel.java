@@ -61,10 +61,9 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
     private final boolean strictJsonSchema;
     private final boolean strictTools;
     private final boolean returnThinking;
+    private final boolean sendThinking;
+    private final String thinkingFieldName;
     private final List<ChatModelListener> listeners;
-
-    private final Boolean sendThinking;
-    private final String reasoningContentFieldName;
 
     public OpenAiStreamingChatModel(OpenAiStreamingChatModelBuilder builder) {
         this.client = OpenAiClient.builder()
@@ -126,7 +125,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         this.strictTools = getOrDefault(builder.strictTools, false);
         this.returnThinking = getOrDefault(builder.returnThinking, false);
         this.sendThinking = getOrDefault(builder.sendThinking, false);
-        this.reasoningContentFieldName = getOrDefault(builder.reasoningContentFieldName, "reasoning_content");
+        this.thinkingFieldName = getOrDefault(builder.thinkingFieldName, "reasoning_content");
         this.listeners = copy(builder.listeners);
     }
 
@@ -142,7 +141,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         validate(parameters);
 
         ChatCompletionRequest openAiRequest =
-                toOpenAiChatRequest(chatRequest, parameters, sendThinking, reasoningContentFieldName,strictTools, strictJsonSchema).stream(true)
+                toOpenAiChatRequest(chatRequest, parameters, sendThinking, thinkingFieldName,strictTools, strictJsonSchema).stream(true)
                         .streamOptions(
                                 StreamOptions.builder().includeUsage(true).build())
                         .build();
@@ -279,9 +278,9 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         private Map<String, String> metadata;
         private String serviceTier;
         private String reasoningEffort;
-        private Boolean sendThinking;
-        private String reasoningContentFieldName;
         private Boolean returnThinking;
+        private Boolean sendThinking;
+        private String thinkingFieldName;
         private Duration timeout;
         private Boolean logRequests;
         private Boolean logResponses;
@@ -456,10 +455,10 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
-
-
         /**
-         * Controls whether to include reasoning content in assistant messages when sending requests to the API.
+         * This setting is intended for <a href="https://api-docs.deepseek.com/guides/reasoning_model">DeepSeek</a>.
+         * <p>
+         * Controls whether to include thinking/reasoning text in assistant messages when sending requests to the API.
          * This is needed for some APIs (like DeepSeek) when using reasoning mode with tool calls.
          * <p>
          * Disabled by default.
@@ -468,17 +467,19 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
          * will be included in the request during message conversion to API format.
          *
          * @param sendThinking whether to send reasoning content
-         * @param reasoningContentFieldName the field name for reasoning content
+         * @param fieldName the field name for reasoning content
          * @return {@code this}
          */
-        public OpenAiStreamingChatModelBuilder sendThinking(Boolean sendThinking, String reasoningContentFieldName) {
+        public OpenAiStreamingChatModelBuilder sendThinking(Boolean sendThinking, String fieldName) {
             this.sendThinking = sendThinking;
-            this.reasoningContentFieldName = reasoningContentFieldName;
+            this.thinkingFieldName = fieldName;
             return this;
         }
 
         /**
-         * Controls whether to include reasoning content in assistant messages when sending requests to the API.
+         * This setting is intended for <a href="https://api-docs.deepseek.com/guides/reasoning_model">DeepSeek</a>.
+         * <p>
+         * Controls whether to include thinking/reasoning text in assistant messages when sending requests to the API.
          * This is needed for some APIs (like DeepSeek) when using reasoning mode with tool calls.
          * Uses the default field name "reasoning_content" for the reasoning content field.
          * <p>
@@ -492,7 +493,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
          */
         public OpenAiStreamingChatModelBuilder sendThinking(Boolean sendThinking) {
             this.sendThinking = sendThinking;
-            this.reasoningContentFieldName = "reasoning_content";
+            this.thinkingFieldName = "reasoning_content";
             return this;
         }
 

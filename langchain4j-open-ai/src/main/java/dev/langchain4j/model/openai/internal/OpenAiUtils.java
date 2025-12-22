@@ -88,25 +88,22 @@ public class OpenAiUtils {
         return toOpenAiMessages(messages, false, null);
     }
 
-    public static List<Message> toOpenAiMessages(
-            List<ChatMessage> messages,
-            Boolean includeReasoningContentInRequests,
-            String reasoningContentFieldName) {
+    public static List<Message> toOpenAiMessages(List<ChatMessage> messages, boolean sendThinking, String thinkingFieldName) {
         return messages.stream()
-                .map(message -> toOpenAiMessage(message, includeReasoningContentInRequests, reasoningContentFieldName))
+                .map(message -> toOpenAiMessage(message, sendThinking, thinkingFieldName))
                 .collect(toList());
     }
 
-    public static Message toOpenAiMessage(
-            ChatMessage message,
-            Boolean includeReasoningContentInRequests,
-            String reasoningContentFieldName) {
+    public static Message toOpenAiMessage(ChatMessage message) {
+        return toOpenAiMessage(message, false, null);
+    }
+
+    public static Message toOpenAiMessage(ChatMessage message, boolean sendThinking, String thinkingFieldName) {
         if (message instanceof SystemMessage) {
             return dev.langchain4j.model.openai.internal.chat.SystemMessage.from(((SystemMessage) message).text());
         }
 
         if (message instanceof UserMessage userMessage) {
-
             if (userMessage.hasSingleText()) {
                 return dev.langchain4j.model.openai.internal.chat.UserMessage.builder()
                         .content(userMessage.singleText())
@@ -123,27 +120,17 @@ public class OpenAiUtils {
         }
 
         if (message instanceof AiMessage aiMessage) {
-            String reasoningContent = null;
-            if (Boolean.TRUE.equals(includeReasoningContentInRequests)) {
-                String thinking = aiMessage.thinking();
-                if (!isNullOrEmpty(thinking)) {
-                    reasoningContent = thinking;
-                }
-            }
 
-            // Default field name is "reasoning_content" (snake_case)
-            String fieldName = reasoningContentFieldName != null ? reasoningContentFieldName : "reasoning_content";
-            boolean useStandardField = "reasoning_content".equals(fieldName);
+            String thinking = null;
+            if (sendThinking && !isNullOrEmpty(aiMessage.thinking())) {
+                thinking = aiMessage.thinking();
+            }
 
             if (!aiMessage.hasToolExecutionRequests()) {
                 AssistantMessage.Builder builder = AssistantMessage.builder()
                         .content(aiMessage.text());
-                if (reasoningContent != null) {
-                    if (useStandardField) {
-                        builder.reasoningContent(reasoningContent);
-                    } else {
-                        builder.additionalProperty(fieldName, reasoningContent);
-                    }
+                if (thinking != null) {
+                    builder.customParameter(thinkingFieldName, thinking);
                 }
                 return builder.build();
             }
@@ -157,12 +144,8 @@ public class OpenAiUtils {
                         .build();
 
                 AssistantMessage.Builder builder = AssistantMessage.builder().functionCall(functionCall);
-                if (reasoningContent != null) {
-                    if (useStandardField) {
-                        builder.reasoningContent(reasoningContent);
-                    } else {
-                        builder.additionalProperty(fieldName, reasoningContent);
-                    }
+                if (thinking != null) {
+                    builder.customParameter(thinkingFieldName, thinking);
                 }
                 return builder.build();
             }
@@ -181,12 +164,8 @@ public class OpenAiUtils {
             AssistantMessage.Builder builder = AssistantMessage.builder()
                     .content(aiMessage.text())
                     .toolCalls(toolCalls);
-            if (reasoningContent != null) {
-                if (useStandardField) {
-                    builder.reasoningContent(reasoningContent);
-                } else {
-                    builder.additionalProperty(fieldName, reasoningContent);
-                }
+            if (thinking != null) {
+                builder.customParameter(thinkingFieldName, thinking);
             }
             return builder.build();
         }
@@ -519,16 +498,21 @@ public class OpenAiUtils {
     public static ChatCompletionRequest.Builder toOpenAiChatRequest(
             ChatRequest chatRequest,
             OpenAiChatRequestParameters parameters,
+            Boolean strictTools,
+            Boolean strictJsonSchema) {
+        return toOpenAiChatRequest(chatRequest, parameters, false, null, strictTools, strictJsonSchema);
+    }
+
+    public static ChatCompletionRequest.Builder toOpenAiChatRequest(
+            ChatRequest chatRequest,
+            OpenAiChatRequestParameters parameters,
             boolean sendThinking,
-            String reasoningContentFieldName,
+            String thinkingFieldName,
             Boolean strictTools,
             Boolean strictJsonSchema) {
 
         return ChatCompletionRequest.builder()
-                .messages(toOpenAiMessages(
-                        chatRequest.messages(),
-                        sendThinking,
-                        reasoningContentFieldName))
+                .messages(toOpenAiMessages(chatRequest.messages(), sendThinking, thinkingFieldName))
                 // common parameters
                 .model(parameters.modelName())
                 .temperature(parameters.temperature())

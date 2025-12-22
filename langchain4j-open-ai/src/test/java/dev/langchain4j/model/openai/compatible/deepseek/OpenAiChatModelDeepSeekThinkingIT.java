@@ -79,6 +79,7 @@ class OpenAiChatModelDeepSeekThinkingIT {
 
         // given
         boolean returnThinking = true;
+        boolean sendThinking = true;
 
         ChatModel model = OpenAiChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
@@ -86,7 +87,7 @@ class OpenAiChatModelDeepSeekThinkingIT {
                 .apiKey(System.getenv("DEEPSEEK_API_KEY"))
                 .modelName("deepseek-reasoner")
                 .returnThinking(returnThinking)
-                .sendThinking(true)
+                .sendThinking(sendThinking)
                 .timeout(ofSeconds(60))
                 .logRequests(true)
                 .logResponses(true)
@@ -122,6 +123,8 @@ class OpenAiChatModelDeepSeekThinkingIT {
 
         // given
         boolean returnThinking = true;
+        boolean sendThinking = true;
+        String thinkingFieldName = "my_reason";
 
         ChatModel model = OpenAiChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
@@ -129,7 +132,7 @@ class OpenAiChatModelDeepSeekThinkingIT {
                 .apiKey(System.getenv("DEEPSEEK_API_KEY"))
                 .modelName("deepseek-reasoner")
                 .returnThinking(returnThinking)
-                .sendThinking(true, "my_reason")
+                .sendThinking(sendThinking, thinkingFieldName)
                 .timeout(ofSeconds(60))
                 .logRequests(true)
                 .logResponses(true)
@@ -156,7 +159,7 @@ class OpenAiChatModelDeepSeekThinkingIT {
         assertThat(httpRequests).hasSize(2);
         String secondBody = httpRequests.get(1).body();
         assertThat(secondBody)
-                .contains("\"my_reason\"")
+                .contains("\"" + thinkingFieldName + "\"")
                 .contains(jsonify(aiMessage1.thinking()))
                 .doesNotContain("\"reasoning_content\"");
     }
