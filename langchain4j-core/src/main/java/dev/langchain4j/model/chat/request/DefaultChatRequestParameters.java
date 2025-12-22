@@ -105,6 +105,14 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
     }
 
     @Override
+    public ChatRequestParameters defaultedBy(ChatRequestParameters that) {
+        return DefaultChatRequestParameters.builder()
+                .overrideWith(that)
+                .overrideWith(this)
+                .build();
+    }
+
+    @Override
     public boolean equals(final Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
