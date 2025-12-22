@@ -135,7 +135,7 @@ The tests require proper GPULlama3.java and TornadoVM configuration.Prerequisite
 * GPULlama3.java properly configured and installed
 * TornadoVM installed and configured with GPU support
 * JDK 21+ installed
-* TORNADO_SDK environment variable set to your TornadoVM installation path
+* TORNADOVM_HOME environment variable set to your TornadoVM installation path
 * A compatible GGUF model file (e.g., Phi-3-mini-4k-instruct-fp16.gguf) in the project root
 
 ### Running Tests
