@@ -84,6 +84,7 @@
         <tinylog.version>2.7.0</tinylog.version>
         <wiremock.version>3.13.1</wiremock.version>
         <opennlp-tools.version>2.5.4</opennlp-tools.version>
+        <commonmark.version>0.27.0</commonmark.version>
     </properties>
 
     <dependencyManagement>
@@ -302,6 +303,24 @@
                 <groupId>org.testcontainers</groupId>
                 <artifactId>junit-jupiter</artifactId>
                 <version>1.21.3</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.commonmark</groupId>
+                <artifactId>commonmark</artifactId>
+                <version>${commonmark.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.commonmark</groupId>
+                <artifactId>commonmark-ext-gfm-tables</artifactId>
+                <version>${commonmark.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.commonmark</groupId>
+                <artifactId>commonmark-ext-yaml-front-matter</artifactId>
+                <version>${commonmark.version}</version>
             </dependency>
 
         </dependencies>
