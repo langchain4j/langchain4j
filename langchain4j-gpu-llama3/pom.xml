@@ -19,6 +19,8 @@
         <maven.compiler.testSkip>true</maven.compiler.testSkip>
         <skipTests>true</skipTests>
         <skipITs>true</skipITs>
+        <!-- Always skip javadoc - preview features break aggregate javadoc -->
+        <maven.javadoc.skip>true</maven.javadoc.skip>
     </properties>
 
     <dependencies>
@@ -91,7 +93,7 @@
                 <artifactId>maven-javadoc-plugin</artifactId>
                 <version>3.5.0</version>
                 <configuration>
-                    <source>21</source>
+                    <skip>true</skip>
                 </configuration>
             </plugin>
 
@@ -205,15 +207,6 @@
                             <release>21</release>
                         </configuration>
                     </plugin>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-javadoc-plugin</artifactId>
-                        <version>3.5.0</version>
-                        <configuration>
-                            <additionalOptions>--enable-preview</additionalOptions>
-                            <source>21</source>
-                        </configuration>
-                    </plugin>
                 </plugins>
             </build>
         </profile>
@@ -227,7 +220,6 @@
             <properties>
                 <maven.install.skip>true</maven.install.skip>
                 <maven.deploy.skip>true</maven.deploy.skip>
-                <maven.javadoc.skip>true</maven.javadoc.skip>
             </properties>
             <build>
                 <plugins>
