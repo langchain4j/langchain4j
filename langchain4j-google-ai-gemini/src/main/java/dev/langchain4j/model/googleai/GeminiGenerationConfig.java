@@ -3,12 +3,14 @@ package dev.langchain4j.model.googleai;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
+import java.util.Map;
 
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
 record GeminiGenerationConfig(
         @JsonProperty("stopSequences") List<String> stopSequences,
         @JsonProperty("responseMimeType") String responseMimeType,
         @JsonProperty("responseSchema") GeminiSchema responseSchema,
+        @JsonProperty("responseJsonSchema") Map<String, Object> responseJsonSchema,
         @JsonProperty("candidateCount") Integer candidateCount,
         @JsonProperty("maxOutputTokens") Integer maxOutputTokens,
         @JsonProperty("temperature") Double temperature,
@@ -31,6 +33,7 @@ record GeminiGenerationConfig(
         private List<String> stopSequences;
         private String responseMimeType;
         private GeminiSchema responseSchema;
+        private Map<String, Object> responseJsonSchema;
         private Integer candidateCount;
         private Integer maxOutputTokens;
         private Double temperature;
@@ -58,6 +61,11 @@ record GeminiGenerationConfig(
 
         GeminiGenerationConfigBuilder responseSchema(GeminiSchema responseSchema) {
             this.responseSchema = responseSchema;
+            return this;
+        }
+
+        GeminiGenerationConfigBuilder responseJsonSchema(Map<String, Object> responseJsonSchema) {
+            this.responseJsonSchema = responseJsonSchema;
             return this;
         }
 
@@ -126,6 +134,7 @@ record GeminiGenerationConfig(
                     stopSequences,
                     responseMimeType,
                     responseSchema,
+                    responseJsonSchema,
                     candidateCount,
                     maxOutputTokens,
                     temperature,
