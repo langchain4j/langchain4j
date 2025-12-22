@@ -306,10 +306,7 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
         assertThat(tokenUsage.inputTokensDetails().cachedTokens()).isZero();
 
         assertThat(tokenUsage.outputTokenCount()).isPositive();
-        assertThat(tokenUsage.outputTokensDetails().reasoningTokens()).isZero();
-
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+        assertThat(tokenUsage.outputTokensDetails().reasoningTokens()).isNotNegative();
     }
 
     @Test

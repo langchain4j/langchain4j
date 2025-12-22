@@ -41,6 +41,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
 @Internal
@@ -97,9 +98,25 @@ public class ToolService {
                 throw illegalConfiguration("Tool '%s' must be an object, not a class", objectWithTool);
             }
 
+            if (objectWithTool instanceof Iterable) {
+                throw illegalConfiguration(
+                        "Tool '%s' is an Iterable (likely a nested collection). "
+                                + "Please pass tool objects directly, not wrapped in collections.",
+                        objectWithTool.getClass().getName());
+            }
+
+            AtomicBoolean hasToolMethods = new AtomicBoolean(false);
             for (Method method : objectWithTool.getClass().getDeclaredMethods()) {
-                getAnnotatedMethod(method, Tool.class)
-                        .ifPresent(toolMethod -> processToolMethod(objectWithTool, toolMethod));
+                getAnnotatedMethod(method, Tool.class).ifPresent(toolMethod -> {
+                    hasToolMethods.set(true);
+                    processToolMethod(objectWithTool, toolMethod);
+                });
+            }
+
+            if (!hasToolMethods.get()) {
+                throw illegalConfiguration(
+                        "Object '%s' does not have any methods annotated with @Tool",
+                        objectWithTool.getClass().getName());
             }
         }
     }
@@ -323,7 +340,7 @@ public class ToolService {
                     memoryId);
 
             chatResponse = context.chatModel.chat(chatRequest);
-            fireResponseReceivedEvent(chatResponse, invocationContext, context.eventListenerRegistrar);
+            fireResponseReceivedEvent(chatRequest, chatResponse, invocationContext, context.eventListenerRegistrar);
             aggregateTokenUsage =
                     TokenUsage.sum(aggregateTokenUsage, chatResponse.metadata().tokenUsage());
         }
@@ -337,11 +354,13 @@ public class ToolService {
     }
 
     private void fireResponseReceivedEvent(
+            ChatRequest chatRequest,
             ChatResponse chatResponse,
             InvocationContext invocationContext,
             AiServiceListenerRegistrar listenerRegistrar) {
         listenerRegistrar.fireEvent(AiServiceResponseReceivedEvent.builder()
                 .invocationContext(invocationContext)
+                .request(chatRequest)
                 .response(chatResponse)
                 .build());
     }

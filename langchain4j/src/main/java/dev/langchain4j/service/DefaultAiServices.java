@@ -2,10 +2,11 @@ package dev.langchain4j.service;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
+import static dev.langchain4j.service.AiServiceParamsUtil.chatRequestParameters;
+import static dev.langchain4j.service.AiServiceParamsUtil.findArgumentOfType;
 import static dev.langchain4j.service.AiServiceValidation.validateParameters;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
@@ -27,7 +28,6 @@ import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -75,11 +75,8 @@ class DefaultAiServices<T> extends AiServices<T> {
     private final ServiceOutputParser serviceOutputParser = new ServiceOutputParser();
     private final Collection<TokenStreamAdapter> tokenStreamAdapters = loadFactories(TokenStreamAdapter.class);
 
-    private static final Set<Class<? extends Annotation>> VALID_PARAM_ANNOTATIONS = Set.of(
-            dev.langchain4j.service.UserMessage.class,
-            V.class,
-            MemoryId.class,
-            UserName.class);
+    private static final Set<Class<? extends Annotation>> VALID_PARAM_ANNOTATIONS =
+            Set.of(dev.langchain4j.service.UserMessage.class, V.class, MemoryId.class, UserName.class);
 
     DefaultAiServices(AiServiceContext context) {
         super(context);
@@ -137,7 +134,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                         // TODO do it once, when creating AI Service?
                         validateParameters(context.aiServiceClass, method);
 
-                        InvocationParameters invocationParameters = findArgumentOfType(InvocationParameters.class, args, method.getParameters())
+                        InvocationParameters invocationParameters = findArgumentOfType(
+                                        InvocationParameters.class, args, method.getParameters())
                                 .orElseGet(InvocationParameters::new);
 
                         InvocationContext invocationContext = InvocationContext.builder()
@@ -283,7 +281,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .build();
                         }
 
-                        ChatRequestParameters parameters = chatRequestParameters(method, args, toolServiceContext, responseFormat);
+                        ChatRequestParameters parameters =
+                                chatRequestParameters(method, args, toolServiceContext, responseFormat);
 
                         ChatRequest chatRequest = context.chatRequestTransformer.apply(
                                 ChatRequest.builder()
@@ -301,6 +300,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         context.eventListenerRegistrar.fireEvent(AiServiceResponseReceivedEvent.builder()
                                 .invocationContext(invocationContext)
                                 .response(chatResponse)
+                                .request(chatRequest)
                                 .build());
 
                         verifyModerationIfNeeded(moderationFuture);
@@ -376,31 +376,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .build());
 
                         return actualResponse;
-                    }
-
-                    private ChatRequestParameters chatRequestParameters(Method method, Object[] args, ToolServiceContext toolServiceContext, ResponseFormat responseFormat) {
-                        ChatRequestParameters defaultParams = ChatRequestParameters.builder()
-                                .toolSpecifications(toolServiceContext.toolSpecifications())
-                                .responseFormat(responseFormat)
-                                .build();
-                        return findArgumentOfType(ChatRequestParameters.class, args, method.getParameters())
-                                .map(p -> p.defaultedBy(defaultParams))
-                                .orElse(defaultParams);
-                    }
-
-                    private <P> Optional<P> findArgumentOfType(Class<P> paramType, Object[] args, Parameter[] params) {
-                        if (args == null) {
-                            return Optional.empty();
-                        }
-                        for (int i = 0; i < params.length; i++) {
-                            Parameter parameter = params[i];
-                            if (paramType.isAssignableFrom(parameter.getType())) {
-                                P param = (P) args[i];
-                                ensureNotNull(param, paramType.getSimpleName());
-                                return Optional.of(param);
-                            }
-                        }
-                        return Optional.empty();
                     }
 
                     private boolean canAdaptTokenStreamTo(Type returnType) {

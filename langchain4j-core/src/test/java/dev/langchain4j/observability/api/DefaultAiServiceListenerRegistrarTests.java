@@ -15,6 +15,7 @@ import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
@@ -54,6 +55,9 @@ class DefaultAiServiceListenerRegistrarTests {
     private static final AiServiceResponseReceivedEvent RESPONSE_RECEIVED_EVENT =
             AiServiceResponseReceivedEvent.builder()
                     .invocationContext(DEFAULT_INVOCATION_CONTEXT)
+                    .request(ChatRequest.builder()
+                            .messages(List.of(UserMessage.from("Hi!")))
+                            .build())
                     .response(ChatResponse.builder()
                             .aiMessage(AiMessage.from("Message!"))
                             .build())
