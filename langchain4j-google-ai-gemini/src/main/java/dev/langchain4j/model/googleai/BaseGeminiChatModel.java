@@ -119,7 +119,7 @@ class BaseGeminiChatModel {
         if (responseFormat != null) {
             if (responseFormat.jsonSchema() != null) {
                 if (responseFormat.jsonSchema().rootElement() instanceof JsonRawSchema jsonRawSchema) {
-                    rawSchema = Json.fromJson(jsonRawSchema.schema(),Map.class);
+                    rawSchema = Json.fromJson(jsonRawSchema.schema(), Map.class);
                 } else {
                     schema = fromJsonSchemaToGSchema(responseFormat.jsonSchema());
                 }

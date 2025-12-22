@@ -275,13 +275,13 @@ WeatherForecast forecast = forecastAssistant.extract("""
     """);
 ```
 
-### Response Format
+### Response Format / Response Schema
 You can specify a `ResponseFormat` either when creating a `GoogleAiGeminiChatModel` or when calling it.
 
-Especially, in cases of Json format, you can choose to define schema programmatically by creating the respective java objects or by providing the proper json raw schema. 
+Especially, in cases of Json format, you can choose to define schema programmatically by creating the respective java objects or by providing raw json schema. 
 #### Response Schema
 Let's have a look at an example to define a JSON schema for a recipe when creating the `GoogleAiGeminiChatModel`.
-In this example we declare the json schema using java objects.
+In this example we declare the json schema using `JsonObjectSchema` class.
 ```java
 ResponseFormat responseFormat = ResponseFormat.builder()
         .type(ResponseFormatType.JSON)
@@ -334,7 +334,7 @@ ChatResponse chatResponse = gemini.chat(chatRequest);
 System.out.println(chatResponse.aiMessage().text());
 ```
 
-#### Response Json Schema
+#### Raw Response Schema
 Another example shows how we can use the `responseJsonSchema` of the Gemini API to provide a raw JSON schema, without needing to declare the schema structure using the corresponding Java objects.  
 Please be cautious to use only the [supported types](https://ai.google.dev/gemini-api/docs/structured-output?example=recipe#json_schema_support) of the Gemini API.
 ```

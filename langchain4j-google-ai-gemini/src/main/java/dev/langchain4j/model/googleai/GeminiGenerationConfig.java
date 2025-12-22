@@ -2,7 +2,6 @@ package dev.langchain4j.model.googleai;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import java.util.Map;
 
@@ -34,7 +33,7 @@ record GeminiGenerationConfig(
         private List<String> stopSequences;
         private String responseMimeType;
         private GeminiSchema responseSchema;
-        private Map<String, Object>  responseJsonSchema;
+        private Map<String, Object> responseJsonSchema;
         private Integer candidateCount;
         private Integer maxOutputTokens;
         private Double temperature;
