@@ -170,7 +170,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                         var userMessageTemplate = getUserMessageTemplate(method, args);
                         var variables = InternalReflectionVariableResolver.findTemplateVariables(
                                 userMessageTemplate, method, args);
-                        UserMessage originalUserMessage = prepareUserMessage(method, args, userMessageTemplate, variables);
+                        UserMessage originalUserMessage =
+                                prepareUserMessage(method, args, userMessageTemplate, variables);
 
                         context.eventListenerRegistrar.fireEvent(AiServiceStartedEvent.builder()
                                 .invocationContext(invocationContext)
@@ -192,7 +193,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .chatMemory(chatMemoryMessages)
                                     .invocationContext(invocationContext)
                                     .build();
-                            AugmentationRequest augmentationRequest = new AugmentationRequest(userMessageForAugmentation, metadata);
+                            AugmentationRequest augmentationRequest =
+                                    new AugmentationRequest(userMessageForAugmentation, metadata);
                             augmentationResult = context.retrievalAugmentor.augment(augmentationRequest);
                             userMessageForAugmentation = (UserMessage) augmentationResult.chatMessage();
                         }

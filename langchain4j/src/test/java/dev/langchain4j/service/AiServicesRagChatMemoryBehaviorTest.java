@@ -35,9 +35,10 @@ class AiServicesRagChatMemoryBehaviorTest {
         MessageWindowChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
         ChatModel chatModel = mock(ChatModel.class);
-        when(chatModel.chat(any(ChatRequest.class))).thenReturn(ChatResponse.builder()
-                .aiMessage(AiMessage.from("answer"))
-                .build());
+        when(chatModel.chat(any(ChatRequest.class)))
+                .thenReturn(ChatResponse.builder()
+                        .aiMessage(AiMessage.from("answer"))
+                        .build());
 
         RetrievalAugmentor retrievalAugmentor = (AugmentationRequest request) -> {
             UserMessage original = (UserMessage) request.chatMessage();
@@ -63,9 +64,10 @@ class AiServicesRagChatMemoryBehaviorTest {
         MessageWindowChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
         ChatModel chatModel = mock(ChatModel.class);
-        when(chatModel.chat(any(ChatRequest.class))).thenReturn(ChatResponse.builder()
-                .aiMessage(AiMessage.from("answer"))
-                .build());
+        when(chatModel.chat(any(ChatRequest.class)))
+                .thenReturn(ChatResponse.builder()
+                        .aiMessage(AiMessage.from("answer"))
+                        .build());
 
         RetrievalAugmentor retrievalAugmentor = (AugmentationRequest request) -> {
             UserMessage original = (UserMessage) request.chatMessage();

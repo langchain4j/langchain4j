@@ -1,12 +1,8 @@
 package dev.langchain4j.service;
 
-import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.spi.ServiceHelper.loadFactory;
-import static java.lang.reflect.Modifier.isStatic;
 
 import dev.langchain4j.Internal;
-import dev.langchain4j.invocation.InvocationParameters;
-import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
