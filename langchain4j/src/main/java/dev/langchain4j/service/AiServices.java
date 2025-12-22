@@ -932,6 +932,27 @@ public abstract class AiServices<T> {
     }
 
     /**
+     * Configures whether user messages that were augmented with retrieved content
+     * (RAG) should be stored in {@link ChatMemory}.
+     * <p>
+     * By default, this is {@code false}, meaning that only the original user
+     * message (before RAG augmentation) is stored in chat memory, while the
+     * augmented message is still used for the LLM request. This helps to avoid
+     * storing retrieved content in the conversation history and keeps the memory
+     * size smaller.
+     * <p>
+     * If set to {@code true}, the final augmented user message will be stored in
+     * chat memory, matching the historical behaviour.
+     *
+     * @param storeRetrievedContentInChatMemory whether to store RAG-augmented user messages in chat memory
+     * @return builder
+     */
+    public AiServices<T> storeRetrievedContentInChatMemory(boolean storeRetrievedContentInChatMemory) {
+        context.storeRetrievedContentInChatMemory = storeRetrievedContentInChatMemory;
+        return this;
+    }
+
+    /**
      * Constructs and returns the AI Service.
      *
      * @return An instance of the AI Service implementing the specified interface.

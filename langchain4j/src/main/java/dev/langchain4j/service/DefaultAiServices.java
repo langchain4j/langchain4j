@@ -170,29 +170,31 @@ class DefaultAiServices<T> extends AiServices<T> {
                         var userMessageTemplate = getUserMessageTemplate(method, args);
                         var variables = InternalReflectionVariableResolver.findTemplateVariables(
                                 userMessageTemplate, method, args);
-                        UserMessage userMessage = prepareUserMessage(method, args, userMessageTemplate, variables);
+                        UserMessage originalUserMessage = prepareUserMessage(method, args, userMessageTemplate, variables);
 
                         context.eventListenerRegistrar.fireEvent(AiServiceStartedEvent.builder()
                                 .invocationContext(invocationContext)
                                 .systemMessage(systemMessage)
-                                .userMessage(userMessage)
+                                .userMessage(originalUserMessage)
                                 .build());
 
                         if (context.hasChatMemory()) {
                             systemMessage.ifPresent(chatMemory::add);
                         }
 
+                        UserMessage userMessageForAugmentation = originalUserMessage;
+
                         AugmentationResult augmentationResult = null;
                         if (context.retrievalAugmentor != null) {
                             List<ChatMessage> chatMemoryMessages = chatMemory != null ? chatMemory.messages() : null;
                             Metadata metadata = Metadata.builder()
-                                    .chatMessage(userMessage)
+                                    .chatMessage(userMessageForAugmentation)
                                     .chatMemory(chatMemoryMessages)
                                     .invocationContext(invocationContext)
                                     .build();
-                            AugmentationRequest augmentationRequest = new AugmentationRequest(userMessage, metadata);
+                            AugmentationRequest augmentationRequest = new AugmentationRequest(userMessageForAugmentation, metadata);
                             augmentationResult = context.retrievalAugmentor.augment(augmentationRequest);
-                            userMessage = (UserMessage) augmentationResult.chatMessage();
+                            userMessageForAugmentation = (UserMessage) augmentationResult.chatMessage();
                         }
 
                         var commonGuardrailParam = GuardrailRequestParams.builder()
@@ -204,8 +206,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .variables(variables)
                                 .build();
 
-                        userMessage = invokeInputGuardrails(
-                                context.guardrailService(), method, userMessage, commonGuardrailParam);
+                        UserMessage userMessage = invokeInputGuardrails(
+                                context.guardrailService(), method, userMessageForAugmentation, commonGuardrailParam);
 
                         Type returnType = method.getGenericReturnType();
                         boolean streaming = returnType == TokenStream.class || canAdaptTokenStreamTo(returnType);
@@ -236,7 +238,16 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         List<ChatMessage> messages = new ArrayList<>();
                         if (context.hasChatMemory()) {
-                            chatMemory.add(userMessage);
+                            // Decide what to store in chat memory based on configuration.
+                            // By default (storeRetrievedContentInChatMemory == true), behaviour matches
+                            // the historical implementation: store the final userMessage (after RAG, guardrails, etc.).
+                            // When false, store only the original user message before RAG augmentation,
+                            // while still using the augmented message for the actual LLM request.
+                            if (context.storeRetrievedContentInChatMemory) {
+                                chatMemory.add(userMessage);
+                            } else {
+                                chatMemory.add(originalUserMessage);
+                            }
                             messages.addAll(chatMemory.messages());
                         } else {
                             systemMessage.ifPresent(messages::add);
