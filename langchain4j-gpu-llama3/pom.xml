@@ -128,7 +128,6 @@
                 <version>3.14.0</version>
             </plugin>
 
-
             <!-- TornadoVM Test Runner -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
@@ -187,7 +186,39 @@
     </build>
 
     <profiles>
-        <!-- Skip entire module on JDK 22+ due to preview feature incompatibility -->
+        <!-- JDK 21: Enable preview features required by gpu-llama3 dependency -->
+        <profile>
+            <id>jdk21-preview</id>
+            <activation>
+                <jdk>21</jdk>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <version>3.14.0</version>
+                        <configuration>
+                            <compilerArgs>
+                                <arg>--enable-preview</arg>
+                            </compilerArgs>
+                            <release>21</release>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <version>3.5.0</version>
+                        <configuration>
+                            <additionalOptions>--enable-preview</additionalOptions>
+                            <source>21</source>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- JDK 22+: Skip compilation - preview features are version-locked -->
         <profile>
             <id>skip-on-incompatible-jdk</id>
             <activation>
