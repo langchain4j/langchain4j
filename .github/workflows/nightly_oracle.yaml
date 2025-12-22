@@ -1,5 +1,8 @@
 name: Nightly Build Oracle
 
+# Oracle module is tested separately because it requires a lot of disk space
+# and does not fit in one job together with other modules
+
 on:
   schedule:
     - cron: '0 6 * * *'  # daily at 06:00 UTC

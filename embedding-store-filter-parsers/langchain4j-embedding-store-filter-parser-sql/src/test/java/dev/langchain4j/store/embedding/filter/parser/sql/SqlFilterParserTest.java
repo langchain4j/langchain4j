@@ -1361,6 +1361,14 @@ class SqlFilterParserTest {
                 .isEqualTo(metadataKey("year").isEqualTo(currentYear()));
         assertThat(parser.parse("month = MONTH(CURDATE())"))
                 .isEqualTo(metadataKey("month").isEqualTo(currentMonth()));
+        assertThat(parser.parse("year = WEEKOFYEAR(CURDATE())"))
+                .isEqualTo(metadataKey("year").isEqualTo(currentWeek()));
+        assertThat(parser.parse("year = DAYOFYEAR(CURDATE())"))
+                .isEqualTo(metadataKey("year").isEqualTo(currentDayOfYear()));
+        assertThat(parser.parse("year = DAYOFMONTH(CURDATE())"))
+                .isEqualTo(metadataKey("year").isEqualTo(currentDayOfMonth()));
+        assertThat(parser.parse("year = DAYOFWEEK(CURDATE())"))
+                .isEqualTo(metadataKey("year").isEqualTo(currentDayOfWeek()));
     }
 
     @Test

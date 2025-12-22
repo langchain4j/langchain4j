@@ -70,6 +70,28 @@ class AiServicesObservabilityTests {
             List<Class<? extends AiServiceEvent>> noEventsReceivedClasses,
             String expectedUserMessage,
             List<Class<? extends AiServiceEvent>> expectedEventsReceivedClasses) {
+        runScenario(
+                assistantCreatorWithoutListeners,
+                assistantCreatorWithListeners,
+                chatAssertion,
+                expectedMethodName,
+                hasTools,
+                noEventsReceivedClasses,
+                expectedUserMessage,
+                expectedEventsReceivedClasses,
+                event -> {});
+    }
+
+    private void runScenario(
+            Supplier<Assistant> assistantCreatorWithoutListeners,
+            Supplier<Assistant> assistantCreatorWithListeners,
+            Consumer<Assistant> chatAssertion,
+            String expectedMethodName,
+            boolean hasTools,
+            List<Class<? extends AiServiceEvent>> noEventsReceivedClasses,
+            String expectedUserMessage,
+            List<Class<? extends AiServiceEvent>> expectedEventsReceivedClasses,
+            Consumer<AiServiceEvent> expectedEventsReceivedAssertion) {
 
         // Invoke the operation without registered listeners
         // No listeners should be fired
@@ -88,7 +110,8 @@ class AiServicesObservabilityTests {
                 expectedEventsReceivedClasses.size(),
                 expectedUserMessage,
                 expectedMethodName,
-                expectedEventsReceivedClasses.stream().map(listeners::get).toList());
+                expectedEventsReceivedClasses.stream().map(listeners::get).toList(),
+                expectedEventsReceivedAssertion);
 
         // No additional events should fire when invoking the operation again
         chatAssertion.accept(assistantCreatorWithoutListeners.get());
@@ -97,7 +120,8 @@ class AiServicesObservabilityTests {
                 expectedEventsReceivedClasses.size(),
                 expectedUserMessage,
                 expectedMethodName,
-                expectedEventsReceivedClasses.stream().map(listeners::get).toList());
+                expectedEventsReceivedClasses.stream().map(listeners::get).toList(),
+                expectedEventsReceivedAssertion);
     }
 
     @Test
@@ -260,7 +284,13 @@ class AiServicesObservabilityTests {
                         AiServiceStartedEvent.class,
                         AiServiceCompletedEvent.class,
                         AiServiceResponseReceivedEvent.class,
-                        ToolExecutedEvent.class));
+                        ToolExecutedEvent.class),
+                aiServiceEvent -> {
+                    if (aiServiceEvent instanceof AiServiceResponseReceivedEvent aiServiceResponseReceivedEvent) {
+                        assertThat(aiServiceResponseReceivedEvent.response()).isNotNull();
+                        assertThat(aiServiceResponseReceivedEvent.request()).isNotNull();
+                    }
+                });
     }
 
     @Test
@@ -449,7 +479,8 @@ class AiServicesObservabilityTests {
             int expectedSize,
             String expectedUserMessage,
             String expectedMethodName,
-            Collection<? extends MyListener<? extends AiServiceEvent>> listeners) {
+            Collection<? extends MyListener<? extends AiServiceEvent>> listeners,
+            Consumer<AiServiceEvent> eventAssertion) {
 
         // All the events have the correct number of invocations & non-null events
         assertThat(listeners).isNotNull().hasSize(expectedSize).allSatisfy(l -> {
@@ -496,6 +527,9 @@ class AiServicesObservabilityTests {
 
         assertThat(ic.invocationId()).isNotNull();
         assertThat(ic.timestamp()).isNotNull();
+
+        // run custom assertions
+        assertThat(listeners).map(MyListener::event).allSatisfy(eventAssertion);
     }
 
     private static Map<Class<? extends AiServiceEvent>, MyListener<? extends AiServiceEvent>> createListeners() {

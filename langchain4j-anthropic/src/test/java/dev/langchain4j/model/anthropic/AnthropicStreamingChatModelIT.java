@@ -24,7 +24,6 @@ import dev.langchain4j.http.client.jdk.JdkHttpClient;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -241,12 +240,14 @@ class AnthropicStreamingChatModelIT {
     }
 
     @Test
-    void should_send_custom_parameters() {
+    void should_set_custom_parameters_and_get_raw_response() {
 
         // given
-        Map<String, Object> customParameters = Map.of("context_management", Map.of("edits", List.of(Map.of("type", "clear_tool_uses_20250919"))));
+        Map<String, Object> customParameters =
+                Map.of("context_management", Map.of("edits", List.of(Map.of("type", "clear_tool_uses_20250919"))));
 
-        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+        SpyingHttpClient spyingHttpClient =
+                new SpyingHttpClient(JdkHttpClient.builder().build());
 
         StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
@@ -271,11 +272,17 @@ class AnthropicStreamingChatModelIT {
         assertThat(chatResponse.aiMessage().text()).contains("Berlin");
 
         assertThat(spyingHttpClient.request().body().contains("context_management"));
+
+        AnthropicChatResponseMetadata metadata = (AnthropicChatResponseMetadata) chatResponse.metadata();
+        assertThat(metadata.rawHttpResponse().headers()).containsKey("anthropic-organization-id");
+        assertThat(metadata.rawHttpResponse().body()).isNull();
+        assertThat(metadata.rawServerSentEvents()).isNotEmpty();
     }
 
     @Test
     void should_send_strict_true_in_tools_definition_streaming() {
-        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+        SpyingHttpClient spyingHttpClient =
+                new SpyingHttpClient(JdkHttpClient.builder().build());
 
         AnthropicStreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
@@ -299,9 +306,8 @@ class AnthropicStreamingChatModelIT {
                 .build();
 
         ChatRequest request = ChatRequest.builder()
-                .messages(UserMessage.from(
-                        "What's the weather in Munich? " +
-                                "When calling tools, include a parameter unit='celsius' in the tool input."))
+                .messages(UserMessage.from("What's the weather in Munich? "
+                        + "When calling tools, include a parameter unit='celsius' in the tool input."))
                 .toolSpecifications(weatherTool)
                 .build();
 
@@ -324,9 +330,64 @@ class AnthropicStreamingChatModelIT {
         ToolExecutionRequest call = toolCalls.get(0);
         assertThat(call.name()).isEqualTo("get_weather");
 
-        assertThat(call.arguments())
-                .contains("\"location\"")
-                .doesNotContain("\"unit\"");
+        assertThat(call.arguments()).contains("\"location\"").doesNotContain("\"unit\"");
     }
 
+    @Test
+    void should_return_server_tool_results_in_attributes_when_enabled_streaming() throws Exception {
+
+        // given
+        AnthropicServerTool webSearchTool = AnthropicServerTool.builder()
+                .type("web_search_20250305")
+                .name("web_search")
+                .addAttribute("max_uses", 3)
+                .build();
+
+        StreamingChatModel model = AnthropicStreamingChatModel.builder()
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(CLAUDE_SONNET_4_5_20250929)
+                .serverTools(webSearchTool)
+                .returnServerToolResults(true)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("What is the weather in Munich right now?"))
+                .build();
+
+        // when
+        // Note: Using simple handler instead of TestStreamingChatResponseHandler because
+        // server tools cause text to be split across multiple content blocks (similar to
+        // tool_use), making the strict text equality assertion invalid
+        // Didn't want to include anthropic specific check in generic TestStreamingChatResponseHandler
+        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
+        model.chat(chatRequest, new StreamingChatResponseHandler() {
+            @Override
+            public void onPartialResponse(String partialResponse) {}
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                future.complete(completeResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                future.completeExceptionally(error);
+            }
+        });
+        ChatResponse chatResponse = future.get(60, SECONDS);
+
+        // then
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.text()).isNotBlank();
+
+        List<AnthropicServerToolResult> results = aiMessage.attribute("server_tool_results", List.class);
+        assertThat(results).isNotEmpty();
+
+        AnthropicServerToolResult result = results.get(0);
+        assertThat(result.type()).isEqualTo("web_search_tool_result");
+        assertThat(result.toolUseId()).isNotBlank();
+        assertThat(result.content()).isNotNull();
+    }
 }
