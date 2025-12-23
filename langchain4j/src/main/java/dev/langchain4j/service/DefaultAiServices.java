@@ -2,10 +2,11 @@ package dev.langchain4j.service;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
+import static dev.langchain4j.service.AiServiceParamsUtil.chatRequestParameters;
+import static dev.langchain4j.service.AiServiceParamsUtil.findArgumentOfType;
 import static dev.langchain4j.service.AiServiceValidation.validateParameters;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
@@ -169,29 +170,33 @@ class DefaultAiServices<T> extends AiServices<T> {
                         var userMessageTemplate = getUserMessageTemplate(method, args);
                         var variables = InternalReflectionVariableResolver.findTemplateVariables(
                                 userMessageTemplate, method, args);
-                        UserMessage userMessage = prepareUserMessage(method, args, userMessageTemplate, variables);
+                        UserMessage originalUserMessage =
+                                prepareUserMessage(method, args, userMessageTemplate, variables);
 
                         context.eventListenerRegistrar.fireEvent(AiServiceStartedEvent.builder()
                                 .invocationContext(invocationContext)
                                 .systemMessage(systemMessage)
-                                .userMessage(userMessage)
+                                .userMessage(originalUserMessage)
                                 .build());
 
                         if (context.hasChatMemory()) {
                             systemMessage.ifPresent(chatMemory::add);
                         }
 
+                        UserMessage userMessageForAugmentation = originalUserMessage;
+
                         AugmentationResult augmentationResult = null;
                         if (context.retrievalAugmentor != null) {
                             List<ChatMessage> chatMemoryMessages = chatMemory != null ? chatMemory.messages() : null;
                             Metadata metadata = Metadata.builder()
-                                    .chatMessage(userMessage)
+                                    .chatMessage(userMessageForAugmentation)
                                     .chatMemory(chatMemoryMessages)
                                     .invocationContext(invocationContext)
                                     .build();
-                            AugmentationRequest augmentationRequest = new AugmentationRequest(userMessage, metadata);
+                            AugmentationRequest augmentationRequest =
+                                    new AugmentationRequest(userMessageForAugmentation, metadata);
                             augmentationResult = context.retrievalAugmentor.augment(augmentationRequest);
-                            userMessage = (UserMessage) augmentationResult.chatMessage();
+                            userMessageForAugmentation = (UserMessage) augmentationResult.chatMessage();
                         }
 
                         var commonGuardrailParam = GuardrailRequestParams.builder()
@@ -203,8 +208,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .variables(variables)
                                 .build();
 
-                        userMessage = invokeInputGuardrails(
-                                context.guardrailService(), method, userMessage, commonGuardrailParam);
+                        UserMessage userMessage = invokeInputGuardrails(
+                                context.guardrailService(), method, userMessageForAugmentation, commonGuardrailParam);
 
                         Type returnType = method.getGenericReturnType();
                         boolean streaming = returnType == TokenStream.class || canAdaptTokenStreamTo(returnType);
@@ -235,8 +240,13 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         List<ChatMessage> messages = new ArrayList<>();
                         if (context.hasChatMemory()) {
-                            chatMemory.add(userMessage);
                             messages.addAll(chatMemory.messages());
+                            if (context.storeRetrievedContentInChatMemory) {
+                                chatMemory.add(userMessage);
+                            } else {
+                                chatMemory.add(originalUserMessage);
+                            }
+                            messages.add(userMessage);
                         } else {
                             systemMessage.ifPresent(messages::add);
                             messages.add(userMessage);
@@ -375,35 +385,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .build());
 
                         return actualResponse;
-                    }
-
-                    private ChatRequestParameters chatRequestParameters(
-                            Method method,
-                            Object[] args,
-                            ToolServiceContext toolServiceContext,
-                            ResponseFormat responseFormat) {
-                        ChatRequestParameters defaultParams = ChatRequestParameters.builder()
-                                .toolSpecifications(toolServiceContext.toolSpecifications())
-                                .responseFormat(responseFormat)
-                                .build();
-                        return findArgumentOfType(ChatRequestParameters.class, args, method.getParameters())
-                                .map(p -> p.defaultedBy(defaultParams))
-                                .orElse(defaultParams);
-                    }
-
-                    private <P> Optional<P> findArgumentOfType(Class<P> paramType, Object[] args, Parameter[] params) {
-                        if (args == null) {
-                            return Optional.empty();
-                        }
-                        for (int i = 0; i < params.length; i++) {
-                            Parameter parameter = params[i];
-                            if (paramType.isAssignableFrom(parameter.getType())) {
-                                P param = (P) args[i];
-                                ensureNotNull(param, paramType.getSimpleName());
-                                return Optional.of(param);
-                            }
-                        }
-                        return Optional.empty();
                     }
 
                     private boolean canAdaptTokenStreamTo(Type returnType) {

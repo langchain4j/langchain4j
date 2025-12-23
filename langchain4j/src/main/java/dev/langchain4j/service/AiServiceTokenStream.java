@@ -3,6 +3,7 @@ package dev.langchain4j.service;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.service.AiServiceParamsUtil.chatRequestParameters;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -176,7 +177,7 @@ public class AiServiceTokenStream implements TokenStream {
         ChatRequest chatRequest = context.chatRequestTransformer.apply(
                 ChatRequest.builder()
                         .messages(messages)
-                        .toolSpecifications(toolSpecifications)
+                        .parameters(chatRequestParameters(invocationContext.methodArguments(), toolSpecifications))
                         .build(),
                 invocationContext.chatMemoryId());
 
