@@ -70,8 +70,10 @@ class BedrockSystemMessageTest {
 
     @Test
     void should_throw_when_getting_single_text_from_multiple_blocks() {
-        BedrockSystemMessage msg =
-                BedrockSystemMessage.builder().addText("First").addText("Second").build();
+        BedrockSystemMessage msg = BedrockSystemMessage.builder()
+                .addText("First")
+                .addText("Second")
+                .build();
 
         assertThatThrownBy(msg::singleText)
                 .isInstanceOf(IllegalStateException.class)
@@ -185,8 +187,10 @@ class BedrockSystemMessageTest {
 
     @Test
     void should_create_builder_from_existing_message() {
-        BedrockSystemMessage original =
-                BedrockSystemMessage.builder().addText("First").addText("Second").build();
+        BedrockSystemMessage original = BedrockSystemMessage.builder()
+                .addText("First")
+                .addText("Second")
+                .build();
 
         BedrockSystemMessage modified = original.toBuilder().addText("Third").build();
 
