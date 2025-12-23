@@ -11,6 +11,7 @@ import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromMessageT
 import static dev.langchain4j.model.googleai.SchemaMapper.fromJsonSchemaToGSchema;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -21,6 +22,7 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.googleai.GeminiGenerateContentRequest.GeminiToolConfig;
@@ -112,8 +114,16 @@ class BaseGeminiChatModel {
 
         ResponseFormat responseFormat = chatRequest.responseFormat();
         GeminiSchema schema = null;
-        if (responseFormat != null && responseFormat.jsonSchema() != null) {
-            schema = fromJsonSchemaToGSchema(responseFormat.jsonSchema());
+        Map<String, Object> rawSchema = null;
+
+        if (responseFormat != null) {
+            if (responseFormat.jsonSchema() != null) {
+                if (responseFormat.jsonSchema().rootElement() instanceof JsonRawSchema jsonRawSchema) {
+                    rawSchema = Json.fromJson(jsonRawSchema.schema(), Map.class);
+                } else {
+                    schema = fromJsonSchemaToGSchema(responseFormat.jsonSchema());
+                }
+            }
         }
 
         return GeminiGenerateContentRequest.builder()
@@ -124,6 +134,7 @@ class BaseGeminiChatModel {
                         .maxOutputTokens(parameters.maxOutputTokens())
                         .responseMimeType(computeMimeType(responseFormat))
                         .responseSchema(schema)
+                        .responseJsonSchema(rawSchema)
                         .stopSequences(parameters.stopSequences())
                         .temperature(parameters.temperature())
                         .topK(parameters.topK())

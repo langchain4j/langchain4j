@@ -91,6 +91,7 @@ jobs:
       - name: Setup JBang
         # Required for MCP module
         uses: jbangdev/setup-jbang@main
+        continue-on-error: true
 
       - name: Integration test with JDK ${{ matrix.java_version }}
         run: |

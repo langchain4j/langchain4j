@@ -1,12 +1,6 @@
 package dev.langchain4j.http.client;
 
-import static dev.langchain4j.internal.Utils.copy;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static java.util.Arrays.asList;
-import static java.util.stream.Collectors.joining;
+import dev.langchain4j.Experimental;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -15,18 +9,44 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static java.util.Arrays.asList;
+import static java.util.stream.Collectors.joining;
+
 public class HttpRequest {
 
     private final HttpMethod method;
     private final String url;
     private final Map<String, List<String>> headers;
+    private final Map<String, String> formDataFields;
+    private final Map<String, FormDataFile> formDataFiles;
     private final String body;
 
     public HttpRequest(Builder builder) {
+        validate(builder);
         this.method = ensureNotNull(builder.method, "method");
         this.url = buildUrl(builder);
         this.headers = copy(builder.headers);
+        this.formDataFields = copy(builder.formDataFields);
+        this.formDataFiles = copy(builder.formDataFiles);
         this.body = builder.body;
+    }
+
+    private static void validate(Builder builder) {
+        boolean hasBody = builder.body != null;
+        boolean hasFormDataFields = builder.formDataFields != null && !builder.formDataFields.isEmpty();
+        boolean hasFormDataFiles = builder.formDataFiles != null && !builder.formDataFiles.isEmpty();
+        if (hasBody && hasFormDataFields) {
+            throw illegalArgument("Cannot specify both body and formDataFields");
+        }
+        if (hasBody && hasFormDataFiles) {
+            throw illegalArgument("Cannot specify both body and formDataFiles");
+        }
     }
 
     private static String buildUrl(Builder builder) {
@@ -62,6 +82,22 @@ public class HttpRequest {
         return headers;
     }
 
+    /**
+     * @since 1.10.0
+     */
+    @Experimental
+    public Map<String, String> formDataFields() {
+        return formDataFields;
+    }
+
+    /**
+     * @since 1.10.0
+     */
+    @Experimental
+    public Map<String, FormDataFile> formDataFiles() {
+        return formDataFiles;
+    }
+
     public String body() {
         return body;
     }
@@ -76,6 +112,8 @@ public class HttpRequest {
         private String url;
         private Map<String, List<String>> headers;
         private Map<String, String> queryParams;
+        private Map<String, String> formDataFields;
+        private Map<String, FormDataFile> formDataFiles;
         private String body;
 
         private Builder() {}
@@ -158,6 +196,62 @@ public class HttpRequest {
                 this.queryParams = null;
             } else {
                 this.queryParams = new LinkedHashMap<>(queryParams);
+            }
+            return this;
+        }
+
+        /**
+         * @since 1.10.0
+         */
+        @Experimental
+        public Builder addFormDataField(String name, String value) {
+            ensureNotBlank(name, "name");
+            ensureNotNull(value, "value");
+
+            if (this.formDataFields == null) {
+                this.formDataFields = new LinkedHashMap<>();
+            }
+            this.formDataFields.put(name, value);
+            return this;
+        }
+
+        /**
+         * @since 1.10.0
+         */
+        @Experimental
+        public Builder formDataFields(Map<String, String> formDataFields) {
+            if (formDataFields == null) {
+                this.formDataFields = null;
+            } else {
+                this.formDataFields = new LinkedHashMap<>(formDataFields);
+            }
+            return this;
+        }
+
+        /**
+         * @since 1.10.0
+         */
+        @Experimental
+        public Builder addFormDataFile(String name, String fileName, String contentType, byte[] content) {
+            if (content.length == 0) {
+                return this;
+            }
+            if (this.formDataFiles == null) {
+                this.formDataFiles = new LinkedHashMap<>();
+            }
+            this.formDataFiles.put(name, new FormDataFile(fileName, contentType, content));
+            return this;
+        }
+
+        /**
+         * @since 1.10.0
+         */
+        @Experimental
+        public Builder formDataFiles(Map<String, FormDataFile> formDataFiles) {
+            if (formDataFiles == null) {
+                this.formDataFiles = null;
+            } else {
+                this.formDataFiles = new LinkedHashMap<>(formDataFiles);
             }
             return this;
         }

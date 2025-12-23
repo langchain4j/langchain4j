@@ -37,6 +37,7 @@ import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.data.video.Video;
 import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.audio.AudioTranscriptionRequest;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -85,16 +86,25 @@ public class OpenAiUtils {
     public static final String DEFAULT_USER_AGENT = "langchain4j-openai";
 
     public static List<Message> toOpenAiMessages(List<ChatMessage> messages) {
-        return messages.stream().map(OpenAiUtils::toOpenAiMessage).collect(toList());
+        return toOpenAiMessages(messages, false, null);
+    }
+
+    public static List<Message> toOpenAiMessages(List<ChatMessage> messages, boolean sendThinking, String thinkingFieldName) {
+        return messages.stream()
+                .map(message -> toOpenAiMessage(message, sendThinking, thinkingFieldName))
+                .collect(toList());
     }
 
     public static Message toOpenAiMessage(ChatMessage message) {
+        return toOpenAiMessage(message, false, null);
+    }
+
+    public static Message toOpenAiMessage(ChatMessage message, boolean sendThinking, String thinkingFieldName) {
         if (message instanceof SystemMessage) {
             return dev.langchain4j.model.openai.internal.chat.SystemMessage.from(((SystemMessage) message).text());
         }
 
         if (message instanceof UserMessage userMessage) {
-
             if (userMessage.hasSingleText()) {
                 return dev.langchain4j.model.openai.internal.chat.UserMessage.builder()
                         .content(userMessage.singleText())
@@ -112,8 +122,18 @@ public class OpenAiUtils {
 
         if (message instanceof AiMessage aiMessage) {
 
+            String thinking = null;
+            if (sendThinking && !isNullOrEmpty(aiMessage.thinking())) {
+                thinking = aiMessage.thinking();
+            }
+
             if (!aiMessage.hasToolExecutionRequests()) {
-                return AssistantMessage.from(aiMessage.text());
+                AssistantMessage.Builder builder = AssistantMessage.builder()
+                        .content(aiMessage.text());
+                if (thinking != null) {
+                    builder.customParameter(thinkingFieldName, thinking);
+                }
+                return builder.build();
             }
 
             ToolExecutionRequest toolExecutionRequest =
@@ -124,7 +144,11 @@ public class OpenAiUtils {
                         .arguments(toolExecutionRequest.arguments())
                         .build();
 
-                return AssistantMessage.builder().functionCall(functionCall).build();
+                AssistantMessage.Builder builder = AssistantMessage.builder().functionCall(functionCall);
+                if (thinking != null) {
+                    builder.customParameter(thinkingFieldName, thinking);
+                }
+                return builder.build();
             }
 
             List<ToolCall> toolCalls = aiMessage.toolExecutionRequests().stream()
@@ -138,10 +162,13 @@ public class OpenAiUtils {
                             .build())
                     .collect(toList());
 
-            return AssistantMessage.builder()
+            AssistantMessage.Builder builder = AssistantMessage.builder()
                     .content(aiMessage.text())
-                    .toolCalls(toolCalls)
-                    .build();
+                    .toolCalls(toolCalls);
+            if (thinking != null) {
+                builder.customParameter(thinkingFieldName, thinking);
+            }
+            return builder.build();
         }
 
         if (message instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
@@ -474,8 +501,19 @@ public class OpenAiUtils {
             OpenAiChatRequestParameters parameters,
             Boolean strictTools,
             Boolean strictJsonSchema) {
+        return toOpenAiChatRequest(chatRequest, parameters, false, null, strictTools, strictJsonSchema);
+    }
+
+    public static ChatCompletionRequest.Builder toOpenAiChatRequest(
+            ChatRequest chatRequest,
+            OpenAiChatRequestParameters parameters,
+            boolean sendThinking,
+            String thinkingFieldName,
+            Boolean strictTools,
+            Boolean strictJsonSchema) {
+
         return ChatCompletionRequest.builder()
-                .messages(toOpenAiMessages(chatRequest.messages()))
+                .messages(toOpenAiMessages(chatRequest.messages(), sendThinking, thinkingFieldName))
                 // common parameters
                 .model(parameters.modelName())
                 .temperature(parameters.temperature())

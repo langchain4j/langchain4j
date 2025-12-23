@@ -71,6 +71,7 @@ jobs:
       - name: Setup JBang
         # Required for MCP module
         uses: jbangdev/setup-jbang@main
+        continue-on-error: true
 
       - name: Build with JDK 21
         run: |

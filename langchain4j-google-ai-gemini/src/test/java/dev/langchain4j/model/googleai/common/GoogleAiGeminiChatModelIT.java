@@ -63,11 +63,7 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
     protected boolean assertToolId(ChatModel model) {
         return false; // Gemini does not provide a tool ID
     }
-    
-    @Override
-    protected boolean supportsJsonResponseFormatWithRawSchema() {
-        return false; // not tested
-    }
+
 
     @Override
     protected void assertOutputTokenCount(TokenUsage tokenUsage, Integer maxOutputTokens) {
