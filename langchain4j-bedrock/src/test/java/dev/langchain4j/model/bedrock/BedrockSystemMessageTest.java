@@ -38,8 +38,8 @@ class BedrockSystemMessageTest {
 
     @Test
     void should_create_message_from_content_list() {
-        List<BedrockSystemContent> contents =
-                Arrays.asList(BedrockSystemTextContent.from("First"), BedrockSystemTextContent.withCachePoint("Second"));
+        List<BedrockSystemContent> contents = Arrays.asList(
+                BedrockSystemTextContent.from("First"), BedrockSystemTextContent.withCachePoint("Second"));
 
         BedrockSystemMessage msg = BedrockSystemMessage.from(contents);
 
@@ -70,10 +70,8 @@ class BedrockSystemMessageTest {
 
     @Test
     void should_throw_when_getting_single_text_from_multiple_blocks() {
-        BedrockSystemMessage msg = BedrockSystemMessage.builder()
-                .addText("First")
-                .addText("Second")
-                .build();
+        BedrockSystemMessage msg =
+                BedrockSystemMessage.builder().addText("First").addText("Second").build();
 
         assertThatThrownBy(msg::singleText)
                 .isInstanceOf(IllegalStateException.class)
@@ -84,8 +82,7 @@ class BedrockSystemMessageTest {
 
     @Test
     void should_throw_for_empty_contents() {
-        assertThatThrownBy(() -> BedrockSystemMessage.builder().build())
-                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> BedrockSystemMessage.builder().build()).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
@@ -188,14 +185,10 @@ class BedrockSystemMessageTest {
 
     @Test
     void should_create_builder_from_existing_message() {
-        BedrockSystemMessage original = BedrockSystemMessage.builder()
-                .addText("First")
-                .addText("Second")
-                .build();
+        BedrockSystemMessage original =
+                BedrockSystemMessage.builder().addText("First").addText("Second").build();
 
-        BedrockSystemMessage modified = original.toBuilder()
-                .addText("Third")
-                .build();
+        BedrockSystemMessage modified = original.toBuilder().addText("Third").build();
 
         assertThat(original.contents()).hasSize(2);
         assertThat(modified.contents()).hasSize(3);
@@ -222,7 +215,7 @@ class BedrockSystemMessageTest {
 
         String str = msg.toString();
         assertThat(str).contains("2 blocks");
-        assertThat(str.length()).isLessThan(100);  // Compact
+        assertThat(str.length()).isLessThan(100); // Compact
     }
 
     // === Equals, HashCode ===

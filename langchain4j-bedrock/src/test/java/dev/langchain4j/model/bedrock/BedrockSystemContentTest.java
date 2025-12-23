@@ -51,8 +51,7 @@ class BedrockSystemContentTest {
     @NullAndEmptySource
     @ValueSource(strings = {" ", "  ", "\t", "\n", "\r\n"})
     void should_throw_for_blank_text(String blankText) {
-        assertThatThrownBy(() -> BedrockSystemTextContent.from(blankText))
-                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> BedrockSystemTextContent.from(blankText)).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
@@ -81,7 +80,7 @@ class BedrockSystemContentTest {
 
         String str = content.toString();
         assertThat(str).contains("...[500 chars]");
-        assertThat(str.length()).isLessThan(400);  // Truncated
+        assertThat(str.length()).isLessThan(400); // Truncated
     }
 
     @Test
@@ -112,10 +111,10 @@ class BedrockSystemContentTest {
         BedrockSystemTextContent content4 = BedrockSystemTextContent.from("different");
 
         assertThat(content1).isEqualTo(content2);
-        assertThat(content1).isNotEqualTo(content3);  // Different cache point
-        assertThat(content1).isNotEqualTo(content4);  // Different text
+        assertThat(content1).isNotEqualTo(content3); // Different cache point
+        assertThat(content1).isNotEqualTo(content4); // Different text
         assertThat(content1).isNotEqualTo(null);
-        assertThat(content1).isNotEqualTo("test");  // Different type
+        assertThat(content1).isNotEqualTo("test"); // Different type
     }
 
     @Test
