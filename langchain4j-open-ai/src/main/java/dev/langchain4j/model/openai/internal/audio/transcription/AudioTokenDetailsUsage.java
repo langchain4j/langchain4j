@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+
 import java.util.Objects;
 
 @JsonDeserialize(builder = AudioTokenDetailsUsage.Builder.class)
@@ -20,7 +21,7 @@ public class AudioTokenDetailsUsage {
     @JsonProperty
     private final Integer audioTokens;
 
-    public AudioTokenDetailsUsage(AudioTokenDetailsUsage.Builder builder) {
+    public AudioTokenDetailsUsage(Builder builder) {
         this.textTokens = builder.textTokens;
         this.audioTokens = builder.audioTokens;
     }

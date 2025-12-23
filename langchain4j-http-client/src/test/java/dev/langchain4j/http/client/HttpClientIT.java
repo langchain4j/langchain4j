@@ -830,8 +830,7 @@ public abstract class HttpClientIT {
 
     @Test
     void should_return_successful_http_response_sync_form_data() throws URISyntaxException, IOException {
-        Path audioMessage =
-                Path.of(getClass().getClassLoader().getResource("sample.wav").toURI());
+        Path audioPath = Path.of(getClass().getClassLoader().getResource("sample.wav").toURI());
 
         for (HttpClient client : clients()) {
 
@@ -840,10 +839,10 @@ public abstract class HttpClientIT {
                     .method(POST)
                     .url("https://api.openai.com/v1/audio/transcriptions")
                     .addHeader("Authorization", "Bearer " + OPENAI_API_KEY)
-                    .addHeader("Content-Type", "multipart/form-data; boundary=----langChain4j")
-                    .addFormData("model", "gpt-4o-transcribe")
-                    .addFormData("response_format", "text")
-                    .addFile("file", "audio.wav", "", Files.readAllBytes(audioMessage))
+                    .addHeader("Content-Type", "multipart/form-data; boundary=----LangChain4j")
+                    .addFormDataField("model", "gpt-4o-transcribe")
+                    .addFormDataField("response_format", "text")
+                    .addFormDataFile("file", "audio.wav", "", Files.readAllBytes(audioPath))
                     .build();
 
             // when
@@ -852,7 +851,7 @@ public abstract class HttpClientIT {
             // then
             assertThat(response.statusCode()).isEqualTo(200);
             assertThat(response.headers()).isNotEmpty();
-            assertThat(response.body()).containsIgnoringCase("good morning");
+            assertThat(response.body()).containsIgnoringCase("hello");
         }
     }
 }

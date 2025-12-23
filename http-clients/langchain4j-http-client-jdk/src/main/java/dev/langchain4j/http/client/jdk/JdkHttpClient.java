@@ -8,9 +8,8 @@ import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
-import dev.langchain4j.http.client.MultipartFile;
+import dev.langchain4j.http.client.FormDataFile;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
-import dev.langchain4j.http.client.jdk.payload.MultipartBodyPublisher;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
 import java.io.BufferedReader;
@@ -106,14 +105,14 @@ public class JdkHttpClient implements HttpClient {
         });
 
         BodyPublisher bodyPublisher;
-        if (request.formData().isEmpty() && request.files().isEmpty()) {
+        if (request.formDataFields().isEmpty() && request.formDataFiles().isEmpty()) {
             if (request.body() != null) {
                 bodyPublisher = BodyPublishers.ofString(request.body());
             } else {
                 bodyPublisher = BodyPublishers.noBody();
             }
         } else {
-            bodyPublisher = ofMultipartData(request.formData(), request.files());
+            bodyPublisher = ofMultipartData(request.formDataFields(), request.formDataFiles());
         }
         builder.method(request.method().name(), bodyPublisher);
 
@@ -124,19 +123,15 @@ public class JdkHttpClient implements HttpClient {
         return builder.build();
     }
 
-    public static BodyPublisher ofMultipartData(Map<String, String> fields, Map<String, MultipartFile> files) {
-
-        MultipartBodyPublisher mp = new MultipartBodyPublisher();
-
+    private static BodyPublisher ofMultipartData(Map<String, String> fields, Map<String, FormDataFile> files) {
+        MultipartBodyPublisher publisher = new MultipartBodyPublisher();
         for (Map.Entry<String, String> entry : fields.entrySet()) {
-            mp.addFormField(entry.getKey(), entry.getValue());
+            publisher.addField(entry.getKey(), entry.getValue());
         }
-
-        for (Map.Entry<String, MultipartFile> entry : files.entrySet()) {
-            mp.addFile(entry.getKey(), entry.getValue());
+        for (Map.Entry<String, FormDataFile> entry : files.entrySet()) {
+            publisher.addFile(entry.getKey(), entry.getValue());
         }
-
-        return mp.build();
+        return publisher.build();
     }
 
     private static SuccessfulHttpResponse fromJdkResponse(java.net.http.HttpResponse<?> response, String body) {

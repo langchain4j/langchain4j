@@ -1,14 +1,5 @@
 package dev.langchain4j.model.openai;
 
-import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.ModelProvider.OPEN_AI;
-import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_OPENAI_URL;
-import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_USER_AGENT;
-import static dev.langchain4j.model.openai.internal.OpenAiUtils.validate;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.time.Duration.ofSeconds;
-
 import dev.langchain4j.Experimental;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
@@ -19,10 +10,19 @@ import dev.langchain4j.model.openai.internal.OpenAiClient;
 import dev.langchain4j.model.openai.internal.ParsedAndRawResponse;
 import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionRequest;
 import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionResponse;
-import dev.langchain4j.model.openai.internal.shared.AudioFile;
-import dev.langchain4j.model.openai.spi.OpenAiAudioModelBuilderFactory;
-import java.time.Duration;
+import dev.langchain4j.model.openai.internal.audio.transcription.AudioFile;
+import dev.langchain4j.model.openai.spi.OpenAiAudioTranscriptionModelBuilderFactory;
 import org.slf4j.Logger;
+
+import java.time.Duration;
+
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.ModelProvider.OPEN_AI;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_OPENAI_URL;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_USER_AGENT;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.time.Duration.ofSeconds;
 
 /**
  * Represents an OpenAI audio model with a transcription interface, only gpt-4o-transcribe,
@@ -30,15 +30,17 @@ import org.slf4j.Logger;
  * and gpt-4o-transcribe-diarize are supported. <br/>
  * You can find description of parameters
  * <a href="https://platform.openai.com/docs/api-reference/audio/createTranscription">here</a>.
+ *
+ * @since 1.10.0
  */
 @Experimental
-public class OpenAiAudioModel implements AudioTranscriptionModel {
+public class OpenAiAudioTranscriptionModel implements AudioTranscriptionModel {
 
     private final OpenAiClient client;
-    private final Integer maxRetries;
+    private final int maxRetries;
     private final String modelName;
 
-    public OpenAiAudioModel(OpenAiAudioModelBuilder builder) {
+    public OpenAiAudioTranscriptionModel(Builder builder) {
         this.client = OpenAiClient.builder()
                 .httpClientBuilder(builder.httpClientBuilder)
                 .baseUrl(getOrDefault(builder.baseUrl, DEFAULT_OPENAI_URL))
@@ -59,30 +61,25 @@ public class OpenAiAudioModel implements AudioTranscriptionModel {
     @Override
     public AudioTranscriptionResponse transcribe(AudioTranscriptionRequest audioRequest) {
         if (audioRequest == null || audioRequest.audio() == null) {
-            throw new IllegalArgumentException("Request and audio data are required");
+            throw new IllegalArgumentException("Request and audio are required");
         }
 
-        validate(audioRequest);
-
-        OpenAiAudioTranscriptionRequest openAiRequest =
-                requestBuilder(audioRequest).build();
+        OpenAiAudioTranscriptionRequest openAiRequest = requestBuilder(audioRequest).build();
 
         ParsedAndRawResponse<OpenAiAudioTranscriptionResponse> parsedAndRawResponse = withRetryMappingExceptions(
                 () -> client.audioTranscription(openAiRequest).executeRaw(), maxRetries);
 
-        var openAiResponse = parsedAndRawResponse.parsedResponse();
+        OpenAiAudioTranscriptionResponse openAiResponse = parsedAndRawResponse.parsedResponse();
 
         return AudioTranscriptionResponse.from(openAiResponse.text());
     }
 
     private OpenAiAudioTranscriptionRequest.Builder requestBuilder(AudioTranscriptionRequest request) {
-
         return OpenAiAudioTranscriptionRequest.builder()
                 .model(modelName)
                 .file(AudioFile.from(request.audio()))
                 .language(request.language())
                 .prompt(request.prompt())
-                .temperature(request.temperature())
                 .temperature(request.temperature());
     }
 
@@ -91,14 +88,14 @@ public class OpenAiAudioModel implements AudioTranscriptionModel {
         return OPEN_AI;
     }
 
-    public static OpenAiAudioModelBuilder builder() {
-        for (OpenAiAudioModelBuilderFactory factory : loadFactories(OpenAiAudioModelBuilderFactory.class)) {
+    public static Builder builder() {
+        for (OpenAiAudioTranscriptionModelBuilderFactory factory : loadFactories(OpenAiAudioTranscriptionModelBuilderFactory.class)) {
             return factory.get();
         }
-        return new OpenAiAudioModelBuilder();
+        return new Builder();
     }
 
-    public static class OpenAiAudioModelBuilder {
+    public static class Builder {
 
         private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
@@ -113,61 +110,61 @@ public class OpenAiAudioModel implements AudioTranscriptionModel {
         private Boolean logResponses;
         private Logger logger;
 
-        public OpenAiAudioModelBuilder() {
+        public Builder() {
             // This is public so it can be extended
         }
 
-        public OpenAiAudioModelBuilder httpClientProvider(HttpClientBuilder httpClientProvider) {
+        public Builder httpClientProvider(HttpClientBuilder httpClientProvider) {
             this.httpClientBuilder = httpClientProvider;
             return this;
         }
 
-        public OpenAiAudioModelBuilder baseUrl(String baseUrl) {
+        public Builder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
             return this;
         }
 
-        public OpenAiAudioModelBuilder organizationId(String organizationId) {
+        public Builder organizationId(String organizationId) {
             this.organizationId = organizationId;
             return this;
         }
 
-        public OpenAiAudioModelBuilder projectId(String projectId) {
+        public Builder projectId(String projectId) {
             this.projectId = projectId;
             return this;
         }
 
-        public OpenAiAudioModelBuilder apiKey(String apiKey) {
+        public Builder apiKey(String apiKey) {
             this.apiKey = apiKey;
             return this;
         }
 
-        public OpenAiAudioModelBuilder modelName(OpenAiAudioModelName modelName) {
+        public Builder modelName(OpenAiAudioTranscriptionModelName modelName) {
             this.modelName = modelName.toString();
             return this;
         }
 
-        public OpenAiAudioModelBuilder modelName(String modelName) {
+        public Builder modelName(String modelName) {
             this.modelName = modelName;
             return this;
         }
 
-        public OpenAiAudioModelBuilder timeout(Duration timeout) {
+        public Builder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
         }
 
-        public OpenAiAudioModelBuilder maxRetries(Integer maxRetries) {
+        public Builder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
             return this;
         }
 
-        public OpenAiAudioModelBuilder logRequests(Boolean logRequests) {
+        public Builder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
         }
 
-        public OpenAiAudioModelBuilder logResponses(Boolean logResponses) {
+        public Builder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
             return this;
         }
@@ -176,13 +173,13 @@ public class OpenAiAudioModel implements AudioTranscriptionModel {
          * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
          * @return {@code this}.
          */
-        public OpenAiAudioModelBuilder logger(Logger logger) {
+        public Builder logger(Logger logger) {
             this.logger = logger;
             return this;
         }
 
-        public OpenAiAudioModel build() {
-            return new OpenAiAudioModel(this);
+        public OpenAiAudioTranscriptionModel build() {
+            return new OpenAiAudioTranscriptionModel(this);
         }
     }
 }

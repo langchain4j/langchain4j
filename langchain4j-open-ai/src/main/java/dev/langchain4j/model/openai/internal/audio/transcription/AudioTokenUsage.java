@@ -1,7 +1,5 @@
 package dev.langchain4j.model.openai.internal.audio.transcription;
 
-import static dev.langchain4j.internal.Utils.quoted;
-
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -9,7 +7,10 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+
 import java.util.Objects;
+
+import static dev.langchain4j.internal.Utils.quoted;
 
 @JsonDeserialize(builder = AudioTokenUsage.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -31,7 +32,7 @@ public class AudioTokenUsage {
     @JsonProperty
     private final Integer outputTokens;
 
-    public AudioTokenUsage(AudioTokenUsage.Builder builder) {
+    public AudioTokenUsage(Builder builder) {
         this.type = builder.type;
         this.totalTokens = builder.totalTokens;
         this.inputTokens = builder.inputTokens;
@@ -86,7 +87,7 @@ public class AudioTokenUsage {
 
     @Override
     public String toString() {
-        return "StreamOptions{"
+        return "AudioTokenUsage{"
                 + " type = " + quoted(type)
                 + ", totalTokens = " + totalTokens
                 + " inputTokens = " + inputTokens

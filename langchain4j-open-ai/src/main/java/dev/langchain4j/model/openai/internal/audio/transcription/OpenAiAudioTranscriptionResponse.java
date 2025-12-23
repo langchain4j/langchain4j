@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+
 import java.util.Objects;
 
 @JsonDeserialize(builder = OpenAiAudioTranscriptionResponse.Builder.class)
@@ -54,7 +55,7 @@ public final class OpenAiAudioTranscriptionResponse {
 
     @Override
     public String toString() {
-        return "AudioTranscriptionResponse{" + "text=" + text + ", usage=" + usage + "}";
+        return "OpenAiAudioTranscriptionResponse{" + "text=" + text + ", usage=" + usage + "}";
     }
 
     public static Builder builder() {

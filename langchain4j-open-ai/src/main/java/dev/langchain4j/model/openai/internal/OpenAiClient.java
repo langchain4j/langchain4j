@@ -31,8 +31,9 @@ public abstract class OpenAiClient {
 
     public abstract SyncOrAsync<GenerateImagesResponse> imagesGeneration(GenerateImagesRequest request);
 
-    public abstract SyncOrAsync<OpenAiAudioTranscriptionResponse> audioTranscription(
-            OpenAiAudioTranscriptionRequest request);
+    public SyncOrAsync<OpenAiAudioTranscriptionResponse> audioTranscription(OpenAiAudioTranscriptionRequest request) {
+        throw new UnsupportedOperationException("Audio transcription is not implemented by this client");
+    }
 
     @SuppressWarnings("rawtypes")
     public static Builder builder() {

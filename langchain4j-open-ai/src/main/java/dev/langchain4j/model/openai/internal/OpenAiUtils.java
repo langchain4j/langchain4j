@@ -488,12 +488,6 @@ public class OpenAiUtils {
         }
     }
 
-    public static void validate(AudioTranscriptionRequest request) {
-        if (request.audio() == null) {
-            throw new IllegalArgumentException("Audio file is required.");
-        }
-    }
-
     public static ResponseFormat fromOpenAiResponseFormat(String responseFormat) {
         if ("json_object".equals(responseFormat)) {
             return JSON;

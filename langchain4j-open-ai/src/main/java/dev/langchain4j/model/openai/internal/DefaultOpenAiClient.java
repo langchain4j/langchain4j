@@ -10,6 +10,7 @@ import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.HttpClientBuilderLoader;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
+import dev.langchain4j.model.openai.internal.audio.transcription.AudioFile;
 import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionRequest;
 import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionResponse;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
@@ -182,29 +183,27 @@ public class DefaultOpenAiClient extends OpenAiClient {
 
     @Override
     public SyncOrAsync<OpenAiAudioTranscriptionResponse> audioTranscription(OpenAiAudioTranscriptionRequest request) {
-        var httpRequestBuilder = HttpRequest.builder()
+        HttpRequest.Builder httpRequestBuilder = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl, "audio/transcriptions")
-                .addHeader("Content-Type", "multipart/form-data; boundary=----langChain4j")
+                .addHeader("Content-Type", "multipart/form-data; boundary=----LangChain4j")
                 .addHeaders(defaultHeaders);
 
-        httpRequestBuilder.addFormData("model", request.model());
-        httpRequestBuilder.addFile(
-                "file",
-                request.file().getFileName(),
-                request.file().getMimeType(),
-                request.file().getBinaryDataFromAudio());
+        httpRequestBuilder.addFormDataField("model", request.model());
+
+        AudioFile file = request.file();
+        httpRequestBuilder.addFormDataFile("file", file.fileName(), file.mimeType(), file.content());
 
         if (request.language() != null) {
-            httpRequestBuilder.addFormData("language", request.language());
+            httpRequestBuilder.addFormDataField("language", request.language());
         }
 
         if (request.prompt() != null) {
-            httpRequestBuilder.addFormData("prompt", request.prompt());
+            httpRequestBuilder.addFormDataField("prompt", request.prompt());
         }
 
         if (request.temperature() != null) {
-            httpRequestBuilder.addFormData("temperature", Double.toString(request.temperature()));
+            httpRequestBuilder.addFormDataField("temperature", Double.toString(request.temperature()));
         }
 
         return new RequestExecutor<>(httpClient, httpRequestBuilder.build(), OpenAiAudioTranscriptionResponse.class);

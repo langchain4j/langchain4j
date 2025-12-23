@@ -468,82 +468,16 @@ class HttpRequestTest {
     }
 
     @Test
-    void should_combine_form_data_from_both_methods() {
-        // given
-        HttpRequest.Builder builder = HttpRequest.builder().method(POST).url("http://example.com/api");
-        Map<String, String> additionalNewFormData = new LinkedHashMap<>();
-        additionalNewFormData.put("map1", "value2");
-        additionalNewFormData.put("map2", "value3");
-
-        // when
-        builder.addFormData("single", "value1").addFormData(additionalNewFormData);
-
-        // then
-        assertThat(builder.build().url()).isEqualTo("http://example.com/api");
-        assertThat(builder.build().formData()).containsEntry("single", "value1");
-        assertThat(builder.build().formData()).containsEntry("map1", "value2");
-        assertThat(builder.build().formData()).containsEntry("map2", "value3");
-    }
-
-    @Test
-    void should_overwrite_form_data_when_added_multiple_times() {
-        // given
-        HttpRequest.Builder builder = HttpRequest.builder().method(POST).url("http://example.com/api");
-        Map<String, String> overwriteFormData = new LinkedHashMap<>();
-        overwriteFormData.put("key", "value2");
-
-        // when
-        builder.addFormData("key", "value1").addFormData(overwriteFormData);
-
-        // then
-        assertThat(builder.build().url()).isEqualTo("http://example.com/api");
-        assertThat(builder.build().formData()).containsEntry("key", "value2");
-    }
-
-    @Test
-    void should_not_fail_when_adding_to_immutable_form_data() {
-        // given
-        HttpRequest.Builder builder = HttpRequest.builder().method(POST).url("http://example.com/api");
-
-        // when
-        builder.addFormData(Map.of("key1", "value1")).addFormData("key2", "value2");
-
-        // then
-        assertThat(builder.build().url()).isEqualTo("http://example.com/api");
-        assertThat(builder.build().formData()).containsEntry("key1", "value1");
-        assertThat(builder.build().formData()).containsEntry("key2", "value2");
-    }
-
-    @Test
-    void should_replace_all_form_data_with_form_data() {
-        // given
-        HttpRequest.Builder builder = HttpRequest.builder().method(POST).url("http://example.com/api");
-        Map<String, String> newFormData = new LinkedHashMap<>();
-        newFormData.put("new1", "newValue1");
-        newFormData.put("new2", "newValue2");
-
-        // when
-        builder.addFormData("old1", "oldValue1")
-                .addFormData("old2", "oldValue2")
-                .addFormData(newFormData);
-
-        // then
-        assertThat(builder.build().url()).isEqualTo("http://example.com/api");
-        assertThat(builder.build().formData()).containsEntry("new1", "newValue1");
-        assertThat(builder.build().formData()).containsEntry("new2", "newValue2");
-    }
-
-    @Test
     void should_handle_null_form_data_map_with_replace() {
         // given
         HttpRequest.Builder builder = HttpRequest.builder().method(POST).url("http://example.com/api");
 
         // when
-        builder.addFormData("key", "value").formData(null);
+        builder.addFormDataField("key", "value").formDataFields(null);
 
         // then
         assertThat(builder.build().url()).isEqualTo("http://example.com/api");
-        assertThat(builder.build().formData()).isEmpty();
+        assertThat(builder.build().formDataFields()).isEmpty();
     }
 
     @Test
@@ -553,10 +487,10 @@ class HttpRequestTest {
         Map<String, String> emptyFormData = new LinkedHashMap<>();
 
         // when
-        builder.addFormData("key", "value").formData(emptyFormData);
+        builder.addFormDataField("key", "value").formDataFields(emptyFormData);
 
         // then
         assertThat(builder.build().url()).isEqualTo("http://example.com/api");
-        assertThat(builder.build().formData()).isEmpty();
+        assertThat(builder.build().formDataFields()).isEmpty();
     }
 }

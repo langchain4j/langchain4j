@@ -1,7 +1,5 @@
 package dev.langchain4j.model.openai.internal.audio.transcription;
 
-import dev.langchain4j.model.openai.internal.shared.AudioFile;
-
 /**
  * Represents the audio request.
  * Find description of parameters
@@ -64,7 +62,7 @@ public class OpenAiAudioTranscriptionRequest {
         private String model;
         private String language;
         private String prompt;
-        private Double temperature = 0.0;
+        private Double temperature;
 
         public Builder file(AudioFile file) {
             this.file = file;

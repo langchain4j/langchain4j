@@ -1,6 +1,13 @@
 package dev.langchain4j.model.openai;
 
-public enum OpenAiAudioModelName {
+import dev.langchain4j.Experimental;
+
+/**
+ * @since 1.10.0
+ */
+@Experimental
+public enum OpenAiAudioTranscriptionModelName {
+
     WHISPER_1("whisper-1"),
     GPT_4_O_TRANSCRIBE("gpt-4o-transcribe"),
     GPT_4_O_MINI_TRANSCRIBE("gpt-4o-mini-transcribe"),
@@ -8,7 +15,7 @@ public enum OpenAiAudioModelName {
 
     private final String stringValue;
 
-    OpenAiAudioModelName(String stringValue) {
+    OpenAiAudioTranscriptionModelName(String stringValue) {
         this.stringValue = stringValue;
     }
 

@@ -1,27 +1,26 @@
-package dev.langchain4j.model.openai.internal.shared;
+package dev.langchain4j.model.openai.internal.audio.transcription;
 
 import dev.langchain4j.data.audio.Audio;
+
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 public class AudioFile {
 
     private final Audio audio;
 
     private AudioFile(Audio audio) {
-        if (audio == null) {
-            throw new IllegalArgumentException("Audio file cannot be null");
-        }
-        this.audio = audio;
+        this.audio = ensureNotNull(audio, "audio");
     }
 
-    public String getFileName() {
+    public String fileName() {
         return "audio_file" + getAudioExtension(audio.mimeType());
     }
 
-    public String getMimeType() {
+    public String mimeType() {
         return audio.mimeType();
     }
 
-    public byte[] getBinaryDataFromAudio() {
+    public byte[] content() {
         if (audio.binaryData() != null) {
             return audio.binaryData();
         }
