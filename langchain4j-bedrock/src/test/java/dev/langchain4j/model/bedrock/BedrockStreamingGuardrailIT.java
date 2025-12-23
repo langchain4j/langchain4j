@@ -19,6 +19,8 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.bedrock.BedrockClient;
 import software.amazon.awssdk.services.bedrock.model.CreateGuardrailRequest;
 import software.amazon.awssdk.services.bedrock.model.CreateGuardrailResponse;
@@ -36,6 +38,7 @@ import software.amazon.awssdk.services.bedrock.model.GuardrailTopicConfig;
 import software.amazon.awssdk.services.bedrock.model.GuardrailTopicPolicyConfig;
 import software.amazon.awssdk.services.bedrock.model.GuardrailTopicType;
 
+@EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
 public class BedrockStreamingGuardrailIT {
 
     private static final String NOVA_MODEL = "us.amazon.nova-micro-v1:0";
@@ -50,7 +53,8 @@ public class BedrockStreamingGuardrailIT {
 
     @BeforeAll
     static void setUp() {
-        BedrockClient bedrockClient = BedrockClient.create();
+        BedrockClient bedrockClient =
+                BedrockClient.builder().region(Region.US_EAST_1).build();
 
         CreateGuardrailResponse response = bedrockClient.createGuardrail(CreateGuardrailRequest.builder()
                 .name(GUARDRAIL_NAME)
@@ -94,7 +98,8 @@ public class BedrockStreamingGuardrailIT {
     @AfterAll
     static void tearDown() {
         if (guardrailId != null) {
-            BedrockClient bedrockClient = BedrockClient.create();
+            BedrockClient bedrockClient =
+                    BedrockClient.builder().region(Region.US_EAST_1).build();
             bedrockClient.deleteGuardrail(DeleteGuardrailRequest.builder()
                     .guardrailIdentifier(guardrailId)
                     .build());
