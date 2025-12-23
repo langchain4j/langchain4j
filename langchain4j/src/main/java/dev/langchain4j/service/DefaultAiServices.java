@@ -243,8 +243,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                             // Decide what to store in chat memory based on configuration.
                             // By default (storeRetrievedContentInChatMemory == true), behaviour matches
                             // the historical implementation: store the final userMessage (after RAG, guardrails, etc.).
-                            // When false, store only the original user message before RAG augmentation,
-                            // while still using the augmented message for the actual LLM request.
+                            // When false, store only the original user message before any augmentation
+                            // (RAG, guardrails, output format instructions, etc.), while still using the augmented
+                            // message for the actual LLM request.
                             if (context.storeRetrievedContentInChatMemory) {
                                 chatMemory.add(userMessage);
                             } else {
