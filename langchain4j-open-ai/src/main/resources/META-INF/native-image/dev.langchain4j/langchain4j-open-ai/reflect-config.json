@@ -396,6 +396,24 @@
     "allPublicFields": true
   },
   {
+    "name": "dev.langchain4j.model.openai.internal.image.InputTokenDetails",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "dev.langchain4j.model.openai.internal.image.Usage",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
     "name": "dev.langchain4j.model.openai.internal.moderation.Categories",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,
