@@ -2,6 +2,12 @@ package dev.langchain4j.data.document.splitter;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
+import dev.langchain4j.data.document.DefaultDocument;
+import dev.langchain4j.data.document.Document;
+import dev.langchain4j.data.document.DocumentSplitter;
+import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.internal.ValidationUtils;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -10,12 +16,6 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import dev.langchain4j.data.document.DefaultDocument;
-import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.document.DocumentSplitter;
-import dev.langchain4j.data.document.Metadata;
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.internal.ValidationUtils;
 import org.commonmark.Extension;
 import org.commonmark.ext.front.matter.YamlFrontMatterExtension;
 import org.commonmark.ext.front.matter.YamlFrontMatterVisitor;
@@ -48,7 +48,6 @@ public class MarkdownSectionSplitter implements DocumentSplitter {
 
     private static final Set<Extension> EXTENSIONS = Set.of(TablesExtension.create());
 
-
     public static final String SECTION_LEVEL = "md_section_level";
     public static final String SECTION_HEADER = "md_section_header";
     public static final String SECTION_INDEX_WITHIN_PARENT = "md_section_index_in_parent";
@@ -70,7 +69,8 @@ public class MarkdownSectionSplitter implements DocumentSplitter {
         ValidationUtils.ensureNotNull(builder.getSectionSplitter(), "sectionSplitter");
         this.sectionSplitter = builder.getSectionSplitter();
         this.documentTitle = builder.getDocumentTitle();
-        this.emptySectionPlaceholderText = getOrDefault(builder.getEmptySectionPlaceholderText(), DEFAULT_EMPTY_SECTION_PLACEHOLDER_TEXT);
+        this.emptySectionPlaceholderText =
+                getOrDefault(builder.getEmptySectionPlaceholderText(), DEFAULT_EMPTY_SECTION_PLACEHOLDER_TEXT);
         this.yamlFrontMatterConsumer = builder.getYamlFrontMatterConsumer();
     }
 
@@ -104,10 +104,8 @@ public class MarkdownSectionSplitter implements DocumentSplitter {
             yamlFrontMatterConsumer.consumeFrontMatter(visitor.getData());
         }
 
-        MarkdownSplitterContext context = new MarkdownSplitterContext(document.metadata(),
-                emptySectionPlaceholderText,
-                sectionSplitter,
-                documentTitle);
+        MarkdownSplitterContext context = new MarkdownSplitterContext(
+                document.metadata(), emptySectionPlaceholderText, sectionSplitter, documentTitle);
 
         MarkdownRenderer renderer = MarkdownRenderer.builder()
                 .nodeRendererFactory(new MarkdownSectionSplitterNodeRendererFactory(context))
@@ -168,15 +166,29 @@ public class MarkdownSectionSplitter implements DocumentSplitter {
         }
 
         /**
-         * Sets a {@link YamlFrontMatterConsumer} to handle parsed YAML front matter
-         * @param yamlFrontMatterConsumer
-         * @return
+         * <p>Sets a consumer to handle YAML front matter metadata from the Markdown document.</p>
+         *
+         * <p>YAML front matter is metadata at the beginning of a Markdown file, delimited by triple dashes:</p>
+         * <pre>
+         * ---
+         * title: My Document
+         * author: John Doe
+         * tags: [example, tutorial]
+         * ---
+         * # Document Content
+         * </pre>
+         *
+         * <p>When set, the provided consumer will be called with the parsed YAML data as a map
+         * where keys are field names and values are lists of strings. The front matter is removed
+         * from the document before splitting into sections.</p>
+         *
+         * @param yamlFrontMatterConsumer the consumer to handle parsed YAML front matter, or null to ignore front matter
+         * @return this Builder instance
          */
         public Builder setYamlFrontMatterConsumer(YamlFrontMatterConsumer yamlFrontMatterConsumer) {
             this.yamlFrontMatterConsumer = yamlFrontMatterConsumer;
             return this;
         }
-
 
         /**
          * Constructs the {@link MarkdownSectionSplitter} instance
@@ -237,10 +249,11 @@ public class MarkdownSectionSplitter implements DocumentSplitter {
         private Header currentHeader;
         private int nullHeaderIndex = 0;
 
-        MarkdownSplitterContext(Metadata metadata,
-                                final String emptySectionPlaceholderText,
-                                final DocumentSplitter sectionSplitter,
-                                final String documentTitle) {
+        MarkdownSplitterContext(
+                Metadata metadata,
+                final String emptySectionPlaceholderText,
+                final DocumentSplitter sectionSplitter,
+                final String documentTitle) {
             this.originalMetadata = metadata;
             this.emptySectionPlaceholderText = emptySectionPlaceholderText;
             this.sectionSplitter = sectionSplitter;
@@ -325,7 +338,6 @@ public class MarkdownSectionSplitter implements DocumentSplitter {
             this.segments.addAll(sectionSegments);
         }
 
-
         /**
          * Adds a header to the document hierarchy and determines its parent-child relationships.
          * <p>
@@ -338,7 +350,7 @@ public class MarkdownSectionSplitter implements DocumentSplitter {
          */
         private void addHeaderToHierarchy(Header header) {
             if (!headers.isEmpty()) {
-                for (ListIterator<Header> it = headers.listIterator(headers.size()); it.hasPrevious() ; ) {
+                for (ListIterator<Header> it = headers.listIterator(headers.size()); it.hasPrevious(); ) {
                     Header curr = it.previous();
                     if (curr.level < header.level) {
                         curr.addChild(header);
@@ -351,7 +363,6 @@ public class MarkdownSectionSplitter implements DocumentSplitter {
             if (header.parent == null) {
                 header.indexInParent = nullHeaderIndex++;
             }
-
         }
 
         public List<TextSegment> getSegments() {
@@ -423,7 +434,6 @@ public class MarkdownSectionSplitter implements DocumentSplitter {
         public Set<Character> getSpecialCharacters() {
             return Set.of();
         }
-
     }
 
     /**
@@ -440,8 +450,8 @@ public class MarkdownSectionSplitter implements DocumentSplitter {
     private static class HeaderSplittingCoreNodeRenderer extends CoreMarkdownNodeRenderer {
         private final MarkdownSplitterContext splitterContext;
 
-        public HeaderSplittingCoreNodeRenderer(MarkdownNodeRendererContext context,
-                                               MarkdownSplitterContext splitterContext) {
+        public HeaderSplittingCoreNodeRenderer(
+                MarkdownNodeRendererContext context, MarkdownSplitterContext splitterContext) {
             super(context);
             this.splitterContext = splitterContext;
         }
@@ -530,7 +540,6 @@ public class MarkdownSectionSplitter implements DocumentSplitter {
             return false;
         }
     }
-
 
     /**
      * Represents a markdown header and its position in the document hierarchy.
@@ -630,5 +639,4 @@ public class MarkdownSectionSplitter implements DocumentSplitter {
             child.parent = this;
         }
     }
-
 }
