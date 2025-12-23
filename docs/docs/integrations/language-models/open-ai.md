@@ -201,6 +201,11 @@ ChatModel model = OpenAiChatModel.builder()
         .build();
 ```
 
+When the `sendThinking` parameter is enabled while building `OpenAiChatModel` or `OpenAiStreamingChatModel`,
+the `AiMessage.thinking()` will be sent in the request to the DeepSeek API.
+The name of the field can be configured by using the `sendThinking(boolean, String)` builder method.
+By default, the `reasoning_content` field name is used.
+
 ## Creating `OpenAiStreamingChatModel`
 
 ### Plain Java
