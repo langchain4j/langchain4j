@@ -3,12 +3,6 @@ package dev.langchain4j.rag.easy;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.net.URISyntaxException;
-import java.nio.file.FileSystems;
-import java.nio.file.Path;
-import java.nio.file.PathMatcher;
-import java.nio.file.Paths;
-import java.util.List;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.loader.FileSystemDocumentLoader;
 import dev.langchain4j.data.document.splitter.MarkdownSectionSplitter;
@@ -19,6 +13,12 @@ import dev.langchain4j.service.AiServices;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
+import java.net.URISyntaxException;
+import java.nio.file.FileSystems;
+import java.nio.file.Path;
+import java.nio.file.PathMatcher;
+import java.nio.file.Paths;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -49,10 +49,10 @@ class EasyRagIT {
         EmbeddingStoreIngestor.ingest(document, embeddingStore);
         // or
         EmbeddingStoreIngestor.builder()
-                //.documentTransformer(...)
-                //.documentSplitter(...)
-                //.textSegmentTransformer(...)
-                //.embeddingModel(...)
+                // .documentTransformer(...)
+                // .documentSplitter(...)
+                // .textSegmentTransformer(...)
+                // .embeddingModel(...)
                 .embeddingStore(embeddingStore)
                 .build()
                 .ingest(document);
@@ -77,11 +77,10 @@ class EasyRagIT {
         EmbeddingStoreIngestor.ingest(document, embeddingStore);
         // or
         EmbeddingStoreIngestor.builder()
-                //.documentTransformer(...)
-                .documentSplitter(MarkdownSectionSplitter.builder()
-                        .build())
-                //.textSegmentTransformer(...)
-                //.embeddingModel(...)
+                // .documentTransformer(...)
+                .documentSplitter(MarkdownSectionSplitter.builder().build())
+                // .textSegmentTransformer(...)
+                // .embeddingModel(...)
                 .embeddingStore(embeddingStore)
                 .build()
                 .ingest(document);
@@ -104,10 +103,7 @@ class EasyRagIT {
         // Load all markdown files from docs/docs/tutorials directory
         Path tutorialsPath = Paths.get("docs/docs/tutorials");
         PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher("glob:*.md");
-        List<Document> documents = FileSystemDocumentLoader.loadDocuments(
-                tutorialsPath,
-                pathMatcher
-        );
+        List<Document> documents = FileSystemDocumentLoader.loadDocuments(tutorialsPath, pathMatcher);
 
         // Verify documents were loaded
         assertThat(documents).hasSizeGreaterThan(20); // When I write this, there are 26 .md files
