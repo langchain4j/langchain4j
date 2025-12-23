@@ -152,6 +152,12 @@
                         <!-- This was manually built  -->
                         <exclude>dev.langchain4j:langchain4j-classpath-test-lib</exclude>
                     </excludes>
+                    <acceptableLicenses combine.children="append">
+                        <license>
+                            <name>BSD-2-Clause</name>
+                            <url>https://opensource.org/licenses/BSD-2-Clause</url>
+                        </license>
+                    </acceptableLicenses>
                 </configuration>
             </plugin>
         </plugins>
