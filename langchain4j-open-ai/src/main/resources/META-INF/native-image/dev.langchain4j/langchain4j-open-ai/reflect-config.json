@@ -1,5 +1,59 @@
 [
   {
+    "name": "dev.langchain4j.model.openai.internal.audio.transcription.AudioTokenDetailsUsage",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "dev.langchain4j.model.openai.internal.audio.transcription.AudioTokenDetailsUsage$Builder",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "dev.langchain4j.model.openai.internal.audio.transcription.AudioTokenUsage",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "dev.langchain4j.model.openai.internal.audio.transcription.AudioTokenUsage$Builder",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionResponse",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionResponse$Builder",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
     "name": "dev.langchain4j.model.openai.internal.chat.AssistantMessage",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,
@@ -100,6 +154,15 @@
   },
   {
     "name": "dev.langchain4j.model.openai.internal.chat.ImageUrl",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "dev.langchain4j.model.openai.internal.chat.VideoUrl",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,
     "allDeclaredMethods": true,
@@ -523,6 +586,15 @@
   },
   {
     "name": "dev.langchain4j.model.openai.internal.chat.PdfFile$Builder",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "dev.langchain4j.model.openai.internal.chat.VideoUrl$Builder",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,
     "allDeclaredMethods": true,

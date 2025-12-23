@@ -1,11 +1,15 @@
 package dev.langchain4j.agentic.supervisor;
 
+import dev.langchain4j.agentic.observability.AgentRequest;
+import dev.langchain4j.agentic.observability.AgentResponse;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.internal.AgentExecutor;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 public interface SupervisorAgentService<T> {
@@ -14,11 +18,13 @@ public interface SupervisorAgentService<T> {
 
     SupervisorAgentService<T> chatModel(ChatModel chatModel);
 
-    SupervisorAgentService<T> name(String outputName);
+    SupervisorAgentService<T> chatMemoryProvider(ChatMemoryProvider chatMemoryProvider);
 
-    SupervisorAgentService<T> description(String outputName);
+    SupervisorAgentService<T> name(String name);
 
-    SupervisorAgentService<T> outputName(String outputName);
+    SupervisorAgentService<T> description(String description);
+
+    SupervisorAgentService<T> outputKey(String outputKey);
 
     SupervisorAgentService<T> requestGenerator(Function<AgenticScope, String> requestGenerator);
 

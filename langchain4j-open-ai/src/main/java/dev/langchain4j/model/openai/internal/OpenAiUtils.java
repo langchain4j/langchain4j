@@ -1,5 +1,24 @@
 package dev.langchain4j.model.openai.internal;
 
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
+import static dev.langchain4j.model.chat.request.ResponseFormatType.TEXT;
+import static dev.langchain4j.model.openai.internal.chat.ResponseFormatType.JSON_OBJECT;
+import static dev.langchain4j.model.openai.internal.chat.ResponseFormatType.JSON_SCHEMA;
+import static dev.langchain4j.model.openai.internal.chat.ToolType.FUNCTION;
+import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
+import static java.lang.String.format;
+import static java.util.stream.Collectors.toList;
+
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -14,14 +33,17 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.message.VideoContent;
+import dev.langchain4j.data.video.Video;
 import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.audio.AudioTranscriptionRequest;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
-import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiChatRequestParameters;
@@ -44,37 +66,18 @@ import dev.langchain4j.model.openai.internal.chat.Tool;
 import dev.langchain4j.model.openai.internal.chat.ToolCall;
 import dev.langchain4j.model.openai.internal.chat.ToolChoiceMode;
 import dev.langchain4j.model.openai.internal.chat.ToolMessage;
+import dev.langchain4j.model.openai.internal.chat.VideoUrl;
 import dev.langchain4j.model.openai.internal.shared.CompletionTokensDetails;
 import dev.langchain4j.model.openai.internal.shared.PromptTokensDetails;
 import dev.langchain4j.model.openai.internal.shared.Usage;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
-import static dev.langchain4j.internal.Exceptions.illegalArgument;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
-import static dev.langchain4j.model.chat.request.ResponseFormatType.TEXT;
-import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
-import static dev.langchain4j.model.openai.internal.chat.ResponseFormatType.JSON_OBJECT;
-import static dev.langchain4j.model.openai.internal.chat.ResponseFormatType.JSON_SCHEMA;
-import static dev.langchain4j.model.openai.internal.chat.ToolType.FUNCTION;
-import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
-import static dev.langchain4j.model.output.FinishReason.LENGTH;
-import static dev.langchain4j.model.output.FinishReason.STOP;
-import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
-import static java.lang.String.format;
-import static java.util.stream.Collectors.toList;
 
 @Internal
 public class OpenAiUtils {
@@ -83,16 +86,25 @@ public class OpenAiUtils {
     public static final String DEFAULT_USER_AGENT = "langchain4j-openai";
 
     public static List<Message> toOpenAiMessages(List<ChatMessage> messages) {
-        return messages.stream().map(OpenAiUtils::toOpenAiMessage).collect(toList());
+        return toOpenAiMessages(messages, false, null);
+    }
+
+    public static List<Message> toOpenAiMessages(List<ChatMessage> messages, boolean sendThinking, String thinkingFieldName) {
+        return messages.stream()
+                .map(message -> toOpenAiMessage(message, sendThinking, thinkingFieldName))
+                .collect(toList());
     }
 
     public static Message toOpenAiMessage(ChatMessage message) {
+        return toOpenAiMessage(message, false, null);
+    }
+
+    public static Message toOpenAiMessage(ChatMessage message, boolean sendThinking, String thinkingFieldName) {
         if (message instanceof SystemMessage) {
             return dev.langchain4j.model.openai.internal.chat.SystemMessage.from(((SystemMessage) message).text());
         }
 
         if (message instanceof UserMessage userMessage) {
-
             if (userMessage.hasSingleText()) {
                 return dev.langchain4j.model.openai.internal.chat.UserMessage.builder()
                         .content(userMessage.singleText())
@@ -110,8 +122,18 @@ public class OpenAiUtils {
 
         if (message instanceof AiMessage aiMessage) {
 
+            String thinking = null;
+            if (sendThinking && !isNullOrEmpty(aiMessage.thinking())) {
+                thinking = aiMessage.thinking();
+            }
+
             if (!aiMessage.hasToolExecutionRequests()) {
-                return AssistantMessage.from(aiMessage.text());
+                AssistantMessage.Builder builder = AssistantMessage.builder()
+                        .content(aiMessage.text());
+                if (thinking != null) {
+                    builder.customParameter(thinkingFieldName, thinking);
+                }
+                return builder.build();
             }
 
             ToolExecutionRequest toolExecutionRequest =
@@ -122,7 +144,11 @@ public class OpenAiUtils {
                         .arguments(toolExecutionRequest.arguments())
                         .build();
 
-                return AssistantMessage.builder().functionCall(functionCall).build();
+                AssistantMessage.Builder builder = AssistantMessage.builder().functionCall(functionCall);
+                if (thinking != null) {
+                    builder.customParameter(thinkingFieldName, thinking);
+                }
+                return builder.build();
             }
 
             List<ToolCall> toolCalls = aiMessage.toolExecutionRequests().stream()
@@ -136,10 +162,13 @@ public class OpenAiUtils {
                             .build())
                     .collect(toList());
 
-            return AssistantMessage.builder()
+            AssistantMessage.Builder builder = AssistantMessage.builder()
                     .content(aiMessage.text())
-                    .toolCalls(toolCalls)
-                    .build();
+                    .toolCalls(toolCalls);
+            if (thinking != null) {
+                builder.customParameter(thinkingFieldName, thinking);
+            }
+            return builder.build();
         }
 
         if (message instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
@@ -159,6 +188,8 @@ public class OpenAiUtils {
             return toOpenAiContent((TextContent) content);
         } else if (content instanceof ImageContent) {
             return toOpenAiContent((ImageContent) content);
+        } else if (content instanceof VideoContent videoContent) {
+            return toOpenAiContent(videoContent);
         } else if (content instanceof AudioContent audioContent) {
             return toOpenAiContent(audioContent);
         } else if (content instanceof PdfFileContent pdfFileContent) {
@@ -182,6 +213,13 @@ public class OpenAiUtils {
                         .url(toUrl(content.image()))
                         .detail(toDetail(content.detailLevel()))
                         .build())
+                .build();
+    }
+
+    private static dev.langchain4j.model.openai.internal.chat.Content toOpenAiContent(VideoContent content) {
+        return dev.langchain4j.model.openai.internal.chat.Content.builder()
+                .type(ContentType.VIDEO_URL)
+                .videoUrl(VideoUrl.builder().url(toVideoUrl(content.video())).build())
                 .build();
     }
 
@@ -222,6 +260,13 @@ public class OpenAiUtils {
             return image.url().toString();
         }
         return format("data:%s;base64,%s", image.mimeType(), image.base64Data());
+    }
+
+    private static String toVideoUrl(Video video) {
+        if (video.url() != null) {
+            return video.url().toString();
+        }
+        return format("data:%s;base64,%s", video.mimeType(), video.base64Data());
     }
 
     private static ImageDetail toDetail(ImageContent.DetailLevel detailLevel) {
@@ -306,11 +351,11 @@ public class OpenAiUtils {
             reasoningContent = assistantMessage.reasoningContent();
         }
 
-        List<ToolExecutionRequest> toolExecutionRequests = getOrDefault(assistantMessage.toolCalls(), List.of())
-                .stream()
-                .filter(toolCall -> toolCall.type() == FUNCTION)
-                .map(OpenAiUtils::toToolExecutionRequest)
-                .collect(toList());
+        List<ToolExecutionRequest> toolExecutionRequests =
+                getOrDefault(assistantMessage.toolCalls(), List.of()).stream()
+                        .filter(toolCall -> toolCall.type() == FUNCTION)
+                        .map(OpenAiUtils::toToolExecutionRequest)
+                        .collect(toList());
 
         // legacy
         FunctionCall functionCall = assistantMessage.functionCall();
@@ -402,7 +447,7 @@ public class OpenAiUtils {
             if (!(jsonSchema.rootElement() instanceof JsonObjectSchema
                     || jsonSchema.rootElement() instanceof JsonRawSchema)) {
                 throw new IllegalArgumentException(
-                        "For OpenAI, the root element of the JSON Schema must be a JsonObjectSchema, but it was: "
+                        "For OpenAI, the root element of the JSON Schema must be either a JsonObjectSchema or a JsonRawSchema, but it was: "
                                 + jsonSchema.rootElement().getClass());
             }
             dev.langchain4j.model.openai.internal.chat.JsonSchema openAiJsonSchema =
@@ -426,6 +471,7 @@ public class OpenAiUtils {
         return switch (toolChoice) {
             case AUTO -> ToolChoiceMode.AUTO;
             case REQUIRED -> ToolChoiceMode.REQUIRED;
+            case NONE -> ToolChoiceMode.NONE;
         };
     }
 
@@ -455,8 +501,19 @@ public class OpenAiUtils {
             OpenAiChatRequestParameters parameters,
             Boolean strictTools,
             Boolean strictJsonSchema) {
+        return toOpenAiChatRequest(chatRequest, parameters, false, null, strictTools, strictJsonSchema);
+    }
+
+    public static ChatCompletionRequest.Builder toOpenAiChatRequest(
+            ChatRequest chatRequest,
+            OpenAiChatRequestParameters parameters,
+            boolean sendThinking,
+            String thinkingFieldName,
+            Boolean strictTools,
+            Boolean strictJsonSchema) {
+
         return ChatCompletionRequest.builder()
-                .messages(toOpenAiMessages(chatRequest.messages()))
+                .messages(toOpenAiMessages(chatRequest.messages(), sendThinking, thinkingFieldName))
                 // common parameters
                 .model(parameters.modelName())
                 .temperature(parameters.temperature())

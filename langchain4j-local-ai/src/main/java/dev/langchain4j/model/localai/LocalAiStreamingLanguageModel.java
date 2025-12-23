@@ -8,9 +8,11 @@ import dev.langchain4j.model.openai.OpenAiStreamingResponseBuilder;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
 import dev.langchain4j.model.openai.internal.completion.CompletionRequest;
 import dev.langchain4j.model.output.Response;
+import org.slf4j.Logger;
 
 import java.time.Duration;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
@@ -26,6 +28,7 @@ public class LocalAiStreamingLanguageModel implements StreamingLanguageModel {
     private final Double topP;
     private final Integer maxTokens;
 
+    @Deprecated(forRemoval = true, since = "1.5.0")
     public LocalAiStreamingLanguageModel(String baseUrl,
                                          String modelName,
                                          Double temperature,
@@ -49,6 +52,21 @@ public class LocalAiStreamingLanguageModel implements StreamingLanguageModel {
         this.temperature = temperature;
         this.topP = topP;
         this.maxTokens = maxTokens;
+    }
+
+    public LocalAiStreamingLanguageModel(LocalAiStreamingLanguageModelBuilder builder) {
+        this.client = OpenAiClient.builder()
+                .baseUrl(ensureNotBlank(builder.baseUrl, "baseUrl"))
+                .connectTimeout(getOrDefault(builder.timeout, ofSeconds(60)))
+                .readTimeout(getOrDefault(builder.timeout, ofSeconds(60)))
+                .logRequests(builder.logRequests)
+                .logResponses(builder.logResponses)
+                .logger(builder.logger)
+                .build();
+        this.modelName = ensureNotBlank(builder.modelName, "modelName");
+        this.temperature = getOrDefault(builder.temperature, 0.7);
+        this.topP = builder.topP;
+        this.maxTokens = builder.maxTokens;
     }
 
     @Override
@@ -100,6 +118,7 @@ public class LocalAiStreamingLanguageModel implements StreamingLanguageModel {
         private Duration timeout;
         private Boolean logRequests;
         private Boolean logResponses;
+        private Logger logger;
 
         public LocalAiStreamingLanguageModelBuilder() {
             // This is public so it can be extended
@@ -147,7 +166,7 @@ public class LocalAiStreamingLanguageModel implements StreamingLanguageModel {
         }
 
         public LocalAiStreamingLanguageModel build() {
-            return new LocalAiStreamingLanguageModel(this.baseUrl, this.modelName, this.temperature, this.topP, this.maxTokens, this.timeout, this.logRequests, this.logResponses);
+            return new LocalAiStreamingLanguageModel(this);
         }
 
         public String toString() {

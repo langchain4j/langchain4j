@@ -1,57 +1,72 @@
 package dev.langchain4j.agentic.a2a;
 
-import dev.langchain4j.agentic.Agent;
-import dev.langchain4j.agentic.AgenticServices;
-import dev.langchain4j.agentic.UntypedAgent;
-import dev.langchain4j.agentic.scope.AgenticScope;
-import dev.langchain4j.agentic.scope.DefaultAgenticScope;
-import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
-import dev.langchain4j.agentic.internal.AgentInvocation;
-import dev.langchain4j.agentic.supervisor.SupervisorAgent;
-import dev.langchain4j.service.V;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
-import java.util.List;
-
-import dev.langchain4j.agentic.a2a.Agents.StyleEditor;
-import dev.langchain4j.agentic.a2a.Agents.StyleScorer;
-import dev.langchain4j.agentic.a2a.Agents.StyleReviewLoop;
-import dev.langchain4j.agentic.a2a.Agents.StyledWriter;
-
 import static dev.langchain4j.agentic.a2a.Models.baseModel;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.AgenticServices;
+import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.a2a.Agents.CreativeWriter;
+import dev.langchain4j.agentic.a2a.Agents.StoryCreatorWithReview;
+import dev.langchain4j.agentic.a2a.Agents.StyleEditor;
+import dev.langchain4j.agentic.a2a.Agents.StyleReviewLoop;
+import dev.langchain4j.agentic.a2a.Agents.StyleScorer;
+import dev.langchain4j.agentic.a2a.Agents.StyledWriter;
+import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.observability.AgentRequest;
+import dev.langchain4j.agentic.scope.AgentInvocation;
+import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.scope.DefaultAgenticScope;
+import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
+import dev.langchain4j.agentic.supervisor.SupervisorAgent;
+import dev.langchain4j.service.V;
+import java.util.List;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+
 public class A2AAgentIT {
 
-    private static final String A2A_SERVER_URL = "http://localhost:8080";
+    static final String A2A_SERVER_URL = "http://localhost:8080";
 
     @Test
     @Disabled("Requires A2A server to be running")
     void a2a_agent_loop_tests() {
+        class WriterListener implements AgentListener {
+            Object requestedTopic;
+
+            @Override
+            public void beforeAgentInvocation(final AgentRequest request) {
+                requestedTopic = request.inputs().get("topic");
+            }
+        }
+
+        WriterListener writerListener = new WriterListener();
+
         UntypedAgent creativeWriter = AgenticServices.a2aBuilder(A2A_SERVER_URL)
-                .inputNames("topic")
-                .outputName("story")
+                .listener(writerListener)
+                .inputKeys("topic")
+                .outputKey("story")
                 .build();
 
         StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
                 .chatModel(baseModel())
-                .outputName("story")
+                .outputKey("story")
                 .build();
 
         StyleScorer styleScorer = AgenticServices.agentBuilder(StyleScorer.class)
                 .chatModel(baseModel())
-                .outputName("score")
+                .outputKey("score")
                 .build();
 
         UntypedAgent styleReviewLoop = AgenticServices.loopBuilder()
                 .subAgents(styleScorer, styleEditor)
                 .maxIterations(5)
-                .exitCondition( agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
+                .exitCondition(agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
                 .build();
 
         StyledWriter styledWriter = AgenticServices.sequenceBuilder(StyledWriter.class)
                 .subAgents(creativeWriter, styleReviewLoop)
-                .outputName("story")
+                .outputKey("story")
                 .build();
 
         ResultWithAgenticScope<String> result = styledWriter.writeStoryWithStyle("dragons and wizards", "comedy");
@@ -61,6 +76,8 @@ public class A2AAgentIT {
         AgenticScope agenticScope = result.agenticScope();
         assertThat(story).isEqualTo(agenticScope.readState("story"));
         assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
+
+        assertThat(writerListener.requestedTopic).isEqualTo("dragons and wizards");
     }
 
     public interface A2ACreativeWriter {
@@ -73,22 +90,22 @@ public class A2AAgentIT {
     @Disabled("Requires A2A server to be running")
     void a2a_agent_supervisor_tests() {
         A2ACreativeWriter creativeWriter = AgenticServices.a2aBuilder(A2A_SERVER_URL, A2ACreativeWriter.class)
-                .outputName("story")
+                .outputKey("story")
                 .build();
 
         StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
-                .chatModel(Models.baseModel())
-                .outputName("story")
+                .chatModel(baseModel())
+                .outputKey("story")
                 .build();
 
         StyleScorer styleScorer = AgenticServices.agentBuilder(StyleScorer.class)
-                .chatModel(Models.baseModel())
-                .outputName("score")
+                .chatModel(baseModel())
+                .outputKey("score")
                 .build();
 
         Agents.StyleReviewLoop styleReviewLoop = AgenticServices.loopBuilder(StyleReviewLoop.class)
                 .subAgents(styleScorer, styleEditor)
-                .outputName("story")
+                .outputKey("story")
                 .maxIterations(5)
                 .exitCondition(agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
                 .build();
@@ -97,10 +114,11 @@ public class A2AAgentIT {
                 .chatModel(Models.plannerModel())
                 .subAgents(creativeWriter, styleReviewLoop)
                 .maxAgentsInvocations(5)
-                .outputName("story")
+                .outputKey("story")
                 .build();
 
-        ResultWithAgenticScope<String> result = styledWriter.invokeWithAgenticScope("Write a story about dragons and wizards in the style of a comedy");
+        ResultWithAgenticScope<String> result =
+                styledWriter.invokeWithAgenticScope("Write a story about dragons and wizards in the style of a comedy");
         String story = result.result();
         System.out.println(story);
 
@@ -115,6 +133,67 @@ public class A2AAgentIT {
         List<AgentInvocation> scoreAgentCalls = agenticScope.agentInvocations("scoreStyle");
         assertThat(scoreAgentCalls).hasSizeBetween(1, 5);
         System.out.println("Score agent invocations: " + scoreAgentCalls);
-        assertThat((Double) scoreAgentCalls.get(scoreAgentCalls.size() - 1).output()).isGreaterThanOrEqualTo(0.8);
+        assertThat((Double) scoreAgentCalls.get(scoreAgentCalls.size() - 1).output())
+                .isGreaterThanOrEqualTo(0.8);
+    }
+
+    @Test
+    @Disabled("Requires A2A server to be running")
+    void declarative_sequence_and_loop_tests() {
+        StoryCreatorWithReview storyCreator =
+                AgenticServices.createAgenticSystem(StoryCreatorWithReview.class, baseModel());
+
+        ResultWithAgenticScope<String> result = storyCreator.write("dragons and wizards", "comedy");
+        String story = result.result();
+        assertThat(story).isNotBlank();
+
+        AgenticScope agenticScope = result.agenticScope();
+        assertThat(agenticScope.readState("topic")).isEqualTo("dragons and wizards");
+        assertThat(agenticScope.readState("style")).isEqualTo("comedy");
+        assertThat(story).isEqualTo(agenticScope.readState("story"));
+        assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
+    }
+
+    public interface A2AStyleScorer {
+
+        @Agent
+        double scoreStyle(@V("story") String story, @V("style") String style);
+    }
+
+    @Test
+    @Disabled("Requires A2A server to be running")
+    void a2a_structured_output_tests() {
+        CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build();
+
+        StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build();
+
+        A2AStyleScorer styleScorer = AgenticServices.a2aBuilder(A2A_SERVER_URL, A2AStyleScorer.class)
+                .outputKey("score")
+                .build();
+
+        UntypedAgent styleReviewLoop = AgenticServices.loopBuilder()
+                .subAgents(styleScorer, styleEditor)
+                .maxIterations(5)
+                .exitCondition(agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
+                .build();
+
+        StyledWriter styledWriter = AgenticServices.sequenceBuilder(StyledWriter.class)
+                .subAgents(creativeWriter, styleReviewLoop)
+                .outputKey("story")
+                .build();
+
+        ResultWithAgenticScope<String> result = styledWriter.writeStoryWithStyle("dragons and wizards", "comedy");
+        String story = result.result();
+        System.out.println(story);
+
+        AgenticScope agenticScope = result.agenticScope();
+        assertThat(story).isEqualTo(agenticScope.readState("story"));
+        assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
     }
 }

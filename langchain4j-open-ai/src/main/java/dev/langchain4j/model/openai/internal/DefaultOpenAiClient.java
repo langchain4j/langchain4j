@@ -1,10 +1,18 @@
 package dev.langchain4j.model.openai.internal;
 
+import static dev.langchain4j.http.client.HttpMethod.POST;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static java.time.Duration.ofSeconds;
+
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.HttpClientBuilderLoader;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
+import dev.langchain4j.model.openai.internal.audio.transcription.AudioFile;
+import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionRequest;
+import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionResponse;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.completion.CompletionRequest;
@@ -15,20 +23,15 @@ import dev.langchain4j.model.openai.internal.image.GenerateImagesRequest;
 import dev.langchain4j.model.openai.internal.image.GenerateImagesResponse;
 import dev.langchain4j.model.openai.internal.moderation.ModerationRequest;
 import dev.langchain4j.model.openai.internal.moderation.ModerationResponse;
-
 import java.util.HashMap;
 import java.util.Map;
-
-import static dev.langchain4j.http.client.HttpMethod.POST;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static java.time.Duration.ofSeconds;
 
 public class DefaultOpenAiClient extends OpenAiClient {
 
     private final HttpClient httpClient;
     private final String baseUrl;
     private final Map<String, String> defaultHeaders;
+    private final Map<String, String> customQueryParams;
 
     public DefaultOpenAiClient(Builder builder) {
 
@@ -36,12 +39,15 @@ public class DefaultOpenAiClient extends OpenAiClient {
                 getOrDefault(builder.httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder);
 
         HttpClient httpClient = httpClientBuilder
-                .connectTimeout(getOrDefault(getOrDefault(builder.connectTimeout, httpClientBuilder.connectTimeout()), ofSeconds(15)))
-                .readTimeout(getOrDefault(getOrDefault(builder.readTimeout, httpClientBuilder.readTimeout()), ofSeconds(60)))
+                .connectTimeout(getOrDefault(
+                        getOrDefault(builder.connectTimeout, httpClientBuilder.connectTimeout()), ofSeconds(15)))
+                .readTimeout(
+                        getOrDefault(getOrDefault(builder.readTimeout, httpClientBuilder.readTimeout()), ofSeconds(60)))
                 .build();
 
         if (builder.logRequests || builder.logResponses) {
-            this.httpClient = new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses, builder.logger);
+            this.httpClient =
+                    new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses, builder.logger);
         } else {
             this.httpClient = httpClient;
         }
@@ -65,6 +71,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
             defaultHeaders.putAll(builder.customHeaders);
         }
         this.defaultHeaders = defaultHeaders;
+        this.customQueryParams = builder.customQueryParams;
     }
 
     public static Builder builder() {
@@ -84,17 +91,21 @@ public class DefaultOpenAiClient extends OpenAiClient {
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl, "completions")
+                .addQueryParams(customQueryParams)
                 .addHeader("Content-Type", "application/json")
                 .addHeaders(defaultHeaders)
-                .body(Json.toJson(CompletionRequest.builder().from(request).stream(false).build()))
+                .body(Json.toJson(
+                        CompletionRequest.builder().from(request).stream(false).build()))
                 .build();
 
         HttpRequest streamingHttpRequest = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl, "completions")
+                .addQueryParams(customQueryParams)
                 .addHeader("Content-Type", "application/json")
                 .addHeaders(defaultHeaders)
-                .body(Json.toJson(CompletionRequest.builder().from(request).stream(true).build()))
+                .body(Json.toJson(
+                        CompletionRequest.builder().from(request).stream(true).build()))
                 .build();
 
         return new RequestExecutor<>(httpClient, httpRequest, streamingHttpRequest, CompletionResponse.class);
@@ -106,17 +117,21 @@ public class DefaultOpenAiClient extends OpenAiClient {
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl, "chat/completions")
+                .addQueryParams(customQueryParams)
                 .addHeader("Content-Type", "application/json")
                 .addHeaders(defaultHeaders)
-                .body(Json.toJson(ChatCompletionRequest.builder().from(request).stream(false).build()))
+                .body(Json.toJson(ChatCompletionRequest.builder().from(request).stream(false)
+                        .build()))
                 .build();
 
         HttpRequest streamingHttpRequest = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl, "chat/completions")
+                .addQueryParams(customQueryParams)
                 .addHeader("Content-Type", "application/json")
                 .addHeaders(defaultHeaders)
-                .body(Json.toJson(ChatCompletionRequest.builder().from(request).stream(true).build()))
+                .body(Json.toJson(ChatCompletionRequest.builder().from(request).stream(true)
+                        .build()))
                 .build();
 
         return new RequestExecutor<>(httpClient, httpRequest, streamingHttpRequest, ChatCompletionResponse.class);
@@ -128,6 +143,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl, "embeddings")
+                .addQueryParams(customQueryParams)
                 .addHeader("Content-Type", "application/json")
                 .addHeaders(defaultHeaders)
                 .body(Json.toJson(request))
@@ -142,6 +158,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl, "moderations")
+                .addQueryParams(customQueryParams)
                 .addHeader("Content-Type", "application/json")
                 .addHeaders(defaultHeaders)
                 .body(Json.toJson(request))
@@ -155,11 +172,40 @@ public class DefaultOpenAiClient extends OpenAiClient {
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl, "images/generations")
+                .addQueryParams(customQueryParams)
                 .addHeader("Content-Type", "application/json")
                 .addHeaders(defaultHeaders)
                 .body(Json.toJson(request))
                 .build();
 
         return new RequestExecutor<>(httpClient, httpRequest, GenerateImagesResponse.class);
+    }
+
+    @Override
+    public SyncOrAsync<OpenAiAudioTranscriptionResponse> audioTranscription(OpenAiAudioTranscriptionRequest request) {
+        HttpRequest.Builder httpRequestBuilder = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl, "audio/transcriptions")
+                .addHeader("Content-Type", "multipart/form-data; boundary=----LangChain4j")
+                .addHeaders(defaultHeaders);
+
+        httpRequestBuilder.addFormDataField("model", request.model());
+
+        AudioFile file = request.file();
+        httpRequestBuilder.addFormDataFile("file", file.fileName(), file.mimeType(), file.content());
+
+        if (request.language() != null) {
+            httpRequestBuilder.addFormDataField("language", request.language());
+        }
+
+        if (request.prompt() != null) {
+            httpRequestBuilder.addFormDataField("prompt", request.prompt());
+        }
+
+        if (request.temperature() != null) {
+            httpRequestBuilder.addFormDataField("temperature", Double.toString(request.temperature()));
+        }
+
+        return new RequestExecutor<>(httpClient, httpRequestBuilder.build(), OpenAiAudioTranscriptionResponse.class);
     }
 }

@@ -4,7 +4,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-aggregator</artifactId>
-    <version>1.5.0-beta11-SNAPSHOT</version>
+    <version>1.10.0-beta18-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>LangChain4j :: Aggregator</name>
 
@@ -20,6 +20,7 @@
 
         <module>langchain4j-easy-rag</module>
         <module>langchain4j-mcp</module>
+        <module>langchain4j-mcp-docker</module>
 
         <!-- http clients -->
         <module>langchain4j-http-client</module>
@@ -45,11 +46,25 @@
         <module>langchain4j-google-ai-gemini</module>
         <module>langchain4j-vertex-ai</module>
         <module>langchain4j-vertex-ai-gemini</module>
+        <module>langchain4j-vertex-ai-anthropic</module>
         <module>langchain4j-workers-ai</module>
         <module>langchain4j-voyage-ai</module>
         <module>langchain4j-watsonx</module>
 
-        <!-- embedding stores -->
+        <!-- in-process embeddings -->
+        <module>embeddings/langchain4j-embeddings</module>
+        <module>embeddings/langchain4j-embeddings-all-minilm-l6-v2</module>
+        <module>embeddings/langchain4j-embeddings-all-minilm-l6-v2-q</module>
+        <module>embeddings/langchain4j-embeddings-bge-small-en</module>
+        <module>embeddings/langchain4j-embeddings-bge-small-en-q</module>
+        <module>embeddings/langchain4j-embeddings-bge-small-en-v15</module>
+        <module>embeddings/langchain4j-embeddings-bge-small-en-v15-q</module>
+        <module>embeddings/langchain4j-embeddings-bge-small-zh-v15</module>
+        <module>embeddings/langchain4j-embeddings-bge-small-zh-v15-q</module>
+        <module>embeddings/langchain4j-embeddings-e5-small-v2</module>
+        <module>embeddings/langchain4j-embeddings-e5-small-v2-q</module>
+
+        <!-- embedding / chat memory stores -->
         <module>langchain4j-azure-ai-search</module>
         <module>langchain4j-azure-cosmos-mongo-vcore</module>
         <module>langchain4j-azure-cosmos-nosql</module>
@@ -84,6 +99,8 @@
         <module>document-parsers/langchain4j-document-parser-apache-pdfbox</module>
         <module>document-parsers/langchain4j-document-parser-apache-poi</module>
         <module>document-parsers/langchain4j-document-parser-apache-tika</module>
+        <module>document-parsers/langchain4j-document-parser-markdown</module>
+        <module>document-parsers/langchain4j-document-parser-yaml</module>
 
         <!-- document transformers -->
         <module>document-transformers/langchain4j-document-transformer-jsoup</module>
@@ -91,6 +108,7 @@
         <!-- code execution engines -->
         <module>code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot</module>
         <module>code-execution-engines/langchain4j-code-execution-engine-judge0</module>
+        <module>code-execution-engines/langchain4j-code-execution-engine-azure-acads</module>
 
         <!-- web search engines -->
         <module>web-search-engines/langchain4j-web-search-engine-google-custom</module>
@@ -100,17 +118,25 @@
         <!-- embedding store filter parsers -->
         <module>embedding-store-filter-parsers/langchain4j-embedding-store-filter-parser-sql</module>
 
+        <!-- guardrails -->
+        <module>langchain4j-guardrails</module>
+
         <!-- experimental -->
         <module>experimental/langchain4j-experimental-sql</module>
         <module>langchain4j-agentic</module>
         <module>langchain4j-agentic-a2a</module>
+        <module>langchain4j-agentic-patterns</module>
 
         <!-- integration tests -->
         <module>integration-tests</module>
 
+        <!-- internal -->
+        <module>internal/langchain4j-docu-chatbot-updater</module>
     </modules>
 
     <properties>
+        <langchain4j.stable.version>1.10.0-SNAPSHOT</langchain4j.stable.version>
+        <langchain4j.beta.version>1.10.0-beta18-SNAPSHOT</langchain4j.beta.version>
         <gib.disable>true</gib.disable>
     </properties>
 
@@ -207,6 +233,7 @@
             </activation>
             <modules>
                 <module>langchain4j-jlama</module>
+                <module>langchain4j-gpu-llama3</module>
             </modules>
         </profile>
 

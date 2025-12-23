@@ -23,13 +23,9 @@ import dev.langchain4j.store.embedding.azure.cosmos.nosql.AzureCosmosDBSearchQue
 import dev.langchain4j.store.embedding.filter.Filter;
 import java.util.List;
 import java.util.Map;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class AzureCosmosDBNoSqlContentRetriever extends AbstractAzureCosmosDBNoSqlEmbeddingStore
         implements ContentRetriever {
-
-    private static final Logger logger = LoggerFactory.getLogger(AzureCosmosDBNoSqlContentRetriever.class);
 
     private final EmbeddingModel embeddingModel;
     private final AzureCosmosDBSearchQueryType azureCosmosDBSearchQueryType;
@@ -37,6 +33,51 @@ public class AzureCosmosDBNoSqlContentRetriever extends AbstractAzureCosmosDBNoS
     private final double minScore;
     private final Filter filter;
 
+    public AzureCosmosDBNoSqlContentRetriever(Builder builder) {
+        ensureNotNull(builder.endpoint, "endpoint");
+        ensureTrue(
+                (builder.keyCredential != null && builder.tokenCredential == null)
+                        || (builder.keyCredential == null && builder.tokenCredential != null),
+                "either keyCredential or tokenCredential must be set");
+
+        if (builder.keyCredential != null) {
+            this.initialize(
+                    builder.endpoint,
+                    builder.keyCredential,
+                    null,
+                    builder.databaseName,
+                    builder.containerName,
+                    builder.partitionKeyPath,
+                    builder.indexingPolicy,
+                    builder.cosmosVectorEmbeddingPolicy,
+                    builder.cosmosFullTextPolicy,
+                    builder.vectorStoreThroughput,
+                    builder.azureCosmosDBSearchQueryType,
+                    null);
+        } else {
+            this.initialize(
+                    builder.endpoint,
+                    null,
+                    builder.tokenCredential,
+                    builder.databaseName,
+                    builder.containerName,
+                    builder.partitionKeyPath,
+                    builder.indexingPolicy,
+                    builder.cosmosVectorEmbeddingPolicy,
+                    builder.cosmosFullTextPolicy,
+                    builder.vectorStoreThroughput,
+                    builder.azureCosmosDBSearchQueryType,
+                    null);
+        }
+
+        this.embeddingModel = builder.embeddingModel;
+        this.azureCosmosDBSearchQueryType = builder.azureCosmosDBSearchQueryType;
+        this.maxResults = builder.maxResults;
+        this.minScore = builder.minScore;
+        this.filter = builder.filter;
+    }
+
+    @Deprecated(forRemoval = true)
     public AzureCosmosDBNoSqlContentRetriever(
             String endpoint,
             AzureKeyCredential keyCredential,
@@ -161,5 +202,106 @@ public class AzureCosmosDBNoSqlContentRetriever extends AbstractAzureCosmosDBNoS
                                 ContentMetadata.SCORE, embeddingMatch.score(),
                                 ContentMetadata.EMBEDDING_ID, embeddingMatch.embedding())))
                 .toList();
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+        private String endpoint;
+        private AzureKeyCredential keyCredential;
+        private TokenCredential tokenCredential;
+        private EmbeddingModel embeddingModel;
+        private String databaseName;
+        private String containerName;
+        private String partitionKeyPath;
+        private IndexingPolicy indexingPolicy;
+        private CosmosVectorEmbeddingPolicy cosmosVectorEmbeddingPolicy;
+        private CosmosFullTextPolicy cosmosFullTextPolicy;
+        private Integer vectorStoreThroughput;
+        private AzureCosmosDBSearchQueryType azureCosmosDBSearchQueryType;
+        private Integer maxResults;
+        private Double minScore;
+        private Filter filter;
+
+        public Builder endpoint(String endpoint) {
+            this.endpoint = endpoint;
+            return this;
+        }
+
+        public Builder apiKey(String apiKey) {
+            this.keyCredential = new AzureKeyCredential(apiKey);
+            return this;
+        }
+
+        public Builder tokenCredential(TokenCredential tokenCredential) {
+            this.tokenCredential = tokenCredential;
+            return this;
+        }
+
+        public Builder embeddingModel(EmbeddingModel embeddingModel) {
+            this.embeddingModel = embeddingModel;
+            return this;
+        }
+
+        public Builder databaseName(String databaseName) {
+            this.databaseName = databaseName;
+            return this;
+        }
+
+        public Builder containerName(String containerName) {
+            this.containerName = containerName;
+            return this;
+        }
+
+        public Builder partitionKeyPath(String partitionKeyPath) {
+            this.partitionKeyPath = partitionKeyPath;
+            return this;
+        }
+
+        public Builder indexingPolicy(IndexingPolicy indexingPolicy) {
+            this.indexingPolicy = indexingPolicy;
+            return this;
+        }
+
+        public Builder cosmosVectorEmbeddingPolicy(CosmosVectorEmbeddingPolicy cosmosVectorEmbeddingPolicy) {
+            this.cosmosVectorEmbeddingPolicy = cosmosVectorEmbeddingPolicy;
+            return this;
+        }
+
+        public Builder cosmosFullTextPolicy(CosmosFullTextPolicy cosmosFullTextPolicy) {
+            this.cosmosFullTextPolicy = cosmosFullTextPolicy;
+            return this;
+        }
+
+        public Builder vectorStoreThroughput(Integer vectorStoreThroughput) {
+            this.vectorStoreThroughput = vectorStoreThroughput;
+            return this;
+        }
+
+        public Builder searchQueryType(AzureCosmosDBSearchQueryType azureCosmosDBSearchQueryType) {
+            this.azureCosmosDBSearchQueryType = azureCosmosDBSearchQueryType;
+            return this;
+        }
+
+        public Builder maxResults(Integer maxResults) {
+            this.maxResults = maxResults;
+            return this;
+        }
+
+        public Builder minScore(Double minScore) {
+            this.minScore = minScore;
+            return this;
+        }
+
+        public Builder filter(Filter filter) {
+            this.filter = filter;
+            return this;
+        }
+
+        public AzureCosmosDBNoSqlContentRetriever build() {
+            return new AzureCosmosDBNoSqlContentRetriever(this);
+        }
     }
 }

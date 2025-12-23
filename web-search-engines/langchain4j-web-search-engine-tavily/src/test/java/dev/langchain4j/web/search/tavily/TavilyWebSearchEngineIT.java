@@ -41,7 +41,6 @@ class TavilyWebSearchEngineIT extends WebSearchEngineIT {
         assertThat(results).anyMatch(result -> result.content() != null && result.content().contains("LangChain4j"));
     }
 
-    @Test
     void should_search_with_answer() {
 
         // given

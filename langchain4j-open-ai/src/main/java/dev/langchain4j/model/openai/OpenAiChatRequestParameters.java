@@ -1,18 +1,18 @@
 package dev.langchain4j.model.openai;
 
-import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
-
-import java.util.Map;
-import java.util.Objects;
-
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.quoted;
 
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
+import java.util.Map;
+import java.util.Objects;
+
 public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
 
-    public static final OpenAiChatRequestParameters EMPTY = OpenAiChatRequestParameters.builder().build();
+    public static final OpenAiChatRequestParameters EMPTY =
+            OpenAiChatRequestParameters.builder().build();
 
     private final Integer maxCompletionTokens;
     private final Map<String, Integer> logitBias;
@@ -88,6 +88,14 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
     }
 
     @Override
+    public OpenAiChatRequestParameters defaultedBy(ChatRequestParameters that) {
+        return OpenAiChatRequestParameters.builder()
+                .overrideWith(that)
+                .overrideWith(this)
+                .build();
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
@@ -118,35 +126,33 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
                 metadata,
                 serviceTier,
                 reasoningEffort,
-                customParameters
-        );
+                customParameters);
     }
 
     @Override
     public String toString() {
-        return "OpenAiChatRequestParameters{" +
-                "modelName=" + quoted(modelName()) +
-                ", temperature=" + temperature() +
-                ", topP=" + topP() +
-                ", topK=" + topK() +
-                ", frequencyPenalty=" + frequencyPenalty() +
-                ", presencePenalty=" + presencePenalty() +
-                ", maxOutputTokens=" + maxOutputTokens() +
-                ", stopSequences=" + stopSequences() +
-                ", toolSpecifications=" + toolSpecifications() +
-                ", toolChoice=" + toolChoice() +
-                ", responseFormat=" + responseFormat() +
-                ", maxCompletionTokens=" + maxCompletionTokens +
-                ", logitBias=" + logitBias +
-                ", parallelToolCalls=" + parallelToolCalls +
-                ", seed=" + seed +
-                ", user=" + quoted(user) +
-                ", store=" + store +
-                ", metadata=" + metadata +
-                ", serviceTier=" + quoted(serviceTier) +
-                ", reasoningEffort=" + quoted(reasoningEffort) +
-                ", customParameters=" + customParameters +
-                '}';
+        return "OpenAiChatRequestParameters{" + "modelName="
+                + quoted(modelName()) + ", temperature="
+                + temperature() + ", topP="
+                + topP() + ", topK="
+                + topK() + ", frequencyPenalty="
+                + frequencyPenalty() + ", presencePenalty="
+                + presencePenalty() + ", maxOutputTokens="
+                + maxOutputTokens() + ", stopSequences="
+                + stopSequences() + ", toolSpecifications="
+                + toolSpecifications() + ", toolChoice="
+                + toolChoice() + ", responseFormat="
+                + responseFormat() + ", maxCompletionTokens="
+                + maxCompletionTokens + ", logitBias="
+                + logitBias + ", parallelToolCalls="
+                + parallelToolCalls + ", seed="
+                + seed + ", user="
+                + quoted(user) + ", store="
+                + store + ", metadata="
+                + metadata + ", serviceTier="
+                + quoted(serviceTier) + ", reasoningEffort="
+                + quoted(reasoningEffort) + ", customParameters="
+                + customParameters + '}';
     }
 
     public static Builder builder() {
@@ -185,7 +191,7 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
         }
 
         public Builder modelName(OpenAiChatModelName modelName) {
-            return super.modelName(modelName.toString());
+            return super.modelName(modelName == null ? null : modelName.toString());
         }
 
         public Builder maxCompletionTokens(Integer maxCompletionTokens) {

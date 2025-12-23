@@ -11,24 +11,25 @@ import dev.langchain4j.service.tool.ToolExecution;
 public class TestTokenStreamHandler {
 
     Set<Thread> allThreads = ConcurrentHashMap.newKeySet();
+    Map<String, Set<Thread>> allThreadsByMethod = new ConcurrentHashMap<>();
 
     Map<String, Set<Thread>> beforeToolExecutionThreads = new ConcurrentHashMap<>();
     Map<String, Set<Thread>> onToolExecutedThreads = new ConcurrentHashMap<>();
 
     void onPartialResponse(String partialResponse) {
-        allThreads.add(Thread.currentThread());
+        addThread(Thread.currentThread(), "onPartialResponse");
     }
 
     void onPartialThinking(PartialThinking partialThinking) {
-        allThreads.add(Thread.currentThread());
+        addThread(Thread.currentThread(), "onPartialThinking");
     }
 
     void onIntermediateResponse(ChatResponse intermediateResponse) {
-        allThreads.add(Thread.currentThread());
+        addThread(Thread.currentThread(), "onIntermediateResponse");
     }
 
     void beforeToolExecution(BeforeToolExecution beforeToolExecution) {
-        allThreads.add(Thread.currentThread());
+        addThread(Thread.currentThread(), "beforeToolExecution");
 
         Set<Thread> threads = beforeToolExecutionThreads.computeIfAbsent(beforeToolExecution.request().name(),
                 ignored -> ConcurrentHashMap.newKeySet());
@@ -36,7 +37,7 @@ public class TestTokenStreamHandler {
     }
 
     void onToolExecuted(ToolExecution toolExecution) {
-        allThreads.add(Thread.currentThread());
+        addThread(Thread.currentThread(), "onToolExecuted");
 
         Set<Thread> threads = onToolExecutedThreads.computeIfAbsent(toolExecution.request().name(),
                 ignored -> ConcurrentHashMap.newKeySet());
@@ -44,10 +45,16 @@ public class TestTokenStreamHandler {
     }
 
     void onError(Throwable error) {
-        allThreads.add(Thread.currentThread());
+        addThread(Thread.currentThread(), "onError");
     }
 
     void onCompleteResponse(ChatResponse completeResponse) {
-        allThreads.add(Thread.currentThread());
+        addThread(Thread.currentThread(), "onCompleteResponse");
+    }
+
+    private void addThread(Thread thread, String methodName) {
+        allThreads.add(thread);
+        Set<Thread> threads = allThreadsByMethod.computeIfAbsent(methodName, ignored -> ConcurrentHashMap.newKeySet());
+        threads.add(thread);
     }
 }

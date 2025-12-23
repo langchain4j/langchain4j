@@ -6,13 +6,16 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.memory.chat.TokenWindowChatMemory;
 import dev.langchain4j.model.TokenCountEstimator;
+import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import java.util.Arrays;
+import dev.langchain4j.service.AiServices;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
-@EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = "\\w{32,36}")
+@EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 class GoogleAiGeminiTokenCountEstimatorIT {
     private static final String GOOGLE_AI_GEMINI_API_KEY = System.getenv("GOOGLE_AI_GEMINI_API_KEY");
 
@@ -22,7 +25,7 @@ class GoogleAiGeminiTokenCountEstimatorIT {
         TokenCountEstimator tokenCountEstimator = GoogleAiGeminiTokenCountEstimator.builder()
                 .logRequests(true)
                 .logResponses(true)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .build();
 
@@ -39,7 +42,7 @@ class GoogleAiGeminiTokenCountEstimatorIT {
         TokenCountEstimator tokenCountEstimator = GoogleAiGeminiTokenCountEstimator.builder()
                 .logRequests(true)
                 .logResponses(true)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .build();
 
@@ -56,7 +59,7 @@ class GoogleAiGeminiTokenCountEstimatorIT {
         TokenCountEstimator tokenCountEstimator = GoogleAiGeminiTokenCountEstimator.builder()
                 .logRequests(true)
                 .logResponses(true)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .build();
 
@@ -74,7 +77,7 @@ class GoogleAiGeminiTokenCountEstimatorIT {
         GoogleAiGeminiTokenCountEstimator tokenCountEstimator = GoogleAiGeminiTokenCountEstimator.builder()
                 .logRequests(true)
                 .logResponses(true)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .build();
 
@@ -99,7 +102,7 @@ class GoogleAiGeminiTokenCountEstimatorIT {
         GoogleAiGeminiTokenCountEstimator tokenCountEstimator = GoogleAiGeminiTokenCountEstimator.builder()
                 .logRequests(true)
                 .logResponses(true)
-                .modelName("gemini-1.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .build();
 
@@ -125,5 +128,38 @@ class GoogleAiGeminiTokenCountEstimatorIT {
 
         // then
         assertThat(count).isEqualTo(102);
+    }
+
+    @Test
+    void shouldReturnResponseWithSystemMessageRequest() {
+
+        // given
+        GoogleAiGeminiChatModel model = GoogleAiGeminiChatModel.builder()
+                .responseFormat(ResponseFormat.TEXT)
+                .logRequestsAndResponses(true)
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .modelName("gemini-2.5-flash-lite")
+                .build();
+
+        TokenCountEstimator estimator = GoogleAiGeminiTokenCountEstimator.builder()
+                .modelName("gemini-2.5-flash-lite")
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .build();
+
+        interface Assistant {
+            String chat(String userMessage);
+        }
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(model)
+                .systemMessageProvider(o -> "You are a useful assistant")
+                .chatMemoryProvider(memoryId -> TokenWindowChatMemory.withMaxTokens(3000, estimator))
+                .build();
+
+        // when
+        String response = assistant.chat("Hello!");
+
+        // then
+        assertThat(response).isNotEmpty();
     }
 }

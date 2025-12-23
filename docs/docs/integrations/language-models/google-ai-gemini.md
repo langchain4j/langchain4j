@@ -6,14 +6,39 @@ sidebar_position: 7
 
 https://ai.google.dev/gemini-api/docs
 
+## Table of Contents
+
+- [Maven Dependency](#maven-dependency)
+- [API Key](#api-key)
+- [Models Available](#models-available)
+- [GoogleAiGeminiChatModel](#googleaigeminichatmodel)
+    - [Configuring](#configuring)
+- [GoogleAiGeminiStreamingChatModel](#googleaigeministreamingchatmodel)
+- [Tools](#tools)
+- [Structured Outputs](#structured-outputs)
+- [Python Code Execution](#python-code-execution)
+- [Multimodality](#multimodality)
+- [Thinking](#thinking)
+    - [Gemini 3 Pro](#gemini-3-pro)
+- [Gemini Files API](#gemini-files-api)
+    - [Uploading Files](#uploading-files)
+    - [Managing Files](#managing-files)
+    - [File States](#file-states)
+- [Batch Processing](#batch-processing)
+    - [GoogleAiBatchChatModel](#googleaibatchchatmodel)
+    - [Creating Batch Jobs](#creating-batch-jobs)
+    - [Handling Batch Responses](#handling-batch-responses)
+    - [Polling for Results](#polling-for-results)
+    - [Managing Batch Jobs](#managing-batch-jobs)
+    - [File-Based Batch Processing](#file-based-batch-processing)
+
 ## Maven Dependency
 
 ```xml
-
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-google-ai-gemini</artifactId>
-    <version>1.4.0</version>
+    <version>1.9.1</version>
 </dependency>
 ```
 
@@ -25,10 +50,12 @@ Get an API key for free here: https://ai.google.dev/gemini-api/docs/api-key .
 
 Check the list of [available models](https://ai.google.dev/gemini-api/docs/models/gemini) in the documentation.
 
+* `gemini-3-pro-preview`
+* `gemini-2.5-pro`
+* `gemini-2.5-flash`
+* `gemini-2.5-flash-lite`
 * `gemini-2.0-flash`
-* `gemini-1.5-flash`
-* `gemini-1.5-pro`
-* `gemini-1.0-pro`
+* `gemini-2.0-flash-lite`
 
 ## GoogleAiGeminiChatModel
 
@@ -37,7 +64,7 @@ The usual `chat(...)` methods are available:
 ```java
 ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
-    .modelName("gemini-1.5-flash")
+    .modelName("gemini-2.5-flash")
     ...
     .build();
 
@@ -49,7 +76,7 @@ As well, as the `ChatResponse chat(ChatRequest req)` method:
 ```java
 ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
-    .modelName("gemini-1.5-flash")
+    .modelName("gemini-2.5-flash")
     .build();
 
 ChatResponse chatResponse = gemini.chat(ChatRequest.builder()
@@ -68,7 +95,7 @@ ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .defaultRequestParameters(...)
     .apiKey(System.getenv("GEMINI_AI_KEY"))
     .baseUrl(...)
-    .modelName("gemini-1.5-flash")
+    .modelName("gemini-2.5-flash")
     .maxRetries(...)
     .temperature(1.0)
     .topP(0.95)
@@ -99,11 +126,11 @@ ChatModel gemini = GoogleAiGeminiChatModel.builder()
 
 ## GoogleAiGeminiStreamingChatModel
 The `GoogleAiGeminiStreamingChatModel` allows streaming the text of a response token by token.
-The response must be handled by a `StreamingChatResponseHandler`. 
+The response must be handled by a `StreamingChatResponseHandler`.
 ```java
 StreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
         .apiKey(System.getenv("GEMINI_AI_KEY"))
-        .modelName("gemini-1.5-flash")
+        .modelName("gemini-2.5-flash")
         .build();
 
 CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
@@ -169,7 +196,7 @@ WeatherForecastService weatherForecastService =
 
 ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
-    .modelName("gemini-1.5-flash")
+    .modelName("gemini-2.5-flash")
     .temperature(0.0)
     .build();
 
@@ -217,7 +244,7 @@ interface WeatherForecastAssistant {
 
 ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
-    .modelName("gemini-1.5-flash")
+    .modelName("gemini-2.5-flash")
     .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA) // this is required to enable structured outputs feature
     .build();
 
@@ -250,7 +277,11 @@ WeatherForecast forecast = forecastAssistant.extract("""
 
 ### Response Format / Response Schema
 You can specify a `ResponseFormat` either when creating a `GoogleAiGeminiChatModel` or when calling it.
-Let's have a look at an example to define a JSON schema for a recipe when creating the `GoogleAiGeminiChatModel`:
+
+Especially, in cases of Json format, you can choose to define schema programmatically by creating the respective java objects or by providing raw json schema. 
+#### Response Schema
+Let's have a look at an example to define a JSON schema for a recipe when creating the `GoogleAiGeminiChatModel`.
+In this example we declare the json schema using `JsonObjectSchema` class.
 ```java
 ResponseFormat responseFormat = ResponseFormat.builder()
         .type(ResponseFormatType.JSON)
@@ -270,7 +301,7 @@ ResponseFormat responseFormat = ResponseFormat.builder()
 
 ChatModel gemini = GoogleAiGeminiChatModel.builder()
         .apiKey(System.getenv("GEMINI_AI_KEY"))
-        .modelName("gemini-1.5-flash")
+        .modelName("gemini-2.5-flash")
         .responseFormat(responseFormat)
         .build();
 
@@ -288,7 +319,7 @@ Let's have a look at an example to define a JSON schema for a recipe when callin
 ```java
 ChatModel gemini = GoogleAiGeminiChatModel.builder()
         .apiKey(System.getenv("GEMINI_AI_KEY"))
-        .modelName("gemini-1.5-flash")
+        .modelName("gemini-2.5-flash")
         .build();
 
 ResponseFormat responseFormat = ...;
@@ -303,6 +334,87 @@ ChatResponse chatResponse = gemini.chat(chatRequest);
 System.out.println(chatResponse.aiMessage().text());
 ```
 
+#### Raw Response Schema
+Another example shows how we can use the `responseJsonSchema` of the Gemini API to provide a raw JSON schema using `JsonRawSchema` class.  
+Please be cautious to use only the [supported types](https://ai.google.dev/gemini-api/docs/structured-output?example=recipe#json_schema_support) of the Gemini API.
+```
+String rawSchema = """
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "birthDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "preferredContactTime": {
+      "type": "string",
+      "format": "time"
+      },
+    "height": {
+      "type": "number",
+      "minimum": 1.83,
+      "maximum": 1.88
+    },
+    "role": {
+      "type": "string",
+      "enum": ["developer", "maintainer", "researcher"]
+    },
+    "isAvailable": { "type": "boolean" },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "maxItems": 5
+    },
+    "address": {
+      "type": "object",
+      "properties": {
+        "city": { "type": "string" },
+        "streetName": { "type": "string" },
+        "streetNumber": { "type": "string" }
+      },
+      "required": ["city", "streetName", "streetNumber"],
+      "additionalProperties": true
+    }
+  },
+  "required": ["name", "birthDate", "height", "role", "tags", "address"]
+}
+""";
+
+JsonRawSchema jsonRawSchema = JsonRawSchema.builder().schema(rawSchema).build();
+JsonSchema jsonSchema = JsonSchema.builder().rootElement(jsonRawSchema).build();
+        
+ResponseFormat responseFormat = ResponseFormat.builder()
+        .type(ResponseFormatType.JSON)
+        .jsonSchema(jsonSchema)
+        .build();
+
+GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
+        .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+        .modelName("gemini-2.5-flash-lite")
+        .logRequests(true)
+        .logResponses(true)
+        .responseFormat(responseFormat)
+        .build();
+        
+UserMessage userMessage = UserMessage.from(
+        """
+           Tell me about a detective named Sherlock Holmes,
+           who was born on November 28 1852 and sees the world over six feet from the ground.
+           He is a trouble-seeker, an active volunteer and lives in London at 221B Baker Street.
+           He plays the violin and he likes to conduct various physics and chemistry experiments.
+           He accepts clients or prefers to be contacted at 09:00am.
+           """);
+
+ChatResponse response = gemini.chat(ChatRequest.builder()
+        .messages(userMessage)
+        .build());
+```
 ### JSON Mode
 
 You can force Gemini to reply in JSON:
@@ -310,7 +422,7 @@ You can force Gemini to reply in JSON:
 ```java
 ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
-    .modelName("gemini-1.5-flash")
+    .modelName("gemini-2.5-flash")
     .responseFormat(ResponseFormat.JSON)
     .build();
 
@@ -333,7 +445,7 @@ This is particularly interesting for situations where more advanced calculations
 ```java
 ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
-    .modelName("gemini-1.5-flash")
+    .modelName("gemini-2.5-flash")
     .allowCodeExecution(true)
     .includeCodeExecutionOutput(true)
     .build();
@@ -401,7 +513,11 @@ Then I called `fibonacci(22) - ackermann(3, 4)` and printed the result.
 
 ## Multimodality
 
-Gemini is a multimodal model, which means it outputs text, but in input, it accepts other _modalities_ besides text, like:
+Gemini is a multimodal model, which means it can both accept and generate different _modalities_ besides text.
+
+### Input Modalities
+
+In input, Gemini accepts:
 * pictures (`ImageContent`)
 * videos (`VideoContent`)
 * audio files (`AudioContent`)
@@ -416,7 +532,7 @@ String base64Img = b64encoder.encodeToString(readBytes(
 
 ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
-    .modelName("gemini-1.5-flash")
+    .modelName("gemini-2.5-flash")
     .build();
 
 ChatResponse response = gemini.chat(
@@ -428,6 +544,40 @@ ChatResponse response = gemini.chat(
             """)
     )
 );
+```
+
+### Image Generation Output
+
+Some Gemini models (such as `gemini-2.5-flash-image-preview`) can generate images as part of their response. When images are generated, they are stored in the `AiMessage` attributes and can be accessed using the `GeneratedImageHelper` utility class.
+
+```java
+ChatModel gemini = GoogleAiGeminiChatModel.builder()
+    .apiKey("Your API Key")
+    .modelName("gemini-2.5-flash-image-preview")
+    .build();
+
+ChatResponse response = gemini.chat(UserMessage.from("A high-resolution, studio-lit product photograph of a minimalist ceramic coffee mug in matte black"));
+
+// Extract generated images from the response
+AiMessage aiMessage = response.aiMessage();
+List<Image> generatedImages = GeneratedImageHelper.getGeneratedImages(aiMessage);
+
+if (GeneratedImageHelper.hasGeneratedImages(aiMessage)) {
+    System.out.println("Generated " + generatedImages.size() + " image(s)");
+    System.out.println("Text response: " + aiMessage.text());
+
+    for (Image image : generatedImages) {
+        String base64Data = image.base64Data();
+        String mimeType = image.mimeType();
+        
+        // You can now save the image, display it, or process it further
+        // For example, save to file:
+        byte[] imageBytes = Base64.getDecoder().decode(base64Data);
+        Files.write(Paths.get("generated_image.png"), imageBytes);
+    }
+} else {
+    System.out.println("Text response: " + aiMessage.text());
+}
 ```
 
 ## Thinking
@@ -442,7 +592,7 @@ The following parameters also control thinking behaviour:
   callbacks when using `GoogleAiGeminiStreamingChatModel`.
   Disabled by default. If enabled, tinking signatures will also be stored and returned inside the `AiMessage.attributes()`.
 - `sendThinking`: controls whether to send thinking and signatures stored in `AiMessage` to the LLM in follow-up requests.
-Disabled by default.
+- Disabled by default.
 
 :::note
 Please note that when `returnThinking` is not set (is `null`) and `thinkingConfig` is set,
@@ -467,7 +617,430 @@ ChatModel model = GoogleAiGeminiChatModel.builder()
         .build();
 ```
 
+### Gemini 3 Pro
+
+With Gemini 3 Pro, the thinking configuration introduces a _thinking level_, either `"low"` or `"high"` (high being the default).
+It's possible to set the level within the thinking configuration:
+```java
+GoogleAiGeminiChatModel modelHigh = GoogleAiGeminiChatModel.builder()
+        .modelName("gemini-3-pro-preview")
+        .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+        .thinkingConfig(GeminiThinkingConfig.builder()
+                .thinkingLevel(LOW) // or HIGH
+                .build())
+        .sendThinking(true)
+        .returnThinking(true)
+        .build();
+```
+
+You can pass either a string `"high"` / `"low"` or a `GeminiThinkingConfig.GeminiThinkingLevel.HIGH`
+/ `GeminiThinkingConfig.GeminiThinkingLevel.LOW` enum value.
+
+When using Gemini 3 Pro, it's mandatory to configure `sendThinking()` and `returnThinking()` to `true`,
+to ensure [thought signatures](https://ai.google.dev/gemini-api/docs/thought-signatures) are properly passed around to the model.
+
+## Gemini Files API
+
+The Gemini Files API allows you to upload and manage media files for use with Gemini models. This is particularly useful when your total request size exceeds 20 MB, as files can be uploaded separately and referenced in your content generation requests.
+
+### Key Features
+
+- **Multimodal Support**: Upload images, audio, videos, and documents
+- **Storage**: Files are stored for 48 hours
+- **Capacity**: Up to 20 GB of files per project, with a maximum of 2 GB per individual file
+- **No Cost**: The Files API is available at no charge
+
+### Uploading Files
+
+You can upload files in two ways:
+
+**From a file path:**
+
+```java
+GeminiFiles filesApi = GeminiFiles.builder()
+    .apiKey(System.getenv("GEMINI_AI_KEY"))
+    .build();
+
+// Upload from a file path
+Path filePath = Paths.get("path/to/your/file.pdf");
+GeminiFile uploadedFile = filesApi.uploadFile(filePath, "My Document");
+
+System.out.println("File uploaded: " + uploadedFile.name());
+System.out.println("File URI: " + uploadedFile.uri());
+```
+
+**From a byte array:**
+
+```java
+byte[] fileBytes = Files.readAllBytes(Paths.get("path/to/file.jpg"));
+GeminiFile uploadedFile = filesApi.uploadFile(
+    fileBytes,
+    "image/jpeg",
+    "My Image"
+);
+```
+
+### Managing Files
+
+**List all uploaded files:**
+
+```java
+List<GeminiFile> files = filesApi.listFiles();
+for (GeminiFile file : files) {
+    System.out.println("File: " + file.displayName() + " (" + file.name() + ")");
+}
+```
+
+**Get file metadata:**
+
+```java
+GeminiFile file = filesApi.getMetadata("files/abc123");
+System.out.println("File size: " + file.sizeBytes() + " bytes");
+System.out.println("MIME type: " + file.mimeType());
+System.out.println("Created: " + file.createTime());
+System.out.println("Expires: " + file.expirationTime());
+```
+
+**Delete a file:**
+
+```java
+filesApi.deleteFile("files/abc123");
+System.out.println("File deleted successfully");
+```
+
+### File States
+
+Files can be in different states during their lifecycle:
+
+```java
+GeminiFile file = filesApi.getMetadata("files/abc123");
+
+if (file.isActive()) {
+    System.out.println("File is ready to use");
+} else if (file.isProcessing()) {
+    System.out.println("File is still being processed");
+} else if (file.isFailed()) {
+    System.out.println("File processing failed");
+}
+```
+
+## Batch Processing
+
+### GoogleAiBatchChatModel
+
+The `GoogleAiBatchChatModel` provides an interface for processing large volumes of chat requests asynchronously at a reduced cost [(50% of standard pricing)](https://ai.google.dev/gemini-api/docs/batch-api). It is ideal for non-urgent, large-scale tasks with a 24-hour turnaround SLO.
+
+### Creating Batch Jobs
+
+**Inline batch creation:**
+
+```java
+GoogleAiBatchChatModel batchModel = GoogleAiBatchChatModel.builder()
+    .apiKey(System.getenv("GEMINI_AI_KEY"))
+    .modelName("gemini-2.5-flash")
+    .build();
+
+// Create batch requests
+List<ChatRequest> requests = List.of(
+    ChatRequest.builder()
+        .messages(UserMessage.from("What is the capital of France?"))
+        .build(),
+    ChatRequest.builder()
+        .messages(UserMessage.from("What is the capital of Germany?"))
+        .build(),
+    ChatRequest.builder()
+        .messages(UserMessage.from("What is the capital of Italy?"))
+        .build()
+);
+
+// Submit the batch
+BatchResponse response = batchModel.createBatchInline(
+    "Geography Questions Batch",  // display name
+    0L,                            // priority (optional, defaults to 0)
+    requests
+);
+```
+
+**File-based batch creation:**
+
+For larger batches or when you need more control over the request format, you can create a batch from an uploaded file:
+
+```java
+// First, upload a file with batch requests
+GeminiFiles filesApi = GeminiFiles.builder()
+    .apiKey(System.getenv("GEMINI_AI_KEY"))
+    .build();
+
+GeminiFile uploadedFile = filesApi.uploadFile(
+    Paths.get("batch_chat_requests.jsonl"),
+    "Batch Chat Requests"
+);
+
+// Wait for file to be active
+while (uploadedFile.isProcessing()) {
+    Thread.sleep(1000);
+    uploadedFile = filesApi.getMetadata(uploadedFile.name());
+}
+
+// Create batch from file
+BatchResponse response = batchModel.createBatchFromFile(
+    "My Batch Job",
+    uploadedFile
+);
+```
+
+### Handling Batch Responses
+
+The `BatchResponse` is a sealed interface with three possible states:
+
+```java
+BatchResponse response = batchModel.createBatchInline("My Batch", null, requests);
+
+switch (response) {
+    case BatchIncomplete incomplete -> {
+        System.out.println("Batch is " + incomplete.state());
+        System.out.println("Batch name: " + incomplete.batchName().value());
+    }
+    case BatchSuccess success -> {
+        System.out.println("Batch completed successfully!");
+        for (ChatResponse chatResponse : success.responses()) {
+            System.out.println(chatResponse.aiMessage().text());
+        }
+    }
+    case BatchError error -> {
+        System.err.println("Batch failed: " + error.message());
+        System.err.println("Error code: " + error.code());
+        System.err.println("State: " + error.state());
+    }
+}
+```
+
+### Polling for Results
+
+Since batch processing is asynchronous, you need to poll for results (results might take up to 24 hours to process):
+
+```java
+BatchResponse initialResponse = batchModel.createBatchInline(
+    "My Batch",
+    null,
+    requests
+);
+
+// Extract the batch name for polling
+BatchName batchName = switch (initialResponse) {
+    case BatchIncomplete incomplete -> incomplete.batchName();
+    case BatchSuccess success -> success.batchName();
+    case BatchError error -> throw new RuntimeException("Batch creation failed");
+};
+
+// Poll until completion
+BatchResponse result;
+do {
+    Thread.sleep(5000); // Wait 5 seconds between polls
+    result = batchModel.retrieveBatchResults(batchName);
+} while (result instanceof BatchIncomplete);
+
+// Process final result
+if (result instanceof BatchSuccess success) {
+    for (ChatResponse chatResponse : success.responses()) {
+        System.out.println(chatResponse.aiMessage().text());
+    }
+} else if (result instanceof BatchError error) {
+    System.err.println("Batch failed: " + error.message());
+}
+```
+
+### Managing Batch Jobs
+
+**Cancel a batch job:**
+
+```java
+BatchName batchName = // ... obtained from createBatchInline
+
+try {
+    batchModel.cancelBatchJob(batchName);
+    System.out.println("Batch cancelled successfully");
+} catch (HttpException e) {
+    System.err.println("Failed to cancel batch: " + e.getMessage());
+}
+```
+
+**Delete a batch job:**
+
+```java
+batchModel.deleteBatchJob(batchName);
+System.out.println("Batch deleted successfully");
+```
+
+**List batch jobs:**
+
+```java
+// List first page of batch jobs
+BatchList<ChatResponse> batchList = batchModel.listBatchJobs(10, null);
+
+for (BatchResponse<ChatResponse> batch : batchList.batches()) {
+    System.out.println("Batch: " + batch);
+}
+
+// Get next page if available
+if (batchList.nextPageToken() != null) {
+    BatchList<ChatResponse> nextPage = batchModel.listBatchJobs(10, batchList.nextPageToken());
+}
+```
+
+### File-Based Batch Processing
+
+For advanced use cases, you can write batch requests to a JSONL file and upload it:
+
+```java
+// Create a JSONL file with batch requests
+Path batchFile = Files.createTempFile("batch", ".jsonl");
+
+try (JsonLinesWriter writer = new StreamingJsonLinesWriter(batchFile)) {
+    List<BatchFileRequest<ChatRequest>> fileRequests = List.of(
+        new BatchFileRequest<>("request-1", ChatRequest.builder()
+            .messages(UserMessage.from("Question 1"))
+            .build()),
+        new BatchFileRequest<>("request-2", ChatRequest.builder()
+            .messages(UserMessage.from("Question 2"))
+            .build())
+    );
+    
+    batchModel.writeBatchToFile(writer, fileRequests);
+}
+
+// Upload the file
+GeminiFiles filesApi = GeminiFiles.builder()
+    .apiKey(System.getenv("GEMINI_AI_KEY"))
+    .build();
+
+GeminiFile uploadedFile = filesApi.uploadFile(batchFile, "Batch Chat Requests");
+
+// Create batch from file
+BatchResponse response = batchModel.createBatchFromFile(
+    "File-Based Chat Batch",
+    uploadedFile
+);
+```
+
+### Batch Job States
+
+The `BatchJobState` enum represents the possible states of a batch job:
+
+- `BATCH_STATE_PENDING`: Batch is queued and waiting to be processed
+- `BATCH_STATE_RUNNING`: Batch is currently being processed
+- `BATCH_STATE_SUCCEEDED`: Batch completed successfully
+- `BATCH_STATE_FAILED`: Batch processing failed
+- `BATCH_STATE_CANCELLED`: Batch was cancelled by the user
+- `BATCH_STATE_EXPIRED`: Batch expired before completion
+- `UNSPECIFIED`: State is unknown or not provided
+
+### Setting Batch Priority
+
+Higher priority batches are processed before lower priority ones:
+
+```java
+// High priority batch
+BatchResponse highPriorityResponse = batchModel.createBatchInline(
+    "Urgent Batch",
+    100L,  // high priority
+    urgentRequests
+);
+
+// Low priority batch
+BatchResponse lowPriorityResponse = batchModel.createBatchInline(
+    "Background Batch",
+    -50L,  // low priority
+    backgroundRequests
+);
+```
+
+### Configuration
+
+The `GoogleAiBatchChatModel` supports the same configuration options as `GoogleAiGeminiChatModel`:
+
+```java
+GoogleAiBatchChatModel batchModel = GoogleAiBatchChatModel.builder()
+    .apiKey(System.getenv("GEMINI_AI_KEY"))
+    .modelName("gemini-2.5-flash")
+    .temperature(0.7)
+    .topP(0.95)
+    .topK(40)
+    .maxOutputTokens(2048)
+    .maxRetries(3)
+    .timeout(Duration.ofMinutes(5))
+    .logRequestsAndResponses(true)
+    .build();
+```
+
+### Important Constraints
+
+- **Model Consistency**: All requests in a batch must use the same model
+- **Size Limit**: The inline API supports a total request size of 20MB or under
+- **Cost**: Batch processing offers 50% cost reduction compared to real-time requests
+- **Turnaround**: 24-hour SLO, though completion is often much quicker
+- **Use Cases**: Best for large-scale, non-urgent tasks like data pre-processing or evaluations
+
+### Example: Complete Workflow
+
+```java
+GoogleAiBatchChatModel batchModel = GoogleAiBatchChatModel.builder()
+    .apiKey(System.getenv("GEMINI_AI_KEY"))
+    .modelName("gemini-2.5-flash")
+    .build();
+
+// Prepare batch requests
+List<ChatRequest> requests = new ArrayList<>();
+for (int i = 0; i < 50; i++) {
+    requests.add(ChatRequest.builder()
+        .messages(UserMessage.from("Generate a creative story idea #" + i))
+        .build());
+}
+
+// Submit batch
+BatchResponse response = batchModel.createBatchInline(
+    "Story Ideas Batch",
+    0L,
+    requests
+);
+
+// Get batch name
+BatchName batchName = switch (response) {
+    case BatchIncomplete incomplete -> incomplete.batchName();
+    case BatchSuccess success -> success.batchName();
+    case BatchError error -> throw new RuntimeException("Failed: " + error.message());
+};
+
+// Poll for completion
+BatchResponse finalResult;
+int attempts = 0;
+int maxAttempts = 720; // 1 hour with 5-second intervals
+
+do {
+    if (attempts++ >= maxAttempts) {
+        throw new RuntimeException("Batch processing timeout");
+    }
+    Thread.sleep(5000);
+    finalResult = batchModel.retrieveBatchResults(batchName);
+    
+    if (finalResult instanceof BatchIncomplete incomplete) {
+        System.out.println("Status: " + incomplete.state());
+    }
+} while (finalResult instanceof BatchIncomplete);
+
+// Process results
+if (finalResult instanceof BatchSuccess success) {
+    System.out.println("Generated " + success.responses().size() + " stories");
+    for (int i = 0; i < success.responses().size(); i++) {
+        ChatResponse chatResponse = success.responses().get(i);
+        System.out.println("Story #" + i + ": " + chatResponse.aiMessage().text());
+    }
+} else if (finalResult instanceof BatchError error) {
+    System.err.println("Batch failed: " + error.message());
+}
+``` 
+
 ## Learn more
 
-If you're interested in learning more about the Google AI Gemini model, please have a look at its 
+If you're interested in learning more about the Google AI Gemini model, please have a look at its
 [documentation](https://ai.google.dev/gemini-api/docs/models/gemini).

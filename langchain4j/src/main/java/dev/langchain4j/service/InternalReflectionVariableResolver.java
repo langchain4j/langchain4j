@@ -2,6 +2,7 @@ package dev.langchain4j.service;
 
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 
+import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.Internal;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.input.structured.StructuredPromptProcessor;
@@ -32,7 +33,11 @@ public class InternalReflectionVariableResolver {
 
         Map<String, Object> variables = new HashMap<>();
         for (int i = 0; i < args.length; i++) {
-            String variableName = getVariableName(parameters[i]);
+            Parameter parameter = parameters[i];
+            if (InvocationParameters.class.isAssignableFrom(parameter.getType())) {
+                continue;
+            }
+            String variableName = ParameterNameResolver.name(parameter);
             Object variableValue = args[i];
             variables.put(variableName, variableValue);
         }
@@ -43,15 +48,6 @@ public class InternalReflectionVariableResolver {
         }
 
         return variables;
-    }
-
-    private static String getVariableName(Parameter parameter) {
-        V annotation = parameter.getAnnotation(V.class);
-        if (annotation != null) {
-            return annotation.value();
-        } else {
-            return parameter.getName();
-        }
     }
 
     private static String getValueOfVariableIt(Parameter[] parameters, Object[] args) {

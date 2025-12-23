@@ -2,76 +2,27 @@ package dev.langchain4j.model.googleai;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import java.util.List;
+import java.util.Map;
 
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-class GeminiGenerationConfig {
-
-    @JsonProperty
-    private final List<String> stopSequences;
-
-    @JsonProperty
-    private final String responseMimeType;
-
-    @JsonProperty
-    private final GeminiSchema responseSchema;
-
-    @JsonProperty
-    private final Integer candidateCount;
-
-    @JsonProperty
-    private final Integer maxOutputTokens;
-
-    @JsonProperty
-    private final Double temperature;
-
-    @JsonProperty
-    private final Integer topK;
-
-    @JsonProperty
-    private Integer seed;
-
-    @JsonProperty
-    private final Double topP;
-
-    @JsonProperty
-    private final Double presencePenalty;
-
-    @JsonProperty
-    private final Double frequencyPenalty;
-
-    @JsonProperty
-    private final GeminiThinkingConfig thinkingConfig;
-
-    @JsonProperty
-    private final Boolean responseLogprobs;
-
-    @JsonProperty
-    private final Boolean enableEnhancedCivicAnswers;
-
-    @JsonProperty
-    private final Integer logprobs;
-
-    GeminiGenerationConfig(GeminiGenerationConfigBuilder builder) {
-        this.stopSequences = builder.stopSequences;
-        this.responseMimeType = builder.responseMimeType;
-        this.responseSchema = builder.responseSchema;
-        this.candidateCount = builder.candidateCount;
-        this.maxOutputTokens = builder.maxOutputTokens;
-        this.temperature = builder.temperature;
-        this.topK = builder.topK;
-        this.seed = builder.seed;
-        this.topP = builder.topP;
-        this.presencePenalty = builder.presencePenalty;
-        this.frequencyPenalty = builder.frequencyPenalty;
-        this.responseLogprobs = builder.responseLogprobs;
-        this.enableEnhancedCivicAnswers = builder.enableEnhancedCivicAnswers;
-        this.thinkingConfig = builder.thinkingConfig;
-        this.logprobs = builder.logprobs;
-    }
+record GeminiGenerationConfig(
+        @JsonProperty("stopSequences") List<String> stopSequences,
+        @JsonProperty("responseMimeType") String responseMimeType,
+        @JsonProperty("responseSchema") GeminiSchema responseSchema,
+        @JsonProperty("responseJsonSchema") Map<String, Object> responseJsonSchema,
+        @JsonProperty("candidateCount") Integer candidateCount,
+        @JsonProperty("maxOutputTokens") Integer maxOutputTokens,
+        @JsonProperty("temperature") Double temperature,
+        @JsonProperty("topK") Integer topK,
+        @JsonProperty("seed") Integer seed,
+        @JsonProperty("topP") Double topP,
+        @JsonProperty("presencePenalty") Double presencePenalty,
+        @JsonProperty("frequencyPenalty") Double frequencyPenalty,
+        @JsonProperty("thinkingConfig") GeminiThinkingConfig thinkingConfig,
+        @JsonProperty("responseLogprobs") Boolean responseLogprobs,
+        @JsonProperty("enableEnhancedCivicAnswers") Boolean enableEnhancedCivicAnswers,
+        @JsonProperty("logprobs") Integer logprobs) {
 
     static GeminiGenerationConfigBuilder builder() {
         return new GeminiGenerationConfigBuilder();
@@ -82,6 +33,7 @@ class GeminiGenerationConfig {
         private List<String> stopSequences;
         private String responseMimeType;
         private GeminiSchema responseSchema;
+        private Map<String, Object> responseJsonSchema;
         private Integer candidateCount;
         private Integer maxOutputTokens;
         private Double temperature;
@@ -109,6 +61,11 @@ class GeminiGenerationConfig {
 
         GeminiGenerationConfigBuilder responseSchema(GeminiSchema responseSchema) {
             this.responseSchema = responseSchema;
+            return this;
+        }
+
+        GeminiGenerationConfigBuilder responseJsonSchema(Map<String, Object> responseJsonSchema) {
+            this.responseJsonSchema = responseJsonSchema;
             return this;
         }
 
@@ -173,7 +130,23 @@ class GeminiGenerationConfig {
         }
 
         GeminiGenerationConfig build() {
-            return new GeminiGenerationConfig(this);
+            return new GeminiGenerationConfig(
+                    stopSequences,
+                    responseMimeType,
+                    responseSchema,
+                    responseJsonSchema,
+                    candidateCount,
+                    maxOutputTokens,
+                    temperature,
+                    topK,
+                    seed,
+                    topP,
+                    presencePenalty,
+                    frequencyPenalty,
+                    thinkingConfig,
+                    responseLogprobs,
+                    enableEnhancedCivicAnswers,
+                    logprobs);
         }
     }
 }

@@ -30,6 +30,7 @@ import dev.langchain4j.mcp.client.protocol.McpReadResourceRequest;
 import dev.langchain4j.mcp.client.protocol.McpRootsListChangedNotification;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
+import dev.langchain4j.service.tool.ToolExecutionResult;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -90,7 +91,7 @@ public class DefaultMcpClient implements McpClient {
             key = getOrDefault(builder.key, () -> UUID.randomUUID().toString());
             clientName = getOrDefault(builder.clientName, "langchain4j");
             clientVersion = getOrDefault(builder.clientVersion, "1.0");
-            protocolVersion = getOrDefault(builder.protocolVersion, "2024-11-05");
+            protocolVersion = getOrDefault(builder.protocolVersion, "2025-06-18");
             initializationTimeout = getOrDefault(builder.initializationTimeout, Duration.ofSeconds(30));
             toolExecutionTimeout = getOrDefault(builder.toolExecutionTimeout, Duration.ofSeconds(60));
             resourcesTimeout = getOrDefault(builder.resourcesTimeout, Duration.ofSeconds(60));
@@ -193,7 +194,7 @@ public class DefaultMcpClient implements McpClient {
             CompletableFuture<Void> updateInProgress = this.toolListUpdateInProgress.get();
             if (updateInProgress != null) {
                 // if an update is already in progress, wait for it to finish
-                toolListUpdateInProgress.get();
+                updateInProgress.join();
                 return toolListRefs.get();
             } else {
                 // if no update is in progress, start one
@@ -227,7 +228,7 @@ public class DefaultMcpClient implements McpClient {
     }
 
     @Override
-    public String executeTool(ToolExecutionRequest executionRequest) {
+    public ToolExecutionResult executeTool(ToolExecutionRequest executionRequest) {
         assertNotClosed();
         ObjectNode arguments = null;
         try {
@@ -426,6 +427,8 @@ public class DefaultMcpClient implements McpClient {
         if (initializationLock.tryLock()) {
             try {
                 initialize();
+            } catch (Exception e) {
+                log.warn("mcp server reconnection failed", e);
             } finally {
                 initializationLock.unlock();
             }
@@ -468,6 +471,10 @@ public class DefaultMcpClient implements McpClient {
         if (closed) {
             throw new IllegalStateException("The client is closed");
         }
+    }
+
+    public static Builder builder() {
+        return new Builder();
     }
 
     public static class Builder {

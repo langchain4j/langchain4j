@@ -1,11 +1,18 @@
 package dev.langchain4j.service.tool;
 
+import static dev.langchain4j.internal.Exceptions.unwrapRuntimeException;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.internal.Json;
-
+import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.invocation.InvocationParameters;
+import dev.langchain4j.invocation.LangChain4jManaged;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -16,11 +23,6 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
-
-import static dev.langchain4j.internal.Exceptions.unwrapRuntimeException;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
 
 public class DefaultToolExecutor implements ToolExecutor {
 
@@ -86,8 +88,9 @@ public class DefaultToolExecutor implements ToolExecutor {
         this.propagateToolExecutionExceptions = false;
     }
 
-    public String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
-        Object[] arguments = prepareArguments(toolExecutionRequest, memoryId);
+    @Override
+    public ToolExecutionResult executeWithContext(ToolExecutionRequest request, InvocationContext context) {
+        Object[] arguments = prepareArguments(request, context);
 
         try {
             return execute(arguments);
@@ -101,22 +104,38 @@ public class DefaultToolExecutor implements ToolExecutor {
                 if (propagateToolExecutionExceptions) {
                     throw new ToolExecutionException(e2.getCause());
                 } else {
-                    return e2.getCause().getMessage();
+                    return ToolExecutionResult.builder()
+                            .isError(true)
+                            .resultText(e2.getCause().getMessage())
+                            .build();
                 }
             }
         } catch (InvocationTargetException e) {
             if (propagateToolExecutionExceptions) {
                 throw new ToolExecutionException(e.getCause());
             } else {
-                return e.getCause().getMessage();
+                return ToolExecutionResult.builder()
+                        .isError(true)
+                        .resultText(e.getCause().getMessage())
+                        .build();
             }
         }
     }
 
-    private Object[] prepareArguments(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
+    @Override
+    public String execute(ToolExecutionRequest request, Object memoryId) {
+        InvocationContext invocationContext =
+                InvocationContext.builder().chatMemoryId(memoryId).build();
+
+        ToolExecutionResult result = executeWithContext(request, invocationContext);
+
+        return result.resultText();
+    }
+
+    private Object[] prepareArguments(ToolExecutionRequest toolExecutionRequest, InvocationContext context) {
         try {
             Map<String, Object> argumentsMap = argumentsAsMap(toolExecutionRequest.arguments());
-            return prepareArguments(originalMethod, argumentsMap, memoryId);
+            return prepareArguments(originalMethod, argumentsMap, context);
         } catch (Exception e) {
             if (wrapToolArgumentsExceptions) {
                 throw new ToolArgumentsException(unwrapRuntimeException(e));
@@ -126,8 +145,15 @@ public class DefaultToolExecutor implements ToolExecutor {
         }
     }
 
-    private String execute(Object[] arguments) throws IllegalAccessException, InvocationTargetException {
+    private ToolExecutionResult execute(Object[] arguments) throws IllegalAccessException, InvocationTargetException {
         Object result = methodToInvoke.invoke(object, arguments);
+        return ToolExecutionResult.builder()
+                .result(result)
+                .resultTextSupplier(() -> toText(result))
+                .build();
+    }
+
+    private String toText(Object result) {
         Class<?> returnType = methodToInvoke.getReturnType();
         if (returnType == void.class) {
             return "Success";
@@ -138,7 +164,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         }
     }
 
-    static Object[] prepareArguments(Method method, Map<String, Object> argumentsMap, Object memoryId) {
+    static Object[] prepareArguments(Method method, Map<String, Object> argumentsMap, InvocationContext context) {
         Parameter[] parameters = method.getParameters();
         Object[] arguments = new Object[parameters.length];
 
@@ -147,7 +173,22 @@ public class DefaultToolExecutor implements ToolExecutor {
             Parameter parameter = parameters[i];
 
             if (parameter.isAnnotationPresent(ToolMemoryId.class)) {
-                arguments[i] = memoryId;
+                arguments[i] = context.chatMemoryId();
+                continue;
+            }
+
+            if (InvocationParameters.class.isAssignableFrom(parameter.getType())) {
+                arguments[i] = context.invocationParameters();
+                continue;
+            }
+
+            if (parameter.getType() == InvocationContext.class) {
+                arguments[i] = context;
+                continue;
+            }
+
+            if (LangChain4jManaged.class.isAssignableFrom(parameter.getType())) {
+                arguments[i] = context.managedParameters().get(parameter.getType());
                 continue;
             }
 

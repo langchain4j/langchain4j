@@ -1,6 +1,8 @@
 package dev.langchain4j.model.openai.internal;
 
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionRequest;
+import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionResponse;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.completion.CompletionRequest;
@@ -13,10 +15,9 @@ import dev.langchain4j.model.openai.internal.moderation.ModerationRequest;
 import dev.langchain4j.model.openai.internal.moderation.ModerationResponse;
 import dev.langchain4j.model.openai.internal.spi.OpenAiClientBuilderFactory;
 import dev.langchain4j.model.openai.internal.spi.ServiceHelper;
-import org.slf4j.Logger;
-
 import java.time.Duration;
 import java.util.Map;
+import org.slf4j.Logger;
 
 public abstract class OpenAiClient {
 
@@ -29,6 +30,10 @@ public abstract class OpenAiClient {
     public abstract SyncOrAsync<ModerationResponse> moderation(ModerationRequest request);
 
     public abstract SyncOrAsync<GenerateImagesResponse> imagesGeneration(GenerateImagesRequest request);
+
+    public SyncOrAsync<OpenAiAudioTranscriptionResponse> audioTranscription(OpenAiAudioTranscriptionRequest request) {
+        throw new UnsupportedOperationException("Audio transcription is not implemented by this client");
+    }
 
     @SuppressWarnings("rawtypes")
     public static Builder builder() {
@@ -54,6 +59,7 @@ public abstract class OpenAiClient {
         public boolean logResponses;
         public Logger logger;
         public Map<String, String> customHeaders;
+        public Map<String, String> customQueryParams;
 
         public abstract T build();
 
@@ -145,6 +151,17 @@ public abstract class OpenAiClient {
          */
         public B customHeaders(Map<String, String> customHeaders) {
             this.customHeaders = customHeaders;
+            return (B) this;
+        }
+
+        /**
+         * Custom query parameters to be added to each HTTP request URL.
+         *
+         * @param customQueryParams a map of query parameters
+         * @return builder
+         */
+        public B customQueryParams(Map<String, String> customQueryParams) {
+            this.customQueryParams = customQueryParams;
             return (B) this;
         }
     }

@@ -1,17 +1,20 @@
 package dev.langchain4j.model.ollama;
 
-import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.ollamaBaseUrl;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.fromJson;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
-import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
@@ -41,36 +44,6 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
             .build();
 
     record CountryInfo(String name, String capital, List<String> languages) {}
-
-    @Test
-    void should_generate_structured_output_using_chat_request_api() {
-        // given
-        ChatModel ollamaChatModel = OllamaChatModel.builder()
-                .baseUrl(ollamaBaseUrl(ollama))
-                .modelName(MODEL_NAME)
-                .temperature(0.0)
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-
-        // when
-        ChatResponse chatResponse = ollamaChatModel.chat(ChatRequest.builder()
-                .messages(userMessage("Tell me about Canada."))
-                .responseFormat(ResponseFormat.builder()
-                        .type(ResponseFormatType.JSON)
-                        .jsonSchema(JsonSchema.builder().rootElement(schema).build())
-                        .build())
-                .build());
-
-        String response = chatResponse.aiMessage().text();
-
-        // then
-        CountryInfo countryInfo = fromJson(response, CountryInfo.class);
-
-        assertThat(countryInfo.name()).isEqualTo("Canada");
-        assertThat(countryInfo.capital()).isEqualTo("Ottawa");
-        assertThat(countryInfo.languages()).contains("English", "French");
-    }
 
     @Test
     void should_generate_structured_output_using_response_format() {
@@ -196,5 +169,82 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
         assertThat(countryInfo.name()).isEqualTo("Canada");
         assertThat(countryInfo.capital()).isEqualTo("Ottawa");
         assertThat(countryInfo.languages()).contains("English", "French");
+    }
+
+    @Test
+    void should_accept_explicitly_built_json_response_format_without_schema() {
+        // given
+        var model = OllamaChatModel.builder()
+                .baseUrl(ollamaBaseUrl(ollama))
+                .modelName(MODEL_NAME)
+                .temperature(0.0)
+                .responseFormat(
+                        ResponseFormat.builder().type(ResponseFormatType.JSON).build())
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        // when
+        String prompt =
+                """
+                Tell me a joke.
+                Return ONLY a JSON object with fields "setup" and "punchline".
+                Do not use Markdown formatting.
+                Example: {"setup": "...", "punchline": "..."}
+                """;
+        String response = assertDoesNotThrow(
+                () -> model.chat(prompt),
+                "Model should accept explicitly built JSON (without schema) response format.");
+
+        // then
+        JsonNode responseJson;
+        try {
+            responseJson = new ObjectMapper().readTree(response);
+        } catch (JsonProcessingException e) {
+            fail(
+                    """
+                    Model response was expected to be a valid JSON but was not.
+                    Response content:"""
+                            + response,
+                    e);
+            return;
+        }
+
+        assertThat(responseJson.isObject()).isTrue();
+        assertThat(responseJson.size()).isEqualTo(2);
+        assertThat(responseJson.hasNonNull("setup")).isTrue();
+        assertThat(responseJson.hasNonNull("punchline")).isTrue();
+    }
+
+    @Test
+    void should_accept_explicitly_built_text_response_format() {
+        // given
+        var model = OllamaChatModel.builder()
+                .baseUrl(ollamaBaseUrl(ollama))
+                .modelName(MODEL_NAME)
+                .temperature(0.0)
+                .responseFormat(
+                        ResponseFormat.builder().type(ResponseFormatType.TEXT).build())
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        String secretCode = "8842";
+        String prompt =
+                """
+            Read this sentence: "The system override code is %s."
+            Extract the 4-digit code.
+            Return ONLY the code.
+            """
+                        .formatted(secretCode);
+
+        // when
+        String response = assertDoesNotThrow(
+                () -> model.chat(prompt), "Model should accept explicitly built text response format.");
+
+        // then
+        assertThat(response.trim())
+                .as("Model should extract the exact code provided in the prompt.")
+                .contains(secretCode);
     }
 }

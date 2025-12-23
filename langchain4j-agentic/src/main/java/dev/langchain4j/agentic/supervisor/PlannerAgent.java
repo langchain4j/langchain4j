@@ -4,8 +4,9 @@ import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
+import dev.langchain4j.service.memory.ChatMemoryAccess;
 
-public interface PlannerAgent {
+public interface PlannerAgent extends ChatMemoryAccess {
 
     @SystemMessage(
             """
@@ -21,7 +22,7 @@ public interface PlannerAgent {
             written in the same language as the user request.
 
             Agents are provided with their name and description together with a list of applicable arguments
-            in the format {name: description, [argument1, argument2]}.
+            in the format {'name', 'description', [argument1: type1, argument2: type2]}.
 
             Decide which agent to invoke next, doing things in small steps and
             never taking any shortcuts or relying on your own knowledge.
@@ -30,9 +31,7 @@ public interface PlannerAgent {
 
             The comma separated list of available agents is: '{{agents}}'.
 
-            Use the following optional supervisor context to better understand constraints, policies or preferences
-            when creating the plan (can be empty):
-            '{{supervisorContext}}'.
+            {{supervisorContext}}
             """)
     @UserMessage(
             """

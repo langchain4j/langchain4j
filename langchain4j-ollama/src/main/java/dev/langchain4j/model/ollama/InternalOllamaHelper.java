@@ -28,6 +28,7 @@ import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
@@ -35,7 +36,9 @@ import dev.langchain4j.model.output.TokenUsage;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -47,6 +50,9 @@ class InternalOllamaHelper {
             userMessage -> userMessage.contents().stream().anyMatch(content -> IMAGE.equals(content.type()));
 
     static List<Message> toOllamaMessages(List<ChatMessage> messages) {
+        if (!messagesContainOnlyTextAndOrImageContentType(messages)) {
+            throw new UnsupportedFeatureException("Ollama only supports message types Text and Image.");
+        }
         return messages.stream()
                 .map(message -> isUserMessage.test(message) && hasImages.test((UserMessage) message)
                         ? messagesWithImageSupport((UserMessage) message)
@@ -91,9 +97,9 @@ class InternalOllamaHelper {
     }
 
     static String toOllamaResponseFormat(ResponseFormat responseFormat) {
-        if (responseFormat == null || responseFormat == ResponseFormat.TEXT) {
+        if (responseFormat == null || responseFormat.type() == ResponseFormatType.TEXT) {
             return null;
-        } else if (responseFormat == ResponseFormat.JSON && responseFormat.jsonSchema() == null) {
+        } else if (responseFormat.type() == ResponseFormatType.JSON && responseFormat.jsonSchema() == null) {
             return "json";
         } else {
             return toJson(toMap(responseFormat.jsonSchema().rootElement()));
@@ -263,5 +269,22 @@ class InternalOllamaHelper {
             case TOOL_EXECUTION_RESULT -> Role.TOOL;
             default -> throw new IllegalArgumentException("Unknown ChatMessageType: " + chatMessageType);
         };
+    }
+
+    private static boolean messagesContainOnlyTextAndOrImageContentType(List<ChatMessage> messages) {
+        final Set<ContentType> contentTypes = messages.stream()
+                .filter(isUserMessage)
+                .map(UserMessage.class::cast)
+                .map(UserMessage::contents)
+                .filter(Objects::nonNull)
+                .flatMap(List::stream)
+                .map(Content::type)
+                .collect(Collectors.toSet());
+        if (contentTypes.size() > 2) {
+            return false; // contains more than 2 supported content types
+        }
+        contentTypes.remove(TEXT);
+        contentTypes.remove(IMAGE);
+        return contentTypes.isEmpty(); // no remaining other content type
     }
 }

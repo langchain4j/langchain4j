@@ -8,12 +8,11 @@ sidebar_position: 16
 
 This is the documentation for the `OpenAI Official SDK` integration, that uses the [official OpenAI Java SDK](https://github.com/openai/openai-java).
 
-LangChain4j provides 4 different integrations with OpenAI for using embedding models, and this is #2 :
+LangChain4j provides 3 different integrations with OpenAI for using embedding models, and this is #2 :
 
 - [OpenAI](/integrations/language-models/open-ai) uses a custom Java implementation of the OpenAI REST API, that works best with Quarkus (as it uses the Quarkus REST client) and Spring (as it uses Spring's RestClient).
 - [OpenAI Official SDK](/integrations/language-models/open-ai-official) uses the official OpenAI Java SDK.
 - [Azure OpenAI](/integrations/language-models/azure-open-ai) uses the Azure SDK from Microsoft, and works best if you are using the Microsoft Java stack, including advanced Azure authentication mechanisms.
-- [GitHub Models](/integrations/language-models/github-models) uses the Azure AI Inference API to access GitHub Models.
 
 :::
 
@@ -39,7 +38,7 @@ It will also work with models supporting the OpenAI API.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-official</artifactId>
-    <version>1.4.0-beta10</version>
+    <version>1.9.1-beta17</version>
 </dependency>
 ```
 
@@ -55,12 +54,14 @@ import com.openai.models.embeddings.EmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialEmbeddingModel;
 
+import static com.openai.models.embeddings.EmbeddingModel.TEXT_EMBEDDING_3_SMALL;
+
 // ....
 
 EmbeddingModel model = OpenAiOfficialEmbeddingModel.builder()
         .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
         .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-        .modelName(EmbeddingModel.TEXT_EMBEDDING_3_SMALL)
+        .modelName(TEXT_EMBEDDING_3_SMALL)
         .build();
 ```
 
@@ -75,7 +76,7 @@ Azure OpenAI and GitHub Models, using the `isAzure()` and `isGitHubModels()` met
 EmbeddingModel model = OpenAiOfficialEmbeddingModel.builder()
         .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
         .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-        .modelName(EmbeddingModel.TEXT_EMBEDDING_3_SMALL)
+        .modelName(TEXT_EMBEDDING_3_SMALL)
         .isAzure(true) // Not necessary if the base URL ends with `openai.azure.com`
         .build();
 ```
@@ -86,7 +87,7 @@ You can also use "passwordless" authentication, as described in the [OpenAI Offi
 
 ```java
 EmbeddingModel model = OpenAiOfficialEmbeddingModel.builder()
-        .modelName(EmbeddingModel.TEXT_EMBEDDING_3_SMALL)
+        .modelName(TEXT_EMBEDDING_3_SMALL)
         .isGitHubModels(true)
         .build();
 ```

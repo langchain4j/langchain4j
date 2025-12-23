@@ -10,13 +10,21 @@ import org.junit.jupiter.api.Test;
 class UserMessageTest implements WithAssertions {
 
     @Test
+    void toBuilder() {
+        UserMessage message1 = UserMessage.from(TextContent.from("one"));
+        UserMessage message2 = message1.toBuilder().addContent(TextContent.from("two")).build();
+        assertThat(message1.contents()).containsExactly(TextContent.from("one"));
+        assertThat(message2.contents()).containsExactly(TextContent.from("one"), TextContent.from("two"));
+    }
+
+    @Test
     void accessors() {
         UserMessage m = new UserMessage("name", "text");
         assertThat(m.type()).isEqualTo(ChatMessageType.USER);
         assertThat(m.singleText()).isEqualTo("text");
         assertThat(m.contents()).containsExactly(TextContent.from("text"));
         assertThat(m.name()).isEqualTo("name");
-        assertThat(m).hasToString("UserMessage { name = \"name\" contents = [TextContent { text = \"text\" }] }");
+        assertThat(m).hasToString("UserMessage { name = \"name\", contents = [TextContent { text = \"text\" }], attributes = {} }");
     }
 
     @Test

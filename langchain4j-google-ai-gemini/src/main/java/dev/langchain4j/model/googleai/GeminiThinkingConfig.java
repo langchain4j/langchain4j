@@ -1,22 +1,12 @@
 package dev.langchain4j.model.googleai;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-public class GeminiThinkingConfig {
+public record GeminiThinkingConfig(Boolean includeThoughts, Integer thinkingBudget, String thinkingLevel) {
 
-    @JsonProperty
-    private Boolean includeThoughts;
-    @JsonProperty
-    private Integer thinkingBudget;
-
-    private GeminiThinkingConfig(Builder builder) {
-        this.includeThoughts = builder.includeThoughts;
-        this.thinkingBudget = builder.thinkingBudget;
+    public enum GeminiThinkingLevel {
+        HIGH, LOW
     }
 
     public static Builder builder() {
@@ -24,9 +14,9 @@ public class GeminiThinkingConfig {
     }
 
     public static class Builder {
-
         private Boolean includeThoughts;
         private Integer thinkingBudget;
+        private String thinkingLevel;
 
         public Builder includeThoughts(Boolean includeThoughts) {
             this.includeThoughts = includeThoughts;
@@ -38,8 +28,18 @@ public class GeminiThinkingConfig {
             return this;
         }
 
+        public Builder thinkingLevel(String thinkingLevel) {
+            this.thinkingLevel = thinkingLevel;
+            return this;
+        }
+
+        public Builder thinkingLevel(GeminiThinkingLevel thinkingLevel) {
+            this.thinkingLevel = thinkingLevel.toString().toLowerCase();
+            return this;
+        }
+
         public GeminiThinkingConfig build() {
-            return new GeminiThinkingConfig(this);
+            return new GeminiThinkingConfig(includeThoughts, thinkingBudget, thinkingLevel);
         }
     }
 }

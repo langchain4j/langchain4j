@@ -4,7 +4,6 @@ import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
 import com.ibm.watsonx.ai.CloudRegion;
-import com.ibm.watsonx.ai.core.auth.iam.IAMAuthenticator;
 import com.ibm.watsonx.ai.embedding.EmbeddingParameters;
 import com.ibm.watsonx.ai.embedding.EmbeddingResponse;
 import com.ibm.watsonx.ai.embedding.EmbeddingResponse.Result;
@@ -13,7 +12,6 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
-import java.time.Duration;
 import java.util.List;
 
 /**
@@ -23,7 +21,7 @@ import java.util.List;
  *
  * <pre>{@code
  * EmbeddingModel embeddingModel = WatsonxEmbeddingModel.builder()
- *     .url("https://...") // or use CloudRegion
+ *     .baseUrl("https://...") // or use CloudRegion
  *     .apiKey("...")
  *     .projectId("...")
  *     .modelName("ibm/granite-embedding-278m-multilingual")
@@ -34,18 +32,16 @@ import java.util.List;
 public class WatsonxEmbeddingModel implements EmbeddingModel {
 
     private final EmbeddingService embeddingService;
+    private final String modelName;
 
     private WatsonxEmbeddingModel(Builder builder) {
-        var embeddingServiceBuilder = EmbeddingService.builder();
-        if (nonNull(builder.authenticationProvider)) {
-            embeddingServiceBuilder.authenticationProvider(builder.authenticationProvider);
-        } else {
-            embeddingServiceBuilder.authenticationProvider(
-                    IAMAuthenticator.builder().apiKey(builder.apiKey).build());
-        }
+
+        var embeddingServiceBuilder = nonNull(builder.authenticator)
+                ? EmbeddingService.builder().authenticator(builder.authenticator)
+                : EmbeddingService.builder().apiKey(builder.apiKey);
 
         embeddingService = embeddingServiceBuilder
-                .url(builder.url)
+                .baseUrl(builder.baseUrl)
                 .modelId(builder.modelName)
                 .version(builder.version)
                 .projectId(builder.projectId)
@@ -53,12 +49,19 @@ public class WatsonxEmbeddingModel implements EmbeddingModel {
                 .timeout(builder.timeout)
                 .logRequests(builder.logRequests)
                 .logResponses(builder.logResponses)
+                .httpClient(builder.httpClient)
                 .build();
+        this.modelName = builder.modelName;
     }
 
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
         return embedAll(textSegments, null);
+    }
+
+    @Override
+    public String modelName() {
+        return this.modelName;
     }
 
     /**
@@ -90,7 +93,7 @@ public class WatsonxEmbeddingModel implements EmbeddingModel {
      *
      * <pre>{@code
      * EmbeddingModel embeddingModel = WatsonxEmbeddingModel.builder()
-     *     .url("https://...") // or use CloudRegion
+     *     .baseUrl("https://...") // or use CloudRegion
      *     .apiKey("...")
      *     .projectId("...")
      *     .modelName("ibm/granite-embedding-278m-multilingual")
@@ -108,12 +111,11 @@ public class WatsonxEmbeddingModel implements EmbeddingModel {
      */
     public static class Builder extends WatsonxBuilder<Builder> {
         private String modelName;
-        private String projectId;
-        private String spaceId;
-        private Duration timeout;
 
-        public Builder url(CloudRegion cloudRegion) {
-            return super.url(cloudRegion.getMlEndpoint());
+        private Builder() {}
+
+        public Builder baseUrl(CloudRegion cloudRegion) {
+            return super.baseUrl(cloudRegion.getMlEndpoint());
         }
 
         public Builder modelName(String modelName) {
@@ -128,11 +130,6 @@ public class WatsonxEmbeddingModel implements EmbeddingModel {
 
         public Builder spaceId(String spaceId) {
             this.spaceId = spaceId;
-            return this;
-        }
-
-        public Builder timeout(Duration timeout) {
-            this.timeout = timeout;
             return this;
         }
 

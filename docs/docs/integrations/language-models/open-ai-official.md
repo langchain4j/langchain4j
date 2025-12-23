@@ -8,12 +8,11 @@ sidebar_position: 16
 
 This is the documentation for the `OpenAI Official SDK` integration, that uses the [official OpenAI Java SDK](https://github.com/openai/openai-java).
 
-LangChain4j provides 4 different integrations with OpenAI for using chat models, and this is #2 :
+LangChain4j provides 3 different integrations with OpenAI for using chat models, and this is #2 :
 
 - [OpenAI](/integrations/language-models/open-ai) uses a custom Java implementation of the OpenAI REST API, that works best with Quarkus (as it uses the Quarkus REST client) and Spring (as it uses Spring's RestClient).
 - [OpenAI Official SDK](/integrations/language-models/open-ai-official) uses the official OpenAI Java SDK.
 - [Azure OpenAI](/integrations/language-models/azure-open-ai) uses the Azure SDK from Microsoft, and works best if you are using the Microsoft Java stack, including advanced Azure authentication mechanisms.
-- [GitHub Models](/integrations/language-models/github-models) uses the Azure AI Inference API to access GitHub Models.
 
 :::
 
@@ -22,7 +21,7 @@ LangChain4j provides 4 different integrations with OpenAI for using chat models,
 This integration uses the [OpenAI Java SDK GitHub Repository](https://github.com/openai/openai-java), and will work for all OpenAI models which can be provided by:
 
 - OpenAI
-- Azure OpenAI
+- Microsoft Foundry
 - GitHub Models
 
 It will also work with models supporting the OpenAI API, such as DeepSeek.
@@ -39,7 +38,7 @@ It will also work with models supporting the OpenAI API, such as DeepSeek.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-official</artifactId>
-    <version>1.4.0-beta10</version>
+    <version>1.9.1-beta17</version>
 </dependency>
 ```
 
@@ -60,12 +59,14 @@ import com.openai.models.ChatModel;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatModel;
 
+import static com.openai.models.ChatModel.GPT_5_MINI;
+
 // ....
 
 ChatModel model = OpenAiOfficialChatModel.builder()
         .baseUrl(System.getenv("OPENAI_BASE_URL"))
         .apiKey(System.getenv("OPENAI_API_KEY"))
-        .modelName(ChatModel.GPT_4O_MINI)
+        .modelName(GPT_5_MINI)
         .build();
 ```
 
@@ -76,7 +77,7 @@ The OpenAI `baseUrl` (`https://api.openai.com/v1`) is the default, so you can om
 ```java
 ChatModel model = OpenAiOfficialChatModel.builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
-        .modelName(ChatModel.GPT_4O_MINI)
+        .modelName(GPT_5_MINI)
         .build();
 ```
 
@@ -90,7 +91,7 @@ For Azure OpenAI, setting a `baseUrl` is mandatory, and Azure OpenAI will be aut
 ChatModel model = OpenAiOfficialChatModel.builder()
         .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
         .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-        .modelName(ChatModel.GPT_4O_MINI)
+        .modelName(GPT_5_MINI)
         .build();
 ```
 
@@ -101,7 +102,7 @@ ChatModel model = OpenAiOfficialChatModel.builder()
         .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
         .apiKey(System.getenv("AZURE_OPENAI_KEY"))
         .isAzure(true)
-        .modelName(ChatModel.GPT_4O_MINI)
+        .modelName(GPT_5_MINI)
         .build();
 ```
 
@@ -147,7 +148,7 @@ For GitHub Models, you can use the default `baseUrl` (`https://models.inference.
 ChatModel model = OpenAiOfficialChatModel.builder()
         .baseUrl("https://models.inference.ai.azure.com")
         .apiKey(System.getenv("GITHUB_TOKEN"))
-        .modelName(ChatModel.GPT_4O_MINI)
+        .modelName(GPT_5_MINI)
         .build();
 ```
 
@@ -156,7 +157,7 @@ Or you can use the `isGitHubModels()` method to force the usage of GitHub Models
 ```java
 ChatModel model = OpenAiOfficialChatModel.builder()
         .apiKey(System.getenv("GITHUB_TOKEN"))
-        .modelName(ChatModel.GPT_4O_MINI)
+        .modelName(GPT_5_MINI)
         .isGitHubModels(true)
         .build();
 ```
@@ -165,7 +166,7 @@ As GitHub Models are usually configured using the `GITHUB_TOKEN` environment var
 
 ```java
 ChatModel model = OpenAiOfficialChatModel.builder()
-        .modelName(ChatModel.GPT_4O_MINI)
+        .modelName(GPT_5_MINI)
         .isGitHubModels(true)
         .build();
 ```
@@ -247,7 +248,7 @@ This is similar to the non-streaming mode, but you need to use the `OpenAiOffici
 StreamingChatModel model = OpenAiOfficialStreamingChatModel.builder()
         .baseUrl(System.getenv("OPENAI_BASE_URL"))
         .apiKey(System.getenv("OPENAI_API_KEY"))
-        .modelName(ChatModel.GPT_4O_MINI)
+        .modelName(GPT_5_MINI)
         .build();
 ```
 

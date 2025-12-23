@@ -21,6 +21,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HexFormat;
@@ -33,12 +34,15 @@ import java.util.UUID;
 import java.util.function.Supplier;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Utility methods.
  */
 @Internal
 public class Utils {
+    private static final Logger log = LoggerFactory.getLogger(Utils.class);
 
     private Utils() {}
 
@@ -327,16 +331,18 @@ public class Utils {
                 int responseCode = connection.getResponseCode();
 
                 if (responseCode == HTTP_OK) {
-                    InputStream inputStream = connection.getInputStream();
-                    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                    try (InputStream inputStream = connection.getInputStream();
+                            ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+                        byte[] buffer = new byte[1024];
+                        int bytesRead;
+                        while ((bytesRead = inputStream.read(buffer)) != -1) {
+                            outputStream.write(buffer, 0, bytesRead);
+                        }
 
-                    byte[] buffer = new byte[1024];
-                    int bytesRead;
-                    while ((bytesRead = inputStream.read(buffer)) != -1) {
-                        outputStream.write(buffer, 0, bytesRead);
+                        return outputStream.toByteArray();
+                    } finally {
+                        connection.disconnect();
                     }
-
-                    return outputStream.toByteArray();
                 } else {
                     throw new RuntimeException("Error while reading: " + responseCode);
                 }
@@ -414,6 +420,22 @@ public class Utils {
     }
 
     /**
+     * Returns a mutable copy of the provided list.
+     * Returns an empty list if the provided list is <code>null</code>.
+     *
+     * @param list The list to copy.
+     * @param <T>  Generic type of the list.
+     * @return The copy of the provided list or an empty list.
+     */
+    public static <T> List<T> mutableCopy(List<T> list) {
+        if (list == null) {
+            return new ArrayList<>();
+        }
+
+        return new ArrayList<>(list);
+    }
+
+    /**
      * Returns an (unmodifiable) copy of the provided map.
      * Returns <code>null</code> if the provided map is <code>null</code>.
      *
@@ -441,6 +463,21 @@ public class Utils {
         }
 
         return unmodifiableMap(map);
+    }
+
+    /**
+     * Returns a mutable copy of the provided map.
+     * Returns an empty map if the provided map is <code>null</code>.
+     *
+     * @param map The map to copy.
+     * @return The copy of the provided map or an empty map.
+     */
+    public static <K, V> Map<K, V> mutableCopy(Map<K, V> map) {
+        if (map == null) {
+            return new HashMap<>();
+        }
+
+        return new HashMap<>(map);
     }
 
     public static Map<String, String> toStringValueMap(Map<String, Object> map) {
@@ -485,5 +522,35 @@ public class Utils {
             }
         }
         return Optional.empty();
+    }
+
+    /**
+     * Logs a warning if the given string value is {@code null} or blank.
+     * <p>
+     * This method is typically used in constructors or validation routines to
+     * highlight missing or incomplete field values without throwing an exception.
+     * It returns the original value unchanged so it can be assigned directly to
+     * a field or variable.
+     * <p>
+     * Example usage:
+     * <pre>
+     * this.name = Utils.warnIfNullOrBlank(name, "name", McpResource.class);
+     * </pre>
+     *
+     * Which will log:
+     * <pre>
+     * McpResource: 'name' is null or blank
+     * </pre>
+     *
+     * @param value     the string value to check (may be {@code null} or blank)
+     * @param fieldName the name of the field being validated (used in the log message)
+     * @param clazz     the class where the validation occurs (used to identify context in the log)
+     * @return the original value (may be {@code null} or blank)
+     */
+    public static String warnIfNullOrBlank(String value, String fieldName, Class<?> clazz) {
+        if (isNullOrBlank(fieldName)) {
+            log.warn("{}: '{}' is null or blank", clazz.getSimpleName(), fieldName);
+        }
+        return value;
     }
 }

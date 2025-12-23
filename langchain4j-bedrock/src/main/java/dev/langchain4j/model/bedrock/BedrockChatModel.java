@@ -35,7 +35,10 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
     public BedrockChatModel(Builder builder) {
         super(builder);
         this.client = isNull(builder.client)
-                ? createClient(getOrDefault(builder.logRequests, false), getOrDefault(builder.logResponses, false), builder.logger)
+                ? createClient(
+                        getOrDefault(builder.logRequests, false),
+                        getOrDefault(builder.logResponses, false),
+                        builder.logger)
                 : builder.client;
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
     }
@@ -46,8 +49,8 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
 
         ConverseRequest converseRequest = buildConverseRequest(request);
 
-        ConverseResponse converseResponse = withRetryMappingExceptions(() ->
-                client.converse(converseRequest), maxRetries, BedrockExceptionMapper.INSTANCE);
+        ConverseResponse converseResponse = withRetryMappingExceptions(
+                () -> client.converse(converseRequest), maxRetries, BedrockExceptionMapper.INSTANCE);
 
         return ChatResponse.builder()
                 .aiMessage(aiMessageFrom(converseResponse))
@@ -66,12 +69,19 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
     }
 
     private ConverseRequest buildConverseRequest(ChatRequest chatRequest) {
+        BedrockCachePointPlacement cachePointPlacement = null;
+        if (chatRequest.parameters() instanceof BedrockChatRequestParameters bedrockParams) {
+            cachePointPlacement = bedrockParams.cachePointPlacement();
+        } else if (defaultRequestParameters != null) {
+            cachePointPlacement = defaultRequestParameters.cachePointPlacement();
+        }
+
         return ConverseRequest.builder()
                 .modelId(chatRequest.modelName())
                 .inferenceConfig(inferenceConfigFrom(chatRequest.parameters()))
-                .system(extractSystemMessages(chatRequest.messages()))
-                .messages(extractRegularMessages(chatRequest.messages()))
-                .toolConfig(extractToolConfigurationFrom(chatRequest))
+                .system(extractSystemMessages(chatRequest.messages(), cachePointPlacement))
+                .messages(extractRegularMessages(chatRequest.messages(), cachePointPlacement))
+                .toolConfig(extractToolConfigurationFrom(chatRequest, cachePointPlacement))
                 .additionalModelRequestFields(additionalRequestModelFieldsFrom(chatRequest.parameters()))
                 .build();
     }

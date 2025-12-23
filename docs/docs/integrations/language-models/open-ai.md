@@ -11,12 +11,11 @@ This is the documentation for the `OpenAI` integration, that uses a custom Java 
 If you are using Quarkus, please refer to the
 [Quarkus LangChain4j documentation](https://docs.quarkiverse.io/quarkus-langchain4j/dev/openai.html).
 
-LangChain4j provides 4 different integrations with OpenAI for using chat models, and this is #1 :
+LangChain4j provides 3 different integrations with OpenAI for using chat models, and this is #1 :
 
 - [OpenAI](/integrations/language-models/open-ai) uses a custom Java implementation of the OpenAI REST API, that works best with Quarkus (as it uses the Quarkus REST client) and Spring (as it uses Spring's RestClient).
 - [OpenAI Official SDK](/integrations/language-models/open-ai-official) uses the official OpenAI Java SDK.
 - [Azure OpenAI](/integrations/language-models/azure-open-ai) uses the Azure SDK from Microsoft, and works best if you are using the Microsoft Java stack, including advanced Azure authentication mechanisms.
-- [GitHub Models](/integrations/language-models/github-models) uses the Azure AI Inference API to access GitHub Models.
 
 :::
 
@@ -32,7 +31,7 @@ LangChain4j provides 4 different integrations with OpenAI for using chat models,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.4.0</version>
+    <version>1.9.1</version>
 </dependency>
 ```
 
@@ -41,7 +40,7 @@ LangChain4j provides 4 different integrations with OpenAI for using chat models,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>1.4.0-beta10</version>
+    <version>1.9.1-beta17</version>
 </dependency>
 ```
 
@@ -125,6 +124,9 @@ langchain4j.open-ai.chat-model.temperature=...
 langchain4j.open-ai.chat-model.timeout=...
 langchain4j.open-ai.chat-model.top-p=
 langchain4j.open-ai.chat-model.user=...
+
+# Optional Property: Custom Parameters (user-defined key=value) 
+langchain4j.open-ai.chat-model.custom-parameters.<key>=<value>
 ```
 See the description of most of the parameters above [here](https://platform.openai.com/docs/api-reference/chat/create).
 
@@ -199,6 +201,11 @@ ChatModel model = OpenAiChatModel.builder()
         .build();
 ```
 
+When the `sendThinking` parameter is enabled while building `OpenAiChatModel` or `OpenAiStreamingChatModel`,
+the `AiMessage.thinking()` will be sent in the request to the DeepSeek API.
+The name of the field can be configured by using the `sendThinking(boolean, String)` builder method.
+By default, the `reasoning_content` field name is used.
+
 ## Creating `OpenAiStreamingChatModel`
 
 ### Plain Java
@@ -252,6 +259,9 @@ langchain4j.open-ai.streaming-chat-model.temperature=...
 langchain4j.open-ai.streaming-chat-model.timeout=...
 langchain4j.open-ai.streaming-chat-model.top-p=...
 langchain4j.open-ai.streaming-chat-model.user=...
+
+# Optional Property: Custom Parameters (user-defined key=value) 
+langchain4j.open-ai.streaming-chat-model.custom-parameters.<key>=<value>
 ```
 
 
@@ -359,7 +369,7 @@ System.out.println(rawHttpResponse.headers());
 System.out.println(rawHttpResponse.statusCode());
 ```
 
-When using `OpenAiStreamingChatModel`, you can access raw Server-Sent Events:
+When using `OpenAiStreamingChatModel`, you can access the raw HTTP response (see above) and raw Server-Sent Events:
 ```java
 List<ServerSentEvent> rawServerSentEvents = ((OpenAiChatResponseMetadata) chatResponse.metadata()).rawServerSentEvents();
 System.out.println(rawServerSentEvents.get(0).data());
