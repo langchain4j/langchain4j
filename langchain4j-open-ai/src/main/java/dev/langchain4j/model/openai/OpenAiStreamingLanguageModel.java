@@ -9,6 +9,7 @@ import static java.time.Duration.ofSeconds;
 
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.internal.ExceptionMapper;
+import dev.langchain4j.internal.context.RequestContext;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.language.StreamingLanguageModel;
@@ -70,7 +71,7 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel {
 
         OpenAiStreamingResponseBuilder responseBuilder = new OpenAiStreamingResponseBuilder();
 
-        client.completion(request)
+        client.completion(request, RequestContext.EMPTY)
                 .onPartialResponse(partialResponse -> {
                     responseBuilder.append(partialResponse);
                     for (CompletionChoice choice : partialResponse.choices()) {
