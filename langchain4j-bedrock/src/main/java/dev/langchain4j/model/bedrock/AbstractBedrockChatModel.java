@@ -89,6 +89,15 @@ abstract class AbstractBedrockChatModel {
     private static final String THINKING_SIGNATURE_KEY =
             "thinking_signature"; // do not change, will break backward compatibility!
 
+    /**
+     * Reusable cache point block - AWS SDK model objects are immutable.
+     */
+    private static final SystemContentBlock CACHE_POINT_BLOCK = SystemContentBlock.builder()
+            .cachePoint(software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock.builder()
+                    .type("default")
+                    .build())
+            .build();
+
     protected final Region region;
     protected final Duration timeout;
     protected final boolean returnThinking;
@@ -139,21 +148,43 @@ abstract class AbstractBedrockChatModel {
     protected List<SystemContentBlock> extractSystemMessages(
             List<ChatMessage> messages, BedrockCachePointPlacement cachePointPlacement) {
         List<SystemContentBlock> systemBlocks = new ArrayList<>();
+        boolean lastWasCoreSystemMessage = false;
 
         for (ChatMessage message : messages) {
-            if (message.type() == ChatMessageType.SYSTEM) {
+            // CRITICAL: Use instanceof, NOT type() check to avoid ClassCastException
+            if (message instanceof BedrockSystemMessage bedrockMsg) {
+                // Handle BedrockSystemMessage with granular cache points
+                for (BedrockSystemContent content : bedrockMsg.contents()) {
+                    if (content instanceof BedrockSystemTextContent textContent) {
+                        systemBlocks.add(SystemContentBlock.builder()
+                                .text(textContent.text())
+                                .build());
+
+                        // Add cache point AFTER this content block if marked
+                        if (textContent.hasCachePoint()) {
+                            systemBlocks.add(CACHE_POINT_BLOCK);
+                        }
+                    }
+                }
+                lastWasCoreSystemMessage = false;
+
+            } else if (message instanceof SystemMessage systemMsg) {
+                // Handle core SystemMessage (legacy)
                 systemBlocks.add(SystemContentBlock.builder()
-                        .text(((SystemMessage) message).text())
+                        .text(systemMsg.text())
                         .build());
+                lastWasCoreSystemMessage = true;
             }
         }
 
-        if (cachePointPlacement == BedrockCachePointPlacement.AFTER_SYSTEM && !systemBlocks.isEmpty()) {
-            systemBlocks.add(SystemContentBlock.builder()
-                    .cachePoint(software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock.builder()
-                            .type("default")
-                            .build())
-                    .build());
+        // Apply legacy AFTER_SYSTEM placement ONLY if:
+        // 1. It's enabled
+        // 2. There are system blocks
+        // 3. The LAST system message was a core SystemMessage (not BedrockSystemMessage)
+        if (cachePointPlacement == BedrockCachePointPlacement.AFTER_SYSTEM
+                && !systemBlocks.isEmpty()
+                && lastWasCoreSystemMessage) {
+            systemBlocks.add(CACHE_POINT_BLOCK);
         }
 
         return systemBlocks;
@@ -173,7 +204,7 @@ abstract class AbstractBedrockChatModel {
             ChatMessage msg = messages.get(i);
             if (msg instanceof ToolExecutionResultMessage toolResult) {
                 handleToolResult(toolResult, currentBlocks, bedrockMessages, i, messages);
-            } else if (!(msg instanceof SystemMessage)) {
+            } else if (!(msg instanceof SystemMessage) && !(msg instanceof BedrockSystemMessage)) {
                 Message bedrockMessage = convertToBedRockMessage(msg);
 
                 if (cachePointPlacement == BedrockCachePointPlacement.AFTER_USER_MESSAGE

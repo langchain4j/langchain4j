@@ -1,0 +1,30 @@
+package dev.langchain4j.model.bedrock;
+
+/**
+ * Represents a content block within a {@link BedrockSystemMessage}.
+ * <p>
+ * This interface allows for different types of content (currently text)
+ * with optional cache point markers for AWS Bedrock prompt caching.
+ *
+ * @see BedrockSystemTextContent
+ * @see BedrockSystemMessage
+ * @since 1.0.0-beta1
+ */
+public interface BedrockSystemContent {
+
+    /**
+     * Returns the content type.
+     *
+     * @return the content type enum value
+     */
+    BedrockSystemContentType type();
+
+    /**
+     * Returns whether this content block has a cache point marker.
+     * When true, a cache point will be inserted AFTER this content block
+     * in the AWS Bedrock request.
+     *
+     * @return true if this content has a cache point
+     */
+    boolean hasCachePoint();
+}
