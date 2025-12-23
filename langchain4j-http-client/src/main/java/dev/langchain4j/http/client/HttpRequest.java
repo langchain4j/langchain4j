@@ -20,12 +20,16 @@ public class HttpRequest {
     private final HttpMethod method;
     private final String url;
     private final Map<String, List<String>> headers;
+    private final Map<String, String> formData;
+    private final Map<String, MultipartFile> files;
     private final String body;
 
     public HttpRequest(Builder builder) {
         this.method = ensureNotNull(builder.method, "method");
         this.url = buildUrl(builder);
         this.headers = copy(builder.headers);
+        this.formData = copy(builder.formData);
+        this.files = copy(builder.files);
         this.body = builder.body;
     }
 
@@ -62,6 +66,14 @@ public class HttpRequest {
         return headers;
     }
 
+    public Map<String, String> formData() {
+        return formData;
+    }
+
+    public Map<String, MultipartFile> files() {
+        return files;
+    }
+
     public String body() {
         return body;
     }
@@ -76,6 +88,8 @@ public class HttpRequest {
         private String url;
         private Map<String, List<String>> headers;
         private Map<String, String> queryParams;
+        private Map<String, String> formData;
+        private Map<String, MultipartFile> files;
         private String body;
 
         private Builder() {}
@@ -159,6 +173,48 @@ public class HttpRequest {
             } else {
                 this.queryParams = new LinkedHashMap<>(queryParams);
             }
+            return this;
+        }
+
+        public Builder addFormData(String name, String value) {
+            ensureNotBlank(name, "name");
+            ensureNotNull(value, "value");
+
+            if (this.formData == null) {
+                this.formData = new LinkedHashMap<>();
+            }
+            this.formData.put(name, value);
+            return this;
+        }
+
+        public Builder addFormData(Map<String, String> formData) {
+            if (isNullOrEmpty(formData)) {
+                return this;
+            }
+            if (this.formData == null) {
+                this.formData = new LinkedHashMap<>();
+            }
+            this.formData.putAll(formData);
+            return this;
+        }
+
+        public Builder formData(Map<String, String> formData) {
+            if (formData == null) {
+                this.formData = null;
+            } else {
+                this.formData = new LinkedHashMap<>(formData);
+            }
+            return this;
+        }
+
+        public Builder addFile(String name, String filename, String contentType, byte[] fileAsBytes) {
+            if (fileAsBytes.length == 0) {
+                return this;
+            }
+            if (this.files == null) {
+                this.files = new LinkedHashMap<>();
+            }
+            this.files.put(name, new MultipartFile(filename, contentType, fileAsBytes));
             return this;
         }
 

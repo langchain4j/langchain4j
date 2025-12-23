@@ -10,6 +10,8 @@ import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.HttpClientBuilderLoader;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
+import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionRequest;
+import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionResponse;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.completion.CompletionRequest;
@@ -176,5 +178,35 @@ public class DefaultOpenAiClient extends OpenAiClient {
                 .build();
 
         return new RequestExecutor<>(httpClient, httpRequest, GenerateImagesResponse.class);
+    }
+
+    @Override
+    public SyncOrAsync<OpenAiAudioTranscriptionResponse> audioTranscription(OpenAiAudioTranscriptionRequest request) {
+        var httpRequestBuilder = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl, "audio/transcriptions")
+                .addHeader("Content-Type", "multipart/form-data; boundary=----langChain4j")
+                .addHeaders(defaultHeaders);
+
+        httpRequestBuilder.addFormData("model", request.model());
+        httpRequestBuilder.addFile(
+                "file",
+                request.file().getFileName(),
+                request.file().getMimeType(),
+                request.file().getBinaryDataFromAudio());
+
+        if (request.language() != null) {
+            httpRequestBuilder.addFormData("language", request.language());
+        }
+
+        if (request.prompt() != null) {
+            httpRequestBuilder.addFormData("prompt", request.prompt());
+        }
+
+        if (request.temperature() != null) {
+            httpRequestBuilder.addFormData("temperature", Double.toString(request.temperature()));
+        }
+
+        return new RequestExecutor<>(httpClient, httpRequestBuilder.build(), OpenAiAudioTranscriptionResponse.class);
     }
 }

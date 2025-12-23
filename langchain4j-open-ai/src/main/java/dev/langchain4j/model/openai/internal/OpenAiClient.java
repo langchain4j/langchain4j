@@ -1,6 +1,8 @@
 package dev.langchain4j.model.openai.internal;
 
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionRequest;
+import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionResponse;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.completion.CompletionRequest;
@@ -28,6 +30,9 @@ public abstract class OpenAiClient {
     public abstract SyncOrAsync<ModerationResponse> moderation(ModerationRequest request);
 
     public abstract SyncOrAsync<GenerateImagesResponse> imagesGeneration(GenerateImagesRequest request);
+
+    public abstract SyncOrAsync<OpenAiAudioTranscriptionResponse> audioTranscription(
+            OpenAiAudioTranscriptionRequest request);
 
     @SuppressWarnings("rawtypes")
     public static Builder builder() {
