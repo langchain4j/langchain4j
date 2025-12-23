@@ -1,10 +1,10 @@
 package dev.langchain4j.model.bedrock;
 
-import java.util.Objects;
-
 import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+
+import java.util.Objects;
 
 /**
  * Text content block for {@link BedrockSystemMessage} with optional cache point.
