@@ -195,8 +195,7 @@ public class BedrockSystemMessage implements ChatMessage {
         public Builder addContent(BedrockSystemContent content) {
             ensureNotNull(content, "content");
             if (this.contents.size() >= MAX_CONTENT_BLOCKS) {
-                throw new IllegalArgumentException(
-                        "Maximum " + MAX_CONTENT_BLOCKS + " content blocks allowed");
+                throw new IllegalArgumentException("Maximum " + MAX_CONTENT_BLOCKS + " content blocks allowed");
             }
             this.contents.add(content);
             return this;

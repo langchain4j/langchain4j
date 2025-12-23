@@ -123,9 +123,8 @@ public class BedrockSystemTextContent implements BedrockSystemContent {
         String truncatedText = text.length() > MAX_TOSTRING_LENGTH
                 ? text.substring(0, MAX_TOSTRING_LENGTH) + "...[" + text.length() + " chars]"
                 : text;
-        return "BedrockSystemTextContent {" +
-                " text = " + quoted(truncatedText) +
-                ", cachePoint = " + cachePoint +
-                " }";
+        return "BedrockSystemTextContent {" + " text = "
+                + quoted(truncatedText) + ", cachePoint = "
+                + cachePoint + " }";
     }
 }
