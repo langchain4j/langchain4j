@@ -1,15 +1,14 @@
 package dev.langchain4j.model.bedrock;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.SystemMessage;
-import org.junit.jupiter.api.Test;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.Test;
 
 class BedrockSystemMessageTest {
 
@@ -39,10 +38,8 @@ class BedrockSystemMessageTest {
 
     @Test
     void should_create_message_from_content_list() {
-        List<BedrockSystemContent> contents = Arrays.asList(
-                BedrockSystemTextContent.from("First"),
-                BedrockSystemTextContent.withCachePoint("Second")
-        );
+        List<BedrockSystemContent> contents =
+                Arrays.asList(BedrockSystemTextContent.from("First"), BedrockSystemTextContent.withCachePoint("Second"));
 
         BedrockSystemMessage msg = BedrockSystemMessage.from(contents);
 
