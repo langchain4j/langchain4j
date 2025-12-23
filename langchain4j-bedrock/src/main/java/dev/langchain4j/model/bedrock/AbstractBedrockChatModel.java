@@ -24,7 +24,6 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.PdfFileContent;
@@ -170,9 +169,8 @@ abstract class AbstractBedrockChatModel {
 
             } else if (message instanceof SystemMessage systemMsg) {
                 // Handle core SystemMessage (legacy)
-                systemBlocks.add(SystemContentBlock.builder()
-                        .text(systemMsg.text())
-                        .build());
+                systemBlocks.add(
+                        SystemContentBlock.builder().text(systemMsg.text()).build());
                 lastWasCoreSystemMessage = true;
             }
         }
