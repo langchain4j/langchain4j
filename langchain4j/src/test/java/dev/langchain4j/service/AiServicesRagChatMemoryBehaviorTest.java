@@ -1,17 +1,12 @@
 package dev.langchain4j.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.RetrievalAugmentor;
@@ -34,11 +29,7 @@ class AiServicesRagChatMemoryBehaviorTest {
     void should_store_augmented_message_in_memory_by_default() {
         MessageWindowChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
-        ChatModel chatModel = mock(ChatModel.class);
-        when(chatModel.chat(any(ChatRequest.class)))
-                .thenReturn(ChatResponse.builder()
-                        .aiMessage(AiMessage.from("answer"))
-                        .build());
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("answer");
 
         RetrievalAugmentor retrievalAugmentor = (AugmentationRequest request) -> {
             UserMessage original = (UserMessage) request.chatMessage();
@@ -56,18 +47,44 @@ class AiServicesRagChatMemoryBehaviorTest {
 
         List<ChatMessage> messages = chatMemory.messages();
         assertThat(messages).hasSize(2);
-        assertThat(((UserMessage) messages.get(0))).isEqualTo(UserMessage.from("hello [augmented]"));
+
+        List<List<ChatMessage>> requests = chatModel.getRequests();
+        assertThat(requests).hasSize(1);
+
+        assertThat(messages.get(0)).isInstanceOf(UserMessage.class);
+        assertThat((UserMessage) messages.get(0)).isEqualTo(UserMessage.from("hello [augmented]"));
+        assertThat(messages.get(1)).isInstanceOf(AiMessage.class);
+        assertThat((AiMessage) messages.get(1)).isEqualTo(AiMessage.from("answer"));
+
+        List<ChatMessage> llmMessages1 = requests.get(0);
+        ChatMessage last1 = llmMessages1.get(llmMessages1.size() - 1);
+        assertThat(last1).isInstanceOf(UserMessage.class);
+        assertThat((UserMessage) last1).isEqualTo(UserMessage.from("hello [augmented]"));
+
+        assistant.chat("hi again");
+
+        messages = chatMemory.messages();
+        assertThat(messages).hasSize(4);
+
+        requests = chatModel.getRequests();
+        assertThat(requests).hasSize(2);
+
+        assertThat(messages.get(2)).isInstanceOf(UserMessage.class);
+        assertThat((UserMessage) messages.get(2)).isEqualTo(UserMessage.from("hi again [augmented]"));
+        assertThat(messages.get(3)).isInstanceOf(AiMessage.class);
+        assertThat((AiMessage) messages.get(3)).isEqualTo(AiMessage.from("answer"));
+
+        List<ChatMessage> llmMessages2 = requests.get(1);
+        ChatMessage last2 = llmMessages2.get(llmMessages2.size() - 1);
+        assertThat(last2).isInstanceOf(UserMessage.class);
+        assertThat((UserMessage) last2).isEqualTo(UserMessage.from("hi again [augmented]"));
     }
 
     @Test
     void should_store_only_original_message_in_memory_when_disabled() {
         MessageWindowChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
-        ChatModel chatModel = mock(ChatModel.class);
-        when(chatModel.chat(any(ChatRequest.class)))
-                .thenReturn(ChatResponse.builder()
-                        .aiMessage(AiMessage.from("answer"))
-                        .build());
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("answer");
 
         RetrievalAugmentor retrievalAugmentor = (AugmentationRequest request) -> {
             UserMessage original = (UserMessage) request.chatMessage();
@@ -86,6 +103,36 @@ class AiServicesRagChatMemoryBehaviorTest {
 
         List<ChatMessage> messages = chatMemory.messages();
         assertThat(messages).hasSize(2);
-        assertThat(((UserMessage) messages.get(0))).isEqualTo(UserMessage.from("hello"));
+
+        List<List<ChatMessage>> requests = chatModel.getRequests();
+        assertThat(requests).hasSize(1);
+
+        assertThat(messages.get(0)).isInstanceOf(UserMessage.class);
+        assertThat((UserMessage) messages.get(0)).isEqualTo(UserMessage.from("hello"));
+        assertThat(messages.get(1)).isInstanceOf(AiMessage.class);
+        assertThat((AiMessage) messages.get(1)).isEqualTo(AiMessage.from("answer"));
+
+        List<ChatMessage> llmMessages1 = requests.get(0);
+        ChatMessage last1 = llmMessages1.get(llmMessages1.size() - 1);
+        assertThat(last1).isInstanceOf(UserMessage.class);
+        assertThat((UserMessage) last1).isEqualTo(UserMessage.from("hello [augmented]"));
+
+        assistant.chat("hi again");
+
+        messages = chatMemory.messages();
+        assertThat(messages).hasSize(4);
+
+        requests = chatModel.getRequests();
+        assertThat(requests).hasSize(2);
+
+        assertThat(messages.get(2)).isInstanceOf(UserMessage.class);
+        assertThat((UserMessage) messages.get(2)).isEqualTo(UserMessage.from("hi again"));
+        assertThat(messages.get(3)).isInstanceOf(AiMessage.class);
+        assertThat((AiMessage) messages.get(3)).isEqualTo(AiMessage.from("answer"));
+
+        List<ChatMessage> llmMessages2 = requests.get(1);
+        ChatMessage last2 = llmMessages2.get(llmMessages2.size() - 1);
+        assertThat(last2).isInstanceOf(UserMessage.class);
+        assertThat((UserMessage) last2).isEqualTo(UserMessage.from("hi again [augmented]"));
     }
 }
