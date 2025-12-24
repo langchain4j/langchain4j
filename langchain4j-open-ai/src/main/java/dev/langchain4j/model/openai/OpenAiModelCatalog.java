@@ -1,6 +1,7 @@
 package dev.langchain4j.model.openai;
 
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.catalog.ModelCatalog;
 import dev.langchain4j.model.catalog.ModelDescription;
@@ -33,7 +34,7 @@ public class OpenAiModelCatalog implements ModelCatalog {
     private OpenAiModelCatalog(Builder builder) {
         this.client = OpenAiClient.builder()
                 .httpClientBuilder(builder.httpClientBuilder)
-                .baseUrl(builder.baseUrl)
+                .baseUrl(Utils.getOrDefault(builder.baseUrl, "https://api.openai.com/v1/"))
                 .apiKey(builder.apiKey)
                 .organizationId(builder.organizationId)
                 .projectId(builder.projectId)
@@ -77,7 +78,7 @@ public class OpenAiModelCatalog implements ModelCatalog {
 
     public static class Builder {
         private HttpClientBuilder httpClientBuilder;
-        private String baseUrl = "https://api.openai.com/v1/";
+        private String baseUrl;
         private String apiKey;
         private String organizationId;
         private String projectId;
