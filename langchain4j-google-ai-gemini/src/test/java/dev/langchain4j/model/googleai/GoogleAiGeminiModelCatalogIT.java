@@ -2,29 +2,27 @@ package dev.langchain4j.model.googleai;
 
 import static org.assertj.core.api.Assertions.*;
 
-import java.util.List;
-
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.catalog.AbstractModelCatalogIT;
 import dev.langchain4j.model.catalog.ModelCatalog;
 import dev.langchain4j.model.catalog.ModelDescription;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 class GoogleAiGeminiModelCatalogIT extends AbstractModelCatalogIT {
 
     private static final String API_KEY = System.getenv("GOOGLE_AI_GEMINI_API_KEY");
-    
+
     @Override
     protected ModelProvider expectedProvider() {
-    	return ModelProvider.GOOGLE_AI_GEMINI;
+        return ModelProvider.GOOGLE_AI_GEMINI;
     }
-    
+
     @Override
     protected ModelCatalog createModelCatalog() {
-    	return GoogleAiGeminiModelCatalog.builder().apiKey(API_KEY).build();
+        return GoogleAiGeminiModelCatalog.builder().apiKey(API_KEY).build();
     }
 
     @Test

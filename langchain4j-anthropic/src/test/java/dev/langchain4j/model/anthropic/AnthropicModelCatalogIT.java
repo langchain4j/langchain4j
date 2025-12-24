@@ -2,15 +2,13 @@ package dev.langchain4j.model.anthropic;
 
 import static org.assertj.core.api.Assertions.*;
 
-import java.util.List;
-
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.catalog.AbstractModelCatalogIT;
 import dev.langchain4j.model.catalog.ModelCatalog;
 import dev.langchain4j.model.catalog.ModelDescription;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".+")
 class AnthropicModelCatalogIT extends AbstractModelCatalogIT {
@@ -19,14 +17,14 @@ class AnthropicModelCatalogIT extends AbstractModelCatalogIT {
 
     @Override
     protected ModelProvider expectedProvider() {
-    	return ModelProvider.ANTHROPIC;
+        return ModelProvider.ANTHROPIC;
     }
-    
+
     @Override
     protected ModelCatalog createModelCatalog() {
-    	return AnthropicModelCatalog.builder().apiKey(API_KEY).build();
+        return AnthropicModelCatalog.builder().apiKey(API_KEY).build();
     }
-    
+
     @Test
     void should_discover_anthropic_models() {
         ModelCatalog catalog = createModelCatalog();

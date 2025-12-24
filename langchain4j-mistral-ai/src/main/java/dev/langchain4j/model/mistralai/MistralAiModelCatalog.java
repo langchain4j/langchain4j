@@ -1,5 +1,12 @@
 package dev.langchain4j.model.mistralai;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.slf4j.Logger;
+
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.catalog.ModelCatalog;
@@ -7,11 +14,6 @@ import dev.langchain4j.model.catalog.ModelDescription;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiModelCard;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiModelResponse;
 import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.List;
-import java.util.stream.Collectors;
-import org.slf4j.Logger;
 
 /**
  * Mistral AI implementation of {@link ModelCatalog}.
@@ -61,10 +63,10 @@ public class MistralAiModelCatalog implements ModelCatalog {
 
     private ModelDescription mapFromMistralAiModelCard(MistralAiModelCard card) {
         return ModelDescription.builder()
-                .name(card.id())
+                .name(card.getId())
                 .provider(ModelProvider.MISTRAL_AI)
-                .owner(card.ownerBy())
-                .createdAt(card.created() != null ? Instant.ofEpochSecond(card.created()) : null)
+                .owner(card.getOwnerBy())
+                .createdAt(card.getCreated() != null ? Instant.ofEpochSecond(card.getCreated()) : null)
                 .build();
     }
 
