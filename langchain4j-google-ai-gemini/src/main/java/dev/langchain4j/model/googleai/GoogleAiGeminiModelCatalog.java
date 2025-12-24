@@ -5,11 +5,14 @@ import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.catalog.ModelCatalog;
 import dev.langchain4j.model.catalog.ModelDescription;
 import dev.langchain4j.model.catalog.ModelType;
+import org.slf4j.Logger;
+
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.slf4j.Logger;
+
+import static dev.langchain4j.model.ModelProvider.GOOGLE_AI_GEMINI;
 
 /**
  * Google AI Gemini implementation of {@link ModelCatalog}.
@@ -67,35 +70,30 @@ public class GoogleAiGeminiModelCatalog implements ModelCatalog {
 
     @Override
     public ModelProvider provider() {
-        return ModelProvider.GOOGLE_AI_GEMINI;
+        return GOOGLE_AI_GEMINI;
     }
 
     private ModelDescription mapToModelDescription(GeminiModelInfo modelInfo) {
-        ModelDescription.Builder builder = ModelDescription.builder().provider(ModelProvider.GOOGLE_AI_GEMINI);
+        ModelDescription.Builder builder = ModelDescription.builder().provider(GOOGLE_AI_GEMINI);
 
-        // Model ID: extract from name (format: "models/gemini-1.5-pro")
         if (modelInfo.name() != null) {
             String id =
                     modelInfo.name().startsWith("models/") ? modelInfo.name().substring(7) : modelInfo.name();
             builder.name(id);
         }
 
-        // Use display_name if available, otherwise use id
         if (modelInfo.displayName() != null && !modelInfo.displayName().isEmpty()) {
             builder.displayName(modelInfo.displayName());
         }
 
-        // Description
         if (modelInfo.description() != null) {
             builder.description(modelInfo.description());
         }
 
-        // Context window and max input tokens (input token limit)
         if (modelInfo.inputTokenLimit() != null) {
             builder.maxInputTokens(modelInfo.inputTokenLimit());
         }
 
-        // Max output tokens
         if (modelInfo.outputTokenLimit() != null) {
             builder.maxOutputTokens(modelInfo.outputTokenLimit());
         }
@@ -113,6 +111,7 @@ public class GoogleAiGeminiModelCatalog implements ModelCatalog {
     }
 
     public static class Builder {
+
         private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private String apiKey;

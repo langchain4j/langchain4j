@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 /**
  * Abstract base class for {@link ModelCatalog} integration tests.
  * Provider-specific implementations should extend this class and implement
- * {@link #createModelCatalog()}.
+ * {@link #createModelCatalog()} and {@link #expectedProvider()}.
  */
 public abstract class AbstractModelCatalogIT {
 

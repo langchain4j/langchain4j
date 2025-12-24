@@ -7,11 +7,14 @@ import dev.langchain4j.model.catalog.ModelDescription;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiModelCard;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiModelResponse;
 import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
+import org.slf4j.Logger;
+
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
-import java.util.stream.Collectors;
-import org.slf4j.Logger;
+
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.ModelProvider.MISTRAL_AI;
 
 /**
  * Mistral AI implementation of {@link ModelCatalog}.
@@ -24,6 +27,8 @@ import org.slf4j.Logger;
  *
  * List<ModelDescription> models = catalog.listModels();
  * }</pre>
+ *
+ * @see MistralAiModels
  */
 public class MistralAiModelCatalog implements ModelCatalog {
 
@@ -31,13 +36,13 @@ public class MistralAiModelCatalog implements ModelCatalog {
 
     private MistralAiModelCatalog(Builder builder) {
         this.client = MistralAiClient.builder()
-                .baseUrl(builder.baseUrl)
+                .httpClientBuilder(builder.httpClientBuilder)
+                .baseUrl(getOrDefault(builder.baseUrl, "https://api.mistral.ai/v1"))
                 .apiKey(builder.apiKey)
                 .timeout(builder.timeout)
-                .logRequests(builder.logRequests)
-                .logResponses(builder.logResponses)
+                .logRequests(getOrDefault(builder.logRequests, false))
+                .logResponses(getOrDefault(builder.logResponses, false))
                 .logger(builder.logger)
-                .httpClientBuilder(builder.httpClientBuilder)
                 .build();
     }
 
@@ -48,34 +53,40 @@ public class MistralAiModelCatalog implements ModelCatalog {
     @Override
     public List<ModelDescription> listModels() {
         MistralAiModelResponse response = client.listModels();
-        List<ModelDescription> models =
-                response.getData().stream().map(this::mapFromMistralAiModelCard).collect(Collectors.toList());
-
+        List<ModelDescription> models = response.getData().stream()
+                .map(this::mapFromMistralAiModelCard)
+                .toList();
         return models;
     }
 
     @Override
     public ModelProvider provider() {
-        return ModelProvider.MISTRAL_AI;
+        return MISTRAL_AI;
     }
 
     private ModelDescription mapFromMistralAiModelCard(MistralAiModelCard card) {
         return ModelDescription.builder()
                 .name(card.getId())
-                .provider(ModelProvider.MISTRAL_AI)
+                .provider(MISTRAL_AI)
                 .owner(card.getOwnerBy())
                 .createdAt(card.getCreated() != null ? Instant.ofEpochSecond(card.getCreated()) : null)
                 .build();
     }
 
     public static class Builder {
-        private String baseUrl = "https://api.mistral.ai/v1";
+
+        private HttpClientBuilder httpClientBuilder;
+        private String baseUrl;
         private String apiKey;
         private Duration timeout;
         private Boolean logRequests;
         private Boolean logResponses;
         private Logger logger;
-        private HttpClientBuilder httpClientBuilder;
+
+        public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
 
         public Builder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
@@ -104,11 +115,6 @@ public class MistralAiModelCatalog implements ModelCatalog {
 
         public Builder logger(Logger logger) {
             this.logger = logger;
-            return this;
-        }
-
-        public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
-            this.httpClientBuilder = httpClientBuilder;
             return this;
         }
 

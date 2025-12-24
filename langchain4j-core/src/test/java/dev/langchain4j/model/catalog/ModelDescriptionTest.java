@@ -24,7 +24,7 @@ class ModelDescriptionTest {
         assertThat(description.maxInputTokens()).isNull();
         assertThat(description.maxOutputTokens()).isNull();
         assertThat(description.createdAt()).isNull();
-        assertThat(description.getOwner()).isNull();
+        assertThat(description.owner()).isNull();
     }
 
     @Test
@@ -51,7 +51,7 @@ class ModelDescriptionTest {
         assertThat(description.maxInputTokens()).isEqualTo(120000);
         assertThat(description.maxOutputTokens()).isEqualTo(4096);
         assertThat(description.createdAt()).isEqualTo(now);
-        assertThat(description.getOwner()).isEqualTo("test-org");
+        assertThat(description.owner()).isEqualTo("test-org");
     }
 
     @Test

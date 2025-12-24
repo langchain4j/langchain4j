@@ -1,11 +1,12 @@
 package dev.langchain4j.model.catalog;
 
-import static dev.langchain4j.internal.ValidationUtils.*;
-
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.ModelProvider;
+
 import java.time.Instant;
 import java.util.Objects;
+
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * Represents metadata about an available model from a provider.
@@ -14,6 +15,8 @@ import java.util.Objects;
  * <p>Only {@code name} and {@code provider} are required fields.
  * All other fields are optional and may be <code>null</code> depending on what information
  * the provider makes available.
+ *
+ * @since 1.10.0
  */
 @Experimental
 public class ModelDescription {
@@ -54,6 +57,7 @@ public class ModelDescription {
 
     /**
      * Human-readable display name for the model.
+     * If absent, {@link #name()} will be returned.
      */
     public String displayName() {
         return displayName == null ? name : displayName;
@@ -109,7 +113,7 @@ public class ModelDescription {
      * For example: "openai", "anthropic", "meta".
      * May be <code>null</code> if this information is not provided.
      */
-    public String getOwner() {
+    public String owner() {
         return owner;
     }
 
@@ -141,6 +145,7 @@ public class ModelDescription {
     }
 
     public static class Builder {
+
         private String name;
         private String displayName;
         private String description;

@@ -8,12 +8,15 @@ import dev.langchain4j.model.catalog.ModelDescription;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
 import dev.langchain4j.model.openai.internal.models.ModelsListResponse;
 import dev.langchain4j.model.openai.internal.models.OpenAiModelInfo;
+import org.slf4j.Logger;
+
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.slf4j.Logger;
+
+import static dev.langchain4j.model.ModelProvider.OPEN_AI;
 
 /**
  * OpenAI implementation of {@link ModelCatalog}.
@@ -64,19 +67,20 @@ public class OpenAiModelCatalog implements ModelCatalog {
 
     @Override
     public ModelProvider provider() {
-        return ModelProvider.OPEN_AI;
+        return OPEN_AI;
     }
 
     private ModelDescription mapToModelDescription(OpenAiModelInfo modelInfo) {
         return ModelDescription.builder()
                 .name(modelInfo.id())
-                .provider(ModelProvider.OPEN_AI)
+                .provider(OPEN_AI)
                 .owner(modelInfo.ownedBy())
                 .createdAt(modelInfo.created() != null ? Instant.ofEpochSecond(modelInfo.created()) : null)
                 .build();
     }
 
     public static class Builder {
+
         private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private String apiKey;

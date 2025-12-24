@@ -1,20 +1,23 @@
 package dev.langchain4j.model.anthropic;
 
 import dev.langchain4j.http.client.HttpClientBuilder;
-import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicModelInfo;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicModelsListResponse;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
 import dev.langchain4j.model.catalog.ModelCatalog;
 import dev.langchain4j.model.catalog.ModelDescription;
+import org.slf4j.Logger;
+
 import java.time.Duration;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
-import java.util.stream.Collectors;
-import org.slf4j.Logger;
+
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.model.ModelProvider.ANTHROPIC;
 
 /**
  * Anthropic implementation of {@link ModelCatalog}.
@@ -37,9 +40,9 @@ public class AnthropicModelCatalog implements ModelCatalog {
     private AnthropicModelCatalog(Builder builder) {
         this.client = AnthropicClient.builder()
                 .httpClientBuilder(builder.httpClientBuilder)
-                .baseUrl(Utils.getOrDefault(builder.baseUrl, "https://api.anthropic.com/v1/"))
+                .baseUrl(getOrDefault(builder.baseUrl, "https://api.anthropic.com/v1/"))
                 .apiKey(builder.apiKey)
-                .version(Utils.getOrDefault(builder.version, "2023-06-01"))
+                .version(getOrDefault(builder.version, "2023-06-01"))
                 .timeout(builder.timeout)
                 .logRequests(builder.logRequests)
                 .logResponses(builder.logResponses)
@@ -54,40 +57,37 @@ public class AnthropicModelCatalog implements ModelCatalog {
     @Override
     public List<ModelDescription> listModels() {
         AnthropicModelsListResponse response = client.listModels();
-        List<ModelDescription> models =
-                response.data.stream().map(this::mapToModelDescription).collect(Collectors.toList());
-
+        List<ModelDescription> models = response.data.stream()
+                .map(this::mapToModelDescription)
+                .toList();
         return models;
+    }
+
+    private ModelDescription mapToModelDescription(AnthropicModelInfo modelInfo) {
+        return ModelDescription.builder()
+                .name(modelInfo.id)
+                .provider(ANTHROPIC)
+                .displayName(isNullOrBlank(modelInfo.displayName) ? null : modelInfo.displayName)
+                .createdAt(modelInfo.createdAt != null ? parse(modelInfo.createdAt) : null)
+                .build();
+    }
+
+    private static Instant parse(String createdAt) {
+        try {
+            return Instant.from(DateTimeFormatter.ISO_INSTANT.parse(createdAt));
+        } catch (DateTimeParseException e) {
+            // Ignore parsing errors and leave createdAt null
+            return null;
+        }
     }
 
     @Override
     public ModelProvider provider() {
-        return ModelProvider.ANTHROPIC;
-    }
-
-    private ModelDescription mapToModelDescription(AnthropicModelInfo modelInfo) {
-        ModelDescription.Builder builder =
-                ModelDescription.builder().name(modelInfo.id).provider(ModelProvider.ANTHROPIC);
-
-        // Use display_name if available.
-        if (modelInfo.displayName != null && !modelInfo.displayName.isEmpty()) {
-            builder.displayName(modelInfo.displayName);
-        }
-
-        // Parse created_at timestamp if available
-        if (modelInfo.createdAt != null) {
-            try {
-                Instant createdAt = Instant.from(DateTimeFormatter.ISO_INSTANT.parse(modelInfo.createdAt));
-                builder.createdAt(createdAt);
-            } catch (DateTimeParseException e) {
-                // Ignore parsing errors and leave createdAt null
-            }
-        }
-
-        return builder.build();
+        return ANTHROPIC;
     }
 
     public static class Builder {
+
         private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private String apiKey;

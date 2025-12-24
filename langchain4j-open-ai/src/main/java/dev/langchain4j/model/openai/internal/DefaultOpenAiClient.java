@@ -183,6 +183,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
         return new RequestExecutor<>(httpClient, httpRequest, GenerateImagesResponse.class);
     }
 
+    @Override
     public SyncOrAsync<OpenAiAudioTranscriptionResponse> audioTranscription(OpenAiAudioTranscriptionRequest request) {
         HttpRequest.Builder httpRequestBuilder = HttpRequest.builder()
                 .method(POST)

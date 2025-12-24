@@ -2,6 +2,7 @@ package dev.langchain4j.model.catalog;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.ModelProvider;
+
 import java.util.List;
 
 /**
@@ -24,6 +25,7 @@ import java.util.List;
  * }</pre>
  *
  * @see ModelDescription
+ * @since 1.10.0
  */
 @Experimental
 public interface ModelCatalog {

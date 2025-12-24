@@ -18,7 +18,7 @@ class ModelTypeTest {
                         ModelType.AUDIO_TRANSCRIPTION,
                         ModelType.AUDIO_GENERATION,
                         ModelType.MODERATION,
-                        ModelType.RERANKING,
+                        ModelType.SCORING,
                         ModelType.OTHER);
     }
 
