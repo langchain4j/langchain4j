@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openai.internal;
 
+import static dev.langchain4j.http.client.HttpMethod.GET;
 import static dev.langchain4j.http.client.HttpMethod.POST;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -21,6 +22,7 @@ import dev.langchain4j.model.openai.internal.embedding.EmbeddingRequest;
 import dev.langchain4j.model.openai.internal.embedding.EmbeddingResponse;
 import dev.langchain4j.model.openai.internal.image.GenerateImagesRequest;
 import dev.langchain4j.model.openai.internal.image.GenerateImagesResponse;
+import dev.langchain4j.model.openai.internal.models.ModelsListResponse;
 import dev.langchain4j.model.openai.internal.moderation.ModerationRequest;
 import dev.langchain4j.model.openai.internal.moderation.ModerationResponse;
 import java.util.HashMap;
@@ -181,7 +183,6 @@ public class DefaultOpenAiClient extends OpenAiClient {
         return new RequestExecutor<>(httpClient, httpRequest, GenerateImagesResponse.class);
     }
 
-    @Override
     public SyncOrAsync<OpenAiAudioTranscriptionResponse> audioTranscription(OpenAiAudioTranscriptionRequest request) {
         HttpRequest.Builder httpRequestBuilder = HttpRequest.builder()
                 .method(POST)
@@ -207,5 +208,17 @@ public class DefaultOpenAiClient extends OpenAiClient {
         }
 
         return new RequestExecutor<>(httpClient, httpRequestBuilder.build(), OpenAiAudioTranscriptionResponse.class);
+    }
+
+    @Override
+    public SyncOrAsync<ModelsListResponse> listModels() {
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(GET)
+                .url(baseUrl, "models")
+                .addQueryParams(customQueryParams)
+                .addHeaders(defaultHeaders)
+                .build();
+
+        return new RequestExecutor<>(httpClient, httpRequest, ModelsListResponse.class);
     }
 }
