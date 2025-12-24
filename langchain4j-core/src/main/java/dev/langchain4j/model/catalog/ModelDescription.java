@@ -2,16 +2,15 @@ package dev.langchain4j.model.catalog;
 
 import static dev.langchain4j.internal.ValidationUtils.*;
 
+import dev.langchain4j.model.ModelProvider;
 import java.time.Instant;
 import java.util.Objects;
-
-import dev.langchain4j.model.ModelProvider;
 
 /**
  * Represents metadata about an available model from a provider.
  * This class provides a unified view of model information across different providers.
  *
- * <p>Only {@code name}, {@code displayName}, and {@code provider} are required fields.
+ * <p>Only {@code name} and {@code provider} are required fields.
  * All other fields are optional and may be <code>null</code> depending on what information
  * the provider makes available.
  */
@@ -29,7 +28,7 @@ public class ModelDescription {
 
     private ModelDescription(Builder builder) {
         this.name = ensureNotNull(builder.name, "name");
-        this.displayName = ensureNotNull(builder.displayName, "displayName");
+        this.displayName = builder.displayName;
         this.provider = ensureNotNull(builder.provider, "provider");
         this.description = builder.description;
         this.type = builder.type;
@@ -55,7 +54,7 @@ public class ModelDescription {
      * Human-readable display name for the model.
      */
     public String displayName() {
-        return displayName;
+        return displayName == null ? name : displayName;
     }
 
     /**

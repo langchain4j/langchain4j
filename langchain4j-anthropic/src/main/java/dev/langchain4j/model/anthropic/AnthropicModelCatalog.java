@@ -69,11 +69,9 @@ public class AnthropicModelCatalog implements ModelCatalog {
         ModelDescription.Builder builder =
                 ModelDescription.builder().name(modelInfo.id).provider(ModelProvider.ANTHROPIC);
 
-        // Use display_name if available, otherwise use id
+        // Use display_name if available.
         if (modelInfo.displayName != null && !modelInfo.displayName.isEmpty()) {
             builder.displayName(modelInfo.displayName);
-        } else {
-            builder.displayName(modelInfo.id);
         }
 
         // Parse created_at timestamp if available

@@ -83,8 +83,6 @@ public class GoogleAiGeminiModelCatalog implements ModelCatalog {
         // Use display_name if available, otherwise use id
         if (modelInfo.displayName() != null && !modelInfo.displayName().isEmpty()) {
             builder.displayName(modelInfo.displayName());
-        } else if (modelInfo.name() != null) {
-            builder.displayName(modelInfo.name());
         }
 
         // Description
