@@ -88,8 +88,8 @@ public class SchemaHelper {
             return Schema.newBuilder().setType(Type.ARRAY).build();
         } else if (theClass.isEnum()) {
             List<String> enumConstantNames = Arrays.stream(theClass.getEnumConstants())
-                .map(Object::toString)
-                .collect(Collectors.toList());
+                    .map(e -> ((Enum<?>) e).name())
+                    .toList();
             return Schema.newBuilder()
                 .setType(Type.STRING)
                 .addAllEnum(enumConstantNames)
