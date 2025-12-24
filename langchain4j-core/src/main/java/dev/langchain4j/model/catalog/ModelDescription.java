@@ -2,16 +2,17 @@ package dev.langchain4j.model.catalog;
 
 import static dev.langchain4j.internal.ValidationUtils.*;
 
-import dev.langchain4j.model.ModelProvider;
 import java.time.Instant;
 import java.util.Objects;
+
+import dev.langchain4j.model.ModelProvider;
 
 /**
  * Represents metadata about an available model from a provider.
  * This class provides a unified view of model information across different providers.
  *
- * <p>Only {@code id}, {@code name}, and {@code provider} are required fields.
- * All other fields are optional and may be null depending on what information
+ * <p>Only {@code name}, {@code displayName}, and {@code provider} are required fields.
+ * All other fields are optional and may be <code>null</code> depending on what information
  * the provider makes available.
  */
 public class ModelDescription {
@@ -27,8 +28,8 @@ public class ModelDescription {
     private final String owner;
 
     private ModelDescription(Builder builder) {
-        this.name = ensureNotNull(builder.name, "id");
-        this.displayName = ensureNotNull(builder.displayName, "name");
+        this.name = ensureNotNull(builder.name, "name");
+        this.displayName = ensureNotNull(builder.displayName, "displayName");
         this.provider = ensureNotNull(builder.provider, "provider");
         this.description = builder.description;
         this.type = builder.type;
@@ -52,7 +53,6 @@ public class ModelDescription {
 
     /**
      * Human-readable display name for the model.
-     * May be the same as the ID for some providers.
      */
     public String displayName() {
         return displayName;
@@ -70,8 +70,8 @@ public class ModelDescription {
     }
 
     /**
-     * Category of the model (e.g., CHAT, EMBEDDING, IMAGE_GENERATION).
-     * May be null if the provider doesn't categorize models or the type is unknown.
+     * Type of the model (e.g., {@link ModelType#CHAT}, {@link ModelType#EMBEDDING}, {@link ModelType#IMAGE_GENERATION}).
+     * May be <code>null</code> if the provider doesn't categorize models or the type is unknown.
      */
     public ModelType type() {
         return type;
@@ -80,10 +80,7 @@ public class ModelDescription {
     /**
      * Maximum number of input tokens the model can accept in a single request.
      * This represents the limit on the size of the prompt/input that can be sent to the model.
-     * May be null if this information is not provided by the provider.
-     *
-     * <p>Note: For some models, this may be the same as the context window if the provider
-     * doesn't distinguish between input and output token limits separately.
+     * May be <code>null</code> if this information is not provided by the provider.
      */
     public Integer maxInputTokens() {
         return maxInputTokens;
@@ -92,7 +89,7 @@ public class ModelDescription {
     /**
      * Maximum number of tokens the model can generate in a single response.
      * This is typically smaller than the context window.
-     * May be null if this information is not provided by the provider.
+     * May be <code>null</code> if this information is not provided by the provider.
      */
     public Integer maxOutputTokens() {
         return maxOutputTokens;
@@ -100,7 +97,7 @@ public class ModelDescription {
 
     /**
      * Timestamp when the model was created or released by the provider.
-     * May be null if this information is not available.
+     * May be <code>null</code> if this information is not available.
      */
     public Instant createdAt() {
         return createdAt;
@@ -109,7 +106,7 @@ public class ModelDescription {
     /**
      * Organization or entity that created or owns the model.
      * For example: "openai", "anthropic", "meta".
-     * May be null if this information is not provided.
+     * May be <code>null</code> if this information is not provided.
      */
     public String getOwner() {
         return owner;
@@ -132,11 +129,14 @@ public class ModelDescription {
     public String toString() {
         return "ModelDescription{" + "name='"
                 + name + '\'' + ", displayName='"
-                + displayName + '\'' + ", provider="
+                + displayName + '\'' + ", description='"
+                + description + '\'' + ", provider="
                 + provider + ", type="
                 + type + ", maxInputTokens="
                 + maxInputTokens + ", maxOutputTokens="
-                + maxOutputTokens + '}';
+                + maxOutputTokens + ", createdAt="
+                + createdAt + ", owner='"
+                + owner + '\'' + '}';
     }
 
     public static class Builder {
@@ -213,7 +213,7 @@ public class ModelDescription {
         /**
          * Constructs a ModelDescription instance.
          *
-         * @throws NullPointerException if id, name, or provider is null
+         * @throws NullPointerException if id, name, or provider is <code>null</code>
          */
         public ModelDescription build() {
             return new ModelDescription(this);
