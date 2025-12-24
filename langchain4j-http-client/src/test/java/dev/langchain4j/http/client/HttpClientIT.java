@@ -19,8 +19,6 @@ import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
-import java.io.IOException;
-import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -829,7 +827,7 @@ public abstract class HttpClientIT {
     }
 
     @Test
-    void should_return_successful_http_response_sync_form_data() throws URISyntaxException, IOException {
+    protected void should_return_successful_http_response_sync_form_data() throws Exception {
         Path audioPath = Path.of(getClass().getClassLoader().getResource("sample.wav").toURI());
 
         for (HttpClient client : clients()) {
