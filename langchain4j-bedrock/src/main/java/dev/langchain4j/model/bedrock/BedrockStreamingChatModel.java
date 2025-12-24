@@ -16,12 +16,11 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
-import dev.langchain4j.model.chat.response.StreamingHandle;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
@@ -164,8 +163,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                     }
 
                     @Override
-                    public void onComplete() {
-                    }
+                    public void onComplete() {}
                 }))
                 .build();
 
@@ -191,6 +189,13 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
             cachePointPlacement = defaultRequestParameters.cachePointPlacement();
         }
 
+        BedrockGuardrailConfiguration bedrockGuardrailConfiguration = null;
+        if (chatRequest.parameters() instanceof BedrockChatRequestParameters bedrockParams) {
+            bedrockGuardrailConfiguration = bedrockParams.bedrockGuardrailConfiguration();
+        } else if (defaultRequestParameters != null) {
+            bedrockGuardrailConfiguration = defaultRequestParameters.bedrockGuardrailConfiguration();
+        }
+
         return ConverseStreamRequest.builder()
                 .modelId(chatRequest.modelName())
                 .inferenceConfig(inferenceConfigFrom(chatRequest.parameters()))
@@ -198,17 +203,19 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                 .messages(extractRegularMessages(chatRequest.messages(), cachePointPlacement))
                 .toolConfig(extractToolConfigurationFrom(chatRequest, cachePointPlacement))
                 .additionalModelRequestFields(additionalRequestModelFieldsFrom(chatRequest.parameters()))
+                .guardrailConfig(guardrailStreamConfigFrom(bedrockGuardrailConfiguration))
                 .build();
     }
 
     private ChatResponse responseFrom(ConverseResponse converseResponse, String modelId) {
         return ChatResponse.builder()
                 .aiMessage(aiMessageFrom(converseResponse))
-                .metadata(ChatResponseMetadata.builder()
+                .metadata(BedrockChatResponseMetadata.builder()
                         .id(UUID.randomUUID().toString())
                         .finishReason(finishReasonFrom(converseResponse.stopReason()))
                         .tokenUsage(tokenUsageFrom(converseResponse.usage()))
                         .modelName(modelId)
+                        .guardrailAssessmentSummary(guardrailAssessmentSummaryFrom(converseResponse.trace()))
                         .build())
                 .build();
     }
