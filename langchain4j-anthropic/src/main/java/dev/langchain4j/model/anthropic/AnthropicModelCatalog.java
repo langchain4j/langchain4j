@@ -1,6 +1,7 @@
 package dev.langchain4j.model.anthropic;
 
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicModelInfo;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicModelsListResponse;
@@ -36,10 +37,9 @@ public class AnthropicModelCatalog implements ModelCatalog {
     private AnthropicModelCatalog(Builder builder) {
         this.client = AnthropicClient.builder()
                 .httpClientBuilder(builder.httpClientBuilder)
-                .baseUrl(builder.baseUrl)
+                .baseUrl(Utils.getOrDefault(builder.baseUrl, "https://api.anthropic.com/v1/"))
                 .apiKey(builder.apiKey)
-                .version(builder.version)
-                .beta(builder.beta)
+                .version(Utils.getOrDefault(builder.version, "2023-06-01"))
                 .timeout(builder.timeout)
                 .logRequests(builder.logRequests)
                 .logResponses(builder.logResponses)
@@ -89,10 +89,9 @@ public class AnthropicModelCatalog implements ModelCatalog {
 
     public static class Builder {
         private HttpClientBuilder httpClientBuilder;
-        private String baseUrl = "https://api.anthropic.com/v1/";
+        private String baseUrl;
         private String apiKey;
-        private String version = "2023-06-01";
-        private String beta;
+        private String version;
         private Duration timeout;
         private Boolean logRequests;
         private Boolean logResponses;
@@ -115,11 +114,6 @@ public class AnthropicModelCatalog implements ModelCatalog {
 
         public Builder version(String version) {
             this.version = version;
-            return this;
-        }
-
-        public Builder beta(String beta) {
-            this.beta = beta;
             return this;
         }
 
