@@ -55,19 +55,8 @@ class ModelDescriptionTest {
     }
 
     @Test
-    void should_require_id() {
-        assertThatThrownBy(() -> ModelDescription.builder()
-                        .displayName("Test Model")
-                        .provider(ModelProvider.OPEN_AI)
-                        .build())
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("id cannot be null");
-    }
-
-    @Test
     void should_require_name() {
         assertThatThrownBy(() -> ModelDescription.builder()
-                        .name("model-123")
                         .provider(ModelProvider.OPEN_AI)
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
