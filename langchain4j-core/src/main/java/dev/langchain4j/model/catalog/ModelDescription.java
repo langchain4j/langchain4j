@@ -2,6 +2,7 @@ package dev.langchain4j.model.catalog;
 
 import static dev.langchain4j.internal.ValidationUtils.*;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.model.ModelProvider;
 import java.time.Instant;
 import java.util.Objects;
@@ -14,6 +15,7 @@ import java.util.Objects;
  * All other fields are optional and may be <code>null</code> depending on what information
  * the provider makes available.
  */
+@Experimental
 public class ModelDescription {
 
     private final String name;

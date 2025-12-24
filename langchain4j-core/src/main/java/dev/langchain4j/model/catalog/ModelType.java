@@ -1,8 +1,11 @@
 package dev.langchain4j.model.catalog;
 
+import dev.langchain4j.Experimental;
+
 /**
  * Represents the type/category of a model.
  */
+@Experimental
 public enum ModelType {
     /**
      * Chat/conversational models (e.g., GPT-4, Claude, etc.)
