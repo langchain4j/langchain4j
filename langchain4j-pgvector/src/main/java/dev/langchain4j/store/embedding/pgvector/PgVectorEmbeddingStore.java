@@ -489,6 +489,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         int maxResults = request.maxResults();
+        double minScore = request.minScore();
         Filter filter = request.filter();
 
         List<EmbeddingMatch<TextSegment>> result = new ArrayList<>();
@@ -531,15 +532,18 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                             + "  ORDER BY ts_rank(to_tsvector('%6$s', coalesce(text, '')), plainto_tsquery('%6$s', ?)) DESC "
                             + "  LIMIT %5$d "
                             + ") "
-                            + "SELECT "
-                            + "  COALESCE(v.embedding_id, k.embedding_id) AS embedding_id, "
-                            + "  COALESCE(v.embedding, k.embedding) AS embedding, "
-                            + "  COALESCE(v.text, k.text) AS text "
-                            + "  %8$s, "
-                            + "  COALESCE(1.0 / (%9$d + v.rnk), 0.0) + COALESCE(1.0 / (%9$d + k.rnk), 0.0) AS score "
-                            + "FROM vector_search v "
-                            + "FULL OUTER JOIN keyword_search k ON v.embedding_id = k.embedding_id "
-                            + "ORDER BY score DESC "
+                            + "SELECT * FROM ( "
+                            + "  SELECT "
+                            + "    COALESCE(v.embedding_id, k.embedding_id) AS embedding_id, "
+                            + "    COALESCE(v.embedding, k.embedding) AS embedding, "
+                            + "    COALESCE(v.text, k.text) AS text "
+                            + "    %8$s, "
+                            + "    COALESCE(1.0 / (%9$d + v.rnk), 0.0) + COALESCE(1.0 / (%9$d + k.rnk), 0.0) AS score "
+                            + "  FROM vector_search v "
+                            + "  FULL OUTER JOIN keyword_search k ON v.embedding_id = k.embedding_id "
+                            + ") ranked "
+                            + "WHERE ranked.score >= ? "
+                            + "ORDER BY ranked.score DESC "
                             + "LIMIT %10$d;",
                     rawMetadataCols,
                     referenceVector,
@@ -556,6 +560,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                 stmt.setString(1, keywordQuery);
                 stmt.setString(2, keywordQuery);
                 stmt.setString(3, keywordQuery);
+                stmt.setDouble(4, minScore);
 
                 try (ResultSet rs = stmt.executeQuery()) {
                     while (rs.next()) {
