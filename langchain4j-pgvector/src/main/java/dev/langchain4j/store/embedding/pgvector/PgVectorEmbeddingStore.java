@@ -219,6 +219,13 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                         metadataHandler.columnDefinitionsString());
                 statement.executeUpdate(query);
                 metadataHandler.createMetadataIndexes(statement, table);
+
+                String ftsIndexName = table + "_text_fts_gin_index";
+                query = String.format(
+                        "CREATE INDEX IF NOT EXISTS %s ON %s " +
+                                "USING gin (to_tsvector('%s', coalesce(text, '')))",
+                        ftsIndexName, table, textSearchConfig);
+                statement.executeUpdate(query);
             }
             if (useIndex) {
                 final String indexName = table + "_ivfflat_index";
@@ -399,7 +406,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private EmbeddingSearchResult<TextSegment> fullTextOnlySearch(EmbeddingSearchRequest request) {
         String keywordQuery = request.query();
-        
+
         if (isNullOrBlank(keywordQuery)) {
             return new EmbeddingSearchResult<>(List.of());
         }
