@@ -118,9 +118,15 @@ class InMemoryEmbeddingStoreTest extends EmbeddingStoreWithFilteringIT {
 
         InMemoryEmbeddingStore<TextSegment> embeddingStore = new InMemoryEmbeddingStore<>();
 
+        assertThat(embeddingStore.size()).isEqualTo(0);
+        assertThat(embeddingStore.isEmpty()).isEqualTo(true);
+
         TextSegment segment = TextSegment.from("first");
         Embedding embedding = embeddingModel.embed(segment).content();
         embeddingStore.add(embedding, segment);
+
+        assertThat(embeddingStore.size()).isEqualTo(1);
+        assertThat(embeddingStore.isEmpty()).isEqualTo(false);
 
         TextSegment segmentWithMetadata = TextSegment.from("second", Metadata.from("key", "value"));
         Embedding embedding2 = embeddingModel.embed(segmentWithMetadata).content();

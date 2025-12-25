@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.inmemory;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -270,5 +271,15 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
             return factory.create();
         }
         return new JacksonInMemoryEmbeddingStoreJsonCodec();
+    }
+
+    @JsonIgnore
+    public int size() {
+        return entries.size();
+    }
+
+    @JsonIgnore
+    public boolean isEmpty() {
+        return entries.isEmpty();
     }
 }
