@@ -65,6 +65,18 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     private static final String DEFAULT_TEXT_SEARCH_CONFIG = "simple";
     private static final int DEFAULT_RRF_K = 60;
 
+    private static final List<String> ALLOWED_TEXT_SEARCH_CONFIGS = List.of(
+            "simple",
+            "english",
+            "german",
+            "french",
+            "italian",
+            "spanish",
+            "portuguese",
+            "dutch",
+            "russian"
+    );
+
     /**
      * Datasource used to create the store
      */
@@ -119,7 +131,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         dropTableFirst = getOrDefault(dropTableFirst, false);
 
         this.searchMode = getOrDefault(searchMode, SearchMode.EMBEDDING_ONLY);
-        this.textSearchConfig = getOrDefault(textSearchConfig, DEFAULT_TEXT_SEARCH_CONFIG);
+        this.textSearchConfig = validateTextSearchConfig(
+                getOrDefault(textSearchConfig, DEFAULT_TEXT_SEARCH_CONFIG));
 
         initTable(dropTableFirst, createTable, useIndex, dimension, indexListSize);
     }
@@ -222,7 +235,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             if (dropTableFirst) {
                 statement.executeUpdate(String.format("DROP TABLE IF EXISTS %s", table));
             }
-            if (createTable) {
+            if (createTable && (searchMode == SearchMode.FULL_TEXT_ONLY || searchMode == SearchMode.HYBRID)) {
                 query = String.format(
                         "CREATE TABLE IF NOT EXISTS %s (embedding_id UUID PRIMARY KEY, "
                                 + "embedding vector(%s), text TEXT NULL, %s )",
@@ -652,6 +665,17 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
         PGvector.addVectorType(connection);
         return connection;
+    }
+
+    private static String validateTextSearchConfig(String cfg) {
+        if (cfg == null || cfg.isBlank()) {
+            return DEFAULT_TEXT_SEARCH_CONFIG;
+        }
+        if (!ALLOWED_TEXT_SEARCH_CONFIGS.contains(cfg)) {
+            throw new IllegalArgumentException(
+                    "Unsupported textSearchConfig: '" + cfg + "'. Allowed values: " + ALLOWED_TEXT_SEARCH_CONFIGS);
+        }
+        return cfg;
     }
 
     public static class DatasourceBuilder {

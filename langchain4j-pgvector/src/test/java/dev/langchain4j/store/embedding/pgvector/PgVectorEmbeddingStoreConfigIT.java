@@ -3,6 +3,7 @@ package dev.langchain4j.store.embedding.pgvector;
 import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
 import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -107,5 +108,41 @@ abstract class PgVectorEmbeddingStoreConfigIT extends EmbeddingStoreWithFilterin
 
         // make sure table and embeddings are still there
         assertThat(getAllEmbeddings()).isNotEmpty();
+    }
+
+    @Test
+    void shouldAcceptWhitelistedTextSearchConfig() {
+        EmbeddingStore<TextSegment> store = PgVectorEmbeddingStore.builder()
+                .host(pgVector.getHost())
+                .port(pgVector.getFirstMappedPort())
+                .user("test")
+                .password("test")
+                .database("test")
+                .table("fts_config_ok")
+                .dimension(TABLE_DIMENSION)
+                .dropTableFirst(true)
+                .searchMode(PgVectorEmbeddingStore.SearchMode.FULL_TEXT_ONLY)
+                .textSearchConfig("english")
+                .build();
+
+        assertThat(store).isNotNull();
+    }
+
+    @Test
+    void shouldRejectNonWhitelistedTextSearchConfig() {
+        assertThatThrownBy(() -> PgVectorEmbeddingStore.builder()
+                        .host(pgVector.getHost())
+                        .port(pgVector.getFirstMappedPort())
+                        .user("test")
+                        .password("test")
+                        .database("test")
+                        .table("fts_config_bad")
+                        .dimension(TABLE_DIMENSION)
+                        .dropTableFirst(true)
+                        .searchMode(PgVectorEmbeddingStore.SearchMode.FULL_TEXT_ONLY)
+                        .textSearchConfig("english'; DROP TABLE fts_config_bad; --")
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unsupported textSearchConfig");
     }
 }
