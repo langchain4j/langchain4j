@@ -50,7 +50,18 @@ import static java.util.stream.Collectors.toList;
  */
 // Needed for inherited bean injection validation
 public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
+
+    /**
+     * Search modes for the embedding store.
+     */
+    public enum SearchMode {
+        EMBEDDING_ONLY,
+        FULL_TEXT_ONLY,
+        HYBRID
+    }
+
     private static final Logger log = LoggerFactory.getLogger(PgVectorEmbeddingStore.class);
+
     /**
      * Datasource used to create the store
      */
@@ -65,6 +76,11 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     final MetadataHandler metadataHandler;
 
     /**
+     * Search mode
+     */
+    private final SearchMode searchMode;
+
+    /**
      * Constructor for PgVectorEmbeddingStore Class
      *
      * @param datasource            The datasource to use
@@ -75,6 +91,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param createTable           Should create table automatically
      * @param dropTableFirst        Should drop table first, usually for testing
      * @param metadataStorageConfig The {@link MetadataStorageConfig} config.
+     * @param searchMode            The search mode to use
      */
     protected PgVectorEmbeddingStore(DataSource datasource,
                                      String table,
@@ -83,7 +100,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                                      Integer indexListSize,
                                      Boolean createTable,
                                      Boolean dropTableFirst,
-                                     MetadataStorageConfig metadataStorageConfig) {
+                                     MetadataStorageConfig metadataStorageConfig,
+                                     SearchMode searchMode) {
         this.datasource = ensureNotNull(datasource, "datasource");
         this.table = ensureNotBlank(table, "table");
         MetadataStorageConfig config = getOrDefault(metadataStorageConfig, DefaultMetadataStorageConfig.defaultConfig());
@@ -91,6 +109,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         useIndex = getOrDefault(useIndex, false);
         createTable = getOrDefault(createTable, true);
         dropTableFirst = getOrDefault(dropTableFirst, false);
+        this.searchMode = getOrDefault(searchMode, SearchMode.EMBEDDING_ONLY);
 
         initTable(dropTableFirst, createTable, useIndex, dimension, indexListSize);
     }
@@ -111,6 +130,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param createTable           Should create table automatically
      * @param dropTableFirst        Should drop table first, usually for testing
      * @param metadataStorageConfig The {@link MetadataStorageConfig} config.
+     * @param searchMode            The search mode to use
      */
     @SuppressWarnings("unused")
     protected PgVectorEmbeddingStore(
@@ -125,16 +145,19 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             Integer indexListSize,
             Boolean createTable,
             Boolean dropTableFirst,
-            MetadataStorageConfig metadataStorageConfig
+            MetadataStorageConfig metadataStorageConfig,
+            SearchMode searchMode
     ) {
         this(createDataSource(host, port, user, password, database),
-                table, dimension, useIndex, indexListSize, createTable, dropTableFirst, metadataStorageConfig);
+                table, dimension, useIndex, indexListSize, createTable, dropTableFirst, metadataStorageConfig,
+                searchMode);
     }
 
     public PgVectorEmbeddingStore() {
         this.datasource = null;
         this.table = null;
         this.metadataHandler = null;
+        this.searchMode = null;
     }
 
     private static DataSource createDataSource(String host, Integer port, String user, String password, String database) {
@@ -301,6 +324,12 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     @Override
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
+        // For now, only EMBEDDING_ONLY is implemented. Other modes will be added in follow-up changes.
+        if (searchMode != SearchMode.EMBEDDING_ONLY) {
+            log.debug("PgVectorEmbeddingStore searchMode={} is not yet implemented, falling back to EMBEDDING_ONLY.",
+                    searchMode);
+        }
+
         Embedding referenceEmbedding = request.queryEmbedding();
         int maxResults = request.maxResults();
         double minScore = request.minScore();
@@ -427,6 +456,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         private Boolean createTable;
         private Boolean dropTableFirst;
         private MetadataStorageConfig metadataStorageConfig;
+        private SearchMode searchMode;
 
         DatasourceBuilder() {
         }
@@ -471,8 +501,22 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        public DatasourceBuilder searchMode(SearchMode searchMode) {
+            this.searchMode = searchMode;
+            return this;
+        }
+
         public PgVectorEmbeddingStore build() {
-            return new PgVectorEmbeddingStore(this.datasource, this.table, this.dimension, this.useIndex, this.indexListSize, this.createTable, this.dropTableFirst, this.metadataStorageConfig);
+            return new PgVectorEmbeddingStore(
+                    this.datasource,
+                    this.table,
+                    this.dimension,
+                    this.useIndex,
+                    this.indexListSize,
+                    this.createTable,
+                    this.dropTableFirst,
+                    this.metadataStorageConfig,
+                    this.searchMode);
         }
 
         public String toString() {
@@ -493,6 +537,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         private Boolean createTable;
         private Boolean dropTableFirst;
         private MetadataStorageConfig metadataStorageConfig;
+        private SearchMode searchMode;
 
         PgVectorEmbeddingStoreBuilder() {
         }
@@ -557,8 +602,26 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        public PgVectorEmbeddingStoreBuilder searchMode(SearchMode searchMode) {
+            this.searchMode = searchMode;
+            return this;
+        }
+
         public PgVectorEmbeddingStore build() {
-            return new PgVectorEmbeddingStore(this.host, this.port, this.user, this.password, this.database, this.table, this.dimension, this.useIndex, this.indexListSize, this.createTable, this.dropTableFirst, this.metadataStorageConfig);
+            return new PgVectorEmbeddingStore(
+                    this.host,
+                    this.port,
+                    this.user,
+                    this.password,
+                    this.database,
+                    this.table,
+                    this.dimension,
+                    this.useIndex,
+                    this.indexListSize,
+                    this.createTable,
+                    this.dropTableFirst,
+                    this.metadataStorageConfig,
+                    this.searchMode);
         }
 
         public String toString() {
