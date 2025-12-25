@@ -1,33 +1,5 @@
 package dev.langchain4j.store.embedding.pgvector;
 
-import com.pgvector.PGvector;
-import dev.langchain4j.data.document.Metadata;
-import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.store.embedding.EmbeddingMatch;
-import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
-import dev.langchain4j.store.embedding.EmbeddingSearchResult;
-import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.filter.Filter;
-import org.postgresql.ds.PGSimpleDataSource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.sql.DataSource;
-import java.sql.Array;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.sql.Types;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-import java.util.UUID;
-import java.util.stream.IntStream;
-
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
@@ -42,6 +14,33 @@ import static java.lang.String.join;
 import static java.util.Collections.nCopies;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
+
+import com.pgvector.PGvector;
+import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
+import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.filter.Filter;
+import java.sql.Array;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Types;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.IntStream;
+import javax.sql.DataSource;
+import org.postgresql.ds.PGSimpleDataSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * PGVector EmbeddingStore Implementation
@@ -83,6 +82,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * Search mode
      */
     private final SearchMode searchMode;
+
     private final String textSearchConfig;
 
     /**
@@ -98,19 +98,21 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param metadataStorageConfig The {@link MetadataStorageConfig} config.
      * @param searchMode            The search mode to use
      */
-    protected PgVectorEmbeddingStore(DataSource datasource,
-                                     String table,
-                                     Integer dimension,
-                                     Boolean useIndex,
-                                     Integer indexListSize,
-                                     Boolean createTable,
-                                     Boolean dropTableFirst,
-                                     MetadataStorageConfig metadataStorageConfig,
-                                     SearchMode searchMode,
-                                     String textSearchConfig) {
+    protected PgVectorEmbeddingStore(
+            DataSource datasource,
+            String table,
+            Integer dimension,
+            Boolean useIndex,
+            Integer indexListSize,
+            Boolean createTable,
+            Boolean dropTableFirst,
+            MetadataStorageConfig metadataStorageConfig,
+            SearchMode searchMode,
+            String textSearchConfig) {
         this.datasource = ensureNotNull(datasource, "datasource");
         this.table = ensureNotBlank(table, "table");
-        MetadataStorageConfig config = getOrDefault(metadataStorageConfig, DefaultMetadataStorageConfig.defaultConfig());
+        MetadataStorageConfig config =
+                getOrDefault(metadataStorageConfig, DefaultMetadataStorageConfig.defaultConfig());
         this.metadataHandler = MetadataHandlerFactory.get(config);
         useIndex = getOrDefault(useIndex, false);
         createTable = getOrDefault(createTable, true);
@@ -155,11 +157,18 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             Boolean dropTableFirst,
             MetadataStorageConfig metadataStorageConfig,
             SearchMode searchMode,
-            String textSearchConfig
-    ) {
-        this(createDataSource(host, port, user, password, database),
-                table, dimension, useIndex, indexListSize, createTable, dropTableFirst, metadataStorageConfig,
-                searchMode, textSearchConfig);
+            String textSearchConfig) {
+        this(
+                createDataSource(host, port, user, password, database),
+                table,
+                dimension,
+                useIndex,
+                indexListSize,
+                createTable,
+                dropTableFirst,
+                metadataStorageConfig,
+                searchMode,
+                textSearchConfig);
     }
 
     public PgVectorEmbeddingStore() {
@@ -170,7 +179,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.textSearchConfig = DEFAULT_TEXT_SEARCH_CONFIG;
     }
 
-    private static DataSource createDataSource(String host, Integer port, String user, String password, String database) {
+    private static DataSource createDataSource(
+            String host, Integer port, String user, String password, String database) {
         host = ensureNotBlank(host, "host");
         port = ensureGreaterThanZero(port, "port");
         user = ensureNotBlank(user, "user");
@@ -178,8 +188,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         database = ensureNotBlank(database, "database");
 
         PGSimpleDataSource source = new PGSimpleDataSource();
-        source.setServerNames(new String[]{host});
-        source.setPortNumbers(new int[]{port});
+        source.setServerNames(new String[] {host});
+        source.setPortNumbers(new int[] {port});
         source.setDatabaseName(database);
         source.setUser(user);
         source.setPassword(password);
@@ -195,7 +205,6 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         return new PgVectorEmbeddingStoreBuilder();
     }
 
-
     /**
      * Initialize metadata table following configuration
      *
@@ -205,34 +214,35 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param dimension      The vector dimension
      * @param indexListSize  The IVFFlat number of lists
      */
-    protected void initTable(Boolean dropTableFirst, Boolean createTable, Boolean useIndex, Integer dimension,
-                             Integer indexListSize) {
+    protected void initTable(
+            Boolean dropTableFirst, Boolean createTable, Boolean useIndex, Integer dimension, Integer indexListSize) {
         String query = "init";
-        try (Connection connection = getConnection(); Statement statement = connection.createStatement()) {
+        try (Connection connection = getConnection();
+                Statement statement = connection.createStatement()) {
             if (dropTableFirst) {
                 statement.executeUpdate(String.format("DROP TABLE IF EXISTS %s", table));
             }
             if (createTable) {
-                query = String.format("CREATE TABLE IF NOT EXISTS %s (embedding_id UUID PRIMARY KEY, " +
-                                "embedding vector(%s), text TEXT NULL, %s )",
-                        table, ensureGreaterThanZero(dimension, "dimension"),
+                query = String.format(
+                        "CREATE TABLE IF NOT EXISTS %s (embedding_id UUID PRIMARY KEY, "
+                                + "embedding vector(%s), text TEXT NULL, %s )",
+                        table,
+                        ensureGreaterThanZero(dimension, "dimension"),
                         metadataHandler.columnDefinitionsString());
                 statement.executeUpdate(query);
                 metadataHandler.createMetadataIndexes(statement, table);
 
                 String ftsIndexName = table + "_text_fts_gin_index";
                 query = String.format(
-                        "CREATE INDEX IF NOT EXISTS %s ON %s " +
-                                "USING gin (to_tsvector('%s', coalesce(text, '')))",
+                        "CREATE INDEX IF NOT EXISTS %s ON %s " + "USING gin (to_tsvector('%s', coalesce(text, '')))",
                         ftsIndexName, table, textSearchConfig);
                 statement.executeUpdate(query);
             }
             if (useIndex) {
                 final String indexName = table + "_ivfflat_index";
                 query = String.format(
-                        "CREATE INDEX IF NOT EXISTS %s ON %s " +
-                                "USING ivfflat (embedding vector_cosine_ops) " +
-                                "WITH (lists = %s)",
+                        "CREATE INDEX IF NOT EXISTS %s ON %s " + "USING ivfflat (embedding vector_cosine_ops) "
+                                + "WITH (lists = %s)",
                         indexName, table, ensureGreaterThanZero(indexListSize, "indexListSize"));
                 statement.executeUpdate(query);
             }
@@ -297,8 +307,9 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         ensureNotEmpty(ids, "ids");
         String sql = String.format("DELETE FROM %s WHERE embedding_id = ANY (?)", table);
         try (Connection connection = getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            Array array = connection.createArrayOf("uuid", ids.stream().map(UUID::fromString).toArray());
+                PreparedStatement statement = connection.prepareStatement(sql)) {
+            Array array = connection.createArrayOf(
+                    "uuid", ids.stream().map(UUID::fromString).toArray());
             statement.setArray(1, array);
             statement.executeUpdate();
         } catch (SQLException e) {
@@ -312,7 +323,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         String whereClause = metadataHandler.whereClause(filter);
         String sql = String.format("DELETE FROM %s WHERE %s", table, whereClause);
         try (Connection connection = getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
+                PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -322,7 +333,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public void removeAll() {
         try (Connection connection = getConnection();
-             Statement statement = connection.createStatement()) {
+                Statement statement = connection.createStatement()) {
             statement.executeUpdate(String.format("TRUNCATE TABLE %s", table));
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -362,23 +373,21 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             String whereClause = (filter == null) ? "" : metadataHandler.whereClause(filter);
             whereClause = (whereClause.isEmpty()) ? "" : "AND " + whereClause;
             String query = String.format(
-                    "SELECT (2 - (embedding <=> '%1$s')) / 2 AS score, " +
-                            "       embedding_id, " +
-                            "       embedding, " +
-                            "       text, " +
-                            "       %2$s " +
-                            "FROM %3$s " +
-                            "WHERE round(cast(float8 (embedding <=> '%1$s') as numeric), 8) <= round(2 - 2 * %4$s, 8) " +
-                            "      %5$s " +
-                            "ORDER BY embedding <=> '%1$s' " +
-                            "LIMIT %6$s;",
+                    "SELECT (2 - (embedding <=> '%1$s')) / 2 AS score, " + "       embedding_id, "
+                            + "       embedding, "
+                            + "       text, "
+                            + "       %2$s "
+                            + "FROM %3$s "
+                            + "WHERE round(cast(float8 (embedding <=> '%1$s') as numeric), 8) <= round(2 - 2 * %4$s, 8) "
+                            + "      %5$s "
+                            + "ORDER BY embedding <=> '%1$s' "
+                            + "LIMIT %6$s;",
                     referenceVector,
                     join(",", metadataHandler.columnsNames()),
                     table,
                     minScore,
                     whereClause,
-                    maxResults
-            );
+                    maxResults);
             try (PreparedStatement selectStmt = connection.prepareStatement(query)) {
                 try (ResultSet resultSet = selectStmt.executeQuery()) {
                     while (resultSet.next()) {
@@ -421,23 +430,22 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             whereClause = (whereClause.isEmpty()) ? "" : "AND " + whereClause;
 
             String sql = String.format(
-                    "SELECT ts_rank(to_tsvector('%s', coalesce(text, '')), " +
-                            "              plainto_tsquery('%s', ?)) AS score, " +
-                            "       embedding_id, embedding, text, %s " +
-                            "FROM %s " +
-                            "WHERE to_tsvector('%s', coalesce(text, '')) " +
-                            "      @@ plainto_tsquery('%s', ?) " +
-                            "%s " +
-                            "ORDER BY score DESC " +
-                            "LIMIT ?;",
+                    "SELECT ts_rank(to_tsvector('%s', coalesce(text, '')), "
+                            + "              plainto_tsquery('%s', ?)) AS score, "
+                            + "       embedding_id, embedding, text, %s "
+                            + "FROM %s "
+                            + "WHERE to_tsvector('%s', coalesce(text, '')) "
+                            + "      @@ plainto_tsquery('%s', ?) "
+                            + "%s "
+                            + "ORDER BY score DESC "
+                            + "LIMIT ?;",
                     textSearchConfig,
                     textSearchConfig,
                     join(",", metadataHandler.columnsNames()),
                     table,
                     textSearchConfig,
                     textSearchConfig,
-                    whereClause
-            );
+                    whereClause);
 
             try (PreparedStatement stmt = connection.prepareStatement(sql)) {
                 stmt.setString(1, keywordQuery);
@@ -494,42 +502,42 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
 
             String coalescedMetadataCols = "";
             if (!metadataCols.isEmpty()) {
-                coalescedMetadataCols = ", " + metadataCols.stream()
-                        .map(col -> String.format("COALESCE(v.%1$s, k.%1$s) AS %1$s", col))
-                        .collect(java.util.stream.Collectors.joining(", "));
+                coalescedMetadataCols = ", "
+                        + metadataCols.stream()
+                                .map(col -> String.format("COALESCE(v.%1$s, k.%1$s) AS %1$s", col))
+                                .collect(java.util.stream.Collectors.joining(", "));
             }
 
             int rrfK = DEFAULT_RRF_K;
 
             String sql = String.format(
-                    "WITH vector_search AS ( " +
-                            "  SELECT " +
-                            "    embedding_id, embedding, text %1$s, " +
-                            "    RANK() OVER (ORDER BY embedding <=> '%2$s') AS rnk " +
-                            "  FROM %3$s " +
-                            "  %4$s " +
-                            "  ORDER BY embedding <=> '%2$s' " +
-                            "  LIMIT %5$d " +
-                            "), keyword_search AS ( " +
-                            "  SELECT " +
-                            "    embedding_id, embedding, text %1$s, " +
-                            "    RANK() OVER (ORDER BY ts_rank(to_tsvector('%6$s', coalesce(text, '')), plainto_tsquery('%6$s', ?)) DESC) AS rnk " +
-                            "  FROM %3$s " +
-                            "  WHERE to_tsvector('%6$s', coalesce(text, '')) @@ plainto_tsquery('%6$s', ?) " +
-                            "    %7$s " +
-                            "  ORDER BY ts_rank(to_tsvector('%6$s', coalesce(text, '')), plainto_tsquery('%6$s', ?)) DESC " +
-                            "  LIMIT %5$d " +
-                            ") " +
-                            "SELECT " +
-                            "  COALESCE(v.embedding_id, k.embedding_id) AS embedding_id, " +
-                            "  COALESCE(v.embedding, k.embedding) AS embedding, " +
-                            "  COALESCE(v.text, k.text) AS text " +
-                            "  %8$s, " +
-                            "  COALESCE(1.0 / (%9$d + v.rnk), 0.0) + COALESCE(1.0 / (%9$d + k.rnk), 0.0) AS score " +
-                            "FROM vector_search v " +
-                            "FULL OUTER JOIN keyword_search k ON v.embedding_id = k.embedding_id " +
-                            "ORDER BY score DESC " +
-                            "LIMIT %10$d;",
+                    "WITH vector_search AS ( " + "  SELECT "
+                            + "    embedding_id, embedding, text %1$s, "
+                            + "    RANK() OVER (ORDER BY embedding <=> '%2$s') AS rnk "
+                            + "  FROM %3$s "
+                            + "  %4$s "
+                            + "  ORDER BY embedding <=> '%2$s' "
+                            + "  LIMIT %5$d "
+                            + "), keyword_search AS ( "
+                            + "  SELECT "
+                            + "    embedding_id, embedding, text %1$s, "
+                            + "    RANK() OVER (ORDER BY ts_rank(to_tsvector('%6$s', coalesce(text, '')), plainto_tsquery('%6$s', ?)) DESC) AS rnk "
+                            + "  FROM %3$s "
+                            + "  WHERE to_tsvector('%6$s', coalesce(text, '')) @@ plainto_tsquery('%6$s', ?) "
+                            + "    %7$s "
+                            + "  ORDER BY ts_rank(to_tsvector('%6$s', coalesce(text, '')), plainto_tsquery('%6$s', ?)) DESC "
+                            + "  LIMIT %5$d "
+                            + ") "
+                            + "SELECT "
+                            + "  COALESCE(v.embedding_id, k.embedding_id) AS embedding_id, "
+                            + "  COALESCE(v.embedding, k.embedding) AS embedding, "
+                            + "  COALESCE(v.text, k.text) AS text "
+                            + "  %8$s, "
+                            + "  COALESCE(1.0 / (%9$d + v.rnk), 0.0) + COALESCE(1.0 / (%9$d + k.rnk), 0.0) AS score "
+                            + "FROM vector_search v "
+                            + "FULL OUTER JOIN keyword_search k ON v.embedding_id = k.embedding_id "
+                            + "ORDER BY score DESC "
+                            + "LIMIT %10$d;",
                     rawMetadataCols,
                     referenceVector,
                     table,
@@ -539,8 +547,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                     keywordWhere,
                     coalescedMetadataCols,
                     rrfK,
-                    maxResults
-            );
+                    maxResults);
 
             try (PreparedStatement stmt = connection.prepareStatement(sql)) {
                 stmt.setString(1, keywordQuery);
@@ -573,31 +580,29 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     private void addInternal(String id, Embedding embedding, TextSegment embedded) {
-        addAll(
-                singletonList(id),
-                singletonList(embedding),
-                embedded == null ? null : singletonList(embedded));
+        addAll(singletonList(id), singletonList(embedding), embedded == null ? null : singletonList(embedded));
     }
 
     @Override
-    public void addAll(
-            List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
+    public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
             log.info("Empty embeddings - no ops");
             return;
         }
         ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
-        ensureTrue(embedded == null || embeddings.size() == embedded.size(),
+        ensureTrue(
+                embedded == null || embeddings.size() == embedded.size(),
                 "embeddings size is not equal to embedded size");
 
         try (Connection connection = getConnection()) {
             String query = String.format(
-                    "INSERT INTO %s (embedding_id, embedding, text, %s) VALUES (?, ?, ?, %s)" +
-                            "ON CONFLICT (embedding_id) DO UPDATE SET " +
-                            "embedding = EXCLUDED.embedding," +
-                            "text = EXCLUDED.text," +
-                            "%s;",
-                    table, join(",", metadataHandler.columnsNames()),
+                    "INSERT INTO %s (embedding_id, embedding, text, %s) VALUES (?, ?, ?, %s)"
+                            + "ON CONFLICT (embedding_id) DO UPDATE SET "
+                            + "embedding = EXCLUDED.embedding,"
+                            + "text = EXCLUDED.text,"
+                            + "%s;",
+                    table,
+                    join(",", metadataHandler.columnsNames()),
                     join(",", nCopies(metadataHandler.columnsNames().size(), "?")),
                     metadataHandler.insertClause());
             try (PreparedStatement upsertStmt = connection.prepareStatement(query)) {
@@ -607,11 +612,12 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
 
                     if (embedded != null && embedded.get(i) != null) {
                         upsertStmt.setObject(3, embedded.get(i).text());
-                        metadataHandler.setMetadata(upsertStmt, 4, embedded.get(i).metadata());
+                        metadataHandler.setMetadata(
+                                upsertStmt, 4, embedded.get(i).metadata());
                     } else {
                         upsertStmt.setNull(3, Types.VARCHAR);
-                        IntStream.range(4, 4 + metadataHandler.columnsNames().size()).forEach(
-                                j -> {
+                        IntStream.range(4, 4 + metadataHandler.columnsNames().size())
+                                .forEach(j -> {
                                     try {
                                         upsertStmt.setNull(j, Types.OTHER);
                                     } catch (SQLException e) {
@@ -660,8 +666,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         private SearchMode searchMode;
         private String textSearchConfig;
 
-        DatasourceBuilder() {
-        }
+        DatasourceBuilder() {}
 
         public DatasourceBuilder datasource(DataSource datasource) {
             this.datasource = datasource;
@@ -728,7 +733,10 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         public String toString() {
-            return "PgVectorEmbeddingStore.DatasourceBuilder(datasource=" + this.datasource + ", table=" + this.table + ", dimension=" + this.dimension + ", useIndex=" + this.useIndex + ", indexListSize=" + this.indexListSize + ", createTable=" + this.createTable + ", dropTableFirst=" + this.dropTableFirst + ", metadataStorageConfig=" + this.metadataStorageConfig + ")";
+            return "PgVectorEmbeddingStore.DatasourceBuilder(datasource=" + this.datasource + ", table=" + this.table
+                    + ", dimension=" + this.dimension + ", useIndex=" + this.useIndex + ", indexListSize="
+                    + this.indexListSize + ", createTable=" + this.createTable + ", dropTableFirst="
+                    + this.dropTableFirst + ", metadataStorageConfig=" + this.metadataStorageConfig + ")";
         }
     }
 
@@ -748,8 +756,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         private SearchMode searchMode;
         private String textSearchConfig;
 
-        PgVectorEmbeddingStoreBuilder() {
-        }
+        PgVectorEmbeddingStoreBuilder() {}
 
         public PgVectorEmbeddingStoreBuilder host(String host) {
             this.host = host;
@@ -840,7 +847,11 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         public String toString() {
-            return "PgVectorEmbeddingStore.PgVectorEmbeddingStoreBuilder(host=" + this.host + ", port=" + this.port + ", user=" + this.user + ", password=" + this.password + ", database=" + this.database + ", table=" + this.table + ", dimension=" + this.dimension + ", useIndex=" + this.useIndex + ", indexListSize=" + this.indexListSize + ", createTable=" + this.createTable + ", dropTableFirst=" + this.dropTableFirst + ", metadataStorageConfig=" + this.metadataStorageConfig + ")";
+            return "PgVectorEmbeddingStore.PgVectorEmbeddingStoreBuilder(host=" + this.host + ", port=" + this.port
+                    + ", user=" + this.user + ", password=" + this.password + ", database=" + this.database + ", table="
+                    + this.table + ", dimension=" + this.dimension + ", useIndex=" + this.useIndex + ", indexListSize="
+                    + this.indexListSize + ", createTable=" + this.createTable + ", dropTableFirst="
+                    + this.dropTableFirst + ", metadataStorageConfig=" + this.metadataStorageConfig + ")";
         }
     }
 }

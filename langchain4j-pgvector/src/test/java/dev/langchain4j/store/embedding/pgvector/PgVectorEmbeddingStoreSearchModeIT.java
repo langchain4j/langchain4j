@@ -1,5 +1,11 @@
 package dev.langchain4j.store.embedding.pgvector;
 
+import static dev.langchain4j.store.embedding.pgvector.PgVectorEmbeddingStore.SearchMode.EMBEDDING_ONLY;
+import static dev.langchain4j.store.embedding.pgvector.PgVectorEmbeddingStore.SearchMode.FULL_TEXT_ONLY;
+import static dev.langchain4j.store.embedding.pgvector.PgVectorEmbeddingStore.SearchMode.HYBRID;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.testcontainers.shaded.org.apache.commons.lang3.RandomUtils.nextInt;
+
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -7,19 +13,12 @@ import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2Quantize
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-
-import java.util.List;
-
-import static dev.langchain4j.store.embedding.pgvector.PgVectorEmbeddingStore.SearchMode.EMBEDDING_ONLY;
-import static dev.langchain4j.store.embedding.pgvector.PgVectorEmbeddingStore.SearchMode.FULL_TEXT_ONLY;
-import static dev.langchain4j.store.embedding.pgvector.PgVectorEmbeddingStore.SearchMode.HYBRID;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.testcontainers.shaded.org.apache.commons.lang3.RandomUtils.nextInt;
 
 @Testcontainers
 class PgVectorEmbeddingStoreSearchModeIT {
@@ -78,8 +77,7 @@ class PgVectorEmbeddingStoreSearchModeIT {
         List<TextSegment> segments = List.of(
                 TextSegment.from("Java is a popular programming language."),
                 TextSegment.from("PostgreSQL supports pgvector for vector similarity search."),
-                TextSegment.from("Full text search in PostgreSQL uses tsvector and tsquery.")
-        );
+                TextSegment.from("Full text search in PostgreSQL uses tsvector and tsquery."));
 
         for (TextSegment segment : segments) {
             Embedding embedding = embeddingModel.embed(segment).content();
@@ -104,9 +102,7 @@ class PgVectorEmbeddingStoreSearchModeIT {
         assertThat(result.matches()).isNotEmpty();
         String topText = result.matches().get(0).embedded().text();
 
-        assertThat(topText)
-                .containsIgnoringCase("pgvector")
-                .containsIgnoringCase("vector");
+        assertThat(topText).containsIgnoringCase("pgvector").containsIgnoringCase("vector");
     }
 
     @Test
@@ -125,9 +121,7 @@ class PgVectorEmbeddingStoreSearchModeIT {
         assertThat(result.matches()).isNotEmpty();
         String topText = result.matches().get(0).embedded().text();
 
-        assertThat(topText)
-                .containsIgnoringCase("Full text search")
-                .containsIgnoringCase("tsvector");
+        assertThat(topText).containsIgnoringCase("Full text search").containsIgnoringCase("tsvector");
     }
 
     @Test
@@ -159,12 +153,12 @@ class PgVectorEmbeddingStoreSearchModeIT {
         EmbeddingSearchResult<TextSegment> hybridResult = storeHybrid.search(request);
 
         assertThat(hybridResult.matches()).isNotEmpty();
-        List<String> topTexts = hybridResult.matches().stream()
-                .map(m -> m.embedded().text())
-                .toList();
+        List<String> topTexts =
+                hybridResult.matches().stream().map(m -> m.embedded().text()).toList();
 
         assertThat(topTexts.stream().anyMatch(t -> t.contains("pgvector"))).isTrue();
-        assertThat(topTexts.stream().anyMatch(t -> t.contains("tsvector") || t.contains("tsquery"))).isTrue();
+        assertThat(topTexts.stream().anyMatch(t -> t.contains("tsvector") || t.contains("tsquery")))
+                .isTrue();
     }
 
     @Test
