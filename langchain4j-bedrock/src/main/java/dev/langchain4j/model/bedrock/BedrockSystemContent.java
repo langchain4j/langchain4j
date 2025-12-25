@@ -5,10 +5,18 @@ package dev.langchain4j.model.bedrock;
  * <p>
  * This interface allows for different types of content (currently text)
  * with optional cache point markers for AWS Bedrock prompt caching.
+ * <p>
+ * <b>Implementation Requirements:</b>
+ * <ul>
+ *   <li>Implementations must be immutable and thread-safe</li>
+ *   <li>Implementations must provide proper {@code equals()} and {@code hashCode()}</li>
+ *   <li>Cache points are inserted AFTER the content block in AWS Bedrock requests</li>
+ *   <li>Note: Caching may not activate if content is below ~1,024 tokens</li>
+ * </ul>
  *
  * @see BedrockSystemTextContent
  * @see BedrockSystemMessage
- * @since 1.0.0-beta1
+ * @since 1.0.0-beta2
  */
 public interface BedrockSystemContent {
 

@@ -259,4 +259,82 @@ class BedrockSystemMessageTest {
         assertThat(((BedrockSystemTextContent) contents.get(1)).hasCachePoint()).isTrue();
         assertThat(((BedrockSystemTextContent) contents.get(2)).hasCachePoint()).isFalse();
     }
+
+    @Test
+    void should_report_has_cache_points() {
+        BedrockSystemMessage withCachePoints = BedrockSystemMessage.builder()
+                .addText("No cache")
+                .addTextWithCachePoint("With cache")
+                .build();
+
+        BedrockSystemMessage withoutCachePoints = BedrockSystemMessage.builder()
+                .addText("No cache 1")
+                .addText("No cache 2")
+                .build();
+
+        assertThat(withCachePoints.hasCachePoints()).isTrue();
+        assertThat(withoutCachePoints.hasCachePoints()).isFalse();
+    }
+
+    @Test
+    void should_count_cache_points() {
+        BedrockSystemMessage msg = BedrockSystemMessage.builder()
+                .addText("No cache")
+                .addTextWithCachePoint("Cache 1")
+                .addText("No cache")
+                .addTextWithCachePoint("Cache 2")
+                .build();
+
+        assertThat(msg.cachePointCount()).isEqualTo(2);
+    }
+
+    @Test
+    void should_throw_when_exceeding_max_cache_points() {
+        BedrockSystemMessage.Builder builder = BedrockSystemMessage.builder();
+        for (int i = 0; i <= BedrockSystemMessage.MAX_CACHE_POINTS; i++) {
+            builder.addTextWithCachePoint("Cache point " + i);
+        }
+
+        assertThatThrownBy(builder::build)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Maximum " + BedrockSystemMessage.MAX_CACHE_POINTS + " cache points");
+    }
+
+    @Test
+    void should_accept_max_cache_points() {
+        BedrockSystemMessage.Builder builder = BedrockSystemMessage.builder();
+        for (int i = 0; i < BedrockSystemMessage.MAX_CACHE_POINTS; i++) {
+            builder.addTextWithCachePoint("Cache point " + i);
+        }
+
+        BedrockSystemMessage msg = builder.build();
+        assertThat(msg.cachePointCount()).isEqualTo(BedrockSystemMessage.MAX_CACHE_POINTS);
+    }
+
+    @Test
+    void should_include_cache_point_count_in_toString() {
+        BedrockSystemMessage msg = BedrockSystemMessage.builder()
+                .addText("No cache")
+                .addTextWithCachePoint("Cache 1")
+                .addTextWithCachePoint("Cache 2")
+                .build();
+
+        String str = msg.toString();
+        assertThat(str).contains("3 blocks");
+        assertThat(str).contains("cachePoints = 2");
+    }
+
+    @Test
+    void should_allow_builder_reuse_after_build() {
+        BedrockSystemMessage.Builder builder = BedrockSystemMessage.builder();
+        builder.addText("First");
+        BedrockSystemMessage msg1 = builder.build();
+
+        // Builder should still work after build
+        builder.addText("Second");
+        BedrockSystemMessage msg2 = builder.build();
+
+        assertThat(msg1.contents()).hasSize(1);
+        assertThat(msg2.contents()).hasSize(2);
+    }
 }
