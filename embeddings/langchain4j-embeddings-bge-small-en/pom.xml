@@ -46,6 +46,8 @@
                             <outputFileName>bge-small-en.onnx</outputFileName>
                             <sha256>644fdaf59ddebaca416903a593665b74bddab9b168b0799d4034c0e7809699bf</sha256>
                             <skipCache>${embeddingsSkipCache}</skipCache>
+                            <readTimeOut>600000</readTimeOut> <!-- 10 minutes -->
+                            <retries>5</retries>
                         </configuration>
                     </execution>
                 </executions>
