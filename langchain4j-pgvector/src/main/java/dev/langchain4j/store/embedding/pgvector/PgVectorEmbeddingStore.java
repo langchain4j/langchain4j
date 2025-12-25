@@ -65,17 +65,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     private static final String DEFAULT_TEXT_SEARCH_CONFIG = "simple";
     private static final int DEFAULT_RRF_K = 60;
 
-    private static final List<String> ALLOWED_TEXT_SEARCH_CONFIGS = List.of(
-            "simple",
-            "english",
-            "german",
-            "french",
-            "italian",
-            "spanish",
-            "portuguese",
-            "dutch",
-            "russian"
-    );
+    private static final List<String> ALLOWED_TEXT_SEARCH_CONFIGS =
+            List.of("simple", "english", "german", "french", "italian", "spanish", "portuguese", "dutch", "russian");
 
     /**
      * Datasource used to create the store
@@ -131,8 +122,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         dropTableFirst = getOrDefault(dropTableFirst, false);
 
         this.searchMode = getOrDefault(searchMode, SearchMode.EMBEDDING_ONLY);
-        this.textSearchConfig = validateTextSearchConfig(
-                getOrDefault(textSearchConfig, DEFAULT_TEXT_SEARCH_CONFIG));
+        this.textSearchConfig = validateTextSearchConfig(getOrDefault(textSearchConfig, DEFAULT_TEXT_SEARCH_CONFIG));
 
         initTable(dropTableFirst, createTable, useIndex, dimension, indexListSize);
     }
