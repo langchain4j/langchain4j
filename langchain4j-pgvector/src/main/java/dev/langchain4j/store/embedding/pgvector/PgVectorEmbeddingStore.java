@@ -144,6 +144,10 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param dropTableFirst        Should drop table first, usually for testing
      * @param metadataStorageConfig The {@link MetadataStorageConfig} config.
      * @param searchMode            The search mode to use
+     * @param textSearchConfig      Name of the PostgreSQL text search configuration to use (for example
+     *                              {@code "simple"}, {@code "english"}, {@code "german"}, {@code "french"},
+     *                              {@code "italian"}, {@code "spanish"}, {@code "portuguese"}, {@code "dutch"},
+     *                              or {@code "russian"}); must correspond to a supported text search configuration.
      */
     @SuppressWarnings("unused")
     protected PgVectorEmbeddingStore(
