@@ -78,6 +78,12 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     private static final int DEFAULT_RRF_K = 60;
 
+    /**
+     * Whitelist of PostgreSQL text search configurations that are considered safe to use.
+     * <p>
+     * Restricting the text search configuration to this list helps prevent SQL injection
+     * attacks when the configuration name is incorporated into SQL statements.
+     */
     private static final List<String> ALLOWED_TEXT_SEARCH_CONFIGS =
             List.of("simple", "english", "german", "french", "italian", "spanish", "portuguese", "dutch", "russian");
 
