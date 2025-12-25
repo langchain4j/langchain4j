@@ -875,7 +875,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                     + ", user=" + this.user + ", password=" + this.password + ", database=" + this.database + ", table="
                     + this.table + ", dimension=" + this.dimension + ", useIndex=" + this.useIndex + ", indexListSize="
                     + this.indexListSize + ", createTable=" + this.createTable + ", dropTableFirst="
-                    + this.dropTableFirst + ", metadataStorageConfig=" + this.metadataStorageConfig + ")";
+                    + this.dropTableFirst + ", metadataStorageConfig=" + this.metadataStorageConfig + ", searchMode="
+                    + this.searchMode + ", textSearchConfig=" + this.textSearchConfig + ")";
         }
     }
 }
