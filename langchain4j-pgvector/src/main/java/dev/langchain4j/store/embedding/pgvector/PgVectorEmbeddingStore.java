@@ -99,6 +99,10 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     private final SearchMode searchMode;
 
+    /**
+     * PostgreSQL text search configuration to use for full-text search operations,
+     * such as determining language-specific parsing and stemming.
+     */
     private final String textSearchConfig;
 
     /**
