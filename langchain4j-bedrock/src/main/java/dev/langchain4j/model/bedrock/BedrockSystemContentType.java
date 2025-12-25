@@ -2,12 +2,19 @@ package dev.langchain4j.model.bedrock;
 
 /**
  * Types of content that can be included in a {@link BedrockSystemMessage}.
+ * <p>
+ * Currently only {@link #TEXT} is supported. Additional content types
+ * (such as images) may be added in future versions.
  *
- * @since 1.0.0-beta1
+ * @see BedrockSystemContent
+ * @see BedrockSystemTextContent
+ * @since 1.0.0-beta2
  */
 public enum BedrockSystemContentType {
     /**
      * Text content block.
+     *
+     * @see BedrockSystemTextContent
      */
     TEXT
 }
