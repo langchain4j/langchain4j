@@ -23,11 +23,14 @@ import java.util.Objects;
  *   <li>Minimum ~1,024 tokens required for caching to activate</li>
  *   <li>Cache has 5-minute TTL (resets on each hit)</li>
  *   <li>Only Claude 3.x and Amazon Nova models support caching</li>
+ *   <li>Maximum 4 cache points per request (see {@link BedrockSystemMessage#MAX_CACHE_POINTS})</li>
  * </ul>
+ * <p>
+ * <b>Thread Safety:</b> Instances of this class are immutable and thread-safe.
  *
  * @see BedrockSystemMessage
  * @see <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-caching.html">AWS Bedrock Prompt Caching</a>
- * @since 1.0.0-beta1
+ * @since 1.0.0-beta2
  */
 public class BedrockSystemTextContent implements BedrockSystemContent {
 

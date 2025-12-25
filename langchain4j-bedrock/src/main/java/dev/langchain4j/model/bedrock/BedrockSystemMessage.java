@@ -35,6 +35,8 @@ import java.util.stream.Collectors;
  *   <li><b>Minimum tokens:</b> ~1,024 tokens required for caching to activate</li>
  *   <li><b>Cache TTL:</b> 5-minute default, resets on each cache hit</li>
  *   <li><b>Supported models:</b> Only Claude 3.x and Amazon Nova models</li>
+ *   <li><b>Maximum cache points:</b> AWS limits to 4 cache points per request
+ *       (across all messages including system, user, and tool definitions)</li>
  * </ul>
  * <p>
  * <b>Important limitations:</b>
@@ -50,13 +52,20 @@ import java.util.stream.Collectors;
  *       {@code findLast()} will NOT find {@code BedrockSystemMessage} instances.</li>
  *   <li><b>Type checking:</b> {@link #type()} returns {@link ChatMessageType#SYSTEM},
  *       but this class does NOT extend {@link SystemMessage}. Always use
- *       {@code instanceof} checks rather than {@code type()} checks.</li>
+ *       {@code instanceof} checks rather than {@code type()} checks.
+ *       <b>WARNING:</b> Code using {@code message.type() == ChatMessageType.SYSTEM}
+ *       will match this class, but code using {@code instanceof SystemMessage} will NOT.
+ *       The codebase has many places using {@code instanceof SystemMessage} that will
+ *       silently ignore {@code BedrockSystemMessage} instances.</li>
  * </ul>
+ * <p>
+ * <b>Thread Safety:</b> Instances of this class are immutable and thread-safe.
+ * The {@link Builder} is NOT thread-safe and should not be shared between threads.
  *
  * @see BedrockSystemContent
  * @see BedrockCachePointPlacement
  * @see <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-caching.html">AWS Bedrock Prompt Caching</a>
- * @since 1.0.0-beta1
+ * @since 1.0.0-beta2
  */
 public class BedrockSystemMessage implements ChatMessage {
 
@@ -65,15 +74,29 @@ public class BedrockSystemMessage implements ChatMessage {
      */
     public static final int MAX_CONTENT_BLOCKS = 10;
 
+    /**
+     * Maximum number of cache points allowed by AWS Bedrock per request.
+     */
+    public static final int MAX_CACHE_POINTS = 4;
+
     private final List<BedrockSystemContent> contents;
 
     private BedrockSystemMessage(Builder builder) {
         ensureNotEmpty(builder.contents, "contents");
         ensureBetween(builder.contents.size(), 1, MAX_CONTENT_BLOCKS, "content block count");
+
+        // Validate cache point count (AWS Bedrock limits to 4 per request)
+        long cachePointCount = builder.contents.stream()
+                .filter(BedrockSystemContent::hasCachePoint)
+                .count();
+        if (cachePointCount > MAX_CACHE_POINTS) {
+            throw new IllegalArgumentException(
+                    "Maximum " + MAX_CACHE_POINTS + " cache points allowed per AWS Bedrock request, but got "
+                            + cachePointCount);
+        }
+
         // Single defensive copy - builder list is already validated
         this.contents = Collections.unmodifiableList(new ArrayList<>(builder.contents));
-        // Clear builder state to prevent reuse issues
-        builder.contents = new ArrayList<>();
     }
 
     /**
@@ -281,8 +304,27 @@ public class BedrockSystemMessage implements ChatMessage {
         return Objects.hash(contents);
     }
 
+    /**
+     * Returns true if any content block has a cache point marker.
+     *
+     * @return true if this message contains any cache points
+     */
+    public boolean hasCachePoints() {
+        return contents.stream().anyMatch(BedrockSystemContent::hasCachePoint);
+    }
+
+    /**
+     * Returns the number of cache points in this message.
+     *
+     * @return the cache point count
+     */
+    public long cachePointCount() {
+        return contents.stream().filter(BedrockSystemContent::hasCachePoint).count();
+    }
+
     @Override
     public String toString() {
-        return "BedrockSystemMessage { contents = " + contents.size() + " blocks }";
+        long cachePoints = cachePointCount();
+        return "BedrockSystemMessage { contents = " + contents.size() + " blocks, cachePoints = " + cachePoints + " }";
     }
 }

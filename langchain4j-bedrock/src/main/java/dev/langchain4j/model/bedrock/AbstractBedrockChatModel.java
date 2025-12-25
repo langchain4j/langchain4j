@@ -146,10 +146,18 @@ abstract class AbstractBedrockChatModel {
 
     protected List<SystemContentBlock> extractSystemMessages(
             List<ChatMessage> messages, BedrockCachePointPlacement cachePointPlacement) {
+        if (messages == null) {
+            return new ArrayList<>();
+        }
+
         List<SystemContentBlock> systemBlocks = new ArrayList<>();
         boolean lastWasCoreSystemMessage = false;
 
         for (ChatMessage message : messages) {
+            if (message == null) {
+                continue; // Skip null messages gracefully
+            }
+
             // CRITICAL: Use instanceof, NOT type() check to avoid ClassCastException
             if (message instanceof BedrockSystemMessage bedrockMsg) {
                 // Handle BedrockSystemMessage with granular cache points
@@ -163,6 +171,11 @@ abstract class AbstractBedrockChatModel {
                         if (textContent.hasCachePoint()) {
                             systemBlocks.add(CACHE_POINT_BLOCK);
                         }
+                    } else {
+                        // Fail fast for unknown content types to prevent silent data loss
+                        throw new UnsupportedFeatureException(
+                                "Unsupported BedrockSystemContent type: " + content.type()
+                                        + ". Only TEXT content is currently supported.");
                     }
                 }
                 lastWasCoreSystemMessage = false;
@@ -194,12 +207,19 @@ abstract class AbstractBedrockChatModel {
 
     protected List<Message> extractRegularMessages(
             List<ChatMessage> messages, BedrockCachePointPlacement cachePointPlacement) {
+        if (messages == null) {
+            return new ArrayList<>();
+        }
+
         List<Message> bedrockMessages = new ArrayList<>();
         List<ContentBlock> currentBlocks = new ArrayList<>();
         boolean firstUserMessageProcessed = false;
 
         for (int i = 0; i < messages.size(); i++) {
             ChatMessage msg = messages.get(i);
+            if (msg == null) {
+                continue; // Skip null messages gracefully
+            }
             if (msg instanceof ToolExecutionResultMessage toolResult) {
                 handleToolResult(toolResult, currentBlocks, bedrockMessages, i, messages);
             } else if (!(msg instanceof SystemMessage) && !(msg instanceof BedrockSystemMessage)) {
@@ -855,6 +875,24 @@ abstract class AbstractBedrockChatModel {
             return self();
         }
 
+        /**
+         * Enables logging of HTTP requests to AWS Bedrock.
+         * <p>
+         * <b>WARNING:</b> When enabled, the ENTIRE request body is logged at DEBUG level,
+         * including all message content (system prompts, user messages, etc.). This may
+         * expose sensitive information such as:
+         * <ul>
+         *   <li>Confidential instructions in system prompts</li>
+         *   <li>PII or personal data in user messages</li>
+         *   <li>API keys or secrets accidentally included in prompts</li>
+         * </ul>
+         * <p>
+         * Use with caution in production environments. Consider using a custom logger
+         * with appropriate filtering/redaction if needed.
+         *
+         * @param logRequests true to enable request logging
+         * @return this builder
+         */
         public T logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return self();
