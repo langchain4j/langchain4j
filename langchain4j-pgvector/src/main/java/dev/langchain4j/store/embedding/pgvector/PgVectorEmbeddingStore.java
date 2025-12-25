@@ -63,6 +63,19 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     private static final Logger log = LoggerFactory.getLogger(PgVectorEmbeddingStore.class);
 
     private static final String DEFAULT_TEXT_SEARCH_CONFIG = "simple";
+    /**
+     * Default {@code k} parameter used by the Reciprocal Rank Fusion (RRF) algorithm when
+     * combining embedding and full-text search rankings.
+     * <p>
+     * RRF assigns each result a score based on its rank in each list using the formula:
+     * {@code score = 1 / (k + rank)}. Larger {@code k} values dampen the impact of rank
+     * differences so that lower-ranked but consistently relevant results can still contribute
+     * meaningfully to the final score.
+     * <p>
+     * The value {@code 60} is a commonly used heuristic in RRF that provides a good balance
+     * between emphasizing top-ranked results and allowing deeper results to influence the
+     * fused ranking, and has been chosen here as a sensible default.
+     */
     private static final int DEFAULT_RRF_K = 60;
 
     private static final List<String> ALLOWED_TEXT_SEARCH_CONFIGS =
