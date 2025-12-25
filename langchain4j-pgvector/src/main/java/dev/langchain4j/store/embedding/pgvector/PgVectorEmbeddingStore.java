@@ -62,6 +62,10 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private static final Logger log = LoggerFactory.getLogger(PgVectorEmbeddingStore.class);
 
+    private static final double DEFAULT_SEMANTIC_WEIGHT = 0.7;
+    private static final double DEFAULT_KEYWORD_WEIGHT = 0.3;
+    private static final String DEFAULT_TEXT_SEARCH_CONFIG = "simple";
+
     /**
      * Datasource used to create the store
      */
@@ -79,6 +83,9 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * Search mode
      */
     private final SearchMode searchMode;
+    private final double semanticWeight;
+    private final double keywordWeight;
+    private final String textSearchConfig;
 
     /**
      * Constructor for PgVectorEmbeddingStore Class
@@ -101,7 +108,10 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                                      Boolean createTable,
                                      Boolean dropTableFirst,
                                      MetadataStorageConfig metadataStorageConfig,
-                                     SearchMode searchMode) {
+                                     SearchMode searchMode,
+                                     Double semanticWeight,
+                                     Double keywordWeight,
+                                     String textSearchConfig) {
         this.datasource = ensureNotNull(datasource, "datasource");
         this.table = ensureNotBlank(table, "table");
         MetadataStorageConfig config = getOrDefault(metadataStorageConfig, DefaultMetadataStorageConfig.defaultConfig());
@@ -109,7 +119,11 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         useIndex = getOrDefault(useIndex, false);
         createTable = getOrDefault(createTable, true);
         dropTableFirst = getOrDefault(dropTableFirst, false);
+
         this.searchMode = getOrDefault(searchMode, SearchMode.EMBEDDING_ONLY);
+        this.semanticWeight = getOrDefault(semanticWeight, DEFAULT_SEMANTIC_WEIGHT);
+        this.keywordWeight = getOrDefault(keywordWeight, DEFAULT_KEYWORD_WEIGHT);
+        this.textSearchConfig = getOrDefault(textSearchConfig, DEFAULT_TEXT_SEARCH_CONFIG);
 
         initTable(dropTableFirst, createTable, useIndex, dimension, indexListSize);
     }
@@ -146,11 +160,14 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             Boolean createTable,
             Boolean dropTableFirst,
             MetadataStorageConfig metadataStorageConfig,
-            SearchMode searchMode
+            SearchMode searchMode,
+            Double semanticWeight,
+            Double keywordWeight,
+            String textSearchConfig
     ) {
         this(createDataSource(host, port, user, password, database),
                 table, dimension, useIndex, indexListSize, createTable, dropTableFirst, metadataStorageConfig,
-                searchMode);
+                searchMode, semanticWeight, keywordWeight, textSearchConfig);
     }
 
     public PgVectorEmbeddingStore() {
@@ -158,6 +175,9 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.table = null;
         this.metadataHandler = null;
         this.searchMode = null;
+        this.semanticWeight = DEFAULT_SEMANTIC_WEIGHT;
+        this.keywordWeight = DEFAULT_KEYWORD_WEIGHT;
+        this.textSearchConfig = DEFAULT_TEXT_SEARCH_CONFIG;
     }
 
     private static DataSource createDataSource(String host, Integer port, String user, String password, String database) {
@@ -324,12 +344,16 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     @Override
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
-        // For now, only EMBEDDING_ONLY is implemented. Other modes will be added in follow-up changes.
-        if (searchMode != SearchMode.EMBEDDING_ONLY) {
-            log.debug("PgVectorEmbeddingStore searchMode={} is not yet implemented, falling back to EMBEDDING_ONLY.",
-                    searchMode);
-        }
+        SearchMode mode = getOrDefault(searchMode, SearchMode.EMBEDDING_ONLY);
 
+        return switch (mode) {
+            case EMBEDDING_ONLY -> embeddingOnlySearch(request);
+            case FULL_TEXT_ONLY -> fullTextOnlySearch(request);
+            case HYBRID -> hybridSearch(request);
+        };
+    }
+
+    private EmbeddingSearchResult<TextSegment> embeddingOnlySearch(EmbeddingSearchRequest request) {
         Embedding referenceEmbedding = request.queryEmbedding();
         int maxResults = request.maxResults();
         double minScore = request.minScore();
@@ -342,7 +366,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             whereClause = (whereClause.isEmpty()) ? "" : "AND " + whereClause;
             String query = String.format(
                     "SELECT (2 - (embedding <=> '%s')) / 2 AS score, embedding_id, embedding, text, %s FROM %s " +
-                            "WHERE round(cast(float8 (embedding <=> '%s') as numeric), 8) <= round(2 - 2 * %s, 8) %s " + "ORDER BY embedding <=> '%s' LIMIT %s;",
+                            "WHERE round(cast(float8 (embedding <=> '%s') as numeric), 8) <= round(2 - 2 * %s, 8) %s " +
+                            "ORDER BY embedding <=> '%s' LIMIT %s;",
                     referenceVector, join(",", metadataHandler.columnsNames()), table, referenceVector,
                     minScore, whereClause, referenceVector, maxResults
             );
@@ -368,6 +393,157 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
+        return new EmbeddingSearchResult<>(result);
+    }
+
+    private EmbeddingSearchResult<TextSegment> fullTextOnlySearch(EmbeddingSearchRequest request) {
+        String keywordQuery = request.query();
+        if (!isNotNullOrBlank(keywordQuery)) {
+            return new EmbeddingSearchResult<>(List.of());
+        }
+
+        int maxResults = request.maxResults();
+        Filter filter = request.filter();
+
+        List<EmbeddingMatch<TextSegment>> result = new ArrayList<>();
+
+        try (Connection connection = getConnection()) {
+            String whereClause = (filter == null) ? "" : metadataHandler.whereClause(filter);
+            whereClause = (whereClause.isEmpty()) ? "" : "AND " + whereClause;
+
+            String sql = String.format(
+                    "SELECT ts_rank(to_tsvector('%s', coalesce(text, '')), " +
+                            "              plainto_tsquery('%s', ?)) AS score, " +
+                            "       embedding_id, embedding, text, %s " +
+                            "FROM %s " +
+                            "WHERE to_tsvector('%s', coalesce(text, '')) " +
+                            "      @@ plainto_tsquery('%s', ?) " +
+                            "%s " +
+                            "ORDER BY score DESC " +
+                            "LIMIT ?;",
+                    textSearchConfig,
+                    textSearchConfig,
+                    join(",", metadataHandler.columnsNames()),
+                    table,
+                    textSearchConfig,
+                    textSearchConfig,
+                    whereClause
+            );
+
+            try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+                stmt.setString(1, keywordQuery);
+                stmt.setString(2, keywordQuery);
+                stmt.setInt(3, maxResults);
+
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        double score = rs.getDouble("score");
+                        String embeddingId = rs.getString("embedding_id");
+
+                        PGvector vector = (PGvector) rs.getObject("embedding");
+                        Embedding embedding = new Embedding(vector.toArray());
+
+                        String text = rs.getString("text");
+                        TextSegment textSegment = null;
+                        if (isNotNullOrBlank(text)) {
+                            Metadata metadata = metadataHandler.fromResultSet(rs);
+                            textSegment = TextSegment.from(text, metadata);
+                        }
+                        result.add(new EmbeddingMatch<>(score, embeddingId, embedding, textSegment));
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
+        return new EmbeddingSearchResult<>(result);
+    }
+
+    private EmbeddingSearchResult<TextSegment> hybridSearch(EmbeddingSearchRequest request) {
+        Embedding referenceEmbedding = request.queryEmbedding();
+        String keywordQuery = request.query();
+
+        if (referenceEmbedding == null || !isNotNullOrBlank(keywordQuery)) {
+            log.debug("PgVectorEmbeddingStore HYBRID mode requires both queryEmbedding and query; falling back to EMBEDDING_ONLY");
+            return embeddingOnlySearch(request);
+        }
+
+        int maxResults = request.maxResults();
+        double minScore = request.minScore();
+        Filter filter = request.filter();
+
+        List<EmbeddingMatch<TextSegment>> result = new ArrayList<>();
+
+        try (Connection connection = getConnection()) {
+            String referenceVector = Arrays.toString(referenceEmbedding.vector());
+            String whereClause = (filter == null) ? "" : metadataHandler.whereClause(filter);
+            whereClause = (whereClause.isEmpty()) ? "" : "AND " + whereClause;
+
+            String sql = String.format(
+                    "WITH ranked AS ( " +
+                            "  SELECT " +
+                            "    (2 - (embedding <=> '%1$s')) / 2 AS semantic_score, " +
+                            "    ts_rank(to_tsvector('%9$s', coalesce(text, '')), " +
+                            "            plainto_tsquery('%9$s', ?)) AS keyword_score, " +
+                            "    embedding_id, embedding, text, %2$s " +
+                            "  FROM %3$s " +
+                            "  WHERE to_tsvector('%9$s', coalesce(text, '')) " +
+                            "        @@ plainto_tsquery('%9$s', ?) " +
+                            "    %4$s " +
+                            "), normalized AS ( " +
+                            "  SELECT r.semantic_score, " +
+                            "         CASE WHEN m.max_keyword_score > 0 " +
+                            "              THEN r.keyword_score / m.max_keyword_score " +
+                            "              ELSE 0 END AS keyword_score_norm, " +
+                            "         r.embedding_id, r.embedding, r.text, %2$s " +
+                            "  FROM ranked r " +
+                            "  CROSS JOIN (SELECT max(keyword_score) AS max_keyword_score FROM ranked) m " +
+                            ") " +
+                            "SELECT " +
+                            "  (%5$f * semantic_score + %6$f * keyword_score_norm) AS score, " +
+                            "  embedding_id, embedding, text, %2$s " +
+                            "FROM normalized " +
+                            "WHERE (%5$f * semantic_score + %6$f * keyword_score_norm) >= %7$f " +
+                            "ORDER BY score DESC " +
+                            "LIMIT %8$d;",
+                    referenceVector,
+                    join(",", metadataHandler.columnsNames()),
+                    table,
+                    whereClause,
+                    semanticWeight,
+                    keywordWeight,
+                    minScore,
+                    maxResults,
+                    textSearchConfig
+            );
+
+            try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+                stmt.setString(1, keywordQuery);
+                stmt.setString(2, keywordQuery);
+
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        double score = rs.getDouble("score");
+                        String embeddingId = rs.getString("embedding_id");
+
+                        PGvector vector = (PGvector) rs.getObject("embedding");
+                        Embedding embedding = new Embedding(vector.toArray());
+
+                        String text = rs.getString("text");
+                        TextSegment textSegment = null;
+                        if (isNotNullOrBlank(text)) {
+                            Metadata metadata = metadataHandler.fromResultSet(rs);
+                            textSegment = TextSegment.from(text, metadata);
+                        }
+                        result.add(new EmbeddingMatch<>(score, embeddingId, embedding, textSegment));
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
         return new EmbeddingSearchResult<>(result);
     }
 
@@ -457,6 +633,9 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         private Boolean dropTableFirst;
         private MetadataStorageConfig metadataStorageConfig;
         private SearchMode searchMode;
+        private Double semanticWeight;
+        private Double keywordWeight;
+        private String textSearchConfig;
 
         DatasourceBuilder() {
         }
@@ -506,6 +685,21 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        public DatasourceBuilder semanticWeight(double semanticWeight) {
+            this.semanticWeight = semanticWeight;
+            return this;
+        }
+
+        public DatasourceBuilder keywordWeight(double keywordWeight) {
+            this.keywordWeight = keywordWeight;
+            return this;
+        }
+
+        public DatasourceBuilder textSearchConfig(String textSearchConfig) {
+            this.textSearchConfig = textSearchConfig;
+            return this;
+        }
+
         public PgVectorEmbeddingStore build() {
             return new PgVectorEmbeddingStore(
                     this.datasource,
@@ -516,7 +710,10 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                     this.createTable,
                     this.dropTableFirst,
                     this.metadataStorageConfig,
-                    this.searchMode);
+                    this.searchMode,
+                    this.semanticWeight,
+                    this.keywordWeight,
+                    this.textSearchConfig);
         }
 
         public String toString() {
@@ -538,6 +735,9 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         private Boolean dropTableFirst;
         private MetadataStorageConfig metadataStorageConfig;
         private SearchMode searchMode;
+        private Double semanticWeight;
+        private Double keywordWeight;
+        private String textSearchConfig;
 
         PgVectorEmbeddingStoreBuilder() {
         }
@@ -607,6 +807,21 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        public PgVectorEmbeddingStoreBuilder semanticWeight(double semanticWeight) {
+            this.semanticWeight = semanticWeight;
+            return this;
+        }
+
+        public PgVectorEmbeddingStoreBuilder keywordWeight(double keywordWeight) {
+            this.keywordWeight = keywordWeight;
+            return this;
+        }
+
+        public PgVectorEmbeddingStoreBuilder textSearchConfig(String textSearchConfig) {
+            this.textSearchConfig = textSearchConfig;
+            return this;
+        }
+
         public PgVectorEmbeddingStore build() {
             return new PgVectorEmbeddingStore(
                     this.host,
@@ -621,7 +836,10 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                     this.createTable,
                     this.dropTableFirst,
                     this.metadataStorageConfig,
-                    this.searchMode);
+                    this.searchMode,
+                    this.semanticWeight,
+                    this.keywordWeight,
+                    this.textSearchConfig);
         }
 
         public String toString() {
