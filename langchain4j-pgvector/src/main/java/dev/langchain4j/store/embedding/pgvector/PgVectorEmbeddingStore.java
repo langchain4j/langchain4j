@@ -123,11 +123,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param dropTableFirst        Should drop table first, usually for testing
      * @param metadataStorageConfig The {@link MetadataStorageConfig} config.
      * @param searchMode            The search mode to use
-     * @param textSearchConfig      PostgreSQL text search configuration to use for full-text search;
-     *                              must be one of {@code simple}, {@code english}, {@code german},
-     *                              {@code french}, {@code italian}, {@code spanish}, {@code portuguese},
-     *                              {@code dutch} or {@code russian}. If {@code null}, the default
-     *                              configuration {@code simple} is used.
+     * @param textSearchConfig      PostgreSQL text search configuration to use for full-text search
      */
     protected PgVectorEmbeddingStore(
             DataSource datasource,
@@ -172,10 +168,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param dropTableFirst        Should drop table first, usually for testing
      * @param metadataStorageConfig The {@link MetadataStorageConfig} config.
      * @param searchMode            The search mode to use
-     * @param textSearchConfig      Name of the PostgreSQL text search configuration to use (for example
-     *                              {@code "simple"}, {@code "english"}, {@code "german"}, {@code "french"},
-     *                              {@code "italian"}, {@code "spanish"}, {@code "portuguese"}, {@code "dutch"},
-     *                              or {@code "russian"}); must correspond to a supported text search configuration.
+     * @param textSearchConfig      PostgreSQL text search configuration to use for full-text search
      */
     @SuppressWarnings("unused")
     protected PgVectorEmbeddingStore(
@@ -257,7 +250,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             if (dropTableFirst) {
                 statement.executeUpdate(String.format("DROP TABLE IF EXISTS %s", table));
             }
-            if (createTable && (searchMode == SearchMode.FULL_TEXT_ONLY || searchMode == SearchMode.HYBRID)) {
+            if (createTable) {
                 query = String.format(
                         "CREATE TABLE IF NOT EXISTS %s (embedding_id UUID PRIMARY KEY, "
                                 + "embedding vector(%s), text TEXT NULL, %s )",
@@ -266,7 +259,9 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                         metadataHandler.columnDefinitionsString());
                 statement.executeUpdate(query);
                 metadataHandler.createMetadataIndexes(statement, table);
+            }
 
+            if (searchMode == SearchMode.FULL_TEXT_ONLY || searchMode == SearchMode.HYBRID) {
                 String ftsIndexName = table + "_text_fts_gin_index";
                 query = String.format(
                         "CREATE INDEX IF NOT EXISTS %s ON %s " + "USING gin (to_tsvector('%s', coalesce(text, '')))",
