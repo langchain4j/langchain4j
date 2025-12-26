@@ -1,5 +1,6 @@
 package dev.langchain4j.agentic.internal;
 
+import dev.langchain4j.agentic.planner.AgentInstance;
 import java.lang.reflect.Method;
 import java.util.Optional;
 import java.util.ServiceLoader;
@@ -10,7 +11,7 @@ public interface A2AService {
 
     <T> A2AClientBuilder<T> a2aBuilder(String a2aServerUrl, Class<T> agentServiceClass);
 
-    Optional<AgentExecutor> methodToAgentExecutor(AgentSpecification a2aClient, Method method);
+    Optional<AgentExecutor> methodToAgentExecutor(InternalAgent a2aClient, Method method);
 
     static A2AService get() {
         return Provider.a2aService;
@@ -48,7 +49,7 @@ public interface A2AService {
         }
 
         @Override
-        public Optional<AgentExecutor> methodToAgentExecutor(AgentSpecification agent, Method method) {
+        public Optional<AgentExecutor> methodToAgentExecutor(InternalAgent agent, Method method) {
             throw noA2AException();
         }
 

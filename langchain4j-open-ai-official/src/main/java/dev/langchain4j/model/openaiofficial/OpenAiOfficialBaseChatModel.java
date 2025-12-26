@@ -2,11 +2,11 @@ package dev.langchain4j.model.openaiofficial;
 
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.detectModelHost;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.fromOpenAiResponseFormat;
-import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.setupASyncClient;
-import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.setupSyncClient;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.validate;
+import static dev.langchain4j.model.openaiofficial.setup.OpenAiOfficialSetup.detectModelProvider;
+import static dev.langchain4j.model.openaiofficial.setup.OpenAiOfficialSetup.setupAsyncClient;
+import static dev.langchain4j.model.openaiofficial.setup.OpenAiOfficialSetup.setupSyncClient;
 
 import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.client.OpenAIClient;
@@ -29,7 +29,6 @@ abstract class OpenAiOfficialBaseChatModel {
 
     protected OpenAIClient client;
     protected OpenAIClientAsync asyncClient;
-    protected InternalOpenAiOfficialHelper.ModelHost modelHost;
     protected String modelName;
     protected OpenAiOfficialChatRequestParameters defaultRequestParameters;
     protected String responseFormat;
@@ -38,6 +37,7 @@ abstract class OpenAiOfficialBaseChatModel {
     protected TokenCountEstimator tokenCountEstimator;
     protected List<ChatModelListener> listeners;
     protected Set<Capability> supportedCapabilities;
+    protected ModelProvider modelProvider;
 
     public void init(
             String baseUrl,
@@ -48,8 +48,6 @@ abstract class OpenAiOfficialBaseChatModel {
             String organizationId,
             boolean isAzure,
             boolean isGitHubModels,
-            OpenAIClient openAIClient,
-            OpenAIClientAsync openAIClientAsync,
             ChatRequestParameters defaultRequestParameters,
             String modelName,
             Double temperature,
@@ -77,20 +75,16 @@ abstract class OpenAiOfficialBaseChatModel {
             Set<Capability> capabilities,
             boolean isAsync) {
 
-        this.modelHost =
-                detectModelHost(isAzure, isGitHubModels, baseUrl, azureDeploymentName, azureOpenAIServiceVersion);
-        this.modelName = modelName;
-
         if (isAsync) {
-            this.asyncClient = setupASyncClient(
+            this.asyncClient = setupAsyncClient(
                     baseUrl,
                     apiKey,
                     credential,
                     azureDeploymentName,
                     azureOpenAIServiceVersion,
-                    modelHost,
-                    openAIClientAsync,
                     organizationId,
+                    isAzure,
+                    isGitHubModels,
                     modelName,
                     timeout,
                     maxRetries,
@@ -104,8 +98,8 @@ abstract class OpenAiOfficialBaseChatModel {
                     azureDeploymentName,
                     azureOpenAIServiceVersion,
                     organizationId,
-                    modelHost,
-                    openAIClient,
+                    isAzure,
+                    isGitHubModels,
                     modelName,
                     timeout,
                     maxRetries,
@@ -139,7 +133,8 @@ abstract class OpenAiOfficialBaseChatModel {
                 .stopSequences(getOrDefault(stop, commonParameters.stopSequences()))
                 .toolSpecifications(commonParameters.toolSpecifications())
                 .toolChoice(commonParameters.toolChoice())
-                .responseFormat(getOrDefault(fromOpenAiResponseFormat(responseFormat), commonParameters.responseFormat()))
+                .responseFormat(
+                        getOrDefault(fromOpenAiResponseFormat(responseFormat), commonParameters.responseFormat()))
                 // OpenAI-specific parameters
                 .maxCompletionTokens(getOrDefault(maxCompletionTokens, openAiParameters.maxCompletionTokens()))
                 .logitBias(getOrDefault(logitBias, openAiParameters.logitBias()))
@@ -152,10 +147,14 @@ abstract class OpenAiOfficialBaseChatModel {
                 .reasoningEffort(openAiParameters.reasoningEffort())
                 .build();
 
-        if (modelHost.equals(InternalOpenAiOfficialHelper.ModelHost.AZURE_OPENAI)
-                || modelHost.equals(InternalOpenAiOfficialHelper.ModelHost.GITHUB_MODELS)) {
-            if (!this.defaultRequestParameters.modelName().equals(this.modelName)) {
-                // The model name can't be changed in Azure OpenAI, where it's part of the URL.
+        this.modelProvider =
+                detectModelProvider(isAzure, isGitHubModels, baseUrl, azureDeploymentName, azureOpenAIServiceVersion);
+
+        if (this.modelProvider.equals(ModelProvider.AZURE_OPEN_AI)
+                || this.modelProvider.equals(ModelProvider.GITHUB_MODELS)) {
+            if (this.defaultRequestParameters.modelName() != null
+                    && !this.defaultRequestParameters.modelName().equals(modelName)) {
+                // The model name can't be changed in Microsoft Foundry, where it's part of the URL.
                 throw new UnsupportedFeatureException("Modifying the modelName is not supported");
             }
         }
@@ -183,10 +182,6 @@ abstract class OpenAiOfficialBaseChatModel {
     }
 
     public ModelProvider provider() {
-        return switch (modelHost) {
-            case OPENAI -> ModelProvider.OPEN_AI;
-            case AZURE_OPENAI -> ModelProvider.AZURE_OPEN_AI;
-            case GITHUB_MODELS -> ModelProvider.GITHUB_MODELS;
-        };
+        return this.modelProvider;
     }
 }

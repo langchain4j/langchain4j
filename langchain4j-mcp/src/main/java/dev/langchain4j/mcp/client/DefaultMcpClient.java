@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -53,9 +54,12 @@ import org.slf4j.LoggerFactory;
 public class DefaultMcpClient implements McpClient {
 
     private static final Logger log = LoggerFactory.getLogger(DefaultMcpClient.class);
+
+    static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
+            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+
     private final AtomicLong idGenerator = new AtomicLong(0);
     private final McpTransport transport;
-    static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private final String key;
     private final String clientName;
     private final String clientVersion;
@@ -427,6 +431,8 @@ public class DefaultMcpClient implements McpClient {
         if (initializationLock.tryLock()) {
             try {
                 initialize();
+            } catch (Exception e) {
+                log.warn("mcp server reconnection failed", e);
             } finally {
                 initializationLock.unlock();
             }
@@ -469,6 +475,10 @@ public class DefaultMcpClient implements McpClient {
         if (closed) {
             throw new IllegalStateException("The client is closed");
         }
+    }
+
+    public static Builder builder() {
+        return new Builder();
     }
 
     public static class Builder {

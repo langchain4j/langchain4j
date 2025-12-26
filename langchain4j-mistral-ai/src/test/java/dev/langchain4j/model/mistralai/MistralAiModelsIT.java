@@ -3,11 +3,13 @@ package dev.langchain4j.model.mistralai;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiModelCard;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@EnabledIfEnvironmentVariable(named = "MISTRAL_AI_API_KEY", matches = ".+")
 class MistralAiModelsIT {
 
     MistralAiModels models = MistralAiModels.withApiKey(System.getenv("MISTRAL_AI_API_KEY"));

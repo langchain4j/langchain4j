@@ -5,36 +5,32 @@
     <parent>
         <groupId>org.thingsboard.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.8.0-beta15-TB</version>
+        <version>1.10.0-beta18-TB</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>langchain4j-anthropic</artifactId>
-    <version>1.8.0-TB</version>
+    <version>1.10.0-TB</version>
     <name>LangChain4j :: Integration :: Anthropic</name>
-
-    <properties>
-        <skipAnthropicITs>false</skipAnthropicITs>
-    </properties>
 
     <dependencies>
 
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.8.0-TB</version>
+            <version>1.10.0-TB</version>
         </dependency>
 
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j-http-client</artifactId>
-            <version>1.8.0-TB</version>
+            <version>1.10.0-TB</version>
         </dependency>
 
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j-http-client-jdk</artifactId>
-            <version>1.8.0-TB</version>
+            <version>1.10.0-TB</version>
             <scope>runtime</scope>
         </dependency>
 
@@ -57,21 +53,9 @@
         <!-- test dependencies -->
 
         <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-engine</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-params</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.8.0-TB</version>
+            <version>1.10.0-TB</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>
@@ -80,7 +64,7 @@
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j-http-client</artifactId>
-            <version>1.8.0-TB</version>
+            <version>1.10.0-TB</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>
@@ -89,14 +73,14 @@
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
-            <version>1.8.0-TB</version>
+            <version>1.10.0-TB</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
-            <version>1.8.0-TB</version>
+            <version>1.10.0-TB</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>
@@ -110,17 +94,5 @@
         </dependency>
 
     </dependencies>
-
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-failsafe-plugin</artifactId>
-                <configuration>
-                    <skipTests>${skipAnthropicITs}</skipTests>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
 
 </project>

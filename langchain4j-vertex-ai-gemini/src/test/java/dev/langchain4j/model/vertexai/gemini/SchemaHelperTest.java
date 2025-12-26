@@ -164,4 +164,29 @@ class SchemaHelperTest {
         // then
         assertThat(schemaFromEnum).isEqualTo(expectedSchema);
     }
+
+    @Test
+    void should_create_schema_for_enum_with_custom_toString() {
+
+        // given
+        enum MyEnumWithToString {
+            A, B, C;
+
+            @Override
+            public String toString() {
+                return "[" + name() + "]";
+            }
+        }
+
+        assertThat(MyEnumWithToString.A.toString()).isEqualTo("[A]");
+
+        // when
+        Schema schema = fromClass(MyEnumWithToString.class);
+
+        // then
+        assertThat(schema).isEqualTo(Schema.newBuilder()
+                .setType(Type.STRING)
+                .addAllEnum(Arrays.asList("A", "B", "C"))
+                .build());
+    }
 }

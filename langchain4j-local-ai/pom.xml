@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.thingsboard.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.8.0-beta15-TB</version>
+        <version>1.10.0-beta18-TB</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -13,7 +13,7 @@
     <name>LangChain4j :: Integration :: LocalAI</name>
 
     <properties>
-        <skipLocalAiITs>false</skipLocalAiITs>
+        <skipLocalAiITs>${skipITs}</skipLocalAiITs>
     </properties>
 
     <dependencies>
@@ -21,19 +21,7 @@
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j-open-ai</artifactId>
-            <version>1.8.0-TB</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-engine</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-params</artifactId>
-            <scope>test</scope>
+            <version>1.10.0-TB</version>
         </dependency>
 
         <dependency>
@@ -50,7 +38,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <configuration>
-                    <skipTests>${skipLocalAiITs}</skipTests>
+                    <skipITs>${skipLocalAiITs}</skipITs>
                 </configuration>
             </plugin>
         </plugins>

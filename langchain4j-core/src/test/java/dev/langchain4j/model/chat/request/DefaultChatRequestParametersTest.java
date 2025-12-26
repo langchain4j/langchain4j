@@ -48,4 +48,44 @@ class DefaultChatRequestParametersTest {
         assertThat(result.toolSpecifications()).hasSize(2);
         assertThat(result.toolChoice()).isEqualTo(AUTO);
     }
+
+    @Test
+    void defaulted_by() {
+
+        // given
+        ChatRequestParameters original = DefaultChatRequestParameters.builder()
+                .modelName("model-1")
+                .temperature(0.7)
+                .topK(10)
+                .presencePenalty(0.3)
+                .maxOutputTokens(100)
+                .stopSequences("stop1", "stop2")
+                .toolSpecifications(List.of(
+                        ToolSpecification.builder().name("tool1").build(),
+                        ToolSpecification.builder().name("tool2").build()))
+                .toolChoice(AUTO)
+                .build();
+
+        ChatRequestParameters defaultParams = DefaultChatRequestParameters.builder()
+                .modelName("model-2")
+                .temperature(0.9)
+                .topP(0.8)
+                .topK(12)
+                .build();
+
+        // when
+        ChatRequestParameters result = original.defaultedBy(defaultParams);
+
+        // then
+        assertThat(result.modelName()).isEqualTo("model-1");
+        assertThat(result.temperature()).isEqualTo(0.7);
+        assertThat(result.topP()).isEqualTo(0.8);
+        assertThat(result.topK()).isEqualTo(10);
+        assertThat(result.frequencyPenalty()).isNull();
+        assertThat(result.presencePenalty()).isEqualTo(0.3);
+        assertThat(result.maxOutputTokens()).isEqualTo(100);
+        assertThat(result.stopSequences()).containsExactly("stop1", "stop2");
+        assertThat(result.toolSpecifications()).hasSize(2);
+        assertThat(result.toolChoice()).isEqualTo(AUTO);
+    }
 }

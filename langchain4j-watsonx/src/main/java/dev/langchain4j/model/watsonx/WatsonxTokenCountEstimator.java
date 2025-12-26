@@ -6,7 +6,6 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static java.util.Objects.nonNull;
 
 import com.ibm.watsonx.ai.CloudRegion;
-import com.ibm.watsonx.ai.core.auth.iam.IAMAuthenticator;
 import com.ibm.watsonx.ai.tokenization.TokenizationParameters;
 import com.ibm.watsonx.ai.tokenization.TokenizationResponse;
 import com.ibm.watsonx.ai.tokenization.TokenizationResponse.Result;
@@ -19,7 +18,6 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.TokenCountEstimator;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -31,7 +29,7 @@ import java.util.concurrent.CompletableFuture;
  *
  * <pre>{@code
  * TokenCountEstimator tokenCountEstimator = WatsonxTokenCountEstimator.builder()
- *     .url("https://...") // or use CloudRegion
+ *     .baseUrl("https://...") // or use CloudRegion
  *     .apiKey("...")
  *     .projectId("...")
  *     .build();
@@ -43,16 +41,13 @@ public class WatsonxTokenCountEstimator implements TokenCountEstimator {
     private final TokenizationService tokenizationService;
 
     private WatsonxTokenCountEstimator(Builder builder) {
-        var tokenizationServiceBuilder = TokenizationService.builder();
-        if (nonNull(builder.authenticationProvider)) {
-            tokenizationServiceBuilder.authenticationProvider(builder.authenticationProvider);
-        } else {
-            tokenizationServiceBuilder.authenticationProvider(
-                    IAMAuthenticator.builder().apiKey(builder.apiKey).build());
-        }
+
+        var tokenizationServiceBuilder = nonNull(builder.authenticator)
+                ? TokenizationService.builder().authenticator(builder.authenticator)
+                : TokenizationService.builder().apiKey(builder.apiKey);
 
         tokenizationService = tokenizationServiceBuilder
-                .baseUrl(builder.url)
+                .baseUrl(builder.baseUrl)
                 .modelId(builder.modelName)
                 .version(builder.version)
                 .projectId(builder.projectId)
@@ -60,6 +55,7 @@ public class WatsonxTokenCountEstimator implements TokenCountEstimator {
                 .timeout(builder.timeout)
                 .logRequests(builder.logRequests)
                 .logResponses(builder.logResponses)
+                .httpClient(builder.httpClient)
                 .build();
     }
 
@@ -165,7 +161,7 @@ public class WatsonxTokenCountEstimator implements TokenCountEstimator {
      *
      * <pre>{@code
      * TokenCountEstimator tokenCountEstimator = WatsonxTokenCountEstimator.builder()
-     *     .url("https://...") // or use CloudRegion
+     *     .baseUrl("https://...") // or use CloudRegion
      *     .apiKey("...")
      *     .projectId("...")
      *     .build();
@@ -181,14 +177,11 @@ public class WatsonxTokenCountEstimator implements TokenCountEstimator {
      */
     public static class Builder extends WatsonxBuilder<Builder> {
         private String modelName;
-        private String projectId;
-        private String spaceId;
-        private Duration timeout;
 
         private Builder() {}
 
-        public Builder url(CloudRegion cloudRegion) {
-            return super.url(cloudRegion.getMlEndpoint());
+        public Builder baseUrl(CloudRegion cloudRegion) {
+            return super.baseUrl(cloudRegion.getMlEndpoint());
         }
 
         public Builder modelName(String modelName) {
@@ -203,11 +196,6 @@ public class WatsonxTokenCountEstimator implements TokenCountEstimator {
 
         public Builder spaceId(String spaceId) {
             this.spaceId = spaceId;
-            return this;
-        }
-
-        public Builder timeout(Duration timeout) {
-            this.timeout = timeout;
             return this;
         }
 

@@ -92,8 +92,8 @@ public class GeminiCacheManager {
     }
 
     private static String getChecksum(GeminiContent content) {
-        return DigestUtils.sha256Hex(content.getParts().stream()
-                .map(GeminiPart::getText)
+        return DigestUtils.sha256Hex(content.parts().stream()
+                .map(GeminiContent.GeminiPart::text)
                 .collect(Collectors.joining(System.lineSeparator())));
     }
 
@@ -108,11 +108,11 @@ public class GeminiCacheManager {
         boolean checksumVerified;
 
         CachedContentMetadata(GeminiCachedContent cachedContent) {
-            this.id = cachedContent.getName();
-            String[] parts = cachedContent.getDisplayName().split(":");
+            this.id = cachedContent.name();
+            String[] parts = cachedContent.displayName().split(":");
             this.key = parts[0];
             this.checksum = parts.length == 2 ? parts[1] : "undefined";
-            this.expirationTime = Instant.parse(cachedContent.getExpireTime());
+            this.expirationTime = Instant.parse(cachedContent.expireTime());
             this.cachedContent = cachedContent;
             this.checksumVerified = false;
         }

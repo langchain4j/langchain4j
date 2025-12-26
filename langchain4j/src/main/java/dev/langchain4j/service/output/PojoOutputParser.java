@@ -37,9 +37,11 @@ class PojoOutputParser<T> implements OutputParser<T> {
             throw outputParsingException(text, type);
         }
 
-        return extractAndParseJson(text, type)
-                .map(JsonParsingUtils.ParsedJson::value)
-                .orElseThrow(() -> outputParsingException(text, type));
+        try {
+            return extractAndParseJson(text, type).value();
+        } catch (Exception e) {
+            throw outputParsingException(text, type.getTypeName(), e);
+        }
     }
 
     @Override
@@ -101,7 +103,9 @@ class PojoOutputParser<T> implements OutputParser<T> {
         } else if (field.getType().isArray()) {
             return format("array of %s", simpleNameOrJsonStructure(field.getType().getComponentType(), visited));
         } else if (((Class<?>) type).isEnum()) {
-            return "enum, must be one of " + Arrays.toString(((Class<?>) type).getEnumConstants());
+            return "enum, must be one of " + Arrays.stream(((Class<?>) type).getEnumConstants())
+                    .map(e -> ((Enum<?>) e).name())
+                    .toList();
         }
 
         return simpleNameOrJsonStructure(field.getType(), visited);

@@ -4,13 +4,15 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReasonToFinishReason;
 import static dev.langchain4j.model.googleai.FunctionMapper.fromToolSepcsToGTool;
+import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromGPartsToAiMessage;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromMessageToGContent;
 import static dev.langchain4j.model.googleai.SchemaMapper.fromJsonSchemaToGSchema;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
-import dev.langchain4j.internal.JsonSchemaElementUtils;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -19,6 +21,12 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
+import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.model.output.TokenUsage;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
@@ -41,7 +49,6 @@ class BaseGeminiChatModel {
     protected final Integer logprobs;
     protected final Boolean responseLogprobs;
     protected final Boolean enableEnhancedCivicAnswers;
-    protected final boolean useNativeJsonSchema;
     protected final GeminiCachingConfig cachingConfig;
 
     protected final ChatRequestParameters defaultRequestParameters;
@@ -62,7 +69,6 @@ class BaseGeminiChatModel {
         this.responseLogprobs = getOrDefault(builder.responseLogprobs, false);
         this.enableEnhancedCivicAnswers = getOrDefault(builder.enableEnhancedCivicAnswers, false);
         this.logprobs = builder.logprobs;
-        this.useNativeJsonSchema = builder.useNativeJsonSchema;
         this.cachingConfig = builder.cachingConfig;
 
         if (cachingConfig != null && cachingConfig.isCacheSystemMessages()) {
@@ -112,11 +118,11 @@ class BaseGeminiChatModel {
     protected GeminiGenerateContentRequest createGenerateContentRequest(ChatRequest chatRequest) {
         ChatRequestParameters parameters = chatRequest.parameters();
 
-        GeminiContent systemInstruction = new GeminiContent(GeminiRole.MODEL.toString());
+        GeminiContent systemInstruction = new GeminiContent(List.of(), GeminiRole.MODEL.toString());
         List<GeminiContent> geminiContentList =
                 fromMessageToGContent(chatRequest.messages(), systemInstruction, sendThinking);
         String cachedContent = null;
-        if (systemInstruction.getParts().isEmpty()) {
+        if (systemInstruction.parts().isEmpty()) {
             systemInstruction = null;
         } else if (cachingConfig != null && cachingConfig.isCacheSystemMessages()) {
             cachedContent = cacheManager.getOrCreateCached(cachingConfig.getCacheKey(), cachingConfig.getTtl(), systemInstruction, chatRequest.modelName());
@@ -125,12 +131,15 @@ class BaseGeminiChatModel {
 
         ResponseFormat responseFormat = chatRequest.responseFormat();
         GeminiSchema schema = null;
-        Map<String, Object> responseJsonSchema = null;
-        if (responseFormat != null && responseFormat.jsonSchema() != null) {
-            if (useNativeJsonSchema) {
-                responseJsonSchema = JsonSchemaElementUtils.toMap(responseFormat.jsonSchema().rootElement());
-            } else {
-                schema = fromJsonSchemaToGSchema(responseFormat.jsonSchema());
+        Map<String, Object> rawSchema = null;
+
+        if (responseFormat != null) {
+            if (responseFormat.jsonSchema() != null) {
+                if (responseFormat.jsonSchema().rootElement() instanceof JsonRawSchema jsonRawSchema) {
+                    rawSchema = Json.fromJson(jsonRawSchema.schema(), Map.class);
+                } else {
+                    schema = fromJsonSchemaToGSchema(responseFormat.jsonSchema());
+                }
             }
         }
 
@@ -142,7 +151,7 @@ class BaseGeminiChatModel {
                         .maxOutputTokens(parameters.maxOutputTokens())
                         .responseMimeType(computeMimeType(responseFormat))
                         .responseSchema(schema)
-                        .responseJsonSchema(responseJsonSchema)
+                        .responseJsonSchema(rawSchema)
                         .stopSequences(parameters.stopSequences())
                         .temperature(parameters.temperature())
                         .topK(parameters.topK())
@@ -215,6 +224,39 @@ class BaseGeminiChatModel {
         };
     }
 
+    protected ChatResponse processResponse(GeminiGenerateContentResponse geminiResponse) {
+        GeminiCandidate firstCandidate = geminiResponse.candidates().get(0);
+        AiMessage aiMessage = createAiMessage(firstCandidate);
+
+        FinishReason finishReason = fromGFinishReasonToFinishReason(firstCandidate.finishReason());
+        if (aiMessage != null && aiMessage.hasToolExecutionRequests()) {
+            finishReason = TOOL_EXECUTION;
+        }
+
+        return ChatResponse.builder()
+                .aiMessage(aiMessage)
+                .metadata(ChatResponseMetadata.builder()
+                        .id(geminiResponse.responseId())
+                        .modelName(geminiResponse.modelVersion())
+                        .tokenUsage(createTokenUsage(geminiResponse.usageMetadata()))
+                        .finishReason(finishReason)
+                        .build())
+                .build();
+    }
+
+    protected AiMessage createAiMessage(GeminiCandidate candidate) {
+        if (candidate == null || candidate.content() == null) {
+            return fromGPartsToAiMessage(List.of(), includeCodeExecutionOutput, returnThinking);
+        }
+
+        return fromGPartsToAiMessage(candidate.content().parts(), includeCodeExecutionOutput, returnThinking);
+    }
+
+    protected TokenUsage createTokenUsage(GeminiUsageMetadata tokenCounts) {
+        return new TokenUsage(
+                tokenCounts.promptTokenCount(), tokenCounts.candidatesTokenCount(), tokenCounts.totalTokenCount());
+    }
+
     /**
      * Base builder class containing shared properties and methods for Google AI Gemini chat models.
      */
@@ -249,7 +291,6 @@ class BaseGeminiChatModel {
         protected Boolean returnThinking;
         protected Boolean sendThinking;
         protected Integer logprobs;
-        protected boolean useNativeJsonSchema;
         protected GeminiCachingConfig cachingConfig;
         protected List<ChatModelListener> listeners;
 
@@ -455,14 +496,6 @@ class BaseGeminiChatModel {
          */
         public B responseFormat(ResponseFormat responseFormat) {
             this.responseFormat = responseFormat;
-            return builder();
-        }
-
-        /**
-         * If set to true, uses provided {@code JsonRawSchema} directly as-is without parsing it to GeminiSchema (OpenAPI-style)
-         */
-        public B useNativeJsonSchema(boolean useNativeJsonSchema) {
-            this.useNativeJsonSchema = useNativeJsonSchema;
             return builder();
         }
 

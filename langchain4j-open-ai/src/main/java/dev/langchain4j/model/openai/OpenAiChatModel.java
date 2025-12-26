@@ -55,7 +55,8 @@ public class OpenAiChatModel implements ChatModel {
     private final boolean strictJsonSchema;
     private final boolean strictTools;
     private final boolean returnThinking;
-
+    private final boolean sendThinking;
+    private final String thinkingFieldName;
     private final List<ChatModelListener> listeners;
 
     public OpenAiChatModel(OpenAiChatModelBuilder builder) {
@@ -111,14 +112,16 @@ public class OpenAiChatModel implements ChatModel {
                 .store(getOrDefault(builder.store, openAiParameters.store()))
                 .metadata(getOrDefault(builder.metadata, openAiParameters.metadata()))
                 .serviceTier(getOrDefault(builder.serviceTier, openAiParameters.serviceTier()))
-                .reasoningEffort(openAiParameters.reasoningEffort())
-                .customParameters(openAiParameters.customParameters())
+                .reasoningEffort(getOrDefault(builder.reasoningEffort, openAiParameters.reasoningEffort()))
+                .customParameters(getOrDefault(builder.customParameters, openAiParameters.customParameters()))
                 .build();
         this.responseFormatString = builder.responseFormatString;
         this.supportedCapabilities = copy(builder.supportedCapabilities);
         this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
         this.strictTools = getOrDefault(builder.strictTools, false);
         this.returnThinking = getOrDefault(builder.returnThinking, false);
+        this.sendThinking = getOrDefault(builder.sendThinking, false);
+        this.thinkingFieldName = getOrDefault(builder.thinkingFieldName, "reasoning_content");
         this.listeners = copy(builder.listeners);
     }
 
@@ -143,7 +146,7 @@ public class OpenAiChatModel implements ChatModel {
         validate(parameters);
 
         ChatCompletionRequest openAiRequest = toOpenAiChatRequest(
-                        chatRequest, parameters, strictTools, strictJsonSchema)
+                        chatRequest, parameters, sendThinking, thinkingFieldName,strictTools, strictJsonSchema)
                 .build();
 
         ParsedAndRawResponse<ChatCompletionResponse> parsedAndRawResponse = withRetryMappingExceptions(
@@ -214,7 +217,10 @@ public class OpenAiChatModel implements ChatModel {
         private Boolean store;
         private Map<String, String> metadata;
         private String serviceTier;
+        private String reasoningEffort;
         private Boolean returnThinking;
+        private Boolean sendThinking;
+        private String thinkingFieldName;
         private Duration timeout;
         private Integer maxRetries;
         private Boolean logRequests;
@@ -222,6 +228,7 @@ public class OpenAiChatModel implements ChatModel {
         private Logger logger;
         private Map<String, String> customHeaders;
         private Map<String, String> customQueryParams;
+        private Map<String, Object> customParameters;
         private List<ChatModelListener> listeners;
 
         public OpenAiChatModelBuilder() {
@@ -377,6 +384,11 @@ public class OpenAiChatModel implements ChatModel {
             return this;
         }
 
+        public OpenAiChatModelBuilder reasoningEffort(String reasoningEffort) {
+            this.reasoningEffort = reasoningEffort;
+            return this;
+        }
+
         /**
          * This setting is intended for <a href="https://api-docs.deepseek.com/guides/reasoning_model">DeepSeek</a>.
          * <p>
@@ -390,6 +402,48 @@ public class OpenAiChatModel implements ChatModel {
          */
         public OpenAiChatModelBuilder returnThinking(Boolean returnThinking) {
             this.returnThinking = returnThinking;
+            return this;
+        }
+
+        /**
+         * This setting is intended for <a href="https://api-docs.deepseek.com/guides/reasoning_model">DeepSeek</a>.
+         * <p>
+         * Controls whether to include thinking/reasoning text in assistant messages when sending requests to the API.
+         * This is needed for some APIs (like DeepSeek) when using reasoning mode with tool calls.
+         * <p>
+         * Disabled by default.
+         * <p>
+         * When enabled, the reasoning content from previous assistant messages (stored in {@link AiMessage#thinking()})
+         * will be included in the request during message conversion to API format.
+         *
+         * @param sendThinking whether to send reasoning content
+         * @param fieldName the field name for reasoning content
+         * @return {@code this}
+         */
+        public OpenAiChatModelBuilder sendThinking(Boolean sendThinking, String fieldName) {
+            this.sendThinking = sendThinking;
+            this.thinkingFieldName = fieldName;
+            return this;
+        }
+
+        /**
+         * This setting is intended for <a href="https://api-docs.deepseek.com/guides/reasoning_model">DeepSeek</a>.
+         * <p>
+         * Controls whether to include thinking/reasoning text in assistant messages when sending requests to the API.
+         * This is needed for some APIs (like DeepSeek) when using reasoning mode with tool calls.
+         * Uses the default field name "reasoning_content" for the reasoning content field.
+         * <p>
+         * Disabled by default.
+         * <p>
+         * When enabled, the reasoning content from previous assistant messages (stored in {@link AiMessage#thinking()})
+         * will be included in the request during message conversion to API format.
+         *
+         * @param sendThinking whether to send reasoning content
+         * @return {@code this}
+         */
+        public OpenAiChatModelBuilder sendThinking(Boolean sendThinking) {
+            this.sendThinking = sendThinking;
+            this.thinkingFieldName = "reasoning_content";
             return this;
         }
 
@@ -422,13 +476,27 @@ public class OpenAiChatModel implements ChatModel {
             return this;
         }
 
+        /**
+         * Sets custom HTTP headers
+         */
         public OpenAiChatModelBuilder customHeaders(Map<String, String> customHeaders) {
             this.customHeaders = customHeaders;
             return this;
         }
 
+        /**
+         * Sets custom URL query parameters
+         */
         public OpenAiChatModelBuilder customQueryParams(Map<String, String> customQueryParams) {
             this.customQueryParams = customQueryParams;
+            return this;
+        }
+
+        /**
+         * Sets custom HTTP body parameters
+         */
+        public OpenAiChatModelBuilder customParameters(Map<String, Object> customParameters) {
+            this.customParameters = customParameters;
             return this;
         }
 

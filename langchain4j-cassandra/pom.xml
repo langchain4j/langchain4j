@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.thingsboard.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.8.0-beta15-TB</version>
+        <version>1.10.0-beta18-TB</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -23,7 +23,7 @@
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.8.0-TB</version>
+            <version>1.10.0-TB</version>
         </dependency>
 
         <dependency>
@@ -49,39 +49,27 @@
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.8.0-TB</version>
+            <version>1.10.0-TB</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>
         <!-- Same embeddings model to keep the 1% -->
         <dependency>
-            <groupId>dev.langchain4j</groupId>
+            <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j-embeddings-all-minilm-l6-v2-q</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
-            <version>1.8.0-TB</version>
+            <version>1.10.0-TB</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j-open-ai</artifactId>
-            <version>1.8.0-TB</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-engine</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <!-- junit-jupiter-params should be declared explicitly
-        to run parameterized tests inherited from EmbeddingStore*IT-->
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-params</artifactId>
+            <version>1.10.0-TB</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -99,14 +87,12 @@
             <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
-
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j-document-transformer-jsoup</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
-
     </dependencies>
 
     <build>

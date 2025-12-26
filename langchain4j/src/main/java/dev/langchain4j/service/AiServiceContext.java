@@ -43,6 +43,8 @@ public class AiServiceContext {
 
     public RetrievalAugmentor retrievalAugmentor;
 
+    public boolean storeRetrievedContentInChatMemory = true;
+
     public Function<Object, Optional<String>> systemMessageProvider = DEFAULT_MESSAGE_PROVIDER;
 
     public BiFunction<ChatRequest, Object, ChatRequest> chatRequestTransformer = (req, memId) -> req;
@@ -74,6 +76,10 @@ public class AiServiceContext {
 
     public void initChatMemories(ChatMemoryProvider chatMemoryProvider) {
         chatMemoryService = new ChatMemoryService(chatMemoryProvider);
+    }
+
+    public boolean hasModerationModel() {
+        return moderationModel != null;
     }
 
     public GuardrailService guardrailService() {

@@ -53,6 +53,7 @@ For easier integration, LangChain4j also includes integration with
 - Integration with one moderation model (OpenAI)
 - Support for texts and images as inputs (multimodality)
 - [AI Services](/tutorials/ai-services) (high-level LLM API)
+- [Agents and Agentic AI](/tutorials/agents)
 - Prompt templates
 - Implementation of persistent and in-memory [chat memory](/tutorials/chat-memory) algorithms: message window and token window
 - [Streaming of responses from LLMs](/tutorials/response-streaming)
@@ -105,7 +106,6 @@ LangChain4j features a modular design, comprising:
 - [Community integrations](https://github.com/langchain4j/langchain4j-community)
 - [Examples](https://github.com/langchain4j/langchain4j-examples)
 - [Community resources](https://github.com/langchain4j/langchain4j-community-resources)
-- [In-process embeddings](https://github.com/langchain4j/langchain4j-embeddings)
 
 
 ## Use Cases
