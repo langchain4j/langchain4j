@@ -7,6 +7,8 @@ import dev.langchain4j.model.chat.response.PartialResponse;
 import dev.langchain4j.model.chat.response.PartialResponseContext;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialThinkingContext;
+import dev.langchain4j.model.chat.response.PartialToolCall;
+import dev.langchain4j.model.chat.response.PartialToolCallContext;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.BeforeToolExecution;
@@ -84,6 +86,40 @@ public interface TokenStream {
      */
     @Experimental
     default TokenStream onPartialThinkingWithContext(BiConsumer<PartialThinking, PartialThinkingContext> handler) {
+        throw new UnsupportedOperationException("not implemented");
+    }
+
+    /**
+     * The provided consumer will be invoked every time a new partial tool call
+     * (usually containing a single token of the tool's arguments) from a language model is available.
+     * <p>
+     * Either this or the {@link #onPartialToolCall(BiConsumer)} callback can be used
+     * if you want to consume partial tool calls as soon as they become available.
+     *
+     * @param partialToolCallHandler lambda that will be invoked when a model generates a new partial tool call
+     * @return token stream instance used to configure or start stream processing
+     * @see #onPartialToolCall(BiConsumer)
+     * @since 1.12.0
+     */
+    @Experimental
+    default TokenStream onPartialToolCall(Consumer<PartialToolCall> partialToolCallHandler) {
+        throw new UnsupportedOperationException("not implemented");
+    }
+
+    /**
+     * The provided consumer will be invoked every time a new partial tool call
+     * (usually containing a single token of the tool's arguments) from a language model is available.
+     * <p>
+     * Either this or the {@link #onPartialToolCall(Consumer)} callback can be used
+     * if you want to consume partial tool calls as soon as they become available.
+     *
+     * @param handler lambda that will be invoked when a model generates a new partial tool call
+     * @return token stream instance used to configure or start stream processing
+     * @see #onPartialToolCall(Consumer)
+     * @since 1.12.0
+     */
+    @Experimental
+    default TokenStream onPartialToolCall(BiConsumer<PartialToolCall, PartialToolCallContext> handler) {
         throw new UnsupportedOperationException("not implemented");
     }
 
