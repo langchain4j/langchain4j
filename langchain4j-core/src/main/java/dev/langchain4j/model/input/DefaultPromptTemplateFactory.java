@@ -4,13 +4,13 @@ import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import dev.langchain4j.Internal;
+import dev.langchain4j.spi.prompt.PromptTemplateFactory;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import dev.langchain4j.Internal;
-import dev.langchain4j.spi.prompt.PromptTemplateFactory;
 
 @Internal
 class DefaultPromptTemplateFactory implements PromptTemplateFactory {
