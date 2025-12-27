@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static java.lang.reflect.Modifier.isStatic;
 import static java.util.Arrays.stream;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.langchain4j.Internal;
 import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
@@ -117,19 +118,7 @@ public class JsonSchemaElementUtils {
 
         Map<String, JsonSchemaElement> properties = new LinkedHashMap<>();
         List<String> required = new ArrayList<>();
-        for (Field field : type.getDeclaredFields()) {
-            String fieldName = field.getName();
-            if (isStatic(field.getModifiers()) || fieldName.equals("__$hits$__") || fieldName.startsWith("this$")) {
-                continue;
-            }
-            if (isRequired(field, areSubFieldsRequiredByDefault)) {
-                required.add(fieldName);
-            }
-            String fieldDescription = descriptionFrom(field);
-            JsonSchemaElement jsonSchemaElement = jsonSchemaElementFrom(
-                    field.getType(), field.getGenericType(), fieldDescription, areSubFieldsRequiredByDefault, visited);
-            properties.put(fieldName, jsonSchemaElement);
-        }
+        classFieldsToSchema(type, areSubFieldsRequiredByDefault, visited, properties, required);
 
         JsonObjectSchema.Builder builder = JsonObjectSchema.builder()
                 .description(Optional.ofNullable(description).orElse(descriptionFrom(type)))
@@ -151,6 +140,34 @@ public class JsonSchemaElementUtils {
         }
 
         return builder.build();
+    }
+
+    private static void classFieldsToSchema(
+            Class<?> type,
+            boolean areSubFieldsRequiredByDefault,
+            Map<Class<?>, VisitedClassMetadata> visited,
+            Map<String, JsonSchemaElement> properties,
+            List<String> required) {
+        if (type.getSuperclass() != null && type.getSuperclass() != Object.class) {
+            classFieldsToSchema(type.getSuperclass(), areSubFieldsRequiredByDefault, visited, properties, required);
+        }
+
+        for (Field field : type.getDeclaredFields()) {
+            String fieldName = field.getName();
+            if (isStatic(field.getModifiers())
+                    || fieldName.equals("__$hits$__")
+                    || fieldName.startsWith("this$")
+                    || field.isAnnotationPresent(JsonIgnore.class)) {
+                continue;
+            }
+            if (isRequired(field, areSubFieldsRequiredByDefault)) {
+                required.add(fieldName);
+            }
+            String fieldDescription = descriptionFrom(field);
+            JsonSchemaElement jsonSchemaElement = jsonSchemaElementFrom(
+                    field.getType(), field.getGenericType(), fieldDescription, areSubFieldsRequiredByDefault, visited);
+            properties.put(fieldName, jsonSchemaElement);
+        }
     }
 
     private static boolean isRequired(Field field, boolean defaultValue) {
