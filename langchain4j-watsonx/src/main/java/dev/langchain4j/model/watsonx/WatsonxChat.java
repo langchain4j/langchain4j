@@ -7,7 +7,6 @@ import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static java.util.Arrays.asList;
 import static java.util.Objects.nonNull;
 
-import com.ibm.watsonx.ai.CloudRegion;
 import com.ibm.watsonx.ai.chat.ChatService;
 import com.ibm.watsonx.ai.chat.model.ExtractionTags;
 import com.ibm.watsonx.ai.chat.model.Thinking;
@@ -152,10 +151,6 @@ abstract class WatsonxChat {
         private Double repetitionPenalty;
         private Double lengthPenalty;
         private Thinking thinking;
-
-        public T baseUrl(CloudRegion cloudRegion) {
-            return (T) super.baseUrl(cloudRegion.getMlEndpoint());
-        }
 
         public T modelName(String modelName) {
             this.modelName = modelName;

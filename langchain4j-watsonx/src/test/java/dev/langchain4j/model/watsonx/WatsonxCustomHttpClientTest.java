@@ -32,15 +32,15 @@ public class WatsonxCustomHttpClientTest {
         Object chatService = getFieldValue(chatModel, "chatService");
         Object restclient = getFieldValue(chatService, "client");
         assertEquals(customClient, getFieldValue(restclient, "httpClient"));
-        assertNotEquals(HttpClientProvider.httpClient(), getFieldValue(restclient, "httpClient"));
+        assertNotEquals(HttpClientProvider.httpClient(true), getFieldValue(restclient, "httpClient"));
 
         Object syncHttpClient = getFieldValue(restclient, "syncHttpClient");
         assertEquals(customClient, getFieldValue(syncHttpClient, "delegate"));
-        assertNotEquals(HttpClientProvider.httpClient(), getFieldValue(syncHttpClient, "delegate"));
+        assertNotEquals(HttpClientProvider.httpClient(true), getFieldValue(syncHttpClient, "delegate"));
 
         Object asyncHttpClient = getFieldValue(restclient, "asyncHttpClient");
         assertEquals(customClient, getFieldValue(asyncHttpClient, "delegate"));
-        assertNotEquals(HttpClientProvider.httpClient(), getFieldValue(asyncHttpClient, "delegate"));
+        assertNotEquals(HttpClientProvider.httpClient(true), getFieldValue(asyncHttpClient, "delegate"));
     }
 
     @Test
@@ -57,15 +57,15 @@ public class WatsonxCustomHttpClientTest {
         Object chatService = getFieldValue(chatModel, "chatService");
         Object restclient = getFieldValue(chatService, "client");
         assertNotEquals(customClient, getFieldValue(restclient, "httpClient"));
-        assertEquals(HttpClientProvider.httpClient(), getFieldValue(restclient, "httpClient"));
+        assertEquals(HttpClientProvider.httpClient(true), getFieldValue(restclient, "httpClient"));
 
         Object syncHttpClient = getFieldValue(restclient, "syncHttpClient");
         assertNotEquals(customClient, getFieldValue(syncHttpClient, "delegate"));
-        assertEquals(HttpClientProvider.httpClient(), getFieldValue(syncHttpClient, "delegate"));
+        assertEquals(HttpClientProvider.httpClient(true), getFieldValue(syncHttpClient, "delegate"));
 
         Object asyncHttpClient = getFieldValue(restclient, "asyncHttpClient");
         assertNotEquals(customClient, getFieldValue(asyncHttpClient, "delegate"));
-        assertEquals(HttpClientProvider.httpClient(), getFieldValue(asyncHttpClient, "delegate"));
+        assertEquals(HttpClientProvider.httpClient(true), getFieldValue(asyncHttpClient, "delegate"));
     }
 
     @Test
@@ -83,15 +83,15 @@ public class WatsonxCustomHttpClientTest {
         Object chatService = getFieldValue(streamingChatModel, "chatService");
         Object restclient = getFieldValue(chatService, "client");
         assertEquals(customClient, getFieldValue(restclient, "httpClient"));
-        assertNotEquals(HttpClientProvider.httpClient(), getFieldValue(restclient, "httpClient"));
+        assertNotEquals(HttpClientProvider.httpClient(true), getFieldValue(restclient, "httpClient"));
 
         Object syncHttpClient = getFieldValue(restclient, "syncHttpClient");
         assertEquals(customClient, getFieldValue(syncHttpClient, "delegate"));
-        assertNotEquals(HttpClientProvider.httpClient(), getFieldValue(syncHttpClient, "delegate"));
+        assertNotEquals(HttpClientProvider.httpClient(true), getFieldValue(syncHttpClient, "delegate"));
 
         Object asyncHttpClient = getFieldValue(restclient, "asyncHttpClient");
         assertEquals(customClient, getFieldValue(asyncHttpClient, "delegate"));
-        assertNotEquals(HttpClientProvider.httpClient(), getFieldValue(asyncHttpClient, "delegate"));
+        assertNotEquals(HttpClientProvider.httpClient(true), getFieldValue(asyncHttpClient, "delegate"));
     }
 
     @Test
@@ -108,15 +108,15 @@ public class WatsonxCustomHttpClientTest {
         Object chatService = getFieldValue(streamingChatModel, "chatService");
         Object restclient = getFieldValue(chatService, "client");
         assertNotEquals(customClient, getFieldValue(restclient, "httpClient"));
-        assertEquals(HttpClientProvider.httpClient(), getFieldValue(restclient, "httpClient"));
+        assertEquals(HttpClientProvider.httpClient(true), getFieldValue(restclient, "httpClient"));
 
         Object syncHttpClient = getFieldValue(restclient, "syncHttpClient");
         assertNotEquals(customClient, getFieldValue(syncHttpClient, "delegate"));
-        assertEquals(HttpClientProvider.httpClient(), getFieldValue(syncHttpClient, "delegate"));
+        assertEquals(HttpClientProvider.httpClient(true), getFieldValue(syncHttpClient, "delegate"));
 
         Object asyncHttpClient = getFieldValue(restclient, "asyncHttpClient");
         assertNotEquals(customClient, getFieldValue(asyncHttpClient, "delegate"));
-        assertEquals(HttpClientProvider.httpClient(), getFieldValue(asyncHttpClient, "delegate"));
+        assertEquals(HttpClientProvider.httpClient(true), getFieldValue(asyncHttpClient, "delegate"));
     }
 
     @Test
@@ -134,11 +134,11 @@ public class WatsonxCustomHttpClientTest {
         Object embeddingService = getFieldValue(embeddingModel, "embeddingService");
         Object restclient = getFieldValue(embeddingService, "client");
         assertEquals(customClient, getFieldValue(restclient, "httpClient"));
-        assertNotEquals(HttpClientProvider.httpClient(), getFieldValue(restclient, "httpClient"));
+        assertNotEquals(HttpClientProvider.httpClient(true), getFieldValue(restclient, "httpClient"));
 
         Object syncHttpClient = getFieldValue(restclient, "syncHttpClient");
         assertEquals(customClient, getFieldValue(syncHttpClient, "delegate"));
-        assertNotEquals(HttpClientProvider.httpClient(), getFieldValue(syncHttpClient, "delegate"));
+        assertNotEquals(HttpClientProvider.httpClient(true), getFieldValue(syncHttpClient, "delegate"));
     }
 
     @Test
@@ -155,11 +155,11 @@ public class WatsonxCustomHttpClientTest {
         Object embeddingService = getFieldValue(embeddingModel, "embeddingService");
         Object restclient = getFieldValue(embeddingService, "client");
         assertNotEquals(customClient, getFieldValue(restclient, "httpClient"));
-        assertEquals(HttpClientProvider.httpClient(), getFieldValue(restclient, "httpClient"));
+        assertEquals(HttpClientProvider.httpClient(true), getFieldValue(restclient, "httpClient"));
 
         Object syncHttpClient = getFieldValue(restclient, "syncHttpClient");
         assertNotEquals(customClient, getFieldValue(syncHttpClient, "delegate"));
-        assertEquals(HttpClientProvider.httpClient(), getFieldValue(syncHttpClient, "delegate"));
+        assertEquals(HttpClientProvider.httpClient(true), getFieldValue(syncHttpClient, "delegate"));
     }
 
     @Test
@@ -177,11 +177,11 @@ public class WatsonxCustomHttpClientTest {
         Object detectionService = getFieldValue(moderationModel, "detectionService");
         Object restclient = getFieldValue(detectionService, "client");
         assertEquals(customClient, getFieldValue(restclient, "httpClient"));
-        assertNotEquals(HttpClientProvider.httpClient(), getFieldValue(restclient, "httpClient"));
+        assertNotEquals(HttpClientProvider.httpClient(true), getFieldValue(restclient, "httpClient"));
 
         Object syncHttpClient = getFieldValue(restclient, "syncHttpClient");
         assertEquals(customClient, getFieldValue(syncHttpClient, "delegate"));
-        assertNotEquals(HttpClientProvider.httpClient(), getFieldValue(syncHttpClient, "delegate"));
+        assertNotEquals(HttpClientProvider.httpClient(true), getFieldValue(syncHttpClient, "delegate"));
     }
 
     @Test
@@ -198,11 +198,11 @@ public class WatsonxCustomHttpClientTest {
         Object detectionService = getFieldValue(moderationModel, "detectionService");
         Object restclient = getFieldValue(detectionService, "client");
         assertNotEquals(customClient, getFieldValue(restclient, "httpClient"));
-        assertEquals(HttpClientProvider.httpClient(), getFieldValue(restclient, "httpClient"));
+        assertEquals(HttpClientProvider.httpClient(true), getFieldValue(restclient, "httpClient"));
 
         Object syncHttpClient = getFieldValue(restclient, "syncHttpClient");
         assertNotEquals(customClient, getFieldValue(syncHttpClient, "delegate"));
-        assertEquals(HttpClientProvider.httpClient(), getFieldValue(syncHttpClient, "delegate"));
+        assertEquals(HttpClientProvider.httpClient(true), getFieldValue(syncHttpClient, "delegate"));
     }
 
     @Test
@@ -220,11 +220,11 @@ public class WatsonxCustomHttpClientTest {
         Object rerankService = getFieldValue(scoringModel, "rerankService");
         Object restclient = getFieldValue(rerankService, "client");
         assertEquals(customClient, getFieldValue(restclient, "httpClient"));
-        assertNotEquals(HttpClientProvider.httpClient(), getFieldValue(restclient, "httpClient"));
+        assertNotEquals(HttpClientProvider.httpClient(true), getFieldValue(restclient, "httpClient"));
 
         Object syncHttpClient = getFieldValue(restclient, "syncHttpClient");
         assertEquals(customClient, getFieldValue(syncHttpClient, "delegate"));
-        assertNotEquals(HttpClientProvider.httpClient(), getFieldValue(syncHttpClient, "delegate"));
+        assertNotEquals(HttpClientProvider.httpClient(true), getFieldValue(syncHttpClient, "delegate"));
     }
 
     @Test
@@ -241,11 +241,11 @@ public class WatsonxCustomHttpClientTest {
         Object rerankService = getFieldValue(scoringModel, "rerankService");
         Object restclient = getFieldValue(rerankService, "client");
         assertNotEquals(customClient, getFieldValue(restclient, "httpClient"));
-        assertEquals(HttpClientProvider.httpClient(), getFieldValue(restclient, "httpClient"));
+        assertEquals(HttpClientProvider.httpClient(true), getFieldValue(restclient, "httpClient"));
 
         Object syncHttpClient = getFieldValue(restclient, "syncHttpClient");
         assertNotEquals(customClient, getFieldValue(syncHttpClient, "delegate"));
-        assertEquals(HttpClientProvider.httpClient(), getFieldValue(syncHttpClient, "delegate"));
+        assertEquals(HttpClientProvider.httpClient(true), getFieldValue(syncHttpClient, "delegate"));
     }
 
     @Test
@@ -263,15 +263,15 @@ public class WatsonxCustomHttpClientTest {
         Object tokenizationService = getFieldValue(tokenCounterEstimator, "tokenizationService");
         Object restclient = getFieldValue(tokenizationService, "client");
         assertEquals(customClient, getFieldValue(restclient, "httpClient"));
-        assertNotEquals(HttpClientProvider.httpClient(), getFieldValue(restclient, "httpClient"));
+        assertNotEquals(HttpClientProvider.httpClient(true), getFieldValue(restclient, "httpClient"));
 
         Object syncHttpClient = getFieldValue(restclient, "syncHttpClient");
         assertEquals(customClient, getFieldValue(syncHttpClient, "delegate"));
-        assertNotEquals(HttpClientProvider.httpClient(), getFieldValue(syncHttpClient, "delegate"));
+        assertNotEquals(HttpClientProvider.httpClient(true), getFieldValue(syncHttpClient, "delegate"));
 
         Object asyncHttpClient = getFieldValue(restclient, "asyncHttpClient");
         assertEquals(customClient, getFieldValue(asyncHttpClient, "delegate"));
-        assertNotEquals(HttpClientProvider.httpClient(), getFieldValue(asyncHttpClient, "delegate"));
+        assertNotEquals(HttpClientProvider.httpClient(true), getFieldValue(asyncHttpClient, "delegate"));
     }
 
     @Test
@@ -288,15 +288,15 @@ public class WatsonxCustomHttpClientTest {
         Object tokenizationService = getFieldValue(tokenCounterEstimator, "tokenizationService");
         Object restclient = getFieldValue(tokenizationService, "client");
         assertNotEquals(customClient, getFieldValue(restclient, "httpClient"));
-        assertEquals(HttpClientProvider.httpClient(), getFieldValue(restclient, "httpClient"));
+        assertEquals(HttpClientProvider.httpClient(true), getFieldValue(restclient, "httpClient"));
 
         Object syncHttpClient = getFieldValue(restclient, "syncHttpClient");
         assertNotEquals(customClient, getFieldValue(syncHttpClient, "delegate"));
-        assertEquals(HttpClientProvider.httpClient(), getFieldValue(syncHttpClient, "delegate"));
+        assertEquals(HttpClientProvider.httpClient(true), getFieldValue(syncHttpClient, "delegate"));
 
         Object asyncHttpClient = getFieldValue(restclient, "asyncHttpClient");
         assertNotEquals(customClient, getFieldValue(asyncHttpClient, "delegate"));
-        assertEquals(HttpClientProvider.httpClient(), getFieldValue(asyncHttpClient, "delegate"));
+        assertEquals(HttpClientProvider.httpClient(true), getFieldValue(asyncHttpClient, "delegate"));
     }
 
     @Test
@@ -311,11 +311,11 @@ public class WatsonxCustomHttpClientTest {
         Object foundationModelService = getFieldValue(modelCatalog, "foundationModelService");
         Object restclient = getFieldValue(foundationModelService, "client");
         assertEquals(customClient, getFieldValue(restclient, "httpClient"));
-        assertNotEquals(HttpClientProvider.httpClient(), getFieldValue(restclient, "httpClient"));
+        assertNotEquals(HttpClientProvider.httpClient(true), getFieldValue(restclient, "httpClient"));
 
         Object syncHttpClient = getFieldValue(restclient, "syncHttpClient");
         assertEquals(customClient, getFieldValue(syncHttpClient, "delegate"));
-        assertNotEquals(HttpClientProvider.httpClient(), getFieldValue(syncHttpClient, "delegate"));
+        assertNotEquals(HttpClientProvider.httpClient(true), getFieldValue(syncHttpClient, "delegate"));
     }
 
     @Test
@@ -328,11 +328,11 @@ public class WatsonxCustomHttpClientTest {
         Object foundationModelService = getFieldValue(modelCatalog, "foundationModelService");
         Object restclient = getFieldValue(foundationModelService, "client");
         assertNotEquals(customClient, getFieldValue(restclient, "httpClient"));
-        assertEquals(HttpClientProvider.httpClient(), getFieldValue(restclient, "httpClient"));
+        assertEquals(HttpClientProvider.httpClient(true), getFieldValue(restclient, "httpClient"));
 
         Object syncHttpClient = getFieldValue(restclient, "syncHttpClient");
         assertNotEquals(customClient, getFieldValue(syncHttpClient, "delegate"));
-        assertEquals(HttpClientProvider.httpClient(), getFieldValue(syncHttpClient, "delegate"));
+        assertEquals(HttpClientProvider.httpClient(true), getFieldValue(syncHttpClient, "delegate"));
     }
 
     @SuppressWarnings("null")

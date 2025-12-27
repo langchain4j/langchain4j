@@ -5,7 +5,6 @@ import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static java.util.Objects.nonNull;
 
-import com.ibm.watsonx.ai.CloudRegion;
 import com.ibm.watsonx.ai.tokenization.TokenizationParameters;
 import com.ibm.watsonx.ai.tokenization.TokenizationResponse;
 import com.ibm.watsonx.ai.tokenization.TokenizationResponse.Result;
@@ -179,10 +178,6 @@ public class WatsonxTokenCountEstimator implements TokenCountEstimator {
         private String modelName;
 
         private Builder() {}
-
-        public Builder baseUrl(CloudRegion cloudRegion) {
-            return super.baseUrl(cloudRegion.getMlEndpoint());
-        }
 
         public Builder modelName(String modelName) {
             this.modelName = modelName;

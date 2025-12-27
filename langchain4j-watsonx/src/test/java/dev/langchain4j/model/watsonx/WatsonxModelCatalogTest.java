@@ -3,6 +3,7 @@ package dev.langchain4j.model.watsonx;
 import static dev.langchain4j.model.ModelProvider.WATSONX;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -48,6 +49,7 @@ public class WatsonxModelCatalogTest {
         when(mockFoundationModelServiceBuilder.authenticator(any())).thenReturn(mockFoundationModelServiceBuilder);
         when(mockFoundationModelServiceBuilder.apiKey(any())).thenReturn(mockFoundationModelServiceBuilder);
         when(mockFoundationModelServiceBuilder.httpClient(any())).thenReturn(mockFoundationModelServiceBuilder);
+        when(mockFoundationModelServiceBuilder.verifySsl(anyBoolean())).thenReturn(mockFoundationModelServiceBuilder);
         when(mockFoundationModelServiceBuilder.build()).thenReturn(mockFoundationModelService);
     }
 
@@ -63,66 +65,66 @@ public class WatsonxModelCatalogTest {
         when(mockHttpResponse.body())
                 .thenReturn(
                         """
-                {
-                    "total_count": 28,
-                    "limit": 100,
-                    "first": {
-                        "href": "https://us-south.ml.cloud.ibm.com/ml/v1/foundation_model_specs?version=2025-12-05"
-                    },
-                    "resources": [
-                        {
-                            "model_id": "cross-encoder/ms-marco-minilm-l-12-v2",
-                            "label": "ms-marco-minilm-l-12-v2",
-                            "provider": "cross-encoder",
-                            "source": "cross-encoder",
-                            "indemnity": "NON_IBM",
-                            "functions": [
-                                {
-                                    "id": "rerank"
-                                }
-                            ],
-                            "short_description": "Used for Information Retrieval: Encode and sort a query will all possible passages.",
-                            "long_description": "The model can be used for Information Retrieval: Given a query, encode the query will all possible passages (e.g. retrieved with ElasticSearch). Then sort the passages in a decreasing order.",
-                            "input_tier": "class_11",
-                            "output_tier": "class_11",
-                            "number_params": "33.4m",
-                            "model_limits": {
-                                "max_sequence_length": 512,
-                                "max_output_tokens": 1024
-                            },
-                            "limits": {
-                                "19e27818-79cf-4137-ae58-da279f9e9d16": {
-                                    "call_time": "10m0s",
+                    {
+                        "total_count": 28,
+                        "limit": 100,
+                        "first": {
+                            "href": "https://us-south.ml.cloud.ibm.com/ml/v1/foundation_model_specs?version=2025-12-05"
+                        },
+                        "resources": [
+                            {
+                                "model_id": "cross-encoder/ms-marco-minilm-l-12-v2",
+                                "label": "ms-marco-minilm-l-12-v2",
+                                "provider": "cross-encoder",
+                                "source": "cross-encoder",
+                                "indemnity": "NON_IBM",
+                                "functions": [
+                                    {
+                                        "id": "rerank"
+                                    }
+                                ],
+                                "short_description": "Used for Information Retrieval: Encode and sort a query will all possible passages.",
+                                "long_description": "The model can be used for Information Retrieval: Given a query, encode the query will all possible passages (e.g. retrieved with ElasticSearch). Then sort the passages in a decreasing order.",
+                                "input_tier": "class_11",
+                                "output_tier": "class_11",
+                                "number_params": "33.4m",
+                                "model_limits": {
+                                    "max_sequence_length": 512,
                                     "max_output_tokens": 1024
                                 },
-                                "3f6acf43-ede8-413a-ac69-f8af3bb0cbfe": {
-                                    "call_time": "5m0s",
-                                    "max_output_tokens": 1024
+                                "limits": {
+                                    "19e27818-79cf-4137-ae58-da279f9e9d16": {
+                                        "call_time": "10m0s",
+                                        "max_output_tokens": 1024
+                                    },
+                                    "3f6acf43-ede8-413a-ac69-f8af3bb0cbfe": {
+                                        "call_time": "5m0s",
+                                        "max_output_tokens": 1024
+                                    },
+                                    "a3d2f92f-06f9-48d0-b2e6-a7ba2b4e0577": {
+                                        "call_time": "10m0s",
+                                        "max_output_tokens": 1024
+                                    },
+                                    "d18d88b9-be7a-46ec-be1e-aff14904f1e9": {
+                                        "call_time": "10m0s",
+                                        "max_output_tokens": 1024
+                                    }
                                 },
-                                "a3d2f92f-06f9-48d0-b2e6-a7ba2b4e0577": {
-                                    "call_time": "10m0s",
-                                    "max_output_tokens": 1024
-                                },
-                                "d18d88b9-be7a-46ec-be1e-aff14904f1e9": {
-                                    "call_time": "10m0s",
-                                    "max_output_tokens": 1024
-                                }
-                            },
-                            "lifecycle": [
-                                {
-                                    "id": "available",
-                                    "start_date": "2024-09-17"
-                                }
-                            ]
-                        }
-                    ]
-                }""");
+                                "lifecycle": [
+                                    {
+                                        "id": "available",
+                                        "start_date": "2024-09-17"
+                                    }
+                                ]
+                            }
+                        ]
+                    }""");
 
         when(mockHttpClient.send(mockHttpRequest.capture(), any(BodyHandler.class)))
                 .thenReturn(mockHttpResponse);
 
         try (MockedStatic<HttpClientProvider> httpClientProvider = mockStatic(HttpClientProvider.class)) {
-            httpClientProvider.when(HttpClientProvider::httpClient).thenReturn(mockHttpClient);
+            httpClientProvider.when(() -> HttpClientProvider.httpClient(true)).thenReturn(mockHttpClient);
 
             var modelCatalog = WatsonxModelCatalog.builder()
                     .baseUrl(CloudRegion.FRANKFURT)

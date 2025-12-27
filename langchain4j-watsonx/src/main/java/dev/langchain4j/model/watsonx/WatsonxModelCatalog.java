@@ -3,7 +3,6 @@ package dev.langchain4j.model.watsonx;
 import static dev.langchain4j.model.ModelProvider.WATSONX;
 import static java.util.Objects.nonNull;
 
-import com.ibm.watsonx.ai.CloudRegion;
 import com.ibm.watsonx.ai.foundationmodel.FoundationModel.Function;
 import com.ibm.watsonx.ai.foundationmodel.FoundationModelParameters;
 import com.ibm.watsonx.ai.foundationmodel.FoundationModelService;
@@ -123,10 +122,6 @@ public class WatsonxModelCatalog implements ModelCatalog {
     public static class Builder extends WatsonxBuilder<Builder> {
 
         private Builder() {}
-
-        public Builder baseUrl(CloudRegion cloudRegion) {
-            return super.baseUrl(cloudRegion.getMlEndpoint());
-        }
 
         public WatsonxModelCatalog build() {
             return new WatsonxModelCatalog(this);

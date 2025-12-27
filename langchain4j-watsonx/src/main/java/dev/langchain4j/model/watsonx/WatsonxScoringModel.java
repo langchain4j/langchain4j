@@ -3,7 +3,6 @@ package dev.langchain4j.model.watsonx;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
-import com.ibm.watsonx.ai.CloudRegion;
 import com.ibm.watsonx.ai.rerank.RerankParameters;
 import com.ibm.watsonx.ai.rerank.RerankResponse;
 import com.ibm.watsonx.ai.rerank.RerankResponse.RerankResult;
@@ -109,10 +108,6 @@ public class WatsonxScoringModel implements ScoringModel {
         private String modelName;
 
         private Builder() {}
-
-        public Builder baseUrl(CloudRegion cloudRegion) {
-            return super.baseUrl(cloudRegion.getMlEndpoint());
-        }
 
         public Builder modelName(String modelName) {
             this.modelName = modelName;

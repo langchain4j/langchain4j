@@ -3,7 +3,6 @@ package dev.langchain4j.model.watsonx;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
-import com.ibm.watsonx.ai.CloudRegion;
 import com.ibm.watsonx.ai.embedding.EmbeddingParameters;
 import com.ibm.watsonx.ai.embedding.EmbeddingResponse;
 import com.ibm.watsonx.ai.embedding.EmbeddingResponse.Result;
@@ -113,10 +112,6 @@ public class WatsonxEmbeddingModel implements EmbeddingModel {
         private String modelName;
 
         private Builder() {}
-
-        public Builder baseUrl(CloudRegion cloudRegion) {
-            return super.baseUrl(cloudRegion.getMlEndpoint());
-        }
 
         public Builder modelName(String modelName) {
             this.modelName = modelName;

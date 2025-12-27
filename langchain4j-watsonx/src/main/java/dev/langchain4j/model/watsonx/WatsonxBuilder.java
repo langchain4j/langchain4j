@@ -21,7 +21,7 @@ abstract class WatsonxBuilder<T extends WatsonxBuilder<T>> {
     protected HttpClient httpClient;
 
     public T baseUrl(CloudRegion baseUrl) {
-        return baseUrl(baseUrl.getMlEndpoint());
+        return baseUrl(baseUrl.mlEndpoint());
     }
 
     public T baseUrl(String url) {
