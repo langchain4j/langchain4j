@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import com.ibm.watsonx.ai.core.provider.HttpClientProvider;
 import com.ibm.watsonx.ai.detection.detector.Pii;
 import dev.langchain4j.model.TokenCountEstimator;
+import dev.langchain4j.model.catalog.ModelCatalog;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -296,6 +297,42 @@ public class WatsonxCustomHttpClientTest {
         Object asyncHttpClient = getFieldValue(restclient, "asyncHttpClient");
         assertNotEquals(customClient, getFieldValue(asyncHttpClient, "delegate"));
         assertEquals(HttpClientProvider.httpClient(), getFieldValue(asyncHttpClient, "delegate"));
+    }
+
+    @Test
+    void should_use_custom_http_client_for_model_catalog() throws Exception {
+
+        HttpClient customClient = HttpClient.newHttpClient();
+        ModelCatalog modelCatalog = WatsonxModelCatalog.builder()
+                .baseUrl("https://localhost")
+                .httpClient(customClient)
+                .build();
+
+        Object foundationModelService = getFieldValue(modelCatalog, "foundationModelService");
+        Object restclient = getFieldValue(foundationModelService, "client");
+        assertEquals(customClient, getFieldValue(restclient, "httpClient"));
+        assertNotEquals(HttpClientProvider.httpClient(), getFieldValue(restclient, "httpClient"));
+
+        Object syncHttpClient = getFieldValue(restclient, "syncHttpClient");
+        assertEquals(customClient, getFieldValue(syncHttpClient, "delegate"));
+        assertNotEquals(HttpClientProvider.httpClient(), getFieldValue(syncHttpClient, "delegate"));
+    }
+
+    @Test
+    void should_use_default_http_client_for_model_catalog() throws Exception {
+
+        HttpClient customClient = HttpClient.newHttpClient();
+        ModelCatalog modelCatalog =
+                WatsonxModelCatalog.builder().baseUrl("https://localhost").build();
+
+        Object foundationModelService = getFieldValue(modelCatalog, "foundationModelService");
+        Object restclient = getFieldValue(foundationModelService, "client");
+        assertNotEquals(customClient, getFieldValue(restclient, "httpClient"));
+        assertEquals(HttpClientProvider.httpClient(), getFieldValue(restclient, "httpClient"));
+
+        Object syncHttpClient = getFieldValue(restclient, "syncHttpClient");
+        assertNotEquals(customClient, getFieldValue(syncHttpClient, "delegate"));
+        assertEquals(HttpClientProvider.httpClient(), getFieldValue(syncHttpClient, "delegate"));
     }
 
     @SuppressWarnings("null")

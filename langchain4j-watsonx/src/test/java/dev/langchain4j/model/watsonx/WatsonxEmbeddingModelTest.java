@@ -103,7 +103,6 @@ public class WatsonxEmbeddingModelTest {
             assertEquals("model-name", embeddingRequest.modelId());
             assertEquals("project-id", embeddingRequest.projectId());
             assertEquals("space-id", embeddingRequest.spaceId());
-            // 6. Test builder secondario
             assertDoesNotThrow(() -> WatsonxEmbeddingModel.builder()
                     .baseUrl("https://test.com")
                     .modelName("model-name")

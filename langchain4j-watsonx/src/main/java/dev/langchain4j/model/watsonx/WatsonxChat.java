@@ -106,7 +106,7 @@ abstract class WatsonxChat {
                 .build();
     }
 
-    void validateThinkingIsAllowedForGraniteModel(
+    final void validateThinkingIsAllowedForGraniteModel(
             String modelName, List<ChatMessage> messages, List<ToolSpecification> tools) throws LangChain4jException {
 
         if (!"ibm/granite-3-3-8b-instruct".equals(modelName)) return;
@@ -121,7 +121,7 @@ abstract class WatsonxChat {
                     "The thinking/reasoning cannot be activated when a system message is present");
     }
 
-    void validate(ChatRequestParameters parameters) {
+    final void validate(ChatRequestParameters parameters) {
         if (nonNull(parameters.topK()))
             throw new UnsupportedFeatureException("'topK' parameter is not supported by watsonx.ai");
     }
@@ -159,16 +159,6 @@ abstract class WatsonxChat {
 
         public T modelName(String modelName) {
             this.modelName = modelName;
-            return (T) this;
-        }
-
-        public T projectId(String projectId) {
-            this.projectId = projectId;
-            return (T) this;
-        }
-
-        public T spaceId(String spaceId) {
-            this.spaceId = spaceId;
             return (T) this;
         }
 

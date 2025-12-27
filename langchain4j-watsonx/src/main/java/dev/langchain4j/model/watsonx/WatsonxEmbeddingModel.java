@@ -123,16 +123,6 @@ public class WatsonxEmbeddingModel implements EmbeddingModel {
             return this;
         }
 
-        public Builder projectId(String projectId) {
-            this.projectId = projectId;
-            return this;
-        }
-
-        public Builder spaceId(String spaceId) {
-            this.spaceId = spaceId;
-            return this;
-        }
-
         public WatsonxEmbeddingModel build() {
             return new WatsonxEmbeddingModel(this);
         }

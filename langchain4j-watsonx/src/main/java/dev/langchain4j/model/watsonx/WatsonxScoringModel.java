@@ -119,16 +119,6 @@ public class WatsonxScoringModel implements ScoringModel {
             return this;
         }
 
-        public Builder projectId(String projectId) {
-            this.projectId = projectId;
-            return this;
-        }
-
-        public Builder spaceId(String spaceId) {
-            this.spaceId = spaceId;
-            return this;
-        }
-
         public WatsonxScoringModel build() {
             return new WatsonxScoringModel(this);
         }
