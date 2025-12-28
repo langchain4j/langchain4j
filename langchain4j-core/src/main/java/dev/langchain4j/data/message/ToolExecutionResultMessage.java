@@ -1,12 +1,11 @@
 package dev.langchain4j.data.message;
 
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-
-import java.util.Objects;
-
 import static dev.langchain4j.data.message.ChatMessageType.TOOL_EXECUTION_RESULT;
 import static dev.langchain4j.internal.Utils.quoted;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
+import java.util.Objects;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 
 /**
  * Represents the result of a tool execution in response to a {@link ToolExecutionRequest}.
@@ -27,7 +26,7 @@ public class ToolExecutionResultMessage implements ChatMessage {
     public ToolExecutionResultMessage(String id, String toolName, String text) {
         this.id = id;
         this.toolName = toolName;
-        this.text = ensureNotBlank(text, "text");
+        this.text = ensureNotNull(text, "text");
     }
 
     /**
