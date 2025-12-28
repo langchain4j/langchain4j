@@ -122,9 +122,7 @@ class ConfluenceDocumentLoaderTest {
 
         ConfluenceDocumentLoader loader = baseLoader(httpClient);
 
-        assertThatThrownBy(loader::load)
-                .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("status code 401");
+        assertThatThrownBy(loader::load).isInstanceOf(RuntimeException.class).hasMessageContaining("status code 401");
     }
 
     @Test
@@ -208,10 +206,18 @@ class ConfluenceDocumentLoaderTest {
                 builder.append(',');
             }
             builder.append("{")
-                    .append("\"id\":\"").append(id).append("\",")
-                    .append("\"title\":\"Page ").append(id).append("\",")
-                    .append("\"body\":{\"storage\":{\"value\":\"<p>Content ").append(id).append("</p>\"}},")
-                    .append("\"_links\":{\"webui\":\"/spaces/DS/pages/").append(id).append("\"}")
+                    .append("\"id\":\"")
+                    .append(id)
+                    .append("\",")
+                    .append("\"title\":\"Page ")
+                    .append(id)
+                    .append("\",")
+                    .append("\"body\":{\"storage\":{\"value\":\"<p>Content ")
+                    .append(id)
+                    .append("</p>\"}},")
+                    .append("\"_links\":{\"webui\":\"/spaces/DS/pages/")
+                    .append(id)
+                    .append("\"}")
                     .append("}");
         }
         builder.append("],\"_links\":{");

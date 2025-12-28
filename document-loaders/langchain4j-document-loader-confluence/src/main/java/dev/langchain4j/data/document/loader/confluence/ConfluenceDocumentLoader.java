@@ -31,7 +31,7 @@ import org.jsoup.Jsoup;
 public class ConfluenceDocumentLoader {
 
     public static final String METADATA_TITLE = "title";
-    public static final String METADATA_CONFLUENCE_ID = "confluence_id";        
+    public static final String METADATA_CONFLUENCE_ID = "confluence_id";
     public static final String METADATA_SPACE_KEY = "space_key";
 
     private static final int DEFAULT_LIMIT = 25;
@@ -111,10 +111,11 @@ public class ConfluenceDocumentLoader {
                 .build();
 
         try {
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response =
+                    httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
             if (response.statusCode() / 100 != 2) {
-                throw new RuntimeException(
-                        "Confluence API request failed with status code " + response.statusCode() + ": " + response.body());
+                throw new RuntimeException("Confluence API request failed with status code " + response.statusCode()
+                        + ": " + response.body());
             }
             return objectMapper.readTree(response.body());
         } catch (IOException e) {
