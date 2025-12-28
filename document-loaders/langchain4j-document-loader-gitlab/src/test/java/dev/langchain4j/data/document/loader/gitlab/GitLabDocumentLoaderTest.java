@@ -1,6 +1,7 @@
 package dev.langchain4j.data.document.loader.gitlab;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -41,7 +42,8 @@ class GitLabDocumentLoaderTest {
         ArgumentCaptor<HttpRequest> requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
 
         when(httpClient.send(requestCaptor.capture(), any(HttpResponse.BodyHandler.class)))
-                .thenReturn((HttpResponse) treeResponse, (HttpResponse) readmeResponse, (HttpResponse) mainJavaResponse);
+                .thenReturn(
+                        (HttpResponse) treeResponse, (HttpResponse) readmeResponse, (HttpResponse) mainJavaResponse);
 
         GitLabDocumentLoader loader = GitLabDocumentLoader.builder()
                 .baseUrl("https://gitlab.com")
@@ -64,14 +66,16 @@ class GitLabDocumentLoaderTest {
 
         Document readme = documents.get(0);
         assertThat(readme.text()).isEqualTo("README content");
-        assertThat(readme.metadata().getString(GitLabDocumentLoader.METADATA_GITLAB_PROJECT_ID)).isEqualTo("123");
+        assertThat(readme.metadata().getString(GitLabDocumentLoader.METADATA_GITLAB_PROJECT_ID))
+                .isEqualTo("123");
         assertThat(readme.metadata().getString(Document.FILE_NAME)).isEqualTo("README.md");
         assertThat(readme.metadata().getString(Document.URL))
                 .isEqualTo("https://gitlab.com/projects/123/-/blob/main/README.md");
 
         Document mainJava = documents.get(1);
         assertThat(mainJava.text()).isEqualTo("public class Main {}");
-        assertThat(mainJava.metadata().getString(GitLabDocumentLoader.METADATA_GITLAB_PROJECT_ID)).isEqualTo("123");
+        assertThat(mainJava.metadata().getString(GitLabDocumentLoader.METADATA_GITLAB_PROJECT_ID))
+                .isEqualTo("123");
         assertThat(mainJava.metadata().getString(Document.FILE_NAME)).isEqualTo("Main.java");
         assertThat(mainJava.metadata().getString(Document.URL))
                 .isEqualTo("https://gitlab.com/projects/123/-/blob/main/src/Main.java");
@@ -80,7 +84,8 @@ class GitLabDocumentLoaderTest {
         assertThat(requests).hasSize(3);
 
         assertThat(requests.get(0).uri().toString())
-                .isEqualTo("https://gitlab.com/api/v4/projects/123/repository/tree?recursive=true&per_page=100&page=1&ref=main");
+                .isEqualTo(
+                        "https://gitlab.com/api/v4/projects/123/repository/tree?recursive=true&per_page=100&page=1&ref=main");
         assertThat(requests.get(1).uri().toString())
                 .isEqualTo("https://gitlab.com/api/v4/projects/123/repository/files/README.md/raw?ref=main");
         assertThat(requests.get(2).uri().toString())
@@ -150,9 +155,11 @@ class GitLabDocumentLoaderTest {
         assertThat(requests).hasSize(4);
 
         assertThat(requests.get(0).uri().toString())
-                .isEqualTo("https://gitlab.com/api/v4/projects/123/repository/tree?recursive=true&per_page=100&page=1&ref=main");
+                .isEqualTo(
+                        "https://gitlab.com/api/v4/projects/123/repository/tree?recursive=true&per_page=100&page=1&ref=main");
         assertThat(requests.get(1).uri().toString())
-                .isEqualTo("https://gitlab.com/api/v4/projects/123/repository/tree?recursive=true&per_page=100&page=2&ref=main");
+                .isEqualTo(
+                        "https://gitlab.com/api/v4/projects/123/repository/tree?recursive=true&per_page=100&page=2&ref=main");
         assertThat(requests.get(2).uri().toString())
                 .isEqualTo("https://gitlab.com/api/v4/projects/123/repository/files/README.md/raw?ref=main");
         assertThat(requests.get(3).uri().toString())
@@ -226,9 +233,11 @@ class GitLabDocumentLoaderTest {
         assertThat(requests).hasSize(4);
 
         assertThat(requests.get(0).uri().toString())
-                .isEqualTo("https://gitlab.com/api/v4/projects/123/repository/tree?recursive=true&per_page=100&page=1&ref=main");
+                .isEqualTo(
+                        "https://gitlab.com/api/v4/projects/123/repository/tree?recursive=true&per_page=100&page=1&ref=main");
         assertThat(requests.get(1).uri().toString())
-                .isEqualTo("https://gitlab.com/api/v4/projects/123/repository/tree?recursive=true&per_page=100&page=1&ref=master");
+                .isEqualTo(
+                        "https://gitlab.com/api/v4/projects/123/repository/tree?recursive=true&per_page=100&page=1&ref=master");
         assertThat(requests.get(2).uri().toString())
                 .isEqualTo("https://gitlab.com/api/v4/projects/123/repository/files/README.md/raw?ref=master");
         assertThat(requests.get(3).uri().toString())
@@ -286,7 +295,277 @@ class GitLabDocumentLoaderTest {
                 .isEqualTo(
                         "https://gitlab.example.com/api/v4/projects/group%2Fproject/repository/tree?recursive=true&per_page=100&page=1&ref=main");
         assertThat(requests.get(1).uri().toString())
-                .isEqualTo("https://gitlab.example.com/api/v4/projects/group%2Fproject/repository/files/README.md/raw?ref=main");
+                .isEqualTo(
+                        "https://gitlab.example.com/api/v4/projects/group%2Fproject/repository/files/README.md/raw?ref=main");
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void shouldThrowWhenTreeRequestReturnsNon2xx() throws Exception {
+        HttpClient httpClient = mock(HttpClient.class);
+
+        HttpResponse<String> treeResponse = (HttpResponse<String>) mock(HttpResponse.class);
+        when(treeResponse.statusCode()).thenReturn(500);
+        when(treeResponse.body()).thenReturn("Boom");
+
+        when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                .thenReturn((HttpResponse) treeResponse);
+
+        GitLabDocumentLoader loader = GitLabDocumentLoader.builder()
+                .baseUrl("https://gitlab.com")
+                .projectId("123")
+                .personalAccessToken("token")
+                .httpClient(httpClient)
+                .build();
+
+        DocumentParser parser = inputStream -> {
+            try {
+                return Document.from(new String(inputStream.readAllBytes(), StandardCharsets.UTF_8));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        };
+
+        assertThatThrownBy(() -> loader.loadDocuments("main", null, true, parser))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("status code 500");
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void shouldThrowWhenTreeResponseIsInvalidJson() throws Exception {
+        HttpClient httpClient = mock(HttpClient.class);
+
+        HttpResponse<String> treeResponse = (HttpResponse<String>) mock(HttpResponse.class);
+        when(treeResponse.statusCode()).thenReturn(200);
+        when(treeResponse.body()).thenReturn("not-json");
+        when(treeResponse.headers()).thenReturn(HttpHeaders.of(Map.of(), (k, v) -> true));
+
+        when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                .thenReturn((HttpResponse) treeResponse);
+
+        GitLabDocumentLoader loader = GitLabDocumentLoader.builder()
+                .baseUrl("https://gitlab.com")
+                .projectId("123")
+                .personalAccessToken("token")
+                .httpClient(httpClient)
+                .build();
+
+        DocumentParser parser = inputStream -> {
+            try {
+                return Document.from(new String(inputStream.readAllBytes(), StandardCharsets.UTF_8));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        };
+
+        assertThatThrownBy(() -> loader.loadDocuments("main", null, true, parser))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Failed to parse GitLab API response");
+    }
+
+    @Test
+    void shouldInterruptThreadWhenTreeRequestIsInterrupted() throws Exception {
+        HttpClient httpClient = mock(HttpClient.class);
+        when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                .thenThrow(new InterruptedException("boom"));
+
+        GitLabDocumentLoader loader = GitLabDocumentLoader.builder()
+                .baseUrl("https://gitlab.com")
+                .projectId("123")
+                .personalAccessToken("token")
+                .httpClient(httpClient)
+                .build();
+
+        DocumentParser parser = inputStream -> {
+            try {
+                return Document.from(new String(inputStream.readAllBytes(), StandardCharsets.UTF_8));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        };
+
+        try {
+            assertThatThrownBy(() -> loader.loadDocuments("main", null, true, parser))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining("interrupted");
+            assertThat(Thread.currentThread().isInterrupted()).isTrue();
+        } finally {
+            Thread.interrupted();
+        }
+    }
+
+    @Test
+    void shouldWrapIOExceptionWhenTreeRequestFails() throws Exception {
+        HttpClient httpClient = mock(HttpClient.class);
+        when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                .thenThrow(new IOException("boom"));
+
+        GitLabDocumentLoader loader = GitLabDocumentLoader.builder()
+                .baseUrl("https://gitlab.com")
+                .projectId("123")
+                .personalAccessToken("token")
+                .httpClient(httpClient)
+                .build();
+
+        DocumentParser parser = inputStream -> {
+            try {
+                return Document.from(new String(inputStream.readAllBytes(), StandardCharsets.UTF_8));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        };
+
+        assertThatThrownBy(() -> loader.loadDocuments("main", null, true, parser))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Failed to call GitLab API");
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void shouldSkipFileWhenRawRequestFails() throws Exception {
+        HttpClient httpClient = mock(HttpClient.class);
+
+        HttpResponse<String> treeResponse = (HttpResponse<String>) mock(HttpResponse.class);
+        when(treeResponse.statusCode()).thenReturn(200);
+        when(treeResponse.body()).thenReturn(repositoryTreeResponseBody());
+        when(treeResponse.headers()).thenReturn(HttpHeaders.of(Map.of(), (k, v) -> true));
+
+        HttpResponse<byte[]> readmeResponse = (HttpResponse<byte[]>) mock(HttpResponse.class);
+        when(readmeResponse.statusCode()).thenReturn(404);
+        when(readmeResponse.body()).thenReturn("Not Found".getBytes(StandardCharsets.UTF_8));
+
+        HttpResponse<byte[]> mainJavaResponse = (HttpResponse<byte[]>) mock(HttpResponse.class);
+        when(mainJavaResponse.statusCode()).thenReturn(200);
+        when(mainJavaResponse.body()).thenReturn(mainJavaRawContent());
+
+        when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                .thenReturn(
+                        (HttpResponse) treeResponse, (HttpResponse) readmeResponse, (HttpResponse) mainJavaResponse);
+
+        GitLabDocumentLoader loader = GitLabDocumentLoader.builder()
+                .baseUrl("https://gitlab.com")
+                .projectId("123")
+                .personalAccessToken("token")
+                .httpClient(httpClient)
+                .build();
+
+        DocumentParser parser = inputStream -> {
+            try {
+                return Document.from(new String(inputStream.readAllBytes(), StandardCharsets.UTF_8));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        };
+
+        List<Document> documents = loader.loadDocuments("main", null, true, parser);
+
+        assertThat(documents).hasSize(1);
+        Document mainJava = documents.get(0);
+        assertThat(mainJava.text()).isEqualTo("public class Main {}");
+        assertThat(mainJava.metadata().getString(Document.FILE_NAME)).isEqualTo("Main.java");
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void shouldFallbackToMasterWhenLoadingSingleDocument() throws Exception {
+        HttpClient httpClient = mock(HttpClient.class);
+
+        HttpResponse<byte[]> mainNotFoundResponse = (HttpResponse<byte[]>) mock(HttpResponse.class);
+        when(mainNotFoundResponse.statusCode()).thenReturn(404);
+        when(mainNotFoundResponse.body()).thenReturn("Not Found".getBytes(StandardCharsets.UTF_8));
+
+        HttpResponse<byte[]> masterResponse = (HttpResponse<byte[]>) mock(HttpResponse.class);
+        when(masterResponse.statusCode()).thenReturn(200);
+        when(masterResponse.body()).thenReturn(readmeRawContent());
+
+        ArgumentCaptor<HttpRequest> requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
+
+        when(httpClient.send(requestCaptor.capture(), any(HttpResponse.BodyHandler.class)))
+                .thenReturn((HttpResponse) mainNotFoundResponse, (HttpResponse) masterResponse);
+
+        GitLabDocumentLoader loader = GitLabDocumentLoader.builder()
+                .baseUrl("https://gitlab.com")
+                .projectId("123")
+                .personalAccessToken("token")
+                .httpClient(httpClient)
+                .build();
+
+        DocumentParser parser = inputStream -> {
+            try {
+                return Document.from(new String(inputStream.readAllBytes(), StandardCharsets.UTF_8));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        };
+
+        Document document = loader.loadDocument("README.md", parser);
+
+        assertThat(document.text()).isEqualTo("README content");
+        assertThat(document.metadata().getString(Document.URL))
+                .isEqualTo("https://gitlab.com/projects/123/-/blob/master/README.md");
+
+        List<HttpRequest> requests = requestCaptor.getAllValues();
+        assertThat(requests).hasSize(2);
+        assertThat(requests.get(0).uri().toString())
+                .isEqualTo("https://gitlab.com/api/v4/projects/123/repository/files/README.md/raw?ref=main");
+        assertThat(requests.get(1).uri().toString())
+                .isEqualTo("https://gitlab.com/api/v4/projects/123/repository/files/README.md/raw?ref=master");
+
+        assertThat(requests.get(0).headers().firstValue("PRIVATE-TOKEN")).contains("token");
+        assertThat(requests.get(1).headers().firstValue("PRIVATE-TOKEN")).contains("token");
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void shouldIncludePathAndNonRecursiveWhenListingRepositoryTree() throws Exception {
+        HttpClient httpClient = mock(HttpClient.class);
+
+        HttpResponse<String> treeResponse = (HttpResponse<String>) mock(HttpResponse.class);
+        when(treeResponse.statusCode()).thenReturn(200);
+        when(treeResponse.body()).thenReturn(repositoryTreeResponseBodyDocsReadmeOnly());
+        when(treeResponse.headers()).thenReturn(HttpHeaders.of(Map.of(), (k, v) -> true));
+
+        HttpResponse<byte[]> readmeResponse = (HttpResponse<byte[]>) mock(HttpResponse.class);
+        when(readmeResponse.statusCode()).thenReturn(200);
+        when(readmeResponse.body()).thenReturn(readmeRawContent());
+
+        ArgumentCaptor<HttpRequest> requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
+
+        when(httpClient.send(requestCaptor.capture(), any(HttpResponse.BodyHandler.class)))
+                .thenReturn((HttpResponse) treeResponse, (HttpResponse) readmeResponse);
+
+        GitLabDocumentLoader loader = GitLabDocumentLoader.builder()
+                .baseUrl("https://gitlab.com")
+                .projectId("123")
+                .personalAccessToken("token")
+                .httpClient(httpClient)
+                .build();
+
+        DocumentParser parser = inputStream -> {
+            try {
+                return Document.from(new String(inputStream.readAllBytes(), StandardCharsets.UTF_8));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        };
+
+        List<Document> documents = loader.loadDocuments("main", "docs", false, parser);
+
+        assertThat(documents).hasSize(1);
+        Document readme = documents.get(0);
+        assertThat(readme.text()).isEqualTo("README content");
+        assertThat(readme.metadata().getString(Document.FILE_NAME)).isEqualTo("README.md");
+        assertThat(readme.metadata().getString(Document.URL))
+                .isEqualTo("https://gitlab.com/projects/123/-/blob/main/docs/README.md");
+
+        List<HttpRequest> requests = requestCaptor.getAllValues();
+        assertThat(requests).hasSize(2);
+        assertThat(requests.get(0).uri().toString())
+                .isEqualTo(
+                        "https://gitlab.com/api/v4/projects/123/repository/tree?recursive=false&per_page=100&page=1&ref=main&path=docs");
+        assertThat(requests.get(1).uri().toString())
+                .isEqualTo("https://gitlab.com/api/v4/projects/123/repository/files/docs%2FREADME.md/raw?ref=main");
     }
 
     private static String repositoryTreeResponseBody() {
@@ -306,6 +585,10 @@ class GitLabDocumentLoaderTest {
 
     private static String repositoryTreeResponseBodyReadmeOnly() {
         return "[" + "{\"type\":\"blob\",\"path\":\"README.md\"}" + "]";
+    }
+
+    private static String repositoryTreeResponseBodyDocsReadmeOnly() {
+        return "[" + "{\"type\":\"blob\",\"path\":\"docs/README.md\"}" + "]";
     }
 
     private static byte[] readmeRawContent() {

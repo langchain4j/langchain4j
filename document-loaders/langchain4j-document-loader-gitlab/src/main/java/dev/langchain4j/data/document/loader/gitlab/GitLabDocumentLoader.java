@@ -278,7 +278,8 @@ public class GitLabDocumentLoader {
             queryParams.put("path", path);
         }
 
-        return URI.create(apiBaseUrl + "/projects/" + encodedProjectId + "/repository/tree?" + encodeQuery(queryParams));
+        return URI.create(
+                apiBaseUrl + "/projects/" + encodedProjectId + "/repository/tree?" + encodeQuery(queryParams));
     }
 
     private URI buildRawFileUri(String ref, String filePath) {
@@ -286,8 +287,8 @@ public class GitLabDocumentLoader {
         queryParams.put("ref", ensureNotBlank(ref, "ref"));
 
         String encodedFilePath = encodePathSegment(normalizePath(filePath));
-        return URI.create(apiBaseUrl + "/projects/" + encodedProjectId + "/repository/files/" + encodedFilePath + "/raw?"
-                + encodeQuery(queryParams));
+        return URI.create(apiBaseUrl + "/projects/" + encodedProjectId + "/repository/files/" + encodedFilePath
+                + "/raw?" + encodeQuery(queryParams));
     }
 
     private static List<String> resolveRefCandidates(String ref) {
@@ -378,7 +379,8 @@ public class GitLabDocumentLoader {
     private static String projectWebUrl(String webBaseUrl, String projectId) {
         // The GitLab API accepts both numeric project IDs and URL-encoded paths (e.g. group%2Fproject),
         // but the web URL should use the decoded project path (e.g. group/project).
-        String decodedProjectId = decodePercentEncodedPreservingPlus(ensureNotBlank(projectId, "projectId").trim());
+        String decodedProjectId = decodePercentEncodedPreservingPlus(
+                ensureNotBlank(projectId, "projectId").trim());
         while (decodedProjectId.startsWith("/")) {
             decodedProjectId = decodedProjectId.substring(1);
         }
