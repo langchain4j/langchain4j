@@ -4,8 +4,8 @@ import static dev.langchain4j.data.message.ChatMessageType.TOOL_EXECUTION_RESULT
 import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import java.util.Objects;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import java.util.Objects;
 
 /**
  * Represents the result of a tool execution in response to a {@link ToolExecutionRequest}.
@@ -75,11 +75,10 @@ public class ToolExecutionResultMessage implements ChatMessage {
 
     @Override
     public String toString() {
-        return "ToolExecutionResultMessage {" +
-                " id = " + quoted(id) +
-                " toolName = " + quoted(toolName) +
-                " text = " + quoted(text) +
-                " }";
+        return "ToolExecutionResultMessage {" + " id = "
+                + quoted(id) + " toolName = "
+                + quoted(toolName) + " text = "
+                + quoted(text) + " }";
     }
 
     /**
@@ -109,7 +108,8 @@ public class ToolExecutionResultMessage implements ChatMessage {
      * @param toolExecutionResult the result of the tool execution.
      * @return the {@link ToolExecutionResultMessage}.
      */
-    public static ToolExecutionResultMessage toolExecutionResultMessage(ToolExecutionRequest request, String toolExecutionResult) {
+    public static ToolExecutionResultMessage toolExecutionResultMessage(
+            ToolExecutionRequest request, String toolExecutionResult) {
         return from(request, toolExecutionResult);
     }
 
@@ -120,7 +120,8 @@ public class ToolExecutionResultMessage implements ChatMessage {
      * @param toolExecutionResult the result of the tool execution.
      * @return the {@link ToolExecutionResultMessage}.
      */
-    public static ToolExecutionResultMessage toolExecutionResultMessage(String id, String toolName, String toolExecutionResult) {
+    public static ToolExecutionResultMessage toolExecutionResultMessage(
+            String id, String toolName, String toolExecutionResult) {
         return from(id, toolName, toolExecutionResult);
     }
 }
