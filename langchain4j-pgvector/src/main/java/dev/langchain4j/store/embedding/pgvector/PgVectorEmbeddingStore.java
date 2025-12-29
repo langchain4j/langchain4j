@@ -56,7 +56,6 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     public enum SearchMode {
         EMBEDDING_ONLY,
-        FULL_TEXT_ONLY,
         HYBRID
     }
 
@@ -261,7 +260,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                 metadataHandler.createMetadataIndexes(statement, table);
             }
 
-            if (searchMode == SearchMode.FULL_TEXT_ONLY || searchMode == SearchMode.HYBRID) {
+            if (searchMode == SearchMode.HYBRID) {
                 String ftsIndexName = table + "_text_fts_gin_index";
                 query = String.format(
                         "CREATE INDEX IF NOT EXISTS %s ON %s " + "USING gin (to_tsvector('%s', coalesce(text, '')))",
@@ -386,7 +385,6 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         return switch (mode) {
             case EMBEDDING_ONLY -> embeddingOnlySearch(request);
-            case FULL_TEXT_ONLY -> fullTextOnlySearch(request);
             case HYBRID -> hybridSearch(request);
         };
     }
@@ -440,70 +438,6 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
-        return new EmbeddingSearchResult<>(result);
-    }
-
-    private EmbeddingSearchResult<TextSegment> fullTextOnlySearch(EmbeddingSearchRequest request) {
-        String keywordQuery = request.query();
-
-        if (isNullOrBlank(keywordQuery)) {
-            return new EmbeddingSearchResult<>(List.of());
-        }
-
-        int maxResults = request.maxResults();
-        Filter filter = request.filter();
-
-        List<EmbeddingMatch<TextSegment>> result = new ArrayList<>();
-
-        try (Connection connection = getConnection()) {
-            String whereClause = (filter == null) ? "" : metadataHandler.whereClause(filter);
-            whereClause = (whereClause.isEmpty()) ? "" : "AND " + whereClause;
-
-            String sql = String.format(
-                    "SELECT ts_rank(to_tsvector('%s', coalesce(text, '')), "
-                            + "              plainto_tsquery('%s', ?)) AS score, "
-                            + "       embedding_id, embedding, text, %s "
-                            + "FROM %s "
-                            + "WHERE to_tsvector('%s', coalesce(text, '')) "
-                            + "      @@ plainto_tsquery('%s', ?) "
-                            + "%s "
-                            + "ORDER BY score DESC "
-                            + "LIMIT ?;",
-                    textSearchConfig,
-                    textSearchConfig,
-                    join(",", metadataHandler.columnsNames()),
-                    table,
-                    textSearchConfig,
-                    textSearchConfig,
-                    whereClause);
-
-            try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-                stmt.setString(1, keywordQuery);
-                stmt.setString(2, keywordQuery);
-                stmt.setInt(3, maxResults);
-
-                try (ResultSet rs = stmt.executeQuery()) {
-                    while (rs.next()) {
-                        double score = rs.getDouble("score");
-                        String embeddingId = rs.getString("embedding_id");
-
-                        PGvector vector = (PGvector) rs.getObject("embedding");
-                        Embedding embedding = new Embedding(vector.toArray());
-
-                        String text = rs.getString("text");
-                        TextSegment textSegment = null;
-                        if (isNotNullOrBlank(text)) {
-                            Metadata metadata = metadataHandler.fromResultSet(rs);
-                            textSegment = TextSegment.from(text, metadata);
-                        }
-                        result.add(new EmbeddingMatch<>(score, embeddingId, embedding, textSegment));
-                    }
-                }
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-
         return new EmbeddingSearchResult<>(result);
     }
 

@@ -3,7 +3,7 @@ package dev.langchain4j.store.embedding.pgvector;
 import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
 import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -121,7 +121,7 @@ abstract class PgVectorEmbeddingStoreConfigIT extends EmbeddingStoreWithFilterin
                 .table("fts_config_ok")
                 .dimension(TABLE_DIMENSION)
                 .dropTableFirst(true)
-                .searchMode(PgVectorEmbeddingStore.SearchMode.FULL_TEXT_ONLY)
+                .searchMode(PgVectorEmbeddingStore.SearchMode.HYBRID)
                 .textSearchConfig("english")
                 .build();
 
@@ -139,7 +139,7 @@ abstract class PgVectorEmbeddingStoreConfigIT extends EmbeddingStoreWithFilterin
                         .table("fts_config_bad")
                         .dimension(TABLE_DIMENSION)
                         .dropTableFirst(true)
-                        .searchMode(PgVectorEmbeddingStore.SearchMode.FULL_TEXT_ONLY)
+                        .searchMode(PgVectorEmbeddingStore.SearchMode.HYBRID)
                         .textSearchConfig("english'; DROP TABLE fts_config_bad; --")
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)

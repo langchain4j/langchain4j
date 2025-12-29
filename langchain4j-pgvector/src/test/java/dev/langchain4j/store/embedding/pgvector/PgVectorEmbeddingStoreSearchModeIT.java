@@ -1,7 +1,6 @@
 package dev.langchain4j.store.embedding.pgvector;
 
 import static dev.langchain4j.store.embedding.pgvector.PgVectorEmbeddingStore.SearchMode.EMBEDDING_ONLY;
-import static dev.langchain4j.store.embedding.pgvector.PgVectorEmbeddingStore.SearchMode.FULL_TEXT_ONLY;
 import static dev.langchain4j.store.embedding.pgvector.PgVectorEmbeddingStore.SearchMode.HYBRID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.testcontainers.shaded.org.apache.commons.lang3.RandomUtils.nextInt;
@@ -27,7 +26,6 @@ class PgVectorEmbeddingStoreSearchModeIT {
     static PostgreSQLContainer<?> pgVector = new PostgreSQLContainer<>("pgvector/pgvector:pg16");
 
     EmbeddingStore<TextSegment> storeEmbeddingOnly;
-    EmbeddingStore<TextSegment> storeFullTextOnly;
     EmbeddingStore<TextSegment> storeHybrid;
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
@@ -45,20 +43,8 @@ class PgVectorEmbeddingStoreSearchModeIT {
                 .table(tableBase + "_emb")
                 .dimension(384)
                 .dropTableFirst(true)
-                .searchMode(EMBEDDING_ONLY)
-                .build();
-
-        storeFullTextOnly = PgVectorEmbeddingStore.builder()
-                .host(pgVector.getHost())
-                .port(pgVector.getFirstMappedPort())
-                .user("test")
-                .password("test")
-                .database("test")
-                .table(tableBase + "_fts")
-                .dimension(384)
-                .dropTableFirst(true)
-                .searchMode(FULL_TEXT_ONLY)
                 .textSearchConfig("english")
+                .searchMode(EMBEDDING_ONLY)
                 .build();
 
         storeHybrid = PgVectorEmbeddingStore.builder()
@@ -70,6 +56,7 @@ class PgVectorEmbeddingStoreSearchModeIT {
                 .table(tableBase + "_hybrid")
                 .dimension(384)
                 .dropTableFirst(true)
+                .textSearchConfig("simple")
                 .searchMode(HYBRID)
                 .textSearchConfig("english")
                 .build();
@@ -82,7 +69,6 @@ class PgVectorEmbeddingStoreSearchModeIT {
         for (TextSegment segment : segments) {
             Embedding embedding = embeddingModel.embed(segment).content();
             storeEmbeddingOnly.add(embedding, segment);
-            storeFullTextOnly.add(embedding, segment);
             storeHybrid.add(embedding, segment);
         }
     }
@@ -103,40 +89,6 @@ class PgVectorEmbeddingStoreSearchModeIT {
         String topText = result.matches().get(0).embedded().text();
 
         assertThat(topText).containsIgnoringCase("pgvector").containsIgnoringCase("vector");
-    }
-
-    @Test
-    void fullTextOnly_shouldUseKeywordMatching() {
-        TextSegment query = TextSegment.from("vector similarity search in databases");
-        Embedding queryEmbedding = embeddingModel.embed(query).content();
-
-        EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
-                .query("tsvector tsquery")
-                .queryEmbedding(queryEmbedding)
-                .maxResults(3)
-                .build();
-
-        EmbeddingSearchResult<TextSegment> result = storeFullTextOnly.search(request);
-
-        assertThat(result.matches()).isNotEmpty();
-        String topText = result.matches().get(0).embedded().text();
-
-        assertThat(topText).containsIgnoringCase("Full text search").containsIgnoringCase("tsvector");
-    }
-
-    @Test
-    void fullTextOnly_withEmptyQuery_shouldReturnEmpty() {
-        TextSegment query = TextSegment.from("vector similarity search in databases");
-        Embedding queryEmbedding = embeddingModel.embed(query).content();
-
-        EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
-                .query("   ")
-                .queryEmbedding(queryEmbedding)
-                .maxResults(3)
-                .build();
-
-        EmbeddingSearchResult<TextSegment> result = storeFullTextOnly.search(request);
-        assertThat(result.matches()).isEmpty();
     }
 
     @Test
