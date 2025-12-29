@@ -43,11 +43,13 @@ public class MessageWindowChatMemory implements ChatMemory {
     private final Object id;
     private final ChatMemoryStore store;
     private final Function<Object, Integer> maxMessagesProvider;
+    private final boolean systemMessageFirst;
 
     private MessageWindowChatMemory(Builder builder) {
         this.id = ensureNotNull(builder.id, "id");
         this.maxMessagesProvider = ensureNotNull(builder.maxMessagesProvider, "maxMessagesProvider");
         this.store = ensureNotNull(builder.store(), "store");
+        this.systemMessageFirst = builder.systemMessageFirst;
         ensureGreaterThanZero(this.maxMessagesProvider.apply(this.id), "maxMessages");
     }
 
@@ -71,7 +73,11 @@ public class MessageWindowChatMemory implements ChatMemory {
                 }
             }
         }
-        messages.add(message);
+        if (message instanceof SystemMessage && this.isSystemMessageFirst()) {
+            messages.add(0, message);
+        } else {
+            messages.add(message);
+        }
         ensureCapacity(messages, maxMessages);
         store.updateMessages(id, messages);
     }
@@ -110,12 +116,18 @@ public class MessageWindowChatMemory implements ChatMemory {
         store.deleteMessages(id);
     }
 
+    @Override
+    public boolean isSystemMessageFirst() {
+        return systemMessageFirst;
+    }
+
     public static Builder builder() {
         return new Builder();
     }
 
     public static class Builder {
 
+        private boolean systemMessageFirst;
         private Object id = ChatMemoryService.DEFAULT;
         private Function<Object, Integer> maxMessagesProvider;
         private ChatMemoryStore store;
@@ -159,6 +171,17 @@ public class MessageWindowChatMemory implements ChatMemory {
          */
         public Builder chatMemoryStore(ChatMemoryStore store) {
             this.store = store;
+            return this;
+        }
+
+        /**
+         * Specifies whether the system message should be added to the beginning of the message list.
+         *
+         * @param systemMessageFirst
+         * @return
+         */
+        public Builder systemMessageFirst(boolean systemMessageFirst) {
+            this.systemMessageFirst = systemMessageFirst;
             return this;
         }
 

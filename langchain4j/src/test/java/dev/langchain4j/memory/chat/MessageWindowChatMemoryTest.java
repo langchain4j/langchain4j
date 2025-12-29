@@ -530,5 +530,114 @@ class MessageWindowChatMemoryTest implements WithAssertions {
                 .containsExactly(msgD, msgE); // Keep the most recent two messages
     }
 
+    @Test
+    void system_message_first_enabled() {
+        ChatMemory chatMemory = MessageWindowChatMemory.builder()
+                .maxMessages(5)
+                .systemMessageFirst(true)
+                .build();
+
+        assertThat(chatMemory.isSystemMessageFirst()).isTrue();
+
+        SystemMessage systemMessage = systemMessage("You are a helpful assistant");
+        chatMemory.add(systemMessage);
+
+        UserMessage userMessage = userMessage("Hello");
+        chatMemory.add(userMessage);
+
+        AiMessage aiMessage = aiMessage("Hi, how can I help?");
+        chatMemory.add(aiMessage);
+
+        // System message should be at the beginning
+        assertThat(chatMemory.messages())
+                .containsExactly(systemMessage, userMessage, aiMessage);
+
+        chatMemory = MessageWindowChatMemory.builder()
+                .maxMessages(5)
+                .systemMessageFirst(true)
+                .build();
+
+        chatMemory.add(userMessage);
+        chatMemory.add(systemMessage);
+        chatMemory.add(aiMessage);
+
+        // System message should be at the beginning
+        assertThat(chatMemory.messages())
+                .containsExactly(systemMessage, userMessage, aiMessage);
+    }
+
+    @Test
+    void system_message_first_disabled() {
+        ChatMemory chatMemory = MessageWindowChatMemory.builder()
+                .maxMessages(5)
+                .systemMessageFirst(false)
+                .build();
+
+        assertThat(chatMemory.isSystemMessageFirst()).isFalse();
+
+        SystemMessage systemMessage = systemMessage("You are a helpful assistant");
+        chatMemory.add(systemMessage);
+
+        UserMessage userMessage = userMessage("Hello");
+        chatMemory.add(userMessage);
+
+        AiMessage aiMessage = aiMessage("Hi, how can I help?");
+        chatMemory.add(aiMessage);
+
+        // System message should be at the beginning
+        assertThat(chatMemory.messages())
+                .containsExactly(systemMessage, userMessage, aiMessage);
+
+        chatMemory = MessageWindowChatMemory.builder()
+                .maxMessages(5)
+                .systemMessageFirst(false)
+                .build();
+
+        chatMemory.add(userMessage);
+        chatMemory.add(systemMessage);
+        chatMemory.add(aiMessage);
+
+        // System message should NOT be at the beginning
+        assertThat(chatMemory.messages())
+                .containsExactly(userMessage, systemMessage, aiMessage);
+    }
+
+    @Test
+    void system_message_first_default_is_false() {
+        ChatMemory chatMemory = MessageWindowChatMemory.builder()
+                .maxMessages(5)
+                .build();
+
+        // Default value should be false
+        assertThat(chatMemory.isSystemMessageFirst()).isFalse();
+    }
+
+    @Test
+    void system_message_first_with_message_eviction() {
+        ChatMemory chatMemory = MessageWindowChatMemory.builder()
+                .maxMessages(3)
+                .systemMessageFirst(true)
+                .build();
+
+        SystemMessage systemMessage = systemMessage("You are a helpful assistant");
+        chatMemory.add(systemMessage);
+
+        UserMessage msg1 = userMessage("Message 1");
+        chatMemory.add(msg1);
+
+        UserMessage msg2 = userMessage("Message 2");
+        chatMemory.add(msg2);
+
+        // At capacity: systemMessage, msg1, msg2
+        assertThat(chatMemory.messages())
+                .containsExactly(systemMessage, msg1, msg2);
+
+        UserMessage msg3 = userMessage("Message 3");
+        chatMemory.add(msg3);
+
+        // msg1 should be evicted, systemMessage should remain at the beginning
+        assertThat(chatMemory.messages())
+                .containsExactly(systemMessage, msg2, msg3);
+    }
 
 }

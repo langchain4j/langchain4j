@@ -723,5 +723,113 @@ class TokenWindowChatMemoryTest implements WithAssertions {
                 .containsExactly(msgC, msgD, msgE); // Keep the most recent messages within token limit
     }
 
+    @Test
+    void system_message_first_enabled() {
+        ChatMemory chatMemory = TokenWindowChatMemory.builder()
+                .maxTokens(100, TOKEN_COUNT_ESTIMATOR)
+                .systemMessageFirst(true)
+                .build();
 
+        assertThat(chatMemory.isSystemMessageFirst()).isTrue();
+
+        SystemMessage systemMessage = systemMessageWithTokens(10);
+        chatMemory.add(systemMessage);
+
+        UserMessage userMessage = userMessageWithTokens(10);
+        chatMemory.add(userMessage);
+
+        AiMessage aiMessage = aiMessageWithTokens(10);
+        chatMemory.add(aiMessage);
+
+        // System message should be at the beginning
+        assertThat(chatMemory.messages())
+                .containsExactly(systemMessage, userMessage, aiMessage);
+
+        chatMemory = TokenWindowChatMemory.builder()
+                .maxTokens(100, TOKEN_COUNT_ESTIMATOR)
+                .systemMessageFirst(true)
+                .build();
+
+        chatMemory.add(userMessage);
+        chatMemory.add(systemMessage);
+        chatMemory.add(aiMessage);
+
+        // System message should be at the beginning
+        assertThat(chatMemory.messages())
+                .containsExactly(systemMessage, userMessage, aiMessage);
+    }
+
+    @Test
+    void system_message_first_disabled() {
+        ChatMemory chatMemory = TokenWindowChatMemory.builder()
+                .maxTokens(100, TOKEN_COUNT_ESTIMATOR)
+                .systemMessageFirst(false)
+                .build();
+
+        assertThat(chatMemory.isSystemMessageFirst()).isFalse();
+
+        SystemMessage systemMessage = systemMessageWithTokens(10);
+        chatMemory.add(systemMessage);
+
+        UserMessage userMessage = userMessageWithTokens(10);
+        chatMemory.add(userMessage);
+
+        AiMessage aiMessage = aiMessageWithTokens(10);
+        chatMemory.add(aiMessage);
+
+        // System message should be at the beginning
+        assertThat(chatMemory.messages())
+                .containsExactly(systemMessage, userMessage, aiMessage);
+
+        chatMemory = TokenWindowChatMemory.builder()
+                .maxTokens(100, TOKEN_COUNT_ESTIMATOR)
+                .systemMessageFirst(false)
+                .build();
+
+        chatMemory.add(userMessage);
+        chatMemory.add(systemMessage);
+        chatMemory.add(aiMessage);
+
+        // System message should NOT be at the beginning
+        assertThat(chatMemory.messages())
+                .containsExactly(userMessage, systemMessage, aiMessage);
+    }
+
+    @Test
+    void system_message_first_default_is_false() {
+        ChatMemory chatMemory = TokenWindowChatMemory.builder()
+                .maxTokens(100, TOKEN_COUNT_ESTIMATOR)
+                .build();
+
+        // Default value should be false
+        assertThat(chatMemory.isSystemMessageFirst()).isFalse();
+    }
+
+    @Test
+    void system_message_first_with_message_eviction() {
+        ChatMemory chatMemory = TokenWindowChatMemory.builder()
+                .maxTokens(35, TOKEN_COUNT_ESTIMATOR)
+                .systemMessageFirst(true)
+                .build();
+
+        SystemMessage systemMessage = systemMessageWithTokens(10);
+        chatMemory.add(systemMessage);
+
+        UserMessage msg1 = userMessageWithTokens(10);
+        chatMemory.add(msg1);
+
+        UserMessage msg2 = userMessageWithTokens(10);
+        chatMemory.add(msg2);
+
+        // At capacity: systemMessage, msg1, msg2
+        assertThat(chatMemory.messages())
+                .containsExactly(systemMessage, msg1, msg2);
+
+        UserMessage msg3 = userMessageWithTokens(10);
+        chatMemory.add(msg3);
+
+        // msg1 should be evicted, systemMessage should remain at the beginning
+        assertThat(chatMemory.messages())
+                .containsExactly(systemMessage, msg2, msg3);
+    }
 }

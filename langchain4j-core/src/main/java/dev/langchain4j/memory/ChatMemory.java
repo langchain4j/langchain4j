@@ -58,4 +58,11 @@ public interface ChatMemory {
      * Clears the chat memory.
      */
     void clear();
+
+    /**
+     * always keep system message on index 0
+     *
+     * @return true if system message should always be on index 0, false otherwise
+     */
+    boolean isSystemMessageFirst();
 }
