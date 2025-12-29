@@ -1,14 +1,13 @@
 package dev.langchain4j.model.embedding;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.output.Response;
-import org.junit.jupiter.api.Test;
-
 import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 class MultiInterfaceEmbeddingModelTest {
 
@@ -42,21 +41,17 @@ class MultiInterfaceEmbeddingModelTest {
 
         // then - can be used as ImageEmbeddingModel
         ImageEmbeddingModel imageModel = model;
-        assertThat(imageModel.embed(ImageContent.from("data", "image/png")).content()).isNotNull();
+        assertThat(imageModel.embed(ImageContent.from("data", "image/png")).content())
+                .isNotNull();
     }
 
     @Test
     void should_have_separate_embedAll_methods() {
         // given
         MultimodalModel model = new MultimodalModel();
-        List<TextSegment> textSegments = List.of(
-                TextSegment.from("text1"),
-                TextSegment.from("text2")
-        );
-        List<ImageContent> images = List.of(
-                ImageContent.from("data1", "image/png"),
-                ImageContent.from("data2", "image/jpeg")
-        );
+        List<TextSegment> textSegments = List.of(TextSegment.from("text1"), TextSegment.from("text2"));
+        List<ImageContent> images =
+                List.of(ImageContent.from("data1", "image/png"), ImageContent.from("data2", "image/jpeg"));
 
         // when
         Response<List<Embedding>> textResponse = model.embedAll(textSegments);
@@ -98,9 +93,8 @@ class MultiInterfaceEmbeddingModelTest {
 
         @Override
         public Response<List<Embedding>> embedAllImages(List<ImageContent> images) {
-            List<Embedding> embeddings = images.stream()
-                    .map(img -> Embedding.from(new float[128]))
-                    .toList();
+            List<Embedding> embeddings =
+                    images.stream().map(img -> Embedding.from(new float[128])).toList();
             return Response.from(embeddings);
         }
 

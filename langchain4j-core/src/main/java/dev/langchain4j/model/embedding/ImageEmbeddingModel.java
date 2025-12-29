@@ -1,14 +1,13 @@
 package dev.langchain4j.model.embedding;
 
+import static java.util.Collections.singletonList;
+
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.internal.ValidationUtils;
 import dev.langchain4j.model.output.Response;
-
 import java.net.URI;
 import java.util.List;
-
-import static java.util.Collections.singletonList;
 
 /**
  * Represents a model that can convert images into embeddings (vector representations).
@@ -36,8 +35,11 @@ public interface ImageEmbeddingModel {
      */
     default Response<Embedding> embed(ImageContent image) {
         Response<List<Embedding>> response = embedAllImages(singletonList(image));
-        ValidationUtils.ensureEq(response.content().size(), 1,
-                "Expected a single embedding, but got %d", response.content().size());
+        ValidationUtils.ensureEq(
+                response.content().size(),
+                1,
+                "Expected a single embedding, but got %d",
+                response.content().size());
         return Response.from(response.content().get(0), response.tokenUsage(), response.finishReason());
     }
 

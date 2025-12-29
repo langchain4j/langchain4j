@@ -1,5 +1,12 @@
 package dev.langchain4j.model.vertexai;
 
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.readBytes;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static java.util.Base64.getEncoder;
+
 import com.google.api.gax.core.FixedCredentialsProvider;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.aiplatform.v1.PredictResponse;
@@ -14,18 +21,10 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.ImageEmbeddingModel;
 import dev.langchain4j.model.output.Response;
-
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
-
-import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.readBytes;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static java.util.Base64.getEncoder;
 
 /**
  * Multimodal embedding model using Google Vertex AI's multimodalembedding@001 model.
@@ -126,8 +125,7 @@ public class VertexAiMultimodalEmbeddingModel implements EmbeddingModel, ImageEm
                 Value parameters = toParameters();
 
                 PredictResponse response = withRetryMappingExceptions(
-                        () -> client.predict(endpointName, List.of(instance), parameters),
-                        maxRetries);
+                        () -> client.predict(endpointName, List.of(instance), parameters), maxRetries);
 
                 Embedding embedding = extractTextEmbedding(response);
                 embeddings.add(embedding);
@@ -156,8 +154,7 @@ public class VertexAiMultimodalEmbeddingModel implements EmbeddingModel, ImageEm
                 Value parameters = toParameters();
 
                 PredictResponse response = withRetryMappingExceptions(
-                        () -> client.predict(endpointName, List.of(instance), parameters),
-                        maxRetries);
+                        () -> client.predict(endpointName, List.of(instance), parameters), maxRetries);
 
                 Embedding embedding = extractImageEmbedding(response);
                 embeddings.add(embedding);
@@ -224,8 +221,7 @@ public class VertexAiMultimodalEmbeddingModel implements EmbeddingModel, ImageEm
                 String base64 = getEncoder().encodeToString(bytes);
                 String mimeType = getOrDefault(image.mimeType(), "image/png");
                 return String.format(
-                        "{\"image\": {\"bytesBase64Encoded\": \"%s\", \"mimeType\": \"%s\"}}",
-                        base64, mimeType);
+                        "{\"image\": {\"bytesBase64Encoded\": \"%s\", \"mimeType\": \"%s\"}}", base64, mimeType);
             }
         } else if (image.base64Data() != null) {
             String mimeType = getOrDefault(image.mimeType(), "image/png");
@@ -263,24 +259,20 @@ public class VertexAiMultimodalEmbeddingModel implements EmbeddingModel, ImageEm
 
         Value prediction = response.getPredictions(0);
 
-        List<Float> vector = prediction.getStructValue()
-                .getFieldsMap()
-                .get(embeddingKey)
-                .getListValue()
-                .getValuesList()
-                .stream()
-                .map(v -> (float) v.getNumberValue())
-                .toList();
+        List<Float> vector =
+                prediction.getStructValue().getFieldsMap().get(embeddingKey).getListValue().getValuesList().stream()
+                        .map(v -> (float) v.getNumberValue())
+                        .toList();
 
         return Embedding.from(vector);
     }
 
     private static String escapeJson(String text) {
         return text.replace("\\", "\\\\")
-                   .replace("\"", "\\\"")
-                   .replace("\n", "\\n")
-                   .replace("\r", "\\r")
-                   .replace("\t", "\\t");
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+                .replace("\t", "\\t");
     }
 
     // ==================== Builder ====================

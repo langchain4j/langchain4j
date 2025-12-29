@@ -1,15 +1,14 @@
 package dev.langchain4j.model.embedding;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.model.output.Response;
-import org.junit.jupiter.api.Test;
-
 import java.net.URI;
 import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.Test;
 
 class ImageEmbeddingModelTest {
 
@@ -54,10 +53,8 @@ class ImageEmbeddingModelTest {
     void should_embed_multiple_images() {
         // given
         ImageEmbeddingModel model = new TestImageEmbeddingModel();
-        List<ImageContent> images = List.of(
-                ImageContent.from("base64data1", "image/png"),
-                ImageContent.from("base64data2", "image/jpeg")
-        );
+        List<ImageContent> images =
+                List.of(ImageContent.from("base64data1", "image/png"), ImageContent.from("base64data2", "image/jpeg"));
 
         // when
         Response<List<Embedding>> response = model.embedAllImages(images);
@@ -123,9 +120,8 @@ class ImageEmbeddingModelTest {
     static class TestImageEmbeddingModel implements ImageEmbeddingModel {
         @Override
         public Response<List<Embedding>> embedAllImages(List<ImageContent> images) {
-            List<Embedding> embeddings = images.stream()
-                    .map(img -> Embedding.from(new float[256]))
-                    .toList();
+            List<Embedding> embeddings =
+                    images.stream().map(img -> Embedding.from(new float[256])).toList();
             return Response.from(embeddings);
         }
 

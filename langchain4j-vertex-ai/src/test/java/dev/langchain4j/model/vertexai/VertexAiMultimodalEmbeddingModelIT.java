@@ -1,17 +1,15 @@
 package dev.langchain4j.model.vertexai;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.ImageEmbeddingModel;
 import dev.langchain4j.model.output.Response;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
-import java.util.Base64;
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "GCP_PROJECT_ID", matches = ".+")
 class VertexAiMultimodalEmbeddingModelIT {
@@ -20,7 +18,8 @@ class VertexAiMultimodalEmbeddingModelIT {
     private static final String LOCATION = System.getenv().getOrDefault("GCP_LOCATION", "us-central1");
 
     // A tiny 1x1 red PNG image encoded in base64 (avoids external HTTP calls)
-    private static final String TEST_IMAGE_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
+    private static final String TEST_IMAGE_BASE64 =
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
 
     @Test
     void should_embed_text_via_EmbeddingModel_interface() {
@@ -50,8 +49,7 @@ class VertexAiMultimodalEmbeddingModelIT {
         // when
         Response<List<Embedding>> response = model.embedAll(List.of(
                 dev.langchain4j.data.segment.TextSegment.from("hello"),
-                dev.langchain4j.data.segment.TextSegment.from("world")
-        ));
+                dev.langchain4j.data.segment.TextSegment.from("world")));
 
         // then
         assertThat(response.content()).hasSize(2);
@@ -88,9 +86,7 @@ class VertexAiMultimodalEmbeddingModelIT {
 
         // when
         Response<List<Embedding>> response = model.embedAllImages(List.of(
-                ImageContent.from(TEST_IMAGE_BASE64, "image/png"),
-                ImageContent.from(TEST_IMAGE_BASE64, "image/png")
-        ));
+                ImageContent.from(TEST_IMAGE_BASE64, "image/png"), ImageContent.from(TEST_IMAGE_BASE64, "image/png")));
 
         // then
         assertThat(response.content()).hasSize(2);
