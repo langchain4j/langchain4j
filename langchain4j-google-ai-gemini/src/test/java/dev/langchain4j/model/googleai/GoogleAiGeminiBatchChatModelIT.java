@@ -28,7 +28,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 class GoogleAiGeminiBatchChatModelIT {
 
     private static final String GOOGLE_AI_GEMINI_API_KEY = System.getenv("GOOGLE_AI_GEMINI_API_KEY");
-    public static final String MODEL_NAME = "gemini-2.5-flash-lite";
+    public static final String MODEL_NAME = "gemini-2.5-flash";
 
     @Nested
     class CreateBatchInline {

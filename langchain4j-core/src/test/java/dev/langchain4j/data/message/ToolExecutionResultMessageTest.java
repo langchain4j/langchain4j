@@ -54,4 +54,11 @@ class ToolExecutionResultMessageTest implements WithAssertions {
                 .isEqualTo(ToolExecutionResultMessage.toolExecutionResultMessage("id", "toolName", "text"))
                 .isEqualTo(ToolExecutionResultMessage.toolExecutionResultMessage(request, "text"));
     }
+
+    @Test
+    void should_allow_empty_text() {
+        // empty tool output is a valid use case (e.g., "no data" or side-effect-only tool)
+        ToolExecutionResultMessage message = new ToolExecutionResultMessage("id", "toolName", "");
+        assertThat(message.text()).isEqualTo("");
+    }
 }
