@@ -113,6 +113,8 @@ public class OpenAiChatModel implements ChatModel {
                 .metadata(getOrDefault(builder.metadata, openAiParameters.metadata()))
                 .serviceTier(getOrDefault(builder.serviceTier, openAiParameters.serviceTier()))
                 .reasoningEffort(getOrDefault(builder.reasoningEffort, openAiParameters.reasoningEffort()))
+                .logprobs(getOrDefault(builder.logprobs, openAiParameters.logprobs()))
+                .topLogprobs(getOrDefault(builder.topLogprobs, openAiParameters.topLogprobs()))
                 .customParameters(getOrDefault(builder.customParameters, openAiParameters.customParameters()))
                 .build();
         this.responseFormatString = builder.responseFormatString;
@@ -146,7 +148,7 @@ public class OpenAiChatModel implements ChatModel {
         validate(parameters);
 
         ChatCompletionRequest openAiRequest = toOpenAiChatRequest(
-                        chatRequest, parameters, sendThinking, thinkingFieldName,strictTools, strictJsonSchema)
+                        chatRequest, parameters, sendThinking, thinkingFieldName, strictTools, strictJsonSchema)
                 .build();
 
         ParsedAndRawResponse<ChatCompletionResponse> parsedAndRawResponse = withRetryMappingExceptions(
@@ -163,6 +165,7 @@ public class OpenAiChatModel implements ChatModel {
                 .serviceTier(openAiResponse.serviceTier())
                 .systemFingerprint(openAiResponse.systemFingerprint())
                 .rawHttpResponse(parsedAndRawResponse.rawHttpResponse())
+                .logprobs(openAiResponse.choices().get(0).logprobs())
                 .build();
 
         return ChatResponse.builder()
@@ -221,6 +224,8 @@ public class OpenAiChatModel implements ChatModel {
         private Boolean returnThinking;
         private Boolean sendThinking;
         private String thinkingFieldName;
+        private Boolean logprobs;
+        private Integer topLogprobs;
         private Duration timeout;
         private Integer maxRetries;
         private Boolean logRequests;
@@ -444,6 +449,35 @@ public class OpenAiChatModel implements ChatModel {
         public OpenAiChatModelBuilder sendThinking(Boolean sendThinking) {
             this.sendThinking = sendThinking;
             this.thinkingFieldName = "reasoning_content";
+            return this;
+        }
+
+        /**
+         * Whether to return log probability information for the output tokens.
+         * If true, returns the log probabilities of each output token returned in the {@code content} field.
+         * <br>
+         * This feature is useful for assessing the model's confidence in its responses.
+         *
+         * @param logprobs whether to return log probabilities
+         * @return {@code this}
+         */
+        public OpenAiChatModelBuilder logprobs(Boolean logprobs) {
+            this.logprobs = logprobs;
+            return this;
+        }
+
+        /**
+         * Number of most likely alternative tokens to return at each token position, each with an associated log probability.
+         * <br>
+         * Valid values are between 0 and 20. Only applicable when {@code logprobs} is set to {@code true}.
+         * <br>
+         * This provides insight into the model's alternative choices at each generation step.
+         *
+         * @param topLogprobs number of alternative tokens to return (0-20)
+         * @return {@code this}
+         */
+        public OpenAiChatModelBuilder topLogprobs(Integer topLogprobs) {
+            this.topLogprobs = topLogprobs;
             return this;
         }
 

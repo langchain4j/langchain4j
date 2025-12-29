@@ -418,4 +418,48 @@ class OpenAiChatModelIT {
         SuccessfulHttpResponse rawResponse = ((OpenAiChatResponseMetadata) chatResponse.metadata()).rawHttpResponse();
         assertThat(rawResponse).isEqualTo(httpResponse);
     }
+
+    @Test
+    void should_return_logprobs() {
+
+        // given
+        ChatModel model = OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(GPT_4_O_MINI)
+                .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("Say 'Hello'"))
+                .parameters(OpenAiChatRequestParameters.builder()
+                        .logprobs(true)
+                        .topLogprobs(2)
+                        .build())
+                .build();
+
+        // when
+        ChatResponse response = model.chat(chatRequest);
+
+        // then
+        assertThat(response.aiMessage().text()).isNotBlank();
+        assertThat(response.metadata()).isInstanceOf(OpenAiChatResponseMetadata.class);
+
+        OpenAiChatResponseMetadata metadata = (OpenAiChatResponseMetadata) response.metadata();
+        assertThat(metadata.logprobs()).isNotNull();
+        assertThat(metadata.logprobs().content()).isNotEmpty();
+
+        // Verify first token has logprob data
+        dev.langchain4j.model.openai.internal.chat.TokenLogProb firstToken =
+                metadata.logprobs().content().get(0);
+        assertThat(firstToken.token()).isNotBlank();
+        assertThat(firstToken.logprob()).isNotNull();
+
+        // Verify top_logprobs are present
+        assertThat(firstToken.topLogprobs()).isNotNull();
+        assertThat(firstToken.topLogprobs()).hasSize(2);
+    }
 }

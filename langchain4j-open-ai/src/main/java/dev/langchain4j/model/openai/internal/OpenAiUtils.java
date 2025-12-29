@@ -37,7 +37,6 @@ import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.data.video.Video;
 import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
-import dev.langchain4j.model.audio.AudioTranscriptionRequest;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -89,7 +88,8 @@ public class OpenAiUtils {
         return toOpenAiMessages(messages, false, null);
     }
 
-    public static List<Message> toOpenAiMessages(List<ChatMessage> messages, boolean sendThinking, String thinkingFieldName) {
+    public static List<Message> toOpenAiMessages(
+            List<ChatMessage> messages, boolean sendThinking, String thinkingFieldName) {
         return messages.stream()
                 .map(message -> toOpenAiMessage(message, sendThinking, thinkingFieldName))
                 .collect(toList());
@@ -128,8 +128,7 @@ public class OpenAiUtils {
             }
 
             if (!aiMessage.hasToolExecutionRequests()) {
-                AssistantMessage.Builder builder = AssistantMessage.builder()
-                        .content(aiMessage.text());
+                AssistantMessage.Builder builder = AssistantMessage.builder().content(aiMessage.text());
                 if (thinking != null) {
                     builder.customParameter(thinkingFieldName, thinking);
                 }
@@ -162,9 +161,8 @@ public class OpenAiUtils {
                             .build())
                     .collect(toList());
 
-            AssistantMessage.Builder builder = AssistantMessage.builder()
-                    .content(aiMessage.text())
-                    .toolCalls(toolCalls);
+            AssistantMessage.Builder builder =
+                    AssistantMessage.builder().content(aiMessage.text()).toolCalls(toolCalls);
             if (thinking != null) {
                 builder.customParameter(thinkingFieldName, thinking);
             }
@@ -535,6 +533,8 @@ public class OpenAiUtils {
                 .metadata(parameters.metadata())
                 .serviceTier(parameters.serviceTier())
                 .reasoningEffort(parameters.reasoningEffort())
+                .logprobs(parameters.logprobs())
+                .topLogprobs(parameters.topLogprobs())
                 .customParameters(parameters.customParameters());
     }
 }
