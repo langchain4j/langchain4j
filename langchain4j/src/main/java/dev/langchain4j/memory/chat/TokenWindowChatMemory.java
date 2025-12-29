@@ -3,10 +3,6 @@ package dev.langchain4j.memory.chat;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Optional;
-import java.util.function.Function;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -16,6 +12,10 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Optional;
+import java.util.function.Function;
 
 /**
  * This chat memory operates as a sliding window whose size is controlled by a {@link #maxTokensProvider}.
@@ -182,7 +182,8 @@ public class TokenWindowChatMemory implements ChatMemory {
          * @param tokenCountEstimator A {@link TokenCountEstimator} responsible for counting tokens in the messages.
          * @return builder
          */
-        public Builder dynamicMaxTokens(Function<Object,Integer> maxTokensProvider, TokenCountEstimator tokenCountEstimator) {
+        public Builder dynamicMaxTokens(
+                Function<Object, Integer> maxTokensProvider, TokenCountEstimator tokenCountEstimator) {
             this.maxTokensProvider = maxTokensProvider;
             this.tokenCountEstimator = tokenCountEstimator;
             return this;

@@ -10,9 +10,9 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
+import java.util.function.Function;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
-import java.util.function.Function;
 
 class MessageWindowChatMemoryTest implements WithAssertions {
     @Test
@@ -450,8 +450,7 @@ class MessageWindowChatMemoryTest implements WithAssertions {
         shortMemory.add(msgB);
         shortMemory.add(msgC); // Exceeds maxMessages
 
-        assertThat(shortMemory.messages())
-                .containsExactly(msgB, msgC); // Oldest message is evicted
+        assertThat(shortMemory.messages()).containsExactly(msgB, msgC); // Oldest message is evicted
 
         // Test longMemory (window size 4)
         longMemory.add(msg1);
@@ -460,8 +459,7 @@ class MessageWindowChatMemoryTest implements WithAssertions {
         longMemory.add(msg4);
         longMemory.add(msg5); // Exceeds maxMessages
 
-        assertThat(longMemory.messages())
-                .containsExactly(msg2, msg3, msg4, msg5);
+        assertThat(longMemory.messages()).containsExactly(msg2, msg3, msg4, msg5);
 
         // Test default case (ID not matched, window size 3)
         MessageWindowChatMemory defaultMemory = MessageWindowChatMemory.builder()
@@ -474,14 +472,12 @@ class MessageWindowChatMemoryTest implements WithAssertions {
         defaultMemory.add(msgZ);
         defaultMemory.add(msgW); // Exceeds maxMessages
 
-        assertThat(defaultMemory.messages())
-                .containsExactly(msgY, msgZ, msgW);
+        assertThat(defaultMemory.messages()).containsExactly(msgY, msgZ, msgW);
 
         // Clear memory test
         shortMemory.clear();
         assertThat(shortMemory.messages()).isEmpty();
     }
-
 
     @Test
     void dynamic_max_messages_can_change_for_same_id() {
@@ -506,28 +502,24 @@ class MessageWindowChatMemoryTest implements WithAssertions {
         memory.add(msgB);
         memory.add(msgC);
 
-        assertThat(memory.messages())
-                .containsExactly(msgA, msgB, msgC);
+        assertThat(memory.messages()).containsExactly(msgA, msgB, msgC);
 
         memory.add(msgD);
 
-        assertThat(memory.messages())
-                .containsExactly(msgB, msgC, msgD);
+        assertThat(memory.messages()).containsExactly(msgB, msgC, msgD);
 
         // Increase maxMessages to 5 and add another message
         currentMax[0] = 5;
 
         memory.add(msgE);
-        assertThat(memory.messages())
-                .containsExactly(msgB, msgC, msgD, msgE);
+        assertThat(memory.messages()).containsExactly(msgB, msgC, msgD, msgE);
 
         // Decrease maxMessages to 2, which should trigger eviction immediately
         currentMax[0] = 2;
 
         // Fetch messages list; excess messages are automatically evicted
         var msgsAfterShrink = memory.messages();
-        assertThat(msgsAfterShrink)
-                .containsExactly(msgD, msgE); // Keep the most recent two messages
+        assertThat(msgsAfterShrink).containsExactly(msgD, msgE); // Keep the most recent two messages
     }
 
     @Test
@@ -549,8 +541,7 @@ class MessageWindowChatMemoryTest implements WithAssertions {
         chatMemory.add(aiMessage);
 
         // System message should be at the beginning
-        assertThat(chatMemory.messages())
-                .containsExactly(systemMessage, userMessage, aiMessage);
+        assertThat(chatMemory.messages()).containsExactly(systemMessage, userMessage, aiMessage);
 
         chatMemory = MessageWindowChatMemory.builder()
                 .maxMessages(5)
@@ -562,8 +553,7 @@ class MessageWindowChatMemoryTest implements WithAssertions {
         chatMemory.add(aiMessage);
 
         // System message should be at the beginning
-        assertThat(chatMemory.messages())
-                .containsExactly(systemMessage, userMessage, aiMessage);
+        assertThat(chatMemory.messages()).containsExactly(systemMessage, userMessage, aiMessage);
     }
 
     @Test
@@ -585,8 +575,7 @@ class MessageWindowChatMemoryTest implements WithAssertions {
         chatMemory.add(aiMessage);
 
         // System message should be at the beginning
-        assertThat(chatMemory.messages())
-                .containsExactly(systemMessage, userMessage, aiMessage);
+        assertThat(chatMemory.messages()).containsExactly(systemMessage, userMessage, aiMessage);
 
         chatMemory = MessageWindowChatMemory.builder()
                 .maxMessages(5)
@@ -598,15 +587,12 @@ class MessageWindowChatMemoryTest implements WithAssertions {
         chatMemory.add(aiMessage);
 
         // System message should NOT be at the beginning
-        assertThat(chatMemory.messages())
-                .containsExactly(userMessage, systemMessage, aiMessage);
+        assertThat(chatMemory.messages()).containsExactly(userMessage, systemMessage, aiMessage);
     }
 
     @Test
     void system_message_first_default_is_false() {
-        ChatMemory chatMemory = MessageWindowChatMemory.builder()
-                .maxMessages(5)
-                .build();
+        ChatMemory chatMemory = MessageWindowChatMemory.builder().maxMessages(5).build();
 
         // Default value should be false
         assertThat(chatMemory.isSystemMessageFirst()).isFalse();
@@ -629,15 +615,12 @@ class MessageWindowChatMemoryTest implements WithAssertions {
         chatMemory.add(msg2);
 
         // At capacity: systemMessage, msg1, msg2
-        assertThat(chatMemory.messages())
-                .containsExactly(systemMessage, msg1, msg2);
+        assertThat(chatMemory.messages()).containsExactly(systemMessage, msg1, msg2);
 
         UserMessage msg3 = userMessage("Message 3");
         chatMemory.add(msg3);
 
         // msg1 should be evicted, systemMessage should remain at the beginning
-        assertThat(chatMemory.messages())
-                .containsExactly(systemMessage, msg2, msg3);
+        assertThat(chatMemory.messages()).containsExactly(systemMessage, msg2, msg3);
     }
-
 }
