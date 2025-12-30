@@ -3,10 +3,6 @@ package dev.langchain4j.memory.chat;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Optional;
-import java.util.function.Function;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -16,6 +12,10 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Optional;
+import java.util.function.Function;
 
 /**
  * This chat memory operates as a sliding window whose size is controlled by a {@link #maxTokensProvider}.
@@ -29,6 +29,7 @@ import dev.langchain4j.store.memory.chat.ChatMemoryStore;
  * respects the latest value returned by the provider.
  * <p>
  * Once added, a {@link SystemMessage} is always retained.
+ * If {@link TokenWindowChatMemory#systemMessageFirst} is true, always keep system message on index 0.
  * Only one {@code SystemMessage} can be held at a time.
  * If a new {@code SystemMessage} with the same content is added, it is ignored.
  * If a new {@code SystemMessage} with different content is added, the previous {@code SystemMessage} is removed.
@@ -46,6 +47,7 @@ public class TokenWindowChatMemory implements ChatMemory {
     private final Function<Object, Integer> maxTokensProvider;
     private final TokenCountEstimator tokenCountEstimator;
     private final ChatMemoryStore store;
+    private final boolean systemMessageFirst;
 
     private TokenWindowChatMemory(Builder builder) {
         this.id = ensureNotNull(builder.id, "id");
@@ -53,6 +55,7 @@ public class TokenWindowChatMemory implements ChatMemory {
         ensureGreaterThanZero(this.maxTokensProvider.apply(id), "maxTokens");
         this.tokenCountEstimator = ensureNotNull(builder.tokenCountEstimator, "tokenCountEstimator");
         this.store = ensureNotNull(builder.store(), "store");
+        this.systemMessageFirst = builder.systemMessageFirst;
     }
 
     @Override
@@ -73,7 +76,11 @@ public class TokenWindowChatMemory implements ChatMemory {
                 }
             }
         }
-        messages.add(message);
+        if (message instanceof SystemMessage && this.systemMessageFirst) {
+            messages.add(0, message);
+        } else {
+            messages.add(message);
+        }
         Integer maxTokens = maxTokensProvider.apply(id);
         ensureGreaterThanZero(maxTokens, "maxTokens");
         ensureCapacity(messages, maxTokens, tokenCountEstimator);
@@ -127,12 +134,17 @@ public class TokenWindowChatMemory implements ChatMemory {
         store.deleteMessages(id);
     }
 
+    public boolean isSystemMessageFirst() {
+        return systemMessageFirst;
+    }
+
     public static Builder builder() {
         return new Builder();
     }
 
     public static class Builder {
 
+        public boolean systemMessageFirst;
         private Object id = ChatMemoryService.DEFAULT;
         private Function<Object, Integer> maxTokensProvider;
         private TokenCountEstimator tokenCountEstimator;
@@ -170,7 +182,8 @@ public class TokenWindowChatMemory implements ChatMemory {
          * @param tokenCountEstimator A {@link TokenCountEstimator} responsible for counting tokens in the messages.
          * @return builder
          */
-        public Builder dynamicMaxTokens(Function<Object,Integer> maxTokensProvider, TokenCountEstimator tokenCountEstimator) {
+        public Builder dynamicMaxTokens(
+                Function<Object, Integer> maxTokensProvider, TokenCountEstimator tokenCountEstimator) {
             this.maxTokensProvider = maxTokensProvider;
             this.tokenCountEstimator = tokenCountEstimator;
             return this;
@@ -183,6 +196,17 @@ public class TokenWindowChatMemory implements ChatMemory {
          */
         public Builder chatMemoryStore(ChatMemoryStore store) {
             this.store = store;
+            return this;
+        }
+
+        /**
+         * Specifies whether the system message should be added to the beginning of the message list.
+         *
+         * @param systemMessageFirst
+         * @return
+         */
+        public Builder alwaysKeepSystemMessageFirst(boolean systemMessageFirst) {
+            this.systemMessageFirst = systemMessageFirst;
             return this;
         }
 
