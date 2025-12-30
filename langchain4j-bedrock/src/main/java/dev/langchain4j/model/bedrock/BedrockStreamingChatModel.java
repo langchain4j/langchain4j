@@ -27,6 +27,9 @@ import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.http.SdkHttpConfigurationOption;
+import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient;
+import software.amazon.awssdk.utils.AttributeMap;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeAsyncClient;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlockDelta;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlockDeltaEvent;
@@ -44,6 +47,17 @@ import software.amazon.awssdk.services.bedrockruntime.model.ReasoningContentBloc
 
 /**
  * BedrockStreamingChatModel uses the Bedrock ConverseAPI.
+ * <p>
+ * <b>Important Configuration Notes:</b>
+ * <ul>
+ * <li><b>Timeout Configuration:</b> This implementation properly configures HTTP client timeouts
+ * including socket timeout, read timeout, API call timeout, and API call attempt timeout
+ * as recommended by AWS support to prevent hangs and timeouts with longer prompts.</li>
+ * <li><b>maxOutputTokens:</b> By default, AWS Bedrock may limit output tokens. For Anthropic Claude models,
+ * the maximum is 65,536 tokens. It is recommended to explicitly set this value via
+ * {@link BedrockChatRequestParameters.Builder#maxOutputTokens(Integer)} in your
+ * {@link Builder#defaultRequestParameters(dev.langchain4j.model.chat.request.ChatRequestParameters)} configuration.</li>
+ * </ul>
  *
  * @see <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html">https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html</a>
  */
@@ -62,9 +76,9 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
         super(builder);
         this.client = isNull(builder.client)
                 ? createClient(
-                        getOrDefault(builder.logRequests, false),
-                        getOrDefault(builder.logResponses, false),
-                        builder.logger)
+                getOrDefault(builder.logRequests, false),
+                getOrDefault(builder.logResponses, false),
+                builder.logger)
                 : builder.client;
         this.logResponses = getOrDefault(builder.logResponses, false);
     }
@@ -228,11 +242,22 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
     }
 
     private BedrockRuntimeAsyncClient createClient(boolean logRequests, boolean logResponses, Logger logger) {
+        // Configure HTTP client with timeout settings as recommended by AWS support
+        AttributeMap timeoutConfig = AttributeMap.builder()
+                .put(SdkHttpConfigurationOption.READ_TIMEOUT, this.timeout)
+                .build();
+
         return BedrockRuntimeAsyncClient.builder()
                 .region(this.region)
                 .credentialsProvider(DefaultCredentialsProvider.create())
+                .httpClient(NettyNioAsyncHttpClient.builder()
+                        .readTimeout(this.timeout)
+                        .writeTimeout(this.timeout)
+                        .connectionTimeout(this.timeout)
+                        .buildWithDefaults(timeoutConfig))
                 .overrideConfiguration(config -> {
                     config.apiCallTimeout(this.timeout);
+                    config.apiCallAttemptTimeout(this.timeout);
                     if (logRequests || logResponses)
                         config.addExecutionInterceptor(new AwsLoggingInterceptor(logRequests, logResponses, logger));
                 })
