@@ -12,6 +12,8 @@ import dev.langchain4j.agentic.a2a.Agents.StyleEditor;
 import dev.langchain4j.agentic.a2a.Agents.StyleReviewLoop;
 import dev.langchain4j.agentic.a2a.Agents.StyleScorer;
 import dev.langchain4j.agentic.a2a.Agents.StyledWriter;
+import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.observability.AgentRequest;
 import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
@@ -29,7 +31,19 @@ public class A2AAgentIT {
     @Test
     @Disabled("Requires A2A server to be running")
     void a2a_agent_loop_tests() {
+        class WriterListener implements AgentListener {
+            Object requestedTopic;
+
+            @Override
+            public void beforeAgentInvocation(final AgentRequest request) {
+                requestedTopic = request.inputs().get("topic");
+            }
+        }
+
+        WriterListener writerListener = new WriterListener();
+
         UntypedAgent creativeWriter = AgenticServices.a2aBuilder(A2A_SERVER_URL)
+                .listener(writerListener)
                 .inputKeys("topic")
                 .outputKey("story")
                 .build();
@@ -62,6 +76,8 @@ public class A2AAgentIT {
         AgenticScope agenticScope = result.agenticScope();
         assertThat(story).isEqualTo(agenticScope.readState("story"));
         assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
+
+        assertThat(writerListener.requestedTopic).isEqualTo("dragons and wizards");
     }
 
     public interface A2ACreativeWriter {

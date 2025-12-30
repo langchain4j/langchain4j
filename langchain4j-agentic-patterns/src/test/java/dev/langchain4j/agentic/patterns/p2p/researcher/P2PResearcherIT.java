@@ -4,10 +4,12 @@ import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.patterns.p2p.P2PPlanner;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import static dev.langchain4j.agentic.patterns.Models.baseModel;
 import static org.assertj.core.api.Assertions.assertThat;
 
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 public class P2PResearcherIT {
 
     @Disabled("TODO: fix. It enters an infinite loop")

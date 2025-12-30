@@ -1,5 +1,5 @@
 ---
-sidebar_position: 2
+sidebar_position: 3
 ---
 
 # Judge0
@@ -12,7 +12,7 @@ https://github.com/judge0/judge0
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-code-execution-engine-judge0</artifactId>
-    <version>1.9.1-beta17</version>
+    <version>1.10.0-beta18</version>
 </dependency>
 ```
 

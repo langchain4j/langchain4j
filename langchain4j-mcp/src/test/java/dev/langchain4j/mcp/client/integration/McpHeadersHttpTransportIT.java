@@ -1,13 +1,14 @@
 package dev.langchain4j.mcp.client.integration;
 
+import static dev.langchain4j.mcp.client.integration.McpServerHelper.destroyProcessTree;
 import static dev.langchain4j.mcp.client.integration.McpServerHelper.skipTestsIfJbangNotAvailable;
 
-import java.io.IOException;
-import java.time.Duration;
-import java.util.concurrent.TimeoutException;
 import dev.langchain4j.mcp.client.DefaultMcpClient;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.client.transport.http.HttpMcpTransport;
+import java.io.IOException;
+import java.time.Duration;
+import java.util.concurrent.TimeoutException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 
@@ -36,7 +37,7 @@ class McpHeadersHttpTransportIT extends McpHeadersTestBase {
             mcpClient.close();
         }
         if (process != null) {
-            process.destroyForcibly();
+            destroyProcessTree(process);
         }
     }
 }

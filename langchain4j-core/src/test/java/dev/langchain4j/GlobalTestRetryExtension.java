@@ -44,9 +44,11 @@ public class GlobalTestRetryExtension implements InvocationInterceptor {
             } catch (Throwable t) {
                 lastThrowable = getActualCause(t);
                 attempt++;
-                LOG.warn("Attempt {}/{} for creating an instance of '{}' failed because of",
-                        attempt, MAX_ATTEMPTS, extensionContext.getDisplayName(), lastThrowable);
-                Thread.sleep(attempt * 1000L);
+                LOG.warn("Attempt {}/{} for creating an instance of {} ({}) failed because of",
+                        attempt, MAX_ATTEMPTS,
+                        testConstructor.getDeclaringClass().getName(), extensionContext.getDisplayName(),
+                        lastThrowable);
+                Thread.sleep(attempt * 5000L);
             }
         } while (attempt < MAX_ATTEMPTS);
 
@@ -107,9 +109,11 @@ public class GlobalTestRetryExtension implements InvocationInterceptor {
             } catch (Throwable t) {
                 lastThrowable = getActualCause(t);
                 attempt++;
-                LOG.warn("Attempt {}/{} for test '{}' failed because of",
-                        attempt, MAX_ATTEMPTS, extensionContext.getDisplayName(), lastThrowable);
-                Thread.sleep(attempt * 1000L);
+                LOG.warn("Attempt {}/{} for test {}.{} ({}) failed because of",
+                        attempt, MAX_ATTEMPTS,
+                        testObject.getClass().getName(), testMethod.getName(), extensionContext.getDisplayName(),
+                        lastThrowable);
+                Thread.sleep(attempt * 5000L);
             }
         } while (attempt < MAX_ATTEMPTS);
 

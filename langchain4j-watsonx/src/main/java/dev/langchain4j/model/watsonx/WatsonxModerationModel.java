@@ -3,7 +3,6 @@ package dev.langchain4j.model.watsonx;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
-import com.ibm.watsonx.ai.core.auth.iam.IAMAuthenticator;
 import com.ibm.watsonx.ai.detection.DetectionService;
 import com.ibm.watsonx.ai.detection.DetectionTextRequest;
 import com.ibm.watsonx.ai.detection.DetectionTextResponse;
@@ -48,14 +47,10 @@ public class WatsonxModerationModel implements ModerationModel {
             throw new IllegalArgumentException("At least one detector must be provided");
 
         detectors = builder.detectors;
-        var detectionServiceBuilder = DetectionService.builder();
 
-        if (nonNull(builder.authenticationProvider)) {
-            detectionServiceBuilder.authenticationProvider(builder.authenticationProvider);
-        } else {
-            detectionServiceBuilder.authenticationProvider(
-                    IAMAuthenticator.builder().apiKey(builder.apiKey).build());
-        }
+        var detectionServiceBuilder = nonNull(builder.authenticator)
+                ? DetectionService.builder().authenticator(builder.authenticator)
+                : DetectionService.builder().apiKey(builder.apiKey);
 
         detectionService = detectionServiceBuilder
                 .baseUrl(builder.baseUrl)
@@ -65,6 +60,7 @@ public class WatsonxModerationModel implements ModerationModel {
                 .timeout(builder.timeout)
                 .logRequests(builder.logRequests)
                 .logResponses(builder.logResponses)
+                .httpClient(builder.httpClient)
                 .build();
     }
 
@@ -127,13 +123,13 @@ public class WatsonxModerationModel implements ModerationModel {
     }
 
     private Response<Moderation> createModerationResponse(DetectionTextResponse detectionTextResponse) {
-        Moderation moderation = Moderation.flagged(detectionTextResponse.getText());
+        Moderation moderation = Moderation.flagged(detectionTextResponse.text());
         Map<String, Object> metadata = Map.of(
-                "detection", detectionTextResponse.getDetection(),
-                "detection_type", detectionTextResponse.getDetectionType(),
-                "start", detectionTextResponse.getStart(),
-                "end", detectionTextResponse.getEnd(),
-                "score", detectionTextResponse.getScore());
+                "detection", detectionTextResponse.detection(),
+                "detection_type", detectionTextResponse.detectionType(),
+                "start", detectionTextResponse.start(),
+                "end", detectionTextResponse.end(),
+                "score", detectionTextResponse.score());
         return Response.from(moderation, null, null, metadata);
     }
 

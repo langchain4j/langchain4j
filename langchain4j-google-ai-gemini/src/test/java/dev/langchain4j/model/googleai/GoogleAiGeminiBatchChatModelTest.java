@@ -17,6 +17,9 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.http.client.MockHttpClient;
+import dev.langchain4j.http.client.MockHttpClientBuilder;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
@@ -62,6 +65,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class GoogleAiGeminiBatchChatModelTest {
+
     private static final String MODEL_NAME = "gemini-2.5-flash-lite";
 
     @Mock
@@ -79,7 +83,6 @@ class GoogleAiGeminiBatchChatModelTest {
 
     @Nested
     class CreateBatchInline {
-
         @Test
         void should_create_batch_with_valid_requests() {
             // given
@@ -87,6 +90,7 @@ class GoogleAiGeminiBatchChatModelTest {
             var priority = 1L;
             var requests = List.of(
                     createChatRequest(MODEL_NAME, "What is the capital of France?"),
+                    createChatRequest(MODEL_NAME, "What is the capital of Finland?"),
                     createChatRequest(MODEL_NAME, "What is the capital of Germany?"));
             var expectedOperation = createPendingOperation("batches/test-123", BATCH_STATE_PENDING);
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
@@ -110,14 +114,16 @@ class GoogleAiGeminiBatchChatModelTest {
             assertThat(capturedRequest.batch().displayName()).isEqualTo(displayName);
             assertThat(capturedRequest.batch().priority()).isEqualTo(priority);
             assertThat(capturedRequest.batch().inputConfig().requests().requests())
-                    .hasSize(2);
+                    .hasSize(3);
         }
 
         @Test
         void should_create_batch_with_null_priority_defaulting_to_zero() {
             // given
             var displayName = "Test Batch";
-            var requests = List.of(createChatRequest(MODEL_NAME, "What is the capital of Italy?"));
+            var requests = List.of(ChatRequest.builder()
+                    .messages(UserMessage.from("What is the capital of Italy?"))
+                    .build());
             var expectedOperation = createPendingOperation("batches/test-456", BATCH_STATE_PENDING);
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
                             any(),
@@ -977,6 +983,195 @@ class GoogleAiGeminiBatchChatModelTest {
         }
     }
 
+    @Nested
+    class BatchChatSerialization {
+
+        private static final String PENDING_RESPONSE =
+                """
+                {
+                  "name": "batches/tti3ik8qob66dxcvynlg5swnutyntbi926ac",
+                  "metadata": {
+                    "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.GenerateContentBatch",
+                    "model": "models/gemini-2.5-flash-lite",
+                    "displayName": "capitals-batch",
+                    "createTime": "2025-12-03T17:23:06.004734302Z",
+                    "updateTime": "2025-12-03T17:23:06.004734302Z",
+                    "batchStats": {
+                      "requestCount": "3",
+                      "pendingRequestCount": "3"
+                    },
+                    "state": "BATCH_STATE_PENDING",
+                    "name": "batches/tti3ik8qob66dxcvynlg5swnutyntbi926ac"
+                  }
+                }
+                """;
+
+        private static final String SUCCEEDED_RESPONSE =
+                """
+                {
+                  "name": "batches/tti3ik8qob66dxcvynlg5swnutyntbi926ac",
+                  "metadata": {
+                    "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.GenerateContentBatch",
+                    "model": "models/gemini-2.5-flash-lite",
+                    "displayName": "capitals-batch",
+                    "createTime": "2025-12-03T17:23:06.004734302Z",
+                    "endTime": "2025-12-03T17:24:41.850709659Z",
+                    "updateTime": "2025-12-03T17:24:41.850709619Z",
+                    "batchStats": {
+                      "requestCount": "3",
+                      "successfulRequestCount": "3"
+                    },
+                    "state": "BATCH_STATE_SUCCEEDED",
+                    "name": "batches/tti3ik8qob66dxcvynlg5swnutyntbi926ac"
+                  },
+                  "done": true,
+                  "response": {
+                    "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.GenerateContentBatchOutput",
+                    "inlinedResponses": {
+                      "inlinedResponses": [
+                        {
+                          "response": {
+                            "candidates": [
+                              {
+                                "content": {
+                                  "parts": [
+                                    {
+                                      "text": "The capital of France is **Paris**."
+                                    }
+                                  ],
+                                  "role": "model"
+                                },
+                                "finishReason": "STOP",
+                                "index": 0
+                              }
+                            ],
+                            "usageMetadata": {
+                              "promptTokenCount": 8,
+                              "candidatesTokenCount": 8,
+                              "totalTokenCount": 16
+                            },
+                            "modelVersion": "gemini-2.5-flash-lite"
+                          }
+                        },
+                        {
+                          "response": {
+                            "candidates": [
+                              {
+                                "content": {
+                                  "parts": [
+                                    {
+                                      "text": "The capital of Japan is **Tokyo**."
+                                    }
+                                  ],
+                                  "role": "model"
+                                },
+                                "finishReason": "STOP",
+                                "index": 0
+                              }
+                            ],
+                            "usageMetadata": {
+                              "promptTokenCount": 8,
+                              "candidatesTokenCount": 8,
+                              "totalTokenCount": 16
+                            },
+                            "modelVersion": "gemini-2.5-flash-lite"
+                          }
+                        },
+                        {
+                          "response": {
+                            "candidates": [
+                              {
+                                "content": {
+                                  "parts": [
+                                    {
+                                      "text": "The capital of Brazil is **Brasília**."
+                                    }
+                                  ],
+                                  "role": "model"
+                                },
+                                "finishReason": "STOP",
+                                "index": 0
+                              }
+                            ],
+                            "usageMetadata": {
+                              "promptTokenCount": 8,
+                              "candidatesTokenCount": 9,
+                              "totalTokenCount": 17
+                            },
+                            "modelVersion": "gemini-2.5-flash-lite"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+                """;
+
+        @Test
+        void should_deserialize_pending_batch_response() {
+            // given
+            var mockHttpClient = MockHttpClient.thatAlwaysResponds(SuccessfulHttpResponse.builder()
+                    .body(PENDING_RESPONSE)
+                    .statusCode(200)
+                    .build());
+            var subject = GoogleAiGeminiBatchChatModel.builder()
+                    .apiKey("does not matter")
+                    .modelName("does not matter")
+                    .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                    .build();
+
+            var requests = List.of(
+                    ChatRequest.builder()
+                            .messages(UserMessage.from("What is the capital of France?"))
+                            .build(),
+                    ChatRequest.builder()
+                            .messages(UserMessage.from("What is the capital of Japan?"))
+                            .build(),
+                    ChatRequest.builder()
+                            .messages(UserMessage.from("What is the capital of Brazil?"))
+                            .build());
+
+            // when
+            var result = subject.createBatchInline("capitals-batch", 0L, requests);
+
+            // then
+            assertThat(result).isInstanceOf(BatchIncomplete.class);
+            var incomplete = (BatchIncomplete<?>) result;
+            assertThat(incomplete.batchName().value()).isEqualTo("batches/tti3ik8qob66dxcvynlg5swnutyntbi926ac");
+            assertThat(incomplete.state()).isEqualTo(BATCH_STATE_PENDING);
+        }
+
+        @Test
+        void should_deserialize_succeeded_batch_response_with_chat_results() {
+            // given
+            var mockHttpClient = MockHttpClient.thatAlwaysResponds(SuccessfulHttpResponse.builder()
+                    .body(SUCCEEDED_RESPONSE)
+                    .statusCode(200)
+                    .build());
+            var subject = GoogleAiGeminiBatchChatModel.builder()
+                    .apiKey("does not matter")
+                    .modelName("does not matter")
+                    .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                    .build();
+            var batchName = new BatchName("batches/tti3ik8qob66dxcvynlg5swnutyntbi926ac");
+
+            // when
+            var result = subject.retrieveBatchResults(batchName);
+
+            // then
+            assertThat(result).isInstanceOf(BatchSuccess.class);
+            var success = (BatchSuccess<ChatResponse>) result;
+            assertThat(success.batchName().value()).isEqualTo("batches/tti3ik8qob66dxcvynlg5swnutyntbi926ac");
+
+            var results = success.responses();
+            assertThat(results).hasSize(3);
+
+            assertThat(results.get(0).aiMessage().text()).isEqualTo("The capital of France is **Paris**.");
+            assertThat(results.get(1).aiMessage().text()).isEqualTo("The capital of Japan is **Tokyo**.");
+            assertThat(results.get(2).aiMessage().text()).isEqualTo("The capital of Brazil is **Brasília**.");
+        }
+    }
+
     private static Operation<GeminiGenerateContentResponse> createSuccessOperation(
             String operationName, List<ChatResponse> chatResponses) {
         var inlinedResponses = chatResponses.stream()
@@ -1036,7 +1231,7 @@ class GoogleAiGeminiBatchChatModelTest {
 
     private GoogleAiGeminiBatchChatModel createSubject() {
         return new GoogleAiGeminiBatchChatModel(
-                GoogleAiGeminiBatchChatModel.builder().apiKey("apiKey").modelName(MODEL_NAME), mockGeminiService);
+                GoogleAiGeminiBatchChatModel.builder().apiKey("does not matter").modelName(MODEL_NAME), mockGeminiService);
     }
 
     private static ChatRequest createChatRequest(String modelName, String message) {

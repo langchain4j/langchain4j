@@ -28,7 +28,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 class GoogleAiGeminiBatchChatModelIT {
 
     private static final String GOOGLE_AI_GEMINI_API_KEY = System.getenv("GOOGLE_AI_GEMINI_API_KEY");
-    public static final String MODEL_NAME = "gemini-2.5-flash-lite";
+    public static final String MODEL_NAME = "gemini-2.5-flash";
 
     @Nested
     class CreateBatchInline {
@@ -90,6 +90,8 @@ class GoogleAiGeminiBatchChatModelIT {
                 // 2. Upload the file to Google AI
                 uploadedFile = filesClient.uploadFile(tempFile, "IT Chat Batch File");
                 assertThat(uploadedFile.state()).isIn("ACTIVE");
+
+                sleep();
 
                 // 3. Create batch from the uploaded file
                 var response = chatModel.createBatchFromFile("IT Chat File Batch", uploadedFile);
@@ -312,6 +314,10 @@ class GoogleAiGeminiBatchChatModelIT {
 
     @AfterEach
     void afterEach() throws InterruptedException {
+        sleep();
+    }
+
+    private static void sleep() throws InterruptedException {
         String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_GOOGLE_AI_GEMINI_BATCH");
         if (ciDelaySeconds != null) {
             Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);

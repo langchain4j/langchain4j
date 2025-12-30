@@ -1,5 +1,6 @@
 package dev.langchain4j.model.azure;
 
+import static dev.langchain4j.model.ModelProvider.AZURE_OPEN_AI;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
@@ -15,6 +16,7 @@ import com.azure.core.http.netty.NettyAsyncHttpClientProvider;
 import com.azure.core.http.policy.RetryOptions;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.audio.Audio;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.audio.AudioTranscriptionModel;
 import dev.langchain4j.model.audio.AudioTranscriptionRequest;
 import dev.langchain4j.model.audio.AudioTranscriptionResponse;
@@ -205,6 +207,11 @@ public class AzureOpenAiAudioTranscriptionModel implements AudioTranscriptionMod
             throw new IllegalArgumentException(
                     "Authentication is required: provide either apiKey, tokenCredential, keyCredential, or openAIClient");
         }
+    }
+
+    @Override
+    public ModelProvider provider() {
+        return AZURE_OPEN_AI;
     }
 
     /**

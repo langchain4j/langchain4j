@@ -13,7 +13,6 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-import org.junitpioneer.jupiter.RetryingTest;
 
 /**
  * Integration tests for VertexAiClaudeChatModel with custom credentials
@@ -42,7 +41,6 @@ class VertexAiAnthropicCustomCredentialsIT {
         assertThat(model.provider()).isEqualTo(GOOGLE_VERTEX_AI_ANTHROPIC);
     }
 
-    @RetryingTest(3)
     void should_work_with_application_default_credentials() throws Exception {
         // given - use Application Default Credentials
         GoogleCredentials credentials = GoogleCredentials.getApplicationDefault();
