@@ -12,20 +12,21 @@ import dev.langchain4j.data.document.DocumentLoader;
 import dev.langchain4j.data.document.DocumentParser;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.document.source.gitlab.GitLabSource;
+import dev.langchain4j.exception.HttpException;
+import dev.langchain4j.http.client.HttpClient;
+import dev.langchain4j.http.client.HttpMethod;
+import dev.langchain4j.http.client.HttpRequest;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,7 +50,6 @@ public class GitLabDocumentLoader {
 
     private static final String DEFAULT_BASE_URL = "https://gitlab.com";
     private static final int DEFAULT_PER_PAGE = 100;
-    private static final Duration DEFAULT_REQUEST_TIMEOUT = Duration.ofSeconds(30);
 
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
@@ -70,7 +70,7 @@ public class GitLabDocumentLoader {
 
         this.personalAccessToken = ensureNotBlank(builder.personalAccessToken, "personalAccessToken");
 
-        this.httpClient = firstNotNull("httpClient", builder.httpClient, HttpClient.newHttpClient());
+        this.httpClient = firstNotNull("httpClient", builder.httpClient, new JdkHttpClientBuilder().build());
         this.objectMapper = firstNotNull("objectMapper", builder.objectMapper, new ObjectMapper());
     }
 
@@ -163,108 +163,189 @@ public class GitLabDocumentLoader {
         return new Builder();
     }
 
-    private Document loadFile(String ref, TreeItem item, DocumentParser parser) {
-        URI uri = buildRawFileUri(ref, item.path);
-        logger.info("Loading document from GitLab: {}", uri);
+        private Document loadFile(String ref, TreeItem item, DocumentParser parser) {
 
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(uri)
-                .timeout(DEFAULT_REQUEST_TIMEOUT)
-                .header("User-Agent", "LangChain4j")
-                .header("PRIVATE-TOKEN", personalAccessToken)
-                .GET()
-                .build();
+            URI uri = buildRawFileUri(ref, item.path);
 
-        byte[] bytes;
-        try {
-            HttpResponse<byte[]> response = httpClient.send(request, HttpResponse.BodyHandlers.ofByteArray());
-            if (response.statusCode() / 100 != 2) {
-                String body = safeBodyAsString(response.body());
-                throw new RuntimeException(
-                        "GitLab API request failed with status code " + response.statusCode() + ": " + body);
-            }
-            bytes = response.body();
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to call GitLab API: " + uri, e);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException("GitLab API request interrupted: " + uri, e);
-        }
+            logger.info("Loading document from GitLab: {}", uri);
 
-        Metadata metadata = new Metadata();
-        metadata.put(METADATA_GITLAB_PROJECT_ID, projectId);
-        metadata.put(Document.FILE_NAME, fileName(item.path));
+    
 
-        String url = buildWebUrl(projectWebUrl, ref, item.path);
-        if (!isNullOrBlank(url)) {
-            metadata.put(Document.URL, url);
-        }
+            HttpRequest request = HttpRequest.builder()
 
-        return DocumentLoader.load(new GitLabSource(bytes, metadata), parser);
-    }
+                    .url(uri.toString())
 
-    private List<TreeItem> listRepositoryTree(String ref, String path, boolean recursive) {
-        int page = 1;
-        List<TreeItem> items = new ArrayList<>();
+                    .method(HttpMethod.GET)
 
-        while (true) {
-            URI uri = buildRepositoryTreeUri(ref, path, recursive, page, DEFAULT_PER_PAGE);
-            HttpResponse<String> response = sendJsonRequest(uri);
+                    .addHeader("User-Agent", "LangChain4j")
 
-            JsonNode body;
+                    .addHeader("PRIVATE-TOKEN", personalAccessToken)
+
+                    .build();
+
+    
+
+            byte[] bytes;
+
             try {
-                body = objectMapper.readTree(response.body());
-            } catch (IOException e) {
-                throw new RuntimeException("Failed to parse GitLab API response: " + uri, e);
+
+                SuccessfulHttpResponse response = httpClient.execute(request);
+
+                bytes = response.body().getBytes(StandardCharsets.UTF_8);
+
+            } catch (HttpException e) {
+
+                throw new RuntimeException("GitLab API request failed with status code " + e.statusCode() + ": " + e.getMessage());
+
+            } catch (RuntimeException e) {
+
+                throw new RuntimeException("Failed to call GitLab API: " + uri, e);
+
             }
 
-            if (!body.isArray() || body.isEmpty()) {
-                break;
+    
+
+            Metadata metadata = new Metadata();
+
+            metadata.put(METADATA_GITLAB_PROJECT_ID, projectId);
+
+            metadata.put(Document.FILE_NAME, fileName(item.path));
+
+    
+
+            String url = buildWebUrl(projectWebUrl, ref, item.path);
+
+            if (!isNullOrBlank(url)) {
+
+                metadata.put(Document.URL, url);
+
             }
 
-            for (JsonNode node : body) {
-                String type = node.path("type").asText(null);
-                String itemPath = node.path("path").asText(null);
-                if (isNullOrBlank(type) || isNullOrBlank(itemPath)) {
-                    continue;
+    
+
+            return DocumentLoader.load(new GitLabSource(bytes, metadata), parser);
+
+        }
+
+    
+
+        private List<TreeItem> listRepositoryTree(String ref, String path, boolean recursive) {
+
+            int page = 1;
+
+            List<TreeItem> items = new ArrayList<>();
+
+    
+
+            while (true) {
+
+                URI uri = buildRepositoryTreeUri(ref, path, recursive, page, DEFAULT_PER_PAGE);
+
+                SuccessfulHttpResponse response = sendJsonRequest(uri);
+
+    
+
+                JsonNode body;
+
+                try {
+
+                    body = objectMapper.readTree(response.body());
+
+                } catch (IOException e) {
+
+                    throw new RuntimeException("Failed to parse GitLab API response: " + uri, e);
+
                 }
-                items.add(new TreeItem(type, itemPath));
+
+    
+
+                if (!body.isArray() || body.isEmpty()) {
+
+                    break;
+
+                }
+
+    
+
+                for (JsonNode node : body) {
+
+                    String type = node.path("type").asText(null);
+
+                    String itemPath = node.path("path").asText(null);
+
+                    if (isNullOrBlank(type) || isNullOrBlank(itemPath)) {
+
+                        continue;
+
+                    }
+
+                    items.add(new TreeItem(type, itemPath));
+
+                }
+
+    
+
+                List<String> nextPages = response.headers().get("X-Next-Page");
+
+                if (nextPages == null || nextPages.isEmpty()) {
+
+                    break;
+
+                }
+
+                String nextPage = nextPages.get(0);
+
+                if (isNullOrBlank(nextPage)) {
+
+                    break;
+
+                }
+
+                page = Integer.parseInt(nextPage);
+
             }
 
-            Optional<String> nextPage = response.headers().firstValue("X-Next-Page");
-            if (nextPage.isEmpty() || isNullOrBlank(nextPage.get())) {
-                break;
-            }
-            page = Integer.parseInt(nextPage.get());
+    
+
+            return items;
+
         }
 
-        return items;
-    }
+    
 
-    private HttpResponse<String> sendJsonRequest(URI uri) {
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(uri)
-                .timeout(DEFAULT_REQUEST_TIMEOUT)
-                .header("Accept", "application/json")
-                .header("User-Agent", "LangChain4j")
-                .header("PRIVATE-TOKEN", personalAccessToken)
-                .GET()
-                .build();
+        private SuccessfulHttpResponse sendJsonRequest(URI uri) {
 
-        try {
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() / 100 != 2) {
-                throw new RuntimeException(
-                        "GitLab API request failed with status code " + response.statusCode() + ": " + response.body());
+            HttpRequest request = HttpRequest.builder()
+
+                    .url(uri.toString())
+
+                    .method(HttpMethod.GET)
+
+                    .addHeader("Accept", "application/json")
+
+                    .addHeader("User-Agent", "LangChain4j")
+
+                    .addHeader("PRIVATE-TOKEN", personalAccessToken)
+
+                    .build();
+
+    
+
+            try {
+
+                return httpClient.execute(request);
+
+            } catch (HttpException e) {
+
+                throw new RuntimeException("GitLab API request failed with status code " + e.statusCode() + ": " + e.getMessage());
+
+            } catch (RuntimeException e) {
+
+                throw new RuntimeException("Failed to call GitLab API: " + uri, e);
+
             }
-            return response;
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to call GitLab API: " + uri, e);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException("GitLab API request interrupted: " + uri, e);
+
         }
-    }
 
     private URI buildRepositoryTreeUri(String ref, String path, boolean recursive, int page, int perPage) {
         Map<String, String> queryParams = new LinkedHashMap<>();
