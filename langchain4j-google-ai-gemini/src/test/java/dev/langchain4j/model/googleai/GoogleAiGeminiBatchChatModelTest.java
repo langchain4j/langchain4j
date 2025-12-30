@@ -65,8 +65,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class GoogleAiGeminiBatchChatModelTest {
+
     private static final String MODEL_NAME = "gemini-2.5-flash-lite";
-    public static final String API_KEY = "test-api-key";
 
     @Mock
     private GeminiService mockGeminiService;
@@ -1115,8 +1115,8 @@ class GoogleAiGeminiBatchChatModelTest {
                     .statusCode(200)
                     .build());
             var subject = GoogleAiGeminiBatchChatModel.builder()
-                    .apiKey(API_KEY)
-                    .modelName("gemini-2.5-flash-lite")
+                    .apiKey("does not matter")
+                    .modelName("does not matter")
                     .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
                     .build();
 
@@ -1149,8 +1149,8 @@ class GoogleAiGeminiBatchChatModelTest {
                     .statusCode(200)
                     .build());
             var subject = GoogleAiGeminiBatchChatModel.builder()
-                    .apiKey(API_KEY)
-                    .modelName("gemini-2.5-flash-lite")
+                    .apiKey("does not matter")
+                    .modelName("does not matter")
                     .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
                     .build();
             var batchName = new BatchName("batches/tti3ik8qob66dxcvynlg5swnutyntbi926ac");
@@ -1231,7 +1231,7 @@ class GoogleAiGeminiBatchChatModelTest {
 
     private GoogleAiGeminiBatchChatModel createSubject() {
         return new GoogleAiGeminiBatchChatModel(
-                GoogleAiGeminiBatchChatModel.builder().apiKey("apiKey").modelName(MODEL_NAME), mockGeminiService);
+                GoogleAiGeminiBatchChatModel.builder().apiKey("does not matter").modelName(MODEL_NAME), mockGeminiService);
     }
 
     private static ChatRequest createChatRequest(String modelName, String message) {
