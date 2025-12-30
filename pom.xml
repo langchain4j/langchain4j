@@ -76,6 +76,7 @@
         <module>langchain4j-mariadb</module>
         <module>langchain4j-milvus</module>
         <module>langchain4j-mongodb-atlas</module>
+        <module>langchain4j-oceanbase</module>
         <module>langchain4j-oracle</module>
         <module>langchain4j-opensearch</module>
         <module>langchain4j-pgvector</module>
