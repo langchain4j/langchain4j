@@ -8,12 +8,15 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.exception.HttpException;
+import dev.langchain4j.http.client.HttpClient;
+import dev.langchain4j.http.client.HttpMethod;
+import dev.langchain4j.http.client.HttpRequest;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -56,7 +59,7 @@ public class ConfluenceDocumentLoader {
 
         this.spaceKey = blankToNull(builder.spaceKey);
 
-        this.httpClient = firstNotNull("httpClient", builder.httpClient, HttpClient.newHttpClient());
+        this.httpClient = firstNotNull("httpClient", builder.httpClient, new JdkHttpClientBuilder().build());
         this.objectMapper = firstNotNull("objectMapper", builder.objectMapper, new ObjectMapper());
     }
 
@@ -101,28 +104,28 @@ public class ConfluenceDocumentLoader {
     private JsonNode fetchContent(int start, int limit) {
         URI uri = buildContentUri(start, limit);
 
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(uri)
-                .timeout(DEFAULT_REQUEST_TIMEOUT)
-                .header("Accept", "application/json")
-                .header("User-Agent", "LangChain4j")
-                .header("Authorization", authorizationHeaderValue)
-                .GET()
+        HttpRequest request = HttpRequest.builder()
+                .url(uri.toString())
+                .method(HttpMethod.GET)
+                .addHeader("Accept", "application/json")
+                .addHeader("User-Agent", "LangChain4j")
+                .addHeader("Authorization", authorizationHeaderValue)
                 .build();
 
         try {
-            HttpResponse<String> response =
-                    httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-            if (response.statusCode() / 100 != 2) {
-                throw new RuntimeException("Confluence API request failed with status code " + response.statusCode()
-                        + ": " + response.body());
-            }
+            SuccessfulHttpResponse response = httpClient.execute(request);
             return objectMapper.readTree(response.body());
+        } catch (HttpException e) {
+            throw new RuntimeException(
+                    "Confluence API request failed with status code " + e.statusCode() + ": " + e.getMessage());
         } catch (IOException e) {
             throw new RuntimeException("Failed to call Confluence API: " + uri, e);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException("Confluence API request interrupted: " + uri, e);
+        } catch (RuntimeException e) {
+            if (e.getCause() instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException("Confluence API request interrupted: " + uri, e);
+            }
+            throw new RuntimeException("Failed to call Confluence API: " + uri, e);
         }
     }
 

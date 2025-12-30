@@ -7,10 +7,11 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import dev.langchain4j.data.document.Document;
+import dev.langchain4j.exception.HttpException;
+import dev.langchain4j.http.client.HttpClient;
+import dev.langchain4j.http.client.HttpRequest;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import java.io.IOException;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
@@ -20,15 +21,15 @@ import org.mockito.ArgumentCaptor;
 class ConfluenceDocumentLoaderTest {
 
     @Test
-    @SuppressWarnings("unchecked")
-    void shouldLoadTwoDocumentsAndStripHtml() throws Exception {
+    void shouldLoadTwoDocumentsAndStripHtml() {
         HttpClient httpClient = mock(HttpClient.class);
-        HttpResponse<String> response = (HttpResponse<String>) mock(HttpResponse.class);
-        when(response.statusCode()).thenReturn(200);
-        when(response.body()).thenReturn(twoResultsResponseBody());
+        SuccessfulHttpResponse response = SuccessfulHttpResponse.builder()
+                .statusCode(200)
+                .body(twoResultsResponseBody())
+                .build();
 
         ArgumentCaptor<HttpRequest> requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
-        when(httpClient.<String>send(requestCaptor.capture(), any())).thenReturn(response);
+        when(httpClient.execute(requestCaptor.capture())).thenReturn(response);
 
         ConfluenceDocumentLoader loader = baseLoader(httpClient);
 
@@ -43,28 +44,29 @@ class ConfluenceDocumentLoaderTest {
 
         List<HttpRequest> requests = requestCaptor.getAllValues();
         assertThat(requests).hasSize(1);
-        assertThat(requests.get(0).uri().toString()).contains("/wiki/rest/api/content");
-        assertThat(requests.get(0).uri().toString()).contains("start=0");
-        assertThat(requests.get(0).uri().toString()).contains("limit=25");
-        assertThat(requests.get(0).headers().firstValue("Authorization"))
+        assertThat(requests.get(0).url()).contains("/wiki/rest/api/content");
+        assertThat(requests.get(0).url()).contains("start=0");
+        assertThat(requests.get(0).url()).contains("limit=25");
+        assertThat(requests.get(0).headers().get("Authorization"))
                 .contains("Basic " + basicAuth("user@example.com", "token"));
     }
 
     @Test
-    @SuppressWarnings("unchecked")
-    void shouldHandlePaginationAndFetchAllPages() throws Exception {
+    void shouldHandlePaginationAndFetchAllPages() {
         HttpClient httpClient = mock(HttpClient.class);
 
-        HttpResponse<String> firstPage = (HttpResponse<String>) mock(HttpResponse.class);
-        when(firstPage.statusCode()).thenReturn(200);
-        when(firstPage.body()).thenReturn(pagedResponse(1, 25, "/rest/api/content?start=25&limit=25"));
+        SuccessfulHttpResponse firstPage = SuccessfulHttpResponse.builder()
+                .statusCode(200)
+                .body(pagedResponse(1, 25, "/rest/api/content?start=25&limit=25"))
+                .build();
 
-        HttpResponse<String> secondPage = (HttpResponse<String>) mock(HttpResponse.class);
-        when(secondPage.statusCode()).thenReturn(200);
-        when(secondPage.body()).thenReturn(pagedResponse(26, 2, null));
+        SuccessfulHttpResponse secondPage = SuccessfulHttpResponse.builder()
+                .statusCode(200)
+                .body(pagedResponse(26, 2, null))
+                .build();
 
         ArgumentCaptor<HttpRequest> requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
-        when(httpClient.<String>send(requestCaptor.capture(), any())).thenReturn(firstPage, secondPage);
+        when(httpClient.execute(requestCaptor.capture())).thenReturn(firstPage, secondPage);
 
         ConfluenceDocumentLoader loader = baseLoader(httpClient);
 
@@ -76,20 +78,20 @@ class ConfluenceDocumentLoaderTest {
 
         List<HttpRequest> requests = requestCaptor.getAllValues();
         assertThat(requests).hasSize(2);
-        assertThat(requests.get(0).uri().toString()).contains("start=0");
-        assertThat(requests.get(1).uri().toString()).contains("start=25");
+        assertThat(requests.get(0).url()).contains("start=0");
+        assertThat(requests.get(1).url()).contains("start=25");
     }
 
     @Test
-    @SuppressWarnings("unchecked")
-    void shouldIncludeSpaceKeyInRequestAndMetadataWhenConfigured() throws Exception {
+    void shouldIncludeSpaceKeyInRequestAndMetadataWhenConfigured() {
         HttpClient httpClient = mock(HttpClient.class);
-        HttpResponse<String> response = (HttpResponse<String>) mock(HttpResponse.class);
-        when(response.statusCode()).thenReturn(200);
-        when(response.body()).thenReturn(oneResultResponseBody());
+        SuccessfulHttpResponse response = SuccessfulHttpResponse.builder()
+                .statusCode(200)
+                .body(oneResultResponseBody())
+                .build();
 
         ArgumentCaptor<HttpRequest> requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
-        when(httpClient.<String>send(requestCaptor.capture(), any())).thenReturn(response);
+        when(httpClient.execute(requestCaptor.capture())).thenReturn(response);
 
         ConfluenceDocumentLoader loader = ConfluenceDocumentLoader.builder()
                 .baseUrl("https://example.atlassian.net/wiki")
@@ -107,18 +109,15 @@ class ConfluenceDocumentLoaderTest {
 
         List<HttpRequest> requests = requestCaptor.getAllValues();
         assertThat(requests).hasSize(1);
-        assertThat(requests.get(0).uri().toString()).contains("spaceKey=DS");
+        assertThat(requests.get(0).url()).contains("spaceKey=DS");
     }
 
     @Test
-    @SuppressWarnings("unchecked")
-    void shouldThrowWhenApiReturnsNon2xxStatus() throws Exception {
+    void shouldThrowWhenApiReturnsNon2xxStatus() {
         HttpClient httpClient = mock(HttpClient.class);
-        HttpResponse<String> response = (HttpResponse<String>) mock(HttpResponse.class);
-        when(response.statusCode()).thenReturn(401);
-        when(response.body()).thenReturn("{\"message\":\"Unauthorized\"}");
 
-        when(httpClient.<String>send(any(HttpRequest.class), any())).thenReturn(response);
+        when(httpClient.execute(any(HttpRequest.class)))
+                .thenThrow(new HttpException(401, "{\"message\":\"Unauthorized\"}"));
 
         ConfluenceDocumentLoader loader = baseLoader(httpClient);
 
@@ -126,9 +125,10 @@ class ConfluenceDocumentLoaderTest {
     }
 
     @Test
-    void shouldInterruptThreadWhenSendIsInterrupted() throws Exception {
+    void shouldInterruptThreadWhenSendIsInterrupted() {
         HttpClient httpClient = mock(HttpClient.class);
-        when(httpClient.<String>send(any(HttpRequest.class), any())).thenThrow(new InterruptedException("boom"));
+        when(httpClient.execute(any(HttpRequest.class)))
+                .thenThrow(new RuntimeException(new InterruptedException("boom")));
 
         ConfluenceDocumentLoader loader = baseLoader(httpClient);
 
@@ -143,9 +143,9 @@ class ConfluenceDocumentLoaderTest {
     }
 
     @Test
-    void shouldWrapIOExceptionFromHttpClient() throws Exception {
+    void shouldWrapIOExceptionFromHttpClient() {
         HttpClient httpClient = mock(HttpClient.class);
-        when(httpClient.<String>send(any(HttpRequest.class), any())).thenThrow(new IOException("boom"));
+        when(httpClient.execute(any(HttpRequest.class))).thenThrow(new RuntimeException(new IOException("boom")));
 
         ConfluenceDocumentLoader loader = baseLoader(httpClient);
 
