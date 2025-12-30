@@ -1,11 +1,13 @@
 package dev.langchain4j.model.openai;
 
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
@@ -40,7 +42,6 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.output.FinishReason;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -51,6 +52,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@Experimental
 public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
 
     private static final Logger logger = LoggerFactory.getLogger(OpenAiResponsesStreamingChatModel.class);
@@ -168,6 +170,7 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
     private final Boolean store;
     private final Boolean strict;
     private final List<ChatModelListener> listeners;
+    private final ChatRequestParameters defaultRequestParameters;
 
     private OpenAiResponsesStreamingChatModel(Builder builder) {
         HttpClientBuilder httpClientBuilder =
@@ -199,6 +202,12 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
         this.store = builder.store != null ? builder.store : false;
         this.strict = builder.strict != null ? builder.strict : true;
         this.listeners = copy(builder.listeners);
+        this.defaultRequestParameters = DefaultChatRequestParameters.builder()
+                .modelName(modelName)
+                .temperature(temperature)
+                .topP(topP)
+                .maxOutputTokens(maxOutputTokens)
+                .build();
     }
 
     public static Builder builder() {
@@ -365,16 +374,7 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
                     new ResponsesApiEventListener(handler, streamingHandle));
 
         } catch (Exception e) {
-            logger.error("Exception in doChat", e);
-            safeOnError(handler, e);
-        }
-    }
-
-    private static void safeOnError(StreamingChatResponseHandler handler, Throwable error) {
-        try {
-            handler.onError(error);
-        } catch (Exception e) {
-            logger.warn("Exception thrown by onError handler, ignoring", e);
+            withLoggingExceptions(() -> handler.onError(e));
         }
     }
 
@@ -515,17 +515,12 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
 
     @Override
     public ChatRequestParameters defaultRequestParameters() {
-        return DefaultChatRequestParameters.builder()
-                .modelName(modelName)
-                .temperature(temperature)
-                .topP(topP)
-                .maxOutputTokens(maxOutputTokens)
-                .build();
+        return defaultRequestParameters;
     }
 
     @Override
     public List<ChatModelListener> listeners() {
-        return Collections.unmodifiableList(listeners);
+        return listeners;
     }
 
     @Override
@@ -688,7 +683,6 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
 
         private final StreamingChatResponseHandler handler;
         private final ResponsesStreamingHandle streamingHandle;
-        private int eventCount = 0;
         private final Map<String, ToolExecutionRequest.Builder> toolCallBuilders = new HashMap<>();
         private final Map<String, Integer> toolCallIndices = new HashMap<>();
         private final List<ToolExecutionRequest> completedToolCalls = new ArrayList<>();
@@ -719,7 +713,6 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
             if (isCancelled()) {
                 return;
             }
-            eventCount++;
             rawServerSentEvents.add(event);
             var data = event.data();
 
@@ -734,24 +727,15 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
 
                 handleDelta(data);
             } catch (RuntimeException e) {
-                logger.error("Error processing event #{}", eventCount, e);
-                // Re-throw without calling onError here - it will be called in the outer catch block
                 throw e;
             } catch (Exception e) {
-                logger.error("Error processing event #{}", eventCount, e);
-                // Re-throw without calling onError here - it will be called in the outer catch block
                 throw new RuntimeException(e);
             }
         }
 
-        public void onComplete(Runnable onComplete) {
-            onComplete.run();
-        }
-
         @Override
         public void onError(Throwable error) {
-            logger.error("SSE stream error", error);
-            safeOnError(handler, error);
+            withLoggingExceptions(() -> handler.onError(error));
         }
 
         private void handleDelta(String data) {
@@ -910,18 +894,14 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
                             try {
                                 handler.onCompleteResponse(responseBuilder.build());
                             } catch (Exception e) {
-                                safeOnError(handler, e);
+                                withLoggingExceptions(() -> handler.onError(e));
                             }
                         }
                     }
                 }
             } catch (RuntimeException e) {
-                logger.error("Error parsing JSON data: {}", data, e);
-                // Re-throw without calling onError here - it will be called in the outer catch block
                 throw e;
             } catch (Exception e) {
-                logger.error("Error parsing JSON data: {}", data, e);
-                // Re-throw without calling onError here - it will be called in the outer catch block
                 throw new RuntimeException(e);
             }
         }
