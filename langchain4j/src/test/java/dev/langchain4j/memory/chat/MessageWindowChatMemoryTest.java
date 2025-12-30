@@ -524,9 +524,9 @@ class MessageWindowChatMemoryTest implements WithAssertions {
 
     @Test
     void system_message_first_enabled() {
-        ChatMemory chatMemory = MessageWindowChatMemory.builder()
+        MessageWindowChatMemory chatMemory = MessageWindowChatMemory.builder()
                 .maxMessages(5)
-                .systemMessageFirst(true)
+                .alwaysKeepSystemMessageFirst(true)
                 .build();
 
         assertThat(chatMemory.isSystemMessageFirst()).isTrue();
@@ -545,7 +545,7 @@ class MessageWindowChatMemoryTest implements WithAssertions {
 
         chatMemory = MessageWindowChatMemory.builder()
                 .maxMessages(5)
-                .systemMessageFirst(true)
+                .alwaysKeepSystemMessageFirst(true)
                 .build();
 
         chatMemory.add(userMessage);
@@ -558,9 +558,9 @@ class MessageWindowChatMemoryTest implements WithAssertions {
 
     @Test
     void system_message_first_disabled() {
-        ChatMemory chatMemory = MessageWindowChatMemory.builder()
+        MessageWindowChatMemory chatMemory = MessageWindowChatMemory.builder()
                 .maxMessages(5)
-                .systemMessageFirst(false)
+                .alwaysKeepSystemMessageFirst(false)
                 .build();
 
         assertThat(chatMemory.isSystemMessageFirst()).isFalse();
@@ -579,7 +579,7 @@ class MessageWindowChatMemoryTest implements WithAssertions {
 
         chatMemory = MessageWindowChatMemory.builder()
                 .maxMessages(5)
-                .systemMessageFirst(false)
+                .alwaysKeepSystemMessageFirst(false)
                 .build();
 
         chatMemory.add(userMessage);
@@ -592,7 +592,7 @@ class MessageWindowChatMemoryTest implements WithAssertions {
 
     @Test
     void system_message_first_default_is_false() {
-        ChatMemory chatMemory = MessageWindowChatMemory.builder().maxMessages(5).build();
+        MessageWindowChatMemory chatMemory = MessageWindowChatMemory.builder().maxMessages(5).build();
 
         // Default value should be false
         assertThat(chatMemory.isSystemMessageFirst()).isFalse();
@@ -602,7 +602,7 @@ class MessageWindowChatMemoryTest implements WithAssertions {
     void system_message_first_with_message_eviction() {
         ChatMemory chatMemory = MessageWindowChatMemory.builder()
                 .maxMessages(3)
-                .systemMessageFirst(true)
+                .alwaysKeepSystemMessageFirst(true)
                 .build();
 
         SystemMessage systemMessage = systemMessage("You are a helpful assistant");

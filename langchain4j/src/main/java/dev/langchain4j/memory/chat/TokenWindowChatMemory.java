@@ -29,6 +29,7 @@ import java.util.function.Function;
  * respects the latest value returned by the provider.
  * <p>
  * Once added, a {@link SystemMessage} is always retained.
+ * If {@link TokenWindowChatMemory#systemMessageFirst} is true, always keep system message on index 0.
  * Only one {@code SystemMessage} can be held at a time.
  * If a new {@code SystemMessage} with the same content is added, it is ignored.
  * If a new {@code SystemMessage} with different content is added, the previous {@code SystemMessage} is removed.
@@ -75,7 +76,7 @@ public class TokenWindowChatMemory implements ChatMemory {
                 }
             }
         }
-        if (message instanceof SystemMessage && this.isSystemMessageFirst()) {
+        if (message instanceof SystemMessage && this.systemMessageFirst) {
             messages.add(0, message);
         } else {
             messages.add(message);
@@ -133,7 +134,6 @@ public class TokenWindowChatMemory implements ChatMemory {
         store.deleteMessages(id);
     }
 
-    @Override
     public boolean isSystemMessageFirst() {
         return systemMessageFirst;
     }
@@ -205,7 +205,7 @@ public class TokenWindowChatMemory implements ChatMemory {
          * @param systemMessageFirst
          * @return
          */
-        public Builder systemMessageFirst(boolean systemMessageFirst) {
+        public Builder alwaysKeepSystemMessageFirst(boolean systemMessageFirst) {
             this.systemMessageFirst = systemMessageFirst;
             return this;
         }

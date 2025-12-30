@@ -729,9 +729,9 @@ class TokenWindowChatMemoryTest implements WithAssertions {
 
     @Test
     void system_message_first_enabled() {
-        ChatMemory chatMemory = TokenWindowChatMemory.builder()
+        TokenWindowChatMemory chatMemory = TokenWindowChatMemory.builder()
                 .maxTokens(100, TOKEN_COUNT_ESTIMATOR)
-                .systemMessageFirst(true)
+                .alwaysKeepSystemMessageFirst(true)
                 .build();
 
         assertThat(chatMemory.isSystemMessageFirst()).isTrue();
@@ -750,7 +750,7 @@ class TokenWindowChatMemoryTest implements WithAssertions {
 
         chatMemory = TokenWindowChatMemory.builder()
                 .maxTokens(100, TOKEN_COUNT_ESTIMATOR)
-                .systemMessageFirst(true)
+                .alwaysKeepSystemMessageFirst(true)
                 .build();
 
         chatMemory.add(userMessage);
@@ -763,9 +763,9 @@ class TokenWindowChatMemoryTest implements WithAssertions {
 
     @Test
     void system_message_first_disabled() {
-        ChatMemory chatMemory = TokenWindowChatMemory.builder()
+        TokenWindowChatMemory chatMemory = TokenWindowChatMemory.builder()
                 .maxTokens(100, TOKEN_COUNT_ESTIMATOR)
-                .systemMessageFirst(false)
+                .alwaysKeepSystemMessageFirst(false)
                 .build();
 
         assertThat(chatMemory.isSystemMessageFirst()).isFalse();
@@ -784,7 +784,7 @@ class TokenWindowChatMemoryTest implements WithAssertions {
 
         chatMemory = TokenWindowChatMemory.builder()
                 .maxTokens(100, TOKEN_COUNT_ESTIMATOR)
-                .systemMessageFirst(false)
+                .alwaysKeepSystemMessageFirst(false)
                 .build();
 
         chatMemory.add(userMessage);
@@ -797,7 +797,7 @@ class TokenWindowChatMemoryTest implements WithAssertions {
 
     @Test
     void system_message_first_default_is_false() {
-        ChatMemory chatMemory = TokenWindowChatMemory.builder()
+        TokenWindowChatMemory chatMemory = TokenWindowChatMemory.builder()
                 .maxTokens(100, TOKEN_COUNT_ESTIMATOR)
                 .build();
 
@@ -809,7 +809,7 @@ class TokenWindowChatMemoryTest implements WithAssertions {
     void system_message_first_with_message_eviction() {
         ChatMemory chatMemory = TokenWindowChatMemory.builder()
                 .maxTokens(35, TOKEN_COUNT_ESTIMATOR)
-                .systemMessageFirst(true)
+                .alwaysKeepSystemMessageFirst(true)
                 .build();
 
         SystemMessage systemMessage = systemMessageWithTokens(10);
