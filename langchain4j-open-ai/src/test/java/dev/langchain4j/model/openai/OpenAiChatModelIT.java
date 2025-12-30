@@ -33,6 +33,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -449,12 +450,11 @@ class OpenAiChatModelIT {
         assertThat(response.metadata()).isInstanceOf(OpenAiChatResponseMetadata.class);
 
         OpenAiChatResponseMetadata metadata = (OpenAiChatResponseMetadata) response.metadata();
-        assertThat(metadata.logprobs()).isNotNull();
-        assertThat(metadata.logprobs().content()).isNotEmpty();
+        List<LogProb> logprobs = metadata.logprobs();
+        assertThat(logprobs).isNotNull().isNotEmpty();
 
         // Verify first token has logprob data
-        dev.langchain4j.model.openai.internal.chat.TokenLogProb firstToken =
-                metadata.logprobs().content().get(0);
+        LogProb firstToken = logprobs.get(0);
         assertThat(firstToken.token()).isNotBlank();
         assertThat(firstToken.logprob()).isNotNull();
 

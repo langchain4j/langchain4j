@@ -1,4 +1,4 @@
-package dev.langchain4j.model.openai.internal.chat;
+package dev.langchain4j.model.openai;
 
 import static java.util.Collections.unmodifiableList;
 
@@ -12,10 +12,14 @@ import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import java.util.List;
 import java.util.Objects;
 
-@JsonDeserialize(builder = TopLogProb.Builder.class)
+/**
+ * Represents log probability information for a token.
+ * Contains the token itself, its log probability, and optionally the most likely alternative tokens.
+ */
+@JsonDeserialize(builder = LogProb.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-public final class TopLogProb {
+public final class LogProb {
 
     @JsonProperty
     private final String token;
@@ -26,10 +30,14 @@ public final class TopLogProb {
     @JsonProperty
     private final List<Integer> bytes;
 
-    public TopLogProb(Builder builder) {
+    @JsonProperty
+    private final List<LogProb> topLogprobs;
+
+    private LogProb(Builder builder) {
         this.token = builder.token;
         this.logprob = builder.logprob;
         this.bytes = builder.bytes;
+        this.topLogprobs = builder.topLogprobs;
     }
 
     public String token() {
@@ -44,16 +52,21 @@ public final class TopLogProb {
         return bytes;
     }
 
+    public List<LogProb> topLogprobs() {
+        return topLogprobs;
+    }
+
     @Override
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof TopLogProb && equalTo((TopLogProb) another);
+        return another instanceof LogProb && equalTo((LogProb) another);
     }
 
-    private boolean equalTo(TopLogProb another) {
+    private boolean equalTo(LogProb another) {
         return Objects.equals(token, another.token)
                 && Objects.equals(logprob, another.logprob)
-                && Objects.equals(bytes, another.bytes);
+                && Objects.equals(bytes, another.bytes)
+                && Objects.equals(topLogprobs, another.topLogprobs);
     }
 
     @Override
@@ -62,12 +75,18 @@ public final class TopLogProb {
         h += (h << 5) + Objects.hashCode(token);
         h += (h << 5) + Objects.hashCode(logprob);
         h += (h << 5) + Objects.hashCode(bytes);
+        h += (h << 5) + Objects.hashCode(topLogprobs);
         return h;
     }
 
     @Override
     public String toString() {
-        return "TopLogProb{" + "token=" + token + ", logprob=" + logprob + ", bytes=" + bytes + "}";
+        return "LogProb{"
+                + "token=" + token
+                + ", logprob=" + logprob
+                + ", bytes=" + bytes
+                + ", topLogprobs=" + topLogprobs
+                + '}';
     }
 
     public static Builder builder() {
@@ -82,6 +101,7 @@ public final class TopLogProb {
         private String token;
         private Double logprob;
         private List<Integer> bytes;
+        private List<LogProb> topLogprobs;
 
         public Builder token(String token) {
             this.token = token;
@@ -100,8 +120,15 @@ public final class TopLogProb {
             return this;
         }
 
-        public TopLogProb build() {
-            return new TopLogProb(this);
+        public Builder topLogprobs(List<LogProb> topLogprobs) {
+            if (topLogprobs != null) {
+                this.topLogprobs = unmodifiableList(topLogprobs);
+            }
+            return this;
+        }
+
+        public LogProb build() {
+            return new LogProb(this);
         }
     }
 }

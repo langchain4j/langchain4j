@@ -68,8 +68,8 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
         return rawServerSentEvents;
     }
 
-    public LogProbs logprobs() {
-        return logprobs;
+    public List<LogProb> logprobs() {
+        return logprobs != null ? logprobs.content() : null;
     }
 
     @Override

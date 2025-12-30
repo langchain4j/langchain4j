@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import dev.langchain4j.model.openai.LogProb;
 import java.util.List;
 import java.util.Objects;
 
@@ -18,13 +19,13 @@ import java.util.Objects;
 public final class LogProbs {
 
     @JsonProperty
-    private final List<TokenLogProb> content;
+    private final List<LogProb> content;
 
     public LogProbs(Builder builder) {
         this.content = builder.content;
     }
 
-    public List<TokenLogProb> content() {
+    public List<LogProb> content() {
         return content;
     }
 
@@ -59,9 +60,9 @@ public final class LogProbs {
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public static final class Builder {
 
-        private List<TokenLogProb> content;
+        private List<LogProb> content;
 
-        public Builder content(List<TokenLogProb> content) {
+        public Builder content(List<LogProb> content) {
             if (content != null) {
                 this.content = unmodifiableList(content);
             }
