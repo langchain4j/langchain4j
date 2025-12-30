@@ -734,8 +734,6 @@ class TokenWindowChatMemoryTest implements WithAssertions {
                 .alwaysKeepSystemMessageFirst(true)
                 .build();
 
-        assertThat(chatMemory.isSystemMessageFirst()).isTrue();
-
         SystemMessage systemMessage = systemMessageWithTokens(10);
         chatMemory.add(systemMessage);
 
@@ -768,8 +766,6 @@ class TokenWindowChatMemoryTest implements WithAssertions {
                 .alwaysKeepSystemMessageFirst(false)
                 .build();
 
-        assertThat(chatMemory.isSystemMessageFirst()).isFalse();
-
         SystemMessage systemMessage = systemMessageWithTokens(10);
         chatMemory.add(systemMessage);
 
@@ -793,16 +789,6 @@ class TokenWindowChatMemoryTest implements WithAssertions {
 
         // System message should NOT be at the beginning
         assertThat(chatMemory.messages()).containsExactly(userMessage, systemMessage, aiMessage);
-    }
-
-    @Test
-    void system_message_first_default_is_false() {
-        TokenWindowChatMemory chatMemory = TokenWindowChatMemory.builder()
-                .maxTokens(100, TOKEN_COUNT_ESTIMATOR)
-                .build();
-
-        // Default value should be false
-        assertThat(chatMemory.isSystemMessageFirst()).isFalse();
     }
 
     @Test

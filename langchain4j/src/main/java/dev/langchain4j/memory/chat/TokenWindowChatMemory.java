@@ -1,5 +1,6 @@
 package dev.langchain4j.memory.chat;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
@@ -28,12 +29,15 @@ import java.util.function.Function;
  * window size may change at runtime, and the sliding-window behavior always
  * respects the latest value returned by the provider.
  * <p>
- * Once added, a {@link SystemMessage} is always retained.
- * If {@link TokenWindowChatMemory#systemMessageFirst} is true, always keep system message on index 0.
- * Only one {@code SystemMessage} can be held at a time.
- * If a new {@code SystemMessage} with the same content is added, it is ignored.
- * If a new {@code SystemMessage} with different content is added, the previous {@code SystemMessage} is removed.
- * <p>
+ * The rules for {@link SystemMessage}:
+ * <ul>
+ * <li>Once added, a {@code SystemMessage} is always retained, it cannot be removed.</li>
+ * <li>Only one {@code SystemMessage} can be held at a time.</li>
+ * <li>If a new {@code SystemMessage} with the same content is added, it is ignored.</li>
+ * <li>If a new {@code SystemMessage} with different content is added, the previous {@code SystemMessage} is removed.
+ * Unless {@link TokenWindowChatMemory.Builder#alwaysKeepSystemMessageFirst(Boolean)} is set to {@code true},
+ * the new {@code SystemMessage} is added to the end of the message list.</li>
+ * </ul>
  * If an {@link AiMessage} containing {@link ToolExecutionRequest}(s) is evicted,
  * the following orphan {@link ToolExecutionResultMessage}(s) are also automatically evicted
  * to avoid problems with some LLM providers (such as OpenAI)
@@ -47,7 +51,7 @@ public class TokenWindowChatMemory implements ChatMemory {
     private final Function<Object, Integer> maxTokensProvider;
     private final TokenCountEstimator tokenCountEstimator;
     private final ChatMemoryStore store;
-    private final boolean systemMessageFirst;
+    private final boolean alwaysKeepSystemMessageFirst;
 
     private TokenWindowChatMemory(Builder builder) {
         this.id = ensureNotNull(builder.id, "id");
@@ -55,7 +59,7 @@ public class TokenWindowChatMemory implements ChatMemory {
         ensureGreaterThanZero(this.maxTokensProvider.apply(id), "maxTokens");
         this.tokenCountEstimator = ensureNotNull(builder.tokenCountEstimator, "tokenCountEstimator");
         this.store = ensureNotNull(builder.store(), "store");
-        this.systemMessageFirst = builder.systemMessageFirst;
+        this.alwaysKeepSystemMessageFirst = getOrDefault(builder.alwaysKeepSystemMessageFirst, false);
     }
 
     @Override
@@ -66,6 +70,7 @@ public class TokenWindowChatMemory implements ChatMemory {
     @Override
     public void add(ChatMessage message) {
         List<ChatMessage> messages = messages();
+
         if (message instanceof SystemMessage) {
             Optional<SystemMessage> maybeSystemMessage = SystemMessage.findFirst(messages);
             if (maybeSystemMessage.isPresent()) {
@@ -76,14 +81,17 @@ public class TokenWindowChatMemory implements ChatMemory {
                 }
             }
         }
-        if (message instanceof SystemMessage && this.systemMessageFirst) {
+
+        if (message instanceof SystemMessage && this.alwaysKeepSystemMessageFirst) {
             messages.add(0, message);
         } else {
             messages.add(message);
         }
+
         Integer maxTokens = maxTokensProvider.apply(id);
         ensureGreaterThanZero(maxTokens, "maxTokens");
         ensureCapacity(messages, maxTokens, tokenCountEstimator);
+
         store.updateMessages(id, messages);
     }
 
@@ -134,21 +142,17 @@ public class TokenWindowChatMemory implements ChatMemory {
         store.deleteMessages(id);
     }
 
-    public boolean isSystemMessageFirst() {
-        return systemMessageFirst;
-    }
-
     public static Builder builder() {
         return new Builder();
     }
 
     public static class Builder {
 
-        public boolean systemMessageFirst;
         private Object id = ChatMemoryService.DEFAULT;
         private Function<Object, Integer> maxTokensProvider;
         private TokenCountEstimator tokenCountEstimator;
         private ChatMemoryStore store;
+        private Boolean alwaysKeepSystemMessageFirst;
 
         /**
          * @param id The ID of the {@link ChatMemory}.
@@ -199,19 +203,16 @@ public class TokenWindowChatMemory implements ChatMemory {
             return this;
         }
 
-        /**
-         * Specifies whether the system message should be added to the beginning of the message list.
-         *
-         * @param systemMessageFirst
-         * @return
-         */
-        public Builder alwaysKeepSystemMessageFirst(boolean systemMessageFirst) {
-            this.systemMessageFirst = systemMessageFirst;
-            return this;
-        }
-
         private ChatMemoryStore store() {
             return store != null ? store : new SingleSlotChatMemoryStore(id);
+        }
+
+        /**
+         * Specifies whether the system message is always stored at position 0 in the messages list.
+         */
+        public Builder alwaysKeepSystemMessageFirst(Boolean alwaysKeepSystemMessageFirst) {
+            this.alwaysKeepSystemMessageFirst = alwaysKeepSystemMessageFirst;
+            return this;
         }
 
         public TokenWindowChatMemory build() {

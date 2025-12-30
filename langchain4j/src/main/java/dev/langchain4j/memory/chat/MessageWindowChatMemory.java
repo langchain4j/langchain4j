@@ -1,5 +1,6 @@
 package dev.langchain4j.memory.chat;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
@@ -26,12 +27,15 @@ import java.util.function.Function;
  * window size can change at runtime, and the sliding-window behavior always respects
  * the most recent value returned by the provider.
  * <p>
- * Once added, a {@link SystemMessage} is always retained.
- * If {@link MessageWindowChatMemory#systemMessageFirst} is true, always keep system message on index 0.
- * Only one {@code SystemMessage} can be held at a time.
- * If a new {@code SystemMessage} with the same content is added, it is ignored.
- * If a new {@code SystemMessage} with different content is added, the previous {@code SystemMessage} is removed.
- * <p>
+ * The rules for {@link SystemMessage}:
+ * <ul>
+ * <li>Once added, a {@code SystemMessage} is always retained, it cannot be removed.</li>
+ * <li>Only one {@code SystemMessage} can be held at a time.</li>
+ * <li>If a new {@code SystemMessage} with the same content is added, it is ignored.</li>
+ * <li>If a new {@code SystemMessage} with different content is added, the previous {@code SystemMessage} is removed.
+ * Unless {@link Builder#alwaysKeepSystemMessageFirst(Boolean)} is set to {@code true},
+ * the new {@code SystemMessage} is added to the end of the message list.</li>
+ * </ul>
  * If an {@link AiMessage} containing {@link ToolExecutionRequest}(s) is evicted,
  * the following orphan {@link ToolExecutionResultMessage}(s) are also automatically evicted
  * to avoid problems with some LLM providers (such as OpenAI)
@@ -42,16 +46,16 @@ import java.util.function.Function;
 public class MessageWindowChatMemory implements ChatMemory {
 
     private final Object id;
-    private final ChatMemoryStore store;
     private final Function<Object, Integer> maxMessagesProvider;
-    private final boolean systemMessageFirst;
+    private final ChatMemoryStore store;
+    private final boolean alwaysKeepSystemMessageFirst;
 
     private MessageWindowChatMemory(Builder builder) {
         this.id = ensureNotNull(builder.id, "id");
         this.maxMessagesProvider = ensureNotNull(builder.maxMessagesProvider, "maxMessagesProvider");
-        this.store = ensureNotNull(builder.store(), "store");
-        this.systemMessageFirst = builder.systemMessageFirst;
         ensureGreaterThanZero(this.maxMessagesProvider.apply(this.id), "maxMessages");
+        this.store = ensureNotNull(builder.store(), "store");
+        this.alwaysKeepSystemMessageFirst = getOrDefault(builder.alwaysKeepSystemMessageFirst, false);
     }
 
     @Override
@@ -61,9 +65,8 @@ public class MessageWindowChatMemory implements ChatMemory {
 
     @Override
     public void add(ChatMessage message) {
-        Integer maxMessages = this.maxMessagesProvider.apply(this.id);
-        ensureGreaterThanZero(maxMessages, "maxMessages");
         List<ChatMessage> messages = messages();
+
         if (message instanceof SystemMessage) {
             Optional<SystemMessage> systemMessage = SystemMessage.findFirst(messages);
             if (systemMessage.isPresent()) {
@@ -74,12 +77,17 @@ public class MessageWindowChatMemory implements ChatMemory {
                 }
             }
         }
-        if (message instanceof SystemMessage && this.systemMessageFirst) {
+
+        if (message instanceof SystemMessage && this.alwaysKeepSystemMessageFirst) {
             messages.add(0, message);
         } else {
             messages.add(message);
         }
+
+        Integer maxMessages = this.maxMessagesProvider.apply(this.id);
+        ensureGreaterThanZero(maxMessages, "maxMessages");
         ensureCapacity(messages, maxMessages);
+
         store.updateMessages(id, messages);
     }
 
@@ -117,20 +125,16 @@ public class MessageWindowChatMemory implements ChatMemory {
         store.deleteMessages(id);
     }
 
-    public boolean isSystemMessageFirst() {
-        return systemMessageFirst;
-    }
-
     public static Builder builder() {
         return new Builder();
     }
 
     public static class Builder {
 
-        private boolean systemMessageFirst;
         private Object id = ChatMemoryService.DEFAULT;
         private Function<Object, Integer> maxMessagesProvider;
         private ChatMemoryStore store;
+        private Boolean alwaysKeepSystemMessageFirst;
 
         /**
          * @param id The ID of the {@link ChatMemory}.
@@ -174,19 +178,16 @@ public class MessageWindowChatMemory implements ChatMemory {
             return this;
         }
 
-        /**
-         * Specifies whether the system message should be added to the beginning of the message list.
-         *
-         * @param systemMessageFirst
-         * @return
-         */
-        public Builder alwaysKeepSystemMessageFirst(boolean systemMessageFirst) {
-            this.systemMessageFirst = systemMessageFirst;
-            return this;
-        }
-
         private ChatMemoryStore store() {
             return store != null ? store : new SingleSlotChatMemoryStore(id);
+        }
+
+        /**
+         * Specifies whether the system message is always stored at position 0 in the messages list.
+         */
+        public Builder alwaysKeepSystemMessageFirst(Boolean alwaysKeepSystemMessageFirst) {
+            this.alwaysKeepSystemMessageFirst = alwaysKeepSystemMessageFirst;
+            return this;
         }
 
         public MessageWindowChatMemory build() {
