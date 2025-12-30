@@ -1,6 +1,7 @@
 package dev.langchain4j.data.document.loader.gitlab;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
@@ -65,6 +66,32 @@ class GitLabDocumentLoaderIT {
                 .map(doc -> doc.metadata().getString(Document.FILE_NAME))
                 .anyMatch(fileName(filePath)::equals);
         assertThat(hasTargetFile).isTrue();
+    }
+
+    @Test
+    void should_fail_when_project_does_not_exist() {
+        GitLabDocumentLoader loader = GitLabDocumentLoader.builder()
+                .baseUrl(envOrDefault(ENV_GITLAB_BASE_URL, DEFAULT_BASE_URL))
+                .projectId("non-existent-project-" + System.currentTimeMillis())
+                .personalAccessToken(envRequired(ENV_GITLAB_TOKEN))
+                .build();
+
+        assertThatThrownBy(() -> loader.loadDocuments(parser))
+                .isInstanceOf(RuntimeException.class)
+                .satisfies(e -> assertThat(e.getMessage()).contains("status code 404"));
+    }
+
+    @Test
+    void should_fail_with_invalid_token() {
+        GitLabDocumentLoader loader = GitLabDocumentLoader.builder()
+                .baseUrl(envOrDefault(ENV_GITLAB_BASE_URL, DEFAULT_BASE_URL))
+                .projectId(envRequired(ENV_GITLAB_PROJECT_ID))
+                .personalAccessToken("invalid-token")
+                .build();
+
+        assertThatThrownBy(() -> loader.loadDocuments(parser))
+                .isInstanceOf(RuntimeException.class)
+                .satisfies(e -> assertThat(e.getMessage()).contains("status code 401"));
     }
 
     private static String envRequired(String name) {
