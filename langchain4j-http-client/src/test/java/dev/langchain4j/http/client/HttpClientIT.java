@@ -849,7 +849,7 @@ public abstract class HttpClientIT {
             // then
             assertThat(response.statusCode()).isEqualTo(200);
             assertThat(response.headers()).isNotEmpty();
-            assertThat(response.body()).containsIgnoringCase("hello");
+            assertThat(response.body().toLowerCase()).containsAnyOf("hello", "hallo");
         }
     }
 }

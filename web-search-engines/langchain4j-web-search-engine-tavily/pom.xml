@@ -45,12 +45,6 @@
 
         <!-- test dependencies -->
 
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <scope>test</scope>
-        </dependency>
-
         <!-- Visibility for WebSearchEngineIT -->
         <dependency>
             <groupId>dev.langchain4j</groupId>

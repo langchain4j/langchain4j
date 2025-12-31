@@ -63,7 +63,7 @@
         <jsonpath.version>2.9.0</jsonpath.version>
         <jspecify.version>1.0.0</jspecify.version>
         <jtokkit.version>1.1.0</jtokkit.version>
-        <junit.version>5.11.3</junit.version>
+        <junit.version>6.0.1</junit.version>
         <kotest.version>5.9.1</kotest.version>
         <kotlin.version>1.9.25</kotlin.version>
         <kotlinx-coroutines.version>1.8.1</kotlinx-coroutines.version>
@@ -291,12 +291,6 @@
                 <groupId>com.azure</groupId>
                 <artifactId>azure-cosmos</artifactId>
                 <version>4.71.0-beta.1</version>
-            </dependency>
-
-            <dependency>
-                <groupId>org.testcontainers</groupId>
-                <artifactId>junit-jupiter</artifactId>
-                <version>1.21.3</version>
             </dependency>
 
         </dependencies>
