@@ -392,15 +392,18 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             String whereClause = (filter == null) ? "" : metadataHandler.whereClause(filter);
             whereClause = (whereClause.isEmpty()) ? "" : "AND " + whereClause;
             String query = String.format(
-                    "SELECT (2 - (embedding <=> '%1$s')) / 2 AS score, " + "       embedding_id, "
-                            + "       embedding, "
-                            + "       text, "
-                            + "       %2$s "
-                            + "FROM %3$s "
-                            + "WHERE round(cast(float8 (embedding <=> '%1$s') as numeric), 8) <= round(2 - 2 * %4$s, 8) "
-                            + "      %5$s "
-                            + "ORDER BY embedding <=> '%1$s' "
-                            + "LIMIT %6$s;",
+                    """
+                    SELECT (2 - (embedding <=> '%1$s')) / 2 AS score,
+                           embedding_id,
+                           embedding,
+                           text,
+                           %2$s
+                    FROM %3$s
+                    WHERE round(cast(float8 (embedding <=> '%1$s') as numeric), 8) <= round(2 - 2 * %4$s, 8)
+                          %5$s
+                    ORDER BY embedding <=> '%1$s'
+                    LIMIT %6$s;
+                    """,
                     referenceVector,
                     join(",", metadataHandler.columnsNames()),
                     table,
@@ -467,36 +470,39 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             int rrfK = DEFAULT_RRF_K;
 
             String sql = String.format(
-                    "WITH vector_search AS ( " + "  SELECT "
-                            + "    embedding_id, embedding, text %1$s, "
-                            + "    RANK() OVER (ORDER BY embedding <=> '%2$s') AS rnk "
-                            + "  FROM %3$s "
-                            + "  %4$s "
-                            + "  ORDER BY embedding <=> '%2$s' "
-                            + "  LIMIT %5$d "
-                            + "), keyword_search AS ( "
-                            + "  SELECT "
-                            + "    embedding_id, embedding, text %1$s, "
-                            + "    RANK() OVER (ORDER BY ts_rank(to_tsvector('%6$s', coalesce(text, '')), plainto_tsquery('%6$s', ?)) DESC) AS rnk "
-                            + "  FROM %3$s "
-                            + "  WHERE to_tsvector('%6$s', coalesce(text, '')) @@ plainto_tsquery('%6$s', ?) "
-                            + "    %7$s "
-                            + "  ORDER BY ts_rank(to_tsvector('%6$s', coalesce(text, '')), plainto_tsquery('%6$s', ?)) DESC "
-                            + "  LIMIT %5$d "
-                            + ") "
-                            + "SELECT * FROM ( "
-                            + "  SELECT "
-                            + "    COALESCE(v.embedding_id, k.embedding_id) AS embedding_id, "
-                            + "    COALESCE(v.embedding, k.embedding) AS embedding, "
-                            + "    COALESCE(v.text, k.text) AS text "
-                            + "    %8$s, "
-                            + "    COALESCE(1.0 / (%9$d + v.rnk), 0.0) + COALESCE(1.0 / (%9$d + k.rnk), 0.0) AS score "
-                            + "  FROM vector_search v "
-                            + "  FULL OUTER JOIN keyword_search k ON v.embedding_id = k.embedding_id "
-                            + ") ranked "
-                            + "WHERE ranked.score >= ? "
-                            + "ORDER BY ranked.score DESC "
-                            + "LIMIT %10$d;",
+                    """
+                     WITH vector_search AS (
+                       SELECT
+                         embedding_id, embedding, text %1$s,
+                         RANK() OVER (ORDER BY embedding <=> '%2$s') AS rnk
+                       FROM %3$s
+                       %4$s
+                       ORDER BY embedding <=> '%2$s'
+                       LIMIT %5$d
+                     ), keyword_search AS (
+                       SELECT
+                         embedding_id, embedding, text %1$s,
+                         RANK() OVER (ORDER BY ts_rank(to_tsvector('%6$s', coalesce(text, '')), plainto_tsquery('%6$s', ?)) DESC) AS rnk
+                       FROM %3$s
+                       WHERE to_tsvector('%6$s', coalesce(text, '')) @@ plainto_tsquery('%6$s', ?)
+                         %7$s
+                       ORDER BY ts_rank(to_tsvector('%6$s', coalesce(text, '')), plainto_tsquery('%6$s', ?)) DESC
+                       LIMIT %5$d
+                     )
+                     SELECT * FROM (
+                       SELECT
+                         COALESCE(v.embedding_id, k.embedding_id) AS embedding_id,
+                         COALESCE(v.embedding, k.embedding) AS embedding,
+                         COALESCE(v.text, k.text) AS text
+                         %8$s,
+                         COALESCE(1.0 / (%9$d + v.rnk), 0.0) + COALESCE(1.0 / (%9$d + k.rnk), 0.0) AS score
+                       FROM vector_search v
+                       FULL OUTER JOIN keyword_search k ON v.embedding_id = k.embedding_id
+                     ) ranked
+                     WHERE ranked.score >= ?
+                     ORDER BY ranked.score DESC
+                     LIMIT %10$d;
+                     """,
                     rawMetadataCols,
                     referenceVector,
                     table,

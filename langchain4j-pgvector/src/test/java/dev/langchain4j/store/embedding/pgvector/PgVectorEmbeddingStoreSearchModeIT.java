@@ -1,7 +1,7 @@
 package dev.langchain4j.store.embedding.pgvector;
 
-import static dev.langchain4j.store.embedding.pgvector.PgVectorEmbeddingStore.SearchMode.VECTOR;
 import static dev.langchain4j.store.embedding.pgvector.PgVectorEmbeddingStore.SearchMode.HYBRID;
+import static dev.langchain4j.store.embedding.pgvector.PgVectorEmbeddingStore.SearchMode.VECTOR;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.testcontainers.shaded.org.apache.commons.lang3.RandomUtils.nextInt;
 
