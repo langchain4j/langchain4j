@@ -337,4 +337,35 @@ class BedrockSystemMessageTest {
         assertThat(msg1.contents()).hasSize(1);
         assertThat(msg2.contents()).hasSize(2);
     }
+
+    // === Serialization Behavior Documentation ===
+
+    @Test
+    void should_document_serialization_limitation() {
+        // This test documents the known limitation:
+        // BedrockSystemMessage is NOT compatible with ChatMessageSerializer.
+        // If serialized via Jackson, it will be deserialized as SystemMessage,
+        // losing all granular cache point information.
+
+        BedrockSystemMessage msgWithCachePoints = BedrockSystemMessage.builder()
+                .addText("Static instructions")
+                .addTextWithCachePoint("Large context to cache")
+                .build();
+
+        assertThat(msgWithCachePoints.hasCachePoints()).isTrue();
+        assertThat(msgWithCachePoints.cachePointCount()).isEqualTo(1);
+
+        // Converting to SystemMessage (what happens during serialization roundtrip)
+        SystemMessage systemMsg = msgWithCachePoints.toSystemMessage();
+
+        // Note: systemMsg is now a core SystemMessage without cache point information
+        // This demonstrates the limitation documented in BedrockSystemMessage JavaDoc:
+        // "This message type is NOT compatible with standard ChatMessageSerializer"
+        assertThat(systemMsg).isInstanceOf(SystemMessage.class);
+        assertThat(systemMsg.text()).contains("Static instructions");
+        assertThat(systemMsg.text()).contains("Large context to cache");
+
+        // But the cache point metadata is lost
+        // (Cache points are specific to BedrockSystemMessage, not SystemMessage)
+    }
 }
