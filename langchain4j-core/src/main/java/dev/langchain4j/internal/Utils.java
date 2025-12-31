@@ -8,7 +8,6 @@ import static java.util.Collections.unmodifiableList;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
 
-import dev.langchain4j.Internal;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
@@ -32,6 +31,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
+import dev.langchain4j.Internal;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -548,7 +548,7 @@ public class Utils {
      * @return the original value (may be {@code null} or blank)
      */
     public static String warnIfNullOrBlank(String value, String fieldName, Class<?> clazz) {
-        if (isNullOrBlank(fieldName)) {
+        if (isNullOrBlank(value)) {
             log.warn("{}: '{}' is null or blank", clazz.getSimpleName(), fieldName);
         }
         return value;
