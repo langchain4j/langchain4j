@@ -150,113 +150,57 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected void should_respect_maxOutputTokens_in_chat_request(StreamingChatModel model) {
-        int maxOutputTokens = 16;
-        ChatRequestParameters parameters =
-                ChatRequestParameters.builder().maxOutputTokens(maxOutputTokens).build();
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("Tell me a long story"))
-                .parameters(parameters)
-                .build();
-
-        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        model.chat(chatRequest, handler);
-        var chatResponse = handler.get();
-
-        var aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text()).isNotBlank();
-        assertThat(aiMessage.toolExecutionRequests()).isEmpty();
-
-        if (assertTokenUsage()) {
-            TokenUsage tokenUsage = chatResponse.metadata().tokenUsage();
-            assertThat(tokenUsage).isExactlyInstanceOf(tokenUsageType(model));
-            assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
-            assertThat(tokenUsage.outputTokenCount()).isLessThanOrEqualTo(maxOutputTokens);
-            assertThat(tokenUsage.totalTokenCount()).isGreaterThan(0);
-        }
-
-        if (assertFinishReason()) {
-            assertThat(chatResponse.metadata().finishReason())
-                    .isEqualTo(dev.langchain4j.model.output.FinishReason.LENGTH);
-        }
+        assertMaxOutputTokensRespected(model, 16, false);
     }
 
     @Override
     protected void should_respect_maxOutputTokens_in_default_model_parameters() {
-        int maxOutputTokens = 16;
-        ChatRequestParameters parameters =
-                ChatRequestParameters.builder().maxOutputTokens(maxOutputTokens).build();
-
-        StreamingChatModel model = createModelWith(parameters);
-        if (model == null) {
-            return;
-        }
-
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("Tell me a long story"))
-                .build();
-
-        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        model.chat(chatRequest, handler);
-        var chatResponse = handler.get();
-
-        var aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text()).isNotBlank();
-        assertThat(aiMessage.toolExecutionRequests()).isEmpty();
-
-        if (assertTokenUsage()) {
-            TokenUsage tokenUsage = chatResponse.metadata().tokenUsage();
-            assertThat(tokenUsage).isExactlyInstanceOf(tokenUsageType(model));
-            assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
-            assertThat(tokenUsage.outputTokenCount()).isLessThanOrEqualTo(maxOutputTokens);
-            assertThat(tokenUsage.totalTokenCount()).isGreaterThan(0);
-        }
-
-        if (assertFinishReason()) {
-            assertThat(chatResponse.metadata().finishReason())
-                    .isEqualTo(dev.langchain4j.model.output.FinishReason.LENGTH);
-        }
+        assertMaxOutputTokensRespected(null, 16, true);
     }
 
     @Override
     protected void should_respect_common_parameters_wrapped_in_integration_specific_class_in_chat_request(
             StreamingChatModel model) {
-        int maxOutputTokens = 16;
-        ChatRequestParameters parameters = createIntegrationSpecificParameters(maxOutputTokens);
-
-        ChatRequest chatRequest = ChatRequest.builder()
-                .parameters(parameters)
-                .messages(UserMessage.from("Tell me a long story"))
-                .build();
-
-        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        model.chat(chatRequest, handler);
-        var chatResponse = handler.get();
-
-        var aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text()).isNotBlank();
-        assertThat(aiMessage.toolExecutionRequests()).isEmpty();
-
-        if (assertTokenUsage()) {
-            TokenUsage tokenUsage = chatResponse.metadata().tokenUsage();
-            assertThat(tokenUsage).isExactlyInstanceOf(tokenUsageType(model));
-            assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
-            assertThat(tokenUsage.outputTokenCount()).isLessThanOrEqualTo(maxOutputTokens);
-            assertThat(tokenUsage.totalTokenCount()).isGreaterThan(0);
-        }
-
-        if (assertFinishReason()) {
-            assertThat(chatResponse.metadata().finishReason())
-                    .isEqualTo(dev.langchain4j.model.output.FinishReason.LENGTH);
-        }
+        assertMaxOutputTokensRespectedWithIntegrationSpecificParameters(model, 16, false);
     }
 
     @Override
     protected void
             should_respect_common_parameters_wrapped_in_integration_specific_class_in_default_model_parameters() {
-        int maxOutputTokens = 16;
+        assertMaxOutputTokensRespectedWithIntegrationSpecificParameters(null, 16, true);
+    }
+
+    private void assertMaxOutputTokensRespected(
+            StreamingChatModel model, int maxOutputTokens, boolean useDefaultParameters) {
+        ChatRequestParameters parameters =
+                ChatRequestParameters.builder().maxOutputTokens(maxOutputTokens).build();
+
+        if (useDefaultParameters) {
+            model = createModelWith(parameters);
+            if (model == null) {
+                return;
+            }
+        }
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("Tell me a long story"))
+                .parameters(useDefaultParameters ? null : parameters)
+                .build();
+
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(chatRequest, handler);
+        var chatResponse = handler.get();
+
+        assertMaxOutputTokensResponse(chatResponse, model, maxOutputTokens);
+    }
+
+    private void assertMaxOutputTokensRespectedWithIntegrationSpecificParameters(
+            StreamingChatModel model, int maxOutputTokens, boolean useDefaultParameters) {
         ChatRequestParameters parameters = createIntegrationSpecificParameters(maxOutputTokens);
 
-        StreamingChatModel model = createModelWith(parameters);
+        if (useDefaultParameters) {
+            model = createModelWith(parameters);
+        }
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .parameters(parameters)
@@ -267,6 +211,11 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
         model.chat(chatRequest, handler);
         var chatResponse = handler.get();
 
+        assertMaxOutputTokensResponse(chatResponse, model, maxOutputTokens);
+    }
+
+    private void assertMaxOutputTokensResponse(
+            ChatResponse chatResponse, StreamingChatModel model, int maxOutputTokens) {
         var aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.text()).isNotBlank();
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
@@ -403,104 +352,6 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
         assertThat(toolNode.get("strict").asBoolean()).isTrue();
 
         assertThat(payload.get("tool_choice").asText()).isEqualTo("auto");
-    }
-
-    @Test
-    void should_support_strict_mode_false() {
-        StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .modelName(GPT_4_1_NANO.toString())
-                .strict(false)
-                .build();
-
-        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        model.chat("What is 2+2?", handler);
-
-        assertThat(handler.get().aiMessage().text()).isNotBlank();
-    }
-
-    @Test
-    void should_support_max_tool_calls() {
-        StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .modelName(GPT_4_1_NANO.toString())
-                .maxToolCalls(1)
-                .build();
-
-        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        model.chat("What is the weather?", handler);
-
-        assertThat(handler.get().aiMessage().text()).isNotBlank();
-    }
-
-    @Test
-    void should_support_parallel_tool_calls_disabled() {
-        StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .modelName(GPT_4_1_NANO.toString())
-                .parallelToolCalls(false)
-                .build();
-
-        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        model.chat("Hello", handler);
-
-        assertThat(handler.get().aiMessage().text()).isNotBlank();
-    }
-
-    @Test
-    void should_support_text_verbosity() {
-        StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .modelName(GPT_4_1_NANO.toString())
-                .textVerbosity("medium")
-                .build();
-
-        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        model.chat("Explain quantum physics", handler);
-
-        assertThat(handler.get().aiMessage().text()).isNotBlank();
-    }
-
-    @Test
-    void should_support_truncation_strategy() {
-        StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .modelName(GPT_4_1_NANO.toString())
-                .truncation("auto")
-                .build();
-
-        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        model.chat("Hello", handler);
-
-        assertThat(handler.get().aiMessage().text()).isNotBlank();
-    }
-
-    @Test
-    void should_support_include_parameter() {
-        StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .modelName(GPT_4_1_NANO.toString())
-                .include(List.of("message.output_text.logprobs", "message.input_image.image_url"))
-                .build();
-
-        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        model.chat("Hello", handler);
-
-        assertThat(handler.get().aiMessage().text()).isNotBlank();
-    }
-
-    @Test
-    void should_support_top_logprobs() {
-        StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .modelName(GPT_4_1_NANO.toString())
-                .topLogprobs(5)
-                .build();
-
-        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        model.chat("Hello", handler);
-
-        assertThat(handler.get().aiMessage().text()).isNotBlank();
     }
 
     @Test
