@@ -11,6 +11,20 @@ import static java.util.Arrays.asList;
 import static java.util.Comparator.comparingDouble;
 import static java.util.stream.Collectors.toList;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.PriorityQueue;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
@@ -23,18 +37,6 @@ import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
 import dev.langchain4j.store.embedding.filter.Filter;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Objects;
-import java.util.PriorityQueue;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * An {@link EmbeddingStore} that stores embeddings in memory.
@@ -117,8 +119,9 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     @Override
     public void removeAll(Collection<String> ids) {
         ensureNotEmpty(ids, "ids");
+        Set<String> idSet = (ids instanceof Set) ? (Set<String>) ids : new HashSet<>(ids);
 
-        entries.removeIf(entry -> ids.contains(entry.id));
+        entries.removeIf(entry -> idSet.contains(entry.id));
     }
 
     @Override
