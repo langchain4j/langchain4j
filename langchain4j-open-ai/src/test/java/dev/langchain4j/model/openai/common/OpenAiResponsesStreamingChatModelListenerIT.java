@@ -3,7 +3,7 @@ package dev.langchain4j.model.openai.common;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_1_NANO;
 import static java.util.Collections.singletonList;
 
-import dev.langchain4j.exception.HttpException;
+import dev.langchain4j.exception.AuthenticationException;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -42,7 +42,7 @@ class OpenAiResponsesStreamingChatModelListenerIT extends AbstractStreamingChatM
 
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
-        return HttpException.class;
+        return AuthenticationException.class;
     }
 
     @Override
