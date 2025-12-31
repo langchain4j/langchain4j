@@ -368,4 +368,89 @@ class BedrockSystemMessageTest {
         // But the cache point metadata is lost
         // (Cache points are specific to BedrockSystemMessage, not SystemMessage)
     }
+
+    // === HIGH: Unicode and Special Character Handling ===
+
+    @Test
+    void should_handle_unicode_characters_in_cache_points() {
+        BedrockSystemMessage msg = BedrockSystemMessage.builder()
+                .addTextWithCachePoint("Hello 你好 مرحبا здравствуй 🎉")
+                .addTextWithCachePoint("Emoji test: 😀 😃 😄 😁")
+                .addText("Latin: café, naïve, résumé")
+                .build();
+
+        assertThat(msg.contents()).hasSize(3);
+        assertThat(((BedrockSystemTextContent) msg.contents().get(0)).text()).contains("你好");
+        assertThat(msg.cachePointCount()).isEqualTo(2);
+    }
+
+    @Test
+    void should_handle_special_characters_in_cache_points() {
+        BedrockSystemMessage msg = BedrockSystemMessage.builder()
+                .addTextWithCachePoint("Special: <tag> & \"quote\" 'apostrophe' \n newline \t tab")
+                .addTextWithCachePoint("Symbols: @#$%^&*()_+-={}[]|:;<>,.?/")
+                .build();
+
+        assertThat(msg.contents()).hasSize(2);
+        assertThat(msg.cachePointCount()).isEqualTo(2);
+    }
+
+    @Test
+    void should_handle_mixed_unicode_and_whitespace() {
+        BedrockSystemMessage msg = BedrockSystemMessage.builder()
+                .addTextWithCachePoint("  Unicode with leading spaces: 中文  ")
+                .addText("\n\nNewlines and unicode: 日本語\n\n")
+                .addTextWithCachePoint("	Tabs and unicode: Ελληνικά	")
+                .build();
+
+        assertThat(msg.contents()).hasSize(3);
+        assertThat(msg.cachePointCount()).isEqualTo(2);
+    }
+
+    // === HIGH: Whitespace-Only Content Blocks ===
+
+    @Test
+    void should_reject_whitespace_only_text_content() {
+        // While blank text is rejected, whitespace-only should be too
+        assertThatThrownBy(() -> BedrockSystemMessage.builder()
+                        .addText("   ") // Only spaces
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class);
+
+        assertThatThrownBy(() -> BedrockSystemMessage.builder()
+                        .addText("\t\t\t") // Only tabs
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class);
+
+        assertThatThrownBy(() -> BedrockSystemMessage.builder()
+                        .addText("\n\n\n") // Only newlines
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void should_reject_whitespace_only_with_cache_point() {
+        assertThatThrownBy(() -> BedrockSystemMessage.builder()
+                        .addTextWithCachePoint("   ") // Only spaces
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class);
+
+        assertThatThrownBy(() -> BedrockSystemMessage.builder()
+                        .addTextWithCachePoint("\n") // Only newline
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void should_accept_content_with_meaningful_whitespace() {
+        // Content with meaningful whitespace (not just whitespace) should be accepted
+        BedrockSystemMessage msg = BedrockSystemMessage.builder()
+                .addTextWithCachePoint("  Meaningful text with spaces  ")
+                .addText("\n\nMultiline text\nwith content\n\n")
+                .addTextWithCachePoint("Content\t\twith\t\ttabs")
+                .build();
+
+        assertThat(msg.contents()).hasSize(3);
+        assertThat(msg.cachePointCount()).isEqualTo(2);
+    }
 }
