@@ -18,10 +18,10 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
-import dev.langchain4j.model.chat.response.StreamingHandle;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
@@ -164,8 +164,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                     }
 
                     @Override
-                    public void onComplete() {
-                    }
+                    public void onComplete() {}
                 }))
                 .build();
 
@@ -190,6 +189,11 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
         } else if (defaultRequestParameters != null) {
             cachePointPlacement = defaultRequestParameters.cachePointPlacement();
         }
+
+        // Validate total cache points don't exceed AWS limit
+        boolean hasTools = chatRequest.toolSpecifications() != null
+                && !chatRequest.toolSpecifications().isEmpty();
+        validateTotalCachePoints(chatRequest.messages(), cachePointPlacement, hasTools);
 
         return ConverseStreamRequest.builder()
                 .modelId(chatRequest.modelName())
