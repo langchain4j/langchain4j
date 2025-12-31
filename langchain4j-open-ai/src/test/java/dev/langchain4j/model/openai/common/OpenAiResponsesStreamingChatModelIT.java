@@ -37,8 +37,6 @@ import org.mockito.InOrder;
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
-    private static final String TEST_MODEL_NAME = "gpt-4";
-
     @Override
     protected List<StreamingChatModel> models() {
         StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
@@ -142,17 +140,11 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
         }));
     }
 
-    private void assertTokenUsageFor(ChatResponseMetadata metadata, StreamingChatModel model) {
-        var tokenUsage = metadata.tokenUsage();
-        assertThat(tokenUsage).isExactlyInstanceOf(tokenUsageType(model));
-        assertThat(tokenUsage.inputTokenCount()).isPositive();
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
-    }
-
     @Override
+    // Responses API does not support stopSequences parameter
     protected void should_respect_stopSequences_in_chat_request(StreamingChatModel model) {}
 
+    // Responses API does not support stopSequences parameter
     @Override
     protected void should_respect_stopSequences_in_default_model_parameters() {}
 
