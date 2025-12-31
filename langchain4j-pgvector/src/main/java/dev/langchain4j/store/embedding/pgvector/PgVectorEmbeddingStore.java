@@ -78,15 +78,6 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     private static final int DEFAULT_RRF_K = 60;
 
     /**
-     * Whitelist of PostgreSQL text search configurations that are considered safe to use.
-     * <p>
-     * Restricting the text search configuration to this list helps prevent SQL injection
-     * attacks when the configuration name is incorporated into SQL statements.
-     */
-    private static final List<String> ALLOWED_TEXT_SEARCH_CONFIGS =
-            List.of("simple", "english", "german", "french", "italian", "spanish", "portuguese", "dutch", "russian");
-
-    /**
      * Datasource used to create the store
      */
     protected final DataSource datasource;
@@ -145,7 +136,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         dropTableFirst = getOrDefault(dropTableFirst, false);
 
         this.searchMode = getOrDefault(searchMode, SearchMode.VECTOR);
-        this.textSearchConfig = validateTextSearchConfig(getOrDefault(textSearchConfig, DEFAULT_TEXT_SEARCH_CONFIG));
+        this.textSearchConfig = getOrDefault(textSearchConfig, DEFAULT_TEXT_SEARCH_CONFIG);
 
         initTable(dropTableFirst, createTable, useIndex, dimension, indexListSize);
     }
@@ -621,17 +612,6 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
         PGvector.addVectorType(connection);
         return connection;
-    }
-
-    private static String validateTextSearchConfig(String cfg) {
-        if (cfg == null || cfg.isBlank()) {
-            return DEFAULT_TEXT_SEARCH_CONFIG;
-        }
-        if (!ALLOWED_TEXT_SEARCH_CONFIGS.contains(cfg)) {
-            throw new IllegalArgumentException(
-                    "Unsupported textSearchConfig: '" + cfg + "'. Allowed values: " + ALLOWED_TEXT_SEARCH_CONFIGS);
-        }
-        return cfg;
     }
 
     public static class DatasourceBuilder {

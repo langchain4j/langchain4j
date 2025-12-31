@@ -109,40 +109,4 @@ abstract class PgVectorEmbeddingStoreConfigIT extends EmbeddingStoreWithFilterin
         // make sure table and embeddings are still there
         assertThat(getAllEmbeddings()).isNotEmpty();
     }
-
-    @Test
-    void shouldAcceptWhitelistedTextSearchConfig() {
-        EmbeddingStore<TextSegment> store = PgVectorEmbeddingStore.builder()
-                .host(pgVector.getHost())
-                .port(pgVector.getFirstMappedPort())
-                .user("test")
-                .password("test")
-                .database("test")
-                .table("fts_config_ok")
-                .dimension(TABLE_DIMENSION)
-                .dropTableFirst(true)
-                .searchMode(PgVectorEmbeddingStore.SearchMode.HYBRID)
-                .textSearchConfig("english")
-                .build();
-
-        assertThat(store).isNotNull();
-    }
-
-    @Test
-    void shouldRejectNonWhitelistedTextSearchConfig() {
-        assertThatThrownBy(() -> PgVectorEmbeddingStore.builder()
-                        .host(pgVector.getHost())
-                        .port(pgVector.getFirstMappedPort())
-                        .user("test")
-                        .password("test")
-                        .database("test")
-                        .table("fts_config_bad")
-                        .dimension(TABLE_DIMENSION)
-                        .dropTableFirst(true)
-                        .searchMode(PgVectorEmbeddingStore.SearchMode.HYBRID)
-                        .textSearchConfig("english'; DROP TABLE fts_config_bad; --")
-                        .build())
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Unsupported textSearchConfig");
-    }
 }
