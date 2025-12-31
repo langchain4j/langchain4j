@@ -55,7 +55,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * Search modes for the embedding store.
      */
     public enum SearchMode {
-        EMBEDDING_ONLY,
+        VECTOR,
         HYBRID
     }
 
@@ -144,7 +144,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         createTable = getOrDefault(createTable, true);
         dropTableFirst = getOrDefault(dropTableFirst, false);
 
-        this.searchMode = getOrDefault(searchMode, SearchMode.EMBEDDING_ONLY);
+        this.searchMode = getOrDefault(searchMode, SearchMode.VECTOR);
         this.textSearchConfig = validateTextSearchConfig(getOrDefault(textSearchConfig, DEFAULT_TEXT_SEARCH_CONFIG));
 
         initTable(dropTableFirst, createTable, useIndex, dimension, indexListSize);
@@ -202,7 +202,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.datasource = null;
         this.table = null;
         this.metadataHandler = null;
-        this.searchMode = null;
+        this.searchMode = SearchMode.VECTOR;
         this.textSearchConfig = DEFAULT_TEXT_SEARCH_CONFIG;
     }
 
@@ -381,10 +381,10 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     @Override
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
-        SearchMode mode = getOrDefault(searchMode, SearchMode.EMBEDDING_ONLY);
+        SearchMode mode = getOrDefault(searchMode, SearchMode.VECTOR);
 
         return switch (mode) {
-            case EMBEDDING_ONLY -> embeddingOnlySearch(request);
+            case VECTOR -> embeddingOnlySearch(request);
             case HYBRID -> hybridSearch(request);
         };
     }

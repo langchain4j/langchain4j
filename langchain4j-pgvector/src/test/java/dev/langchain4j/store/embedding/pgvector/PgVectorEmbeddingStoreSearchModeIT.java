@@ -1,6 +1,6 @@
 package dev.langchain4j.store.embedding.pgvector;
 
-import static dev.langchain4j.store.embedding.pgvector.PgVectorEmbeddingStore.SearchMode.EMBEDDING_ONLY;
+import static dev.langchain4j.store.embedding.pgvector.PgVectorEmbeddingStore.SearchMode.VECTOR;
 import static dev.langchain4j.store.embedding.pgvector.PgVectorEmbeddingStore.SearchMode.HYBRID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.testcontainers.shaded.org.apache.commons.lang3.RandomUtils.nextInt;
@@ -44,7 +44,7 @@ class PgVectorEmbeddingStoreSearchModeIT {
                 .dimension(384)
                 .dropTableFirst(true)
                 .textSearchConfig("english")
-                .searchMode(EMBEDDING_ONLY)
+                .searchMode(VECTOR)
                 .build();
 
         storeHybrid = PgVectorEmbeddingStore.builder()
