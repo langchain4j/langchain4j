@@ -290,4 +290,105 @@ class BedrockSystemMessageExtractionTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("exceeds AWS Bedrock limit of 4");
     }
+
+    // === Comprehensive Cache Point Combination Tests ===
+
+    @Test
+    void should_validate_after_tools_combined_with_granular_cache_points() {
+        // 3 granular + 1 from AFTER_TOOLS (with tools) = 4 (at limit)
+        BedrockSystemMessage msg = BedrockSystemMessage.builder()
+                .addTextWithCachePoint("Cache 1")
+                .addTextWithCachePoint("Cache 2")
+                .addTextWithCachePoint("Cache 3")
+                .build();
+
+        List<ChatMessage> messages = Arrays.asList(msg, UserMessage.from("test"));
+
+        // Should not throw - exactly at limit with AFTER_TOOLS
+        extractor.testValidateTotalCachePoints(messages, BedrockCachePointPlacement.AFTER_TOOLS, true);
+
+        // 4 granular + AFTER_TOOLS = 5 (exceeds limit)
+        BedrockSystemMessage msgExceeding = BedrockSystemMessage.builder()
+                .addTextWithCachePoint("Cache 1")
+                .addTextWithCachePoint("Cache 2")
+                .addTextWithCachePoint("Cache 3")
+                .addTextWithCachePoint("Cache 4")
+                .build();
+
+        assertThatThrownBy(() -> extractor.testValidateTotalCachePoints(
+                        Arrays.asList(msgExceeding, UserMessage.from("test")),
+                        BedrockCachePointPlacement.AFTER_TOOLS,
+                        true))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("exceeds AWS Bedrock limit of 4");
+    }
+
+    @Test
+    void should_validate_multiple_messages_with_cache_points() {
+        // Two messages with cache points: 3 + 2 = 5 (exceeds limit)
+        BedrockSystemMessage msg1 = BedrockSystemMessage.builder()
+                .addTextWithCachePoint("Cache 1")
+                .addTextWithCachePoint("Cache 2")
+                .addTextWithCachePoint("Cache 3")
+                .build();
+
+        BedrockSystemMessage msg2 = BedrockSystemMessage.builder()
+                .addTextWithCachePoint("Cache 4")
+                .addTextWithCachePoint("Cache 5")
+                .build();
+
+        List<ChatMessage> messages = Arrays.asList(msg1, msg2, UserMessage.from("test"));
+
+        assertThatThrownBy(() -> extractor.testValidateTotalCachePoints(messages, null, false))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("exceeds AWS Bedrock limit of 4");
+    }
+
+    @Test
+    void should_validate_boundary_exactly_at_limit() {
+        // Exactly 4 cache points from multiple sources
+        BedrockSystemMessage msg = BedrockSystemMessage.builder()
+                .addTextWithCachePoint("Cache 1")
+                .addTextWithCachePoint("Cache 2")
+                .build();
+
+        List<ChatMessage> messages = Arrays.asList(msg, UserMessage.from("test"));
+
+        // 2 from granular + 1 from AFTER_USER_MESSAGE + 1 from AFTER_TOOLS = 4 (at limit)
+        extractor.testValidateTotalCachePoints(messages, BedrockCachePointPlacement.AFTER_USER_MESSAGE, true);
+    }
+
+    @Test
+    void should_validate_boundary_just_over_limit() {
+        // Just over the limit: 4 granular + 1 from AFTER_TOOLS = 5 (exceeds)
+        BedrockSystemMessage msg = BedrockSystemMessage.builder()
+                .addTextWithCachePoint("Cache 1")
+                .addTextWithCachePoint("Cache 2")
+                .addTextWithCachePoint("Cache 3")
+                .addTextWithCachePoint("Cache 4")
+                .build();
+
+        List<ChatMessage> messages = Arrays.asList(msg, UserMessage.from("test"));
+
+        // 4 granular + AFTER_TOOLS = 5 exceeds limit
+        assertThatThrownBy(() -> extractor.testValidateTotalCachePoints(messages, BedrockCachePointPlacement.AFTER_TOOLS, true))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("exceeds AWS Bedrock limit of 4");
+    }
+
+    @Test
+    void should_handle_after_system_with_core_system_message_and_tools() {
+        // Core SystemMessage + AFTER_SYSTEM + 2 granular in second system + AFTER_TOOLS
+        // = 1 (AFTER_SYSTEM) + 2 (granular) + 1 (AFTER_TOOLS) = 4 (at limit)
+        List<ChatMessage> messages = Arrays.asList(
+                SystemMessage.from("Core system message"),
+                BedrockSystemMessage.builder()
+                        .addTextWithCachePoint("Cache 1")
+                        .addTextWithCachePoint("Cache 2")
+                        .build(),
+                UserMessage.from("test"));
+
+        // Should not throw - exactly at limit
+        extractor.testValidateTotalCachePoints(messages, BedrockCachePointPlacement.AFTER_SYSTEM, true);
+    }
 }

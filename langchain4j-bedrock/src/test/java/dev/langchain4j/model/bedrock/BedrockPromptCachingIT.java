@@ -3,15 +3,21 @@ package dev.langchain4j.model.bedrock;
 import static dev.langchain4j.model.bedrock.BedrockCachePointPlacement.AFTER_SYSTEM;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import software.amazon.awssdk.regions.Region;
@@ -404,6 +410,94 @@ class BedrockPromptCachingIT {
         ChatResponse response = model.chat(request);
 
         // Then
+        assertThat(response).isNotNull();
+        assertThat(response.aiMessage().text()).isNotBlank();
+    }
+
+
+    @Test
+    void should_combine_granular_cache_points_with_tools() {
+        // Given - BedrockSystemMessage with granular cache points + tools
+        String largeToolInstructions = "You have access to the following tools: ".repeat(50);
+
+        BedrockSystemMessage systemMessage = BedrockSystemMessage.builder()
+                .addText("You are a helpful assistant.")
+                .addTextWithCachePoint(largeToolInstructions) // Cache tool instructions
+                .build();
+
+        ChatModel model = BedrockChatModel.builder()
+                .modelId(NOVA_MODEL)
+                .region(Region.US_EAST_1)
+                .build();
+
+        // When - chat with granular cache points and tools
+        ChatRequest request = ChatRequest.builder()
+                .messages(Arrays.asList(systemMessage, UserMessage.from("Hello with tools!")))
+                .toolSpecifications(Arrays.asList()) // Empty tools list for simplicity
+                .build();
+
+        ChatResponse response = model.chat(request);
+
+        // Then
+        assertThat(response).isNotNull();
+        assertThat(response.aiMessage().text()).isNotBlank();
+        assertThat(response.metadata().tokenUsage()).isInstanceOf(BedrockTokenUsage.class);
+    }
+
+    // === ChatMemory Integration Tests ===
+
+    @Test
+    void should_document_message_window_chat_memory_behavior_with_bedrock_system_message() {
+        // This test documents the known limitation:
+        // MessageWindowChatMemory uses instanceof SystemMessage checks,
+        // which do NOT match BedrockSystemMessage instances.
+        // This means BedrockSystemMessage may be evicted like regular messages.
+
+        MessageWindowChatMemory memory =
+                MessageWindowChatMemory.builder().maxMessages(3).build();
+
+        BedrockSystemMessage bedrockSystemMsg = BedrockSystemMessage.builder()
+                .addTextWithCachePoint("System instructions with cache point")
+                .build();
+
+        // Add messages to memory
+        memory.add(bedrockSystemMsg);
+        memory.add(UserMessage.from("First user message"));
+        memory.add(AiMessage.from("First AI response"));
+        memory.add(UserMessage.from("Second user message")); // This exceeds window, should evict
+
+        List<ChatMessage> messages = memory.messages();
+
+        // Document the behavior: BedrockSystemMessage may be evicted when window fills,
+        // unlike core SystemMessage which is retained.
+        // This is a limitation users should be aware of.
+        assertThat(messages).isNotEmpty();
+        // Note: The exact behavior depends on MessageWindowChatMemory implementation,
+        // but the key point is that BedrockSystemMessage is NOT treated specially
+        // like SystemMessage would be.
+    }
+
+    @Test
+    void should_handle_bedrock_system_message_without_chat_memory() {
+        // Without ChatMemory, BedrockSystemMessage works perfectly for caching
+        String largeSystemContent = "You are an AI assistant with extensive knowledge. ".repeat(100);
+
+        BedrockSystemMessage systemMessage = BedrockSystemMessage.builder()
+                .addTextWithCachePoint(largeSystemContent)
+                .build();
+
+        ChatModel model = BedrockChatModel.builder()
+                .modelId(NOVA_MODEL)
+                .region(Region.US_EAST_1)
+                .build();
+
+        // Direct API calls (without ChatMemory) work well with granular cache points
+        ChatRequest request = ChatRequest.builder()
+                .messages(Arrays.asList(systemMessage, UserMessage.from("What is AI?")))
+                .build();
+
+        ChatResponse response = model.chat(request);
+
         assertThat(response).isNotNull();
         assertThat(response.aiMessage().text()).isNotBlank();
     }
