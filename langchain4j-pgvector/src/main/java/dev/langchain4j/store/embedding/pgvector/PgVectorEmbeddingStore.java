@@ -441,7 +441,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         String keywordQuery = request.query();
 
         if (isNullOrBlank(keywordQuery)) {
-            throw new RuntimeException("For HYBRID search mode, the query must be provided in the EmbeddingSearchRequest");
+            throw new RuntimeException(
+                    "For HYBRID search mode, the query must be provided in the EmbeddingSearchRequest");
         }
 
         int maxResults = request.maxResults();
