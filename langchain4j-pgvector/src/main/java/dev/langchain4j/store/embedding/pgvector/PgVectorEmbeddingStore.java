@@ -65,15 +65,6 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     /**
      * Default {@code k} parameter used by the Reciprocal Rank Fusion (RRF) algorithm when
      * combining embedding and full-text search rankings.
-     * <p>
-     * RRF assigns each result a score based on its rank in each list using the formula:
-     * {@code score = 1 / (k + rank)}. Larger {@code k} values dampen the impact of rank
-     * differences so that lower-ranked but consistently relevant results can still contribute
-     * meaningfully to the final score.
-     * <p>
-     * The value {@code 60} is a commonly used heuristic in RRF that provides a good balance
-     * between emphasizing top-ranked results and allowing deeper results to influence the
-     * fused ranking, and has been chosen here as a sensible default.
      */
     private static final int DEFAULT_RRF_K = 60;
 
@@ -102,6 +93,11 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     private final String textSearchConfig;
 
     /**
+     * RRF k parameter (instance-level, configurable via builder). If null, DEFAULT_RRF_K used.
+     */
+    private final int rrfK;
+
+    /**
      * Constructor for PgVectorEmbeddingStore Class
      *
      * @param datasource            The datasource to use
@@ -125,7 +121,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             Boolean dropTableFirst,
             MetadataStorageConfig metadataStorageConfig,
             SearchMode searchMode,
-            String textSearchConfig) {
+            String textSearchConfig,
+            Integer rrfK) {
         this.datasource = ensureNotNull(datasource, "datasource");
         this.table = ensureNotBlank(table, "table");
         MetadataStorageConfig config =
@@ -137,6 +134,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         this.searchMode = getOrDefault(searchMode, SearchMode.VECTOR);
         this.textSearchConfig = getOrDefault(textSearchConfig, DEFAULT_TEXT_SEARCH_CONFIG);
+        this.rrfK = ensureGreaterThanZero(getOrDefault(rrfK, DEFAULT_RRF_K), "rrfK");
 
         initTable(dropTableFirst, createTable, useIndex, dimension, indexListSize);
     }
@@ -175,7 +173,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             Boolean dropTableFirst,
             MetadataStorageConfig metadataStorageConfig,
             SearchMode searchMode,
-            String textSearchConfig) {
+            String textSearchConfig,
+            Integer rrfK) {
         this(
                 createDataSource(host, port, user, password, database),
                 table,
@@ -186,7 +185,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                 dropTableFirst,
                 metadataStorageConfig,
                 searchMode,
-                textSearchConfig);
+                textSearchConfig,
+                rrfK);
     }
 
     public PgVectorEmbeddingStore() {
@@ -195,6 +195,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.metadataHandler = null;
         this.searchMode = SearchMode.VECTOR;
         this.textSearchConfig = DEFAULT_TEXT_SEARCH_CONFIG;
+        this.rrfK = DEFAULT_RRF_K;
     }
 
     private static DataSource createDataSource(
@@ -467,8 +468,6 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                                 .collect(java.util.stream.Collectors.joining(", "));
             }
 
-            int rrfK = DEFAULT_RRF_K;
-
             String sql = String.format(
                     """
                      WITH vector_search AS (
@@ -631,6 +630,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         private MetadataStorageConfig metadataStorageConfig;
         private SearchMode searchMode;
         private String textSearchConfig;
+        private Integer rrfK;
 
         DatasourceBuilder() {}
 
@@ -684,6 +684,11 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        public DatasourceBuilder rrfK(Integer rrfK) {
+            this.rrfK = rrfK;
+            return this;
+        }
+
         public PgVectorEmbeddingStore build() {
             return new PgVectorEmbeddingStore(
                     this.datasource,
@@ -695,7 +700,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                     this.dropTableFirst,
                     this.metadataStorageConfig,
                     this.searchMode,
-                    this.textSearchConfig);
+                    this.textSearchConfig,
+                    this.rrfK);
         }
 
         public String toString() {
@@ -703,7 +709,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                     + ", dimension=" + this.dimension + ", useIndex=" + this.useIndex + ", indexListSize="
                     + this.indexListSize + ", createTable=" + this.createTable + ", dropTableFirst="
                     + this.dropTableFirst + ", metadataStorageConfig=" + this.metadataStorageConfig + ", searchMode="
-                    + this.searchMode + ", textSearchConfig=" + this.textSearchConfig + ")";
+                    + this.searchMode + ", textSearchConfig=" + this.textSearchConfig + ", rrfK=" + this.rrfK + ")";
         }
     }
 
@@ -722,6 +728,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         private MetadataStorageConfig metadataStorageConfig;
         private SearchMode searchMode;
         private String textSearchConfig;
+        private Integer rrfK;
 
         PgVectorEmbeddingStoreBuilder() {}
 
@@ -795,6 +802,11 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        public PgVectorEmbeddingStoreBuilder rrfK(Integer rrfK) {
+            this.rrfK = rrfK;
+            return this;
+        }
+
         public PgVectorEmbeddingStore build() {
             return new PgVectorEmbeddingStore(
                     this.host,
@@ -810,7 +822,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                     this.dropTableFirst,
                     this.metadataStorageConfig,
                     this.searchMode,
-                    this.textSearchConfig);
+                    this.textSearchConfig,
+                    this.rrfK);
         }
 
         public String toString() {
@@ -819,7 +832,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                     + this.table + ", dimension=" + this.dimension + ", useIndex=" + this.useIndex + ", indexListSize="
                     + this.indexListSize + ", createTable=" + this.createTable + ", dropTableFirst="
                     + this.dropTableFirst + ", metadataStorageConfig=" + this.metadataStorageConfig + ", searchMode="
-                    + this.searchMode + ", textSearchConfig=" + this.textSearchConfig + ")";
+                    + this.searchMode + ", textSearchConfig=" + this.textSearchConfig + ", rrfK=" + this.rrfK + ")";
         }
     }
 }
