@@ -90,9 +90,8 @@ public class BedrockSystemMessage implements ChatMessage {
                 .filter(BedrockSystemContent::hasCachePoint)
                 .count();
         if (cachePointCount > MAX_CACHE_POINTS) {
-            throw new IllegalArgumentException(
-                    "Maximum " + MAX_CACHE_POINTS + " cache points allowed per AWS Bedrock request, but got "
-                            + cachePointCount);
+            throw new IllegalArgumentException("Maximum " + MAX_CACHE_POINTS
+                    + " cache points allowed per AWS Bedrock request, but got " + cachePointCount);
         }
 
         // Single defensive copy - builder list is already validated
