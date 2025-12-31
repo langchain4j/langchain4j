@@ -492,7 +492,7 @@ abstract class AbstractBedrockChatModel {
             }
 
             if (message instanceof BedrockSystemMessage bedrockMsg) {
-                count += (int) bedrockMsg.cachePointCount();
+                count += bedrockMsg.cachePointCount();
                 lastSystemIsCoreMessage = false;
                 hasAnySystemMessage = true;
             } else if (message instanceof SystemMessage) {

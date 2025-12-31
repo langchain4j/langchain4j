@@ -317,13 +317,14 @@ public class BedrockSystemMessage implements ChatMessage {
      *
      * @return the cache point count
      */
-    public long cachePointCount() {
-        return contents.stream().filter(BedrockSystemContent::hasCachePoint).count();
+    public int cachePointCount() {
+        return (int)
+                contents.stream().filter(BedrockSystemContent::hasCachePoint).count();
     }
 
     @Override
     public String toString() {
-        long cachePoints = cachePointCount();
+        int cachePoints = cachePointCount();
         return "BedrockSystemMessage { contents = " + contents.size() + " blocks, cachePoints = " + cachePoints + " }";
     }
 }
