@@ -32,7 +32,7 @@ import java.util.Objects;
  * @see <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-caching.html">AWS Bedrock Prompt Caching</a>
  * @since 1.0.0-beta2
  */
-public class BedrockSystemTextContent implements BedrockSystemContent {
+public final class BedrockSystemTextContent implements BedrockSystemContent {
 
     /**
      * Maximum allowed text length (1MB) to prevent resource exhaustion.

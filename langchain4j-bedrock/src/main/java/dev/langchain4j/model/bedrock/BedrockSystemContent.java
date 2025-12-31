@@ -3,8 +3,8 @@ package dev.langchain4j.model.bedrock;
 /**
  * Represents a content block within a {@link BedrockSystemMessage}.
  * <p>
- * This interface allows for different types of content (currently text)
- * with optional cache point markers for AWS Bedrock prompt caching.
+ * This is a sealed interface - only library-provided implementations are supported.
+ * Currently, only {@link BedrockSystemTextContent} is available.
  * <p>
  * <b>Implementation Requirements:</b>
  * <ul>
@@ -18,7 +18,7 @@ package dev.langchain4j.model.bedrock;
  * @see BedrockSystemMessage
  * @since 1.0.0-beta2
  */
-public interface BedrockSystemContent {
+public sealed interface BedrockSystemContent permits BedrockSystemTextContent {
 
     /**
      * Returns the content type.

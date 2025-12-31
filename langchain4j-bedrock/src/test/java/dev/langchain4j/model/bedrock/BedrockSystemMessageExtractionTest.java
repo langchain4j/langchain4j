@@ -6,7 +6,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.exception.UnsupportedFeatureException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -32,6 +31,11 @@ class BedrockSystemMessageExtractionTest {
             return extractSystemMessages(messages, placement);
         }
 
+        public void testValidateTotalCachePoints(
+                List<ChatMessage> messages, BedrockCachePointPlacement placement, boolean hasTools) {
+            validateTotalCachePoints(messages, placement, hasTools);
+        }
+
         private static class TestBuilder extends AbstractBuilder<TestBuilder> {
             @Override
             public TestBuilder self() {
@@ -51,8 +55,7 @@ class BedrockSystemMessageExtractionTest {
                 .addText("Second block")
                 .build();
 
-        List<SystemContentBlock> result = extractor.testExtractSystemMessages(
-                List.of(bedrockMsg), null);
+        List<SystemContentBlock> result = extractor.testExtractSystemMessages(List.of(bedrockMsg), null);
 
         assertThat(result).hasSize(2);
         assertThat(result.get(0).text()).isEqualTo("First block");
@@ -67,8 +70,7 @@ class BedrockSystemMessageExtractionTest {
                 .addText("Third block")
                 .build();
 
-        List<SystemContentBlock> result = extractor.testExtractSystemMessages(
-                List.of(bedrockMsg), null);
+        List<SystemContentBlock> result = extractor.testExtractSystemMessages(List.of(bedrockMsg), null);
 
         // Should have 4 blocks: text, text, cache_point, text
         assertThat(result).hasSize(4);
@@ -82,8 +84,7 @@ class BedrockSystemMessageExtractionTest {
     void should_extract_core_system_message() {
         SystemMessage coreMsg = SystemMessage.from("Core system message");
 
-        List<SystemContentBlock> result = extractor.testExtractSystemMessages(
-                List.of(coreMsg), null);
+        List<SystemContentBlock> result = extractor.testExtractSystemMessages(List.of(coreMsg), null);
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).text()).isEqualTo("Core system message");
@@ -111,24 +112,22 @@ class BedrockSystemMessageExtractionTest {
     @Test
     void should_apply_after_system_only_when_last_is_core_system_message() {
         // When last is BedrockSystemMessage, AFTER_SYSTEM should NOT be applied
-        List<ChatMessage> messagesEndingWithBedrock = Arrays.asList(
-                SystemMessage.from("Core message"),
-                BedrockSystemMessage.from("Bedrock message"));
+        List<ChatMessage> messagesEndingWithBedrock =
+                Arrays.asList(SystemMessage.from("Core message"), BedrockSystemMessage.from("Bedrock message"));
 
-        List<SystemContentBlock> result1 = extractor.testExtractSystemMessages(
-                messagesEndingWithBedrock, BedrockCachePointPlacement.AFTER_SYSTEM);
+        List<SystemContentBlock> result1 =
+                extractor.testExtractSystemMessages(messagesEndingWithBedrock, BedrockCachePointPlacement.AFTER_SYSTEM);
 
         // No extra cache point because last is BedrockSystemMessage
         assertThat(result1).hasSize(2);
         assertThat(result1.stream().filter(b -> b.cachePoint() != null).count()).isZero();
 
         // When last is core SystemMessage, AFTER_SYSTEM SHOULD be applied
-        List<ChatMessage> messagesEndingWithCore = Arrays.asList(
-                BedrockSystemMessage.from("Bedrock message"),
-                SystemMessage.from("Core message"));
+        List<ChatMessage> messagesEndingWithCore =
+                Arrays.asList(BedrockSystemMessage.from("Bedrock message"), SystemMessage.from("Core message"));
 
-        List<SystemContentBlock> result2 = extractor.testExtractSystemMessages(
-                messagesEndingWithCore, BedrockCachePointPlacement.AFTER_SYSTEM);
+        List<SystemContentBlock> result2 =
+                extractor.testExtractSystemMessages(messagesEndingWithCore, BedrockCachePointPlacement.AFTER_SYSTEM);
 
         // Extra cache point because last is core SystemMessage
         assertThat(result2).hasSize(3);
@@ -137,13 +136,11 @@ class BedrockSystemMessageExtractionTest {
 
     @Test
     void should_not_apply_after_system_when_only_bedrock_system_message() {
-        List<ChatMessage> messages = List.of(
-                BedrockSystemMessage.builder()
-                        .addText("Bedrock only")
-                        .build());
+        List<ChatMessage> messages =
+                List.of(BedrockSystemMessage.builder().addText("Bedrock only").build());
 
-        List<SystemContentBlock> result = extractor.testExtractSystemMessages(
-                messages, BedrockCachePointPlacement.AFTER_SYSTEM);
+        List<SystemContentBlock> result =
+                extractor.testExtractSystemMessages(messages, BedrockCachePointPlacement.AFTER_SYSTEM);
 
         // No AFTER_SYSTEM cache point added
         assertThat(result).hasSize(1);
@@ -177,9 +174,7 @@ class BedrockSystemMessageExtractionTest {
     @Test
     void should_ignore_non_system_messages() {
         List<ChatMessage> messages = Arrays.asList(
-                SystemMessage.from("System"),
-                UserMessage.from("User"),
-                BedrockSystemMessage.from("Bedrock"));
+                SystemMessage.from("System"), UserMessage.from("User"), BedrockSystemMessage.from("Bedrock"));
 
         List<SystemContentBlock> result = extractor.testExtractSystemMessages(messages, null);
 
@@ -217,5 +212,82 @@ class BedrockSystemMessageExtractionTest {
     void should_handle_empty_messages_list() {
         List<SystemContentBlock> result = extractor.testExtractSystemMessages(List.of(), null);
         assertThat(result).isEmpty();
+    }
+
+    @Test
+    void should_handle_empty_messages_list_with_after_system_placement() {
+        List<SystemContentBlock> result =
+                extractor.testExtractSystemMessages(List.of(), BedrockCachePointPlacement.AFTER_SYSTEM);
+        assertThat(result).isEmpty();
+    }
+
+    // === Cache Point Validation Tests ===
+
+    @Test
+    void should_validate_cache_points_within_limit() {
+        // 4 cache points is the limit - should not throw
+        BedrockSystemMessage msg = BedrockSystemMessage.builder()
+                .addTextWithCachePoint("Cache 1")
+                .addTextWithCachePoint("Cache 2")
+                .addTextWithCachePoint("Cache 3")
+                .addTextWithCachePoint("Cache 4")
+                .build();
+
+        List<ChatMessage> messages = List.of(msg, UserMessage.from("test"));
+
+        // This should not throw
+        extractor.testValidateTotalCachePoints(messages, null, false);
+    }
+
+    @Test
+    void should_throw_when_cache_points_exceed_limit() {
+        // Create two messages with 3 cache points each = 6 total (exceeds limit of 4)
+        BedrockSystemMessage msg1 = BedrockSystemMessage.builder()
+                .addTextWithCachePoint("Cache 1")
+                .addTextWithCachePoint("Cache 2")
+                .addTextWithCachePoint("Cache 3")
+                .build();
+
+        BedrockSystemMessage msg2 = BedrockSystemMessage.builder()
+                .addTextWithCachePoint("Cache 4")
+                .addTextWithCachePoint("Cache 5")
+                .addTextWithCachePoint("Cache 6")
+                .build();
+
+        List<ChatMessage> messages = Arrays.asList(msg1, msg2, UserMessage.from("test"));
+
+        assertThatThrownBy(() -> extractor.testValidateTotalCachePoints(messages, null, false))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("exceeds AWS Bedrock limit of 4");
+    }
+
+    @Test
+    void should_count_placement_cache_points_in_validation() {
+        // 3 cache points from BedrockSystemMessage + 1 from AFTER_USER_MESSAGE = 4 (at limit)
+        BedrockSystemMessage msg = BedrockSystemMessage.builder()
+                .addTextWithCachePoint("Cache 1")
+                .addTextWithCachePoint("Cache 2")
+                .addTextWithCachePoint("Cache 3")
+                .build();
+
+        List<ChatMessage> messages = Arrays.asList(msg, UserMessage.from("test"));
+
+        // Should not throw - exactly at limit
+        extractor.testValidateTotalCachePoints(messages, BedrockCachePointPlacement.AFTER_USER_MESSAGE, false);
+
+        // Add one more from BedrockSystemMessage - should exceed limit
+        BedrockSystemMessage msgExceeding = BedrockSystemMessage.builder()
+                .addTextWithCachePoint("Cache 1")
+                .addTextWithCachePoint("Cache 2")
+                .addTextWithCachePoint("Cache 3")
+                .addTextWithCachePoint("Cache 4")
+                .build();
+
+        List<ChatMessage> messagesExceeding = Arrays.asList(msgExceeding, UserMessage.from("test"));
+
+        assertThatThrownBy(() -> extractor.testValidateTotalCachePoints(
+                        messagesExceeding, BedrockCachePointPlacement.AFTER_USER_MESSAGE, false))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("exceeds AWS Bedrock limit of 4");
     }
 }

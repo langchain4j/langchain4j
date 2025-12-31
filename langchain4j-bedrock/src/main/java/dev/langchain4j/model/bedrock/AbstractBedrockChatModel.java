@@ -53,6 +53,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.core.document.Document;
 import software.amazon.awssdk.regions.Region;
@@ -85,8 +86,15 @@ import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlock;
 @Internal
 abstract class AbstractBedrockChatModel {
 
+    private static final Logger log = LoggerFactory.getLogger(AbstractBedrockChatModel.class);
+
     private static final String THINKING_SIGNATURE_KEY =
             "thinking_signature"; // do not change, will break backward compatibility!
+
+    /**
+     * Maximum cache points allowed by AWS Bedrock per request.
+     */
+    private static final int MAX_CACHE_POINTS_PER_REQUEST = 4;
 
     /**
      * Reusable cache point block - AWS SDK model objects are immutable.
@@ -173,9 +181,8 @@ abstract class AbstractBedrockChatModel {
                         }
                     } else {
                         // Fail fast for unknown content types to prevent silent data loss
-                        throw new UnsupportedFeatureException(
-                                "Unsupported BedrockSystemContent type: " + content.type()
-                                        + ". Only TEXT content is currently supported.");
+                        throw new UnsupportedFeatureException("Unsupported BedrockSystemContent type: " + content.type()
+                                + ". Only TEXT content is currently supported.");
                     }
                 }
                 lastWasCoreSystemMessage = false;
@@ -192,10 +199,15 @@ abstract class AbstractBedrockChatModel {
         // 1. It's enabled
         // 2. There are system blocks
         // 3. The LAST system message was a core SystemMessage (not BedrockSystemMessage)
-        if (cachePointPlacement == BedrockCachePointPlacement.AFTER_SYSTEM
-                && !systemBlocks.isEmpty()
-                && lastWasCoreSystemMessage) {
-            systemBlocks.add(CACHE_POINT_BLOCK);
+        if (cachePointPlacement == BedrockCachePointPlacement.AFTER_SYSTEM && !systemBlocks.isEmpty()) {
+            if (lastWasCoreSystemMessage) {
+                systemBlocks.add(CACHE_POINT_BLOCK);
+            } else {
+                log.warn("BedrockCachePointPlacement.AFTER_SYSTEM is configured but ignored because "
+                        + "the last system message is a BedrockSystemMessage with granular cache points. "
+                        + "Use granular cache points within BedrockSystemMessage or ensure the last "
+                        + "system message is a core SystemMessage.");
+            }
         }
 
         return systemBlocks;
@@ -433,6 +445,80 @@ abstract class AbstractBedrockChatModel {
         }
 
         return toolConfigurationBuilder.build();
+    }
+
+    /**
+     * Validates that the total number of cache points across all sources does not exceed
+     * the AWS Bedrock limit of 4 per request.
+     *
+     * @param messages the chat messages
+     * @param cachePointPlacement the cache point placement strategy (may be null)
+     * @param hasTools whether tools are configured
+     * @throws IllegalArgumentException if total cache points exceed 4
+     */
+    protected void validateTotalCachePoints(
+            List<ChatMessage> messages, BedrockCachePointPlacement cachePointPlacement, boolean hasTools) {
+        int totalCachePoints = countTotalCachePoints(messages, cachePointPlacement, hasTools);
+
+        if (totalCachePoints > MAX_CACHE_POINTS_PER_REQUEST) {
+            throw new IllegalArgumentException(
+                    "Total cache points (" + totalCachePoints + ") exceeds AWS Bedrock limit of "
+                            + MAX_CACHE_POINTS_PER_REQUEST + " per request. "
+                            + "Reduce cache points in BedrockSystemMessage or adjust BedrockCachePointPlacement settings.");
+        }
+    }
+
+    /**
+     * Counts total cache points from all sources:
+     * - Granular cache points in BedrockSystemMessage instances
+     * - BedrockCachePointPlacement.AFTER_SYSTEM (if last system message is core SystemMessage)
+     * - BedrockCachePointPlacement.AFTER_USER_MESSAGE
+     * - BedrockCachePointPlacement.AFTER_TOOLS (if tools are present)
+     */
+    private int countTotalCachePoints(
+            List<ChatMessage> messages, BedrockCachePointPlacement cachePointPlacement, boolean hasTools) {
+        if (messages == null) {
+            return 0;
+        }
+
+        int count = 0;
+        boolean hasUserMessage = false;
+        boolean lastSystemIsCoreMessage = false;
+        boolean hasAnySystemMessage = false;
+
+        for (ChatMessage message : messages) {
+            if (message == null) {
+                continue;
+            }
+
+            if (message instanceof BedrockSystemMessage bedrockMsg) {
+                count += (int) bedrockMsg.cachePointCount();
+                lastSystemIsCoreMessage = false;
+                hasAnySystemMessage = true;
+            } else if (message instanceof SystemMessage) {
+                lastSystemIsCoreMessage = true;
+                hasAnySystemMessage = true;
+            } else if (message instanceof UserMessage) {
+                hasUserMessage = true;
+            }
+        }
+
+        // Add placement-based cache points
+        if (cachePointPlacement != null) {
+            if (cachePointPlacement == BedrockCachePointPlacement.AFTER_SYSTEM
+                    && hasAnySystemMessage
+                    && lastSystemIsCoreMessage) {
+                count++;
+            }
+            if (cachePointPlacement == BedrockCachePointPlacement.AFTER_USER_MESSAGE && hasUserMessage) {
+                count++;
+            }
+            if (cachePointPlacement == BedrockCachePointPlacement.AFTER_TOOLS && hasTools) {
+                count++;
+            }
+        }
+
+        return count;
     }
 
     protected AiMessage aiMessageFrom(ConverseResponse converseResponse) {
