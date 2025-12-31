@@ -141,12 +141,14 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    // Responses API does not support stopSequences parameter
-    protected void should_respect_stopSequences_in_chat_request(StreamingChatModel model) {}
+    protected void should_respect_stopSequences_in_chat_request(StreamingChatModel model) {
+        // Responses API does not support stopSequences parameter
+    }
 
-    // Responses API does not support stopSequences parameter
     @Override
-    protected void should_respect_stopSequences_in_default_model_parameters() {}
+    protected void should_respect_stopSequences_in_default_model_parameters() {
+        // Responses API does not support stopSequences parameter
+    }
 
     @Override
     protected void should_respect_maxOutputTokens_in_chat_request(StreamingChatModel model) {
