@@ -7,6 +7,8 @@ import java.io.InputStream;
 import java.util.Objects;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.error.YAMLException;
+import org.yaml.snakeyaml.constructor.DuplicateKeyException;
 
 /**
  * Parses YAML file into a {@link Document}.
@@ -16,17 +18,25 @@ public class YamlDocumentParser implements DocumentParser {
 
     @Override
     public Document parse(final InputStream inputStream) {
-        LoaderOptions loaderOptions = new LoaderOptions();
-        loaderOptions.setAllowDuplicateKeys(false);
+        try {
+            LoaderOptions loaderOptions = new LoaderOptions();
+            loaderOptions.setAllowDuplicateKeys(false);
 
-        Yaml yaml = new Yaml(loaderOptions);
-        Object obj = yaml.load(inputStream);
+            Yaml yaml = new Yaml(loaderOptions);
+            Object obj = yaml.load(inputStream);
 
-        if (obj == null) {
-            throw new BlankDocumentException();
+            if (obj == null) {
+                throw new BlankDocumentException();
+            }
+
+            String text = Objects.toString(obj);
+            return Document.from(text);
+        } catch (BlankDocumentException e) {
+            throw e;
+        } catch (DuplicateKeyException e) {
+            throw e;
+        } catch (YAMLException e) {
+            throw new RuntimeException(e);
         }
-
-        String text = Objects.toString(obj);
-        return Document.from(text);
     }
 }
