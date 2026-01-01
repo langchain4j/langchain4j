@@ -13,6 +13,12 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
 
+/**
+ * WARNING: When using this transport with {@code System.out}, ensure that your application logger
+ * (e.g., SLF4J, Logback) is configured to write to {@code System.err} instead of {@code System.out}.
+ * Any extraneous output to stdout will corrupt the JSON-RPC protocol stream and cause the client
+ * to disconnect.
+ */
 public class StdioMcpServerTransport implements Closeable {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -31,6 +37,12 @@ public class StdioMcpServerTransport implements Closeable {
         this.ioThread.start();
     }
 
+    /**
+     * WARNING: When using this transport with {@code System.out}, ensure that your application logger
+     * (e.g., SLF4J, Logback) is configured to write to {@code System.err} instead of {@code System.out}.
+     * Any extraneous output to stdout will corrupt the JSON-RPC protocol stream and cause the client
+     * to disconnect.
+     */
     @SuppressWarnings("java:S106")
     public StdioMcpServerTransport(McpServer server) {
         this(System.in, System.out, server);
