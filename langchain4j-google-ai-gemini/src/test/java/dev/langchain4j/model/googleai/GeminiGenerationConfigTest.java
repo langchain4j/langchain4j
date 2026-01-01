@@ -41,5 +41,24 @@ class GeminiGenerationConfigTest {
 
             assertThatCharSequence(Json.toJson(result)).contains("\"mediaResolution\" : \"MEDIA_RESOLUTION_LOW\"");
         }
+
+        @Test
+        void settingMediaResolutionMediumProducesCorrectJson() {
+            GeminiGenerationConfig result = GeminiGenerationConfig.builder()
+                    .mediaResolution(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_MEDIUM)
+                    .build();
+
+            assertThatCharSequence(Json.toJson(result)).contains("\"mediaResolution\" : \"MEDIA_RESOLUTION_MEDIUM\"");
+        }
+
+        @Test
+        void settingMediaResolutionUltraHighProducesCorrectJson() {
+            GeminiGenerationConfig result = GeminiGenerationConfig.builder()
+                    .mediaResolution(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_ULTRA_HIGH)
+                    .build();
+
+            assertThatCharSequence(Json.toJson(result))
+                    .contains("\"mediaResolution\" : \"MEDIA_RESOLUTION_ULTRA_HIGH\"");
+        }
     }
 }
