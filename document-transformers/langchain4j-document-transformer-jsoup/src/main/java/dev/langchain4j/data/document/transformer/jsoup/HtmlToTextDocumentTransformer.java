@@ -68,24 +68,28 @@ public class HtmlToTextDocumentTransformer implements DocumentTransformer {
 
     @Override
     public Document transform(Document document) {
-        String html = document.text();
-        String url = document.metadata().getString(URL);
-        org.jsoup.nodes.Document jsoupDocument = Jsoup.parse(html, getOrDefault(url, ""));
+        try {
+            String html = document.text();
+            String url = document.metadata().getString(URL);
+            org.jsoup.nodes.Document jsoupDocument = Jsoup.parse(html, getOrDefault(url, ""));
 
-        String text;
-        if (cssSelector != null) {
-            text = extractText(jsoupDocument, cssSelector, includeLinks);
-        } else {
-            text = extractText(jsoupDocument, includeLinks);
+            String text;
+            if (cssSelector != null) {
+                text = extractText(jsoupDocument, cssSelector, includeLinks);
+            } else {
+                text = extractText(jsoupDocument, includeLinks);
+            }
+
+            Metadata metadata = document.metadata().copy();
+            if (metadataCssSelectors != null) {
+                metadataCssSelectors.forEach((metadataKey, cssSelector) ->
+                        metadata.put(metadataKey, jsoupDocument.select(cssSelector).text()));
+            }
+
+            return Document.from(text, metadata);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
-
-        Metadata metadata = document.metadata().copy();
-        if (metadataCssSelectors != null) {
-            metadataCssSelectors.forEach((metadataKey, cssSelector) ->
-                    metadata.put(metadataKey, jsoupDocument.select(cssSelector).text()));
-        }
-
-        return Document.from(text, metadata);
     }
 
     private static String extractText(org.jsoup.nodes.Document jsoupDocument, String cssSelector, boolean includeLinks) {
