@@ -238,7 +238,6 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                 builder.rrfK);
     }
 
-
     public PgVectorEmbeddingStore() {
         this.datasource = null;
         this.table = null;
