@@ -108,10 +108,11 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param createTable           Should create table automatically
      * @param dropTableFirst        Should drop table first, usually for testing
      * @param metadataStorageConfig The {@link MetadataStorageConfig} config.
-     * @param searchMode            The search mode to use
-     * @param textSearchConfig      PostgreSQL text search configuration to use for full-text search
+     * @param searchMode            The search mode to use (null for default)
+     * @param textSearchConfig      PostgreSQL text search configuration (null for default)
+     * @param rrfK                  RRF k parameter (null for default)
      */
-    protected PgVectorEmbeddingStore(
+    private PgVectorEmbeddingStore(
             DataSource datasource,
             String table,
             Integer dimension,
@@ -141,6 +142,41 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     /**
      * Constructor for PgVectorEmbeddingStore Class
+     *
+     * @param datasource            The datasource to use
+     * @param table                 The database table
+     * @param dimension             The vector dimension
+     * @param useIndex              Should use <a href="https://github.com/pgvector/pgvector#ivfflat">IVFFlat</a> index
+     * @param indexListSize         The IVFFlat number of lists
+     * @param createTable           Should create table automatically
+     * @param dropTableFirst        Should drop table first, usually for testing
+     * @param metadataStorageConfig The {@link MetadataStorageConfig} config.
+     */
+    protected PgVectorEmbeddingStore(
+            DataSource datasource,
+            String table,
+            Integer dimension,
+            Boolean useIndex,
+            Integer indexListSize,
+            Boolean createTable,
+            Boolean dropTableFirst,
+            MetadataStorageConfig metadataStorageConfig) {
+        this(
+                datasource,
+                table,
+                dimension,
+                useIndex,
+                indexListSize,
+                createTable,
+                dropTableFirst,
+                metadataStorageConfig,
+                null,
+                null,
+                null);
+    }
+
+    /**
+     * Constructor for PgVectorEmbeddingStore Class
      * Use this builder when you don't have datasource management.
      *
      * @param host                  The database host
@@ -155,8 +191,6 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param createTable           Should create table automatically
      * @param dropTableFirst        Should drop table first, usually for testing
      * @param metadataStorageConfig The {@link MetadataStorageConfig} config.
-     * @param searchMode            The search mode to use
-     * @param textSearchConfig      PostgreSQL text search configuration to use for full-text search
      */
     @SuppressWarnings("unused")
     protected PgVectorEmbeddingStore(
@@ -171,10 +205,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             Integer indexListSize,
             Boolean createTable,
             Boolean dropTableFirst,
-            MetadataStorageConfig metadataStorageConfig,
-            SearchMode searchMode,
-            String textSearchConfig,
-            Integer rrfK) {
+            MetadataStorageConfig metadataStorageConfig) {
         this(
                 createDataSource(host, port, user, password, database),
                 table,
@@ -183,11 +214,30 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                 indexListSize,
                 createTable,
                 dropTableFirst,
-                metadataStorageConfig,
-                searchMode,
-                textSearchConfig,
-                rrfK);
+                metadataStorageConfig);
     }
+
+    /**
+     * New constructor that takes the builder itself.
+     * This is the entry point for enhanced configuration (searchMode, textSearchConfig, rrfK).
+     *
+     * @param builder The builder containing all configuration
+     */
+    protected PgVectorEmbeddingStore(PgVectorEmbeddingStoreBuilder builder) {
+        this(
+                createDataSource(builder.host, builder.port, builder.user, builder.password, builder.database),
+                builder.table,
+                builder.dimension,
+                builder.useIndex,
+                builder.indexListSize,
+                builder.createTable,
+                builder.dropTableFirst,
+                builder.metadataStorageConfig,
+                builder.searchMode,
+                builder.textSearchConfig,
+                builder.rrfK);
+    }
+
 
     public PgVectorEmbeddingStore() {
         this.datasource = null;
@@ -809,22 +859,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         public PgVectorEmbeddingStore build() {
-            return new PgVectorEmbeddingStore(
-                    this.host,
-                    this.port,
-                    this.user,
-                    this.password,
-                    this.database,
-                    this.table,
-                    this.dimension,
-                    this.useIndex,
-                    this.indexListSize,
-                    this.createTable,
-                    this.dropTableFirst,
-                    this.metadataStorageConfig,
-                    this.searchMode,
-                    this.textSearchConfig,
-                    this.rrfK);
+            return new PgVectorEmbeddingStore(this);
         }
 
         public String toString() {
