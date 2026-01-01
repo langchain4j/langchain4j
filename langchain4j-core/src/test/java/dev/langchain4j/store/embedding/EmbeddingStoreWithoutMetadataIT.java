@@ -37,7 +37,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
 
     @Test
     void should_add_embedding() {
-        
+
         // given
         Embedding embedding = embeddingModel().embed("hello").content();
         String id = embeddingStore().add(embedding);
@@ -45,6 +45,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
 
         EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
                 .queryEmbedding(embedding)
+                .query("hello")
                 .maxResults(10)
                 .build();
 
@@ -53,7 +54,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
 
         // then
         assertThat(id).isNotBlank();
-        
+
         assertThat(searchResult.matches()).hasSize(1);
         EmbeddingMatch<TextSegment> match = searchResult.matches().get(0);
         assertThat(match.score()).isCloseTo(1, percentage());
@@ -66,7 +67,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
 
     @Test
     void should_add_embedding_with_id() {
-        
+
         // given
         String id = randomUUID();
         Embedding embedding = embeddingModel().embed("hello").content();
@@ -75,9 +76,10 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
 
         EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
                 .queryEmbedding(embedding)
+                .query("hello")
                 .maxResults(10)
                 .build();
-        
+
         // when
         EmbeddingSearchResult<TextSegment> searchResult = embeddingStore().search(searchRequest);
 
@@ -102,6 +104,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
 
         EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
                 .queryEmbedding(embedding)
+                .query("hello")
                 .maxResults(10)
                 .build();
 
@@ -130,6 +133,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
 
         EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
                 .queryEmbedding(firstEmbedding)
+                .query("hello")
                 .maxResults(10)
                 .build();
 
@@ -179,6 +183,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
 
         EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
                 .queryEmbedding(firstEmbedding)
+                .query("hello")
                 .maxResults(10)
                 .build();
 
@@ -232,6 +237,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
 
         EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
                 .queryEmbedding(firstEmbedding)
+                .query("hello")
                 .maxResults(10)
                 .build();
 
@@ -281,6 +287,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
 
         EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
                 .queryEmbedding(firstEmbedding)
+                .query("hello")
                 .maxResults(10)
                 .build();
 
@@ -302,10 +309,10 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
                         percentage());
         assertThat(secondMatch.embeddingId()).isEqualTo(secondId);
 
-
         // given
         EmbeddingSearchRequest searchRequest2 = EmbeddingSearchRequest.builder()
                 .queryEmbedding(firstEmbedding)
+                .query("hello")
                 .maxResults(10)
                 .minScore(secondMatch.score() - 0.01)
                 .build();
@@ -319,10 +326,10 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(matches2.get(0).embeddingId()).isEqualTo(firstId);
         assertThat(matches2.get(1).embeddingId()).isEqualTo(secondId);
 
-
         // given
         EmbeddingSearchRequest searchRequest3 = EmbeddingSearchRequest.builder()
                 .queryEmbedding(firstEmbedding)
+                .query("hello")
                 .maxResults(10)
                 .minScore(secondMatch.score())
                 .build();
@@ -336,10 +343,10 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(matches3.get(0).embeddingId()).isEqualTo(firstId);
         assertThat(matches3.get(1).embeddingId()).isEqualTo(secondId);
 
-
         // given
         EmbeddingSearchRequest searchRequest4 = EmbeddingSearchRequest.builder()
                 .queryEmbedding(firstEmbedding)
+                .query("hello")
                 .maxResults(10)
                 .minScore(secondMatch.score() + 0.01)
                 .build();
@@ -364,6 +371,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
 
         EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
                 .queryEmbedding(referenceEmbedding)
+                .query("hi")
                 .maxResults(1)
                 .build();
 
@@ -384,6 +392,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
     protected List<EmbeddingMatch<TextSegment>> getAllEmbeddings() {
         EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
                 .queryEmbedding(embeddingModel().embed("test").content())
+                .query("test")
                 .maxResults(1000)
                 .build();
 

@@ -61,6 +61,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
 
         EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
                 .queryEmbedding(embeddingModel().embed("matching").content())
+                .query("matching")
                 .filter(metadataFilter)
                 .maxResults(100)
                 .build();
@@ -1153,6 +1154,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
 
         EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
                 .queryEmbedding(embeddingModel().embed("matching").content())
+                .query("matching")
                 .filter(metadataFilter)
                 .maxResults(100)
                 .build();
@@ -1470,6 +1472,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
         Filter metadataFilter = metadataKey("key").containsString("value");
         EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
                 .queryEmbedding(embeddingModel().embed("matching").content())
+                .query("matching")
                 .filter(metadataFilter)
                 .maxResults(100)
                 .build();
