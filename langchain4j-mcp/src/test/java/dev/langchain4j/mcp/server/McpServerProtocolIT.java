@@ -89,6 +89,12 @@ class McpServerProtocolIT {
             JsonNode result = response.get("result");
             assertThat(result.get("protocolVersion").asText()).isEqualTo("2025-06-18");
             assertThat(result.get("capabilities").get("tools").asBoolean()).isTrue();
+
+            JsonNode serverInfo = result.get("serverInfo");
+            if (serverInfo != null && !serverInfo.isNull()) {
+                assertThat(serverInfo.get("name").asText()).isEqualTo("LangChain4j");
+                assertThat(serverInfo.get("version").asText()).isNotBlank();
+            }
         }
     }
 
