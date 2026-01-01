@@ -12,8 +12,7 @@ class GeminiGenerationConfigTest {
 
         @Test
         void settingSeedProducesConfigWithSeed() {
-            GeminiGenerationConfig result =
-                    GeminiGenerationConfig.builder().seed(42).build();
+            GeminiGenerationConfig result = GeminiGenerationConfig.builder().seed(42).build();
 
             assertThatCharSequence(Json.toJson(result)).contains("\"seed\" : 42");
         }
@@ -23,6 +22,24 @@ class GeminiGenerationConfigTest {
             GeminiGenerationConfig result = GeminiGenerationConfig.builder().build();
 
             assertThatCharSequence(Json.toJson(result)).doesNotContain("\"seed\"");
+        }
+
+        @Test
+        void settingMediaResolutionProducesConfigWithMediaResolution() {
+            GeminiGenerationConfig result = GeminiGenerationConfig.builder()
+                    .mediaResolution(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_HIGH)
+                    .build();
+
+            assertThatCharSequence(Json.toJson(result)).contains("\"mediaResolution\" : \"MEDIA_RESOLUTION_HIGH\"");
+        }
+
+        @Test
+        void settingMediaResolutionLowProducesCorrectJson() {
+            GeminiGenerationConfig result = GeminiGenerationConfig.builder()
+                    .mediaResolution(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_LOW)
+                    .build();
+
+            assertThatCharSequence(Json.toJson(result)).contains("\"mediaResolution\" : \"MEDIA_RESOLUTION_LOW\"");
         }
     }
 }
