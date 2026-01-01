@@ -343,7 +343,7 @@ final class PartsAndContentsMapper {
 
     /**
      * Parses a data URI and returns a GeminiBlob with the extracted MIME type and base64 data.
-     * 
+     *
      * @param uri the data URI to parse (e.g., "data:image/png;base64,iVBORw0KG...")
      * @return a GeminiBlob containing the MIME type and base64 data
      * @throws IllegalArgumentException if the URI is not a valid data URI
@@ -387,11 +387,12 @@ final class PartsAndContentsMapper {
         if (imageDetailLevel == null) {
             return null;
         }
-        var resolutionLevel = switch (imageDetailLevel) {
-            case LOW -> MEDIA_RESOLUTION_LOW;
-            case HIGH -> MEDIA_RESOLUTION_HIGH;
-            case AUTO -> MEDIA_RESOLUTION_UNSPECIFIED;
-        };
+        var resolutionLevel =
+                switch (imageDetailLevel) {
+                    case LOW -> MEDIA_RESOLUTION_LOW;
+                    case HIGH -> MEDIA_RESOLUTION_HIGH;
+                    case AUTO -> MEDIA_RESOLUTION_UNSPECIFIED;
+                };
         return new GeminiMediaResolution(resolutionLevel);
     }
 }
