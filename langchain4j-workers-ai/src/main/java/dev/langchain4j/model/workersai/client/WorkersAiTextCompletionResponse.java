@@ -7,13 +7,13 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * Wrapper for the text completion response.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class WorkersAiTextCompletionResponse extends ApiResponse<dev.langchain4j.model.workersai.client.WorkersAiTextCompletionResponse.TextResponse> {
+public class WorkersAiTextCompletionResponse
+        extends ApiResponse<dev.langchain4j.model.workersai.client.WorkersAiTextCompletionResponse.TextResponse> {
 
     /**
      * Default constructor.
      */
-    public WorkersAiTextCompletionResponse() {
-    }
+    public WorkersAiTextCompletionResponse() {}
 
     /**
      * Wrapper for the text completion response.
@@ -43,8 +43,7 @@ public class WorkersAiTextCompletionResponse extends ApiResponse<dev.langchain4j
         /**
          * Default constructor.
          */
-        public TextResponse() {
-        }
+        public TextResponse() {}
 
         public String getResponse() {
             return this.response;
@@ -86,7 +85,8 @@ public class WorkersAiTextCompletionResponse extends ApiResponse<dev.langchain4j
 
             final Object this$finishReason = this.getFinishReason();
             final Object other$finishReason = other.getFinishReason();
-            if (this$finishReason == null ? other$finishReason != null : !this$finishReason.equals(other$finishReason)) return false;
+            if (this$finishReason == null ? other$finishReason != null : !this$finishReason.equals(other$finishReason))
+                return false;
 
             return true;
         }
@@ -112,9 +112,9 @@ public class WorkersAiTextCompletionResponse extends ApiResponse<dev.langchain4j
         }
 
         public String toString() {
-            return "WorkersAiTextCompletionResponse.TextResponse(response=" + this.getResponse() +
-                    ", usage=" + this.getUsage() +
-                    ", finishReason=" + this.getFinishReason() + ")";
+            return "WorkersAiTextCompletionResponse.TextResponse(response=" + this.getResponse() + ", usage="
+                    + this.getUsage() + ", finishReason="
+                    + this.getFinishReason() + ")";
         }
     }
     /**
@@ -132,8 +132,7 @@ public class WorkersAiTextCompletionResponse extends ApiResponse<dev.langchain4j
         @JsonProperty("total_tokens")
         private Integer totalTokens;
 
-        public Usage() {
-        }
+        public Usage() {}
 
         public Integer getPromptTokens() {
             return this.promptTokens;
@@ -167,15 +166,19 @@ public class WorkersAiTextCompletionResponse extends ApiResponse<dev.langchain4j
 
             final Object this$promptTokens = this.getPromptTokens();
             final Object other$promptTokens = other.getPromptTokens();
-            if (this$promptTokens == null ? other$promptTokens != null : !this$promptTokens.equals(other$promptTokens)) return false;
+            if (this$promptTokens == null ? other$promptTokens != null : !this$promptTokens.equals(other$promptTokens))
+                return false;
 
             final Object this$completionTokens = this.getCompletionTokens();
             final Object other$completionTokens = other.getCompletionTokens();
-            if (this$completionTokens == null ? other$completionTokens != null : !this$completionTokens.equals(other$completionTokens)) return false;
+            if (this$completionTokens == null
+                    ? other$completionTokens != null
+                    : !this$completionTokens.equals(other$completionTokens)) return false;
 
             final Object this$totalTokens = this.getTotalTokens();
             final Object other$totalTokens = other.getTotalTokens();
-            if (this$totalTokens == null ? other$totalTokens != null : !this$totalTokens.equals(other$totalTokens)) return false;
+            if (this$totalTokens == null ? other$totalTokens != null : !this$totalTokens.equals(other$totalTokens))
+                return false;
 
             return true;
         }
@@ -201,9 +204,10 @@ public class WorkersAiTextCompletionResponse extends ApiResponse<dev.langchain4j
         }
 
         public String toString() {
-            return "WorkersAiTextCompletionResponse.Usage(promptTokens=" + this.getPromptTokens() +
-                    ", completionTokens=" + this.getCompletionTokens() +
-                    ", totalTokens=" + this.getTotalTokens() + ")";
+            return "WorkersAiTextCompletionResponse.Usage(promptTokens=" + this.getPromptTokens()
+                    + ", completionTokens="
+                    + this.getCompletionTokens() + ", totalTokens="
+                    + this.getTotalTokens() + ")";
         }
     }
 }
