@@ -731,7 +731,8 @@ Use absolute paths in the configuration. If you are on Windows, remember to esca
 
 ### Verification
 
-Once configured, restart Claude Desktop. You should see a green connection icon in the settings.
+Once configured, restart Claude Desktop. In `Settings -> Developer -> Local MCP servers`,
+your server should show as `running`.
 
 If you followed the Quick Start (Calculator), ask:
 
