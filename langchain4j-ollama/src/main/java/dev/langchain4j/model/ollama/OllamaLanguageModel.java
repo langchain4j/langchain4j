@@ -100,7 +100,6 @@ public class OllamaLanguageModel implements LanguageModel {
 
         public OllamaLanguageModelBuilder() {
             // This is public so it can be extended
-            // By default with Lombok it becomes package private
         }
 
         /**

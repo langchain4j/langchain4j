@@ -13,7 +13,6 @@ Thank you for investing your time and effort in contributing to our project, we 
 - Make sure you run all unit tests on all modules with `mvn clean test`
 - Avoid making breaking changes. Always keep backward compatibility in mind. For example, instead of removing fields/methods/etc, mark them `@Deprecated` and make sure they still work as before.
 - Follow existing naming conventions.
-- Avoid using Lombok in the new code, and remove it from the old code if you get a chance.
 - Add Javadoc where necessary. There's no need to duplicate Javadoc from the implemented interfaces.
 - Follow existing code style present in the project. Run `make lint` and `make format` before commit.
 - Large features should be discussed with maintainers before implementation. Please ping @langchain4j in the comments on the issue.
