@@ -85,7 +85,7 @@ public class AiServiceTokenStream implements TokenStream {
         this.toolArgumentsErrorHandler = parameters.toolArgumentsErrorHandler();
         this.toolExecutionErrorHandler = parameters.toolExecutionErrorHandler();
         this.toolExecutor = parameters.toolExecutor();
-        this.retrievedContents = copy(parameters.gretrievedContents());
+        this.retrievedContents = copy(parameters.retrievedContents());
         this.context = ensureNotNull(parameters.context(), "context");
         ensureNotNull(this.context.streamingChatModel, "streamingChatModel");
         this.invocationContext = parameters.invocationContext();
