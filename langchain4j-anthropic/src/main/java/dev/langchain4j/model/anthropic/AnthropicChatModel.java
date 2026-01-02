@@ -260,7 +260,7 @@ public class AnthropicChatModel implements ChatModel {
         }
 
         public AnthropicChatModelBuilder toolChoiceName(String toolChoiceName) {
-            this.toolChoiceName = this.toolChoiceName;
+            this.toolChoiceName = toolChoiceName;
             return this;
         }
 
