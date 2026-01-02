@@ -1,6 +1,7 @@
 package dev.langchain4j.service.output;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.json.Polymorphic;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.LocalDate;
@@ -56,7 +57,7 @@ class DefaultOutputParserFactory implements OutputParserFactory {
             return new EnumOutputParser<>(rawClass.asSubclass(Enum.class));
         }
 
-        if (rawClass.isSealed()) {
+        if (rawClass.isSealed() && rawClass.isAnnotationPresent(Polymorphic.class)) {
             return new SealedOutputParser<>(rawClass);
         }
 
