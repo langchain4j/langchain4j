@@ -3,7 +3,7 @@ Thank you for investing your time and effort in contributing to our project, we 
 # General guidelines
 
 - For new integrations, please consider adding it in [community repo](https://github.com/langchain4j/langchain4j-community) first.
-- If you want to contribute a bug fix or a new feature that isn't listed in the [issues](https://github.com/langchain4j/langchain4j/issues) yet, please open a new issue for it. We will prioritize is shortly.
+- If you want to contribute a bug fix or a new feature that isn't listed in the [issues](https://github.com/langchain4j/langchain4j/issues) yet, please open a new issue for it. We will triage is shortly.
 - Follow [Google's Best Practices for Java Libraries](https://jlbp.dev/)
 - Keep the code compatible with Java 17.
 - When integrating third-party services, use the official SDK whenever possible. If no official SDK is available, implement the client using `langchain4j-http-client` and Jackson.
@@ -15,15 +15,7 @@ Thank you for investing your time and effort in contributing to our project, we 
 - Follow existing naming conventions.
 - Add Javadoc where necessary. There's no need to duplicate Javadoc from the implemented interfaces.
 - Follow existing code style present in the project. Run `make lint` and `make format` before commit.
-- Large features should be discussed with maintainers before implementation. Please ping @langchain4j in the comments on the issue.
-
-# Priorities
-
-All [issues](https://github.com/langchain4j/langchain4j/issues) are prioritized by maintainers. There are 4 priorities: [P1](https://github.com/langchain4j/langchain4j/issues?q=is%3Aissue+is%3Aopen+label%3AP1), [P2](https://github.com/langchain4j/langchain4j/issues?q=is%3Aissue+is%3Aopen+label%3AP2), [P3](https://github.com/langchain4j/langchain4j/issues?q=is%3Aissue+is%3Aopen+label%3AP3) and [P4](https://github.com/langchain4j/langchain4j/issues?q=is%3Aissue+is%3Aopen+label%3AP4).
-
-Please start with the higher priorities. PRs will be reviewed in order of priority, with bugs being a higher priority than new features.
-
-Please note that we do not have the capacity to review PRs immediately. We ask for your patience. We are doing our best to review your PR as quickly as possible.
+- Large features should be discussed with maintainers before implementation.
 
 # Opening an issue
 
@@ -37,6 +29,8 @@ Please note that we do not have the capacity to review PRs immediately. We ask f
   - Keep changes as small as possible.
   - Do not combine refactoring with changes in a single PR.
   - Avoid reformatting existing code.
+
+Please note that we do not have the capacity to review PRs immediately. We ask for your patience. We are doing our best to review your PR as quickly as possible.
 
 # Finalizing the draft PR
 
