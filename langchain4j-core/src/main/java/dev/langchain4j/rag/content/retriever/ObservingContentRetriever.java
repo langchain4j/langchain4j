@@ -1,5 +1,6 @@
 package dev.langchain4j.rag.content.retriever;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.rag.content.retriever.ContentRetrieverListenerUtils.onError;
 import static dev.langchain4j.rag.content.retriever.ContentRetrieverListenerUtils.onRequest;
 import static dev.langchain4j.rag.content.retriever.ContentRetrieverListenerUtils.onResponse;
@@ -16,8 +17,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 @Internal
 final class ObservingContentRetriever implements ContentRetriever {
@@ -54,5 +53,3 @@ final class ObservingContentRetriever implements ContentRetriever {
         }
     }
 }
-
-

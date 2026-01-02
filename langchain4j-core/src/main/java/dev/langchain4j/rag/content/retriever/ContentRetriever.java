@@ -1,13 +1,12 @@
 package dev.langchain4j.rag.content.retriever;
 
-import dev.langchain4j.rag.content.Content;
-import dev.langchain4j.rag.query.Query;
-import dev.langchain4j.rag.content.retriever.listener.ContentRetrieverListener;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
+import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.rag.content.retriever.listener.ContentRetrieverListener;
+import dev.langchain4j.rag.query.Query;
 import java.util.Collection;
 import java.util.List;
-
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
 /**
  * Retrieves {@link Content}s from an underlying data source using a given {@link Query}.

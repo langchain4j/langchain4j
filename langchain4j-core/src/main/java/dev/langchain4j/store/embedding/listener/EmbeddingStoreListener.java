@@ -34,5 +34,3 @@ public interface EmbeddingStoreListener {
      */
     default void onError(EmbeddingStoreErrorContext<?> errorContext) {}
 }
-
-

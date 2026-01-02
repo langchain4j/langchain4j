@@ -34,5 +34,3 @@ public interface ContentRetrieverListener {
      */
     default void onError(ContentRetrieverErrorContext errorContext) {}
 }
-
-

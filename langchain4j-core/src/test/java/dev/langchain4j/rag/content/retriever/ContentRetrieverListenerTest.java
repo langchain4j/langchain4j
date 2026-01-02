@@ -84,7 +84,8 @@ class ContentRetrieverListenerTest {
         // given
         ContentRetrieverListener failingListener = spy(new FailingListener());
         ContentRetrieverListener successfulListener = spy(new SuccessfulListener());
-        ContentRetriever retriever = new TestContentRetriever().addListeners(List.of(failingListener, successfulListener));
+        ContentRetriever retriever =
+                new TestContentRetriever().addListeners(List.of(failingListener, successfulListener));
 
         // when - then
         assertThatNoException().isThrownBy(() -> retriever.retrieve(Query.from("q")));
@@ -217,5 +218,3 @@ class ContentRetrieverListenerTest {
         verify(listener2).onError(any());
     }
 }
-
-

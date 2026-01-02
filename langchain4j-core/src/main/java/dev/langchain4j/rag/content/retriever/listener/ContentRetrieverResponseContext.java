@@ -1,12 +1,12 @@
 package dev.langchain4j.rag.content.retriever.listener;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
 import java.util.List;
 import java.util.Map;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * The content retriever response context.
@@ -49,5 +49,3 @@ public class ContentRetrieverResponseContext {
         return attributes;
     }
 }
-
-

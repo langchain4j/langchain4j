@@ -1,10 +1,10 @@
 package dev.langchain4j.rag.content.retriever.listener;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
 import java.util.Map;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * The content retriever error context.
@@ -50,5 +50,3 @@ public class ContentRetrieverErrorContext {
         return attributes;
     }
 }
-
-

@@ -1,20 +1,19 @@
 package dev.langchain4j.store.embedding;
 
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static java.util.Collections.singletonList;
+
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.UnsupportedFeatureException;
-import dev.langchain4j.store.embedding.listener.EmbeddingStoreListener;
 import dev.langchain4j.store.embedding.filter.Filter;
-
+import dev.langchain4j.store.embedding.listener.EmbeddingStoreListener;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-
-import static dev.langchain4j.internal.Utils.randomUUID;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static java.util.Collections.singletonList;
 
 /**
  * Represents a store for embeddings, also known as a vector database.

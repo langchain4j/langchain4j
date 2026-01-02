@@ -1,9 +1,9 @@
 package dev.langchain4j.store.embedding.listener;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import java.util.Map;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * The embedding store error context.
@@ -63,5 +63,3 @@ public class EmbeddingStoreErrorContext<Embedded> {
         return attributes;
     }
 }
-
-

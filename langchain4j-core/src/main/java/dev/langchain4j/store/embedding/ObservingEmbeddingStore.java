@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.store.embedding.EmbeddingStoreListenerUtils.onError;
 import static dev.langchain4j.store.embedding.EmbeddingStoreListenerUtils.onRequest;
 import static dev.langchain4j.store.embedding.EmbeddingStoreListenerUtils.onResponse;
@@ -17,8 +18,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 @Internal
 final class ObservingEmbeddingStore<Embedded> implements EmbeddingStore<Embedded> {
@@ -44,32 +43,19 @@ final class ObservingEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     public String add(Embedding embedding) {
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         EmbeddingStoreRequestContext<Embedded> requestContext = new EmbeddingStoreRequestContext<>(
-                EmbeddingStoreOperation.ADD,
-                this,
-                attributes,
-                null,
-                null,
-                embedding,
-                null,
-                null,
-                null,
-                null,
-                null);
+                EmbeddingStoreOperation.ADD, this, attributes, null, null, embedding, null, null, null, null, null);
         onRequest(requestContext, listeners);
         try {
             String id = delegate.add(embedding);
             EmbeddingStoreResponseContext<Embedded> responseContext = new EmbeddingStoreResponseContext<>(
-                    EmbeddingStoreOperation.ADD,
-                    this,
-                    attributes,
-                    requestContext,
-                    id,
-                    null,
-                    null);
+                    EmbeddingStoreOperation.ADD, this, attributes, requestContext, id, null, null);
             onResponse(responseContext, listeners);
             return id;
         } catch (Exception error) {
-            onError(new EmbeddingStoreErrorContext<>(error, EmbeddingStoreOperation.ADD, this, attributes, requestContext), listeners);
+            onError(
+                    new EmbeddingStoreErrorContext<>(
+                            error, EmbeddingStoreOperation.ADD, this, attributes, requestContext),
+                    listeners);
             throw error;
         }
     }
@@ -78,31 +64,18 @@ final class ObservingEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     public void add(String id, Embedding embedding) {
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         EmbeddingStoreRequestContext<Embedded> requestContext = new EmbeddingStoreRequestContext<>(
-                EmbeddingStoreOperation.ADD,
-                this,
-                attributes,
-                id,
-                null,
-                embedding,
-                null,
-                null,
-                null,
-                null,
-                null);
+                EmbeddingStoreOperation.ADD, this, attributes, id, null, embedding, null, null, null, null, null);
         onRequest(requestContext, listeners);
         try {
             delegate.add(id, embedding);
             EmbeddingStoreResponseContext<Embedded> responseContext = new EmbeddingStoreResponseContext<>(
-                    EmbeddingStoreOperation.ADD,
-                    this,
-                    attributes,
-                    requestContext,
-                    id,
-                    null,
-                    null);
+                    EmbeddingStoreOperation.ADD, this, attributes, requestContext, id, null, null);
             onResponse(responseContext, listeners);
         } catch (Exception error) {
-            onError(new EmbeddingStoreErrorContext<>(error, EmbeddingStoreOperation.ADD, this, attributes, requestContext), listeners);
+            onError(
+                    new EmbeddingStoreErrorContext<>(
+                            error, EmbeddingStoreOperation.ADD, this, attributes, requestContext),
+                    listeners);
             throw error;
         }
     }
@@ -111,32 +84,19 @@ final class ObservingEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     public String add(Embedding embedding, Embedded embedded) {
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         EmbeddingStoreRequestContext<Embedded> requestContext = new EmbeddingStoreRequestContext<>(
-                EmbeddingStoreOperation.ADD,
-                this,
-                attributes,
-                null,
-                null,
-                embedding,
-                null,
-                embedded,
-                null,
-                null,
-                null);
+                EmbeddingStoreOperation.ADD, this, attributes, null, null, embedding, null, embedded, null, null, null);
         onRequest(requestContext, listeners);
         try {
             String id = delegate.add(embedding, embedded);
             EmbeddingStoreResponseContext<Embedded> responseContext = new EmbeddingStoreResponseContext<>(
-                    EmbeddingStoreOperation.ADD,
-                    this,
-                    attributes,
-                    requestContext,
-                    id,
-                    null,
-                    null);
+                    EmbeddingStoreOperation.ADD, this, attributes, requestContext, id, null, null);
             onResponse(responseContext, listeners);
             return id;
         } catch (Exception error) {
-            onError(new EmbeddingStoreErrorContext<>(error, EmbeddingStoreOperation.ADD, this, attributes, requestContext), listeners);
+            onError(
+                    new EmbeddingStoreErrorContext<>(
+                            error, EmbeddingStoreOperation.ADD, this, attributes, requestContext),
+                    listeners);
             throw error;
         }
     }
@@ -160,17 +120,14 @@ final class ObservingEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         try {
             List<String> ids = delegate.addAll(embeddings);
             EmbeddingStoreResponseContext<Embedded> responseContext = new EmbeddingStoreResponseContext<>(
-                    EmbeddingStoreOperation.ADD_ALL,
-                    this,
-                    attributes,
-                    requestContext,
-                    null,
-                    ids,
-                    null);
+                    EmbeddingStoreOperation.ADD_ALL, this, attributes, requestContext, null, ids, null);
             onResponse(responseContext, listeners);
             return ids;
         } catch (Exception error) {
-            onError(new EmbeddingStoreErrorContext<>(error, EmbeddingStoreOperation.ADD_ALL, this, attributes, requestContext), listeners);
+            onError(
+                    new EmbeddingStoreErrorContext<>(
+                            error, EmbeddingStoreOperation.ADD_ALL, this, attributes, requestContext),
+                    listeners);
             throw error;
         }
     }
@@ -194,17 +151,14 @@ final class ObservingEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         try {
             List<String> ids = delegate.addAll(embeddings, embedded);
             EmbeddingStoreResponseContext<Embedded> responseContext = new EmbeddingStoreResponseContext<>(
-                    EmbeddingStoreOperation.ADD_ALL,
-                    this,
-                    attributes,
-                    requestContext,
-                    null,
-                    ids,
-                    null);
+                    EmbeddingStoreOperation.ADD_ALL, this, attributes, requestContext, null, ids, null);
             onResponse(responseContext, listeners);
             return ids;
         } catch (Exception error) {
-            onError(new EmbeddingStoreErrorContext<>(error, EmbeddingStoreOperation.ADD_ALL, this, attributes, requestContext), listeners);
+            onError(
+                    new EmbeddingStoreErrorContext<>(
+                            error, EmbeddingStoreOperation.ADD_ALL, this, attributes, requestContext),
+                    listeners);
             throw error;
         }
     }
@@ -228,16 +182,13 @@ final class ObservingEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         try {
             delegate.addAll(ids, embeddings, embedded);
             EmbeddingStoreResponseContext<Embedded> responseContext = new EmbeddingStoreResponseContext<>(
-                    EmbeddingStoreOperation.ADD_ALL,
-                    this,
-                    attributes,
-                    requestContext,
-                    null,
-                    ids,
-                    null);
+                    EmbeddingStoreOperation.ADD_ALL, this, attributes, requestContext, null, ids, null);
             onResponse(responseContext, listeners);
         } catch (Exception error) {
-            onError(new EmbeddingStoreErrorContext<>(error, EmbeddingStoreOperation.ADD_ALL, this, attributes, requestContext), listeners);
+            onError(
+                    new EmbeddingStoreErrorContext<>(
+                            error, EmbeddingStoreOperation.ADD_ALL, this, attributes, requestContext),
+                    listeners);
             throw error;
         }
     }
@@ -246,31 +197,18 @@ final class ObservingEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     public void remove(String id) {
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         EmbeddingStoreRequestContext<Embedded> requestContext = new EmbeddingStoreRequestContext<>(
-                EmbeddingStoreOperation.REMOVE,
-                this,
-                attributes,
-                id,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null);
+                EmbeddingStoreOperation.REMOVE, this, attributes, id, null, null, null, null, null, null, null);
         onRequest(requestContext, listeners);
         try {
             delegate.remove(id);
             EmbeddingStoreResponseContext<Embedded> responseContext = new EmbeddingStoreResponseContext<>(
-                    EmbeddingStoreOperation.REMOVE,
-                    this,
-                    attributes,
-                    requestContext,
-                    null,
-                    null,
-                    null);
+                    EmbeddingStoreOperation.REMOVE, this, attributes, requestContext, null, null, null);
             onResponse(responseContext, listeners);
         } catch (Exception error) {
-            onError(new EmbeddingStoreErrorContext<>(error, EmbeddingStoreOperation.REMOVE, this, attributes, requestContext), listeners);
+            onError(
+                    new EmbeddingStoreErrorContext<>(
+                            error, EmbeddingStoreOperation.REMOVE, this, attributes, requestContext),
+                    listeners);
             throw error;
         }
     }
@@ -295,16 +233,13 @@ final class ObservingEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         try {
             delegate.removeAll(ids);
             EmbeddingStoreResponseContext<Embedded> responseContext = new EmbeddingStoreResponseContext<>(
-                    EmbeddingStoreOperation.REMOVE_ALL_IDS,
-                    this,
-                    attributes,
-                    requestContext,
-                    null,
-                    idsAsList,
-                    null);
+                    EmbeddingStoreOperation.REMOVE_ALL_IDS, this, attributes, requestContext, null, idsAsList, null);
             onResponse(responseContext, listeners);
         } catch (Exception error) {
-            onError(new EmbeddingStoreErrorContext<>(error, EmbeddingStoreOperation.REMOVE_ALL_IDS, this, attributes, requestContext), listeners);
+            onError(
+                    new EmbeddingStoreErrorContext<>(
+                            error, EmbeddingStoreOperation.REMOVE_ALL_IDS, this, attributes, requestContext),
+                    listeners);
             throw error;
         }
     }
@@ -328,16 +263,13 @@ final class ObservingEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         try {
             delegate.removeAll(filter);
             EmbeddingStoreResponseContext<Embedded> responseContext = new EmbeddingStoreResponseContext<>(
-                    EmbeddingStoreOperation.REMOVE_ALL_FILTER,
-                    this,
-                    attributes,
-                    requestContext,
-                    null,
-                    null,
-                    null);
+                    EmbeddingStoreOperation.REMOVE_ALL_FILTER, this, attributes, requestContext, null, null, null);
             onResponse(responseContext, listeners);
         } catch (Exception error) {
-            onError(new EmbeddingStoreErrorContext<>(error, EmbeddingStoreOperation.REMOVE_ALL_FILTER, this, attributes, requestContext), listeners);
+            onError(
+                    new EmbeddingStoreErrorContext<>(
+                            error, EmbeddingStoreOperation.REMOVE_ALL_FILTER, this, attributes, requestContext),
+                    listeners);
             throw error;
         }
     }
@@ -346,31 +278,18 @@ final class ObservingEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     public void removeAll() {
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         EmbeddingStoreRequestContext<Embedded> requestContext = new EmbeddingStoreRequestContext<>(
-                EmbeddingStoreOperation.REMOVE_ALL,
-                this,
-                attributes,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null);
+                EmbeddingStoreOperation.REMOVE_ALL, this, attributes, null, null, null, null, null, null, null, null);
         onRequest(requestContext, listeners);
         try {
             delegate.removeAll();
             EmbeddingStoreResponseContext<Embedded> responseContext = new EmbeddingStoreResponseContext<>(
-                    EmbeddingStoreOperation.REMOVE_ALL,
-                    this,
-                    attributes,
-                    requestContext,
-                    null,
-                    null,
-                    null);
+                    EmbeddingStoreOperation.REMOVE_ALL, this, attributes, requestContext, null, null, null);
             onResponse(responseContext, listeners);
         } catch (Exception error) {
-            onError(new EmbeddingStoreErrorContext<>(error, EmbeddingStoreOperation.REMOVE_ALL, this, attributes, requestContext), listeners);
+            onError(
+                    new EmbeddingStoreErrorContext<>(
+                            error, EmbeddingStoreOperation.REMOVE_ALL, this, attributes, requestContext),
+                    listeners);
             throw error;
         }
     }
@@ -379,35 +298,20 @@ final class ObservingEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     public EmbeddingSearchResult<Embedded> search(EmbeddingSearchRequest request) {
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         EmbeddingStoreRequestContext<Embedded> requestContext = new EmbeddingStoreRequestContext<>(
-                EmbeddingStoreOperation.SEARCH,
-                this,
-                attributes,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                request,
-                null);
+                EmbeddingStoreOperation.SEARCH, this, attributes, null, null, null, null, null, null, request, null);
         onRequest(requestContext, listeners);
         try {
             EmbeddingSearchResult<Embedded> result = delegate.search(request);
             EmbeddingStoreResponseContext<Embedded> responseContext = new EmbeddingStoreResponseContext<>(
-                    EmbeddingStoreOperation.SEARCH,
-                    this,
-                    attributes,
-                    requestContext,
-                    null,
-                    null,
-                    result);
+                    EmbeddingStoreOperation.SEARCH, this, attributes, requestContext, null, null, result);
             onResponse(responseContext, listeners);
             return result;
         } catch (Exception error) {
-            onError(new EmbeddingStoreErrorContext<>(error, EmbeddingStoreOperation.SEARCH, this, attributes, requestContext), listeners);
+            onError(
+                    new EmbeddingStoreErrorContext<>(
+                            error, EmbeddingStoreOperation.SEARCH, this, attributes, requestContext),
+                    listeners);
             throw error;
         }
     }
 }
-
-

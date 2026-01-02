@@ -12,5 +12,3 @@ public enum EmbeddingStoreOperation {
     REMOVE_ALL_FILTER,
     REMOVE_ALL
 }
-
-
