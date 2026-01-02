@@ -2,8 +2,12 @@ package dev.langchain4j.rag.content.retriever;
 
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
+import dev.langchain4j.rag.content.retriever.listener.ContentRetrieverListener;
 
+import java.util.Collection;
 import java.util.List;
+
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
 /**
  * Retrieves {@link Content}s from an underlying data source using a given {@link Query}.
@@ -25,6 +29,34 @@ import java.util.List;
  * @see WebSearchContentRetriever
  */
 public interface ContentRetriever {
+
+    /**
+     * Wraps this {@link ContentRetriever} with an observing retriever that dispatches events to the provided listener.
+     *
+     * @param listener The listener to add.
+     * @return An observing {@link ContentRetriever} that will dispatch events to the provided listener.
+     */
+    default ContentRetriever addListener(ContentRetrieverListener listener) {
+        return addListeners(listener == null ? null : List.of(listener));
+    }
+
+    /**
+     * Wraps this {@link ContentRetriever} with an observing retriever that dispatches events to the provided listeners.
+     * <p>
+     * Listeners are called in the order of iteration.
+     *
+     * @param listeners The listeners to add.
+     * @return An observing {@link ContentRetriever} that will dispatch events to the provided listeners.
+     */
+    default ContentRetriever addListeners(Collection<ContentRetrieverListener> listeners) {
+        if (isNullOrEmpty(listeners)) {
+            return this;
+        }
+        if (this instanceof ObservingContentRetriever observingContentRetriever) {
+            return observingContentRetriever.withAdditionalListeners(listeners);
+        }
+        return new ObservingContentRetriever(this, List.copyOf(listeners));
+    }
 
     /**
      * Retrieves relevant {@link Content}s using a given {@link Query}.
