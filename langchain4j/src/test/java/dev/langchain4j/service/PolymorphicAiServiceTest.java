@@ -4,12 +4,9 @@ import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.json.Polymorphic;
 import dev.langchain4j.json.PolymorphicValue;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -32,44 +29,13 @@ class PolymorphicAiServiceTest {
         List<ChatbotResponse> reply(String userMessage);
     }
 
-    class StubJsonModel implements ChatModel {
-
-        private final String json;
-
-        StubJsonModel(String json) {
-            this.json = json;
-        }
-
-        @Override
-        public ChatResponse doChat(ChatRequest chatRequest) {
-            return ChatResponse.builder().aiMessage(aiMessage(json)).build();
-        }
-    }
-
-    class CapturingModel implements ChatModel {
-
-        ChatRequest lastRequest;
-
-        @Override
-        public ChatResponse doChat(ChatRequest chatRequest) {
-            this.lastRequest = chatRequest;
-            return ChatResponse.builder()
-                    .aiMessage(
-                            aiMessage(
-                                    """
-                            { "type": "text", "text": "ok" }
-                            """))
-                    .build();
-        }
-    }
-
     @Test
     void shouldDeserializeTextResponse() {
         String json = """
             { "type": "text", "text": "hello" }
         """;
 
-        ChatModel model = new StubJsonModel(json);
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds(json);
 
         ChatbotService service =
                 AiServices.builder(ChatbotService.class).chatModel(model).build();
@@ -88,7 +54,7 @@ class PolymorphicAiServiceTest {
             { "type": "image", "url": "https://example.com/x.png" }
         """;
 
-        ChatModel model = new StubJsonModel(json);
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds(json);
 
         ChatbotService service =
                 AiServices.builder(ChatbotService.class).chatModel(model).build();
@@ -107,7 +73,7 @@ class PolymorphicAiServiceTest {
             { "type": "unknown", "text": "x" }
         """;
 
-        ChatModel model = new StubJsonModel(json);
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds(json);
 
         ChatbotService service =
                 AiServices.builder(ChatbotService.class).chatModel(model).build();
@@ -119,15 +85,16 @@ class PolymorphicAiServiceTest {
 
     @Test
     void prompt_should_contain_discriminator_instructions() {
-        CapturingModel model = new CapturingModel();
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("""
+                { "type": "text", "text": "ok" }
+                """);
 
         ChatbotService service =
                 AiServices.builder(ChatbotService.class).chatModel(model).build();
 
         service.reply("hello");
 
-        UserMessage userMessage = (UserMessage) model.lastRequest.messages().get(0);
-        String prompt = userMessage.singleText();
+        String prompt = model.userMessageText();
         assertThat(prompt)
                 .contains("discriminator 'type'")
                 .contains("type=text")
