@@ -16,8 +16,7 @@ public class WorkersAiTextCompletionResponse
     public WorkersAiTextCompletionResponse() {}
 
     /**
-     * Wrapper for the text completion response.
-     * Added @JsonIgnoreProperties to prevent crashes on new API fields.
+     * Represents the text portion of the completion response from the Workers AI API.
      */
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class TextResponse {
@@ -111,6 +110,7 @@ public class WorkersAiTextCompletionResponse
             return result;
         }
 
+        @Override
         public String toString() {
             return "WorkersAiTextCompletionResponse.TextResponse(response=" + this.getResponse() + ", usage="
                     + this.getUsage() + ", finishReason="
@@ -158,6 +158,7 @@ public class WorkersAiTextCompletionResponse
             this.totalTokens = totalTokens;
         }
 
+        @Override
         public boolean equals(final Object o) {
             if (o == this) return true;
             if (!(o instanceof Usage)) return false;
@@ -187,6 +188,7 @@ public class WorkersAiTextCompletionResponse
             return other instanceof Usage;
         }
 
+        @Override
         public int hashCode() {
             final int PRIME = 59;
             int result = 1;
