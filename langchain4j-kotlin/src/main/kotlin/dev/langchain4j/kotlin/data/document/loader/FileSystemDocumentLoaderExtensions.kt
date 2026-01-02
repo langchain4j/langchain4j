@@ -1,5 +1,6 @@
 package dev.langchain4j.kotlin.data.document.loader
 
+import dev.langchain4j.data.document.BlankDocumentException
 import dev.langchain4j.data.document.Document
 import dev.langchain4j.data.document.DocumentParser
 import dev.langchain4j.data.document.loader.FileSystemDocumentLoader
@@ -67,12 +68,22 @@ public suspend fun loadDocuments(
         matchedFiles
             .map { file ->
                 async(context) {
-                    documentParser.parseAsync(
-                        FileSystemSource(file),
-                        context
-                    )
+                    try {
+                        documentParser.parseAsync(
+                            FileSystemSource(file),
+                            context
+                        )
+                    } catch (e: BlankDocumentException) {
+                        // blank/empty documents are ignored
+                        null
+                    } catch (e: Exception) {
+                        val message = e.cause?.message ?: e.message
+                        logger.warn("Failed to load '{}': {}", file, message)
+                        null
+                    }
                 }
             }.awaitAll()
+            .filterNotNull()  // Remove failed documents (null)
             .map { document ->
                 val metadata = document.metadata()
                 logger.info(
