@@ -1,4 +1,4 @@
-package dev.langchain4j.mcp.client.protocol;
+package dev.langchain4j.mcp.protocol;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import dev.langchain4j.Internal;
@@ -7,7 +7,7 @@ import java.util.Map;
 import org.jspecify.annotations.NonNull;
 
 @Internal
-public class McpCancellationNotification extends McpClientMessage {
+public class McpCancellationNotification extends McpJsonRpcMessage {
 
     @JsonInclude
     public final McpClientMethod method = McpClientMethod.NOTIFICATION_CANCELLED;

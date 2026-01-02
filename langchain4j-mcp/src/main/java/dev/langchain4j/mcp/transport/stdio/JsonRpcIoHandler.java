@@ -1,46 +1,54 @@
-package dev.langchain4j.mcp.client.transport.stdio;
+package dev.langchain4j.mcp.transport.stdio;
+
+import static dev.langchain4j.internal.Utils.getOrDefault;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import java.io.BufferedReader;
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.PrintStream;
+import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static dev.langchain4j.internal.Utils.getOrDefault;
+public class JsonRpcIoHandler implements Runnable, Closeable {
 
-class ProcessIOHandler implements Runnable, Closeable {
-
-    private final Process process;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private static final Logger log = LoggerFactory.getLogger(ProcessIOHandler.class);
+    private static final Logger log = LoggerFactory.getLogger(JsonRpcIoHandler.class);
     private static final Logger DEFAULT_TRAFFIC_LOG = LoggerFactory.getLogger("MCP");
+
+    private final InputStream input;
+    private final PrintStream out;
     private final boolean logEvents;
     private final Logger trafficLog;
-    private final McpOperationHandler messageHandler;
-    private final PrintStream out;
+    private final Consumer<JsonNode> messageHandler;
     private volatile boolean closed = false;
 
-    public ProcessIOHandler(Process process, McpOperationHandler messageHandler, boolean logEvents) {
-        this(process, messageHandler, logEvents, null);
+    public JsonRpcIoHandler(InputStream input, OutputStream output, Consumer<JsonNode> messageHandler, boolean logEvents) {
+        this(input, output, messageHandler, logEvents, null);
     }
 
-    public ProcessIOHandler(Process process, McpOperationHandler messageHandler, boolean logEvents, Logger logger) {
-        this.process = process;
+    public JsonRpcIoHandler(
+            InputStream input,
+            OutputStream output,
+            Consumer<JsonNode> messageHandler,
+            boolean logEvents,
+            Logger logger) {
+        this.input = input;
         this.logEvents = logEvents;
         this.messageHandler = messageHandler;
-        this.out = new PrintStream(process.getOutputStream(), true);
+        this.out = new PrintStream(output, true);
         this.trafficLog = getOrDefault(logger, DEFAULT_TRAFFIC_LOG);
     }
 
     @Override
     public void run() {
-        try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+        try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(input))) {
             try (BufferedReader reader = bufferedReader) {
                 String line;
                 while ((line = reader.readLine()) != null) {
@@ -48,13 +56,13 @@ class ProcessIOHandler implements Runnable, Closeable {
                         trafficLog.debug("< {}", line);
                     }
                     try {
-                        messageHandler.handle(OBJECT_MAPPER.readTree(line));
-                    } catch(JsonProcessingException e) {
-                        log.warn("Ignoring message received from the server because it is not valid JSON: {}", line);
+                        messageHandler.accept(OBJECT_MAPPER.readTree(line));
+                    } catch (JsonProcessingException e) {
+                        log.warn("Ignoring message received because it is not valid JSON: {}", line);
                     }
                 }
             } catch (IOException e) {
-                // If this handler was closed, it means the MCP server process is shutting down,
+                // If this handler was closed, it means the transport is shutting down,
                 // so an IOException is expected, let's not spook the user.
                 if (!closed) {
                     throw new RuntimeException(e);
@@ -64,12 +72,12 @@ class ProcessIOHandler implements Runnable, Closeable {
             throw new RuntimeException(e);
         } finally {
             try {
-                process.getInputStream().close();
+                input.close();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         }
-        log.debug("ProcessIOHandler has finished reading output from process with PID = {}", process.pid());
+        log.debug("JsonRpcIoHandler has finished reading input stream");
     }
 
     public void submit(String message) throws IOException {
@@ -82,10 +90,6 @@ class ProcessIOHandler implements Runnable, Closeable {
     @Override
     public void close() throws IOException {
         closed = true;
-        try {
-            out.close();
-        } finally {
-            process.getOutputStream().close();
-        }
+        out.close();
     }
 }

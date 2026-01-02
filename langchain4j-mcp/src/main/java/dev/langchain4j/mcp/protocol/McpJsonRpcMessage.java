@@ -1,10 +1,10 @@
-package dev.langchain4j.mcp.client.protocol;
+package dev.langchain4j.mcp.protocol;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import dev.langchain4j.Internal;
 
 @Internal
-public class McpClientMessage {
+public class McpJsonRpcMessage {
 
     @JsonInclude
     public final String jsonrpc = "2.0";
@@ -12,7 +12,7 @@ public class McpClientMessage {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private Long id;
 
-    public McpClientMessage(Long id) {
+    public McpJsonRpcMessage(Long id) {
         this.id = id;
     }
 
