@@ -76,6 +76,11 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
             cachePointPlacement = defaultRequestParameters.cachePointPlacement();
         }
 
+        // Validate total cache points don't exceed AWS limit
+        boolean hasTools = chatRequest.toolSpecifications() != null
+                && !chatRequest.toolSpecifications().isEmpty();
+        validateTotalCachePoints(chatRequest.messages(), cachePointPlacement, hasTools);
+
         return ConverseRequest.builder()
                 .modelId(chatRequest.modelName())
                 .inferenceConfig(inferenceConfigFrom(chatRequest.parameters()))
