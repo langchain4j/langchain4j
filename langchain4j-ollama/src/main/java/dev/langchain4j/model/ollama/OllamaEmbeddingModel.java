@@ -77,7 +77,6 @@ public class OllamaEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         public OllamaEmbeddingModelBuilder() {
             // This is public so it can be extended
-            // By default with Lombok it becomes package private
         }
 
         /**

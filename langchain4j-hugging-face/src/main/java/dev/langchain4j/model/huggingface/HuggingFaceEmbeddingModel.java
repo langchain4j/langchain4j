@@ -105,7 +105,6 @@ public class HuggingFaceEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         public HuggingFaceEmbeddingModelBuilder() {
             // This is public so it can be extended
-            // By default with Lombok it becomes package private
         }
 
         public HuggingFaceEmbeddingModelBuilder baseUrl(String baseUrl) {

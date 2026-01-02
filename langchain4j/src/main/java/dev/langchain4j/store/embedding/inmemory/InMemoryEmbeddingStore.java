@@ -31,9 +31,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.PriorityQueue;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
@@ -117,8 +119,9 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     @Override
     public void removeAll(Collection<String> ids) {
         ensureNotEmpty(ids, "ids");
+        Set<String> idSet = (ids instanceof Set) ? (Set<String>) ids : new HashSet<>(ids);
 
-        entries.removeIf(entry -> ids.contains(entry.id));
+        entries.removeIf(entry -> idSet.contains(entry.id));
     }
 
     @Override
