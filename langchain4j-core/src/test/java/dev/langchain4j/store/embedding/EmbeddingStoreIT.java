@@ -43,7 +43,7 @@ public abstract class EmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
 
         assertThat(searchResult.matches()).hasSize(1);
         EmbeddingMatch<TextSegment> match = searchResult.matches().get(0);
-        assertThat(match.score()).isCloseTo(1, withPercentage(1));
+        assertScore(match, 1);
         assertThat(match.embeddingId()).isEqualTo(id);
         if (assertEmbedding()) {
             assertThat(match.embedding()).isEqualTo(embedding);

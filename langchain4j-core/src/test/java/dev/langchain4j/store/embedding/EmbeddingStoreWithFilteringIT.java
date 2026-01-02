@@ -73,7 +73,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
         // then
         assertThat(matches).hasSameSizeAs(matchingMetadatas);
         matches.forEach(match -> assertThat(match.embedded().text()).isEqualTo("matching"));
-        matches.forEach(match -> assertThat(match.score()).isCloseTo(1, withPercentage(0.01)));
+        matches.forEach(match -> assertScore(match, 1));
     }
 
     protected static Stream<Arguments> should_filter_by_metadata() {
@@ -1166,7 +1166,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
         // then
         assertThat(matches).hasSameSizeAs(matchingMetadatas);
         matches.forEach(match -> assertThat(match.embedded().text()).isEqualTo("matching"));
-        matches.forEach(match -> assertThat(match.score()).isCloseTo(1, withPercentage(0.01)));
+        matches.forEach(match -> assertScore(match, 1));
     }
 
     protected static Stream<Arguments> should_filter_by_metadata_not() {
