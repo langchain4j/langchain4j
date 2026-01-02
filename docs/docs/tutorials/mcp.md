@@ -540,3 +540,162 @@ Then, to search for MCP servers, use the `registry.listServers(McpServerListRequ
 object can be built using the `McpServerListRequest.Builder` class. The Java API in LangChain4j
 closely mirrors the REST API of MCP registries as described in the official
 [MCP Registry Reference](https://registry.modelcontextprotocol.io/docs).
+
+## MCP Server
+
+LangChain4j can expose existing `@Tool`-annotated Java methods as an MCP server. This allows MCP
+clients such as Claude Desktop to call your local Java code via the MCP protocol.
+
+### Transport (stdio)
+
+The server currently supports the stdio transport (process-based JSON-RPC over stdin/stdout).
+This is ideal for local usage where the client launches your Java process.
+
+### Quick Start
+
+#### Dependency
+
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-mcp</artifactId>
+</dependency>
+```
+
+#### Define Tools
+
+```java
+import dev.langchain4j.agent.tool.P;
+import dev.langchain4j.agent.tool.Tool;
+
+public class Calculator {
+
+    @Tool
+    public long add(@P("a") long a, @P("b") long b) {
+        return a + b;
+    }
+}
+```
+
+#### Server Implementation (stdio)
+
+```java
+import dev.langchain4j.mcp.server.McpServer;
+import dev.langchain4j.mcp.server.transport.StdioMcpServerTransport;
+import java.util.List;
+
+public class McpServerMain {
+
+    public static void main(String[] args) throws Exception {
+        McpServer server = new McpServer(List.of(new Calculator()));
+        new StdioMcpServerTransport(System.in, System.out, server);
+
+        // Keep the process alive while stdio is open
+        Thread.currentThread().join();
+    }
+}
+```
+
+**Important:** `System.out` is reserved for MCP JSON-RPC messages. Configure your logging to write
+to `System.err` to avoid corrupting the protocol stream.
+
+### Advanced Usage: Exposing Existing Integrations
+
+You can expose any existing LangChain4j tool without writing new tool code. For a local,
+API-key-free example, use the GraalVM JavaScript execution tool (it already contains `@Tool`
+annotations). Only enable code execution in trusted environments.
+
+Add the code execution engine dependency:
+
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-code-execution-engine-graalvm-polyglot</artifactId>
+</dependency>
+```
+
+Example server wiring:
+
+```java
+import dev.langchain4j.agent.tool.graalvm.GraalVmJavaScriptExecutionTool;
+import dev.langchain4j.mcp.server.McpServer;
+import dev.langchain4j.mcp.server.transport.StdioMcpServerTransport;
+import java.util.List;
+
+public class McpServerMain {
+
+    public static void main(String[] args) throws Exception {
+        GraalVmJavaScriptExecutionTool jsTool = new GraalVmJavaScriptExecutionTool(); // already @Tool
+
+        McpServer server = new McpServer(List.of(jsTool));
+        new StdioMcpServerTransport(System.in, System.out, server);
+
+        Thread.currentThread().join();
+    }
+}
+```
+
+This pattern applies to other LangChain4j tools as well (e.g., web search engines or other
+integrations), as long as they are annotated with `@Tool`.
+
+### Packaging (crucial)
+
+To run with Claude Desktop, you typically need a single executable JAR (fat/uber JAR).
+With Maven, the `maven-shade-plugin` is a common option:
+
+```xml
+<build>
+    <plugins>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-shade-plugin</artifactId>
+            <version>3.5.0</version>
+            <executions>
+                <execution>
+                    <phase>package</phase>
+                    <goals>
+                        <goal>shade</goal>
+                    </goals>
+                    <configuration>
+                        <createDependencyReducedPom>true</createDependencyReducedPom>
+                        <transformers>
+                            <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                <mainClass>com.example.McpServerMain</mainClass>
+                            </transformer>
+                        </transformers>
+                    </configuration>
+                </execution>
+            </executions>
+        </plugin>
+    </plugins>
+</build>
+```
+
+### Configuration (Claude Desktop)
+
+Add a server entry in `claude_desktop_config.json` that launches the JAR:
+
+```json
+{
+  "mcpServers": {
+    "my-java-tool": {
+      "command": "java",
+      "args": ["-jar", "/absolute/path/to/your-app.jar"]
+    }
+  }
+}
+```
+
+Use absolute paths in the configuration. If you are on Windows, remember to escape backslashes.
+
+### Verification
+
+Once configured, restart Claude Desktop. You should see a green connection icon in the settings.
+
+If you followed the Quick Start (Calculator), ask:
+
+> "Please calculate 1234 + 5678 using the calculator tool."
+
+If you followed the Advanced Usage example (JavaScript execution tool), ask:
+
+> "Please calculate 1234 + 5678 using the JavaScript execution tool."
