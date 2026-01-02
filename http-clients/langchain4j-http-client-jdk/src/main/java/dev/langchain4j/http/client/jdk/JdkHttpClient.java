@@ -57,7 +57,10 @@ public class JdkHttpClient implements HttpClient {
             return fromJdkResponse(jdkResponse, jdkResponse.body());
         } catch (HttpTimeoutException e) {
             throw new TimeoutException(e);
-        } catch (IOException | InterruptedException e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();  
+            throw new RuntimeException(e);
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
