@@ -119,18 +119,19 @@ class PgVectorHybridFilteringIT extends EmbeddingStoreWithFilteringIT {
      * However, Hybrid search returns an RRF score (rank-based), which is completely different from Cosine Similarity.
      * For this reason, they have been @Disabled.
      */
-
     @Test
-    @Disabled("This test asserts that the search score equals the Cosine Similarity. " +
-            "However, Hybrid search returns an RRF score (rank-based), which is completely different from Cosine Similarity.")
+    @Disabled(
+            "This test asserts that the search score equals the Cosine Similarity. "
+                    + "However, Hybrid search returns an RRF score (rank-based), which is completely different from Cosine Similarity.")
     @Override
     protected void should_add_multiple_embeddings_with_segments() {
         super.should_add_multiple_embeddings_with_segments();
     }
 
     @Test
-    @Disabled("This test asserts that the search score equals the Cosine Similarity. " +
-            "However, Hybrid search returns an RRF score (rank-based), which is completely different from Cosine Similarity.")
+    @Disabled(
+            "This test asserts that the search score equals the Cosine Similarity. "
+                    + "However, Hybrid search returns an RRF score (rank-based), which is completely different from Cosine Similarity.")
     @Override
     protected void should_add_multiple_embeddings_with_ids_and_segments() {
         super.should_add_multiple_embeddings_with_ids_and_segments();

@@ -37,7 +37,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
 
     @Test
     protected void should_add_embedding() {
-        
+
         // given
         Embedding embedding = embeddingModel().embed("hello").content();
         String id = embeddingStore().add(embedding);
@@ -54,7 +54,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
 
         // then
         assertThat(id).isNotBlank();
-        
+
         assertThat(searchResult.matches()).hasSize(1);
         EmbeddingMatch<TextSegment> match = searchResult.matches().get(0);
         assertScore(match, 1);
@@ -67,7 +67,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
 
     @Test
     protected void should_add_embedding_with_id() {
-        
+
         // given
         String id = randomUUID();
         Embedding embedding = embeddingModel().embed("hello").content();
@@ -79,7 +79,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
                 .query("hello")
                 .maxResults(10)
                 .build();
-        
+
         // when
         EmbeddingSearchResult<TextSegment> searchResult = embeddingStore().search(searchRequest);
 
@@ -156,7 +156,9 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(firstMatch.embedded()).isNull();
 
         EmbeddingMatch<TextSegment> secondMatch = searchResult.matches().get(1);
-        assertScore(secondMatch, RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(firstEmbedding, secondEmbedding)));
+        assertScore(
+                secondMatch,
+                RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(firstEmbedding, secondEmbedding)));
         assertThat(secondMatch.embeddingId()).isEqualTo(ids.get(1));
         if (assertEmbedding()) {
             assertThat(CosineSimilarity.between(secondMatch.embedding(), secondEmbedding))
@@ -203,7 +205,9 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(firstMatch.embedded()).isEqualTo(firstSegment);
 
         EmbeddingMatch<TextSegment> secondMatch = searchResult.matches().get(1);
-        assertScore(secondMatch, RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(firstEmbedding, secondEmbedding)));
+        assertScore(
+                secondMatch,
+                RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(firstEmbedding, secondEmbedding)));
         assertThat(secondMatch.embeddingId()).isEqualTo(ids.get(1));
         if (assertEmbedding()) {
             assertThat(CosineSimilarity.between(secondMatch.embedding(), secondEmbedding))
@@ -254,7 +258,9 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(firstMatch.embedded()).isEqualTo(firstSegment);
 
         EmbeddingMatch<TextSegment> secondMatch = searchResult.matches().get(1);
-        assertScore(secondMatch, RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(firstEmbedding, secondEmbedding)));
+        assertScore(
+                secondMatch,
+                RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(firstEmbedding, secondEmbedding)));
         assertThat(secondMatch.embeddingId()).isEqualTo(id2);
         if (assertEmbedding()) {
             assertThat(CosineSimilarity.between(secondMatch.embedding(), secondEmbedding))
@@ -294,9 +300,10 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(firstMatch.embeddingId()).isEqualTo(firstId);
 
         EmbeddingMatch<TextSegment> secondMatch = matches.get(1);
-        assertScore(secondMatch, RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(firstEmbedding, secondEmbedding)));
+        assertScore(
+                secondMatch,
+                RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(firstEmbedding, secondEmbedding)));
         assertThat(secondMatch.embeddingId()).isEqualTo(secondId);
-
 
         // given
         EmbeddingSearchRequest searchRequest2 = EmbeddingSearchRequest.builder()
@@ -315,7 +322,6 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(matches2.get(0).embeddingId()).isEqualTo(firstId);
         assertThat(matches2.get(1).embeddingId()).isEqualTo(secondId);
 
-
         // given
         EmbeddingSearchRequest searchRequest3 = EmbeddingSearchRequest.builder()
                 .queryEmbedding(firstEmbedding)
@@ -332,7 +338,6 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(matches3).hasSize(2);
         assertThat(matches3.get(0).embeddingId()).isEqualTo(firstId);
         assertThat(matches3.get(1).embeddingId()).isEqualTo(secondId);
-
 
         // given
         EmbeddingSearchRequest searchRequest4 = EmbeddingSearchRequest.builder()
@@ -374,7 +379,8 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
 
         assertThat(searchResult.matches()).hasSize(1);
         EmbeddingMatch<TextSegment> match = searchResult.matches().get(0);
-        assertScore(match, RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(embedding, referenceEmbedding)));
+        assertScore(
+                match, RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(embedding, referenceEmbedding)));
     }
 
     protected List<EmbeddingMatch<TextSegment>> getAllEmbeddings() {
