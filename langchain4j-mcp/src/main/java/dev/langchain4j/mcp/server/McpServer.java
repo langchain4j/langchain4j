@@ -14,6 +14,7 @@ import dev.langchain4j.agent.tool.ToolSpecifications;
 import dev.langchain4j.mcp.protocol.McpCallToolRequest;
 import dev.langchain4j.mcp.protocol.McpCallToolResult;
 import dev.langchain4j.mcp.protocol.McpErrorResponse;
+import dev.langchain4j.mcp.protocol.McpImplementation;
 import dev.langchain4j.mcp.protocol.McpInitializeParams;
 import dev.langchain4j.mcp.protocol.McpInitializeRequest;
 import dev.langchain4j.mcp.protocol.McpInitializeResult;
@@ -34,6 +35,7 @@ public class McpServer {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
             .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     private static final String DEFAULT_PROTOCOL_VERSION = "2025-06-18";
+    private static final String DEFAULT_SERVER_NAME = "LangChain4j";
     private static final int ERROR_CODE_METHOD_NOT_FOUND = -32601;
     private static final int ERROR_CODE_INVALID_PARAMS = -32602;
     private static final String PARAMS_FIELD = "params";
@@ -42,10 +44,16 @@ public class McpServer {
     private final List<ToolSpecification> toolSpecifications;
     private final Map<String, ToolExecutor> toolExecutors;
     private final List<Map<String, Object>> mcpTools;
+    private final McpImplementation serverInfo;
     private final McpToolSchemaMapper toolSchemaMapper = new McpToolSchemaMapper();
 
     public McpServer(List<Object> tools) {
+        this(tools, defaultServerInfo());
+    }
+
+    public McpServer(List<Object> tools, McpImplementation serverInfo) {
         ensureNotNull(tools, "tools");
+        this.serverInfo = ensureNotNull(serverInfo, "serverInfo");
 
         List<ToolSpecification> specs = new ArrayList<>();
         Map<String, ToolExecutor> executors = new ConcurrentHashMap<>();
@@ -89,11 +97,11 @@ public class McpServer {
         if (request.getParams() != null && request.getParams().getProtocolVersion() != null) {
             protocolVersion = request.getParams().getProtocolVersion();
         }
-        McpInitializeResult.Capabilities capabilities = new McpInitializeResult.Capabilities(true);
+        McpInitializeResult.Capabilities capabilities = new McpInitializeResult.Capabilities(new McpInitializeResult.Capabilities.Tools(null));
         McpInitializeResult.Result result = new McpInitializeResult.Result(
                 protocolVersion,
                 capabilities,
-                null);
+                serverInfo);
         return new McpInitializeResult(request.getId(), result);
     }
 
@@ -223,4 +231,20 @@ public class McpServer {
         }
         return e.getClass().getName();
     }
+
+    private static McpImplementation defaultServerInfo() {
+        String version = null;
+        Package pkg = McpServer.class.getPackage();
+        if (pkg != null) {
+            version = pkg.getImplementationVersion();
+        }
+        if (version == null || version.isBlank()) {
+            version = "dev";
+        }
+        McpImplementation info = new McpImplementation();
+        info.setName(DEFAULT_SERVER_NAME);
+        info.setVersion(version);
+        return info;
+    }
 }
+

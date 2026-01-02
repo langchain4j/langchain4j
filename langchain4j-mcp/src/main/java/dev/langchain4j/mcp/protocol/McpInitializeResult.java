@@ -22,9 +22,9 @@ public class McpInitializeResult extends McpJsonRpcMessage {
 
         private final String protocolVersion;
         private final Capabilities capabilities;
-        private final ServerInfo serverInfo;
+        private final McpImplementation serverInfo;
 
-        public Result(String protocolVersion, Capabilities capabilities, ServerInfo serverInfo) {
+        public Result(String protocolVersion, Capabilities capabilities, McpImplementation serverInfo) {
             this.protocolVersion = protocolVersion;
             this.capabilities = capabilities;
             this.serverInfo = serverInfo;
@@ -38,41 +38,35 @@ public class McpInitializeResult extends McpJsonRpcMessage {
             return capabilities;
         }
 
-        public ServerInfo getServerInfo() {
+        public McpImplementation getServerInfo() {
             return serverInfo;
         }
     }
 
     public static class Capabilities {
 
-        private final Boolean tools;
+        private final Tools tools;
 
-        public Capabilities(Boolean tools) {
+        public Capabilities(Tools tools) {
             this.tools = tools;
         }
 
-        public Boolean getTools() {
+        public Tools getTools() {
             return tools;
         }
-    }
 
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    public static class ServerInfo {
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        public static class Tools {
 
-        private final String name;
-        private final String version;
+            private final Boolean listChanged;
 
-        public ServerInfo(String name, String version) {
-            this.name = name;
-            this.version = version;
-        }
+            public Tools(Boolean listChanged) {
+                this.listChanged = listChanged;
+            }
 
-        public String getName() {
-            return name;
-        }
-
-        public String getVersion() {
-            return version;
+            public Boolean getListChanged() {
+                return listChanged;
+            }
         }
     }
 }

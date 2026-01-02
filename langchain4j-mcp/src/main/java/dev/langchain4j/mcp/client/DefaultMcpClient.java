@@ -20,6 +20,7 @@ import dev.langchain4j.mcp.client.logging.McpLogMessageHandler;
 import dev.langchain4j.mcp.protocol.McpCallToolRequest;
 import dev.langchain4j.mcp.protocol.McpCancellationNotification;
 import dev.langchain4j.mcp.protocol.McpGetPromptRequest;
+import dev.langchain4j.mcp.protocol.McpImplementation;
 import dev.langchain4j.mcp.protocol.McpInitializeParams;
 import dev.langchain4j.mcp.protocol.McpInitializeRequest;
 import dev.langchain4j.mcp.protocol.McpListPromptsRequest;
@@ -172,7 +173,7 @@ public class DefaultMcpClient implements McpClient {
         McpInitializeParams params = new McpInitializeParams();
         params.setProtocolVersion(protocolVersion);
 
-        McpInitializeParams.ClientInfo clientInfo = new McpInitializeParams.ClientInfo();
+        McpImplementation clientInfo = new McpImplementation();
         clientInfo.setName(clientName);
         clientInfo.setVersion(clientVersion);
         params.setClientInfo(clientInfo);

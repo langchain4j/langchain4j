@@ -579,7 +579,11 @@ public class Calculator {
 
 #### Server Implementation (stdio)
 
+Set `McpImplementation` to populate `serverInfo` in the initialize response
+(required by MCP 2025-06-18).
+
 ```java
+import dev.langchain4j.mcp.protocol.McpImplementation;
 import dev.langchain4j.mcp.server.McpServer;
 import dev.langchain4j.mcp.server.transport.StdioMcpServerTransport;
 import java.util.List;
@@ -587,7 +591,11 @@ import java.util.List;
 public class McpServerMain {
 
     public static void main(String[] args) throws Exception {
-        McpServer server = new McpServer(List.of(new Calculator()));
+        McpImplementation serverInfo = new McpImplementation();
+        serverInfo.setName("McpServerTest");
+        serverInfo.setVersion("1.0-SNAPSHOT");
+
+        McpServer server = new McpServer(List.of(new Calculator()), serverInfo);
         new StdioMcpServerTransport(System.in, System.out, server);
 
         // Keep the process alive while stdio is open
@@ -596,8 +604,21 @@ public class McpServerMain {
 }
 ```
 
-**Important:** `System.out` is reserved for MCP JSON-RPC messages. Configure your logging to write
-to `System.err` to avoid corrupting the protocol stream.
+**Important:** `System.out` is reserved for MCP JSON-RPC messages. Configure your
+logging to write to `System.err` to avoid corrupting the protocol stream.
+
+Example (logback):
+
+```xml
+<configuration>
+    <appender name="STDERR" class="ch.qos.logback.core.ConsoleAppender">
+        <target>System.err</target>
+    </appender>
+    <root level="INFO">
+        <appender-ref ref="STDERR" />
+    </root>
+</configuration>
+```
 
 ### Advanced Usage: Exposing Existing Integrations
 
@@ -618,6 +639,7 @@ Example server wiring:
 
 ```java
 import dev.langchain4j.agent.tool.graalvm.GraalVmJavaScriptExecutionTool;
+import dev.langchain4j.mcp.protocol.McpImplementation;
 import dev.langchain4j.mcp.server.McpServer;
 import dev.langchain4j.mcp.server.transport.StdioMcpServerTransport;
 import java.util.List;
@@ -625,9 +647,13 @@ import java.util.List;
 public class McpServerMain {
 
     public static void main(String[] args) throws Exception {
+        McpImplementation serverInfo = new McpImplementation();
+        serverInfo.setName("McpServerTest");
+        serverInfo.setVersion("1.0-SNAPSHOT");
+
         GraalVmJavaScriptExecutionTool jsTool = new GraalVmJavaScriptExecutionTool(); // already @Tool
 
-        McpServer server = new McpServer(List.of(jsTool));
+        McpServer server = new McpServer(List.of(new Calculator(), jsTool), serverInfo);
         new StdioMcpServerTransport(System.in, System.out, server);
 
         Thread.currentThread().join();
@@ -658,6 +684,16 @@ With Maven, the `maven-shade-plugin` is a common option:
                     </goals>
                     <configuration>
                         <createDependencyReducedPom>true</createDependencyReducedPom>
+                        <filters>
+                            <filter>
+                                <artifact>*:*</artifact>
+                                <excludes>
+                                    <exclude>META-INF/*.SF</exclude>
+                                    <exclude>META-INF/*.DSA</exclude>
+                                    <exclude>META-INF/*.RSA</exclude>
+                                </excludes>
+                            </filter>
+                        </filters>
                         <transformers>
                             <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                 <mainClass>com.example.McpServerMain</mainClass>
@@ -670,6 +706,11 @@ With Maven, the `maven-shade-plugin` is a common option:
     </plugins>
 </build>
 ```
+
+**Note:** If your dependencies include signed JARs (e.g., GraalVM Polyglot),
+you may need to exclude signature files (`META-INF/*.SF`, `META-INF/*.DSA`,
+`META-INF/*.RSA`) in the shade plugin to avoid
+`Invalid signature file digest for Manifest main attributes` at runtime.
 
 ### Configuration (Claude Desktop)
 
@@ -699,3 +740,6 @@ If you followed the Quick Start (Calculator), ask:
 If you followed the Advanced Usage example (JavaScript execution tool), ask:
 
 > "Please calculate 1234 + 5678 using the JavaScript execution tool."
+
+If you need to be explicit about the tool name, it is `executeJavaScriptCode`
+and the code must return a result, for example: `return 1234 + 5678;`.
