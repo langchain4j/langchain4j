@@ -68,6 +68,7 @@ final class StreamingToSynchronousChatExecutor extends AbstractChatExecutor {
             try {
                 this.latch.await();
             } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
                 throw new RuntimeException(e);
             }
         }
