@@ -180,10 +180,12 @@ class PartsAndContentsMapperTest {
     @Test
     void fromContentToGPart_handlesDataUriImage() {
         // Given - Create a simple base64 encoded 1x1 red pixel PNG
-        String base64Image = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
+        String base64Image =
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
         String dataUri = "data:image/png;base64," + base64Image;
 
-        // Create ImageContent with data URI (this is how images are typically sent from web clients)
+        // Create ImageContent with data URI (this is how images are typically sent from
+        // web clients)
         ImageContent imageContent = ImageContent.from(dataUri);
 
         // When - This should not throw NullPointerException
@@ -256,7 +258,8 @@ class PartsAndContentsMapperTest {
     @Test
     void fromContentToGPart_handlesDataUriWithoutBase64Marker() {
         // Given - Data URI without ";base64" marker
-        String base64Image = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
+        String base64Image =
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
         String dataUri = "data:image/png," + base64Image;
 
         ImageContent imageContent = ImageContent.from(dataUri);
@@ -274,7 +277,8 @@ class PartsAndContentsMapperTest {
     @Test
     void fromContentToGPart_handlesDataUriImageWithoutBase64Marker() {
         // Given - Data URI without ";base64" marker
-        String base64Image = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
+        String base64Image =
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
         String dataUri = "data:image/jpeg," + base64Image;
 
         ImageContent imageContent = ImageContent.from(dataUri);
@@ -405,17 +409,17 @@ class PartsAndContentsMapperTest {
     void fromContentToGPart_handlesDataUriImageWithDifferentMimeTypes() {
         // Test various image MIME types
         String base64Data = "R0lGODlhAQABAAAAACw=";
-        
+
         // GIF
         ImageContent gifContent = ImageContent.from("data:image/gif;base64," + base64Data);
         GeminiContent.GeminiPart gifResult = PartsAndContentsMapper.fromContentToGPart(gifContent);
         assertThat(gifResult.inlineData().mimeType()).isEqualTo("image/gif");
-        
+
         // WebP
         ImageContent webpContent = ImageContent.from("data:image/webp;base64," + base64Data);
         GeminiContent.GeminiPart webpResult = PartsAndContentsMapper.fromContentToGPart(webpContent);
         assertThat(webpResult.inlineData().mimeType()).isEqualTo("image/webp");
-        
+
         // SVG
         ImageContent svgContent = ImageContent.from("data:image/svg+xml;base64," + base64Data);
         GeminiContent.GeminiPart svgResult = PartsAndContentsMapper.fromContentToGPart(svgContent);
@@ -426,19 +430,22 @@ class PartsAndContentsMapperTest {
     void fromContentToGPart_handlesDataUriAudioWithDifferentMimeTypes() {
         // Test various audio MIME types
         String base64Data = "QXVkaW9EYXRh";
-        
+
         // WAV
-        Audio wavAudio = Audio.builder().url("data:audio/wav;base64," + base64Data).build();
+        Audio wavAudio =
+                Audio.builder().url("data:audio/wav;base64," + base64Data).build();
         GeminiContent.GeminiPart wavResult = PartsAndContentsMapper.fromContentToGPart(new AudioContent(wavAudio));
         assertThat(wavResult.inlineData().mimeType()).isEqualTo("audio/wav");
-        
+
         // OGG
-        Audio oggAudio = Audio.builder().url("data:audio/ogg;base64," + base64Data).build();
+        Audio oggAudio =
+                Audio.builder().url("data:audio/ogg;base64," + base64Data).build();
         GeminiContent.GeminiPart oggResult = PartsAndContentsMapper.fromContentToGPart(new AudioContent(oggAudio));
         assertThat(oggResult.inlineData().mimeType()).isEqualTo("audio/ogg");
-        
+
         // FLAC
-        Audio flacAudio = Audio.builder().url("data:audio/flac;base64," + base64Data).build();
+        Audio flacAudio =
+                Audio.builder().url("data:audio/flac;base64," + base64Data).build();
         GeminiContent.GeminiPart flacResult = PartsAndContentsMapper.fromContentToGPart(new AudioContent(flacAudio));
         assertThat(flacResult.inlineData().mimeType()).isEqualTo("audio/flac");
     }
@@ -447,20 +454,96 @@ class PartsAndContentsMapperTest {
     void fromContentToGPart_handlesDataUriVideoWithDifferentMimeTypes() {
         // Test various video MIME types
         String base64Data = "VmlkZW9EYXRh";
-        
+
         // MP4
-        Video mp4Video = Video.builder().url("data:video/mp4;base64," + base64Data).build();
+        Video mp4Video =
+                Video.builder().url("data:video/mp4;base64," + base64Data).build();
         GeminiContent.GeminiPart mp4Result = PartsAndContentsMapper.fromContentToGPart(new VideoContent(mp4Video));
         assertThat(mp4Result.inlineData().mimeType()).isEqualTo("video/mp4");
-        
+
         // WebM
-        Video webmVideo = Video.builder().url("data:video/webm;base64," + base64Data).build();
+        Video webmVideo =
+                Video.builder().url("data:video/webm;base64," + base64Data).build();
         GeminiContent.GeminiPart webmResult = PartsAndContentsMapper.fromContentToGPart(new VideoContent(webmVideo));
         assertThat(webmResult.inlineData().mimeType()).isEqualTo("video/webm");
-        
+
         // MPEG
-        Video mpegVideo = Video.builder().url("data:video/mpeg;base64," + base64Data).build();
+        Video mpegVideo =
+                Video.builder().url("data:video/mpeg;base64," + base64Data).build();
         GeminiContent.GeminiPart mpegResult = PartsAndContentsMapper.fromContentToGPart(new VideoContent(mpegVideo));
         assertThat(mpegResult.inlineData().mimeType()).isEqualTo("video/mpeg");
+    }
+
+    @Test
+    void fromContentToGPart_handlesImageWithDetailLevelLow() {
+        // Given
+        String base64Image =
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
+        Image image =
+                Image.builder().base64Data(base64Image).mimeType("image/png").build();
+        ImageContent imageContent = ImageContent.from(image, ImageContent.DetailLevel.LOW);
+
+        // When
+        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(imageContent);
+
+        // Then
+        assertThat(result).isNotNull();
+        assertThat(result.inlineData()).isNotNull();
+        assertThat(result.mediaResolution()).isNotNull();
+        assertThat(result.mediaResolution().level()).isEqualTo(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_LOW);
+    }
+
+    @Test
+    void fromContentToGPart_handlesImageWithDetailLevelHigh() {
+        // Given
+        String base64Image =
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
+        Image image =
+                Image.builder().base64Data(base64Image).mimeType("image/png").build();
+        ImageContent imageContent = ImageContent.from(image, ImageContent.DetailLevel.HIGH);
+
+        // When
+        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(imageContent);
+
+        // Then
+        assertThat(result).isNotNull();
+        assertThat(result.mediaResolution()).isNotNull();
+        assertThat(result.mediaResolution().level()).isEqualTo(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_HIGH);
+    }
+
+    @Test
+    void fromContentToGPart_handlesImageWithDetailLevelAuto() {
+        // Given
+        String base64Image =
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
+        Image image =
+                Image.builder().base64Data(base64Image).mimeType("image/png").build();
+        ImageContent imageContent = ImageContent.from(image, ImageContent.DetailLevel.AUTO);
+
+        // When
+        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(imageContent);
+
+        // Then
+        assertThat(result).isNotNull();
+        assertThat(result.mediaResolution()).isNotNull();
+        assertThat(result.mediaResolution().level()).isEqualTo(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_UNSPECIFIED);
+    }
+
+    @Test
+    void fromContentToGPart_handlesImageWithDataUriAndDetailLevel() {
+        // Given
+        String base64Image =
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
+        String dataUri = "data:image/png;base64," + base64Image;
+        ImageContent imageContent = ImageContent.from(dataUri, ImageContent.DetailLevel.HIGH);
+
+        // When
+        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(imageContent);
+
+        // Then
+        assertThat(result).isNotNull();
+        assertThat(result.inlineData()).isNotNull();
+        assertThat(result.mediaResolution()).isNotNull();
+        assertThat(result.mediaResolution().level()).isEqualTo(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_HIGH);
     }
 }

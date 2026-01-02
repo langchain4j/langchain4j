@@ -22,7 +22,8 @@ record GeminiGenerationConfig(
         @JsonProperty("thinkingConfig") GeminiThinkingConfig thinkingConfig,
         @JsonProperty("responseLogprobs") Boolean responseLogprobs,
         @JsonProperty("enableEnhancedCivicAnswers") Boolean enableEnhancedCivicAnswers,
-        @JsonProperty("logprobs") Integer logprobs) {
+        @JsonProperty("logprobs") Integer logprobs,
+        @JsonProperty("mediaResolution") GeminiMediaResolutionLevel mediaResolution) {
 
     static GeminiGenerationConfigBuilder builder() {
         return new GeminiGenerationConfigBuilder();
@@ -46,6 +47,7 @@ record GeminiGenerationConfig(
         private Boolean enableEnhancedCivicAnswers;
         private GeminiThinkingConfig thinkingConfig;
         private Integer logprobs;
+        private GeminiMediaResolutionLevel mediaResolution;
 
         GeminiGenerationConfigBuilder() {}
 
@@ -129,6 +131,11 @@ record GeminiGenerationConfig(
             return this;
         }
 
+        GeminiGenerationConfigBuilder mediaResolution(GeminiMediaResolutionLevel mediaResolution) {
+            this.mediaResolution = mediaResolution;
+            return this;
+        }
+
         GeminiGenerationConfig build() {
             return new GeminiGenerationConfig(
                     stopSequences,
@@ -146,7 +153,8 @@ record GeminiGenerationConfig(
                     thinkingConfig,
                     responseLogprobs,
                     enableEnhancedCivicAnswers,
-                    logprobs);
+                    logprobs,
+                    mediaResolution);
         }
     }
 }
