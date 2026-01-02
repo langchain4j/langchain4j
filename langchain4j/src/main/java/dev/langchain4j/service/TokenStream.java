@@ -93,13 +93,13 @@ public interface TokenStream {
      * The provided consumer will be invoked every time a new partial tool call
      * (usually containing a single token of the tool's arguments) from a language model is available.
      * <p>
-     * Either this or the {@link #onPartialToolCall(BiConsumer)} callback can be used
+     * Either this or the {@link #onPartialToolCallWithContext(BiConsumer)} callback can be used
      * if you want to consume partial tool calls as soon as they become available.
      *
      * @param partialToolCallHandler lambda that will be invoked when a model generates a new partial tool call
      * @return token stream instance used to configure or start stream processing
-     * @see #onPartialToolCall(BiConsumer)
-     * @since 1.12.0
+     * @see #onPartialToolCallWithContext(BiConsumer)
+     * @since 1.11.0
      */
     @Experimental
     default TokenStream onPartialToolCall(Consumer<PartialToolCall> partialToolCallHandler) {
@@ -116,10 +116,10 @@ public interface TokenStream {
      * @param handler lambda that will be invoked when a model generates a new partial tool call
      * @return token stream instance used to configure or start stream processing
      * @see #onPartialToolCall(Consumer)
-     * @since 1.12.0
+     * @since 1.11.0
      */
     @Experimental
-    default TokenStream onPartialToolCall(BiConsumer<PartialToolCall, PartialToolCallContext> handler) {
+    default TokenStream onPartialToolCallWithContext(BiConsumer<PartialToolCall, PartialToolCallContext> handler) {
         throw new UnsupportedOperationException("not implemented");
     }
 

@@ -60,9 +60,9 @@ Then, we create our low-level components. These components will be used under th
 In this case, we just need the `ChatModel`:
 ```java
 ChatModel model = OpenAiChatModel.builder()
-        .apiKey(System.getenv("OPENAI_API_KEY"))
-        .modelName(GPT_4_O_MINI)
-        .build();
+    .apiKey(System.getenv("OPENAI_API_KEY"))
+    .modelName(GPT_4_O_MINI)
+    .build();
 ```
 
 Finally, we can use the `AiServices` class to create an instance of our AI Service:
@@ -132,9 +132,9 @@ This will be converted into a `SystemMessage` behind the scenes and sent to the 
 System messages can also be defined dynamically with the system message provider:
 ```java
 Friend friend = AiServices.builder(Friend.class)
-        .chatModel(model)
-        .systemMessageProvider(chatMemoryId -> "You are a good friend of mine. Answer using slang.")
-        .build();
+    .chatModel(model)
+    .systemMessageProvider(chatMemoryId -> "You are a good friend of mine. Answer using slang.")
+    .build();
 ```
 As you can see, you can provide different system messages based on a chat memory ID (user or conversation).
 
@@ -182,9 +182,9 @@ It is possible to do so by configuring the AI Service with a `UnaryOperator<Chat
 
 ```java
 Assistant assistant = AiServices.builder(Assistant.class)
-        .chatModel(model)
-        .chatRequestTransformer(transformingFunction)  // Configures the transformation function to be applied to the ChatRequest
-        .build();
+    .chatModel(model)
+    .chatRequestTransformer(transformingFunction)  // Configures the transformation function to be applied to the ChatRequest
+    .build();
 ```
 
 In case it is needed to also access the `ChatMemory` to implement the required `ChatRequest` transformation, it is also possible to configure the `chatRequestTransformer` method with a `BiFunction<ChatRequest, Object, ChatRequest>`, where the second parameter passed to this function is the memory ID.
@@ -213,16 +213,16 @@ Build the AI Service:
 java
 ```java
 AssistantWithChatParams assistant = AiServices.builder(AssistantWithChatParams.class)
-        .chatModel(openAiChatModel)  // or whichever model
-        .build();
+    .chatModel(openAiChatModel)  // or whichever model
+    .build();
 ```
 
 Call it with any per-call parameters:
 
 ```java
 ChatRequestParameters customParams = ChatRequestParameters.builder()
-        .temperature(0.85)
-        .build();
+    .temperature(0.85)
+    .build();
 
 String answer = assistant.chat("Hi there!", customParams);
 ```
@@ -339,11 +339,11 @@ for more details on the available content types.
 AI Service method can return one of the following types:
 - `String` - in this case LLM-generated output is returned without any processing/parsing
 - Any type supported by [Structured Outputs](/tutorials/structured-outputs#supported-types) - in this case
-  AI service will parse LLM-generated output into a desired type before returning
+AI service will parse LLM-generated output into a desired type before returning
 
 Any type can be additionally wrapped into a `Result<T>` to get extra metadata about AI Service invocation:
 - `TokenUsage` - total number of tokens used during AI service invocation. If AI service did multiple calls to
-  the LLM (e.g., because tools were executed), it will sum token usages of all calls.
+the LLM (e.g., because tools were executed), it will sum token usages of all calls.
 - Sources - `Content`s retrieved during [RAG](/tutorials/ai-services#rag) retrieval
 - All [tools](/tutorials/ai-services#tools-function-calling) executed during AI Service invocation (both requests and results)
 - `FinishReason` of the final chat response
@@ -353,7 +353,7 @@ Any type can be additionally wrapped into a `Result<T>` to get extra metadata ab
 An example:
 ```java
 interface Assistant {
-
+    
     @UserMessage("Generate an outline for the article on the following topic: {{it}}")
     Result<List<String>> generateOutlineFor(String topic);
 }
@@ -402,7 +402,7 @@ enum Priority {
 }
 
 interface PriorityAnalyzer {
-
+    
     @UserMessage("Analyze the priority of the following issue: {{it}}")
     Priority analyzePriority(String issueDescription);
 }
@@ -440,13 +440,13 @@ interface PersonExtractor {
 PersonExtractor personExtractor = AiServices.create(PersonExtractor.class, model);
 
 String text = """
-        In 1968, amidst the fading echoes of Independence Day,
-        a child named John arrived under the calm evening sky.
-        This newborn, bearing the surname Doe, marked the start of a new journey.
-        He was welcomed into the world at 345 Whispering Pines Avenue
-        a quaint street nestled in the heart of Springfield
-        an abode that echoed with the gentle hum of suburban dreams and aspirations.
-        """;
+            In 1968, amidst the fading echoes of Independence Day,
+            a child named John arrived under the calm evening sky.
+            This newborn, bearing the surname Doe, marked the start of a new journey.
+            He was welcomed into the world at 345 Whispering Pines Avenue
+            a quaint street nestled in the heart of Springfield
+            an abode that echoed with the gentle hum of suburban dreams and aspirations.
+            """;
 
 Person person = personExtractor.extractPersonFrom(text);
 
@@ -481,36 +481,36 @@ but now we have the JSON mode feature, which is more suitable for this purpose.
 Here is how to enable JSON mode:
 
 - For OpenAI:
-    - For newer models that support [Structured Outputs](https://openai.com/index/introducing-structured-outputs-in-the-api/) (e.g., `gpt-4o-mini`, `gpt-4o-2024-08-06`):
-      ```java
-      OpenAiChatModel.builder()
-          ...
-          .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)
-          .strictJsonSchema(true)
-          .build();
-      ```
-      See more details [here](/integrations/language-models/open-ai#structured-outputs).
-    - For older models (e.g. gpt-3.5-turbo, gpt-4):
-      ```java
-      OpenAiChatModel.builder()
-          ...
-          .responseFormat("json_object")
-          .build();
-      ```
+  - For newer models that support [Structured Outputs](https://openai.com/index/introducing-structured-outputs-in-the-api/) (e.g., `gpt-4o-mini`, `gpt-4o-2024-08-06`):
+    ```java
+    OpenAiChatModel.builder()
+        ...
+        .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)
+        .strictJsonSchema(true)
+        .build();
+    ```
+    See more details [here](/integrations/language-models/open-ai#structured-outputs).
+  - For older models (e.g. gpt-3.5-turbo, gpt-4):
+    ```java
+    OpenAiChatModel.builder()
+        ...
+        .responseFormat("json_object")
+        .build();
+    ```
 
 - For Azure OpenAI:
 ```java
 AzureOpenAiChatModel.builder()
     ...
-            .responseFormat(new ChatCompletionsJsonResponseFormat())
-        .build();
+    .responseFormat(new ChatCompletionsJsonResponseFormat())
+    .build();
 ```
 
 - For Vertex AI Gemini:
 ```java
 VertexAiGeminiChatModel.builder()
     ...
-            .responseMimeType("application/json")
+    .responseMimeType("application/json")
     .build();
 ```
 
@@ -519,8 +519,8 @@ Or by specifying an explicit schema from a Java class:
 ```java
 VertexAiGeminiChatModel.builder()
     ...
-            .responseSchema(SchemaHelper.fromClass(Person.class))
-        .build();
+    .responseSchema(SchemaHelper.fromClass(Person.class))
+    .build();
 ```
 
 From a JSON schema:
@@ -528,15 +528,15 @@ From a JSON schema:
 ```java
 VertexAiGeminiChatModel.builder()
     ...
-            .responseSchema(Schema.builder()...build())
-        .build();
+    .responseSchema(Schema.builder()...build())
+    .build();
 ```
 
 - For Google AI Gemini:
 ```java
 GoogleAiGeminiChatModel.builder()
     ...
-            .responseFormat(ResponseFormat.JSON)
+    .responseFormat(ResponseFormat.JSON)
     .build();
 ```
 
@@ -545,11 +545,11 @@ Or by specifying an explicit schema from a Java class:
 ```java
 GoogleAiGeminiChatModel.builder()
     ...
-            .responseFormat(ResponseFormat.builder()
+    .responseFormat(ResponseFormat.builder()
         .type(JSON)
         .jsonSchema(JsonSchemas.jsonSchemaFrom(Person.class).get())
         .build())
-        .build();
+    .build();
 ```
 
 From a JSON schema:
@@ -557,18 +557,18 @@ From a JSON schema:
 ```java
 GoogleAiGeminiChatModel.builder()
     ...
-            .responseFormat(ResponseFormat.builder()
+    .responseFormat(ResponseFormat.builder()
         .type(JSON)
         .jsonSchema(JsonSchema.builder()...build())
         .build())
-        .build();
+    .build();
 ```
 
 - For Mistral AI:
 ```java
 MistralAiChatModel.builder()
     ...
-            .responseFormat(MistralAiResponseFormatType.JSON_OBJECT)
+    .responseFormat(MistralAiResponseFormatType.JSON_OBJECT)
     .build();
 ```
 
@@ -576,12 +576,12 @@ MistralAiChatModel.builder()
 ```java
 OllamaChatModel.builder()
     ...
-            .responseFormat(JSON)
+    .responseFormat(JSON)
     .build();
 ```
 
 - For other model providers: if the underlying model provider does not support JSON mode,
-  prompt engineering is your best bet. Also, try lowering the `temperature` for more determinism.
+prompt engineering is your best bet. Also, try lowering the `temperature` for more determinism.
 
 [More examples](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/OtherServiceExamples.java)
 
@@ -598,9 +598,9 @@ interface Assistant {
 }
 
 StreamingChatModel model = OpenAiStreamingChatModel.builder()
-        .apiKey(System.getenv("OPENAI_API_KEY"))
-        .modelName(GPT_4_O_MINI)
-        .build();
+    .apiKey(System.getenv("OPENAI_API_KEY"))
+    .modelName(GPT_4_O_MINI)
+    .build();
 
 Assistant assistant = AiServices.create(Assistant.class, model);
 
@@ -609,17 +609,19 @@ TokenStream tokenStream = assistant.chat("Tell me a joke");
 CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
 tokenStream
-        .onPartialResponse((String partialResponse) -> System.out.println(partialResponse))
-        .onPartialThinking((PartialThinking partialThinking) -> System.out.println(partialThinking))
-        .onRetrieved((List<Content> contents) -> System.out.println(contents))
-        .onIntermediateResponse((ChatResponse intermediateResponse) -> System.out.println(intermediateResponse))
-        // This will be invoked right before a tool is executed. BeforeToolExecution contains ToolExecutionRequest (e.g. tool name, tool arguments, etc.)  
-        .beforeToolExecution((BeforeToolExecution beforeToolExecution) -> System.out.println(beforeToolExecution))
-        // This will be invoked right after a tool is executed. ToolExecution contains ToolExecutionRequest and tool execution result. 
-        .onToolExecuted((ToolExecution toolExecution) -> System.out.println(toolExecution))
-        .onCompleteResponse((ChatResponse response) -> futureResponse.complete(response))
-        .onError((Throwable error) -> futureResponse.completeExceptionally(error))
-        .start();
+    .onPartialResponse((String partialResponse) -> System.out.println(partialResponse))
+    .onPartialThinking((PartialThinking partialThinking) -> System.out.println(partialThinking))
+    .onRetrieved((List<Content> contents) -> System.out.println(contents))
+    .onIntermediateResponse((ChatResponse intermediateResponse) -> System.out.println(intermediateResponse))
+     // This will be invoked every time a new partial tool call (usually containing a single token of the tool's arguments) is available.
+    .onPartialToolCall((PartialToolCall partialToolCall) -> System.out.println(partialToolCall))
+     // This will be invoked right before a tool is executed. BeforeToolExecution contains ToolExecutionRequest (e.g. tool name, tool arguments, etc.)
+    .beforeToolExecution((BeforeToolExecution beforeToolExecution) -> System.out.println(beforeToolExecution))
+     // This will be invoked right after a tool is executed. ToolExecution contains ToolExecutionRequest and tool execution result.
+    .onToolExecuted((ToolExecution toolExecution) -> System.out.println(toolExecution))
+    .onCompleteResponse((ChatResponse response) -> futureResponse.complete(response))
+    .onError((Throwable error) -> futureResponse.completeExceptionally(error))
+    .start();
 
 futureResponse.join(); // Blocks the main thread until the streaming process (running in another thread) is complete
 ```
@@ -633,15 +635,15 @@ If you wish to cancel the streaming, you can do so from one of the following cal
 For example:
 ```java
 tokenStream
-        .onPartialResponseWithContext((PartialResponse partialResponse, PartialResponseContext context) -> {
-process(partialResponse);
+    .onPartialResponseWithContext((PartialResponse partialResponse, PartialResponseContext context) -> {
+        process(partialResponse);
         if (shouldCancel()) {
-        context.streamingHandle().cancel();
+            context.streamingHandle().cancel();
         }
-                })
-                .onCompleteResponse((ChatResponse response) -> futureResponse.complete(response))
-        .onError((Throwable error) -> futureResponse.completeExceptionally(error))
-        .start();
+    })
+    .onCompleteResponse((ChatResponse response) -> futureResponse.complete(response))
+    .onError((Throwable error) -> futureResponse.completeExceptionally(error))
+    .start();
 ```
 
 When `StreamingHandle.cancel()` is called, LangChain4j will close the connection and stop the streaming.
@@ -660,7 +662,7 @@ For this, please import `langchain4j-reactor` module:
 ```java
 interface Assistant {
 
-    Flux<String> chat(String message);
+  Flux<String> chat(String message);
 }
 ```
 
@@ -672,9 +674,9 @@ interface Assistant {
 The AI Service can use [chat memory](/tutorials/chat-memory) in order to "remember" previous interactions:
 ```java
 Assistant assistant = AiServices.builder(Assistant.class)
-        .chatModel(model)
-        .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
-        .build();
+    .chatModel(model)
+    .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
+    .build();
 ```
 In this scenario, the same `ChatMemory` instance will be used for all invocations of the AI Service.
 However, this approach will not work if you have multiple users,
@@ -688,9 +690,9 @@ interface Assistant  {
 }
 
 Assistant assistant = AiServices.builder(Assistant.class)
-        .chatModel(model)
-        .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
-        .build();
+    .chatModel(model)
+    .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
+    .build();
 
 String answerToKlaus = assistant.chat(1, "Hello, my name is Klaus");
 String answerToFrancine = assistant.chat(2, "Hello, my name is Francine");
@@ -738,7 +740,7 @@ AI Service can be configured with tools that LLM can use:
 ```java
 
 class Tools {
-
+    
     @Tool
     int add(int a, int b) {
         return a + b;
@@ -751,9 +753,9 @@ class Tools {
 }
 
 Assistant assistant = AiServices.builder(Assistant.class)
-        .chatModel(model)
-        .tools(new Tools())
-        .build();
+    .chatModel(model)
+    .tools(new Tools())
+    .build();
 
 String answer = assistant.chat("What is 1+2 and 3*4?");
 ```
@@ -775,9 +777,9 @@ EmbeddingModel embeddingModel = ...
 ContentRetriever contentRetriever = new EmbeddingStoreContentRetriever(embeddingStore, embeddingModel);
 
 Assistant assistant = AiServices.builder(Assistant.class)
-        .chatModel(model)
-        .contentRetriever(contentRetriever)
-        .build();
+    .chatModel(model)
+    .contentRetriever(contentRetriever)
+    .build();
 ```
 
 Configuring a `RetrievalAugmentor` provides even more flexibility,
@@ -792,9 +794,9 @@ RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
         .build();
 
 Assistant assistant = AiServices.builder(Assistant.class)
-        .chatModel(model)
-        .retrievalAugmentor(retrievalAugmentor)
-        .build();
+    .chatModel(model)
+    .retrievalAugmentor(retrievalAugmentor)
+    .build();
 ```
 
 More details about RAG can be found [here](/tutorials/rag).
@@ -811,9 +813,9 @@ Auto-moderation can be configured when building the AI Service:
 
 ```java
 Assistant assistant = AiServices.builder(Assistant.class)
-        .chatModel(model)
-        .moderationModel(moderationModel)  // Configures moderation  model
-        .build();
+    .chatModel(model)
+    .moderationModel(moderationModel)  // Configures moderation  model
+    .build();
 ```
 
 
@@ -846,7 +848,7 @@ The point is, smaller and more specific components are easier and cheaper to dev
 
 Another aspect to consider involves two extremes:
 - Do you prefer your application to be highly deterministic,
-  where the application controls the flow and the LLM is just one of the components?
+where the application controls the flow and the LLM is just one of the components?
 - Or do you want the LLM to have complete autonomy and drive your application?
 
 Or perhaps a mix of both, depending on the situation?
@@ -888,7 +890,7 @@ class MilesOfSmiles {
     private final ChatBot chatBot;
     
     ...
-
+    
     public String handle(String userMessage) {
         if (greetingExpert.isGreeting(userMessage)) {
             return "Greetings from Miles of Smiles! How can I make your day better?";
@@ -901,9 +903,9 @@ class MilesOfSmiles {
 GreetingExpert greetingExpert = AiServices.create(GreetingExpert.class, llama2);
 
 ChatBot chatBot = AiServices.builder(ChatBot.class)
-        .chatModel(gpt4)
-        .contentRetriever(milesOfSmilesContentRetriever)
-        .build();
+    .chatModel(gpt4)
+    .contentRetriever(milesOfSmilesContentRetriever)
+    .build();
 
 MilesOfSmiles milesOfSmiles = new MilesOfSmiles(greetingExpert, chatBot);
 

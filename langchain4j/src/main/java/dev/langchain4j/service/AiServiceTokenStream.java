@@ -135,7 +135,7 @@ public class AiServiceTokenStream implements TokenStream {
     }
 
     @Override
-    public TokenStream onPartialToolCall(BiConsumer<PartialToolCall, PartialToolCallContext> handler) {
+    public TokenStream onPartialToolCallWithContext(BiConsumer<PartialToolCall, PartialToolCallContext> handler) {
         this.partialToolCallWithContextHandler = handler;
         this.onPartialToolCallWithContextInvoked++;
         return this;
@@ -250,7 +250,8 @@ public class AiServiceTokenStream implements TokenStream {
                     + "can be invoked on TokenStream at most 1 time");
         }
         if (onPartialToolCallInvoked + onPartialToolCallWithContextInvoked > 1) {
-            throw new IllegalConfigurationException("onPartialToolCall can be invoked on TokenStream at most 1 time");
+            throw new IllegalConfigurationException("One of [onPartialToolCall, onPartialToolCallWithContext] can be "
+                    + "invoked on TokenStream at most 1 time");
         }
         if (onIntermediateResponseInvoked > 1) {
             throw new IllegalConfigurationException(

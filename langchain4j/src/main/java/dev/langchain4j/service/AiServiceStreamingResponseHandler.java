@@ -205,9 +205,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     public void onPartialToolCall(PartialToolCall partialToolCall) {
         if (partialToolCallHandler != null) {
             partialToolCallHandler.accept(partialToolCall);
-            return;
-        }
-        if (partialToolCallWithContextHandler != null) {
+        } else if (partialToolCallWithContextHandler != null) {
             PartialToolCallContext context = new PartialToolCallContext(new CancellationUnsupportedStreamingHandle());
             partialToolCallWithContextHandler.accept(partialToolCall, context);
         }
@@ -217,9 +215,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     public void onPartialToolCall(PartialToolCall partialToolCall, PartialToolCallContext context) {
         if (partialToolCallHandler != null) {
             partialToolCallHandler.accept(partialToolCall);
-            return;
-        }
-        if (partialToolCallWithContextHandler != null) {
+        } else if (partialToolCallWithContextHandler != null) {
             partialToolCallWithContextHandler.accept(partialToolCall, context);
         }
     }

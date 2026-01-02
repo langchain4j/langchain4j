@@ -656,6 +656,64 @@ class StreamingAiServicesWithToolsIT {
     }
 
     @Test
+    void should_invoke_partial_tool_call_handler() throws Exception {
+
+        // given
+        WeatherService weatherService = spy(new WeatherService());
+
+        StreamingChatModel spyModel = spy(models().findFirst().get());
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .streamingChatModel(spyModel)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
+                .tools(weatherService)
+                .build();
+
+        String userMessage = "What is the temperature in Munich, in Celsius?";
+
+        TestTokenStreamHandler handler = spy(TestTokenStreamHandler.class);
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
+
+        // when
+        assistant
+                .chat(userMessage)
+                .onPartialResponse(handler::onPartialResponse)
+                .onPartialToolCall(handler::onPartialToolCall)
+                .onError(error -> {
+                    handler.onError(error);
+                    futureResponse.completeExceptionally(error);
+                })
+                .onCompleteResponse(completeResponse -> {
+                    handler.onCompleteResponse(completeResponse);
+                    futureResponse.complete(completeResponse);
+                })
+                .start();
+
+        // then
+        ChatResponse response = futureResponse.get(60, SECONDS);
+
+        // then
+        assertThat(response.aiMessage().text()).contains(String.valueOf(WeatherService.TEMPERATURE));
+
+        // then
+        verify(weatherService).currentTemperature("Munich", CELSIUS);
+        verifyNoMoreInteractions(weatherService);
+
+        // then - verify onPartialToolCall was invoked
+        verify(handler, atLeastOnce()).onPartialToolCall(any());
+        assertThat(handler.onPartialToolCallThreads).containsKey("currentTemperature");
+
+        // then - verify callback order
+        InOrder inOrder = inOrder(handler);
+        inOrder.verify(handler, atLeastOnce()).onPartialToolCall(any());
+        inOrder.verify(handler, atLeastOnce()).onPartialResponse(any());
+        inOrder.verify(handler).onCompleteResponse(any());
+
+        inOrder.verifyNoMoreInteractions();
+        verifyNoMoreInteractions(handler);
+    }
+
+    @Test
     void should_invoke_tool_execution_handler() throws Exception {
 
         // given

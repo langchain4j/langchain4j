@@ -44,13 +44,13 @@ class AiServiceTokenStreamTest {
 
     static Consumer<String> DUMMY_PARTIAL_RESPONSE_HANDLER = (partialResponse) -> {};
     static BiConsumer<PartialResponse, PartialResponseContext> DUMMY_PARTIAL_RESPONSE_WITH_CONTEXT_HANDLER =
-            (pr, ctx) -> {};
+            (partialResponse, partialResponseContext) -> {};
     static Consumer<PartialThinking> DUMMY_PARTIAL_THINKING_HANDLER = (partialThinking) -> {};
     static BiConsumer<PartialThinking, PartialThinkingContext> DUMMY_PARTIAL_THINKING_WITH_CONTEXT_HANDLER =
-            (pt, ctx) -> {};
+            (partialThinking, partialThinkingContext) -> {};
     static Consumer<PartialToolCall> DUMMY_PARTIAL_TOOL_CALL_HANDLER = (partialToolCall) -> {};
     static BiConsumer<PartialToolCall, PartialToolCallContext> DUMMY_PARTIAL_TOOL_CALL_WITH_CONTEXT_HANDLER =
-            (ptc, ctx) -> {};
+            (partialToolCall, partialToolCallContext) -> {};
     static Consumer<Throwable> DUMMY_ERROR_HANDLER = (error) -> {};
     static Consumer<ChatResponse> DUMMY_CHAT_RESPONSE_HANDLER = (chatResponse) -> {};
     static Consumer<BeforeToolExecution> DUMMY_BEFORE_TOOL_EXECUTION_HANDLER = (beforeToolExecution) -> {};
@@ -104,8 +104,8 @@ class AiServiceTokenStreamTest {
 
         assertThatThrownBy(() -> tokenStream.start())
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage(
-                        "One of [onPartialResponse, onPartialResponseWithContext] can be invoked on TokenStream at most 1 time");
+                .hasMessage("One of [onPartialResponse, onPartialResponseWithContext] can be invoked on TokenStream "
+                        + "at most 1 time");
     }
 
     @Test
@@ -117,8 +117,8 @@ class AiServiceTokenStreamTest {
 
         assertThatThrownBy(() -> tokenStream.start())
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage(
-                        "One of [onPartialResponse, onPartialResponseWithContext] can be invoked on TokenStream at most 1 time");
+                .hasMessage("One of [onPartialResponse, onPartialResponseWithContext] can be invoked on TokenStream "
+                        + "at most 1 time");
     }
 
     @Test
@@ -167,8 +167,8 @@ class AiServiceTokenStreamTest {
 
         assertThatThrownBy(() -> tokenStream.start())
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage(
-                        "One of [onPartialThinking, onPartialThinkingWithContext] can be invoked on TokenStream at most 1 time");
+                .hasMessage("One of [onPartialThinking, onPartialThinkingWithContext] can be invoked on TokenStream "
+                        + "at most 1 time");
     }
 
     @Test
@@ -180,8 +180,8 @@ class AiServiceTokenStreamTest {
 
         assertThatThrownBy(() -> tokenStream.start())
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage(
-                        "One of [onPartialThinking, onPartialThinkingWithContext] can be invoked on TokenStream at most 1 time");
+                .hasMessage("One of [onPartialThinking, onPartialThinkingWithContext] can be invoked on TokenStream "
+                        + "at most 1 time");
     }
 
     @Test
@@ -192,9 +192,9 @@ class AiServiceTokenStreamTest {
     }
 
     @Test
-    void start_with_onPartialToolCall_BiConsumer_shouldNotThrowException() {
+    void start_with_onPartialToolCallWithContext_BiConsumer_shouldNotThrowException() {
         tokenStream
-                .onPartialToolCall(DUMMY_PARTIAL_TOOL_CALL_WITH_CONTEXT_HANDLER)
+                .onPartialToolCallWithContext(DUMMY_PARTIAL_TOOL_CALL_WITH_CONTEXT_HANDLER)
                 .ignoreErrors();
 
         assertThatNoException().isThrownBy(() -> tokenStream.start());
@@ -209,19 +209,21 @@ class AiServiceTokenStreamTest {
 
         assertThatThrownBy(() -> tokenStream.start())
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage("onPartialToolCall can be invoked on TokenStream at most 1 time");
+                .hasMessage("One of [onPartialToolCall, onPartialToolCallWithContext] can be "
+                        + "invoked on TokenStream at most 1 time");
     }
 
     @Test
-    void start_onPartialToolCall_Consumer_and_BiConsumer_shouldThrowException() {
+    void start_onPartialToolCall_Consumer_and_onPartialToolCallWithContext_BiConsumer_shouldThrowException() {
         tokenStream
                 .onPartialToolCall(DUMMY_PARTIAL_TOOL_CALL_HANDLER)
-                .onPartialToolCall(DUMMY_PARTIAL_TOOL_CALL_WITH_CONTEXT_HANDLER)
+                .onPartialToolCallWithContext(DUMMY_PARTIAL_TOOL_CALL_WITH_CONTEXT_HANDLER)
                 .ignoreErrors();
 
         assertThatThrownBy(() -> tokenStream.start())
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage("onPartialToolCall can be invoked on TokenStream at most 1 time");
+                .hasMessage("One of [onPartialToolCall, onPartialToolCallWithContext] can be "
+                        + "invoked on TokenStream at most 1 time");
     }
 
     @Test
