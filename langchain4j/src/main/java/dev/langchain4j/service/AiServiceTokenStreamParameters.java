@@ -90,7 +90,7 @@ public class AiServiceTokenStreamParameters {
     /**
      * @return the retrieved contents
      */
-    public List<Content> getRetrievedContents() {
+    public List<Content> retrievedContents() {
         return retrievedContents;
     }
 
