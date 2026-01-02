@@ -19,7 +19,7 @@ public class NonAiAgentInstance implements AgentInstance, AgentListenerProvider,
     private final List<AgentArgument> arguments;
     private final AgentListener listener;
 
-    private AgentInstance parent;
+    private InternalAgent parent;
     private String agentId;
 
     public NonAiAgentInstance(Class<?> type, String name, String description,
@@ -130,7 +130,7 @@ public class NonAiAgentInstance implements AgentInstance, AgentListenerProvider,
     }
 
     @Override
-    public void setParent(AgentInstance parent) {
+    public void setParent(InternalAgent parent) {
         this.parent = parent;
     }
 

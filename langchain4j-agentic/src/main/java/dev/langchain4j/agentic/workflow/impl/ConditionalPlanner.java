@@ -32,4 +32,9 @@ public record ConditionalPlanner(List<ConditionalAgent> conditionalAgents) imple
     public AgenticSystemTopology topology() {
         return AgenticSystemTopology.ROUTER;
     }
+
+    @Override
+    public boolean terminated() {
+        return true;
+    }
 }

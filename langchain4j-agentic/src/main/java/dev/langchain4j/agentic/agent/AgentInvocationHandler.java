@@ -109,7 +109,7 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
     }
 
     @Override
-    public void setParent(final AgentInstance parent) {
+    public void setParent(InternalAgent parent) {
         this.parent = parent;
     }
 

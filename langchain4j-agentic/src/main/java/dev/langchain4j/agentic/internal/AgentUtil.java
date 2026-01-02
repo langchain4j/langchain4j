@@ -17,6 +17,7 @@ import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.AgenticScopeAccess;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.service.MemoryId;
+import dev.langchain4j.service.TokenStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
@@ -286,6 +287,9 @@ public class AgentUtil {
 
     private static void recordType(Map<String, Class<?>> dataTypes, String name, Type type) {
         Class<?> keyClass = rawType(type);
+        if (TokenStream.class.isAssignableFrom(keyClass)) {
+            keyClass = String.class;
+        }
         if (!dataTypes.containsKey(name)) {
             dataTypes.put(name, keyClass);
         } else {

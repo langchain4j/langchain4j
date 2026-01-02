@@ -16,6 +16,10 @@ public interface Planner {
 
     Action nextAction(PlanningContext planningContext);
 
+    default boolean terminated() {
+        return false;
+    }
+
     default Action noOp() {
         return Action.NoOpAction.INSTANCE;
     }
@@ -35,5 +39,4 @@ public interface Planner {
     default Action done(Object result) {
         return new Action.DoneWithResultAction(result);
     }
-
 }

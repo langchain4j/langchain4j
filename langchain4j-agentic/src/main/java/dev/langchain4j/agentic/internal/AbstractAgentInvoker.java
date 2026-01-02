@@ -121,7 +121,7 @@ public abstract class AbstractAgentInvoker implements AgentInvoker, InternalAgen
     }
 
     @Override
-    public void setParent(AgentInstance parent) {
+    public void setParent(InternalAgent parent) {
         agent.setParent(parent);
     }
 

@@ -6,8 +6,8 @@ import dev.langchain4j.agentic.agent.ChatMessagesAccess;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.declarative.TypedKey;
+import dev.langchain4j.agentic.internal.DelayedResponse;
 import dev.langchain4j.agentic.planner.AgentInstance;
-import dev.langchain4j.agentic.internal.AsyncResponse;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -131,7 +131,7 @@ public class DefaultAgenticScope implements AgenticScope {
     }
 
     private Object readStateBlocking(String key, Object state) {
-        if (state instanceof AsyncResponse asyncResponse) {
+        if (state instanceof DelayedResponse asyncResponse) {
             state = asyncResponse.blockingGet();
             writeState(key, state);
         }
