@@ -1,19 +1,18 @@
 package dev.langchain4j.service.tool;
 
-import dev.langchain4j.invocation.InvocationContext;
-import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
-import org.junit.jupiter.params.provider.ValueSource;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.DayOfWeek;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.invocation.InvocationContext;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class ToolExecutorTest {
 
@@ -102,6 +101,7 @@ class ToolExecutorTest {
             "{\"arg0\": 2, \"arg1\": 2}",
             "{\"arg0\": 2.0, \"arg1\": 2.0}",
             "{\"arg0\": 1.9, \"arg1\": 2.1}",
+            "{\"arg0\": -6.0, \"arg1\": 10.0}",
     })
     void should_execute_tool_with_parameters_of_type_float(String arguments) throws NoSuchMethodException {
         executeAndAssert(arguments, "floats", float.class, Float.class, "4.0");

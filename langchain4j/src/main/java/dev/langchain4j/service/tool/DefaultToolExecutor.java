@@ -5,14 +5,6 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
 
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolMemoryId;
-import dev.langchain4j.exception.ToolArgumentsException;
-import dev.langchain4j.exception.ToolExecutionException;
-import dev.langchain4j.internal.Json;
-import dev.langchain4j.invocation.InvocationContext;
-import dev.langchain4j.invocation.InvocationParameters;
-import dev.langchain4j.invocation.LangChain4jManaged;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -23,6 +15,14 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolMemoryId;
+import dev.langchain4j.exception.ToolArgumentsException;
+import dev.langchain4j.exception.ToolExecutionException;
+import dev.langchain4j.internal.Json;
+import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.invocation.InvocationParameters;
+import dev.langchain4j.invocation.LangChain4jManaged;
 
 public class DefaultToolExecutor implements ToolExecutor {
 
@@ -247,7 +247,7 @@ public class DefaultToolExecutor implements ToolExecutor {
 
         if (parameterClass == Float.class || parameterClass == float.class) {
             double doubleValue = getDoubleValue(argument, parameterName, parameterClass);
-            checkBounds(doubleValue, parameterName, parameterClass, -Float.MIN_VALUE, Float.MAX_VALUE);
+            checkBounds(doubleValue, parameterName, parameterClass, -Float.MAX_VALUE, Float.MAX_VALUE);
             return (float) doubleValue;
         }
 
