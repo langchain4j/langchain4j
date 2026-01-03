@@ -6,7 +6,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 public record GeminiThinkingConfig(Boolean includeThoughts, Integer thinkingBudget, String thinkingLevel) {
 
     public enum GeminiThinkingLevel {
-        HIGH, LOW
+        MINIMAL, LOW, MEDIUM, HIGH
     }
 
     public static Builder builder() {
