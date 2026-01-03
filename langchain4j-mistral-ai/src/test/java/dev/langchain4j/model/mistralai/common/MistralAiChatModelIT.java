@@ -7,7 +7,9 @@ import static dev.langchain4j.model.mistralai.MistralAiChatModelName.OPEN_MIXTRA
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.mistralai.MistralAiChatModel;
+import dev.langchain4j.model.mistralai.MistralAiChatResponseMetadata;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.List;
@@ -53,5 +55,10 @@ class MistralAiChatModelIT extends AbstractChatModelIT {
         return ChatRequestParameters.builder()
                 .maxOutputTokens(maxOutputTokens)
                 .build();
+    }
+
+    @Override
+    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(ChatModel model) {
+        return MistralAiChatResponseMetadata.class;
     }
 }

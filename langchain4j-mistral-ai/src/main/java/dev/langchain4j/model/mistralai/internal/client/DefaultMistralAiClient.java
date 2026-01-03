@@ -63,6 +63,11 @@ public class DefaultMistralAiClient extends MistralAiClient {
 
     @Override
     public MistralAiChatCompletionResponse chatCompletion(MistralAiChatCompletionRequest request) {
+        return chatCompletionWithRawResponse(request).parsedResponse();
+    }
+
+    @Override
+    public ParsedAndRawResponse<MistralAiChatCompletionResponse> chatCompletionWithRawResponse(MistralAiChatCompletionRequest request) {
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl, "chat/completions")
@@ -72,8 +77,9 @@ public class DefaultMistralAiClient extends MistralAiClient {
                 .body(toJson(request))
                 .build();
 
-        SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
-        return fromJson(successfulHttpResponse.body(), MistralAiChatCompletionResponse.class);
+        SuccessfulHttpResponse rawResponse = httpClient.execute(httpRequest);
+        MistralAiChatCompletionResponse parsedResponse = fromJson(rawResponse.body(), MistralAiChatCompletionResponse.class);
+        return new ParsedAndRawResponse<>(parsedResponse, rawResponse);
     }
 
     @Override
@@ -103,6 +109,11 @@ public class DefaultMistralAiClient extends MistralAiClient {
 
     @Override
     public MistralAiChatCompletionResponse fimCompletion(MistralAiFimCompletionRequest request) {
+        return fimCompletionWithRawResponse(request).parsedResponse();
+    }
+
+    @Override
+    public ParsedAndRawResponse<MistralAiChatCompletionResponse> fimCompletionWithRawResponse(MistralAiFimCompletionRequest request) {
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl, "fim/completions")
@@ -112,8 +123,9 @@ public class DefaultMistralAiClient extends MistralAiClient {
                 .body(toJson(request))
                 .build();
 
-        SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
-        return fromJson(successfulHttpResponse.body(), MistralAiChatCompletionResponse.class);
+        SuccessfulHttpResponse rawResponse = httpClient.execute(httpRequest);
+        MistralAiChatCompletionResponse parsedResponse = fromJson(rawResponse.body(), MistralAiChatCompletionResponse.class);
+        return new ParsedAndRawResponse<>(parsedResponse, rawResponse);
     }
 
     @Override
@@ -135,6 +147,11 @@ public class DefaultMistralAiClient extends MistralAiClient {
 
     @Override
     public MistralAiEmbeddingResponse embedding(MistralAiEmbeddingRequest request) {
+        return embeddingWithRawResponse(request).parsedResponse();
+    }
+
+    @Override
+    public ParsedAndRawResponse<MistralAiEmbeddingResponse> embeddingWithRawResponse(MistralAiEmbeddingRequest request) {
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl, "embeddings")
@@ -144,8 +161,9 @@ public class DefaultMistralAiClient extends MistralAiClient {
                 .body(toJson(request))
                 .build();
 
-        SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
-        return fromJson(successfulHttpResponse.body(), MistralAiEmbeddingResponse.class);
+        SuccessfulHttpResponse rawResponse = httpClient.execute(httpRequest);
+        MistralAiEmbeddingResponse parsedResponse = fromJson(rawResponse.body(), MistralAiEmbeddingResponse.class);
+        return new ParsedAndRawResponse<>(parsedResponse, rawResponse);
     }
 
     @Override

@@ -23,6 +23,7 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionRequest;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionResponse;
 import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
+import dev.langchain4j.model.mistralai.internal.client.ParsedAndRawResponse;
 import dev.langchain4j.model.mistralai.spi.MistralAiChatModelBuilderFactory;
 import org.slf4j.Logger;
 
@@ -96,16 +97,19 @@ public class MistralAiChatModel implements ChatModel {
 
         MistralAiChatCompletionRequest request = createMistralAiRequest(chatRequest, safePrompt, randomSeed, false);
 
-        MistralAiChatCompletionResponse mistralAiResponse =
-                withRetryMappingExceptions(() -> client.chatCompletion(request), maxRetries);
+        ParsedAndRawResponse<MistralAiChatCompletionResponse> response =
+                withRetryMappingExceptions(() -> client.chatCompletionWithRawResponse(request), maxRetries);
+
+        MistralAiChatCompletionResponse mistralAiResponse = response.parsedResponse();
 
          return ChatResponse.builder()
                 .aiMessage(aiMessageFrom(mistralAiResponse))
-                .metadata(ChatResponseMetadata.builder()
+                .metadata(MistralAiChatResponseMetadata.builder()
                         .id(mistralAiResponse.getId())
                         .modelName(mistralAiResponse.getModel())
                         .tokenUsage(tokenUsageFrom(mistralAiResponse.getUsage()))
                         .finishReason(finishReasonFrom(mistralAiResponse.getChoices().get(0).getFinishReason()))
+                        .rawHttpResponse(response.rawResponse())
                         .build())
                 .build();
     }
