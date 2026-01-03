@@ -1,7 +1,7 @@
 package dev.langchain4j.service.output;
 
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import dev.langchain4j.Internal;
-
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.LocalDate;
@@ -55,6 +55,10 @@ class DefaultOutputParserFactory implements OutputParserFactory {
 
         if (rawClass.isEnum()) {
             return new EnumOutputParser<>(rawClass.asSubclass(Enum.class));
+        }
+
+        if (rawClass.isAnnotationPresent(JsonTypeInfo.class)) {
+            return new PolymorphicOutputParser<>(rawClass);
         }
 
         if (rawClass.equals(List.class)) {
