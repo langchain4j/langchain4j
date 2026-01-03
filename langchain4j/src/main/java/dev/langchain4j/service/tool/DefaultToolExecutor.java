@@ -247,7 +247,7 @@ public class DefaultToolExecutor implements ToolExecutor {
 
         if (parameterClass == Float.class || parameterClass == float.class) {
             double doubleValue = getDoubleValue(argument, parameterName, parameterClass);
-            checkBounds(doubleValue, parameterName, parameterClass, -Float.MIN_VALUE, Float.MAX_VALUE);
+            checkBounds(doubleValue, parameterName, parameterClass, -Float.MAX_VALUE, Float.MAX_VALUE);
             return (float) doubleValue;
         }
 
