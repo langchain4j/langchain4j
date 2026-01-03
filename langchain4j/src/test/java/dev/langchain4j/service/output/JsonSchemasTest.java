@@ -3,6 +3,9 @@ package dev.langchain4j.service.output;
 import static dev.langchain4j.service.output.JsonSchemas.jsonSchemaFrom;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
@@ -16,9 +19,6 @@ import dev.langchain4j.service.Result;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
-import com.fasterxml.jackson.annotation.JsonSubTypes;
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import com.fasterxml.jackson.annotation.JsonTypeName;
 import org.junit.jupiter.api.Test;
 
 class JsonSchemasTest {
@@ -40,7 +40,6 @@ class JsonSchemasTest {
 
     @JsonTypeName("image")
     record ImageResponse(String type, String url) implements ChatbotResponse {}
-
 
     @Test
     void should_return_json_schema_for_pojos() {

@@ -7,8 +7,13 @@ import static dev.langchain4j.service.IllegalConfigurationException.illegalConfi
 import static dev.langchain4j.service.output.ParsingUtils.outputParsingException;
 import static java.lang.String.join;
 
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.annotation.JsonTypeInfo.As;
+import com.fasterxml.jackson.annotation.JsonTypeInfo.Id;
+import com.fasterxml.jackson.annotation.JsonTypeName;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.Internal;
-import dev.langchain4j.internal.Json;
 import dev.langchain4j.internal.JsonParsingUtils;
 import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
@@ -16,12 +21,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
-import com.fasterxml.jackson.annotation.JsonSubTypes;
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import com.fasterxml.jackson.annotation.JsonTypeName;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.annotation.JsonTypeInfo.As;
-import com.fasterxml.jackson.annotation.JsonTypeInfo.Id;
 
 @Internal
 class PolymorphicOutputParser<T> implements OutputParser<T> {
@@ -175,9 +174,7 @@ class PolymorphicOutputParser<T> implements OutputParser<T> {
             return permitted;
         }
 
-        throw illegalConfiguration(
-                "No subtypes found for %s. Please declare @JsonSubTypes.",
-                type.getName());
+        throw illegalConfiguration("No subtypes found for %s. Please declare @JsonSubTypes.", type.getName());
     }
 
     private static <T> void putMapping(
