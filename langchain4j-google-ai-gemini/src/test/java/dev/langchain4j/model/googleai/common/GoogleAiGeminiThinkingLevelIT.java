@@ -1,14 +1,16 @@
 package dev.langchain4j.model.googleai.common;
 
+import static dev.langchain4j.model.googleai.GeminiThinkingConfig.GeminiThinkingLevel.HIGH;
+import static dev.langchain4j.model.googleai.GeminiThinkingConfig.GeminiThinkingLevel.LOW;
+import static dev.langchain4j.model.googleai.GeminiThinkingConfig.GeminiThinkingLevel.MEDIUM;
+import static dev.langchain4j.model.googleai.GeminiThinkingConfig.GeminiThinkingLevel.MINIMAL;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import dev.langchain4j.model.googleai.GeminiThinkingConfig;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
-import static dev.langchain4j.model.googleai.GeminiThinkingConfig.GeminiThinkingLevel.HIGH;
-import static dev.langchain4j.model.googleai.GeminiThinkingConfig.GeminiThinkingLevel.LOW;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 public class GoogleAiGeminiThinkingLevelIT {
@@ -18,9 +20,8 @@ public class GoogleAiGeminiThinkingLevelIT {
         GoogleAiGeminiChatModel modelHigh = GoogleAiGeminiChatModel.builder()
                 .sendThinking(true)
                 .returnThinking(true)
-                .thinkingConfig(GeminiThinkingConfig.builder()
-                        .thinkingLevel(HIGH)
-                        .build())
+                .thinkingConfig(
+                        GeminiThinkingConfig.builder().thinkingLevel(HIGH).build())
                 .modelName("gemini-3-pro-preview")
                 .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
                 .build();
@@ -38,9 +39,8 @@ public class GoogleAiGeminiThinkingLevelIT {
         GoogleAiGeminiChatModel modelLow = GoogleAiGeminiChatModel.builder()
                 .sendThinking(true)
                 .returnThinking(true)
-                .thinkingConfig(GeminiThinkingConfig.builder()
-                        .thinkingLevel(LOW)
-                        .build())
+                .thinkingConfig(
+                        GeminiThinkingConfig.builder().thinkingLevel(LOW).build())
                 .modelName("gemini-3-pro-preview")
                 .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
                 .build();
@@ -50,6 +50,44 @@ public class GoogleAiGeminiThinkingLevelIT {
 
         // Then
         assertThat(responseLow).containsIgnoringCase("life");
+    }
+
+    @Test
+    void define_minimal_thinking_level_with_gemini3flash() {
+        // Given
+        GoogleAiGeminiChatModel model = GoogleAiGeminiChatModel.builder()
+                .sendThinking(true)
+                .returnThinking(true)
+                .thinkingConfig(
+                        GeminiThinkingConfig.builder().thinkingLevel(MINIMAL).build())
+                .modelName("gemini-3-flash-preview")
+                .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+                .build();
+
+        // When
+        String response = model.chat("What is the meaning of life?");
+
+        // Then
+        assertThat(response).containsIgnoringCase("life");
+    }
+
+    @Test
+    void define_medium_thinking_level_with_gemini3flash() {
+        // Given
+        GoogleAiGeminiChatModel model = GoogleAiGeminiChatModel.builder()
+                .sendThinking(true)
+                .returnThinking(true)
+                .thinkingConfig(
+                        GeminiThinkingConfig.builder().thinkingLevel(MEDIUM).build())
+                .modelName("gemini-3-flash-preview")
+                .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+                .build();
+
+        // When
+        String response = model.chat("What is the meaning of life?");
+
+        // Then
+        assertThat(response).containsIgnoringCase("life");
     }
 
     @Test
@@ -66,7 +104,6 @@ public class GoogleAiGeminiThinkingLevelIT {
                 .build();
 
         // Then
-        assertThatThrownBy(() -> modelLow.chat("What is the meaning of life?"))
-                .hasMessageContaining("Invalid value");
+        assertThatThrownBy(() -> modelLow.chat("What is the meaning of life?")).hasMessageContaining("Invalid value");
     }
 }
