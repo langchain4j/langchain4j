@@ -176,7 +176,7 @@ class PolymorphicOutputParser<T> implements OutputParser<T> {
         }
 
         throw illegalConfiguration(
-                "No subtypes found for %s. Please declare @JsonSubTypes or make the type sealed with permitted subclasses.",
+                "No subtypes found for %s. Please declare @JsonSubTypes.",
                 type.getName());
     }
 
