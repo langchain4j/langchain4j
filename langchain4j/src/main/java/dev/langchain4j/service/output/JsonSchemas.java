@@ -19,7 +19,7 @@ public class JsonSchemas {
         }
 
         OutputParser<?> outputParser = outputParserFor(returnType);
-        if (outputParser instanceof PojoOutputParser || outputParser instanceof SealedOutputParser) {
+        if (outputParser instanceof PojoOutputParser || outputParser instanceof PolymorphicOutputParser) {
             return outputParser.jsonSchema();
         }
         return Optional.empty();

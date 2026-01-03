@@ -5,8 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.json.Polymorphic;
-import dev.langchain4j.json.PolymorphicValue;
 import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
@@ -18,6 +16,9 @@ import dev.langchain4j.service.Result;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.annotation.JsonTypeName;
 import org.junit.jupiter.api.Test;
 
 class JsonSchemasTest {
@@ -27,19 +28,19 @@ class JsonSchemasTest {
         String field;
     }
 
-    @Polymorphic(discriminator = "type")
-    sealed interface ChatbotResponse permits TextResponse, ImageResponse {}
+    @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type", visible = true)
+    @JsonSubTypes({
+        @JsonSubTypes.Type(value = TextResponse.class, name = "text"),
+        @JsonSubTypes.Type(value = ImageResponse.class, name = "image")
+    })
+    interface ChatbotResponse {}
 
-    @PolymorphicValue("text")
+    @JsonTypeName("text")
     record TextResponse(String type, String text) implements ChatbotResponse {}
 
-    @PolymorphicValue("image")
+    @JsonTypeName("image")
     record ImageResponse(String type, String url) implements ChatbotResponse {}
 
-    class Wrapper {
-
-        ChatbotResponse response;
-    }
 
     @Test
     void should_return_json_schema_for_pojos() {
