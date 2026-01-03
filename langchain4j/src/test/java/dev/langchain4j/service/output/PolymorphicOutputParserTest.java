@@ -3,15 +3,15 @@ package dev.langchain4j.service.output;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.annotation.JsonTypeName;
 import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.service.IllegalConfigurationException;
 import java.util.Optional;
 import java.util.Set;
-import com.fasterxml.jackson.annotation.JsonSubTypes;
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import com.fasterxml.jackson.annotation.JsonTypeName;
 import org.junit.jupiter.api.Test;
 
 class PolymorphicOutputParserTest {
@@ -29,13 +29,11 @@ class PolymorphicOutputParserTest {
     @JsonTypeName("image")
     record ImageResponse(String type, String url) implements ChatbotResponse {}
 
-    private final PolymorphicOutputParser<ChatbotResponse> parser = new PolymorphicOutputParser<>(ChatbotResponse.class);
+    private final PolymorphicOutputParser<ChatbotResponse> parser =
+            new PolymorphicOutputParser<>(ChatbotResponse.class);
 
     @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type", visible = true)
-    @JsonSubTypes({
-        @JsonSubTypes.Type(value = First.class),
-        @JsonSubTypes.Type(value = Second.class)
-    })
+    @JsonSubTypes({@JsonSubTypes.Type(value = First.class), @JsonSubTypes.Type(value = Second.class)})
     private interface BrokenDuplicate {}
 
     @JsonTypeName("dup")
@@ -50,10 +48,7 @@ class PolymorphicOutputParserTest {
     record MissingTypeInfoImpl(String type) implements MissingTypeInfo {}
 
     @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type", visible = true)
-    @JsonSubTypes({
-        @JsonSubTypes.Type(value = AlphaResponse.class),
-        @JsonSubTypes.Type(value = BetaResponse.class)
-    })
+    @JsonSubTypes({@JsonSubTypes.Type(value = AlphaResponse.class), @JsonSubTypes.Type(value = BetaResponse.class)})
     private interface DefaultName {}
 
     record AlphaResponse(String type) implements DefaultName {}
@@ -61,10 +56,7 @@ class PolymorphicOutputParserTest {
     record BetaResponse(String type) implements DefaultName {}
 
     @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "kind", visible = true)
-    @JsonSubTypes({
-        @JsonSubTypes.Type(value = Cat.class),
-        @JsonSubTypes.Type(value = Dog.class)
-    })
+    @JsonSubTypes({@JsonSubTypes.Type(value = Cat.class), @JsonSubTypes.Type(value = Dog.class)})
     private interface Custom {}
 
     @JsonTypeName("cat")

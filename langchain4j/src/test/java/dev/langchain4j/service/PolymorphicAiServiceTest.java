@@ -3,10 +3,10 @@ package dev.langchain4j.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import dev.langchain4j.model.chat.mock.ChatModelMock;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.JsonTypeName;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -39,9 +39,7 @@ class PolymorphicAiServiceTest {
     }
 
     @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "kind", visible = true)
-    @JsonSubTypes({
-        @JsonSubTypes.Type(value = SummaryResponse.class, name = "summary")
-    })
+    @JsonSubTypes({@JsonSubTypes.Type(value = SummaryResponse.class, name = "summary")})
     interface KindBasedResponse {}
 
     record SummaryResponse(String kind, String summary) implements KindBasedResponse {}
@@ -51,9 +49,7 @@ class PolymorphicAiServiceTest {
     }
 
     @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type", visible = true)
-    @JsonSubTypes({
-        @JsonSubTypes.Type(value = ExplicitOnlyText.class, name = "explicit-text")
-    })
+    @JsonSubTypes({@JsonSubTypes.Type(value = ExplicitOnlyText.class, name = "explicit-text")})
     interface ExplicitOnlyResponse {}
 
     record ExplicitOnlyText(String type, String text) implements ExplicitOnlyResponse {}
@@ -77,11 +73,8 @@ class PolymorphicAiServiceTest {
         DuplicateNameResponse reply(String userMessage);
     }
 
-
     @JsonTypeInfo(use = JsonTypeInfo.Id.NAME)
-    @JsonSubTypes({
-        @JsonSubTypes.Type(MinimalOnly.class)
-    })
+    @JsonSubTypes({@JsonSubTypes.Type(MinimalOnly.class)})
     interface MinimalSubTypeResponse {}
 
     record MinimalOnly(String type, String text) implements MinimalSubTypeResponse {}
@@ -146,7 +139,8 @@ class PolymorphicAiServiceTest {
 
     @Test
     void prompt_should_contain_discriminator_instructions() {
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("""
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds(
+                """
                 { "type": "text", "text": "ok" }
                 """);
 
@@ -164,7 +158,8 @@ class PolymorphicAiServiceTest {
 
     @Test
     void should_handle_polymorphic_return_type_with_user_message_template() {
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("""
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds(
+                """
                 { "type": "image", "url": "https://example.com/cat.png" }
                 """);
 
@@ -221,9 +216,7 @@ class PolymorphicAiServiceTest {
         assertThat(summary.summary()).isEqualTo("ok");
 
         String prompt = model.userMessageText();
-        assertThat(prompt)
-                .contains("discriminator 'kind'")
-                .contains("kind=summary");
+        assertThat(prompt).contains("discriminator 'kind'").contains("kind=summary");
     }
 
     @Test
@@ -245,14 +238,13 @@ class PolymorphicAiServiceTest {
         assertThat(text.text()).isEqualTo("hello");
 
         String prompt = model.userMessageText();
-        assertThat(prompt)
-                .contains("discriminator 'type'")
-                .contains("type=MinimalOnly");
+        assertThat(prompt).contains("discriminator 'type'").contains("type=MinimalOnly");
     }
 
     @Test
     void should_fail_on_duplicate_discriminator_values() {
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("""
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds(
+                """
                 { "type": "dup", "text": "x" }
                 """);
 
