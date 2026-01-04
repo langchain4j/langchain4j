@@ -3,7 +3,6 @@ package dev.langchain4j.rag.query.transformer;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -135,7 +134,7 @@ public class ExpandingQueryTransformer implements QueryTransformer {
                 .toList();
     }
 
-    private JsonNode extractJsonNode(String response) {
+    protected JsonNode extractJsonNode(String response) {
         int jsonStartIndex = response.indexOf("{");
         int jsonEndIndex = response.lastIndexOf("}");
 
@@ -152,7 +151,7 @@ public class ExpandingQueryTransformer implements QueryTransformer {
         }
     }
 
-    public ResponseFormat getResponseFormat() {
+    protected ResponseFormat getResponseFormat() {
         JsonArraySchema queriesString = JsonArraySchema.builder()
                                                         .items(JsonStringSchema
                                                                 .builder()
