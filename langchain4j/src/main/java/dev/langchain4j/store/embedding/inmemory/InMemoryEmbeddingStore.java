@@ -1,5 +1,17 @@
 package dev.langchain4j.store.embedding.inmemory;
 
+import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.nio.file.StandardOpenOption.CREATE;
+import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
+import static java.util.Arrays.asList;
+import static java.util.Comparator.comparingDouble;
+import static java.util.stream.Collectors.toList;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -11,7 +23,6 @@ import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
 import dev.langchain4j.store.embedding.filter.Filter;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,21 +31,12 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.PriorityQueue;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
-
-import static dev.langchain4j.internal.Utils.randomUUID;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.nio.file.StandardOpenOption.CREATE;
-import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
-import static java.util.Arrays.asList;
-import static java.util.Comparator.comparingDouble;
-import static java.util.stream.Collectors.toList;
 
 /**
  * An {@link EmbeddingStore} that stores embeddings in memory.
@@ -111,16 +113,15 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
 
         entries.addAll(newEntries);
 
-        return newEntries.stream()
-                .map(entry -> entry.id)
-                .collect(toList());
+        return newEntries.stream().map(entry -> entry.id).collect(toList());
     }
 
     @Override
     public void removeAll(Collection<String> ids) {
         ensureNotEmpty(ids, "ids");
+        Set<String> idSet = (ids instanceof Set) ? (Set<String>) ids : new HashSet<>(ids);
 
-        entries.removeIf(entry -> ids.contains(entry.id));
+        entries.removeIf(entry -> idSet.contains(entry.id));
     }
 
     @Override
@@ -160,7 +161,8 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
                 }
             }
 
-            double cosineSimilarity = CosineSimilarity.between(entry.embedding, embeddingSearchRequest.queryEmbedding());
+            double cosineSimilarity =
+                    CosineSimilarity.between(entry.embedding, embeddingSearchRequest.queryEmbedding());
             double score = RelevanceScore.fromCosineSimilarity(cosineSimilarity);
             if (score >= embeddingSearchRequest.minScore()) {
                 matches.add(new EmbeddingMatch<>(score, entry.id, entry.embedding, entry.embedded));
@@ -215,7 +217,8 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
      * Merges given {@code InMemoryEmbeddingStore}s into a single {@code InMemoryEmbeddingStore},
      * copying all entries from each store.
      */
-    public static <Embedded> InMemoryEmbeddingStore<Embedded> merge(Collection<InMemoryEmbeddingStore<Embedded>> stores) {
+    public static <Embedded> InMemoryEmbeddingStore<Embedded> merge(
+            Collection<InMemoryEmbeddingStore<Embedded>> stores) {
         ensureNotNull(stores, "stores");
         List<Entry<Embedded>> entries = new ArrayList<>();
         for (InMemoryEmbeddingStore<Embedded> store : stores) {
@@ -228,8 +231,8 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
      * Merges given {@code InMemoryEmbeddingStore}s into a single {@code InMemoryEmbeddingStore},
      * copying all entries from each store.
      */
-    public static <Embedded> InMemoryEmbeddingStore<Embedded> merge(InMemoryEmbeddingStore<Embedded> first,
-                                                                    InMemoryEmbeddingStore<Embedded> second) {
+    public static <Embedded> InMemoryEmbeddingStore<Embedded> merge(
+            InMemoryEmbeddingStore<Embedded> first, InMemoryEmbeddingStore<Embedded> second) {
         return merge(asList(first, second));
     }
 
@@ -266,9 +269,20 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     }
 
     private static InMemoryEmbeddingStoreJsonCodec loadCodec() {
-        for (InMemoryEmbeddingStoreJsonCodecFactory factory : loadFactories(InMemoryEmbeddingStoreJsonCodecFactory.class)) {
+        for (InMemoryEmbeddingStoreJsonCodecFactory factory :
+                loadFactories(InMemoryEmbeddingStoreJsonCodecFactory.class)) {
             return factory.create();
         }
         return new JacksonInMemoryEmbeddingStoreJsonCodec();
+    }
+
+    @JsonIgnore
+    public int size() {
+        return entries.size();
+    }
+
+    @JsonIgnore
+    public boolean isEmpty() {
+        return entries.isEmpty();
     }
 }
