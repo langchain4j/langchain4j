@@ -59,27 +59,6 @@ public class ExpandingQueryTransformer implements QueryTransformer {
                     User query: {{query}}"""
     );
 
-//    OUTPUT FORMAT (follow exactly):
-//    { "queries": [version1, version2, version3, …, version n] }
-//    EXAMPLE User query: "What are some open source NLP frameworks"
-//    EXAMPLE OUTPUT: {"queries":["Which open-source frameworks are available for natural language processing?",
-//            "Can you name some open-source tools used for NLP tasks?", "What are examples of freely available, open-source frameworks for NLP?"]} \
-
-//    public static final PromptTemplate ELEVATED_PROMPT_TEMPLATE = PromptTemplate.from(
-//                    """
-//                    Previous response includes only {{x}} versions of query instead of {{n}} versions. \
-//                    PREVIOUS RESPONSE: \
-//                    {{previousResponse}} \
-//                    """ +
-//                    DEFAULT_PROMPT_TEMPLATE
-//    );
-
-//    The previous response generated is invalid. \
-//    Previous response: \
-//    {{previousResponse}} \
-//    Problem encountered in the previous response: \
-//    {{errorMessage}}""" +
-
     public static final int DEFAULT_N = 3;
 
     protected final ChatModel chatModel;
@@ -117,35 +96,14 @@ public class ExpandingQueryTransformer implements QueryTransformer {
                 .responseFormat(responseFormat)
                 .build();
         ChatResponse response = chatModel.chat(chatRequest);
-        return parse(response.aiMessage().text(), query.metadata());
 
-//        if (queries.size() >= n) {
-//            return queries;
-//        }
-//        log.info("Expected {} queries but got {}. Retrying", n, queries.size());
-//        return retry(
-//                chatRequest,
-//                query,
-//                responseTxt,
-//                queries.size()
-//        );
+        try {
+            return parse(response.aiMessage().text(), query.metadata());
+        } catch (Exception e) {
+            log.error("Failed to expand the query to {} different versions. Returning the original query.", n, e);
+            return List.of(query);
+        }
     }
-
-//    private Collection<Query> retry(ChatRequest chatRequest, Query query, String previousResponse, int x) {
-//        Prompt elevatedPrompt = createPrompt(query, previousResponse, x);
-//        chatRequest.messages().add(elevatedPrompt.toUserMessage());
-//        ChatResponse response = chatModel.chat(chatRequest);
-//        Collection<Query> queries = parse(response.aiMessage().text(), query.metadata());
-//
-//        if (queries.isEmpty()) {
-//            log.warn("Expected {} queries but got 0. Returning the original query.", n);
-//            return List.of(query);
-//        }
-//        else if (queries.size() < n) {
-//            log.warn("Expected {} queries but got {} after retrying.", n, queries.size());
-//        }
-//        return queries;
-//    }
 
     protected Prompt createPrompt(Query query) {
         Map<String, Object> variables = new HashMap<>();
@@ -154,22 +112,13 @@ public class ExpandingQueryTransformer implements QueryTransformer {
         return promptTemplate.apply(variables);
     }
 
-//    protected Prompt createPrompt(Query query, String previousResponse, int x) {
-//        Map<String, Object> variables = new HashMap<>();
-//        variables.put("query", query.text());
-//        variables.put("previousResponse", previousResponse);
-//        variables.put("n", n);
-//        variables.put("x", x);
-//        return ELEVATED_PROMPT_TEMPLATE.apply(variables);
-//    }
-
     protected Collection<Query> parse(String response, Metadata metadata)  {
         JsonNode root = extractJsonNode(response);
         List<String> queries = new ArrayList<>();
         JsonNode queriesNode = root.get("queries");
 
         if (queriesNode == null || !queriesNode.isArray()) {
-            throw new IllegalArgumentException("value of 'queries' key is empty or not a valid array.");
+            throw new IllegalArgumentException("value of queries is empty or not a valid array.");
         }
 
         for (JsonNode queryNode : queriesNode) {
@@ -187,13 +136,13 @@ public class ExpandingQueryTransformer implements QueryTransformer {
     }
 
     private JsonNode extractJsonNode(String response) {
-        int indexFirst = response.indexOf("{");
-        int indexLast = response.lastIndexOf("}");
+        int jsonStartIndex = response.indexOf("{");
+        int jsonEndIndex = response.lastIndexOf("}");
 
-        if (indexFirst == -1 || indexLast == -1 || indexFirst >= indexLast) {
+        if (jsonStartIndex == -1 || jsonEndIndex == -1 || jsonStartIndex >= jsonEndIndex) {
             throw new IllegalArgumentException("Response doesn't contain a valid JSON.");
         }
-        String JsonResponse = response.substring(indexFirst, indexLast + 1);
+        String JsonResponse = response.substring(jsonStartIndex, jsonEndIndex + 1);
         ObjectMapper mapper = new ObjectMapper();
         try {
             return mapper.readTree(JsonResponse);
@@ -205,7 +154,9 @@ public class ExpandingQueryTransformer implements QueryTransformer {
 
     public ResponseFormat getResponseFormat() {
         JsonArraySchema queriesString = JsonArraySchema.builder()
-                                                        .items(JsonStringSchema.builder().build())
+                                                        .items(JsonStringSchema
+                                                                .builder()
+                                                                .build())
                                                         .build();
         JsonObjectSchema jsonObjectSchema = JsonObjectSchema.builder()
                                                             .addProperty("queries", queriesString)

@@ -42,10 +42,6 @@ class ExpandingQueryTransformerTest {
         Query query = Query.from(userMessage.singleText(), metadata);
 
         ChatModelMock model = ChatModelMock.thatAlwaysResponds(queriesString);
-//        ChatModel model = GoogleAiGeminiChatModel.builder()
-//                .apiKey("AIzaSyDbKl520JzhyBC-645LSPY4ucywsEe930U")
-//                .modelName("gemini-2.5-flash")
-//                .build();
 
         QueryTransformer transformer = new ExpandingQueryTransformer(model);
 
@@ -205,105 +201,37 @@ class ExpandingQueryTransformerTest {
                 Query.from("query 2")
         );
     }
-}
 
-//    @ParameterizedTest
-//    @MethodSource
-//    void should_fail_to_parse_custom_prompt_and_parse_response_from_fallback_prompt(
-//            PromptTemplate customPrompt,
-//            AiMessage customPromptResponse,
-//            AiMessage fallbackPromptResponse
-//    ) {
-//
-//        UserMessage userMessage = UserMessage.from("query");
-//
-//        Query query = Query.from(userMessage.singleText());
-//
-//        ChatModelMock model = ChatModelMock.thatAlwaysResponds(customPromptResponse, fallbackPromptResponse);
-//
-//        QueryTransformer transformer = new ExpandingQueryTransformer(model, customPrompt);
-//
-//        // when
-//        Collection<Query> queries = transformer.transform(query);
-//
-//        // then
-//        assertThat(queries).containsExactly(
-//                Query.from("query 1"),
-//                Query.from("query 2"),
-//                Query.from("query 3")
-//        );
-//    }
-//
-//    static Stream<Arguments> should_fail_to_parse_custom_prompt_and_parse_response_from_fallback_prompt() {
-//        return Stream.<Arguments>builder()
-//                .add(Arguments.of(
-//                        PromptTemplate.from(
-//                                "Generate 3 different versions of the query: query"),
-//                        AiMessage.from(
-//                                "1. query 1 \n2. query2\n3. query 3"),
-//                        AiMessage.from("""
-//                                {"queries":["query 1", "query 2", "query 3"]}"""))
-//                )
-//                .add(Arguments.of(
-//                        PromptTemplate.from("""
-//                                Your task is to generate EXACTLY 3 different versions for the given query. \
-//                                CONSTRAINTS: 1. Each version should be worded differently, using synonyms or \
-//                                alternative sentence structures, but they should all retain the original meaning. \
-//                                query: query"""),
-//                        AiMessage.from("""
-//                                Here are three different ways to phrase the query: \
-//                                1. query 1, \
-//                                2. query 2, \
-//                                3. query 3
-//                                """),
-//                        AiMessage.from("""
-//                                Here are different variations of user query:
-//                                {"queries":["query 1", "query 2", "query 3"]}""")
-//                ))
-//                .build();
-//    }
-//
-//    @ParameterizedTest
-//    @MethodSource
-//    void should_fail_to_parse_response_from_both_custom_prompt_and_fallback_prompt(PromptTemplate template, String queriesString) {
-//
-//        UserMessage userMessage = UserMessage.from("query");
-//
-//        Query query = Query.from(userMessage.singleText());
-//
-//        ChatModelMock model = ChatModelMock.thatAlwaysResponds(queriesString);
-//
-//        QueryTransformer transformer = new ExpandingQueryTransformer(model, template);
-//
-//        // when
-//        Collection<Query> queries = transformer.transform(query);
-//
-//        // then
-//        assertThat(queries).containsExactly(
-//                Query.from("query")
-//        );
-//    }
-//
-//    static Stream<Arguments> should_fail_to_parse_response_from_both_custom_prompt_and_fallback_prompt() {
-//        return Stream.<Arguments>builder()
-//                .add(Arguments.of(
-//                        PromptTemplate.from(
-//                                "Generate 3 different versions of the query: query"),
-//                                    "1.query 1 \n2. query 2 \n3.query 3"
-//                ))
-//                .add(Arguments.of(
-//                        PromptTemplate.from("""
-//                                Your task is to generate EXACTLY 3 different versions for the given query. \
-//                                CONSTRAINTS: 1. Each version should be worded differently, using synonyms or \
-//                                alternative sentence structures, but they should all retain the original meaning. \
-//                                query: query"""),
-//                                """
-//                                Here are three different ways to phrase the query: \
-//                                1. query 1, \
-//                                2. query 2, \
-//                                3. query 3
-//                                """
-//                ))
-//                .build();
-//    }
-//}
+    @ParameterizedTest
+    @MethodSource
+    void should_fail_to_expand_query_and_fallback_to_original_query(String queriesString) {
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds(queriesString);
+
+        QueryTransformer transformer = new ExpandingQueryTransformer(model);
+
+        Query query = Query.from("query");
+
+        // when
+        Collection<Query> queries = transformer.transform(query);
+
+        // then
+        assertThat(queries).containsExactly(
+                Query.from("query")
+        );
+    }
+
+    static Stream<Arguments> should_fail_to_expand_query_and_fallback_to_original_query() {
+        return Stream.<Arguments>builder()
+                .add(Arguments.of("""
+                        {"queries" : "query 1, query 2, query 3"}
+                        """))
+                .add(Arguments.of("""
+                        Here are different versions of the query:
+                        queries: \
+                         query 1
+                         query 2
+                         query 3
+                        """))
+                .build();
+    }
+}
