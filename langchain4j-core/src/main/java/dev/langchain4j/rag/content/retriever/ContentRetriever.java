@@ -3,13 +3,17 @@ package dev.langchain4j.rag.content.retriever;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.listener.ContentRetrieverListener;
 import dev.langchain4j.rag.query.Query;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Retrieves {@link Content}s from an underlying data source using a given {@link Query}.
@@ -41,6 +45,22 @@ public interface ContentRetriever {
      * @return A list of retrieved {@link Content}s.
      */
     List<Content> retrieve(Query query);
+
+    /**
+     * Deduplicate the retrieved {@link Content}s using a given {@link Query} based on {@link ContentRetriever#retrieve}.
+     * @param query
+     * @return
+     */
+    default List<Content> deduplicateRetrieve(Query query) {
+        Set<TextSegment> segmentSet = new HashSet<>();
+        List<Content> res = new LinkedList<>();
+        for (Content content : retrieve(query)) {
+            if (segmentSet.add(content.textSegment())) {
+                res.add(content);
+            }
+        }
+        return res;
+    }
 
     /**
      * Wraps this {@link ContentRetriever} with a listening retriever that dispatches events to the provided listener.
