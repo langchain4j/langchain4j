@@ -18,6 +18,7 @@ import static org.mockito.Mockito.when;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.aggregator.ContentAggregator;
 import dev.langchain4j.rag.content.injector.ContentInjector;
@@ -374,6 +375,117 @@ class DefaultRetrievalAugmentorTest {
         public List<Content> retrieve(Query query) {
             return contents;
         }
+    }
+
+    @Test
+    void should_deduplicate_retrieve_contents() {
+        // given
+        dev.langchain4j.data.document.Metadata metadata1 = new dev.langchain4j.data.document.Metadata().put("source", "doc1");
+        dev.langchain4j.data.document.Metadata metadata2 = new dev.langchain4j.data.document.Metadata().put("source", "doc2");
+        dev.langchain4j.data.document.Metadata metadata1Duplicate = new dev.langchain4j.data.document.Metadata().put("source", "doc1");
+
+        TextSegment segment1 = TextSegment.from("content 1", metadata1);
+        TextSegment segment2 = TextSegment.from("content 2", metadata2);
+        TextSegment segment1Dup = TextSegment.from("content 1", metadata1Duplicate);
+
+        Content content1 = Content.from(segment1);
+        Content content2 = Content.from(segment2);
+        Content content1Dup = Content.from(segment1Dup);
+
+        ContentRetriever contentRetriever = new TestContentRetriever(content1, content2, content1Dup);
+
+        Query query = Query.from("test query");
+
+        // when
+        List<Content> deduplicatedContents = contentRetriever.deduplicateRetrieve(query);
+
+        // then
+        assertThat(deduplicatedContents).hasSize(2);
+        assertThat(deduplicatedContents.get(0).textSegment().text()).isEqualTo("content 1");
+        assertThat(deduplicatedContents.get(1).textSegment().text()).isEqualTo("content 2");
+    }
+
+    @Test
+    void should_deduplicate_retrieve_all_duplicates() {
+        // given
+        dev.langchain4j.data.document.Metadata metadata = new dev.langchain4j.data.document.Metadata().put("source", "doc1");
+        dev.langchain4j.data.document.Metadata metadataDup1 = new dev.langchain4j.data.document.Metadata().put("source", "doc1");
+        dev.langchain4j.data.document.Metadata metadataDup2 = new dev.langchain4j.data.document.Metadata().put("source", "doc1");
+
+        TextSegment segment1 = TextSegment.from("same content", metadata);
+        TextSegment segment1Dup1 = TextSegment.from("same content", metadataDup1);
+        TextSegment segment1Dup2 = TextSegment.from("same content", metadataDup2);
+
+        Content content1 = Content.from(segment1);
+        Content content1Dup1 = Content.from(segment1Dup1);
+        Content content1Dup2 = Content.from(segment1Dup2);
+
+        ContentRetriever contentRetriever = new TestContentRetriever(content1, content1Dup1, content1Dup2);
+
+        Query query = Query.from("test query");
+
+        // when
+        List<Content> deduplicatedContents = contentRetriever.deduplicateRetrieve(query);
+
+        // then
+        assertThat(deduplicatedContents).hasSize(1);
+        assertThat(deduplicatedContents.get(0).textSegment().text()).isEqualTo("same content");
+    }
+
+    @Test
+    void should_deduplicate_retrieve_no_duplicates() {
+        // given
+        dev.langchain4j.data.document.Metadata metadata1 = new dev.langchain4j.data.document.Metadata().put("source", "doc1");
+        dev.langchain4j.data.document.Metadata metadata2 = new dev.langchain4j.data.document.Metadata().put("source", "doc2");
+        dev.langchain4j.data.document.Metadata metadata3 = new dev.langchain4j.data.document.Metadata().put("source", "doc3");
+
+        TextSegment segment1 = TextSegment.from("content 1", metadata1);
+        TextSegment segment2 = TextSegment.from("content 2", metadata2);
+        TextSegment segment3 = TextSegment.from("content 3", metadata3);
+
+        Content content1 = Content.from(segment1);
+        Content content2 = Content.from(segment2);
+        Content content3 = Content.from(segment3);
+
+        ContentRetriever contentRetriever = new TestContentRetriever(content1, content2, content3);
+
+        Query query = Query.from("test query");
+
+        // when
+        List<Content> deduplicatedContents = contentRetriever.deduplicateRetrieve(query);
+
+        // then
+        assertThat(deduplicatedContents).hasSize(3);
+        assertThat(deduplicatedContents.get(0).textSegment().text()).isEqualTo("content 1");
+        assertThat(deduplicatedContents.get(1).textSegment().text()).isEqualTo("content 2");
+        assertThat(deduplicatedContents.get(2).textSegment().text()).isEqualTo("content 3");
+    }
+
+    @Test
+    void should_deduplicate_retrieve_same_text_different_metadata_treated_as_different() {
+        // given
+        dev.langchain4j.data.document.Metadata metadata1 = new dev.langchain4j.data.document.Metadata().put("source", "doc1");
+        dev.langchain4j.data.document.Metadata metadata2 = new dev.langchain4j.data.document.Metadata().put("source", "doc2");
+
+        TextSegment segment1 = TextSegment.from("same text", metadata1);
+        TextSegment segment2 = TextSegment.from("same text", metadata2);
+
+        Content content1 = Content.from(segment1);
+        Content content2 = Content.from(segment2);
+
+        ContentRetriever contentRetriever = new TestContentRetriever(content1, content2);
+
+        Query query = Query.from("test query");
+
+        // when
+        List<Content> deduplicatedContents = contentRetriever.deduplicateRetrieve(query);
+
+        // then
+        assertThat(deduplicatedContents).hasSize(2);
+        assertThat(deduplicatedContents.get(0).textSegment().text()).isEqualTo("same text");
+        assertThat(deduplicatedContents.get(0).textSegment().metadata().getString("source")).isEqualTo("doc1");
+        assertThat(deduplicatedContents.get(1).textSegment().text()).isEqualTo("same text");
+        assertThat(deduplicatedContents.get(1).textSegment().metadata().getString("source")).isEqualTo("doc2");
     }
 
     static class TestContentAggregator implements ContentAggregator {
