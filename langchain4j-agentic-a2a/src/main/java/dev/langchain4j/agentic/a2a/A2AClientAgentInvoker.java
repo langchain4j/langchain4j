@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic.a2a;
 
 import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentListenerProvider;
 import dev.langchain4j.agentic.internal.AgentInvocationArguments;
@@ -27,7 +28,7 @@ public class A2AClientAgentInvoker implements AgentInvoker {
     private final AgentCard agentCard;
     private final Method method;
 
-    private AgentInstance parent;
+    private InternalAgent parent;
 
     public A2AClientAgentInvoker(A2AClientInstance a2AClientInstance, Method method) {
         this.method = method;
@@ -135,7 +136,7 @@ public class A2AClientAgentInvoker implements AgentInvoker {
     }
 
     @Override
-    public void setParent(AgentInstance parent) {
+    public void setParent(InternalAgent parent) {
         this.parent = parent;
     }
 
