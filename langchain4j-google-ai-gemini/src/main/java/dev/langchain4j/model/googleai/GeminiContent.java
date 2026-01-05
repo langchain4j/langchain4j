@@ -1,10 +1,10 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.internal.Utils.mutableCopy;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.List;
 import java.util.Map;
-
-import static dev.langchain4j.internal.Utils.mutableCopy;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 record GeminiContent(List<GeminiPart> parts, String role) {
@@ -27,7 +27,8 @@ record GeminiContent(List<GeminiPart> parts, String role) {
             GeminiExecutableCode executableCode,
             GeminiCodeExecutionResult codeExecutionResult,
             Boolean thought,
-            String thoughtSignature) {
+            String thoughtSignature,
+            GeminiMediaResolution mediaResolution) {
 
         static Builder builder() {
             return new Builder();
@@ -47,6 +48,7 @@ record GeminiContent(List<GeminiPart> parts, String role) {
             private GeminiCodeExecutionResult codeExecutionResult;
             private Boolean thought;
             private String thoughtSignature;
+            private GeminiMediaResolution mediaResolution;
 
             private Builder() {}
 
@@ -95,6 +97,11 @@ record GeminiContent(List<GeminiPart> parts, String role) {
                 return this;
             }
 
+            Builder mediaResolution(GeminiMediaResolution mediaResolution) {
+                this.mediaResolution = mediaResolution;
+                return this;
+            }
+
             GeminiPart build() {
                 return new GeminiPart(
                         text,
@@ -105,7 +112,8 @@ record GeminiContent(List<GeminiPart> parts, String role) {
                         executableCode,
                         codeExecutionResult,
                         thought,
-                        thoughtSignature);
+                        thoughtSignature,
+                        mediaResolution);
             }
         }
 
@@ -120,6 +128,12 @@ record GeminiContent(List<GeminiPart> parts, String role) {
 
         @JsonIgnoreProperties(ignoreUnknown = true)
         record GeminiFileData(String mimeType, String fileUri) {}
+
+        /**
+         * Wrapper for per-part media resolution setting (Currently Gemini 3 only).
+         */
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        record GeminiMediaResolution(GeminiMediaResolutionLevel level) {}
 
         @JsonIgnoreProperties(ignoreUnknown = true)
         record GeminiExecutableCode(GeminiLanguage programmingLanguage, String code) {
