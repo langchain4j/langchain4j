@@ -582,6 +582,22 @@ public abstract class AiServices<T> {
     }
 
     /**
+     * Configures a reasoning augmentor to augment user messages with relevant reasoning strategies
+     * retrieved from a {@link dev.langchain4j.reasoning.ReasoningBank}.
+     * <p>
+     * ReasoningAugmentor enables agents to learn from past experiences by retrieving and applying
+     * reasoning strategies that have proven successful for similar tasks.
+     *
+     * @param reasoningAugmentor The reasoning augmentor to be used by the AI Service.
+     * @return builder
+     * @since 1.11.0
+     */
+    public AiServices<T> reasoningAugmentor(dev.langchain4j.reasoning.ReasoningAugmentor reasoningAugmentor) {
+        context.reasoningAugmentor = ensureNotNull(reasoningAugmentor, "reasoningAugmentor");
+        return this;
+    }
+
+    /**
      * Registers an {@link AiServiceListener} listener for AI service events for this AI Service.
      *
      * @param listener the listener to be registered, must not be {@code null}
