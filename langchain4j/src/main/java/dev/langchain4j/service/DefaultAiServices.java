@@ -508,12 +508,24 @@ class DefaultAiServices<T> extends AiServices<T> {
 
     private static UserMessage prepareUserMessage(
             Method method, Object[] args, String userMessageTemplate, Map<String, Object> variables) {
-        if (userMessageTemplate == null || userMessageTemplate.trim().isEmpty()) {
+        if (userMessageTemplate.isEmpty()) {
             Optional<String> maybeUserName = findUserName(method.getParameters(), args);
 
-            return maybeUserName
-                    .map(userName -> UserMessage.from(userName, "M"))
-                    .orElseGet(() -> UserMessage.from("M"));
+            for (Object arg : args) {
+                if (arg instanceof Content) {
+                    Content content = (Content) arg;
+                    return maybeUserName
+                            .map(userName -> UserMessage.from(userName, content))
+                            .orElseGet(() -> UserMessage.from(content));
+                } else if (isListOfContents(arg)) {
+                    List<Content> contents = (List<Content>) arg;
+                    return maybeUserName
+                            .map(userName -> UserMessage.from(userName, contents))
+                            .orElseGet(() -> UserMessage.from(contents));
+                }
+            }
+
+            return UserMessage.from(" ");
         }
 
         Prompt prompt = PromptTemplate.from(userMessageTemplate).apply(variables);
