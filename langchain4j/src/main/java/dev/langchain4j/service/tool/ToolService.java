@@ -42,6 +42,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 @Internal
@@ -70,6 +72,9 @@ public class ToolService {
     private ToolExecutionErrorHandler executionErrorHandler;
     private Function<ToolExecutionRequest, ToolExecutionResultMessage> toolHallucinationStrategy =
             HallucinatedToolNameStrategy.THROW_EXCEPTION;
+
+    private Consumer<ToolExecutionRequest> beforeToolExecution = request -> { };
+    private BiConsumer<ToolExecutionRequest, ToolExecutionResult> afterToolExecution = (request, result) -> { };
 
     public void hallucinatedToolNameStrategy(
             Function<ToolExecutionRequest, ToolExecutionResultMessage> toolHallucinationStrategy) {
@@ -170,6 +175,20 @@ public class ToolService {
 
     public int maxSequentialToolsInvocations() {
         return maxSequentialToolsInvocations;
+    }
+
+    /**
+     * @since 1.11.0
+     */
+    public void beforeToolExecution(Consumer<ToolExecutionRequest> beforeToolExecution) {
+        this.beforeToolExecution = beforeToolExecution;
+    }
+
+    /**
+     * @since 1.11.0
+     */
+    public void afterToolExecution(BiConsumer<ToolExecutionRequest, ToolExecutionResult> afterToolExecution) {
+        this.afterToolExecution = afterToolExecution;
     }
 
     /**
@@ -427,17 +446,27 @@ public class ToolService {
             InvocationContext invocationContext) {
         Map<ToolExecutionRequest, ToolExecutionResult> toolResults = new LinkedHashMap<>();
         for (ToolExecutionRequest toolRequest : toolRequests) {
-            ToolExecutor executor = toolExecutors.get(toolRequest.name());
-            ToolExecutionResult toolResult;
-            if (executor == null) {
-                toolResult = applyToolHallucinationStrategy(toolRequest);
-            } else {
-                toolResult = executeWithErrorHandling(
-                        toolRequest, executor, invocationContext, argumentsErrorHandler(), executionErrorHandler());
-            }
-            toolResults.put(toolRequest, toolResult);
+            toolResults.put(toolRequest, executeTool(invocationContext, toolExecutors, toolRequest));
         }
         return toolResults;
+    }
+
+    private ToolExecutionResult executeTool(InvocationContext invocationContext, Map<String, ToolExecutor> toolExecutors, ToolExecutionRequest toolRequest) {
+        return executeTool(invocationContext, toolExecutors, toolRequest, this.beforeToolExecution, this.afterToolExecution);
+    }
+
+    public ToolExecutionResult executeTool(InvocationContext invocationContext, Map<String, ToolExecutor> toolExecutors, ToolExecutionRequest toolRequest,
+                                           Consumer<ToolExecutionRequest> beforeToolExecution, BiConsumer<ToolExecutionRequest, ToolExecutionResult> afterToolExecution) {
+        beforeToolExecution.accept(toolRequest);
+
+        ToolExecutor executor = toolExecutors.get(toolRequest.name());
+        ToolExecutionResult toolResult = executor == null ?
+                applyToolHallucinationStrategy(toolRequest) :
+                executeWithErrorHandling(
+                    toolRequest, executor, invocationContext, argumentsErrorHandler(), executionErrorHandler());
+
+        afterToolExecution.accept(toolRequest, toolResult);
+        return toolResult;
     }
 
     public static ToolExecutionResult executeWithErrorHandling(

@@ -3,7 +3,6 @@ package dev.langchain4j.agentic.internal;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.observability.AgentListener;
-import dev.langchain4j.agentic.observability.AgentListenerProvider;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -22,7 +21,7 @@ import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.afterAg
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.agentError;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.beforeAgentInvocation;
 
-public interface AgentInvoker extends AgentInstance, AgentListenerProvider, InternalAgent {
+public interface AgentInvoker extends AgentInstance, InternalAgent {
 
     Method method();
 

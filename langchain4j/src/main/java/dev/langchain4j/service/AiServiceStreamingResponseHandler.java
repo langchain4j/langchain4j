@@ -380,17 +380,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     private ToolExecutionResult execute(ToolExecutionRequest toolRequest) {
-        ToolExecutor toolExecutor = toolExecutors.get(toolRequest.name());
-        ToolExecutionResult toolResult;
-        handleBeforeTool(toolRequest);
-        if (toolExecutor == null) {
-            toolResult = context.toolService.applyToolHallucinationStrategy(toolRequest);
-        } else {
-            toolResult = executeWithErrorHandling(
-                    toolRequest, toolExecutor, invocationContext, toolArgumentsErrorHandler, toolExecutionErrorHandler);
-        }
-        handleAfterTool(toolRequest, toolResult);
-        return toolResult;
+        return context.toolService.executeTool(invocationContext, toolExecutors, toolRequest, this::handleBeforeTool, this::handleAfterTool);
     }
 
     private void handleBeforeTool(ToolExecutionRequest request) {

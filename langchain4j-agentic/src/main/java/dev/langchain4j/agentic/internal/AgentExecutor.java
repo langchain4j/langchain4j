@@ -2,6 +2,7 @@ package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
+import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
@@ -143,6 +144,11 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
     @Override
     public void appendId(final String idSuffix) {
         agentInvoker.appendId(idSuffix);
+    }
+
+    @Override
+    public AgentListener listener() {
+        return agentInvoker.listener();
     }
 
     void setParent(InternalAgent parent, int index) {

@@ -41,6 +41,7 @@ import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.service.tool.DefaultToolExecutor;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
+import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.spi.services.AiServicesFactory;
@@ -52,7 +53,9 @@ import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
+import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
 
@@ -469,8 +472,43 @@ public abstract class AiServices<T> {
         return this;
     }
 
+    /**
+     * Configures the maximum number of tool invocations that can be executed.
+     * <p>
+     * By default, this limit is set to 100.
+     *
+     * @param maxSequentialToolsInvocations The maximum number of tool invocations that can be executed.
+     * @return builder
+     */
     public AiServices<T> maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
         context.toolService.maxSequentialToolsInvocations(maxSequentialToolsInvocations);
+        return this;
+    }
+
+    /**
+     * Configures a callback to be invoked before each tool execution.
+     *
+     * @param beforeToolExecution A {@link Consumer} that accepts a {@link ToolExecutionRequest}
+     *                            representing the tool execution request about to be executed.
+     * @return builder
+     * @since 1.11.0
+     */
+    public AiServices<T> beforeToolExecution(Consumer<ToolExecutionRequest> beforeToolExecution) {
+        context.toolService.beforeToolExecution(beforeToolExecution);
+        return this;
+    }
+
+    /**
+     * Configures a callback to be invoked after each tool execution.
+     *
+     * @param afterToolExecution A {@link BiConsumer} that accepts a {@link ToolExecutionRequest}
+     *                           representing the tool execution request that was executed,
+     *                           and a {@link ToolExecutionResult} representing the result of the tool execution.
+     * @return builder
+     * @since 1.11.0
+     */
+    public AiServices<T> afterToolExecution(BiConsumer<ToolExecutionRequest, ToolExecutionResult> afterToolExecution) {
+        context.toolService.afterToolExecution(afterToolExecution);
         return this;
     }
 

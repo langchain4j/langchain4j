@@ -1,6 +1,8 @@
 package dev.langchain4j.agentic.observability;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.service.tool.ToolExecutionResult;
 
 /**
  * Listener interface for monitoring agent invocations.
@@ -13,6 +15,9 @@ public interface AgentListener {
 
     default void afterAgenticScopeCreated(AgenticScope agenticScope) { }
     default void beforeAgenticScopeDestroyed(AgenticScope agenticScope) { }
+
+    default void beforeToolExecution(ToolExecutionRequest toolExecutionRequest) { }
+    default void afterToolExecution(ToolExecutionRequest toolExecutionRequest, ToolExecutionResult toolExecutionResult) { }
 
     /**
      * Indicates whether this listener should be used only to the agent where it is registered (default)
