@@ -48,6 +48,7 @@ import dev.langchain4j.service.output.ServiceOutputParser;
 import dev.langchain4j.service.tool.ToolServiceContext;
 import dev.langchain4j.service.tool.ToolServiceResult;
 import dev.langchain4j.spi.services.TokenStreamAdapter;
+import dev.langchain4j.internal.DefaultExecutorProvider;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationHandler;
@@ -66,7 +67,6 @@ import java.util.Scanner;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 @Internal
@@ -104,8 +104,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                 context.aiServiceClass.getClassLoader(),
                 new Class<?>[] {context.aiServiceClass},
                 new InvocationHandler() {
-
-                    private final ExecutorService executor = Executors.newCachedThreadPool();
 
                     @Override
                     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
@@ -437,6 +435,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                     private Future<Moderation> triggerModerationIfNeeded(Method method, List<ChatMessage> messages) {
                         if (method.isAnnotationPresent(Moderate.class)) {
+                            ExecutorService executor = DefaultExecutorProvider.getDefaultExecutorService();
                             return executor.submit(() -> {
                                 List<ChatMessage> messagesToModerate = removeToolMessages(messages);
                                 return context.moderationModel

@@ -51,7 +51,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
 
     private final String name;
     private String agentId;
-    private AgentInstance parent;
+    private InternalAgent parent;
 
     private String[] inputKeys;
     private String outputKey;
@@ -181,7 +181,11 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
             String responseText = messageResponse.get();
             LOG.debug("Response: " + responseText);
             return serviceOutputParser.parseText(returnType, responseText);
-        } catch (InterruptedException | ExecutionException e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            LOG.error("Failed to get response: " + e.getMessage(), e);
+            throw new RuntimeException("Failed to get response: " + e.getMessage(), e);
+        } catch (ExecutionException e) {
             LOG.error("Failed to get response: " + e.getMessage(), e);
             throw new RuntimeException("Failed to get response: " + e.getMessage(), e);
         }
@@ -212,7 +216,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     }
 
     @Override
-    public void setParent(AgentInstance parent) {
+    public void setParent(InternalAgent parent) {
         this.parent = parent;
     }
 

@@ -20,11 +20,16 @@ public class SequentialPlanner implements Planner {
 
     @Override
     public Action nextAction(PlanningContext planningContext) {
-        return agentCursor >= agents.size() ? done() : call(agents.get(agentCursor++));
+        return terminated() ? done() : call(agents.get(agentCursor++));
     }
 
     @Override
     public AgenticSystemTopology topology() {
         return AgenticSystemTopology.SEQUENCE;
+    }
+
+    @Override
+    public boolean terminated() {
+        return agentCursor >= agents.size();
     }
 }

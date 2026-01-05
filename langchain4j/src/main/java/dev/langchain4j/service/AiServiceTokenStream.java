@@ -19,6 +19,8 @@ import dev.langchain4j.model.chat.response.PartialResponse;
 import dev.langchain4j.model.chat.response.PartialResponseContext;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialThinkingContext;
+import dev.langchain4j.model.chat.response.PartialToolCall;
+import dev.langchain4j.model.chat.response.PartialToolCallContext;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.BeforeToolExecution;
@@ -53,6 +55,8 @@ public class AiServiceTokenStream implements TokenStream {
     private BiConsumer<PartialResponse, PartialResponseContext> partialResponseWithContextHandler;
     private Consumer<PartialThinking> partialThinkingHandler;
     private BiConsumer<PartialThinking, PartialThinkingContext> partialThinkingWithContextHandler;
+    private Consumer<PartialToolCall> partialToolCallHandler;
+    private BiConsumer<PartialToolCall, PartialToolCallContext> partialToolCallWithContextHandler;
     private Consumer<List<Content>> contentsHandler;
     private Consumer<ChatResponse> intermediateResponseHandler;
     private Consumer<BeforeToolExecution> beforeToolExecutionHandler;
@@ -64,6 +68,8 @@ public class AiServiceTokenStream implements TokenStream {
     private int onPartialResponseWithContextInvoked;
     private int onPartialThinkingInvoked;
     private int onPartialThinkingWithContextInvoked;
+    private int onPartialToolCallInvoked;
+    private int onPartialToolCallWithContextInvoked;
     private int onIntermediateResponseInvoked;
     private int onCompleteResponseInvoked;
     private int onRetrievedInvoked;
@@ -85,7 +91,7 @@ public class AiServiceTokenStream implements TokenStream {
         this.toolArgumentsErrorHandler = parameters.toolArgumentsErrorHandler();
         this.toolExecutionErrorHandler = parameters.toolExecutionErrorHandler();
         this.toolExecutor = parameters.toolExecutor();
-        this.retrievedContents = copy(parameters.gretrievedContents());
+        this.retrievedContents = copy(parameters.retrievedContents());
         this.context = ensureNotNull(parameters.context(), "context");
         ensureNotNull(this.context.streamingChatModel, "streamingChatModel");
         this.invocationContext = parameters.invocationContext();
@@ -118,6 +124,20 @@ public class AiServiceTokenStream implements TokenStream {
     public TokenStream onPartialThinkingWithContext(BiConsumer<PartialThinking, PartialThinkingContext> handler) {
         this.partialThinkingWithContextHandler = handler;
         this.onPartialThinkingWithContextInvoked++;
+        return this;
+    }
+
+    @Override
+    public TokenStream onPartialToolCall(Consumer<PartialToolCall> partialToolCallHandler) {
+        this.partialToolCallHandler = partialToolCallHandler;
+        this.onPartialToolCallInvoked++;
+        return this;
+    }
+
+    @Override
+    public TokenStream onPartialToolCallWithContext(BiConsumer<PartialToolCall, PartialToolCallContext> handler) {
+        this.partialToolCallWithContextHandler = handler;
+        this.onPartialToolCallWithContextInvoked++;
         return this;
     }
 
@@ -195,6 +215,8 @@ public class AiServiceTokenStream implements TokenStream {
                 partialResponseWithContextHandler,
                 partialThinkingHandler,
                 partialThinkingWithContextHandler,
+                partialToolCallHandler,
+                partialToolCallWithContextHandler,
                 beforeToolExecutionHandler,
                 toolExecutionHandler,
                 intermediateResponseHandler,
@@ -226,6 +248,10 @@ public class AiServiceTokenStream implements TokenStream {
         if (onPartialThinkingInvoked + onPartialThinkingWithContextInvoked > 1) {
             throw new IllegalConfigurationException("One of [onPartialThinking, onPartialThinkingWithContext] "
                     + "can be invoked on TokenStream at most 1 time");
+        }
+        if (onPartialToolCallInvoked + onPartialToolCallWithContextInvoked > 1) {
+            throw new IllegalConfigurationException("One of [onPartialToolCall, onPartialToolCallWithContext] can be "
+                    + "invoked on TokenStream at most 1 time");
         }
         if (onIntermediateResponseInvoked > 1) {
             throw new IllegalConfigurationException(

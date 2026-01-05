@@ -2,6 +2,7 @@ package dev.langchain4j.agentic.internal;
 
 import static dev.langchain4j.agentic.internal.AgentUtil.agenticSystemDataTypes;
 import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
+import static dev.langchain4j.agentic.internal.AgentUtil.rawType;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.afterAgentInvocation;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.beforeAgentInvocation;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.afterAgenticScopeCreated;
@@ -45,6 +46,7 @@ import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.ParameterNameResolver;
+import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 
 public class PlannerBasedInvocationHandler implements InvocationHandler, AgentInstance, InternalAgent {
@@ -72,12 +74,13 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, AgentIn
     private final String name;
     private final String description;
     private final Type outputType;
+    private boolean allowStreamingOutput;
     private final String outputKey;
     private final List<AgentArgument> arguments;
     private final List<AgentInstance> subagents;
 
     private String agentId;
-    private AgentInstance parent;
+    private InternalAgent parent;
 
     public PlannerBasedInvocationHandler(AbstractServiceBuilder<?, ?> service, Supplier<Planner> plannerSupplier) {
         this(service, null, service.name, plannerSupplier, null);
@@ -88,10 +91,9 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, AgentIn
         agenticSystemDataTypes(this);
     }
 
-    private PlannerBasedInvocationHandler(AbstractServiceBuilder<?, ?> service, AgentInstance parent, String agentId, Supplier<Planner> plannerSupplier, DefaultAgenticScope agenticScope) {
+    private PlannerBasedInvocationHandler(AbstractServiceBuilder<?, ?> service, InternalAgent parent, String agentId, Supplier<Planner> plannerSupplier, DefaultAgenticScope agenticScope) {
         this.service = service;
         this.agentId = agentId;
-        this.parent = parent;
         this.output = service.output;
         this.executor = service.executor;
         this.beforeCall = service.beforeCall;
@@ -105,6 +107,9 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, AgentIn
         this.name = service.name;
         this.description = service.description;
         this.outputType = service.agentReturnType();
+        this.allowStreamingOutput = UntypedAgent.class.isAssignableFrom(this.type) ||
+                TokenStream.class.isAssignableFrom(rawType(this.outputType));
+        setParent(parent);
         this.outputKey = service.outputKey;
         this.arguments = service.agenticMethod != null ? argumentsFromMethod(service.agenticMethod) : List.of();
         this.subagents = service.subagents.stream().map(AgentInstance.class::cast).toList();
@@ -261,8 +266,16 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, AgentIn
     }
 
     @Override
-    public void setParent(AgentInstance parent) {
+    public void setParent(InternalAgent parent) {
         this.parent = parent;
+        if (parent != null && !parent.allowStreamingOutput()) {
+            this.allowStreamingOutput = false;
+        }
+    }
+
+    @Override
+    public boolean allowStreamingOutput() {
+        return allowStreamingOutput;
     }
 
     @Override
@@ -280,7 +293,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, AgentIn
         return defaultPlannerInstance.topology();
     }
 
-    private class PlannerLoop implements AgentInvocationListener {
+    private class PlannerLoop implements PlannerExecutor {
         private final Planner planner;
         private final DefaultAgenticScope agenticScope;
 
@@ -318,7 +331,10 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, AgentIn
                 for (Future<?> future : tasks) {
                     future.get();
                 }
-            } catch (InterruptedException | ExecutionException e) {
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException(e);
+            } catch (ExecutionException e) {
                 throw new RuntimeException(e);
             }
         }
@@ -337,8 +353,13 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, AgentIn
         }
 
         @Override
-        public void onAgentInvoked(AgentInvocation agentInvocation) {
+        public void onSubagentInvoked(AgentInvocation agentInvocation) {
             this.nextAction = composeActions(this.nextAction, planner.nextAction(new PlanningContext(agenticScope, agentInvocation)));
+        }
+
+        @Override
+        public boolean propagateStreaming() {
+            return allowStreamingOutput && planner.terminated();
         }
 
         private static Action composeActions(Action first, Action second) {
