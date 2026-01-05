@@ -13,9 +13,9 @@
     <name>LangChain4j :: Integration :: OpenAI Official</name>
 
     <properties>
-        <enforcer.skipRules>requireUpperBoundDeps</enforcer.skipRules>
-        <openai-java.version>4.9.0</openai-java.version>
+        <openai-java.version>4.13.0</openai-java.version>
         <httpclient5.version>5.2.1</httpclient5.version>
+        <enforcer.skipRules>requireUpperBoundDeps</enforcer.skipRules>
     </properties>
 
     <dependencyManagement>
