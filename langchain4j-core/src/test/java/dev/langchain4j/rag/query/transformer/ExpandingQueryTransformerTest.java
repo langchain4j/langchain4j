@@ -9,10 +9,13 @@ import dev.langchain4j.rag.query.Metadata;
 import dev.langchain4j.rag.query.Query;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.stream.Stream;
 
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -21,8 +24,8 @@ class ExpandingQueryTransformerTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "query 1\nquery 2\nquery 3",
-            "query 1\n\nquery 2\n\nquery 3"
+            """
+                    {"queries":["query 1","query 2","query 3"]}"""
     })
     void should_expand_query(String queriesString) {
 
@@ -51,14 +54,13 @@ class ExpandingQueryTransformerTest {
         );
         assertThat(model.userMessageText()).isEqualTo(
                 """
-                Generate 3 different versions of a provided user query. \
-                Each version should be worded differently, using synonyms or alternative sentence structures, \
-                but they should all retain the original meaning. \
-                These versions will be used to retrieve relevant documents. \
-                It is very important to provide each query version on a separate line, \
-                without enumerations, hyphens, or any additional formatting!
-                User query: query"""
-        );
+                    Generate EXACTLY 3 different versions of the provided user query. \
+                    CONSTRAINTS: \
+                    Each version should be worded differently, using synonyms or alternative sentence structures, \
+                    but they should all retain the original meaning. \
+                    INPUT: \
+                    User query: query"""
+                );
     }
 
     @Test
@@ -67,7 +69,8 @@ class ExpandingQueryTransformerTest {
         // given
         int n = 5;
 
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("does not matter");
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("""
+                {"queries": ["query 1", "query 2", "query 3", "query 4", "query 5"]}""");
 
         QueryTransformer transformer = new ExpandingQueryTransformer(model, n);
 
@@ -77,16 +80,17 @@ class ExpandingQueryTransformerTest {
         transformer.transform(query);
 
         // then
-        assertThat(model.userMessageText()).contains("Generate 5 different versions");
+        assertThat(model.userMessageText()).contains("Generate EXACTLY 5 different versions");
     }
 
     @Test
     void should_expand_query_with_custom_prompt_template() {
 
         // given
-        PromptTemplate promptTemplate = PromptTemplate.from("Generate 7 variations of {{query}}");
+        PromptTemplate promptTemplate = PromptTemplate.from("Generate 2 variations of {{query}}");
 
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("does not matter");
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("""
+                {"queries": ["query 1", "query 2", "query 3"]}""");
 
         QueryTransformer transformer = new ExpandingQueryTransformer(model, promptTemplate);
 
@@ -96,7 +100,7 @@ class ExpandingQueryTransformerTest {
         transformer.transform(query);
 
         // then
-        assertThat(model.userMessageText()).isEqualTo("Generate 7 variations of query");
+        assertThat(model.userMessageText()).isEqualTo("Generate 2 variations of query");
     }
 
     @Test
@@ -105,12 +109,13 @@ class ExpandingQueryTransformerTest {
         // given
         PromptTemplate promptTemplate = PromptTemplate.from("Generate {{n}} variations of {{query}}");
 
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("does not matter");
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("""
+                {"queries": ["query 1", "query 2"]}""");
 
         QueryTransformer transformer = ExpandingQueryTransformer.builder()
                 .chatModel(model)
                 .promptTemplate(promptTemplate)
-                .n(7)
+                .n(2)
                 .build();
 
         Query query = Query.from("query");
@@ -119,6 +124,111 @@ class ExpandingQueryTransformerTest {
         transformer.transform(query);
 
         // then
-        assertThat(model.userMessageText()).isEqualTo("Generate 7 variations of query");
+        assertThat(model.userMessageText()).isEqualTo("Generate 2 variations of query");
+    }
+
+    @ParameterizedTest
+    @MethodSource
+    void should_parse_response_with_extra_text(String queriesString) {
+
+        UserMessage userMessage = UserMessage.from("query");
+
+        Query query = Query.from(userMessage.singleText());
+
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds(queriesString);
+
+        QueryTransformer transformer = new ExpandingQueryTransformer(model);
+
+        // when
+        Collection<Query> queries = transformer.transform(query);
+
+        // then
+        assertThat(queries).containsExactly(
+                Query.from("query 1"),
+                Query.from("query 2"),
+                Query.from("query 3")
+        );
+    }
+
+    static Stream<String> should_parse_response_with_extra_text() {
+        return Stream.of(
+                """
+                        Sure, Here are the different versions of the query:
+                        {
+                          "queries": ["query 1", "query 2", "query 3"]
+                        }
+                        """,
+                """
+                        ```json
+                        {
+                          "queries": ["query 1", "query 2", "query 3"]
+                        }
+                        ```
+                        """,
+                """
+                        ```json
+                        {
+                          "queries": ["query 1", "query 2", "query 3"]
+                        }
+                        ```
+                        Let me know if you need help with anything.
+                        """
+        );
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            """
+                    {"queries" : ["query 1", "query 2", "query 3"]}"""
+    })
+    void should_limit_expanded_queries_to_n(String queriesString) {
+
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds(queriesString);
+
+        QueryTransformer transformer = new ExpandingQueryTransformer(model, 2);
+
+        Query query = Query.from("query");
+
+        // when
+        Collection<Query> queries = transformer.transform(query);
+
+        // then
+        assertThat(queries).containsExactly(
+                Query.from("query 1"),
+                Query.from("query 2")
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource
+    void should_fail_to_expand_query_and_fallback_to_original_query(String queriesString) {
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds(queriesString);
+
+        QueryTransformer transformer = new ExpandingQueryTransformer(model);
+
+        Query query = Query.from("query");
+
+        // when
+        Collection<Query> queries = transformer.transform(query);
+
+        // then
+        assertThat(queries).containsExactly(
+                Query.from("query")
+        );
+    }
+
+    static Stream<Arguments> should_fail_to_expand_query_and_fallback_to_original_query() {
+        return Stream.<Arguments>builder()
+                .add(Arguments.of("""
+                        {"queries" : "query 1, query 2, query 3"}
+                        """))
+                .add(Arguments.of("""
+                        Here are different versions of the query:
+                        queries: \
+                         query 1
+                         query 2
+                         query 3
+                        """))
+                .build();
     }
 }
