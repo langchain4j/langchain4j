@@ -159,8 +159,8 @@ class AiServicesWithToolsIT {
                 .chatModel(spyChatModel)
                 .chatMemory(chatMemory)
                 .tools(transactionService)
-                .beforeToolExecution(request -> toolCalls.add(request.name()))
-                .afterToolExecution((request, response) -> toolResults.put(request.name(), response.result()))
+                .beforeToolExecution(before -> toolCalls.add(before.request().name()))
+                .afterToolExecution(exec -> toolResults.put(exec.request().name(), exec.resultObject()))
                 .build();
 
         String userMessage = "What is the amounts of transaction T001?";

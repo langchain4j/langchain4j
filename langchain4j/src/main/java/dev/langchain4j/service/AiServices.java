@@ -38,10 +38,11 @@ import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
+import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.DefaultToolExecutor;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
+import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
-import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.spi.services.AiServicesFactory;
@@ -53,7 +54,6 @@ import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
-import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -473,11 +473,11 @@ public abstract class AiServices<T> {
     }
 
     /**
-     * Configures the maximum number of tool invocations that can be executed.
+     * Configures the maximum number of times LLM responds with tool call(s).
      * <p>
      * By default, this limit is set to 100.
      *
-     * @param maxSequentialToolsInvocations The maximum number of tool invocations that can be executed.
+     * @param maxSequentialToolsInvocations The maximum number of times LLM responds with tool call(s).
      * @return builder
      */
     public AiServices<T> maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
@@ -488,12 +488,12 @@ public abstract class AiServices<T> {
     /**
      * Configures a callback to be invoked before each tool execution.
      *
-     * @param beforeToolExecution A {@link Consumer} that accepts a {@link ToolExecutionRequest}
+     * @param beforeToolExecution A {@link Consumer} that accepts a {@link BeforeToolExecution}
      *                            representing the tool execution request about to be executed.
      * @return builder
      * @since 1.11.0
      */
-    public AiServices<T> beforeToolExecution(Consumer<ToolExecutionRequest> beforeToolExecution) {
+    public AiServices<T> beforeToolExecution(Consumer<BeforeToolExecution> beforeToolExecution) {
         context.toolService.beforeToolExecution(beforeToolExecution);
         return this;
     }
@@ -501,13 +501,12 @@ public abstract class AiServices<T> {
     /**
      * Configures a callback to be invoked after each tool execution.
      *
-     * @param afterToolExecution A {@link BiConsumer} that accepts a {@link ToolExecutionRequest}
-     *                           representing the tool execution request that was executed,
-     *                           and a {@link ToolExecutionResult} representing the result of the tool execution.
+     * @param afterToolExecution A {@link Consumer} that accepts a {@link ToolExecution}
+     *                           containing the tool execution request that was executed and its result.
      * @return builder
      * @since 1.11.0
      */
-    public AiServices<T> afterToolExecution(BiConsumer<ToolExecutionRequest, ToolExecutionResult> afterToolExecution) {
+    public AiServices<T> afterToolExecution(Consumer<ToolExecution> afterToolExecution) {
         context.toolService.afterToolExecution(afterToolExecution);
         return this;
     }

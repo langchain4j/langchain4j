@@ -49,6 +49,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import dev.langchain4j.service.tool.BeforeToolExecution;
+import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 import org.junit.jupiter.api.Disabled;
@@ -427,13 +429,13 @@ public class SupervisorAgentIT {
                 .subAgents(withdrawAgent, creditAgent, exchangeAgent)
                 .listener(new AgentListener() {
                     @Override
-                    public void afterToolExecution(ToolExecutionRequest toolExecutionRequest, ToolExecutionResult toolExecutionResult) {
-                        toolResults.put(toolExecutionRequest.name(), (Double) toolExecutionResult.result());
+                    public void afterToolExecution(ToolExecution toolExecution) {
+                        toolResults.put(toolExecution.request().name(), (Double) toolExecution.resultObject());
                     }
 
                     @Override
-                    public void beforeToolExecution(ToolExecutionRequest toolExecutionRequest) {
-                        toolCalls.add(toolExecutionRequest.name());
+                    public void beforeToolExecution(BeforeToolExecution beforeToolExecution) {
+                        toolCalls.add(beforeToolExecution.request().name());
                     }
 
                     @Override

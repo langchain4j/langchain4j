@@ -4,7 +4,6 @@ import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.AiServiceParamsUtil.chatRequestParameters;
-import static dev.langchain4j.service.tool.ToolService.executeWithErrorHandling;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -380,23 +379,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     private ToolExecutionResult execute(ToolExecutionRequest toolRequest) {
-        return context.toolService.executeTool(invocationContext, toolExecutors, toolRequest, this::handleBeforeTool, this::handleAfterTool);
-    }
-
-    private void handleBeforeTool(ToolExecutionRequest request) {
-        if (beforeToolExecutionHandler != null) {
-            BeforeToolExecution beforeToolExecution =
-                    BeforeToolExecution.builder().request(request).build();
-            beforeToolExecutionHandler.accept(beforeToolExecution);
-        }
-    }
-
-    private void handleAfterTool(ToolExecutionRequest request, ToolExecutionResult result) {
-        if (toolExecutionHandler != null) {
-            ToolExecution toolExecution =
-                    ToolExecution.builder().request(request).result(result).build();
-            toolExecutionHandler.accept(toolExecution);
-        }
+        return context.toolService.executeTool(invocationContext, toolExecutors, toolRequest, beforeToolExecutionHandler, toolExecutionHandler);
     }
 
     private ChatMemory getMemory() {

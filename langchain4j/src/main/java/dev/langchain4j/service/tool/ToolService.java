@@ -73,8 +73,8 @@ public class ToolService {
     private Function<ToolExecutionRequest, ToolExecutionResultMessage> toolHallucinationStrategy =
             HallucinatedToolNameStrategy.THROW_EXCEPTION;
 
-    private Consumer<ToolExecutionRequest> beforeToolExecution = request -> { };
-    private BiConsumer<ToolExecutionRequest, ToolExecutionResult> afterToolExecution = (request, result) -> { };
+    private Consumer<BeforeToolExecution> beforeToolExecution = null;
+    private Consumer<ToolExecution> afterToolExecution = null;
 
     public void hallucinatedToolNameStrategy(
             Function<ToolExecutionRequest, ToolExecutionResultMessage> toolHallucinationStrategy) {
@@ -180,14 +180,14 @@ public class ToolService {
     /**
      * @since 1.11.0
      */
-    public void beforeToolExecution(Consumer<ToolExecutionRequest> beforeToolExecution) {
+    public void beforeToolExecution(Consumer<BeforeToolExecution> beforeToolExecution) {
         this.beforeToolExecution = beforeToolExecution;
     }
 
     /**
      * @since 1.11.0
      */
-    public void afterToolExecution(BiConsumer<ToolExecutionRequest, ToolExecutionResult> afterToolExecution) {
+    public void afterToolExecution(Consumer<ToolExecution> afterToolExecution) {
         this.afterToolExecution = afterToolExecution;
     }
 
@@ -452,12 +452,28 @@ public class ToolService {
     }
 
     private ToolExecutionResult executeTool(InvocationContext invocationContext, Map<String, ToolExecutor> toolExecutors, ToolExecutionRequest toolRequest) {
-        return executeTool(invocationContext, toolExecutors, toolRequest, this.beforeToolExecution, this.afterToolExecution);
+        return internalExecuteTool(invocationContext, toolExecutors, toolRequest, this.beforeToolExecution, this.afterToolExecution);
     }
 
     public ToolExecutionResult executeTool(InvocationContext invocationContext, Map<String, ToolExecutor> toolExecutors, ToolExecutionRequest toolRequest,
-                                           Consumer<ToolExecutionRequest> beforeToolExecution, BiConsumer<ToolExecutionRequest, ToolExecutionResult> afterToolExecution) {
-        beforeToolExecution.accept(toolRequest);
+                                           Consumer<BeforeToolExecution> externalBeforeToolExecution, Consumer<ToolExecution> externalAfterToolExecution) {
+        return internalExecuteTool(invocationContext, toolExecutors, toolRequest,
+                nullSafeCombineConsumers(this.beforeToolExecution, externalBeforeToolExecution),
+                nullSafeCombineConsumers(this.afterToolExecution, externalAfterToolExecution));
+    }
+
+    private static <T> Consumer<T> nullSafeCombineConsumers(Consumer<T> first, Consumer<T> second) {
+        if (first != null && second != null) {
+            return first.andThen(second);
+        }
+        return first != null ? first : second;
+    }
+
+    private ToolExecutionResult internalExecuteTool(InvocationContext invocationContext, Map<String, ToolExecutor> toolExecutors, ToolExecutionRequest toolRequest,
+                                           Consumer<BeforeToolExecution> beforeToolExecution, Consumer<ToolExecution> afterToolExecution) {
+        if (beforeToolExecution != null) {
+            beforeToolExecution.accept(BeforeToolExecution.builder().request(toolRequest).build());
+        }
 
         ToolExecutor executor = toolExecutors.get(toolRequest.name());
         ToolExecutionResult toolResult = executor == null ?
@@ -465,7 +481,9 @@ public class ToolService {
                 executeWithErrorHandling(
                     toolRequest, executor, invocationContext, argumentsErrorHandler(), executionErrorHandler());
 
-        afterToolExecution.accept(toolRequest, toolResult);
+        if (afterToolExecution != null) {
+            afterToolExecution.accept(ToolExecution.builder().request(toolRequest).result(toolResult).build());
+        }
         return toolResult;
     }
 
