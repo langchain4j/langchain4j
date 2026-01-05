@@ -318,7 +318,10 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, AgentIn
                 for (Future<?> future : tasks) {
                     future.get();
                 }
-            } catch (InterruptedException | ExecutionException e) {
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException(e);
+            } catch (ExecutionException e) {
                 throw new RuntimeException(e);
             }
         }
