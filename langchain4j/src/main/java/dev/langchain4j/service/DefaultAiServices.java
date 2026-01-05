@@ -105,8 +105,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                 new Class<?>[] {context.aiServiceClass},
                 new InvocationHandler() {
 
-                    private final ExecutorService executor = DefaultExecutorProvider.getDefaultExecutorService();
-
                     @Override
                     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
                         if (method.isDefault()) {
@@ -437,6 +435,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                     private Future<Moderation> triggerModerationIfNeeded(Method method, List<ChatMessage> messages) {
                         if (method.isAnnotationPresent(Moderate.class)) {
+                            ExecutorService executor = DefaultExecutorProvider.getDefaultExecutorService();
                             return executor.submit(() -> {
                                 List<ChatMessage> messagesToModerate = removeToolMessages(messages);
                                 return context.moderationModel
