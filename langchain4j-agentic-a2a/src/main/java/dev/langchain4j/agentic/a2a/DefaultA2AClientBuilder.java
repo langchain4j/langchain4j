@@ -181,7 +181,11 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
             String responseText = messageResponse.get();
             LOG.debug("Response: " + responseText);
             return serviceOutputParser.parseText(returnType, responseText);
-        } catch (InterruptedException | ExecutionException e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            LOG.error("Failed to get response: " + e.getMessage(), e);
+            throw new RuntimeException("Failed to get response: " + e.getMessage(), e);
+        } catch (ExecutionException e) {
             LOG.error("Failed to get response: " + e.getMessage(), e);
             throw new RuntimeException("Failed to get response: " + e.getMessage(), e);
         }
