@@ -32,4 +32,27 @@ public class AgenticScopeJsonSerializationIT {
         assertThat(deserPerson.getAge()).isEqualTo(51);
         assertThat(deserPerson.isAdult()).isTrue();
     }
+
+    @Test
+    void agenticScope_record_serialization_test() {
+        DefaultAgenticScope agenticScope = new DefaultAgenticScope(DefaultAgenticScope.Kind.PERSISTENT);
+
+        PersonRecord personRecord = new PersonRecord("Mario", 51, true);
+
+        agenticScope.writeState("category", Agents.RequestCategory.MEDICAL);
+        agenticScope.writeState("personRecord", personRecord);
+
+        String json = AgenticScopeSerializer.toJson(agenticScope);
+        System.out.println(json);
+        assertThat(json).contains("is_present");
+        DefaultAgenticScope deserialized = AgenticScopeSerializer.fromJson(json);
+
+        assertThat(deserialized.memoryId()).isEqualTo(agenticScope.memoryId());
+        assertThat(deserialized.readState("category")).isEqualTo(Agents.RequestCategory.MEDICAL);
+
+        PersonRecord deserPersonRecord = (PersonRecord) deserialized.readState("personRecord");
+        assertThat(deserPersonRecord.name()).isEqualTo("Mario");
+        assertThat(deserPersonRecord.age()).isEqualTo(51);
+        assertThat(deserPersonRecord.isPresent()).isTrue();
+    }
 }
