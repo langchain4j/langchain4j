@@ -51,7 +51,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
 
     private final String name;
     private String agentId;
-    private AgentInstance parent;
+    private InternalAgent parent;
 
     private String[] inputKeys;
     private String outputKey;
@@ -216,7 +216,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     }
 
     @Override
-    public void setParent(AgentInstance parent) {
+    public void setParent(InternalAgent parent) {
         this.parent = parent;
     }
 

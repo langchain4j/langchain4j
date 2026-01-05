@@ -24,6 +24,8 @@ import dev.langchain4j.model.chat.response.PartialResponse;
 import dev.langchain4j.model.chat.response.PartialResponseContext;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialThinkingContext;
+import dev.langchain4j.model.chat.response.PartialToolCall;
+import dev.langchain4j.model.chat.response.PartialToolCallContext;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
@@ -70,6 +72,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private final BiConsumer<PartialResponse, PartialResponseContext> partialResponseWithContextHandler;
     private final Consumer<PartialThinking> partialThinkingHandler;
     private final BiConsumer<PartialThinking, PartialThinkingContext> partialThinkingWithContextHandler;
+    private final Consumer<PartialToolCall> partialToolCallHandler;
+    private final BiConsumer<PartialToolCall, PartialToolCallContext> partialToolCallWithContextHandler;
     private final Consumer<BeforeToolExecution> beforeToolExecutionHandler;
     private final Consumer<ToolExecution> toolExecutionHandler;
     private final Consumer<ChatResponse> intermediateResponseHandler;
@@ -103,6 +107,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             BiConsumer<PartialResponse, PartialResponseContext> partialResponseWithContextHandler,
             Consumer<PartialThinking> partialThinkingHandler,
             BiConsumer<PartialThinking, PartialThinkingContext> partialThinkingWithContextHandler,
+            Consumer<PartialToolCall> partialToolCallHandler,
+            BiConsumer<PartialToolCall, PartialToolCallContext> partialToolCallWithContextHandler,
             Consumer<BeforeToolExecution> beforeToolExecutionHandler,
             Consumer<ToolExecution> toolExecutionHandler,
             Consumer<ChatResponse> intermediateResponseHandler,
@@ -128,6 +134,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         this.partialResponseWithContextHandler = partialResponseWithContextHandler;
         this.partialThinkingHandler = partialThinkingHandler;
         this.partialThinkingWithContextHandler = partialThinkingWithContextHandler;
+        this.partialToolCallHandler = partialToolCallHandler;
+        this.partialToolCallWithContextHandler = partialToolCallWithContextHandler;
         this.intermediateResponseHandler = intermediateResponseHandler;
         this.completeResponseHandler = completeResponseHandler;
         this.beforeToolExecutionHandler = beforeToolExecutionHandler;
@@ -190,6 +198,25 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             partialThinkingHandler.accept(partialThinking);
         } else if (partialThinkingWithContextHandler != null) {
             partialThinkingWithContextHandler.accept(partialThinking, context);
+        }
+    }
+
+    @Override
+    public void onPartialToolCall(PartialToolCall partialToolCall) {
+        if (partialToolCallHandler != null) {
+            partialToolCallHandler.accept(partialToolCall);
+        } else if (partialToolCallWithContextHandler != null) {
+            PartialToolCallContext context = new PartialToolCallContext(new CancellationUnsupportedStreamingHandle());
+            partialToolCallWithContextHandler.accept(partialToolCall, context);
+        }
+    }
+
+    @Override
+    public void onPartialToolCall(PartialToolCall partialToolCall, PartialToolCallContext context) {
+        if (partialToolCallHandler != null) {
+            partialToolCallHandler.accept(partialToolCall);
+        } else if (partialToolCallWithContextHandler != null) {
+            partialToolCallWithContextHandler.accept(partialToolCall, context);
         }
     }
 
@@ -316,6 +343,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     partialResponseWithContextHandler,
                     partialThinkingHandler,
                     partialThinkingWithContextHandler,
+                    partialToolCallHandler,
+                    partialToolCallWithContextHandler,
                     beforeToolExecutionHandler,
                     toolExecutionHandler,
                     intermediateResponseHandler,

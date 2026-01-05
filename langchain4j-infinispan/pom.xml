@@ -12,6 +12,10 @@
     <artifactId>langchain4j-infinispan</artifactId>
     <name>LangChain4j :: Integration :: Infinispan</name>
 
+    <properties>
+        <infinispan.version>16.0.5</infinispan.version>
+    </properties>
+
     <dependencyManagement>
         <dependencies>
             <dependency>
