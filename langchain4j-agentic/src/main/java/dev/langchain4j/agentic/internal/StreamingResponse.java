@@ -6,22 +6,13 @@ import java.util.concurrent.CompletableFuture;
 
 public class StreamingResponse implements DelayedResponse<String> {
 
-    private final TokenStream tokenStream;
-
-    private final StringBuilder answerBuilder = new StringBuilder();
     private final CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
     public StreamingResponse(TokenStream tokenStream) {
-        this.tokenStream = tokenStream;
         tokenStream
-                .onPartialResponse(answerBuilder::append)
                 .onCompleteResponse(futureResponse::complete)
                 .onError(futureResponse::completeExceptionally)
                 .start();
-    }
-
-    public TokenStream tokenStream() {
-        return tokenStream;
     }
 
     @Override
@@ -31,8 +22,7 @@ public class StreamingResponse implements DelayedResponse<String> {
 
     @Override
     public String blockingGet() {
-        futureResponse.join();
-        return answerBuilder.toString();
+        return futureResponse.join().aiMessage().text();
     }
 
     @Override
