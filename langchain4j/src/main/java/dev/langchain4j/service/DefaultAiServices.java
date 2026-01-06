@@ -508,29 +508,32 @@ class DefaultAiServices<T> extends AiServices<T> {
 
     private static UserMessage prepareUserMessage(
             Method method, Object[] args, String userMessageTemplate, Map<String, Object> variables) {
+
+        Optional<String> maybeUserName = findUserName(method.getParameters(), args);
+
         if (userMessageTemplate.isEmpty()) {
-            Optional<String> maybeUserName = findUserName(method.getParameters(), args);
+            List<Content> contents = new ArrayList<>();
 
             for (Object arg : args) {
-                if (arg instanceof Content) {
-                    Content content = (Content) arg;
-                    return maybeUserName
-                            .map(userName -> UserMessage.from(userName, content))
-                            .orElseGet(() -> UserMessage.from(content));
+                if (arg instanceof Content content) {
+                    contents.add(content);
                 } else if (isListOfContents(arg)) {
-                    List<Content> contents = (List<Content>) arg;
-                    return maybeUserName
-                            .map(userName -> UserMessage.from(userName, contents))
-                            .orElseGet(() -> UserMessage.from(contents));
+                    contents.addAll((List<Content>) arg);
                 }
             }
 
-            return UserMessage.from(" ");
+            if (!contents.isEmpty()) {
+                return maybeUserName
+                        .map(userName -> UserMessage.from(userName, contents))
+                        .orElseGet(() -> UserMessage.from(contents));
+            }
+
+            throw illegalConfiguration(
+                    "Error: The method '%s' does not have a user message defined.", method.getName());
         }
 
         Prompt prompt = PromptTemplate.from(userMessageTemplate).apply(variables);
 
-        Optional<String> maybeUserName = findUserName(method.getParameters(), args);
         return maybeUserName
                 .map(userName -> UserMessage.from(userName, prompt.text()))
                 .orElseGet(prompt::toUserMessage);

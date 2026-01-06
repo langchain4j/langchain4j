@@ -112,6 +112,8 @@ class AiServicesUserMessageConfigTest {
 
         String chat20(List<Content> contents);
 
+        String chat21(@UserMessage AudioContent audio, @UserMessage ImageContent image);
+
         // illegal configuration
 
         String illegalChat1();
@@ -508,6 +510,27 @@ class AiServicesUserMessageConfigTest {
         verify(chatModel)
                 .chat(ChatRequest.builder()
                         .messages(userMessage(contents.get(0), contents.get(1)))
+                        .build());
+        verify(chatModel).supportedCapabilities();
+    }
+
+    @Test
+    void user_message_configuration_21() {
+        // given
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
+
+        String base64Data = "AAECAw==";
+        AudioContent audioContent = AudioContent.from(base64Data);
+        ImageContent imageContent = ImageContent.from("https://example.com/image.png");
+
+        // when
+        aiService.chat21(audioContent, imageContent);
+
+        // then
+        verify(chatModel)
+                .chat(ChatRequest.builder()
+                        .messages(userMessage(audioContent, imageContent))
                         .build());
         verify(chatModel).supportedCapabilities();
     }
