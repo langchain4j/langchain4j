@@ -38,6 +38,7 @@ public class WatsonxModelCatalog implements ModelCatalog {
                 .logRequests(builder.logRequests)
                 .logResponses(builder.logResponses)
                 .httpClient(builder.httpClient)
+                .verifySsl(builder.verifySsl)
                 .build();
         parameters =
                 FoundationModelParameters.builder().limit(200).techPreview(true).build();

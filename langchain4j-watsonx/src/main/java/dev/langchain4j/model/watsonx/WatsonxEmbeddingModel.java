@@ -49,6 +49,7 @@ public class WatsonxEmbeddingModel implements EmbeddingModel {
                 .logRequests(builder.logRequests)
                 .logResponses(builder.logResponses)
                 .httpClient(builder.httpClient)
+                .verifySsl(builder.verifySsl)
                 .build();
         this.modelName = builder.modelName;
     }

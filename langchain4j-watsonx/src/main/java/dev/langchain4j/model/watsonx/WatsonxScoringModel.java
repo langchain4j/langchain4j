@@ -49,6 +49,7 @@ public class WatsonxScoringModel implements ScoringModel {
                 .logRequests(builder.logRequests)
                 .logResponses(builder.logResponses)
                 .httpClient(builder.httpClient)
+                .verifySsl(builder.verifySsl)
                 .build();
     }
 

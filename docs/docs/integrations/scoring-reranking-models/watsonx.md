@@ -52,31 +52,56 @@ WatsonxScoringModel.builder()
     .build();
 ```
 
-### Custom HttpClient
+### Custom HttpClient and SSL Configuration
+
+#### Using a custom HttpClient
 
 All services and authenticators support a custom `HttpClient` instance through the builder pattern. This is particularly useful for Cloud Pak for Data environments where you may need to configure custom TLS/SSL settings, proxy configuration, or other HTTP client properties.
+
 ```java
 HttpClient httpClient = HttpClient.newBuilder()
     .sslContext(createCustomSSLContext())
+    .executor(ExecutorProvider.ioExecutor())
     .build();
 
-ScoringModel scoringModel = WatsonxScoringModel.builder()
+EmbeddingModel embeddingModel = WatsonxEmbeddingModel.builder()
     .baseUrl("https://my-instance-url")
-    .modelName("cross-encoder/ms-marco-minilm-l-12-v2")
+    .modelName("ibm/granite-embedding-278m-multilingual")
     .projectId("project-id")
-    .httpClient(httpClient)
+    .httpClient(httpClient) // Custom HttpClient
     .authenticator(
         CP4DAuthenticator.builder()
             .baseUrl("https://my-instance-url")
             .username("username")
             .apiKey("api-key")
-            .httpClient(httpClient)
+            .httpClient(httpClient) // Custom HttpClient
             .build()
     )
     .build();
 ```
 
 > **Note:** When using a custom `HttpClient` with Cloud Pak for Data, make sure to set it on both the service builder and the authenticator builder to ensure consistent HTTP behavior across all requests.
+
+#### Disabling SSL verification
+
+If you only need to disable SSL certificate verification, you can use the `verifySsl(false)` option instead of providing a custom `HttpClient`:
+
+```java
+EmbeddingModel embeddingModel = WatsonxEmbeddingModel.builder()
+    .baseUrl("https://my-instance-url")
+    .modelName("ibm/granite-embedding-278m-multilingual")
+    .projectId("project-id")
+    .verifySsl(false) // Disable SSL verification
+    .authenticator(
+        CP4DAuthenticator.builder()
+            .baseUrl("https://my-instance-url")
+            .username("username")
+            .apiKey("api-key")
+            .verifySsl(false) // Disable SSL verification
+            .build()
+    )
+    .build();
+```
 
 ### How to create an IBM Cloud API Key
 
