@@ -8,26 +8,46 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
-
 /**
- * Represents a search request that can be made by the user to perform searches in any implementation of {@link WebSearchEngine}.
+ * Represents a search request that can be made by the user to perform searches
+ * in any implementation of {@link WebSearchEngine}.
  * <p>
- * {@link WebSearchRequest} follow opensearch foundation standard implemented by most web search engine libs like Google, Bing, Yahoo, etc.
- * <a href="https://github.com/dewitt/opensearch/blob/master/opensearch-1-1-draft-6.md#opensearch-11-parameters">OpenSearch#parameters</a>
+ * {@link WebSearchRequest} follow opensearch foundation standard implemented by
+ * most web search engine libs like Google, Bing, Yahoo, etc.
+ * <a href=
+ * "https://github.com/dewitt/opensearch/blob/master/opensearch-1-1-draft-6.md#opensearch-11-parameters">OpenSearch#parameters</a>
  * </p>
  * <p>
- * The {@link #searchTerms} are the keywords that the search client desires to search for. This param is mandatory to perform a search.
+ * The {@link #searchTerms} are the keywords that the search client desires to
+ * search for. This param is mandatory to perform a search.
  * <p>
  * <br>
  * Configurable parameters (optional):
  * <ul>
- *    <li>{@link #maxResults} - The expected number of results to be found if the search request were made. Each search engine may have a different limit for the maximum number of results that can be returned.</li>
- *    <li>{@link #language} - The desired language for search results is a string that indicates that the search client desires search results in the specified language. Each search engine may have a different set of supported languages.</li>
- *    <li>{@link #geoLocation} - The desired geolocation for search results is a string that indicates that the search client desires search results in the specified geolocation. Each search engine may have a different set of supported geolocations.</li>
- *    <li>{@link #startPage} - The start page number for search results is the page number of the set of search results desired by the search user.</li>
- *    <li>{@link #startIndex} - The start index for search results is the index of the first search result desired by the search user. Each search engine may have a different set of supported start indexes in combination with the start page number.</li>
- *    <li>{@link #safeSearch} - The safe search flag is a boolean that indicates that the search client desires search results with safe search enabled or disabled.</li>
- *    <li>{@link #additionalParams} - The additional parameters for the search request are a map of key-value pairs that represent additional parameters for the search request. It's a way to be flex and add custom param for each search engine.</li>
+ * <li>{@link #maxResults} - The expected number of results to be found if the
+ * search request were made. Each search engine may have a different limit for
+ * the maximum number of results that can be returned.</li>
+ * <li>{@link #language} - The desired language for search results is a string
+ * that indicates that the search client desires search results in the specified
+ * language. Each search engine may have a different set of supported
+ * languages.</li>
+ * <li>{@link #geoLocation} - The desired geolocation for search results is a
+ * string that indicates that the search client desires search results in the
+ * specified geolocation. Each search engine may have a different set of
+ * supported geolocations.</li>
+ * <li>{@link #startPage} - The start page number for search results is the page
+ * number of the set of search results desired by the search user.</li>
+ * <li>{@link #startIndex} - The start index for search results is the index of
+ * the first search result desired by the search user. Each search engine may
+ * have a different set of supported start indexes in combination with the start
+ * page number.</li>
+ * <li>{@link #safeSearch} - The safe search flag is a boolean that indicates
+ * that the search client desires search results with safe search enabled or
+ * disabled.</li>
+ * <li>{@link #additionalParams} - The additional parameters for the search
+ * request are a map of key-value pairs that represent additional parameters for
+ * the search request. It's a way to be flex and add custom param for each
+ * search engine.</li>
  * </ul>
  */
 public class WebSearchRequest {
@@ -41,14 +61,14 @@ public class WebSearchRequest {
     private final Boolean safeSearch;
     private final Map<String, Object> additionalParams;
 
-    private WebSearchRequest(Builder builder){
-        this.searchTerms = ensureNotBlank(builder.searchTerms,"searchTerms");
+    private WebSearchRequest(Builder builder) {
+        this.searchTerms = ensureNotBlank(builder.searchTerms, "searchTerms");
         this.maxResults = builder.maxResults;
         this.language = builder.language;
         this.geoLocation = builder.geoLocation;
-        this.startPage = getOrDefault(builder.startPage,1);
+        this.startPage = getOrDefault(builder.startPage, 1);
         this.startIndex = builder.startIndex;
-        this.safeSearch = getOrDefault(builder.safeSearch,true);
+        this.safeSearch = getOrDefault(builder.safeSearch, true);
         this.additionalParams = copy(builder.additionalParams);
     }
 
@@ -126,12 +146,13 @@ public class WebSearchRequest {
 
     @Override
     public boolean equals(Object another) {
-        if (this == another) return true;
+        if (this == another)
+            return true;
         return another instanceof WebSearchRequest wsr
                 && equalTo(wsr);
     }
 
-    private boolean equalTo(WebSearchRequest another){
+    private boolean equalTo(WebSearchRequest another) {
         return Objects.equals(searchTerms, another.searchTerms)
                 && Objects.equals(maxResults, another.maxResults)
                 && Objects.equals(language, another.language)
@@ -165,7 +186,7 @@ public class WebSearchRequest {
                 ", geoLocation='" + geoLocation + '\'' +
                 ", startPage=" + startPage +
                 ", startIndex=" + startIndex +
-                ", siteRestrict=" + safeSearch +
+                ", safeSearch=" + safeSearch +
                 ", additionalParams=" + additionalParams +
                 '}';
     }
@@ -302,10 +323,11 @@ public class WebSearchRequest {
     }
 
     /**
-     * Create a web search request with the given search terms and maximum number of results.
+     * Create a web search request with the given search terms and maximum number of
+     * results.
      *
      * @param searchTerms The search terms.
-     * @param maxResults The maximum number of results.
+     * @param maxResults  The maximum number of results.
      * @return The web search request.
      */
     public static WebSearchRequest from(String searchTerms, Integer maxResults) {

@@ -20,7 +20,7 @@ import java.util.List;
 import oracle.jdbc.OracleConnection;
 
 /**
- * Embed documents
+ * Embeds documents
  *
  * Use dbms_vector_chain.utl_to_embeddings to get embeddings.
  * You can specify which provider to use such as an ONNX model
@@ -30,15 +30,16 @@ import oracle.jdbc.OracleConnection;
  *
  * To use an ONNX model:
  * {
- *   "provider": "database",
- *   "model": "database"
+ * "provider": "database",
+ * "model": "database"
  * }
  * To use a third-party provider:
  * {
- *   "provider": "ocigenai",
- *   "credential_name": "OCI_CRED",
- *   "url": "https://inference.generativeai.us-chicago-1.oci.oraclecloud.com/20231130/actions/embedText",
- *   "model": "cohere.embed-english-light-v3.0"
+ * "provider": "ocigenai",
+ * "credential_name": "OCI_CRED",
+ * "url":
+ * "https://inference.generativeai.us-chicago-1.oci.oraclecloud.com/20231130/actions/embedText",
+ * "model": "cohere.embed-english-light-v3.0"
  * }
  */
 public class OracleEmbeddingModel extends DimensionAwareEmbeddingModel {
@@ -135,8 +136,10 @@ public class OracleEmbeddingModel extends DimensionAwareEmbeddingModel {
                 embed(input, pref, embeddings);
             }
         } else {
-            // createOracleArray needs to passed a Clob array since vector_array_t is a table of clob
-            // if a String array is passed, will get ORA-17059: Failed to convert to internal representation
+            // createOracleArray needs to passed a Clob array since vector_array_t is a
+            // table of clob
+            // if a String array is passed, will get ORA-17059: Failed to convert to
+            // internal representation
             List<Object> elements = toClobList(conn, inputs);
             Array arr = ((OracleConnection) conn).createOracleArray("SYS.VECTOR_ARRAY_T", elements.toArray());
             embed(arr, pref, embeddings);
@@ -159,8 +162,8 @@ public class OracleEmbeddingModel extends DimensionAwareEmbeddingModel {
                     String text = rs.getString("data");
 
                     ObjectMapper mapper = new ObjectMapper();
-                    dev.langchain4j.model.oracle.Embedding dbmsEmbedding =
-                            mapper.readValue(text, dev.langchain4j.model.oracle.Embedding.class);
+                    dev.langchain4j.model.oracle.Embedding dbmsEmbedding = mapper.readValue(text,
+                            dev.langchain4j.model.oracle.Embedding.class);
                     Embedding embedding = new Embedding(toFloatArray(dbmsEmbedding.getVector()));
                     embeddings.add(embedding);
                 }

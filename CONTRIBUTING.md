@@ -3,7 +3,7 @@ Thank you for investing your time and effort in contributing to our project, we 
 # General guidelines
 
 - For new integrations, please consider adding it in [community repo](https://github.com/langchain4j/langchain4j-community) first.
-- If you want to contribute a bug fix or a new feature that isn't listed in the [issues](https://github.com/langchain4j/langchain4j/issues) yet, please open a new issue for it. We will triage is shortly.
+- If you want to contribute a bug fix or a new feature that isn't listed in the [issues](https://github.com/langchain4j/langchain4j/issues) yet, please open a new issue for it. We will triage it shortly.
 - Follow [Google's Best Practices for Java Libraries](https://jlbp.dev/)
 - Keep the code compatible with Java 17.
 - When integrating third-party services, use the official SDK whenever possible. If no official SDK is available, implement the client using `langchain4j-http-client` and Jackson.
@@ -60,7 +60,7 @@ Please note that we do not have the capacity to review PRs immediately. We ask f
 - Document the new integration [here](https://github.com/langchain4j/langchain4j/blob/main/README.md), [here](https://github.com/langchain4j/langchain4j/tree/main/docs/docs/integrations/embedding-stores) and [here](https://github.com/langchain4j/langchain4j/blob/main/docs/docs/integrations/embedding-stores/index.md).
 - Add an example to the [examples repository](https://github.com/langchain4j/langchain4j-examples), similar to [this](https://github.com/langchain4j/langchain4j-examples/tree/main/chroma-example).
 - Add a new module to the appropriate section of the [BOM](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-bom/pom.xml).
-- It would be great if you could add a [Spring Boot starter](https://github.com/langchain4j/langchain4j-spring). (after
+- It would be great if you could add a [Spring Boot starter](https://github.com/langchain4j/langchain4j-spring).
 
 # Guidelines on changing an existing embedding store integration
 
