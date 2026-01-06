@@ -1,8 +1,8 @@
 package dev.langchain4j.mcp.client.transport;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import dev.langchain4j.mcp.protocol.McpJsonRpcMessage;
 import dev.langchain4j.mcp.protocol.McpInitializeRequest;
+import dev.langchain4j.mcp.protocol.McpJsonRpcMessage;
 import java.io.Closeable;
 import java.util.concurrent.CompletableFuture;
 

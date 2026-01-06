@@ -29,7 +29,8 @@ public class JsonRpcIoHandler implements Runnable, Closeable {
     private final Consumer<JsonNode> messageHandler;
     private volatile boolean closed = false;
 
-    public JsonRpcIoHandler(InputStream input, OutputStream output, Consumer<JsonNode> messageHandler, boolean logEvents) {
+    public JsonRpcIoHandler(
+            InputStream input, OutputStream output, Consumer<JsonNode> messageHandler, boolean logEvents) {
         this(input, output, messageHandler, logEvents, null);
     }
 

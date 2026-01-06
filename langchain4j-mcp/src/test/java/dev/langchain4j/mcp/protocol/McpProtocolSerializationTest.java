@@ -14,9 +14,8 @@ class McpProtocolSerializationTest {
     @Test
     void should_serialize_error_response_omitting_null_data() throws Exception {
         // given
-        McpErrorResponse response = new McpErrorResponse(
-                1L,
-                new McpErrorResponse.Error(-32601, "Method not found", null));
+        McpErrorResponse response =
+                new McpErrorResponse(1L, new McpErrorResponse.Error(-32601, "Method not found", null));
 
         // when
         JsonNode json = OBJECT_MAPPER.readTree(OBJECT_MAPPER.writeValueAsString(response));
@@ -33,11 +32,7 @@ class McpProtocolSerializationTest {
     void should_serialize_call_tool_result_omitting_null_fields() throws Exception {
         // given
         McpCallToolResult response = new McpCallToolResult(
-                7L,
-                new McpCallToolResult.Result(
-                        List.of(new McpCallToolResult.Content("text", "ok")),
-                        null,
-                        null));
+                7L, new McpCallToolResult.Result(List.of(new McpCallToolResult.Content("text", "ok")), null, null));
 
         // when
         JsonNode json = OBJECT_MAPPER.readTree(OBJECT_MAPPER.writeValueAsString(response));
@@ -45,8 +40,10 @@ class McpProtocolSerializationTest {
         // then
         assertThat(json.get("jsonrpc").asText()).isEqualTo("2.0");
         assertThat(json.get("id").asLong()).isEqualTo(7L);
-        assertThat(json.get("result").get("content").get(0).get("type").asText()).isEqualTo("text");
-        assertThat(json.get("result").get("content").get(0).get("text").asText()).isEqualTo("ok");
+        assertThat(json.get("result").get("content").get(0).get("type").asText())
+                .isEqualTo("text");
+        assertThat(json.get("result").get("content").get(0).get("text").asText())
+                .isEqualTo("ok");
         assertThat(json.get("result").has("structuredContent")).isFalse();
         assertThat(json.get("result").has("isError")).isFalse();
     }
@@ -87,7 +84,11 @@ class McpProtocolSerializationTest {
         assertThat(json.get("result").get("serverInfo").get("name").asText()).isEqualTo("server");
         assertThat(json.get("result").get("serverInfo").get("version").asText()).isEqualTo("1.0");
         assertThat(json.get("result").get("serverInfo").get("title").asText()).isEqualTo("Server Title");
-        assertThat(json.get("result").get("capabilities").get("tools").get("listChanged").asBoolean()).isTrue();
+        assertThat(json.get("result")
+                        .get("capabilities")
+                        .get("tools")
+                        .get("listChanged")
+                        .asBoolean())
+                .isTrue();
     }
 }
-

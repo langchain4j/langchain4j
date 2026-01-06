@@ -5,11 +5,11 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.langchain4j.mcp.protocol.McpJsonRpcMessage;
-import dev.langchain4j.mcp.protocol.McpInitializationNotification;
-import dev.langchain4j.mcp.protocol.McpInitializeRequest;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
+import dev.langchain4j.mcp.protocol.McpInitializationNotification;
+import dev.langchain4j.mcp.protocol.McpInitializeRequest;
+import dev.langchain4j.mcp.protocol.McpJsonRpcMessage;
 import dev.langchain4j.mcp.transport.stdio.JsonRpcIoHandler;
 import java.io.IOException;
 import java.util.List;
@@ -54,11 +54,7 @@ public class StdioMcpTransport implements McpTransport {
             throw new RuntimeException(e);
         }
         jsonRpcIoHandler = new JsonRpcIoHandler(
-                process.getInputStream(),
-                process.getOutputStream(),
-                messageHandler::handle,
-                logEvents,
-                logger);
+                process.getInputStream(), process.getOutputStream(), messageHandler::handle, logEvents, logger);
         // FIXME: where should we obtain the thread?
         new Thread(jsonRpcIoHandler).start();
         stderrHandler = new ProcessStderrHandler(process);

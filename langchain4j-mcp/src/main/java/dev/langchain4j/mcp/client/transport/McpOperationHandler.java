@@ -91,9 +91,9 @@ public class McpOperationHandler {
 
     public synchronized void cancelAllPendingOperations(String reason) {
         for (CompletableFuture<JsonNode> future : pendingOperations.values()) {
-            future.completeExceptionally(new IllegalStateException("Operation cancelled due to transport failure: " + reason));
+            future.completeExceptionally(
+                    new IllegalStateException("Operation cancelled due to transport failure: " + reason));
         }
         pendingOperations.clear();
     }
-
 }
