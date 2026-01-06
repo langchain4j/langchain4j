@@ -48,32 +48,22 @@ public class JsonRpcIoHandler implements Runnable, Closeable {
 
     @Override
     public void run() {
-        try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(input))) {
-            try (BufferedReader reader = bufferedReader) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    if (logEvents) {
-                        trafficLog.debug("< {}", line);
-                    }
-                    try {
-                        messageHandler.accept(OBJECT_MAPPER.readTree(line));
-                    } catch (JsonProcessingException e) {
-                        log.warn("Ignoring message received because it is not valid JSON: {}", line);
-                    }
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(input))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (logEvents) {
+                    trafficLog.debug("< {}", line);
                 }
-            } catch (IOException e) {
-                // If this handler was closed, it means the transport is shutting down,
-                // so an IOException is expected, let's not spook the user.
-                if (!closed) {
-                    throw new RuntimeException(e);
+                try {
+                    messageHandler.accept(OBJECT_MAPPER.readTree(line));
+                } catch (JsonProcessingException e) {
+                    log.warn("Ignoring message received because it is not valid JSON: {}", line);
                 }
             }
         } catch (IOException e) {
-            throw new RuntimeException(e);
-        } finally {
-            try {
-                input.close();
-            } catch (IOException e) {
+            // If this handler was closed, it means the transport is shutting down,
+            // so an IOException is expected, let's not spook the user.
+            if (!closed) {
                 throw new RuntimeException(e);
             }
         }
@@ -90,6 +80,7 @@ public class JsonRpcIoHandler implements Runnable, Closeable {
     @Override
     public void close() throws IOException {
         closed = true;
+        input.close();
         out.close();
     }
 }
