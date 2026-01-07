@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import java.util.Collection;
+import java.util.List;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -16,8 +18,6 @@ import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.query.Metadata;
 import dev.langchain4j.rag.query.Query;
-import java.util.Collection;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class CompressingQueryTransformerTest {
@@ -91,6 +91,25 @@ class CompressingQueryTransformerTest {
         // then
         assertThat(queries).containsExactly(query);
 
+        verifyNoInteractions(model);
+    }
+
+
+    @Test
+    void should_not_compress_when_chat_memory_contains_only_system_message() {
+
+        // given
+        List<ChatMessage> chatMemory = List.of(SystemMessage.from("Be polite"));
+        UserMessage userMessage = UserMessage.from("Hello");
+        Metadata metadata = Metadata.from(userMessage, "default", chatMemory);
+        Query query = Query.from(userMessage.singleText(), metadata);
+        ChatModel model = mock(ChatModel.class);
+        CompressingQueryTransformer transformer = new CompressingQueryTransformer(model);
+
+        // when
+        Collection<Query> queries = transformer.transform(query);
+        // then
+        assertThat(queries).containsExactly(query);
         verifyNoInteractions(model);
     }
 

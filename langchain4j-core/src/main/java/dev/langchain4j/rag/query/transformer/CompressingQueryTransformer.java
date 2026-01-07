@@ -1,5 +1,15 @@
 package dev.langchain4j.rag.query.transformer;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.joining;
+
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -8,17 +18,6 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.query.Query;
-
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.joining;
 
 /**
  * A {@link QueryTransformer} that leverages a {@link ChatModel} to condense a given {@link Query}
@@ -71,13 +70,19 @@ public class CompressingQueryTransformer implements QueryTransformer {
     @Override
     public Collection<Query> transform(Query query) {
 
-        List<ChatMessage> chatMemory = query.metadata().chatMemory();
+        List<ChatMessage> chatMemory = query.metadata() == null ? null : query.metadata().chatMemory();
         if (chatMemory == null || chatMemory.isEmpty()) {
             // no need to compress if there are no previous messages
             return singletonList(query);
         }
 
-        Prompt prompt = createPrompt(query, format(chatMemory));
+        String formattedChatMemory = format(chatMemory);
+        if (formattedChatMemory.isBlank()) {
+            // no need to compress if there are no previous relevant messages (e.g., only system messages)
+            return singletonList(query);
+        }
+
+        Prompt prompt = createPrompt(query, formattedChatMemory);
         String compressedQueryText = chatModel.chat(prompt.text());
         Query compressedQuery = query.metadata() == null
                 ? Query.from(compressedQueryText)
