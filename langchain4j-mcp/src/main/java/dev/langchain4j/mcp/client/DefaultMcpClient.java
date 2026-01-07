@@ -17,20 +17,21 @@ import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.mcp.client.logging.DefaultMcpLogMessageHandler;
 import dev.langchain4j.mcp.client.logging.McpLogMessageHandler;
-import dev.langchain4j.mcp.client.protocol.McpCallToolRequest;
-import dev.langchain4j.mcp.client.protocol.McpCancellationNotification;
-import dev.langchain4j.mcp.client.protocol.McpGetPromptRequest;
-import dev.langchain4j.mcp.client.protocol.McpInitializeParams;
-import dev.langchain4j.mcp.client.protocol.McpInitializeRequest;
-import dev.langchain4j.mcp.client.protocol.McpListPromptsRequest;
-import dev.langchain4j.mcp.client.protocol.McpListResourceTemplatesRequest;
-import dev.langchain4j.mcp.client.protocol.McpListResourcesRequest;
-import dev.langchain4j.mcp.client.protocol.McpListToolsRequest;
-import dev.langchain4j.mcp.client.protocol.McpPingRequest;
-import dev.langchain4j.mcp.client.protocol.McpReadResourceRequest;
-import dev.langchain4j.mcp.client.protocol.McpRootsListChangedNotification;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
+import dev.langchain4j.mcp.protocol.McpCallToolRequest;
+import dev.langchain4j.mcp.protocol.McpCancellationNotification;
+import dev.langchain4j.mcp.protocol.McpGetPromptRequest;
+import dev.langchain4j.mcp.protocol.McpImplementation;
+import dev.langchain4j.mcp.protocol.McpInitializeParams;
+import dev.langchain4j.mcp.protocol.McpInitializeRequest;
+import dev.langchain4j.mcp.protocol.McpListPromptsRequest;
+import dev.langchain4j.mcp.protocol.McpListResourceTemplatesRequest;
+import dev.langchain4j.mcp.protocol.McpListResourcesRequest;
+import dev.langchain4j.mcp.protocol.McpListToolsRequest;
+import dev.langchain4j.mcp.protocol.McpPingRequest;
+import dev.langchain4j.mcp.protocol.McpReadResourceRequest;
+import dev.langchain4j.mcp.protocol.McpRootsListChangedNotification;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -55,8 +56,8 @@ public class DefaultMcpClient implements McpClient {
 
     private static final Logger log = LoggerFactory.getLogger(DefaultMcpClient.class);
 
-    static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
-            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+    static final ObjectMapper OBJECT_MAPPER =
+            new ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
 
     private final AtomicLong idGenerator = new AtomicLong(0);
     private final McpTransport transport;
@@ -172,7 +173,7 @@ public class DefaultMcpClient implements McpClient {
         McpInitializeParams params = new McpInitializeParams();
         params.setProtocolVersion(protocolVersion);
 
-        McpInitializeParams.ClientInfo clientInfo = new McpInitializeParams.ClientInfo();
+        McpImplementation clientInfo = new McpImplementation();
         clientInfo.setName(clientName);
         clientInfo.setVersion(clientVersion);
         params.setClientInfo(clientInfo);
