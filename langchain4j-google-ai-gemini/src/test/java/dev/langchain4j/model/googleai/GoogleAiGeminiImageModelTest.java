@@ -27,7 +27,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class GoogleAiGeminiImageModelTest {
 
     private static final String TEST_MODEL_NAME = "gemini-2.5-flash-image";
-    private static final String TEST_IMAGE_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+    private static final String TEST_IMAGE_BASE64 =
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
     private static final String TEST_MIME_TYPE = "image/png";
 
     @Mock
@@ -64,8 +65,7 @@ class GoogleAiGeminiImageModelTest {
         @Test
         void shouldThrowExceptionWhenNoCandidatesInResponse() {
             // Given
-            var emptyResponse = new GeminiGenerateContentResponse(
-                    "response-id", "gemini-pro-v1", List.of(), null);
+            var emptyResponse = new GeminiGenerateContentResponse("response-id", "gemini-pro-v1", List.of(), null);
             when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
                     .thenReturn(emptyResponse);
 
@@ -86,8 +86,8 @@ class GoogleAiGeminiImageModelTest {
         void shouldThrowExceptionWhenNoContentInCandidate() {
             // Given
             var candidate = new GeminiCandidate(null, GeminiFinishReason.STOP);
-            var responseWithNullContent = new GeminiGenerateContentResponse(
-                    "response-id", "gemini-pro-v1", List.of(candidate), null);
+            var responseWithNullContent =
+                    new GeminiGenerateContentResponse("response-id", "gemini-pro-v1", List.of(candidate), null);
             when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
                     .thenReturn(responseWithNullContent);
 
@@ -109,11 +109,13 @@ class GoogleAiGeminiImageModelTest {
             // Given
             var textOnlyCandidate = new GeminiCandidate(
                     new GeminiContent(
-                            List.of(GeminiPart.builder().text("Just text, no image").build()),
+                            List.of(GeminiPart.builder()
+                                    .text("Just text, no image")
+                                    .build()),
                             "model"),
                     GeminiFinishReason.STOP);
-            var textOnlyResponse = new GeminiGenerateContentResponse(
-                    "response-id", "gemini-pro-v1", List.of(textOnlyCandidate), null);
+            var textOnlyResponse =
+                    new GeminiGenerateContentResponse("response-id", "gemini-pro-v1", List.of(textOnlyCandidate), null);
             when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
                     .thenReturn(textOnlyResponse);
 
@@ -287,9 +289,8 @@ class GoogleAiGeminiImageModelTest {
 
             setGeminiService(subject, mockGeminiService);
 
-            var imageWithoutMimeType = Image.builder()
-                    .base64Data(TEST_IMAGE_BASE64)
-                    .build();
+            var imageWithoutMimeType =
+                    Image.builder().base64Data(TEST_IMAGE_BASE64).build();
 
             // When
             var response = subject.edit(imageWithoutMimeType, "Edit without mime type");
@@ -331,8 +332,7 @@ class GoogleAiGeminiImageModelTest {
             var request = requestCaptor.getValue();
             assertThat(request.contents()).hasSize(1);
             assertThat(request.generationConfig()).isNotNull();
-            assertThat(request.generationConfig().responseModalities())
-                    .containsExactly(GeminiResponseModality.IMAGE);
+            assertThat(request.generationConfig().responseModalities()).containsExactly(GeminiResponseModality.IMAGE);
             assertThat(request.generationConfig().imageConfig()).isNotNull();
             assertThat(request.generationConfig().imageConfig().aspectRatio()).isEqualTo("16:9");
             assertThat(request.generationConfig().imageConfig().imageSize()).isEqualTo("2K");
@@ -442,8 +442,8 @@ class GoogleAiGeminiImageModelTest {
         void shouldThrowExceptionWhenApiKeyIsNull() {
             // When & Then
             assertThatThrownBy(() -> GoogleAiGeminiImageModel.builder()
-                    .modelName(TEST_MODEL_NAME)
-                    .build())
+                            .modelName(TEST_MODEL_NAME)
+                            .build())
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("apiKey");
         }
@@ -452,9 +452,9 @@ class GoogleAiGeminiImageModelTest {
         void shouldThrowExceptionWhenApiKeyIsBlank() {
             // When & Then
             assertThatThrownBy(() -> GoogleAiGeminiImageModel.builder()
-                    .apiKey("")
-                    .modelName(TEST_MODEL_NAME)
-                    .build())
+                            .apiKey("")
+                            .modelName(TEST_MODEL_NAME)
+                            .build())
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("apiKey");
         }
@@ -463,8 +463,8 @@ class GoogleAiGeminiImageModelTest {
         void shouldThrowExceptionWhenModelNameIsNull() {
             // When & Then
             assertThatThrownBy(() -> GoogleAiGeminiImageModel.builder()
-                    .apiKey("test-api-key")
-                    .build())
+                            .apiKey("test-api-key")
+                            .build())
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("modelName");
         }
@@ -491,8 +491,7 @@ class GoogleAiGeminiImageModelTest {
                         "model"),
                 GeminiFinishReason.STOP);
 
-        return new GeminiGenerateContentResponse(
-                "response-id-123", "gemini-pro", List.of(candidate), null);
+        return new GeminiGenerateContentResponse("response-id-123", "gemini-pro", List.of(candidate), null);
     }
 
     /**

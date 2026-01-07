@@ -1231,7 +1231,8 @@ class GoogleAiGeminiBatchChatModelTest {
 
     private GoogleAiGeminiBatchChatModel createSubject() {
         return new GoogleAiGeminiBatchChatModel(
-                GoogleAiGeminiBatchChatModel.builder().apiKey("does not matter").modelName(MODEL_NAME), mockGeminiService);
+                GoogleAiGeminiBatchChatModel.builder().apiKey("does not matter").modelName(MODEL_NAME),
+                mockGeminiService);
     }
 
     private static ChatRequest createChatRequest(String modelName, String message) {

@@ -94,7 +94,10 @@ import org.slf4j.Logger;
 public final class GoogleAiGeminiBatchImageModel {
 
     private final GeminiBatchProcessor<
-            ImageGenerationRequest, Response<@NonNull Image>, GeminiGenerateContentRequest, GeminiGenerateContentResponse>
+                    ImageGenerationRequest,
+                    Response<@NonNull Image>,
+                    GeminiGenerateContentRequest,
+                    GeminiGenerateContentResponse>
             batchProcessor;
     private final String modelName;
     private final GeminiImageConfig imageConfig;
@@ -488,10 +491,10 @@ public final class GoogleAiGeminiBatchImageModel {
 
     private class ImageRequestPreparer
             implements GeminiBatchProcessor.RequestPreparer<
-            ImageGenerationRequest,
-            GeminiGenerateContentRequest,
-            GeminiGenerateContentResponse,
-            Response<@NonNull Image>> {
+                    ImageGenerationRequest,
+                    GeminiGenerateContentRequest,
+                    GeminiGenerateContentResponse,
+                    Response<@NonNull Image>> {
         private static final TypeReference<BatchCreateResponse.InlinedResponseWrapper<GeminiGenerateContentResponse>>
                 responseWrapperType = new TypeReference<>() {};
 
@@ -502,9 +505,8 @@ public final class GoogleAiGeminiBatchImageModel {
 
         @Override
         public GeminiGenerateContentRequest createInlinedRequest(ImageGenerationRequest request) {
-            GeminiContent content = new GeminiContent(
-                    List.of(GeminiPart.ofText(request.prompt())),
-                    GeminiRole.USER.toString());
+            GeminiContent content =
+                    new GeminiContent(List.of(GeminiPart.ofText(request.prompt())), GeminiRole.USER.toString());
 
             // Build imageConfig only if there are values to set
             GeminiImageConfig config =
@@ -536,7 +538,8 @@ public final class GoogleAiGeminiBatchImageModel {
         }
 
         private Response<@NonNull Image> extractImage(GeminiGenerateContentResponse geminiResponse) {
-            if (geminiResponse.candidates() == null || geminiResponse.candidates().isEmpty()) {
+            if (geminiResponse.candidates() == null
+                    || geminiResponse.candidates().isEmpty()) {
                 throw new GeminiImageGenerationException("No image generated in response");
             }
 

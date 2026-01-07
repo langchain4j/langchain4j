@@ -145,8 +145,7 @@ public class GoogleAiGeminiImageModel implements ImageModel {
     @Override
     public Response<@NonNull Image> generate(String prompt) {
         var request = createGenerateRequest(prompt);
-        var response = withRetryMappingExceptions(
-                () -> geminiService.generateContent(modelName, request), maxRetries);
+        var response = withRetryMappingExceptions(() -> geminiService.generateContent(modelName, request), maxRetries);
 
         return Response.from(extractImage(response));
     }
@@ -177,8 +176,7 @@ public class GoogleAiGeminiImageModel implements ImageModel {
         ensureNotBlank(prompt, "prompt");
 
         var request = createEditRequest(prompt, image, null);
-        var response = withRetryMappingExceptions(
-                () -> geminiService.generateContent(modelName, request), maxRetries);
+        var response = withRetryMappingExceptions(() -> geminiService.generateContent(modelName, request), maxRetries);
 
         return Response.from(extractImage(response));
     }
@@ -204,16 +202,13 @@ public class GoogleAiGeminiImageModel implements ImageModel {
         ensureNotBlank(prompt, "prompt");
 
         var request = createEditRequest(prompt, image, mask);
-        var response = withRetryMappingExceptions(
-                () -> geminiService.generateContent(modelName, request), maxRetries);
+        var response = withRetryMappingExceptions(() -> geminiService.generateContent(modelName, request), maxRetries);
 
         return Response.from(extractImage(response));
     }
 
     private GeminiGenerateContentRequest createGenerateRequest(String prompt) {
-        var content = new GeminiContent(
-                List.of(GeminiPart.ofText(prompt)),
-                GeminiRole.USER.toString());
+        var content = new GeminiContent(List.of(GeminiPart.ofText(prompt)), GeminiRole.USER.toString());
 
         return GeminiGenerateContentRequest.builder()
                 .contents(List.of(content))
@@ -259,10 +254,8 @@ public class GoogleAiGeminiImageModel implements ImageModel {
         }
 
         return GeminiPart.builder()
-                .inlineData(new GeminiBlob(mimeType,
-                        ensureNotBlank(base64Data, "image.base64Data")))
+                .inlineData(new GeminiBlob(mimeType, ensureNotBlank(base64Data, "image.base64Data")))
                 .build();
-
     }
 
     private GeminiGenerationConfig createGenerationConfig() {
@@ -277,7 +270,8 @@ public class GoogleAiGeminiImageModel implements ImageModel {
             throw new GeminiImageGenerationException("No image generated in response");
         }
 
-        GeminiGenerateContentResponse.GeminiCandidate candidate = response.candidates().get(0);
+        GeminiGenerateContentResponse.GeminiCandidate candidate =
+                response.candidates().get(0);
         if (candidate.content() == null || candidate.content().parts() == null) {
             throw new GeminiImageGenerationException("No content in response candidate");
         }
@@ -312,8 +306,7 @@ public class GoogleAiGeminiImageModel implements ImageModel {
         private Logger logger;
         private List<GeminiSafetySetting> safetySettings;
 
-        private GoogleAiGeminiImageModelBuilder() {
-        }
+        private GoogleAiGeminiImageModelBuilder() {}
 
         /**
          * Sets the HTTP client builder for custom HTTP configuration.

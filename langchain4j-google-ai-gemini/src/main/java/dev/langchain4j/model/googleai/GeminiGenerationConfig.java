@@ -33,8 +33,7 @@ record GeminiGenerationConfig(
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     record GeminiImageConfig(
-            @JsonProperty("aspectRatio") String aspectRatio,
-            @JsonProperty("imageSize") String imageSize) {
+            @JsonProperty("aspectRatio") String aspectRatio, @JsonProperty("imageSize") String imageSize) {
 
         static GeminiImageConfigBuilder builder() {
             return new GeminiImageConfigBuilder();
