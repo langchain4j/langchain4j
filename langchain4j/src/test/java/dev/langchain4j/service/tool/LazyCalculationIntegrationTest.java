@@ -1,6 +1,7 @@
 package dev.langchain4j.service.tool;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.parallel.ExecutionMode.SAME_THREAD;
 
 import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.Tool;
@@ -9,6 +10,7 @@ import dev.langchain4j.invocation.InvocationContext;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
 
 /**
  * Integration test to verify lazy calculation optimization.
@@ -18,6 +20,7 @@ import org.junit.jupiter.api.Test;
  * 2. For IMMEDIATE tools, JSON marshalling is completely avoided
  * 3. The optimization provides measurable performance improvement
  */
+@Execution(SAME_THREAD)
 class LazyCalculationIntegrationTest {
 
     static class LargeResultObject {

@@ -3,7 +3,6 @@ package dev.langchain4j.agentic.a2a;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.observability.AgentListener;
-import dev.langchain4j.agentic.observability.AgentListenerProvider;
 import dev.langchain4j.agentic.internal.AgentInvocationArguments;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
@@ -122,7 +121,7 @@ public class A2AClientAgentInvoker implements AgentInvoker {
 
     @Override
     public AgentListener listener() {
-        return ((AgentListenerProvider) a2AClientInstance).listener();
+        return a2AClientInstance.listener();
     }
 
     @Override

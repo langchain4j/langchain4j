@@ -624,6 +624,9 @@ public interface AgentListener {
     default void afterAgenticScopeCreated(AgenticScope agenticScope) { }
     default void beforeAgenticScopeDestroyed(AgenticScope agenticScope) { }
 
+    default void beforeToolExecution(BeforeToolExecution beforeToolExecution) { }
+    default void afterToolExecution(ToolExecution toolExecution) { }
+
     default boolean inheritedBySubagents() {
         return false;
     }

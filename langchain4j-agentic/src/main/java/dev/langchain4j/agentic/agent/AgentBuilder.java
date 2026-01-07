@@ -11,7 +11,6 @@ import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.observability.AgentListener;
-import dev.langchain4j.agentic.observability.AgentListenerProvider;
 import dev.langchain4j.agentic.observability.ComposedAgentListener;
 import dev.langchain4j.agentic.internal.AgentUtil;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
@@ -153,6 +152,10 @@ public class AgentBuilder<T> {
         if (retrievalAugmentor != null) {
             aiServices.retrievalAugmentor(retrievalAugmentor);
         }
+        if (agentListener != null) {
+            aiServices.beforeToolExecution(agentListener::beforeToolExecution);
+            aiServices.afterToolExecution(agentListener::afterToolExecution);
+        }
 
         setupGuardrails(aiServices);
         setupTools(aiServices);
@@ -177,9 +180,8 @@ public class AgentBuilder<T> {
                 agentServiceClass.getClassLoader(),
                 new Class<?>[] {
                     agentServiceClass,
-                    InternalAgent.class, AgentListenerProvider.class,
-                    ChatMemoryAccess.class, AgenticScopeOwner.class,
-                    ChatMessagesAccess.class
+                    InternalAgent.class, AgenticScopeOwner.class,
+                    ChatMemoryAccess.class, ChatMessagesAccess.class
                 },
                 new AgentInvocationHandler(context, aiServices.build(), this, messageRecorder, agenticScopeDependent));
     }
