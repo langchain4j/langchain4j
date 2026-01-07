@@ -473,12 +473,19 @@ public abstract class AiServices<T> {
     }
 
     /**
-     * Configures the maximum number of times LLM responds with tool call(s).
-     * <p>
-     * By default, this limit is set to 100.
+     * Sets the maximum number of times the LLM may respond with tool calls.
+     * If this limit is exceeded, an exception is thrown and the AI service invocation is terminated.
      *
-     * @param maxSequentialToolsInvocations The maximum number of times LLM responds with tool call(s).
-     * @return builder
+     * <p>
+     * NOTE: This value does not represent the total number of tool calls.
+     * Each LLM response that contains one or more tool calls counts as a single invocation
+     * and reduces this limit by one.
+     *
+     * <p>
+     * The default value is 100.
+     *
+     * @param maxSequentialToolsInvocations the maximum number of LLM responses containing tool calls
+     * @return the builder instance
      */
     public AiServices<T> maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
         context.toolService.maxSequentialToolsInvocations(maxSequentialToolsInvocations);
