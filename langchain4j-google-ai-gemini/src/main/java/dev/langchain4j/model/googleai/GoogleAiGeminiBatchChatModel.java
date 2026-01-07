@@ -250,7 +250,6 @@ public final class GoogleAiGeminiBatchChatModel {
             if (response == null || response.inlinedResponses() == null) {
                 return List.of();
             }
-
             return response.inlinedResponses().inlinedResponses().stream()
                     .map(wrapper -> Json.convertValue(wrapper, responseWrapperType))
                     .map(BatchCreateResponse.InlinedResponseWrapper::response)

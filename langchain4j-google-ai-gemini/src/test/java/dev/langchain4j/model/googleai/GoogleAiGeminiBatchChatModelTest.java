@@ -65,6 +65,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class GoogleAiGeminiBatchChatModelTest {
+
     private static final String MODEL_NAME = "gemini-2.5-flash-lite";
 
     @Mock
@@ -82,7 +83,6 @@ class GoogleAiGeminiBatchChatModelTest {
 
     @Nested
     class CreateBatchInline {
-
         @Test
         void should_create_batch_with_valid_requests() {
             // given
@@ -1231,8 +1231,7 @@ class GoogleAiGeminiBatchChatModelTest {
 
     private GoogleAiGeminiBatchChatModel createSubject() {
         return new GoogleAiGeminiBatchChatModel(
-                GoogleAiGeminiBatchChatModel.builder().apiKey("does not matter").modelName(MODEL_NAME),
-                mockGeminiService);
+                GoogleAiGeminiBatchChatModel.builder().apiKey("does not matter").modelName(MODEL_NAME), mockGeminiService);
     }
 
     private static ChatRequest createChatRequest(String modelName, String message) {
