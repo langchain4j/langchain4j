@@ -1,6 +1,6 @@
 package dev.langchain4j.model.openaiofficial.setup;
 
-import static dev.langchain4j.model.openaiofficial.azureopenai.InternalAzureOpenAiOfficialTestHelper.CHAT_MODEL_NAME;
+import static dev.langchain4j.model.openaiofficial.microsoftfoundry.InternalMicrosoftFoundryTestHelper.CHAT_MODEL_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -115,7 +115,7 @@ public class OpenAiOfficialSetupIT {
 
     @Test
     void should_not_append_api_version_to_baseUrl_when_azureOpenAIServiceVersion_is_set() {
-        // Given: Azure OpenAI configuration with service version
+        // Given: Microsoft Foundry configuration with service version
         String baseUrl = "https://test.openai.azure.com";
         String modelName = CHAT_MODEL_NAME.asString();
         String azureDeploymentName = null;
@@ -133,7 +133,7 @@ public class OpenAiOfficialSetupIT {
 
     @Test
     void should_not_append_api_version_to_baseUrl_with_deployment_name() {
-        // Given: Azure OpenAI configuration with service version and deployment name
+        // Given: Microsoft Foundry configuration with service version and deployment name
         String baseUrl = "https://test.openai.azure.com";
         String modelName = CHAT_MODEL_NAME.asString();
         String azureDeploymentName = "my-deployment";
@@ -151,7 +151,7 @@ public class OpenAiOfficialSetupIT {
 
     @Test
     void should_handle_baseUrl_with_trailing_slash() {
-        // Given: Azure OpenAI configuration with trailing slash in base URL
+        // Given: Microsoft Foundry configuration with trailing slash in base URL
         String baseUrl = "https://test.openai.azure.com/";
         String modelName = CHAT_MODEL_NAME.asString();
         String azureDeploymentName = null;
@@ -181,13 +181,13 @@ public class OpenAiOfficialSetupIT {
         ModelProvider modelProvider = OpenAiOfficialSetup.detectModelProvider(
                 isAzure, isGitHubModels, baseUrl, azureDeploymentName, azureOpenAIServiceVersion);
 
-        // Then: Should detect Azure OpenAI
+        // Then: Should detect Microsoft Foundry
         assertThat(modelProvider).isEqualTo(ModelProvider.AZURE_OPEN_AI);
     }
 
     @Test
     void should_detect_azure_openai_from_baseUrl() {
-        // Given: Azure OpenAI base URLs
+        // Given: Microsoft Foundry base URLs
         String[] azureUrls = {
             "https://test.openai.azure.com",
             "https://test.openai.azure.com/",
@@ -199,9 +199,9 @@ public class OpenAiOfficialSetupIT {
             // When: Detect model host
             ModelProvider modelProvider = OpenAiOfficialSetup.detectModelProvider(false, false, azureUrl, null, null);
 
-            // Then: Should detect Azure OpenAI
+            // Then: Should detect Microsoft Foundry
             assertThat(modelProvider)
-                    .as("Should detect Azure OpenAI from URL: " + azureUrl)
+                    .as("Should detect Microsoft Foundry from URL: " + azureUrl)
                     .isEqualTo(ModelProvider.AZURE_OPEN_AI);
         }
     }

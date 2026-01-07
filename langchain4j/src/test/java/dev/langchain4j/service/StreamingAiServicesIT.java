@@ -10,6 +10,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialThinkingContext;
@@ -637,5 +638,60 @@ class StreamingAiServicesIT {
         inOrder.verify(tokenStreamHandler, times(partialThoughtsBeforeCancellation)).onPartialThinking(any(), any());
         inOrder.verifyNoMoreInteractions();
         verifyNoMoreInteractions(tokenStreamHandler);
+    }
+
+    interface AssistantWithChatRequestParams {
+
+        TokenStream chat(@dev.langchain4j.service.UserMessage String userMessage, ChatRequestParameters params);
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_use_custom_chat_request_parameters_with_stream_answer(StreamingChatModel model) throws Exception {
+
+        ChatRequestParameters customParams = ChatRequestParameters.builder()
+                .temperature(0.01)
+                .stopSequences("DONE")
+                .build();
+
+        AssistantWithChatRequestParams assistant = AiServices.builder(AssistantWithChatRequestParams.class)
+                .streamingChatModel(model)
+                .chatRequestTransformer(chatRequest -> {
+                    assertThat(chatRequest.parameters().temperature()).isEqualTo(0.01);
+                    assertThat(chatRequest.parameters().stopSequences()).containsExactly("DONE");
+                    return chatRequest;
+                })
+                .build();
+
+        StringBuilder answerBuilder = new StringBuilder();
+        Queue<ChatResponse> intermediateResponses = new ConcurrentLinkedQueue<>();
+        CompletableFuture<String> futureAnswer = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
+
+        assistant.chat("What is the capital of Germany?", customParams)
+                .onPartialResponse(answerBuilder::append)
+                .onIntermediateResponse(intermediateResponses::add)
+                .onCompleteResponse(response -> {
+                    futureAnswer.complete(answerBuilder.toString());
+                    futureResponse.complete(response);
+                })
+                .onError(futureAnswer::completeExceptionally)
+                .start();
+
+        String answer = futureAnswer.get(30, SECONDS);
+        ChatResponse response = futureResponse.get(30, SECONDS);
+
+        assertThat(answer).contains("Berlin");
+        assertThat(response.aiMessage().text()).isEqualTo(answer);
+
+        TokenUsage tokenUsage = response.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isPositive();
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+
+        assertThat(response.finishReason()).isEqualTo(STOP);
+
+        assertThat(intermediateResponses).isEmpty();
     }
 }

@@ -3,6 +3,7 @@ package dev.langchain4j.model.googleai;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.googleai.GeminiService.BatchOperationType.ASYNC_BATCH_EMBED_CONTENT;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -171,6 +172,8 @@ public final class GoogleAiGeminiBatchEmbeddingModel {
     private class EmbeddingRequestPreparer
             implements GeminiBatchProcessor.RequestPreparer<
                     TextSegment, GeminiEmbeddingRequest, GeminiEmbeddingResponse, Embedding> {
+        private static final TypeReference<BatchCreateResponse.InlinedResponseWrapper<GeminiEmbeddingResponse>>
+                responseWrapperType = new TypeReference<>() {};
 
         @Override
         public TextSegment prepareRequest(TextSegment textSegment) {
@@ -202,7 +205,8 @@ public final class GoogleAiGeminiBatchEmbeddingModel {
             }
 
             return response.inlinedResponses().inlinedResponses().stream()
-                    .map(wrapper -> Json.convertValue(wrapper.response(), GeminiEmbeddingResponse.class))
+                    .map(wrapper -> Json.convertValue(wrapper, responseWrapperType))
+                    .map(BatchCreateResponse.InlinedResponseWrapper::response)
                     .map(GeminiEmbeddingResponse::embedding)
                     .map(contentEmbedding -> Embedding.from(contentEmbedding.values()))
                     .toList();

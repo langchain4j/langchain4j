@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.googleai.GeminiResponseModality.IMAGE;
 import static dev.langchain4j.model.googleai.GeminiService.BatchOperationType.BATCH_GENERATE_CONTENT;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.http.client.HttpClientBuilder;
@@ -109,7 +110,7 @@ public final class GoogleAiGeminiBatchImageModel {
         ensureNotBlank(builder.apiKey, "apiKey");
 
         this.modelName = getOrDefault(builder.modelName, "gemini-2.5-flash-preview-image-generation");
-        this.responseModalities = getOrDefault(builder.responseModalities, List.of(IMAGE));
+        this.responseModalities = List.of(IMAGE);
         this.safetySettings = builder.safetySettings;
 
         // Build imageConfig if aspectRatio or imageSize is set
@@ -324,7 +325,6 @@ public final class GoogleAiGeminiBatchImageModel {
         private String modelName;
         private String aspectRatio;
         private String imageSize;
-        private List<GeminiResponseModality> responseModalities;
         private Duration timeout;
         private Boolean logRequestsAndResponses;
         private Boolean logRequests;
@@ -406,30 +406,6 @@ public final class GoogleAiGeminiBatchImageModel {
          */
         public GoogleAiGeminiBatchImageModelBuilder imageSize(String imageSize) {
             this.imageSize = imageSize;
-            return this;
-        }
-
-        /**
-         * Sets the response modalities to request from the model.
-         *
-         * <p>Defaults to {@link GeminiResponseModality#IMAGE} only.</p>
-         *
-         * @param responseModalities the list of response modalities
-         * @return this builder
-         */
-        public GoogleAiGeminiBatchImageModelBuilder responseModalities(List<GeminiResponseModality> responseModalities) {
-            this.responseModalities = responseModalities;
-            return this;
-        }
-
-        /**
-         * Sets the response modalities using varargs for convenience.
-         *
-         * @param responseModalities the response modalities
-         * @return this builder
-         */
-        public GoogleAiGeminiBatchImageModelBuilder responseModalities(GeminiResponseModality... responseModalities) {
-            this.responseModalities = List.of(responseModalities);
             return this;
         }
 
@@ -516,6 +492,8 @@ public final class GoogleAiGeminiBatchImageModel {
             GeminiGenerateContentRequest,
             GeminiGenerateContentResponse,
             Response<@NonNull Image>> {
+        private static final TypeReference<BatchCreateResponse.InlinedResponseWrapper<GeminiGenerateContentResponse>>
+                responseWrapperType = new TypeReference<>() {};
 
         @Override
         public ImageGenerationRequest prepareRequest(ImageGenerationRequest request) {
@@ -551,7 +529,8 @@ public final class GoogleAiGeminiBatchImageModel {
                 return List.of();
             }
             return response.inlinedResponses().inlinedResponses().stream()
-                    .map(wrapper -> Json.convertValue(wrapper.response(), GeminiGenerateContentResponse.class))
+                    .map(wrapper -> Json.convertValue(wrapper.response(), responseWrapperType))
+                    .map(BatchCreateResponse.InlinedResponseWrapper::response)
                     .map(this::extractImage)
                     .toList();
         }

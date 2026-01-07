@@ -1,6 +1,5 @@
 package dev.langchain4j.agentic;
 
-import static dev.langchain4j.agentic.declarative.DeclarativeUtil.checkArguments;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.checkReturnType;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureAgent;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.invokeStatic;
@@ -15,14 +14,13 @@ import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import dev.langchain4j.agentic.agent.AgentBuilder;
-import dev.langchain4j.agentic.agent.AgentRequest;
-import dev.langchain4j.agentic.agent.AgentResponse;
+import dev.langchain4j.agentic.declarative.AgentListenerSupplier;
+import dev.langchain4j.agentic.internal.InternalAgent;
+import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.declarative.A2AClientAgent;
 import dev.langchain4j.agentic.declarative.ActivationCondition;
-import dev.langchain4j.agentic.declarative.AfterAgentInvocation;
-import dev.langchain4j.agentic.declarative.BeforeAgentInvocation;
 import dev.langchain4j.agentic.declarative.ChatMemoryProviderSupplier;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
 import dev.langchain4j.agentic.declarative.PlannerAgent;
@@ -48,7 +46,7 @@ import dev.langchain4j.agentic.internal.A2AClientBuilder;
 import dev.langchain4j.agentic.internal.A2AService;
 import dev.langchain4j.agentic.internal.AgentExecutor;
 import dev.langchain4j.agentic.internal.AgentInvoker;
-import dev.langchain4j.agentic.internal.AgentSpecification;
+import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;
 import dev.langchain4j.agentic.supervisor.SupervisorAgentService;
 import dev.langchain4j.agentic.supervisor.SupervisorAgentServiceImpl;
@@ -392,9 +390,6 @@ public class AgenticServices {
                 sequenceAgent.description(),
                 AgentUtil.outputKey(sequenceAgent.outputKey(), sequenceAgent.typedOutputKey()),
                 builder);
-        buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
-        buildInvocationHandler(agentServiceClass).ifPresent(builder::beforeAgentInvocation);
-        buildCompletionHandler(agentServiceClass).ifPresent(builder::afterAgentInvocation);
 
         return builder.build();
     }
@@ -416,9 +411,6 @@ public class AgenticServices {
                 loopAgent.description(),
                 AgentUtil.outputKey(loopAgent.outputKey(), loopAgent.typedOutputKey()),
                 builder);
-        buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
-        buildInvocationHandler(agentServiceClass).ifPresent(builder::beforeAgentInvocation);
-        buildCompletionHandler(agentServiceClass).ifPresent(builder::afterAgentInvocation);
 
         predicateMethod(agentServiceClass, method -> method.isAnnotationPresent(ExitCondition.class))
                 .map(method -> {
@@ -447,9 +439,6 @@ public class AgenticServices {
                 conditionalAgent.description(),
                 AgentUtil.outputKey(conditionalAgent.outputKey(), conditionalAgent.typedOutputKey()),
                 builder);
-        buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
-        buildInvocationHandler(agentServiceClass).ifPresent(builder::beforeAgentInvocation);
-        buildCompletionHandler(agentServiceClass).ifPresent(builder::afterAgentInvocation);
 
         for (Class<?> subagent : conditionalAgent.subAgents()) {
             predicateMethod(agentServiceClass, method -> {
@@ -481,9 +470,6 @@ public class AgenticServices {
                 parallelAgent.description(),
                 AgentUtil.outputKey(parallelAgent.outputKey(), parallelAgent.typedOutputKey()),
                 builder);
-        buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
-        buildInvocationHandler(agentServiceClass).ifPresent(builder::beforeAgentInvocation);
-        buildCompletionHandler(agentServiceClass).ifPresent(builder::afterAgentInvocation);
 
         selectMethod(
                         agentServiceClass,
@@ -518,9 +504,6 @@ public class AgenticServices {
                 plannerAgent.description(),
                 AgentUtil.outputKey(plannerAgent.outputKey(), plannerAgent.typedOutputKey()),
                 builder);
-        buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
-        buildInvocationHandler(agentServiceClass).ifPresent(builder::beforeAgentInvocation);
-        buildCompletionHandler(agentServiceClass).ifPresent(builder::afterAgentInvocation);
 
         getAnnotatedMethodOnClass(agentServiceClass, PlannerSupplier.class)
                 .ifPresentOrElse(method -> {
@@ -554,6 +537,8 @@ public class AgenticServices {
         selectMethod(agentServiceClass, method -> method.isAnnotationPresent(Output.class))
                 .map(m -> AgenticServices.agenticScopeFunction(m, Object.class))
                 .ifPresent(builder::output);
+
+        buildAgentFeatures(agentServiceClass, builder);
     }
 
     private static <T> T buildSupervisorAgent(
@@ -606,11 +591,14 @@ public class AgenticServices {
                 .map(m -> AgenticServices.agenticScopeFunction(m, Object.class))
                 .ifPresent(builder::output);
 
-        buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
-        buildInvocationHandler(agentServiceClass).ifPresent(builder::beforeAgentInvocation);
-        buildCompletionHandler(agentServiceClass).ifPresent(builder::afterAgentInvocation);
+        buildAgentFeatures(agentServiceClass, builder);
 
         return builder.build();
+    }
+
+    private static void buildAgentFeatures(Class<?> agentServiceClass, AgenticService<?, ?> builder) {
+        buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
+        buildListener(agentServiceClass, builder);
     }
 
     private static <T> Optional<Function<ErrorContext, ErrorRecoveryResult>> buildErrorHandler(
@@ -619,14 +607,12 @@ public class AgenticServices {
                 .map(m -> errorContext -> invokeStatic(m, errorContext));
     }
 
-    private static <T> Optional<Consumer<AgentRequest>> buildInvocationHandler(Class<T> agentServiceClass) {
-        return selectMethod(agentServiceClass, method -> method.isAnnotationPresent(BeforeAgentInvocation.class))
-                .map(m -> request -> invokeStatic(m, request));
-    }
-
-    private static <T> Optional<Consumer<AgentResponse>> buildCompletionHandler(Class<T> agentServiceClass) {
-        return selectMethod(agentServiceClass, method -> method.isAnnotationPresent(AfterAgentInvocation.class))
-                .map(m -> response -> invokeStatic(m, response));
+    private static void buildListener(Class<?> agentServiceClass, AgenticService<?, ?> builder) {
+        getAnnotatedMethodOnClass(agentServiceClass, AgentListenerSupplier.class)
+                .ifPresent(listenerMethod -> {
+                    checkReturnType(listenerMethod, AgentListener.class);
+                    builder.listener(invokeStatic(listenerMethod));
+                });
     }
 
     private static Optional<Method> predicateMethod(Class<?> agentServiceClass, Predicate<Method> methodSelector) {
@@ -708,7 +694,7 @@ public class AgenticServices {
         AgentBuilder<?> agentBuilder = agentBuilder(subgentClass);
         configureAgent(subgentClass, chatModel, agentBuilder, agentConfigurator);
 
-        return agentToExecutor((AgentSpecification) agentBuilder.build());
+        return agentToExecutor(agentBuilder.build());
     }
 
     private static AgentExecutor createBuiltInAgentExecutor(
@@ -718,32 +704,32 @@ public class AgenticServices {
         Optional<Method> sequenceMethod = getAnnotatedMethodOnClass(agentServiceClass, SequenceAgent.class);
         if (sequenceMethod.isPresent()) {
             Method method = sequenceMethod.get();
-            AgentSpecification agent =
-                    (AgentSpecification) buildSequentialAgent(agentServiceClass, method, chatModel, agentConfigurator);
+            InternalAgent agent =
+                    (InternalAgent) buildSequentialAgent(agentServiceClass, method, chatModel, agentConfigurator);
             return new AgentExecutor(AgentInvoker.fromMethod(agent, method), agent);
         }
 
         Optional<Method> loopMethod = getAnnotatedMethodOnClass(agentServiceClass, LoopAgent.class);
         if (loopMethod.isPresent()) {
             Method method = loopMethod.get();
-            AgentSpecification agent =
-                    (AgentSpecification) buildLoopAgent(agentServiceClass, method, chatModel, agentConfigurator);
+            InternalAgent agent =
+                    (InternalAgent) buildLoopAgent(agentServiceClass, method, chatModel, agentConfigurator);
             return new AgentExecutor(AgentInvoker.fromMethod(agent, method), agent);
         }
 
         Optional<Method> conditionalMethod = getAnnotatedMethodOnClass(agentServiceClass, ConditionalAgent.class);
         if (conditionalMethod.isPresent()) {
             Method method = conditionalMethod.get();
-            AgentSpecification agent =
-                    (AgentSpecification) buildConditionalAgent(agentServiceClass, method, chatModel, agentConfigurator);
+            InternalAgent agent =
+                    (InternalAgent) buildConditionalAgent(agentServiceClass, method, chatModel, agentConfigurator);
             return new AgentExecutor(AgentInvoker.fromMethod(agent, method), agent);
         }
 
         Optional<Method> parallelMethod = getAnnotatedMethodOnClass(agentServiceClass, ParallelAgent.class);
         if (parallelMethod.isPresent()) {
             Method method = parallelMethod.get();
-            AgentSpecification agent =
-                    (AgentSpecification) buildParallelAgent(agentServiceClass, method, chatModel, agentConfigurator);
+            InternalAgent agent =
+                    (InternalAgent) buildParallelAgent(agentServiceClass, method, chatModel, agentConfigurator);
             return new AgentExecutor(AgentInvoker.fromMethod(agent, method), agent);
         }
 
@@ -751,8 +737,8 @@ public class AgenticServices {
                 getAnnotatedMethodOnClass(agentServiceClass, dev.langchain4j.agentic.declarative.SupervisorAgent.class);
         if (supervisorMethod.isPresent()) {
             Method method = supervisorMethod.get();
-            AgentSpecification agent =
-                    (AgentSpecification) buildSupervisorAgent(agentServiceClass, method, chatModel, agentConfigurator);
+            InternalAgent agent =
+                    (InternalAgent) buildSupervisorAgent(agentServiceClass, method, chatModel, agentConfigurator);
             return new AgentExecutor(AgentInvoker.fromMethod(agent, method), agent);
         }
 
@@ -793,18 +779,11 @@ public class AgenticServices {
                 .outputKey(AgentUtil.outputKey(a2aClient.outputKey(), a2aClient.typedOutputKey()))
                 .async(a2aClient.async());
 
-        getAnnotatedMethodOnClass(agentServiceClass, BeforeAgentInvocation.class)
+        getAnnotatedMethodOnClass(agentServiceClass, AgentListenerSupplier.class)
                 .ifPresent(method -> {
-                    checkArguments(method, AgentRequest.class);
-                    checkReturnType(method, void.class);
-                    a2aClientBuilder.beforeAgentInvocation(request -> invokeStatic(method, request));
+                    checkReturnType(method, AgentListener.class);
+                    a2aClientBuilder.listener(invokeStatic(method));
                 });
-
-        getAnnotatedMethodOnClass(agentServiceClass, AfterAgentInvocation.class).ifPresent(method -> {
-            checkArguments(method, AgentResponse.class);
-            checkReturnType(method, void.class);
-            a2aClientBuilder.afterAgentInvocation(response -> invokeStatic(method, response));
-        });
 
         return agentToExecutor(a2aClientBuilder.build());
     }
@@ -830,6 +809,12 @@ public class AgenticServices {
                                     + " must have a static method annotated with @"
                                     + HumanInTheLoopResponseSupplier.class.getSimpleName());
                         });
+
+        getAnnotatedMethodOnClass(agentServiceClass, AgentListenerSupplier.class)
+                .ifPresent(listenerMethod -> {
+                    checkReturnType(listenerMethod, AgentListener.class);
+                    humanInTheLoopBuilder.listener(invokeStatic(listenerMethod));
+                });
 
         return agentToExecutor(humanInTheLoopBuilder.build());
     }

@@ -3,6 +3,7 @@ package dev.langchain4j.model.googleai;
 import static dev.langchain4j.model.googleai.BaseGeminiChatModel.buildGeminiService;
 import static dev.langchain4j.model.googleai.GeminiService.BatchOperationType.BATCH_GENERATE_CONTENT;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -228,6 +229,8 @@ public final class GoogleAiGeminiBatchChatModel {
     private class ChatRequestPreparer
             implements GeminiBatchProcessor.RequestPreparer<
                     ChatRequest, GeminiGenerateContentRequest, GeminiGenerateContentResponse, ChatResponse> {
+        private static final TypeReference<BatchCreateResponse.InlinedResponseWrapper<GeminiGenerateContentResponse>>
+                responseWrapperType = new TypeReference<>() {};
 
         @Override
         public ChatRequest prepareRequest(ChatRequest request) {
@@ -247,8 +250,10 @@ public final class GoogleAiGeminiBatchChatModel {
             if (response == null || response.inlinedResponses() == null) {
                 return List.of();
             }
+
             return response.inlinedResponses().inlinedResponses().stream()
-                    .map(wrapper -> Json.convertValue(wrapper.response(), GeminiGenerateContentResponse.class))
+                    .map(wrapper -> Json.convertValue(wrapper, responseWrapperType))
+                    .map(BatchCreateResponse.InlinedResponseWrapper::response)
                     .map(chatModel::processResponse)
                     .toList();
         }

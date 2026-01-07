@@ -154,7 +154,7 @@ abstract class OpenAiOfficialBaseChatModel {
                 || this.modelProvider.equals(ModelProvider.GITHUB_MODELS)) {
             if (this.defaultRequestParameters.modelName() != null
                     && !this.defaultRequestParameters.modelName().equals(modelName)) {
-                // The model name can't be changed in Azure OpenAI, where it's part of the URL.
+                // The model name can't be changed in Microsoft Foundry, where it's part of the URL.
                 throw new UnsupportedFeatureException("Modifying the modelName is not supported");
             }
         }

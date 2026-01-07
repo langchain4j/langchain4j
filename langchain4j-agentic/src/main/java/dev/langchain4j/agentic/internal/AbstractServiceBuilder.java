@@ -6,11 +6,11 @@ import static dev.langchain4j.agentic.internal.AgentUtil.keyName;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import dev.langchain4j.agentic.Agent;
-import dev.langchain4j.agentic.agent.AgentRequest;
-import dev.langchain4j.agentic.agent.AgentResponse;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.declarative.TypedKey;
+import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.observability.ComposedAgentListener;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import java.lang.reflect.InvocationHandler;
@@ -37,10 +37,9 @@ public abstract class AbstractServiceBuilder<T, S> {
     protected String outputKey;
     protected Function<AgenticScope, Object> output;
 
-    protected Consumer<AgentRequest> beforeListener = request -> {};
-    protected Consumer<AgentResponse> afterListener = response -> {};
+    protected AgentListener agentListener;
 
-    private List<AgentExecutor> agentExecutors;
+    protected final List<AgentExecutor> subagents = new ArrayList<>();
 
     protected Function<ErrorContext, ErrorRecoveryResult> errorHandler;
 
@@ -113,7 +112,7 @@ public abstract class AbstractServiceBuilder<T, S> {
     }
 
     public S subAgents(List<AgentExecutor> agentExecutors) {
-        addAgentExecutors(agentExecutors);
+        addSubagents(agentExecutors);
         return (S) this;
     }
 
@@ -122,13 +121,14 @@ public abstract class AbstractServiceBuilder<T, S> {
         return (S) this;
     }
 
-    public S beforeAgentInvocation(Consumer<AgentRequest> invocationListener) {
-        this.beforeListener = this.beforeListener.andThen(invocationListener);
-        return (S) this;
-    }
-
-    public S afterAgentInvocation(Consumer<AgentResponse> afterListener) {
-        this.afterListener = this.afterListener.andThen(afterListener);
+    public S listener(AgentListener agentListener) {
+        if (this.agentListener == null) {
+            this.agentListener = agentListener;
+        } else if (this.agentListener instanceof ComposedAgentListener composed) {
+            composed.addListener(agentListener);
+        } else {
+            this.agentListener = new ComposedAgentListener(this.agentListener, agentListener);
+        }
         return (S) this;
     }
 
@@ -137,15 +137,8 @@ public abstract class AbstractServiceBuilder<T, S> {
         return (S) this;
     }
 
-    protected List<AgentExecutor> agentExecutors() {
-        return agentExecutors != null ? agentExecutors : List.of();
-    }
-
-    private void addAgentExecutors(List<AgentExecutor> agents) {
-        if (this.agentExecutors == null) {
-            this.agentExecutors = new ArrayList<>();
-        }
-        this.agentExecutors.addAll(agents);
+    private void addSubagents(List<AgentExecutor> agents) {
+        this.subagents.addAll(agents);
     }
 
     public T build(Supplier<Planner> plannerSupplier) {

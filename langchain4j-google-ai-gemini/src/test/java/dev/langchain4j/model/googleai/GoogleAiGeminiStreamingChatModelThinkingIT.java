@@ -30,15 +30,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.junitpioneer.jupiter.RetryingTest;
 import org.mockito.InOrder;
 
 @EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 class GoogleAiGeminiStreamingChatModelThinkingIT {
 
     private static final String GOOGLE_AI_GEMINI_API_KEY = System.getenv("GOOGLE_AI_GEMINI_API_KEY");
-
-    private final SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
 
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
@@ -52,6 +49,8 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
                 .includeThoughts(includeThoughts)
                 .thinkingBudget(20)
                 .build();
+
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
 
         StreamingChatModel model = GoogleAiGeminiStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
@@ -132,6 +131,8 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
                 .thinkingBudget(20)
                 .build();
 
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+
         StreamingChatModel model = GoogleAiGeminiStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
@@ -166,12 +167,10 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
         verifyNoMoreInteractions(spyHandler);
     }
 
-    @RetryingTest(3)
     void should_think_and_return_thinking_with_tools__sendThinking_true() {
         should_think_and_return_thinking_with_tools(true);
     }
 
-    @RetryingTest(3)
     void should_think_and_return_thinking_with_tools__sendThinking_false() {
         should_think_and_return_thinking_with_tools(false);
     }
@@ -194,6 +193,8 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
                         .required("city")
                         .build())
                 .build();
+
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
 
         StreamingChatModel model = GoogleAiGeminiStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))

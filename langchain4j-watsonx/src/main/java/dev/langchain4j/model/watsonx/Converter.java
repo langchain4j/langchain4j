@@ -128,14 +128,8 @@ class Converter {
             builder.guidedChoice(watsonxParameters.guidedChoice());
             builder.guidedGrammar(watsonxParameters.guidedGrammar());
             builder.guidedRegex(watsonxParameters.guidedRegex());
-            builder.repetitionPenalty(
-                    nonNull(watsonxParameters.repetitionPenalty())
-                            ? watsonxParameters.repetitionPenalty().floatValue()
-                            : null);
-            builder.lengthPenalty(
-                    nonNull(watsonxParameters.lengthPenalty())
-                            ? watsonxParameters.lengthPenalty().floatValue()
-                            : null);
+            builder.repetitionPenalty(watsonxParameters.repetitionPenalty());
+            builder.lengthPenalty(watsonxParameters.lengthPenalty());
 
             List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
             ToolChoice toolChoice = parameters.toolChoice();

@@ -27,7 +27,7 @@ For example, for OpenAI (`langchain4j-open-ai`), the dependency name would be `l
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>1.9.1-beta17</version>
+    <version>1.10.0-beta18</version>
 </dependency>
 ```
 
@@ -78,7 +78,7 @@ import `langchain4j-spring-boot-starter`:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-spring-boot-starter</artifactId>
-    <version>1.9.1-beta17</version>
+    <version>1.10.0-beta18</version>
 </dependency>
 ```
 
@@ -121,6 +121,7 @@ The following components will be automatically wired into the AI Service if avai
 - `ChatMemoryProvider`
 - `ContentRetriever`
 - `RetrievalAugmentor`
+- `ToolProvider`
 - All methods of any `@Component` or `@Service` class that are annotated with `@Tool`
 An example:
 ```java

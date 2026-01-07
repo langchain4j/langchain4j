@@ -1,12 +1,8 @@
 package dev.langchain4j.service;
 
-import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.spi.ServiceHelper.loadFactory;
-import static java.lang.reflect.Modifier.isStatic;
 
 import dev.langchain4j.Internal;
-import dev.langchain4j.invocation.InvocationParameters;
-import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
@@ -16,20 +12,13 @@ import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.service.guardrail.GuardrailService;
-import dev.langchain4j.service.memory.ChatMemoryAccess;
 import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.service.tool.ToolService;
 import dev.langchain4j.spi.services.AiServiceContextFactory;
-import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.function.Function;
-import java.util.stream.Stream;
 
 @Internal
 public class AiServiceContext {
@@ -52,6 +41,8 @@ public class AiServiceContext {
     public ModerationModel moderationModel;
 
     public RetrievalAugmentor retrievalAugmentor;
+
+    public boolean storeRetrievedContentInChatMemory = true;
 
     public Function<Object, Optional<String>> systemMessageProvider = DEFAULT_MESSAGE_PROVIDER;
 

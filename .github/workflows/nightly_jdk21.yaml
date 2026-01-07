@@ -23,7 +23,7 @@ jobs:
           echo "$modules"
 
           # number of parallel groups
-          N=10
+          N=7
 
           # round-robin grouping
           matrix=$(echo "$modules" | awk -v N="$N" '
@@ -62,7 +62,7 @@ jobs:
           cache: 'maven'
 
       - name: Authenticate to Google Cloud
-        # Required for Google modules
+        # Required for Google modules (e.g., langchain4j-vertex-ai)
         uses: google-github-actions/auth@v2
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
@@ -71,6 +71,7 @@ jobs:
       - name: Setup JBang
         # Required for MCP module
         uses: jbangdev/setup-jbang@main
+        continue-on-error: true
 
       - name: Build with JDK 21
         run: |
@@ -78,13 +79,14 @@ jobs:
           echo "Building modules: $modules"
           
           ## compile and install ALL modules to avoid running integration tests on dependent modules in the step below
-          mvn -B -U -T8C -DskipTests -DskipITs install
+          mvn -B -U -T8C -DskipTests -DskipITs -DembeddingsSkipCache install
 
           mvn -B -U verify \
             -pl "${modules}" \
-            -DskipAzureAiSearchITs -DskipJlamaITs -DskipLocalAiITs -DskipMilvusITs -DskipOllamaITs -DskipVespaITs \
+            -DskipAzureAiSearchITs -DskipJlamaITs -DskipLocalAiITs -DskipMilvusITs -DskipOllamaITs -DskipOracleITs -DskipVespaITs \
             --fail-at-end -Dmaven.test.failure.ignore=true \
             -Djunit.jupiter.extensions.autodetection.enabled=true \
+            -DembeddingsSkipCache \
             -Dtinylog.writer.level=info
 
         env:
