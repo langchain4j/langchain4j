@@ -34,6 +34,7 @@ import org.slf4j.Logger;
  *       multiple input images to compose new scenes and transfer styles.</li>
  *   <li><strong>High-Fidelity Text Rendering:</strong> Accurately generate images that contain
  *       legible and well-placed text, ideal for logos, diagrams, and posters.</li>
+ * </ul>
  *
  * <p>All generated images include a
  * <a href="https://ai.google.dev/responsible/docs/safeguards/synthid">SynthID watermark</a>.</p>
