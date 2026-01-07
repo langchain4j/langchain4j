@@ -5,11 +5,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.joining;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -18,6 +13,11 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.query.Query;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 /**
  * A {@link QueryTransformer} that leverages a {@link ChatModel} to condense a given {@link Query}
@@ -41,15 +41,14 @@ public class CompressingQueryTransformer implements QueryTransformer {
                     Then, analyze the new query from the User. \
                     Identify all relevant details, terms, and context from both the conversation and the new query. \
                     Reformulate this query into a clear, concise, and self-contained format suitable for information retrieval.
-                    
+
                     Conversation:
                     {{chatMemory}}
-                    
+
                     User query: {{query}}
-                    
+
                     It is very important that you provide only reformulated query and nothing else! \
-                    Do not prepend a query with anything!"""
-    );
+                    Do not prepend a query with anything!""");
 
     protected final PromptTemplate promptTemplate;
     protected final ChatModel chatModel;
@@ -70,7 +69,8 @@ public class CompressingQueryTransformer implements QueryTransformer {
     @Override
     public Collection<Query> transform(Query query) {
 
-        List<ChatMessage> chatMemory = query.metadata() == null ? null : query.metadata().chatMemory();
+        List<ChatMessage> chatMemory =
+                query.metadata() == null ? null : query.metadata().chatMemory();
         if (chatMemory == null || chatMemory.isEmpty()) {
             // no need to compress if there are no previous messages
             return singletonList(query);
@@ -91,10 +91,7 @@ public class CompressingQueryTransformer implements QueryTransformer {
     }
 
     protected String format(List<ChatMessage> chatMemory) {
-        return chatMemory.stream()
-                .map(this::format)
-                .filter(Objects::nonNull)
-                .collect(joining("\n"));
+        return chatMemory.stream().map(this::format).filter(Objects::nonNull).collect(joining("\n"));
     }
 
     protected String format(ChatMessage message) {
@@ -121,8 +118,7 @@ public class CompressingQueryTransformer implements QueryTransformer {
         private ChatModel chatModel;
         private PromptTemplate promptTemplate;
 
-        CompressingQueryTransformerBuilder() {
-        }
+        CompressingQueryTransformerBuilder() {}
 
         public CompressingQueryTransformerBuilder chatModel(ChatModel chatModel) {
             this.chatModel = chatModel;
