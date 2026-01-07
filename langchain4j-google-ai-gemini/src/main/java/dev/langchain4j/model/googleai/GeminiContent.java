@@ -28,6 +28,10 @@ record GeminiContent(List<GeminiPart> parts, String role) {
             Boolean thought,
             String thoughtSignature) {
 
+        static GeminiPart ofText(String text) {
+            return GeminiPart.builder().text(text).build();
+        }
+
         static Builder builder() {
             return new Builder();
         }

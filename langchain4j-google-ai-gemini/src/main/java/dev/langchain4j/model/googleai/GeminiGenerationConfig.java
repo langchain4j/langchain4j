@@ -20,10 +20,43 @@ record GeminiGenerationConfig(
         @JsonProperty("thinkingConfig") GeminiThinkingConfig thinkingConfig,
         @JsonProperty("responseLogprobs") Boolean responseLogprobs,
         @JsonProperty("enableEnhancedCivicAnswers") Boolean enableEnhancedCivicAnswers,
-        @JsonProperty("logprobs") Integer logprobs) {
+        @JsonProperty("logprobs") Integer logprobs,
+        @JsonProperty("responseModalities") List<GeminiResponseModality> responseModalities,
+        @JsonProperty("imageConfig") GeminiImageConfig imageConfig) {
 
     static GeminiGenerationConfigBuilder builder() {
         return new GeminiGenerationConfigBuilder();
+    }
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    record GeminiImageConfig(
+            @JsonProperty("aspectRatio") String aspectRatio,
+            @JsonProperty("imageSize") String imageSize) {
+
+        static GeminiImageConfigBuilder builder() {
+            return new GeminiImageConfigBuilder();
+        }
+
+        static class GeminiImageConfigBuilder {
+            private String aspectRatio;
+            private String imageSize;
+
+            GeminiImageConfigBuilder() {}
+
+            GeminiImageConfigBuilder aspectRatio(String aspectRatio) {
+                this.aspectRatio = aspectRatio;
+                return this;
+            }
+
+            GeminiImageConfigBuilder imageSize(String imageSize) {
+                this.imageSize = imageSize;
+                return this;
+            }
+
+            GeminiImageConfig build() {
+                return new GeminiImageConfig(aspectRatio, imageSize);
+            }
+        }
     }
 
     static class GeminiGenerationConfigBuilder {
@@ -43,6 +76,8 @@ record GeminiGenerationConfig(
         private Boolean enableEnhancedCivicAnswers;
         private GeminiThinkingConfig thinkingConfig;
         private Integer logprobs;
+        private List<GeminiResponseModality> responseModalities;
+        private GeminiImageConfig imageConfig;
 
         GeminiGenerationConfigBuilder() {}
 
@@ -121,6 +156,16 @@ record GeminiGenerationConfig(
             return this;
         }
 
+        GeminiGenerationConfigBuilder responseModalities(List<GeminiResponseModality> responseModalities) {
+            this.responseModalities = responseModalities;
+            return this;
+        }
+
+        GeminiGenerationConfigBuilder imageConfig(GeminiImageConfig imageConfig) {
+            this.imageConfig = imageConfig;
+            return this;
+        }
+
         GeminiGenerationConfig build() {
             return new GeminiGenerationConfig(
                     stopSequences,
@@ -137,7 +182,9 @@ record GeminiGenerationConfig(
                     thinkingConfig,
                     responseLogprobs,
                     enableEnhancedCivicAnswers,
-                    logprobs);
+                    logprobs,
+                    responseModalities,
+                    imageConfig);
         }
     }
 }
