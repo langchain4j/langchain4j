@@ -23,7 +23,11 @@ import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
 import dev.langchain4j.store.embedding.filter.Filter;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -183,15 +187,24 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         return loadCodec().toJson(this);
     }
 
+    /**
+     * Serializes this store to a file in JSON format.
+     * <p>
+     * This method uses streaming serialization to avoid holding the entire JSON document in memory.
+     * Prefer this over {@link #serializeToJson()}
+     */
     public void serializeToFile(Path filePath) {
-        try {
-            String json = serializeToJson();
-            Files.write(filePath, json.getBytes(), CREATE, TRUNCATE_EXISTING);
+        try (OutputStream outputStream =
+                new BufferedOutputStream(Files.newOutputStream(filePath, CREATE, TRUNCATE_EXISTING))) {
+            loadCodec().toJson(outputStream, this);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
+    /**
+     * @see #serializeToFile(Path)
+     */
     public void serializeToFile(String filePath) {
         serializeToFile(Paths.get(filePath));
     }
@@ -200,15 +213,23 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         return loadCodec().fromJson(json);
     }
 
+    /**
+     * Deserializes an embedding store from a JSON file.
+     * <p>
+     * Uses streaming deserialization to avoid loading the entire JSON document into memory.
+     */
     public static InMemoryEmbeddingStore<TextSegment> fromFile(Path filePath) {
-        try {
-            String json = new String(Files.readAllBytes(filePath));
-            return fromJson(json);
+        try (InputStream inputStream = new BufferedInputStream(Files.newInputStream(filePath))) {
+            return loadCodec().fromJson(inputStream);
+
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
+    /**
+     * @see #fromFile(Path)
+     */
     public static InMemoryEmbeddingStore<TextSegment> fromFile(String filePath) {
         return fromFile(Paths.get(filePath));
     }
