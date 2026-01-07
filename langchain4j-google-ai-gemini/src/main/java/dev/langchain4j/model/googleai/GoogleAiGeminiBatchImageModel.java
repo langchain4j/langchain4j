@@ -495,8 +495,8 @@ public final class GoogleAiGeminiBatchImageModel {
                     GeminiGenerateContentRequest,
                     GeminiGenerateContentResponse,
                     Response<@NonNull Image>> {
-        private static final TypeReference<BatchCreateResponse.InlinedResponseWrapper<GeminiGenerateContentResponse>>
-                responseWrapperType = new TypeReference<>() {};
+        private static final TypeReference<GeminiGenerateContentResponse> responseWrapperType =
+                new TypeReference<>() {};
 
         @Override
         public ImageGenerationRequest prepareRequest(ImageGenerationRequest request) {
@@ -532,7 +532,6 @@ public final class GoogleAiGeminiBatchImageModel {
             }
             return response.inlinedResponses().inlinedResponses().stream()
                     .map(wrapper -> Json.convertValue(wrapper.response(), responseWrapperType))
-                    .map(BatchCreateResponse.InlinedResponseWrapper::response)
                     .map(this::extractImage)
                     .toList();
         }
