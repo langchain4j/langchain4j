@@ -116,9 +116,15 @@
                         <goals>
                             <goal>test-jar</goal>
                         </goals>
+                        <configuration>
+                            <excludes>
+                                <exclude>junit-platform.properties</exclude>
+                            </excludes>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
@@ -133,6 +139,7 @@
                     </execution>
                 </executions>
             </plugin>
+
             <plugin>
                 <groupId>org.honton.chas</groupId>
                 <artifactId>license-maven-plugin</artifactId>
@@ -143,6 +150,7 @@
                     </excludes>
                 </configuration>
             </plugin>
+
         </plugins>
     </build>
 </project>
