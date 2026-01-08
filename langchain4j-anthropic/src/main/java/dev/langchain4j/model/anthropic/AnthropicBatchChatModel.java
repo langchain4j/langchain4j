@@ -13,7 +13,6 @@ import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.to
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toTokenUsage;
 
 import dev.langchain4j.Experimental;
-import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.anthropic.AnthropicBatchResponse.AnthropicBatchError;
 import dev.langchain4j.model.anthropic.AnthropicBatchResponse.AnthropicBatchIncomplete;
 import dev.langchain4j.model.anthropic.AnthropicBatchResponse.AnthropicBatchSuccess;
@@ -34,13 +33,12 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
 
 /**
  * Anthropic Batch Chat Model for asynchronous processing of large volumes of chat requests.
@@ -77,11 +75,12 @@ import org.slf4j.Logger;
  * );
  *
  * AnthropicBatchResponse<ChatResponse> batch = batchModel.createBatchInline(requests);
+ * AnthropicBatchName batchName = incomplete.name();
  *
  * // Poll for completion
  * while (batch instanceof AnthropicBatchIncomplete) {
  *     Thread.sleep(60000);
- *     batch = batchModel.retrieveBatchResults(((AnthropicBatchIncomplete<?>) batch).name());
+ *     batch = batchModel.retrieveBatchResults(batchName);
  * }
  *
  * if (batch instanceof AnthropicBatchSuccess<ChatResponse> success) {
@@ -346,8 +345,7 @@ public class AnthropicBatchChatModel {
     }
 
     private int getCountOrDefault(
-            AnthropicBatchRequestCounts counts,
-            java.util.function.Function<AnthropicBatchRequestCounts, Integer> countFunction) {
+            AnthropicBatchRequestCounts counts, Function<AnthropicBatchRequestCounts, Integer> countFunction) {
         return counts != null ? getOrDefault(countFunction.apply(counts), 0) : 0;
     }
 
@@ -407,215 +405,7 @@ public class AnthropicBatchChatModel {
         throw new IllegalStateException("Unknown result type: " + result);
     }
 
-    /**
-     * Builder for constructing {@link AnthropicBatchChatModel} instances.
-     */
-    public static class Builder {
-
-        private HttpClientBuilder httpClientBuilder;
-        private String baseUrl;
-        private String apiKey;
-        private String version;
-        private String beta;
-        private String modelName;
-        private Double temperature;
-        private Double topP;
-        private Integer topK;
-        private Integer maxTokens;
-        private List<String> stopSequences;
-        private dev.langchain4j.model.chat.request.ResponseFormat responseFormat;
-        private List<dev.langchain4j.agent.tool.ToolSpecification> toolSpecifications;
-        private dev.langchain4j.model.chat.request.ToolChoice toolChoice;
-        private String toolChoiceName;
-        private Boolean disableParallelToolUse;
-        private List<AnthropicServerTool> serverTools;
-        private Boolean returnServerToolResults;
-        private Set<String> toolMetadataKeysToSend;
-        private Boolean cacheSystemMessages;
-        private Boolean cacheTools;
-        private String thinkingType;
-        private Integer thinkingBudgetTokens;
-        private Boolean returnThinking;
-        private Boolean sendThinking;
-        private Duration timeout;
-        private Boolean logRequests;
-        private Boolean logResponses;
-        private Logger logger;
-        private ChatRequestParameters defaultRequestParameters;
-        private String userId;
-        private java.util.Map<String, Object> customParameters;
-        private Boolean strictTools;
-
-        public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
-            this.httpClientBuilder = httpClientBuilder;
-            return this;
-        }
-
-        public Builder baseUrl(String baseUrl) {
-            this.baseUrl = baseUrl;
-            return this;
-        }
-
-        public Builder apiKey(String apiKey) {
-            this.apiKey = apiKey;
-            return this;
-        }
-
-        public Builder version(String version) {
-            this.version = version;
-            return this;
-        }
-
-        public Builder beta(String beta) {
-            this.beta = beta;
-            return this;
-        }
-
-        public Builder modelName(String modelName) {
-            this.modelName = modelName;
-            return this;
-        }
-
-        public Builder modelName(AnthropicChatModelName modelName) {
-            this.modelName = modelName.toString();
-            return this;
-        }
-
-        public Builder temperature(Double temperature) {
-            this.temperature = temperature;
-            return this;
-        }
-
-        public Builder topP(Double topP) {
-            this.topP = topP;
-            return this;
-        }
-
-        public Builder topK(Integer topK) {
-            this.topK = topK;
-            return this;
-        }
-
-        public Builder maxTokens(Integer maxTokens) {
-            this.maxTokens = maxTokens;
-            return this;
-        }
-
-        public Builder stopSequences(List<String> stopSequences) {
-            this.stopSequences = stopSequences;
-            return this;
-        }
-
-        public Builder responseFormat(dev.langchain4j.model.chat.request.ResponseFormat responseFormat) {
-            this.responseFormat = responseFormat;
-            return this;
-        }
-
-        public Builder toolSpecifications(List<dev.langchain4j.agent.tool.ToolSpecification> toolSpecifications) {
-            this.toolSpecifications = toolSpecifications;
-            return this;
-        }
-
-        public Builder toolChoice(dev.langchain4j.model.chat.request.ToolChoice toolChoice) {
-            this.toolChoice = toolChoice;
-            return this;
-        }
-
-        public Builder toolChoiceName(String toolChoiceName) {
-            this.toolChoiceName = toolChoiceName;
-            return this;
-        }
-
-        public Builder disableParallelToolUse(Boolean disableParallelToolUse) {
-            this.disableParallelToolUse = disableParallelToolUse;
-            return this;
-        }
-
-        public Builder serverTools(List<AnthropicServerTool> serverTools) {
-            this.serverTools = serverTools;
-            return this;
-        }
-
-        public Builder returnServerToolResults(Boolean returnServerToolResults) {
-            this.returnServerToolResults = returnServerToolResults;
-            return this;
-        }
-
-        public Builder toolMetadataKeysToSend(Set<String> toolMetadataKeysToSend) {
-            this.toolMetadataKeysToSend = toolMetadataKeysToSend;
-            return this;
-        }
-
-        public Builder cacheSystemMessages(Boolean cacheSystemMessages) {
-            this.cacheSystemMessages = cacheSystemMessages;
-            return this;
-        }
-
-        public Builder cacheTools(Boolean cacheTools) {
-            this.cacheTools = cacheTools;
-            return this;
-        }
-
-        public Builder thinkingType(String thinkingType) {
-            this.thinkingType = thinkingType;
-            return this;
-        }
-
-        public Builder thinkingBudgetTokens(Integer thinkingBudgetTokens) {
-            this.thinkingBudgetTokens = thinkingBudgetTokens;
-            return this;
-        }
-
-        public Builder returnThinking(Boolean returnThinking) {
-            this.returnThinking = returnThinking;
-            return this;
-        }
-
-        public Builder sendThinking(Boolean sendThinking) {
-            this.sendThinking = sendThinking;
-            return this;
-        }
-
-        public Builder timeout(Duration timeout) {
-            this.timeout = timeout;
-            return this;
-        }
-
-        public Builder logRequests(Boolean logRequests) {
-            this.logRequests = logRequests;
-            return this;
-        }
-
-        public Builder logResponses(Boolean logResponses) {
-            this.logResponses = logResponses;
-            return this;
-        }
-
-        public Builder logger(Logger logger) {
-            this.logger = logger;
-            return this;
-        }
-
-        public Builder defaultRequestParameters(ChatRequestParameters defaultRequestParameters) {
-            this.defaultRequestParameters = defaultRequestParameters;
-            return this;
-        }
-
-        public Builder userId(String userId) {
-            this.userId = userId;
-            return this;
-        }
-
-        public Builder customParameters(java.util.Map<String, Object> customParameters) {
-            this.customParameters = customParameters;
-            return this;
-        }
-
-        public Builder strictTools(Boolean strictTools) {
-            this.strictTools = strictTools;
-            return this;
-        }
-
+    public static class Builder extends AbstractAnthropicChatModelBuilder<Builder> {
         public AnthropicBatchChatModel build() {
             return new AnthropicBatchChatModel(this);
         }
