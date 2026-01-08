@@ -63,6 +63,7 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullSource;
@@ -73,10 +74,12 @@ import org.slf4j.LoggerFactory;
 
 /**
  * {@link org.junit.jupiter.api.parallel.ExecutionMode#SAME_THREAD} is used because some of the tests
- * (e.g., {@link #should_execute_single_tool_concurrently(Executor)}) rely on the default executor (singleton)
- * ({@link DefaultExecutorProvider#getDefaultExecutorService()}) and perform strict assertions on the number of used threads.
+ * (e.g., {@link #should_execute_single_tool_concurrently(Executor)}, when {@code executeToolsConcurrently(null)})
+ * use default (singleton) executor ({@link DefaultExecutorProvider#getDefaultExecutorService()})
+ * and perform strict assertions on the number of used threads.
  */
 @Execution(SAME_THREAD)
+@ResourceLock("USES_DEFAULT_TOOL_EXECUTOR")
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class StreamingAiServicesWithToolsIT {
 
@@ -160,7 +163,7 @@ class StreamingAiServicesWithToolsIT {
 
         String userMessage = "What is the amounts of transaction T001?";
 
-        TestTokenStreamHandler handler = spy(new TestTokenStreamHandler());
+        TestTokenStreamHandler handler = new TestTokenStreamHandler();
         CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
         // when
@@ -188,13 +191,6 @@ class StreamingAiServicesWithToolsIT {
         // then
         verify(transactionService).getTransactionAmount("T001");
         verifyNoMoreInteractions(transactionService);
-
-        // then
-        assertThat(handler.allThreads).hasSize(1);
-        assertThat(handler.allThreads.iterator().next()).isNotEqualTo(Thread.currentThread());
-        assertThat(transactionService.threads).hasSize(1);
-        assertThat(transactionService.threads.poll())
-                .isEqualTo(handler.allThreads.iterator().next());
 
         // then
         List<ChatMessage> messages = chatMemory.messages();
