@@ -1,4 +1,4 @@
-package dev.langchain4j.mcp.client.protocol;
+package dev.langchain4j.mcp.protocol;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import dev.langchain4j.Internal;
@@ -8,7 +8,7 @@ public class McpInitializeParams {
 
     private String protocolVersion;
     private Capabilities capabilities;
-    private ClientInfo clientInfo;
+    private McpImplementation clientInfo;
 
     public String getProtocolVersion() {
         return protocolVersion;
@@ -26,11 +26,11 @@ public class McpInitializeParams {
         this.capabilities = capabilities;
     }
 
-    public ClientInfo getClientInfo() {
+    public McpImplementation getClientInfo() {
         return clientInfo;
     }
 
-    public void setClientInfo(final ClientInfo clientInfo) {
+    public void setClientInfo(final McpImplementation clientInfo) {
         this.clientInfo = clientInfo;
     }
 
@@ -71,27 +71,5 @@ public class McpInitializeParams {
         }
 
         public static class Sampling {}
-    }
-
-    public static class ClientInfo {
-
-        private String name;
-        private String version;
-
-        public String getVersion() {
-            return version;
-        }
-
-        public void setVersion(final String version) {
-            this.version = version;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public void setName(final String name) {
-            this.name = name;
-        }
     }
 }

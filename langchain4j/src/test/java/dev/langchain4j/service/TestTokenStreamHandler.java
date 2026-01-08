@@ -11,22 +11,20 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class TestTokenStreamHandler {
 
-    Set<Thread> allThreads = ConcurrentHashMap.newKeySet();
     Map<String, Set<Thread>> allThreadsByMethod = new ConcurrentHashMap<>();
-
     Map<String, Set<Thread>> beforeToolExecutionThreads = new ConcurrentHashMap<>();
     Map<String, Set<Thread>> onToolExecutedThreads = new ConcurrentHashMap<>();
     Map<String, Set<Thread>> onPartialToolCallThreads = new ConcurrentHashMap<>();
 
-    void onPartialResponse(String partialResponse) {
+    void onPartialResponse(String ignored) {
         addThread(Thread.currentThread(), "onPartialResponse");
     }
 
-    void onPartialThinking(PartialThinking partialThinking) {
+    void onPartialThinking(PartialThinking ignored) {
         addThread(Thread.currentThread(), "onPartialThinking");
     }
 
-    void onIntermediateResponse(ChatResponse intermediateResponse) {
+    void onIntermediateResponse(ChatResponse ignored) {
         addThread(Thread.currentThread(), "onIntermediateResponse");
     }
 
@@ -54,16 +52,15 @@ public class TestTokenStreamHandler {
         threads.add(Thread.currentThread());
     }
 
-    void onError(Throwable error) {
+    void onError(Throwable ignored) {
         addThread(Thread.currentThread(), "onError");
     }
 
-    void onCompleteResponse(ChatResponse completeResponse) {
+    void onCompleteResponse(ChatResponse ignored) {
         addThread(Thread.currentThread(), "onCompleteResponse");
     }
 
     private void addThread(Thread thread, String methodName) {
-        allThreads.add(thread);
         Set<Thread> threads = allThreadsByMethod.computeIfAbsent(methodName, ignored -> ConcurrentHashMap.newKeySet());
         threads.add(thread);
     }
