@@ -71,7 +71,8 @@ final class PartsAndContentsMapper {
             return GeminiContent.GeminiPart.builder().text(textContent.text()).build();
         } else if (content instanceof ImageContent imageContent) {
             Image image = imageContent.image();
-            GeminiMediaResolution mediaResolution = toGeminiMediaResolution(imageContent.detailLevel(), perPartMediaResolutionSupported);
+            GeminiMediaResolution mediaResolution =
+                    toGeminiMediaResolution(imageContent.detailLevel(), perPartMediaResolutionSupported);
 
             if (!isNullOrBlank(image.base64Data())) {
                 return GeminiContent.GeminiPart.builder()
@@ -272,8 +273,7 @@ final class PartsAndContentsMapper {
 
     static List<GeminiContent> fromMessageToGContent(
             List<ChatMessage> messages, GeminiContent systemInstruction, boolean sendThinking) {
-        return fromMessageToGContent(messages, systemInstruction, sendThinking,
-                null);// for backwards compatibility
+        return fromMessageToGContent(messages, systemInstruction, sendThinking, null); // for backwards compatibility
     }
 
     static List<GeminiContent> fromMessageToGContent(
@@ -333,7 +333,8 @@ final class PartsAndContentsMapper {
 
                             return new GeminiContent(
                                     userMessage.contents().stream()
-                                            .map(c -> fromContentToGPart(c, modelSupportsPerPartMediaResolution(modelName)))
+                                            .map(c -> fromContentToGPart(
+                                                    c, modelSupportsPerPartMediaResolution(modelName)))
                                             .toList(),
                                     GeminiRole.USER.toString());
                         case TOOL_EXECUTION_RESULT:
@@ -398,7 +399,8 @@ final class PartsAndContentsMapper {
      * @return GeminiMediaResolution with the corresponding resolution level, or null if imageDetailLevel is null
      *         or the model doesn't support per-part media resolution
      */
-    private static GeminiMediaResolution toGeminiMediaResolution(DetailLevel imageDetailLevel, boolean supportsMediaResolution) {
+    private static GeminiMediaResolution toGeminiMediaResolution(
+            DetailLevel imageDetailLevel, boolean supportsMediaResolution) {
         if (imageDetailLevel == null || !supportsMediaResolution) {
             return null;
         }

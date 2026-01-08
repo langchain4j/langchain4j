@@ -546,36 +546,52 @@ class PartsAndContentsMapperTest {
     @Test
     void modelSupportsPerPartMediaResolution_returnsTrueForGemini3Models() {
         // Gemini 3.x models should support per-part media resolution
-        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("gemini-3.0-flash")).isTrue();
-        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("gemini-3.0-pro")).isTrue();
-        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("gemini-3.5-flash")).isTrue();
-        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("gemini-3.5-pro")).isTrue();
-        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("models/gemini-3.0-flash")).isTrue();
+        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("gemini-3.0-flash"))
+                .isTrue();
+        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("gemini-3.0-pro"))
+                .isTrue();
+        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("gemini-3.5-flash"))
+                .isTrue();
+        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("gemini-3.5-pro"))
+                .isTrue();
+        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("models/gemini-3.0-flash"))
+                .isTrue();
     }
 
     @Test
     void modelSupportsPerPartMediaResolution_returnsTrueForGemini25ComputerUseModels() {
         // Gemini 2.5 computer-use models should also support per-part media resolution
-        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("gemini-2.5-computer-use")).isTrue();
-        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("gemini-2.5-computer-use-pro")).isTrue();
-        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("models/gemini-2.5-computer-use")).isTrue();
+        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("gemini-2.5-computer-use"))
+                .isTrue();
+        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("gemini-2.5-computer-use-pro"))
+                .isTrue();
+        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("models/gemini-2.5-computer-use"))
+                .isTrue();
     }
 
     @Test
     void modelSupportsPerPartMediaResolution_returnsFalseForOlderModels() {
         // Gemini 2.x (non computer-use) and older models should not support per-part media resolution
-        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("gemini-2.0-flash")).isFalse();
-        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("gemini-2.0-flash-lite")).isFalse();
-        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("gemini-2.5-flash")).isFalse();
-        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("gemini-1.5-pro")).isFalse();
-        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("gemini-1.0-pro")).isFalse();
+        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("gemini-2.0-flash"))
+                .isFalse();
+        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("gemini-2.0-flash-lite"))
+                .isFalse();
+        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("gemini-2.5-flash"))
+                .isFalse();
+        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("gemini-1.5-pro"))
+                .isFalse();
+        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("gemini-1.0-pro"))
+                .isFalse();
     }
 
     @Test
     void modelSupportsPerPartMediaResolution_returnsFalseForNullOrBlankModels() {
-        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution(null)).isFalse();
-        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("")).isFalse();
-        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("   ")).isFalse();
+        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution(null))
+                .isFalse();
+        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution(""))
+                .isFalse();
+        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("   "))
+                .isFalse();
     }
 
     @Test

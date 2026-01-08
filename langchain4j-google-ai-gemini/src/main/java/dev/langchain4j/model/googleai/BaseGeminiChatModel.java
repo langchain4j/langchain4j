@@ -11,7 +11,6 @@ import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromMessageT
 import static dev.langchain4j.model.googleai.SchemaMapper.fromJsonSchemaToGSchema;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
