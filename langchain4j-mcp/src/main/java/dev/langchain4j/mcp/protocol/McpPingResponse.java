@@ -1,4 +1,4 @@
-package dev.langchain4j.mcp.client.protocol;
+package dev.langchain4j.mcp.protocol;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import dev.langchain4j.Internal;
@@ -6,7 +6,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Internal
-public class McpPingResponse extends McpClientMessage {
+public class McpPingResponse extends McpJsonRpcMessage {
 
     // has to be an empty object
     @JsonInclude(JsonInclude.Include.ALWAYS)

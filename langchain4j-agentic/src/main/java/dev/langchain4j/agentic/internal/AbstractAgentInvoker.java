@@ -1,14 +1,12 @@
 package dev.langchain4j.agentic.internal;
 
 import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Objects;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.observability.AgentListener;
-import dev.langchain4j.agentic.observability.AgentListenerProvider;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
@@ -81,7 +79,7 @@ public abstract class AbstractAgentInvoker implements AgentInvoker, InternalAgen
 
     @Override
     public AgentListener listener() {
-        return ((AgentListenerProvider) agent).listener();
+        return agent.listener();
     }
 
     @Override

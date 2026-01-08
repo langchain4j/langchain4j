@@ -28,7 +28,6 @@ import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.observability.AgentListener;
-import dev.langchain4j.agentic.observability.AgentListenerProvider;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
@@ -118,7 +117,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, AgentIn
     public AgenticScopeOwner withAgenticScope(DefaultAgenticScope agenticScope) {
         return (AgenticScopeOwner) Proxy.newProxyInstance(
                 type.getClassLoader(),
-                new Class<?>[] {type, AgentInstance.class, AgentListenerProvider.class, AgenticScopeOwner.class},
+                new Class<?>[] {type, InternalAgent.class, AgenticScopeOwner.class},
                 new PlannerBasedInvocationHandler(service, parent, agentId, plannerSupplier, agenticScope));
     }
 
@@ -147,10 +146,6 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, AgentIn
 
         if (method.getDeclaringClass() == AgentInstance.class || method.getDeclaringClass() == InternalAgent.class) {
             return method.invoke(Proxy.getInvocationHandler(proxy), args);
-        }
-
-        if (method.getDeclaringClass() == AgentListenerProvider.class) {
-            return agentListener;
         }
 
         if (method.getDeclaringClass() == Object.class) {
@@ -291,6 +286,11 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, AgentIn
     @Override
     public AgenticSystemTopology topology() {
         return defaultPlannerInstance.topology();
+    }
+
+    @Override
+    public AgentListener listener() {
+        return agentListener;
     }
 
     private class PlannerLoop implements PlannerExecutor {

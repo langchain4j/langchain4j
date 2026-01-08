@@ -1,7 +1,6 @@
 package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.agentic.observability.AgentListener;
-import dev.langchain4j.agentic.observability.AgentListenerProvider;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
@@ -9,7 +8,7 @@ import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Objects;
 
-public class NonAiAgentInstance implements AgentInstance, AgentListenerProvider, InternalAgent {
+public class NonAiAgentInstance implements AgentInstance, InternalAgent {
     private final Class<?> type;
     private final String name;
     private final String description;

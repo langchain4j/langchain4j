@@ -4,7 +4,6 @@ import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.AiServiceParamsUtil.chatRequestParameters;
-import static dev.langchain4j.service.tool.ToolService.executeWithErrorHandling;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -30,6 +29,7 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
+import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
 import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.observability.api.event.ToolExecutedEvent;
 import dev.langchain4j.service.tool.BeforeToolExecution;
@@ -257,6 +257,13 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 .build());
     }
 
+    private void fireRequestIssuedEvent(ChatRequest chatRequest) {
+        context.eventListenerRegistrar.fireEvent(AiServiceRequestIssuedEvent.builder()
+                .invocationContext(invocationContext)
+                .request(chatRequest)
+                .build());
+    }
+
     private void fireErrorReceived(Throwable error) {
         context.eventListenerRegistrar.fireEvent(AiServiceErrorEvent.builder()
                 .invocationContext(invocationContext)
@@ -361,6 +368,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     commonGuardrailParams,
                     methodKey);
 
+            fireRequestIssuedEvent(nextChatRequest);
             context.streamingChatModel.chat(nextChatRequest, handler);
         } else {
             ChatResponse finalChatResponse = finalResponse(chatResponse, aiMessage);
@@ -409,33 +417,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     private ToolExecutionResult execute(ToolExecutionRequest toolRequest) {
-        ToolExecutor toolExecutor = toolExecutors.get(toolRequest.name());
-        ToolExecutionResult toolResult;
-        handleBeforeTool(toolRequest);
-        if (toolExecutor == null) {
-            toolResult = context.toolService.applyToolHallucinationStrategy(toolRequest);
-        } else {
-            toolResult = executeWithErrorHandling(
-                    toolRequest, toolExecutor, invocationContext, toolArgumentsErrorHandler, toolExecutionErrorHandler);
-        }
-        handleAfterTool(toolRequest, toolResult);
-        return toolResult;
-    }
-
-    private void handleBeforeTool(ToolExecutionRequest request) {
-        if (beforeToolExecutionHandler != null) {
-            BeforeToolExecution beforeToolExecution =
-                    BeforeToolExecution.builder().request(request).build();
-            beforeToolExecutionHandler.accept(beforeToolExecution);
-        }
-    }
-
-    private void handleAfterTool(ToolExecutionRequest request, ToolExecutionResult result) {
-        if (toolExecutionHandler != null) {
-            ToolExecution toolExecution =
-                    ToolExecution.builder().request(request).result(result).build();
-            toolExecutionHandler.accept(toolExecution);
-        }
+        return context.toolService.executeTool(
+                invocationContext, toolExecutors, toolRequest, beforeToolExecutionHandler, toolExecutionHandler);
     }
 
     private ChatMemory getMemory() {
