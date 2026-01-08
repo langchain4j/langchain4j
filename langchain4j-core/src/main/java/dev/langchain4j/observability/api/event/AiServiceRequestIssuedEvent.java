@@ -6,7 +6,7 @@ import dev.langchain4j.observability.event.DefaultAiServiceRequestIssuedEvent;
 import dev.langchain4j.observability.event.DefaultAiServiceResponseReceivedEvent;
 
 /**
- * Invoked just before a {@link dev.langchain4j.model.chat.ChatModel} is sent.
+ * Invoked just before a {@link dev.langchain4j.model.chat.request.ChatRequest} is sent.
  * It is important to note that this can be invoked multiple times during a single AI Service invocation
  * when tools or guardrails exist.
  */
