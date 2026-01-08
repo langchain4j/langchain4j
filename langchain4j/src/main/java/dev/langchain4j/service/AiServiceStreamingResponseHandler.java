@@ -29,6 +29,7 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
+import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
 import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.observability.api.event.ToolExecutedEvent;
 import dev.langchain4j.service.tool.BeforeToolExecution;
@@ -256,6 +257,13 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 .build());
     }
 
+    private void fireRequestIssuedEvent(ChatRequest chatRequest) {
+        context.eventListenerRegistrar.fireEvent(AiServiceRequestIssuedEvent.builder()
+                .invocationContext(invocationContext)
+                .request(chatRequest)
+                .build());
+    }
+
     private void fireErrorReceived(Throwable error) {
         context.eventListenerRegistrar.fireEvent(AiServiceErrorEvent.builder()
                 .invocationContext(invocationContext)
@@ -360,6 +368,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     commonGuardrailParams,
                     methodKey);
 
+            fireRequestIssuedEvent(nextChatRequest);
             context.streamingChatModel.chat(nextChatRequest, handler);
         } else {
             ChatResponse finalChatResponse = finalResponse(chatResponse, aiMessage);
@@ -408,7 +417,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     private ToolExecutionResult execute(ToolExecutionRequest toolRequest) {
-        return context.toolService.executeTool(invocationContext, toolExecutors, toolRequest, beforeToolExecutionHandler, toolExecutionHandler);
+        return context.toolService.executeTool(
+                invocationContext, toolExecutors, toolRequest, beforeToolExecutionHandler, toolExecutionHandler);
     }
 
     private ChatMemory getMemory() {

@@ -22,6 +22,7 @@ import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
+import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.invocation.LangChain4jManaged;
@@ -48,7 +49,6 @@ import dev.langchain4j.service.output.ServiceOutputParser;
 import dev.langchain4j.service.tool.ToolServiceContext;
 import dev.langchain4j.service.tool.ToolServiceResult;
 import dev.langchain4j.spi.services.TokenStreamAdapter;
-import dev.langchain4j.internal.DefaultExecutorProvider;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationHandler;
@@ -300,6 +300,8 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         ChatExecutor chatExecutor = ChatExecutor.builder(context.chatModel)
                                 .chatRequest(chatRequest)
+                                .invocationContext(invocationContext)
+                                .eventListenerRegistrar(context.eventListenerRegistrar)
                                 .build();
 
                         ChatResponse chatResponse = chatExecutor.execute();

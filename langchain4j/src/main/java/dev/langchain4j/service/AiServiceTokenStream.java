@@ -22,6 +22,7 @@ import dev.langchain4j.model.chat.response.PartialThinkingContext;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCallContext;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
@@ -204,6 +205,8 @@ public class AiServiceTokenStream implements TokenStream {
         ChatExecutor chatExecutor = ChatExecutor.builder(context.streamingChatModel)
                 .errorHandler(errorHandler)
                 .chatRequest(chatRequest)
+                .invocationContext(invocationContext)
+                .eventListenerRegistrar(context.eventListenerRegistrar)
                 .build();
 
         var handler = new AiServiceStreamingResponseHandler(
@@ -236,6 +239,11 @@ public class AiServiceTokenStream implements TokenStream {
         if (contentsHandler != null && retrievedContents != null) {
             contentsHandler.accept(retrievedContents);
         }
+
+        context.eventListenerRegistrar.fireEvent(AiServiceRequestIssuedEvent.builder()
+                .invocationContext(invocationContext)
+                .request(chatRequest)
+                .build());
 
         context.streamingChatModel.chat(chatRequest, handler);
     }
