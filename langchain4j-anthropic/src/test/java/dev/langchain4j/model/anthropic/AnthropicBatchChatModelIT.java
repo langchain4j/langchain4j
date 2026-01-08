@@ -20,7 +20,7 @@ class AnthropicBatchChatModelIT {
     private static final String MODEL_NAME = "claude-3-5-haiku-20241022";
 
     private AnthropicBatchChatModel subject;
-    private AnthropicBatchName createdBatchName;
+    private AnthropicBatchResponse.AnthropicBatchName createdBatchName;
 
     @BeforeEach
     void setUp() {
@@ -139,7 +139,7 @@ class AnthropicBatchChatModelIT {
         @Test
         void should_fail_for_non_existent_batch() {
             // given
-            var nonExistentBatchName = AnthropicBatchName.of("msgbatch_nonexistent123456789");
+            var nonExistentBatchName = AnthropicBatchResponse.AnthropicBatchName.of("msgbatch_nonexistent123456789");
 
             // when & then
             assertThatThrownBy(() -> subject.retrieveBatchResults(nonExistentBatchName))
@@ -173,26 +173,11 @@ class AnthropicBatchChatModelIT {
         @Test
         void should_fail_for_non_existent_batch() {
             // given
-            var nonExistentBatchName = AnthropicBatchName.of("msgbatch_nonexistent123456789");
+            var nonExistentBatchName = AnthropicBatchResponse.AnthropicBatchName.of("msgbatch_nonexistent123456789");
 
             // when & then
             assertThatThrownBy(() -> subject.cancelBatchJob(nonExistentBatchName))
                     .isInstanceOf(Exception.class);
-        }
-    }
-
-    @Nested
-    class DeleteBatchJob {
-
-        @Test
-        void should_throw_unsupported_operation_exception() {
-            // given
-            var batchName = AnthropicBatchName.of("msgbatch_anyid123");
-
-            // when & then
-            assertThatThrownBy(() -> subject.deleteBatchJob(batchName))
-                    .isInstanceOf(UnsupportedOperationException.class)
-                    .hasMessageContaining("Anthropic API does not support deleting batches");
         }
     }
 
@@ -300,7 +285,7 @@ class AnthropicBatchChatModelIT {
         @Test
         void should_accept_valid_batch_name() {
             // given & when
-            var batchName = AnthropicBatchName.of("msgbatch_01HkcTjaV5uDC8jWR4ZsDV8d");
+            var batchName = AnthropicBatchResponse.AnthropicBatchName.of("msgbatch_01HkcTjaV5uDC8jWR4ZsDV8d");
 
             // then
             assertThat(batchName.id()).isEqualTo("msgbatch_01HkcTjaV5uDC8jWR4ZsDV8d");
@@ -309,19 +294,21 @@ class AnthropicBatchChatModelIT {
 
         @Test
         void should_reject_invalid_batch_name_prefix() {
-            assertThatThrownBy(() -> AnthropicBatchName.of("batch_123"))
+            assertThatThrownBy(() -> AnthropicBatchResponse.AnthropicBatchName.of("batch_123"))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("msgbatch_");
         }
 
         @Test
         void should_reject_null_batch_name() {
-            assertThatThrownBy(() -> AnthropicBatchName.of(null)).isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> AnthropicBatchResponse.AnthropicBatchName.of(null))
+                    .isInstanceOf(IllegalArgumentException.class);
         }
 
         @Test
         void should_reject_blank_batch_name() {
-            assertThatThrownBy(() -> AnthropicBatchName.of("   ")).isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> AnthropicBatchResponse.AnthropicBatchName.of("   "))
+                    .isInstanceOf(IllegalArgumentException.class);
         }
     }
 }

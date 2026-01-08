@@ -249,7 +249,7 @@ public class AnthropicBatchChatModel {
      * @return the current batch status, potentially with results if completed
      */
     public dev.langchain4j.model.anthropic.AnthropicBatchResponse<ChatResponse> retrieveBatchResults(
-            AnthropicBatchName name) {
+            dev.langchain4j.model.anthropic.AnthropicBatchResponse.AnthropicBatchName name) {
         var response = client.retrieveBatch(name.id());
 
         if (response.isEnded() && response.resultsUrl() != null) {
@@ -269,21 +269,8 @@ public class AnthropicBatchChatModel {
      *
      * @param name the batch identifier
      */
-    public void cancelBatchJob(AnthropicBatchName name) {
+    public void cancelBatchJob(dev.langchain4j.model.anthropic.AnthropicBatchResponse.AnthropicBatchName name) {
         client.cancelBatch(name.id());
-    }
-
-    /**
-     * Deletes a Message Batch.
-     *
-     * <p><strong>Note:</strong> The Anthropic API does not currently support deleting batches.
-     * This method is provided for API compatibility but will throw an exception.</p>
-     *
-     * @param name the batch identifier
-     * @throws UnsupportedOperationException always, as batch deletion is not supported
-     */
-    public void deleteBatchJob(AnthropicBatchName name) {
-        throw new UnsupportedOperationException("Anthropic API does not support deleting batches");
     }
 
     /**
@@ -312,7 +299,7 @@ public class AnthropicBatchChatModel {
 
             if (counts != null && counts.succeeded() == 0 && counts.errored() > 0) {
                 return new AnthropicBatchError<>(
-                        AnthropicBatchName.of(response.id()),
+                        dev.langchain4j.model.anthropic.AnthropicBatchResponse.AnthropicBatchName.of(response.id()),
                         "All requests in batch failed",
                         response.createdAt(),
                         response.endedAt());
@@ -320,7 +307,7 @@ public class AnthropicBatchChatModel {
             // Ended but no results fetched yet - return incomplete to signal need to fetch results
             if (response.resultsUrl() == null) {
                 return new AnthropicBatchIncomplete<>(
-                        AnthropicBatchName.of(response.id()),
+                        dev.langchain4j.model.anthropic.AnthropicBatchResponse.AnthropicBatchName.of(response.id()),
                         response.processingStatus(),
                         0,
                         getCountOrDefault(counts, AnthropicBatchRequestCounts::succeeded),
@@ -333,7 +320,7 @@ public class AnthropicBatchChatModel {
         }
 
         return new AnthropicBatchIncomplete<>(
-                AnthropicBatchName.of(response.id()),
+                dev.langchain4j.model.anthropic.AnthropicBatchResponse.AnthropicBatchName.of(response.id()),
                 response.processingStatus(),
                 getCountOrDefault(response.requestCounts(), AnthropicBatchRequestCounts::processing),
                 getCountOrDefault(response.requestCounts(), AnthropicBatchRequestCounts::succeeded),
@@ -352,7 +339,7 @@ public class AnthropicBatchChatModel {
     private dev.langchain4j.model.anthropic.AnthropicBatchResponse<ChatResponse> toBatchSuccessWithResults(
             AnthropicBatchResponse response, List<AnthropicBatchIndividualResponse> rawResults) {
         return new AnthropicBatchSuccess<>(
-                AnthropicBatchName.of(response.id()),
+                dev.langchain4j.model.anthropic.AnthropicBatchResponse.AnthropicBatchName.of(response.id()),
                 rawResults.stream().map(this::convertResult).toList(),
                 getCountOrDefault(response.requestCounts(), AnthropicBatchRequestCounts::succeeded),
                 getCountOrDefault(response.requestCounts(), AnthropicBatchRequestCounts::errored),
@@ -362,7 +349,8 @@ public class AnthropicBatchChatModel {
                 response.endedAt());
     }
 
-    private AnthropicBatchIndividualResult<ChatResponse> convertResult(AnthropicBatchIndividualResponse rawResult) {
+    private dev.langchain4j.model.anthropic.AnthropicBatchResponse.AnthropicBatchIndividualResult<ChatResponse>
+            convertResult(AnthropicBatchIndividualResponse rawResult) {
         AnthropicBatchResult result = rawResult.result();
 
         if (result instanceof AnthropicBatchResultSuccess success) {
@@ -377,25 +365,29 @@ public class AnthropicBatchChatModel {
                             .build())
                     .build();
 
-            return AnthropicBatchIndividualResult.<ChatResponse>builder()
+            return dev.langchain4j.model.anthropic.AnthropicBatchResponse.AnthropicBatchIndividualResult
+                    .<ChatResponse>builder()
                     .customId(rawResult.customId())
                     .result(chatResponse)
                     .resultType("succeeded")
                     .build();
         } else if (result instanceof AnthropicBatchResultError error) {
-            return AnthropicBatchIndividualResult.<ChatResponse>builder()
+            return dev.langchain4j.model.anthropic.AnthropicBatchResponse.AnthropicBatchIndividualResult
+                    .<ChatResponse>builder()
                     .customId(rawResult.customId())
                     .error(error.error().type() + ": " + error.error().message())
                     .resultType("errored")
                     .build();
         } else if (result instanceof AnthropicBatchResultCanceled) {
-            return AnthropicBatchIndividualResult.<ChatResponse>builder()
+            return dev.langchain4j.model.anthropic.AnthropicBatchResponse.AnthropicBatchIndividualResult
+                    .<ChatResponse>builder()
                     .customId(rawResult.customId())
                     .error("Request was canceled before processing")
                     .resultType("canceled")
                     .build();
         } else if (result instanceof AnthropicBatchResultExpired) {
-            return AnthropicBatchIndividualResult.<ChatResponse>builder()
+            return dev.langchain4j.model.anthropic.AnthropicBatchResponse.AnthropicBatchIndividualResult
+                    .<ChatResponse>builder()
                     .customId(rawResult.customId())
                     .error("Request expired before processing (24 hour limit)")
                     .resultType("expired")

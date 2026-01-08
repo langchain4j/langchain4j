@@ -167,7 +167,8 @@ class AnthropicBatchChatModelTest {
 
         @Test
         void should_throw_when_invalid_batch_name() {
-            assertThatThrownBy(() -> AnthropicBatchName.of("invalid-name"))
+            assertThatThrownBy(() -> dev.langchain4j.model.anthropic.AnthropicBatchResponse.AnthropicBatchName.of(
+                            "invalid-name"))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("msgbatch_");
         }
@@ -175,7 +176,8 @@ class AnthropicBatchChatModelTest {
         @Test
         void should_return_incomplete_when_batch_is_in_progress() {
             // given
-            var batchName = AnthropicBatchName.of("msgbatch_pending");
+            var batchName =
+                    dev.langchain4j.model.anthropic.AnthropicBatchResponse.AnthropicBatchName.of("msgbatch_pending");
             var response = createInProgressResponse("msgbatch_pending");
             when(mockClient.retrieveBatch("msgbatch_pending")).thenReturn(response);
 
@@ -192,7 +194,8 @@ class AnthropicBatchChatModelTest {
         @Test
         void should_return_incomplete_when_batch_is_canceling() {
             // given
-            var batchName = AnthropicBatchName.of("msgbatch_canceling");
+            var batchName =
+                    dev.langchain4j.model.anthropic.AnthropicBatchResponse.AnthropicBatchName.of("msgbatch_canceling");
             var response = createCancelingResponse("msgbatch_canceling");
             when(mockClient.retrieveBatch("msgbatch_canceling")).thenReturn(response);
 
@@ -209,7 +212,8 @@ class AnthropicBatchChatModelTest {
         @Test
         void should_return_success_when_batch_is_ended_with_results() {
             // given
-            var batchName = AnthropicBatchName.of("msgbatch_success");
+            var batchName =
+                    dev.langchain4j.model.anthropic.AnthropicBatchResponse.AnthropicBatchName.of("msgbatch_success");
             var response = createEndedResponse("msgbatch_success", "https://api.anthropic.com/results");
             var individualResults = List.of(
                     createSuccessfulIndividualResponse("req-1", "Response 1"),
@@ -234,7 +238,8 @@ class AnthropicBatchChatModelTest {
         @Test
         void should_return_success_with_mixed_results() {
             // given
-            var batchName = AnthropicBatchName.of("msgbatch_mixed");
+            var batchName =
+                    dev.langchain4j.model.anthropic.AnthropicBatchResponse.AnthropicBatchName.of("msgbatch_mixed");
             var response =
                     createEndedResponseWithCounts("msgbatch_mixed", "https://api.anthropic.com/results", 1, 1, 1, 1);
             var individualResults = List.of(
@@ -269,7 +274,8 @@ class AnthropicBatchChatModelTest {
         @Test
         void should_return_error_when_all_requests_failed() {
             // given
-            var batchName = AnthropicBatchName.of("msgbatch_allfailed");
+            var batchName =
+                    dev.langchain4j.model.anthropic.AnthropicBatchResponse.AnthropicBatchName.of("msgbatch_allfailed");
             var response = createEndedResponseWithCounts("msgbatch_allfailed", null, 0, 3, 0, 0);
             when(mockClient.retrieveBatch("msgbatch_allfailed")).thenReturn(response);
 
@@ -288,7 +294,8 @@ class AnthropicBatchChatModelTest {
         @Test
         void should_return_incomplete_when_ended_but_no_results_url() {
             // given
-            var batchName = AnthropicBatchName.of("msgbatch_nourl");
+            var batchName =
+                    dev.langchain4j.model.anthropic.AnthropicBatchResponse.AnthropicBatchName.of("msgbatch_nourl");
             var response = createEndedResponseWithCounts("msgbatch_nourl", null, 2, 0, 0, 0);
             when(mockClient.retrieveBatch("msgbatch_nourl")).thenReturn(response);
 
@@ -302,7 +309,8 @@ class AnthropicBatchChatModelTest {
         @Test
         void should_return_success_with_single_response() {
             // given
-            var batchName = AnthropicBatchName.of("msgbatch_single");
+            var batchName =
+                    dev.langchain4j.model.anthropic.AnthropicBatchResponse.AnthropicBatchName.of("msgbatch_single");
             var response = createEndedResponse("msgbatch_single", "https://api.anthropic.com/results");
             var individualResults = List.of(createSuccessfulIndividualResponse("req-1", "Single response"));
             when(mockClient.retrieveBatch("msgbatch_single")).thenReturn(response);
@@ -321,7 +329,8 @@ class AnthropicBatchChatModelTest {
         @Test
         void should_handle_null_request_counts() {
             // given
-            var batchName = AnthropicBatchName.of("msgbatch_nullcounts");
+            var batchName =
+                    dev.langchain4j.model.anthropic.AnthropicBatchResponse.AnthropicBatchName.of("msgbatch_nullcounts");
             var response = new AnthropicBatchResponse(
                     "msgbatch_nullcounts",
                     "message_batch",
@@ -352,7 +361,8 @@ class AnthropicBatchChatModelTest {
         @Test
         void should_cancel_batch() {
             // given
-            var batchName = AnthropicBatchName.of("msgbatch_tocancel");
+            var batchName =
+                    dev.langchain4j.model.anthropic.AnthropicBatchResponse.AnthropicBatchName.of("msgbatch_tocancel");
             var response = createCancelingResponse("msgbatch_tocancel");
             when(mockClient.cancelBatch("msgbatch_tocancel")).thenReturn(response);
 
@@ -371,28 +381,13 @@ class AnthropicBatchChatModelTest {
         })
         void should_throw_exception_when_batch_cancellation_fails(String batchId, String errorMessage) {
             // given
-            var batchName = AnthropicBatchName.of(batchId);
+            var batchName = dev.langchain4j.model.anthropic.AnthropicBatchResponse.AnthropicBatchName.of(batchId);
             when(mockClient.cancelBatch(batchId)).thenThrow(new RuntimeException(errorMessage));
 
             // when & then
             assertThatThrownBy(() -> subject.cancelBatchJob(batchName))
                     .isInstanceOf(RuntimeException.class)
                     .hasMessageContaining(errorMessage);
-        }
-    }
-
-    @Nested
-    class DeleteBatchJob {
-
-        @Test
-        void should_throw_unsupported_operation_exception() {
-            // given
-            var batchName = AnthropicBatchName.of("msgbatch_todelete");
-
-            // when & then
-            assertThatThrownBy(() -> subject.deleteBatchJob(batchName))
-                    .isInstanceOf(UnsupportedOperationException.class)
-                    .hasMessageContaining("Anthropic API does not support deleting batches");
         }
     }
 
@@ -518,7 +513,8 @@ class AnthropicBatchChatModelTest {
         @Test
         void should_create_valid_batch_name() {
             // given & when
-            var batchName = AnthropicBatchName.of("msgbatch_01HkcTjaV5uDC8jWR4ZsDV8d");
+            var batchName = dev.langchain4j.model.anthropic.AnthropicBatchResponse.AnthropicBatchName.of(
+                    "msgbatch_01HkcTjaV5uDC8jWR4ZsDV8d");
 
             // then
             assertThat(batchName.id()).isEqualTo("msgbatch_01HkcTjaV5uDC8jWR4ZsDV8d");
@@ -526,17 +522,21 @@ class AnthropicBatchChatModelTest {
 
         @Test
         void should_throw_for_null_id() {
-            assertThatThrownBy(() -> AnthropicBatchName.of(null)).isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> dev.langchain4j.model.anthropic.AnthropicBatchResponse.AnthropicBatchName.of(null))
+                    .isInstanceOf(IllegalArgumentException.class);
         }
 
         @Test
         void should_throw_for_blank_id() {
-            assertThatThrownBy(() -> AnthropicBatchName.of("   ")).isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(
+                            () -> dev.langchain4j.model.anthropic.AnthropicBatchResponse.AnthropicBatchName.of("   "))
+                    .isInstanceOf(IllegalArgumentException.class);
         }
 
         @Test
         void should_throw_for_invalid_prefix() {
-            assertThatThrownBy(() -> AnthropicBatchName.of("batch_123"))
+            assertThatThrownBy(() ->
+                            dev.langchain4j.model.anthropic.AnthropicBatchResponse.AnthropicBatchName.of("batch_123"))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("msgbatch_");
         }
@@ -544,7 +544,8 @@ class AnthropicBatchChatModelTest {
         @Test
         void should_return_id_from_toString() {
             // given
-            var batchName = AnthropicBatchName.of("msgbatch_test");
+            var batchName =
+                    dev.langchain4j.model.anthropic.AnthropicBatchResponse.AnthropicBatchName.of("msgbatch_test");
 
             // then
             assertThat(batchName.toString()).isEqualTo("msgbatch_test");
