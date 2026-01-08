@@ -30,6 +30,10 @@ record GeminiContent(List<GeminiPart> parts, String role) {
             String thoughtSignature,
             GeminiMediaResolution mediaResolution) {
 
+        static GeminiPart ofText(String text) {
+            return GeminiPart.builder().text(text).build();
+        }
+
         static Builder builder() {
             return new Builder();
         }
