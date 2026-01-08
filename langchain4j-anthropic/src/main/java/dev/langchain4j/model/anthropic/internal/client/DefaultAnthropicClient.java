@@ -41,7 +41,11 @@ import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.anthropic.AnthropicChatResponseMetadata;
 import dev.langchain4j.model.anthropic.AnthropicServerToolResult;
 import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicBatchIndividualResponse;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicBatchListResponse;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicBatchResponse;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCountTokensRequest;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateBatchRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicDelta;
@@ -66,6 +70,7 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Default implementation of {@link AnthropicClient} that provides methods to interact with the
@@ -629,6 +634,88 @@ public class DefaultAnthropicClient extends AnthropicClient {
      */
     public void createMessage(AnthropicCreateMessageRequest request, StreamingChatResponseHandler handler) {
         createMessage(request, new AnthropicCreateMessageOptions(false), handler);
+    }
+
+    @Override
+    public AnthropicBatchResponse createBatch(AnthropicCreateBatchRequest request) {
+        HttpRequest httpRequest = toHttpRequest(toJson(request), "messages/batches");
+        SuccessfulHttpResponse response = httpClient.execute(httpRequest);
+        return fromJson(response.body(), AnthropicBatchResponse.class);
+    }
+
+    @Override
+    public AnthropicBatchResponse retrieveBatch(String batchId) {
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(GET)
+                .url(baseUrl, "messages/batches/" + batchId)
+                .addHeader("x-api-key", apiKey)
+                .addHeader("anthropic-version", version)
+                .build();
+        SuccessfulHttpResponse response = httpClient.execute(httpRequest);
+        return fromJson(response.body(), AnthropicBatchResponse.class);
+    }
+
+    @Override
+    public List<AnthropicBatchIndividualResponse> retrieveBatchResults(String batchId) {
+        // First get the batch to find the results URL
+        AnthropicBatchResponse batch = retrieveBatch(batchId);
+        if (batch.resultsUrl() == null) {
+            throw new IllegalStateException("Batch results not yet available. Status: " + batch.processingStatus());
+        }
+
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(GET)
+                .url(batch.resultsUrl())
+                .addHeader("x-api-key", apiKey)
+                .addHeader("anthropic-version", version)
+                .build();
+        SuccessfulHttpResponse response = httpClient.execute(httpRequest);
+
+        // Parse JSONL format (one JSON object per line)
+        List<AnthropicBatchIndividualResponse> results = new ArrayList<>();
+        String[] lines = response.body().split("\n");
+        for (String line : lines) {
+            if (!line.isBlank()) {
+                results.add(fromJson(line, AnthropicBatchIndividualResponse.class));
+            }
+        }
+        return results;
+    }
+
+    @Override
+    public AnthropicBatchResponse cancelBatch(String batchId) {
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl, "messages/batches/" + batchId + "/cancel")
+                .addHeader("x-api-key", apiKey)
+                .addHeader("anthropic-version", version)
+                .build();
+        SuccessfulHttpResponse response = httpClient.execute(httpRequest);
+        return fromJson(response.body(), AnthropicBatchResponse.class);
+    }
+
+    @Override
+    public AnthropicBatchListResponse listBatches(@Nullable Integer limit, @Nullable String afterId) {
+        StringBuilder urlBuilder = new StringBuilder("messages/batches");
+        List<String> params = new ArrayList<>();
+        if (limit != null) {
+            params.add("limit=" + limit);
+        }
+        if (afterId != null) {
+            params.add("after_id=" + afterId);
+        }
+        if (!params.isEmpty()) {
+            urlBuilder.append("?").append(String.join("&", params));
+        }
+
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(GET)
+                .url(baseUrl, urlBuilder.toString())
+                .addHeader("x-api-key", apiKey)
+                .addHeader("anthropic-version", version)
+                .build();
+        SuccessfulHttpResponse response = httpClient.execute(httpRequest);
+        return fromJson(response.body(), AnthropicBatchListResponse.class);
     }
 
     /**

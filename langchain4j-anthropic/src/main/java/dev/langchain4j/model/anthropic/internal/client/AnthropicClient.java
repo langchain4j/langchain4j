@@ -3,7 +3,11 @@ package dev.langchain4j.model.anthropic.internal.client;
 import dev.langchain4j.Internal;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.HttpClientBuilderLoader;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicBatchIndividualResponse;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicBatchListResponse;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicBatchResponse;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCountTokensRequest;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateBatchRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicModelsListResponse;
@@ -11,6 +15,8 @@ import dev.langchain4j.model.anthropic.internal.api.MessageTokenCountResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.spi.ServiceHelper;
 import java.time.Duration;
+import java.util.List;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 
 @Internal
@@ -42,6 +48,53 @@ public abstract class AnthropicClient {
     public AnthropicModelsListResponse listModels() {
         throw new UnsupportedOperationException("Model listing is not supported by this client implementation");
     }
+
+    /**
+     * Creates a new Message Batch for asynchronous processing.
+     *
+     * @param request the batch creation request containing the list of message requests
+     * @return the batch response with ID and initial status
+     */
+    public abstract AnthropicBatchResponse createBatch(AnthropicCreateBatchRequest request);
+
+    /**
+     * Retrieves the current status and metadata of a Message Batch.
+     *
+     * @param batchId the batch identifier
+     * @return the batch response with current status
+     */
+    public abstract AnthropicBatchResponse retrieveBatch(String batchId);
+
+    /**
+     * Retrieves the results of a completed Message Batch.
+     *
+     * <p>Results are returned as a list of individual responses in JSONL format.
+     * This method should only be called after the batch has ended processing.</p>
+     *
+     * @param batchId the batch identifier
+     * @return list of individual batch results
+     */
+    public abstract List<AnthropicBatchIndividualResponse> retrieveBatchResults(String batchId);
+
+    /**
+     * Cancels a Message Batch that is currently processing.
+     *
+     * <p>After cancellation, the batch will transition to "canceling" status
+     * and eventually to "ended" with partial results.</p>
+     *
+     * @param batchId the batch identifier
+     * @return the batch response showing canceling status
+     */
+    public abstract AnthropicBatchResponse cancelBatch(String batchId);
+
+    /**
+     * Lists all Message Batches in the workspace.
+     *
+     * @param limit   maximum number of batches to return (optional)
+     * @param afterId return batches after this ID for pagination (optional)
+     * @return paginated list of batches
+     */
+    public abstract AnthropicBatchListResponse listBatches(@Nullable Integer limit, @Nullable String afterId);
 
     @SuppressWarnings("rawtypes")
     public static AnthropicClient.Builder builder() {
