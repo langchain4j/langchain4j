@@ -110,7 +110,7 @@ class BaseGeminiChatModel {
 
         GeminiContent systemInstruction = new GeminiContent(List.of(), GeminiRole.MODEL.toString());
         List<GeminiContent> geminiContentList =
-                fromMessageToGContent(chatRequest.messages(), systemInstruction, sendThinking);
+                fromMessageToGContent(chatRequest.messages(), systemInstruction, sendThinking, parameters.modelName());
 
         ResponseFormat responseFormat = chatRequest.responseFormat();
         GeminiSchema schema = null;

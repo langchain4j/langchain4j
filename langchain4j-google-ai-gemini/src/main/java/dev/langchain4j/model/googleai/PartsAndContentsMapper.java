@@ -47,12 +47,15 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 final class PartsAndContentsMapper {
+
     private PartsAndContentsMapper() {}
 
     static final String THINKING_SIGNATURE_KEY =
             "thinking_signature"; // do not change, will break backward compatibility!
     static final String GENERATED_IMAGES_KEY =
             "generated_images"; // key for storing generated images in AiMessage attributes
+    static final String GEMINI_MODEL_SUPPORTING_PER_PART_MEDIA_RESOLUTION_NAME_REGEX =
+            "(.*/?gemini-3\\..*)|(.*/?gemini-2\\.5-computer-use.*)"; // update this regex if new models arrive
 
     private static final CustomMimeTypesFileTypeDetector mimeTypeDetector = new CustomMimeTypesFileTypeDetector();
 
@@ -60,11 +63,15 @@ final class PartsAndContentsMapper {
     private static final Pattern DATA_URI_PATTERN = Pattern.compile("^data:([^;,]+)(?:;[^,]*)?,(.*)$");
 
     static GeminiContent.GeminiPart fromContentToGPart(Content content) {
+        return fromContentToGPart(content, false); // for backwards compatibility
+    }
+
+    static GeminiContent.GeminiPart fromContentToGPart(Content content, boolean perPartMediaResolutionSupported) {
         if (content instanceof TextContent textContent) {
             return GeminiContent.GeminiPart.builder().text(textContent.text()).build();
         } else if (content instanceof ImageContent imageContent) {
             Image image = imageContent.image();
-            GeminiMediaResolution mediaResolution = toGeminiMediaResolution(imageContent.detailLevel());
+            GeminiMediaResolution mediaResolution = toGeminiMediaResolution(imageContent.detailLevel(), perPartMediaResolutionSupported);
 
             if (!isNullOrBlank(image.base64Data())) {
                 return GeminiContent.GeminiPart.builder()
@@ -265,6 +272,12 @@ final class PartsAndContentsMapper {
 
     static List<GeminiContent> fromMessageToGContent(
             List<ChatMessage> messages, GeminiContent systemInstruction, boolean sendThinking) {
+        return fromMessageToGContent(messages, systemInstruction, sendThinking,
+                null);// for backwards compatibility
+    }
+
+    static List<GeminiContent> fromMessageToGContent(
+            List<ChatMessage> messages, GeminiContent systemInstruction, boolean sendThinking, String modelName) {
         return messages.stream()
                 .map(msg -> {
                     switch (msg.type()) {
@@ -320,7 +333,7 @@ final class PartsAndContentsMapper {
 
                             return new GeminiContent(
                                     userMessage.contents().stream()
-                                            .map(PartsAndContentsMapper::fromContentToGPart)
+                                            .map(c -> fromContentToGPart(c, modelSupportsPerPartMediaResolution(modelName)))
                                             .toList(),
                                     GeminiRole.USER.toString());
                         case TOOL_EXECUTION_RESULT:
@@ -381,10 +394,12 @@ final class PartsAndContentsMapper {
      * Converts ImageContent.DetailLevel to GeminiMediaResolution for per-part media resolution.
      *
      * @param imageDetailLevel the detail level from ImageContent
+     * @param supportsMediaResolution whether the model supports per-part media resolution (Gemini 3.0+ only)
      * @return GeminiMediaResolution with the corresponding resolution level, or null if imageDetailLevel is null
+     *         or the model doesn't support per-part media resolution
      */
-    private static GeminiMediaResolution toGeminiMediaResolution(DetailLevel imageDetailLevel) {
-        if (imageDetailLevel == null) {
+    private static GeminiMediaResolution toGeminiMediaResolution(DetailLevel imageDetailLevel, boolean supportsMediaResolution) {
+        if (imageDetailLevel == null || !supportsMediaResolution) {
             return null;
         }
         var resolutionLevel =
@@ -394,5 +409,21 @@ final class PartsAndContentsMapper {
                     case AUTO -> MEDIA_RESOLUTION_UNSPECIFIED;
                 };
         return new GeminiMediaResolution(resolutionLevel);
+    }
+
+    /**
+     * Checks if the model supports per-part media resolution based on its name.
+     * Currently, only Gemini 3 models support this feature.
+     *
+     * @param modelName the name of the model
+     * @return true if the model supports per-part media resolution, false otherwise
+     */
+    static boolean modelSupportsPerPartMediaResolution(String modelName) {
+        if (modelName == null || modelName.isBlank()) {
+            return false;
+        }
+        // Per-part media resolution is only supported by Gemini 3.0 for now
+        String lowerModelName = modelName.toLowerCase();
+        return lowerModelName.matches(GEMINI_MODEL_SUPPORTING_PER_PART_MEDIA_RESOLUTION_NAME_REGEX);
     }
 }

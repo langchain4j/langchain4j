@@ -483,8 +483,7 @@ class PartsAndContentsMapperTest {
                 Image.builder().base64Data(base64Image).mimeType("image/png").build();
         ImageContent imageContent = ImageContent.from(image, ImageContent.DetailLevel.LOW);
 
-        // When
-        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(imageContent);
+        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(imageContent, true);
 
         // Then
         assertThat(result).isNotNull();
@@ -502,8 +501,7 @@ class PartsAndContentsMapperTest {
                 Image.builder().base64Data(base64Image).mimeType("image/png").build();
         ImageContent imageContent = ImageContent.from(image, ImageContent.DetailLevel.HIGH);
 
-        // When
-        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(imageContent);
+        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(imageContent, true);
 
         // Then
         assertThat(result).isNotNull();
@@ -520,8 +518,7 @@ class PartsAndContentsMapperTest {
                 Image.builder().base64Data(base64Image).mimeType("image/png").build();
         ImageContent imageContent = ImageContent.from(image, ImageContent.DetailLevel.AUTO);
 
-        // When
-        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(imageContent);
+        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(imageContent, true);
 
         // Then
         assertThat(result).isNotNull();
@@ -537,10 +534,99 @@ class PartsAndContentsMapperTest {
         String dataUri = "data:image/png;base64," + base64Image;
         ImageContent imageContent = ImageContent.from(dataUri, ImageContent.DetailLevel.HIGH);
 
-        // When
-        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(imageContent);
+        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(imageContent, true);
 
         // Then
+        assertThat(result).isNotNull();
+        assertThat(result.inlineData()).isNotNull();
+        assertThat(result.mediaResolution()).isNotNull();
+        assertThat(result.mediaResolution().level()).isEqualTo(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_HIGH);
+    }
+
+    @Test
+    void modelSupportsPerPartMediaResolution_returnsTrueForGemini3Models() {
+        // Gemini 3.x models should support per-part media resolution
+        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("gemini-3.0-flash")).isTrue();
+        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("gemini-3.0-pro")).isTrue();
+        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("gemini-3.5-flash")).isTrue();
+        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("gemini-3.5-pro")).isTrue();
+        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("models/gemini-3.0-flash")).isTrue();
+    }
+
+    @Test
+    void modelSupportsPerPartMediaResolution_returnsTrueForGemini25ComputerUseModels() {
+        // Gemini 2.5 computer-use models should also support per-part media resolution
+        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("gemini-2.5-computer-use")).isTrue();
+        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("gemini-2.5-computer-use-pro")).isTrue();
+        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("models/gemini-2.5-computer-use")).isTrue();
+    }
+
+    @Test
+    void modelSupportsPerPartMediaResolution_returnsFalseForOlderModels() {
+        // Gemini 2.x (non computer-use) and older models should not support per-part media resolution
+        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("gemini-2.0-flash")).isFalse();
+        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("gemini-2.0-flash-lite")).isFalse();
+        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("gemini-2.5-flash")).isFalse();
+        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("gemini-1.5-pro")).isFalse();
+        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("gemini-1.0-pro")).isFalse();
+    }
+
+    @Test
+    void modelSupportsPerPartMediaResolution_returnsFalseForNullOrBlankModels() {
+        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution(null)).isFalse();
+        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("")).isFalse();
+        assertThat(PartsAndContentsMapper.modelSupportsPerPartMediaResolution("   ")).isFalse();
+    }
+
+    @Test
+    void fromContentToGPart_excludesMediaResolutionByDefault() {
+        // Given
+        String base64Image =
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
+        Image image =
+                Image.builder().base64Data(base64Image).mimeType("image/png").build();
+        ImageContent imageContent = ImageContent.from(image, ImageContent.DetailLevel.HIGH);
+
+        // When - using default overload (for backward compatibility, defaults to no media resolution)
+        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(imageContent);
+
+        // Then - mediaResolution should be null for backward compatibility
+        assertThat(result).isNotNull();
+        assertThat(result.inlineData()).isNotNull();
+        assertThat(result.mediaResolution()).isNull();
+    }
+
+    @Test
+    void fromContentToGPart_excludesMediaResolutionWhenNotSupported() {
+        // Given
+        String base64Image =
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
+        Image image =
+                Image.builder().base64Data(base64Image).mimeType("image/png").build();
+        ImageContent imageContent = ImageContent.from(image, ImageContent.DetailLevel.HIGH);
+
+        // When the model doesn't support per-part media resolution
+        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(imageContent, false);
+
+        // Then - mediaResolution should be null for backward compatibility
+        assertThat(result).isNotNull();
+        assertThat(result.inlineData()).isNotNull();
+        assertThat(result.mediaResolution()).isNull();
+    }
+
+    @Test
+    void fromContentToGPart_includesMediaResolutionWhenSupported() {
+        // Given
+        String base64Image =
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
+        Image image =
+                Image.builder().base64Data(base64Image).mimeType("image/png").build();
+        ImageContent imageContent = ImageContent.from(image, ImageContent.DetailLevel.HIGH);
+
+        // When the model supports per-part media resolution
+        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(imageContent, true);
+
+        // Then - mediaResolution should be included
         assertThat(result).isNotNull();
         assertThat(result.inlineData()).isNotNull();
         assertThat(result.mediaResolution()).isNotNull();
