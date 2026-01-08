@@ -6,11 +6,11 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.langchain4j.mcp.client.protocol.McpClientMessage;
-import dev.langchain4j.mcp.client.protocol.McpInitializationNotification;
-import dev.langchain4j.mcp.client.protocol.McpInitializeRequest;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
+import dev.langchain4j.mcp.protocol.McpInitializationNotification;
+import dev.langchain4j.mcp.protocol.McpInitializeRequest;
+import dev.langchain4j.mcp.protocol.McpJsonRpcMessage;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
@@ -83,7 +83,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
                         .thenCompose(nullNode -> CompletableFuture.completedFuture(originalResponse)));
     }
 
-    private HttpRequest createRequest(McpClientMessage message) throws JsonProcessingException {
+    private HttpRequest createRequest(McpJsonRpcMessage message) throws JsonProcessingException {
         String body = OBJECT_MAPPER.writeValueAsString(message);
         HttpRequest.BodyPublisher bodyPublisher = HttpRequest.BodyPublishers.ofString(body);
         if (logRequests) {
@@ -106,12 +106,12 @@ public class StreamableHttpMcpTransport implements McpTransport {
     }
 
     @Override
-    public CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage operation) {
+    public CompletableFuture<JsonNode> executeOperationWithResponse(McpJsonRpcMessage operation) {
         return execute(operation, operation.getId());
     }
 
     @Override
-    public void executeOperationWithoutResponse(McpClientMessage operation) {
+    public void executeOperationWithoutResponse(McpJsonRpcMessage operation) {
         execute(operation, null);
     }
 
@@ -125,11 +125,11 @@ public class StreamableHttpMcpTransport implements McpTransport {
         // nothing to do here, we don't maintain a long-running SSE channel (yet)
     }
 
-    private CompletableFuture<JsonNode> execute(McpClientMessage message, Long id) {
+    private CompletableFuture<JsonNode> execute(McpJsonRpcMessage message, Long id) {
         return execute(message, id, false);
     }
 
-    private CompletableFuture<JsonNode> execute(McpClientMessage message, Long id, boolean isRetry) {
+    private CompletableFuture<JsonNode> execute(McpJsonRpcMessage message, Long id, boolean isRetry) {
         if (!(message instanceof McpInitializeRequest)) {
             CompletableFuture<JsonNode> reinitializeInProgress = this.initializeInProgress.get();
             if (reinitializeInProgress != null) {

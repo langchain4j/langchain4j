@@ -1,4 +1,4 @@
-package dev.langchain4j.mcp.client.protocol;
+package dev.langchain4j.mcp.protocol;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -7,7 +7,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Internal
-public class McpListToolsRequest extends McpClientMessage {
+public class McpListToolsRequest extends McpJsonRpcMessage {
 
     @JsonInclude
     public final McpClientMethod method = McpClientMethod.TOOLS_LIST;

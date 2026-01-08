@@ -613,9 +613,11 @@ tokenStream
     .onPartialThinking((PartialThinking partialThinking) -> System.out.println(partialThinking))
     .onRetrieved((List<Content> contents) -> System.out.println(contents))
     .onIntermediateResponse((ChatResponse intermediateResponse) -> System.out.println(intermediateResponse))
-     // This will be invoked right before a tool is executed. BeforeToolExecution contains ToolExecutionRequest (e.g. tool name, tool arguments, etc.)  
+     // This will be invoked every time a new partial tool call (usually containing a single token of the tool's arguments) is available.
+    .onPartialToolCall((PartialToolCall partialToolCall) -> System.out.println(partialToolCall))
+     // This will be invoked right before a tool is executed. BeforeToolExecution contains ToolExecutionRequest (e.g. tool name, tool arguments, etc.)
     .beforeToolExecution((BeforeToolExecution beforeToolExecution) -> System.out.println(beforeToolExecution))
-     // This will be invoked right after a tool is executed. ToolExecution contains ToolExecutionRequest and tool execution result. 
+     // This will be invoked right after a tool is executed. ToolExecution contains ToolExecutionRequest and tool execution result.
     .onToolExecuted((ToolExecution toolExecution) -> System.out.println(toolExecution))
     .onCompleteResponse((ChatResponse response) -> futureResponse.complete(response))
     .onError((Throwable error) -> futureResponse.completeExceptionally(error))

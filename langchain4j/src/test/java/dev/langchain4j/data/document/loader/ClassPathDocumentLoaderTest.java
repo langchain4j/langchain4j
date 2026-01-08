@@ -121,7 +121,8 @@ class ClassPathDocumentLoaderTest implements WithAssertions {
                         "test-file.banana",
                         "test-file-iso-8859-1.txt",
                         "test-file-utf8.txt",
-                        "chefs-prompt-based-on-ingredients-in-root.txt");
+                        "chefs-prompt-based-on-ingredients-in-root.txt",
+                        "junit-platform.properties");
 
         // when-then
         assertThat(loadDocuments(resourceDirectory, new TextDocumentParser())).isEqualTo(documents);
