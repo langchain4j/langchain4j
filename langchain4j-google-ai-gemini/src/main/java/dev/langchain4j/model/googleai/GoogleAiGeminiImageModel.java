@@ -99,7 +99,7 @@ public class GoogleAiGeminiImageModel implements ImageModel {
                 builder.logger,
                 builder.timeout);
 
-        this.modelName = ensureNotNull(builder.modelName, "modelName cannot be null");
+        this.modelName = ensureNotNull(builder.modelName, "modelName");
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.responseModalities = List.of(IMAGE); // TEXT is not supported as an output modality.
         this.safetySettings = builder.safetySettings;
