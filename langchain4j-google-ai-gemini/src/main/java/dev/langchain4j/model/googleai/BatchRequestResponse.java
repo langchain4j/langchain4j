@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 import java.util.Map;
+import org.jspecify.annotations.Nullable;
 
 public final class BatchRequestResponse {
     private BatchRequestResponse() {}
@@ -173,7 +174,7 @@ public final class BatchRequestResponse {
      * @param operations a list of operations to be performed
      * @param nextPageToken a token for retrieving the next page of operations, if available; null if there are no more pages
      */
-    record ListOperationsResponse<RESP>(List<Operation<RESP>> operations, String nextPageToken) {}
+    record ListOperationsResponse<RESP>(@Nullable List<Operation<RESP>> operations, @Nullable String nextPageToken) {}
 
     /**
      * Represents a batch request for a file operation.
