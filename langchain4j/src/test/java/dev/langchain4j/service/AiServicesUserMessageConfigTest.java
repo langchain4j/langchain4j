@@ -8,6 +8,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 
 import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
@@ -15,12 +16,12 @@ import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.List;
-import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,10 +32,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class AiServicesUserMessageConfigTest {
 
-    static final String VALIDATION_ERROR_MESSAGE_SUFFIX =
-            " must be annotated with either " + UserMessage.class.getName() + ", " + V.class.getName() + ", " +
-            MemoryId.class.getName() + ", or " + UserName.class.getName() + ", or it should be of type " +
-            InvocationParameters.class.getName() + " or " + ChatRequestParameters.class.getName();
+    static final String VALIDATION_ERROR_MESSAGE_SUFFIX = " must be annotated with either "
+            + UserMessage.class.getName() + ", " + V.class.getName() + ", " + MemoryId.class.getName()
+            + ", or " + UserName.class.getName() + ", or it should be of type " + InvocationParameters.class.getName()
+            + " or " + ChatRequestParameters.class.getName();
 
     private static final Image image = Image.builder()
             .url("https://en.wikipedia.org/wiki/Llama#/media/File:Llamas,_Vernagt-Stausee,_Italy.jpg")
@@ -104,6 +105,14 @@ class AiServicesUserMessageConfigTest {
         String chat16(@NotExtensible String msg);
 
         String chat17(@ExternalAnnotation1 @ExternalAnnotation2 String msg);
+
+        String chat18(AudioContent audio);
+
+        String chat19(@UserMessage AudioContent audio);
+
+        String chat20(List<Content> contents);
+
+        String chat21(@UserMessage AudioContent audio, @UserMessage ImageContent image);
 
         // illegal configuration
 
@@ -450,6 +459,83 @@ class AiServicesUserMessageConfigTest {
     }
 
     @Test
+    void user_message_configuration_18() {
+        // given
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
+
+        String base64Data = "AAECAw==";
+        AudioContent audioContent = AudioContent.from(base64Data);
+
+        // when
+        aiService.chat18(audioContent);
+
+        // then
+        verify(chatModel)
+                .chat(ChatRequest.builder().messages(userMessage(audioContent)).build());
+        verify(chatModel).supportedCapabilities();
+    }
+
+    @Test
+    void user_message_configuration_19() {
+        // given
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
+
+        String base64Data = "AAECAw==";
+        AudioContent audioContent = AudioContent.from(base64Data);
+
+        // when
+        aiService.chat19(audioContent);
+
+        // then
+        verify(chatModel)
+                .chat(ChatRequest.builder().messages(userMessage(audioContent)).build());
+        verify(chatModel).supportedCapabilities();
+    }
+
+    @Test
+    void user_message_configuration_20() {
+        // given
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
+
+        String base64Data = "AAECAw==";
+        List<Content> contents = List.of(TextContent.from("Analyze this audio:"), AudioContent.from(base64Data));
+
+        // when
+        aiService.chat20(contents);
+
+        // then
+        verify(chatModel)
+                .chat(ChatRequest.builder()
+                        .messages(userMessage(contents.get(0), contents.get(1)))
+                        .build());
+        verify(chatModel).supportedCapabilities();
+    }
+
+    @Test
+    void user_message_configuration_21() {
+        // given
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
+
+        String base64Data = "AAECAw==";
+        AudioContent audioContent = AudioContent.from(base64Data);
+        ImageContent imageContent = ImageContent.from("https://example.com/image.png");
+
+        // when
+        aiService.chat21(audioContent, imageContent);
+
+        // then
+        verify(chatModel)
+                .chat(ChatRequest.builder()
+                        .messages(userMessage(audioContent, imageContent))
+                        .build());
+        verify(chatModel).supportedCapabilities();
+    }
+
+    @Test
     void illegal_user_message_configuration_1() {
 
         // given
@@ -486,7 +572,8 @@ class AiServicesUserMessageConfigTest {
         assertThatThrownBy(() -> aiService.illegalChat3("What is the capital of {{it}}?", "Germany"))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
                 .hasMessage(
-                        "The parameter 'arg0' in the method 'illegalChat3' of the class dev.langchain4j.service.AiServicesUserMessageConfigTest$AiService" + VALIDATION_ERROR_MESSAGE_SUFFIX);
+                        "The parameter 'arg0' in the method 'illegalChat3' of the class dev.langchain4j.service.AiServicesUserMessageConfigTest$AiService"
+                                + VALIDATION_ERROR_MESSAGE_SUFFIX);
     }
 
     @Test
@@ -500,7 +587,8 @@ class AiServicesUserMessageConfigTest {
         assertThatThrownBy(() -> aiService.illegalChat4("What is the capital of {{it}}?", "Germany"))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
                 .hasMessage(
-                        "The parameter 'arg1' in the method 'illegalChat4' of the class dev.langchain4j.service.AiServicesUserMessageConfigTest$AiService" + VALIDATION_ERROR_MESSAGE_SUFFIX);
+                        "The parameter 'arg1' in the method 'illegalChat4' of the class dev.langchain4j.service.AiServicesUserMessageConfigTest$AiService"
+                                + VALIDATION_ERROR_MESSAGE_SUFFIX);
     }
 
     @Test
@@ -567,7 +655,8 @@ class AiServicesUserMessageConfigTest {
         AiService aiService =
                 AiServices.builder(AiService.class).chatModel(chatModel).build();
 
-        ChatRequestParameters chatRequestParameters = ChatRequestParameters.builder().build();
+        ChatRequestParameters chatRequestParameters =
+                ChatRequestParameters.builder().build();
 
         // when-then
         assertThatThrownBy(() -> aiService.illegalChat9("Hello", chatRequestParameters, chatRequestParameters))
