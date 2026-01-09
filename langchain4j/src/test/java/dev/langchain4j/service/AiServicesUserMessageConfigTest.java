@@ -106,13 +106,20 @@ class AiServicesUserMessageConfigTest {
 
         String chat17(@ExternalAnnotation1 @ExternalAnnotation2 String msg);
 
-        String chat18(AudioContent audio);
+        String chat18_1(Content content);
+        String chat18_2(AudioContent audioContent);
 
-        String chat19(@UserMessage AudioContent audio);
+        String chat19_1(@UserMessage Content content);
+        String chat19_2(@UserMessage AudioContent audioContent);
 
-        String chat20(List<Content> contents);
+        String chat20_1(List<Content> contents);
+        String chat20_2(List<AudioContent> audioContents);
 
-        String chat21(@UserMessage AudioContent audio, @UserMessage ImageContent image);
+        String chat21_1(@UserMessage List<Content> contents);
+        String chat21_2(@UserMessage List<AudioContent> audioContents);
+
+        String chat22_1(@UserMessage Content content1, @UserMessage Content content2);
+        String chat22_2(@UserMessage AudioContent audio, @UserMessage ImageContent image);
 
         // illegal configuration
 
@@ -459,7 +466,7 @@ class AiServicesUserMessageConfigTest {
     }
 
     @Test
-    void user_message_configuration_18() {
+    void user_message_configuration_18_1() {
         // given
         AiService aiService =
                 AiServices.builder(AiService.class).chatModel(chatModel).build();
@@ -468,7 +475,7 @@ class AiServicesUserMessageConfigTest {
         AudioContent audioContent = AudioContent.from(base64Data);
 
         // when
-        aiService.chat18(audioContent);
+        aiService.chat18_1(audioContent);
 
         // then
         verify(chatModel)
@@ -477,7 +484,7 @@ class AiServicesUserMessageConfigTest {
     }
 
     @Test
-    void user_message_configuration_19() {
+    void user_message_configuration_18_2() {
         // given
         AiService aiService =
                 AiServices.builder(AiService.class).chatModel(chatModel).build();
@@ -486,7 +493,7 @@ class AiServicesUserMessageConfigTest {
         AudioContent audioContent = AudioContent.from(base64Data);
 
         // when
-        aiService.chat19(audioContent);
+        aiService.chat18_2(audioContent);
 
         // then
         verify(chatModel)
@@ -495,7 +502,43 @@ class AiServicesUserMessageConfigTest {
     }
 
     @Test
-    void user_message_configuration_20() {
+    void user_message_configuration_19_1() {
+        // given
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
+
+        String base64Data = "AAECAw==";
+        AudioContent audioContent = AudioContent.from(base64Data);
+
+        // when
+        aiService.chat19_1(audioContent);
+
+        // then
+        verify(chatModel)
+                .chat(ChatRequest.builder().messages(userMessage(audioContent)).build());
+        verify(chatModel).supportedCapabilities();
+    }
+
+    @Test
+    void user_message_configuration_19_2() {
+        // given
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
+
+        String base64Data = "AAECAw==";
+        AudioContent audioContent = AudioContent.from(base64Data);
+
+        // when
+        aiService.chat19_2(audioContent);
+
+        // then
+        verify(chatModel)
+                .chat(ChatRequest.builder().messages(userMessage(audioContent)).build());
+        verify(chatModel).supportedCapabilities();
+    }
+
+    @Test
+    void user_message_configuration_20_1() {
         // given
         AiService aiService =
                 AiServices.builder(AiService.class).chatModel(chatModel).build();
@@ -504,7 +547,7 @@ class AiServicesUserMessageConfigTest {
         List<Content> contents = List.of(TextContent.from("Analyze this audio:"), AudioContent.from(base64Data));
 
         // when
-        aiService.chat20(contents);
+        aiService.chat20_1(contents);
 
         // then
         verify(chatModel)
@@ -515,7 +558,67 @@ class AiServicesUserMessageConfigTest {
     }
 
     @Test
-    void user_message_configuration_21() {
+    void user_message_configuration_20_2() {
+        // given
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
+
+        String base64Data = "AAECAw==";
+        List<AudioContent> contents = List.of(AudioContent.from(base64Data));
+
+        // when
+        aiService.chat20_2(contents);
+
+        // then
+        verify(chatModel)
+                .chat(ChatRequest.builder()
+                        .messages(userMessage(contents.get(0)))
+                        .build());
+        verify(chatModel).supportedCapabilities();
+    }
+
+    @Test
+    void user_message_configuration_21_1() {
+        // given
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
+
+        String base64Data = "AAECAw==";
+        List<Content> contents = List.of(TextContent.from("Analyze this audio:"), AudioContent.from(base64Data));
+
+        // when
+        aiService.chat21_1(contents);
+
+        // then
+        verify(chatModel)
+                .chat(ChatRequest.builder()
+                        .messages(userMessage(contents.get(0), contents.get(1)))
+                        .build());
+        verify(chatModel).supportedCapabilities();
+    }
+
+    @Test
+    void user_message_configuration_21_2() {
+        // given
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
+
+        String base64Data = "AAECAw==";
+        List<AudioContent> contents = List.of(AudioContent.from(base64Data));
+
+        // when
+        aiService.chat21_2(contents);
+
+        // then
+        verify(chatModel)
+                .chat(ChatRequest.builder()
+                        .messages(userMessage(contents.get(0)))
+                        .build());
+        verify(chatModel).supportedCapabilities();
+    }
+
+    @Test
+    void user_message_configuration_22_1() {
         // given
         AiService aiService =
                 AiServices.builder(AiService.class).chatModel(chatModel).build();
@@ -525,7 +628,28 @@ class AiServicesUserMessageConfigTest {
         ImageContent imageContent = ImageContent.from("https://example.com/image.png");
 
         // when
-        aiService.chat21(audioContent, imageContent);
+        aiService.chat22_1(audioContent, imageContent);
+
+        // then
+        verify(chatModel)
+                .chat(ChatRequest.builder()
+                        .messages(userMessage(audioContent, imageContent))
+                        .build());
+        verify(chatModel).supportedCapabilities();
+    }
+
+    @Test
+    void user_message_configuration_22_2() {
+        // given
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
+
+        String base64Data = "AAECAw==";
+        AudioContent audioContent = AudioContent.from(base64Data);
+        ImageContent imageContent = ImageContent.from("https://example.com/image.png");
+
+        // when
+        aiService.chat22_2(audioContent, imageContent);
 
         // then
         verify(chatModel)
