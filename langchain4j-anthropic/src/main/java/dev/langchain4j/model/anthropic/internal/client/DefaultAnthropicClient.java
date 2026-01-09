@@ -237,7 +237,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
      *   <li>Errors if they occur</li>
      * </ul>
      *
-     * <h3>Supported SSE Event Types</h3>
+     * Supported SSE Event Types
      * <ul>
      *   <li>{@code message_start}: Initial message metadata including usage and model info</li>
      *   <li>{@code content_block_start}: Start of a content block (text, thinking, tool_use, server tool results)</li>
