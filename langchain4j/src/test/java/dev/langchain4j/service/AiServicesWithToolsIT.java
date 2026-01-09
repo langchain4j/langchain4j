@@ -28,7 +28,6 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
@@ -65,19 +64,11 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-/**
- * {@link ResourceLock} is used because some of the tests
- * (e.g., {@link #should_execute_multiple_tools_in_parallel_concurrently_then_answer(Executor)}, when {@code executeToolsConcurrently(null)})
- * use default (singleton) executor ({@link DefaultExecutorProvider#getDefaultExecutorService()})
- * and this can interfere with other tests in {@link StreamingAiServicesWithToolsIT}.
- */
-@ResourceLock("USES_DEFAULT_TOOL_EXECUTOR")
 @ExtendWith(MockitoExtension.class)
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class AiServicesWithToolsIT {

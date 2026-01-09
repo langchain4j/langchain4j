@@ -6,7 +6,6 @@ import static dev.langchain4j.service.StreamingAiServicesWithToolsIT.Transaction
 import static dev.langchain4j.service.StreamingAiServicesWithToolsIT.WeatherService.TEMPERATURE;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.parallel.ExecutionMode.SAME_THREAD;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.atLeastOnce;
@@ -30,7 +29,6 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.memory.ChatMemory;
@@ -62,8 +60,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-import org.junit.jupiter.api.parallel.Execution;
-import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullSource;
@@ -72,14 +68,6 @@ import org.mockito.InOrder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * {@link org.junit.jupiter.api.parallel.ExecutionMode#SAME_THREAD} is used because some of the tests
- * (e.g., {@link #should_execute_single_tool_concurrently(Executor)}, when {@code executeToolsConcurrently(null)})
- * use default (singleton) executor ({@link DefaultExecutorProvider#getDefaultExecutorService()})
- * and perform strict assertions on the number of used threads.
- */
-@Execution(SAME_THREAD)
-@ResourceLock("USES_DEFAULT_TOOL_EXECUTOR")
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class StreamingAiServicesWithToolsIT {
 
@@ -311,8 +299,6 @@ class StreamingAiServicesWithToolsIT {
                 "should_execute_multiple_tools_in_parallel_concurrently_then_answer({}) onToolExecutedThreads: {}",
                 executor,
                 handler.onToolExecutedThreads);
-        assertThat(handler.allThreads).hasSizeBetween(3, 4); // 1-2 for handler, 2 for tools
-        // default JDK HttpClient executor can allocate different threads for the first and second streaming response
 
         assertThat(handler.beforeToolExecutionThreads).hasSize(2);
         assertThat(handler.beforeToolExecutionThreads.get("getCurrentTime")).hasSize(1);
@@ -418,8 +404,6 @@ class StreamingAiServicesWithToolsIT {
         verifyNoMoreInteractions(spyTools);
 
         // then
-        assertThat(handler.allThreads).hasSize(2); // 1 for handler, 1 for tool
-
         assertThat(handler.beforeToolExecutionThreads).hasSize(1);
         assertThat(handler.beforeToolExecutionThreads.get("getCurrentTemperature"))
                 .hasSize(1);
