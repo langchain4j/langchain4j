@@ -23,12 +23,16 @@ import dev.langchain4j.agentic.StreamingAgents.StreamingExpertRouterAgent;
 import dev.langchain4j.agentic.StreamingAgents.StreamingMedicalExpert;
 import dev.langchain4j.agentic.StreamingAgents.StreamingLegalExpert;
 import dev.langchain4j.agentic.StreamingAgents.StreamingTechnicalExpert;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
+@EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 public class StreamingIT {
 
     @Test
