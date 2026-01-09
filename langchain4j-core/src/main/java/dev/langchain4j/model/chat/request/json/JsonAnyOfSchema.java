@@ -8,7 +8,7 @@ import static java.util.Arrays.asList;
 import java.util.List;
 import java.util.Objects;
 
-public class JsonAnyOfSchema implements JsonSchemaElement {
+public final class JsonAnyOfSchema implements JsonSchemaElement {
 
     private final String description;
     private final List<JsonSchemaElement> anyOf;

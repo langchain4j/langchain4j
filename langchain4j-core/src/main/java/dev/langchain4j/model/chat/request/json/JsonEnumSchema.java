@@ -7,7 +7,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import java.util.List;
 import java.util.Objects;
 
-public class JsonEnumSchema implements JsonSchemaElement {
+public final class JsonEnumSchema implements JsonSchemaElement {
 
     private final String description;
     private final List<String> enumValues;

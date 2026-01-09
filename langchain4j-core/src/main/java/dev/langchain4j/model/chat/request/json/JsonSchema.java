@@ -1,8 +1,8 @@
 package dev.langchain4j.model.chat.request.json;
 
-import java.util.Objects;
-
 import static dev.langchain4j.internal.Utils.quoted;
+
+import java.util.Objects;
 
 public class JsonSchema {
 
@@ -51,8 +51,7 @@ public class JsonSchema {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         JsonSchema that = (JsonSchema) o;
-        return Objects.equals(this.name, that.name)
-                && Objects.equals(this.rootElement, that.rootElement);
+        return Objects.equals(this.name, that.name) && Objects.equals(this.rootElement, that.rootElement);
     }
 
     @Override
@@ -62,9 +61,6 @@ public class JsonSchema {
 
     @Override
     public String toString() {
-        return "JsonSchema {" +
-                " name = " + quoted(name) +
-                ", rootElement = " + rootElement +
-                " }";
+        return "JsonSchema {" + " name = " + quoted(name) + ", rootElement = " + rootElement + " }";
     }
 }

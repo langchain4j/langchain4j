@@ -6,7 +6,7 @@ import static java.util.Arrays.asList;
 
 import java.util.*;
 
-public class JsonObjectSchema implements JsonSchemaElement {
+public final class JsonObjectSchema implements JsonSchemaElement {
 
     private final String description;
     private final Map<String, JsonSchemaElement> properties;

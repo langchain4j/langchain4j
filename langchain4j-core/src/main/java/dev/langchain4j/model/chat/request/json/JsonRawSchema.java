@@ -5,7 +5,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 import java.util.Objects;
 
-public class JsonRawSchema implements JsonSchemaElement {
+public final class JsonRawSchema implements JsonSchemaElement {
 
     private final String schema;
 

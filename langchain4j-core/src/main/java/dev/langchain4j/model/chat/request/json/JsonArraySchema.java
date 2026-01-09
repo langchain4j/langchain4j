@@ -4,7 +4,7 @@ import static dev.langchain4j.internal.Utils.quoted;
 
 import java.util.Objects;
 
-public class JsonArraySchema implements JsonSchemaElement {
+public final class JsonArraySchema implements JsonSchemaElement {
 
     private final String description;
     private final JsonSchemaElement items;

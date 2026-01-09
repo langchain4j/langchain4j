@@ -1,10 +1,10 @@
 package dev.langchain4j.model.chat.request.json;
 
-import java.util.Objects;
-
 import static dev.langchain4j.internal.Utils.quoted;
 
-public class JsonNumberSchema implements JsonSchemaElement {
+import java.util.Objects;
+
+public final class JsonNumberSchema implements JsonSchemaElement {
 
     private final String description;
 
@@ -54,8 +54,6 @@ public class JsonNumberSchema implements JsonSchemaElement {
 
     @Override
     public String toString() {
-        return "JsonNumberSchema {" +
-                "description = " + quoted(description) +
-                " }";
+        return "JsonNumberSchema {" + "description = " + quoted(description) + " }";
     }
 }
