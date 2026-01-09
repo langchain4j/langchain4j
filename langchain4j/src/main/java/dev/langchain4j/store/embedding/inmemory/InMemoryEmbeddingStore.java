@@ -189,7 +189,7 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
 
     /**
      * Serializes this store to a file in JSON format.
-     * <p>
+     *
      * This method uses streaming serialization to avoid holding the entire JSON document in memory.
      * Prefer this over {@link #serializeToJson()}
      */
@@ -215,7 +215,7 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
 
     /**
      * Deserializes an embedding store from a JSON file.
-     * <p>
+     *
      * Uses streaming deserialization to avoid loading the entire JSON document into memory.
      */
     public static InMemoryEmbeddingStore<TextSegment> fromFile(Path filePath) {
