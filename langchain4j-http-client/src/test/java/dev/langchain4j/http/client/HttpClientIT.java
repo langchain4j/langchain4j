@@ -828,7 +828,8 @@ public abstract class HttpClientIT {
 
     @Test
     protected void should_return_successful_http_response_sync_form_data() throws Exception {
-        Path audioPath = Path.of(getClass().getClassLoader().getResource("sample.wav").toURI());
+        Path audioPath =
+                Path.of(getClass().getClassLoader().getResource("sample.wav").toURI());
 
         for (HttpClient client : clients()) {
 
