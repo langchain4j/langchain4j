@@ -28,6 +28,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -35,6 +36,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.qdrant.QdrantContainer;
 
+@ExtendWith(ExecutionInfoExtension.class)
 @Testcontainers
 class QdrantEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
