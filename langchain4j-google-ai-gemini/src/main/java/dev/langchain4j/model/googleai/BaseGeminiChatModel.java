@@ -11,7 +11,6 @@ import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromMessageT
 import static dev.langchain4j.model.googleai.SchemaMapper.fromJsonSchemaToGSchema;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -51,6 +50,7 @@ class BaseGeminiChatModel {
     protected final Integer logprobs;
     protected final Boolean responseLogprobs;
     protected final Boolean enableEnhancedCivicAnswers;
+    protected final GeminiMediaResolutionLevel mediaResolution;
 
     protected final ChatRequestParameters defaultRequestParameters;
 
@@ -70,6 +70,7 @@ class BaseGeminiChatModel {
         this.responseLogprobs = getOrDefault(builder.responseLogprobs, false);
         this.enableEnhancedCivicAnswers = getOrDefault(builder.enableEnhancedCivicAnswers, false);
         this.logprobs = builder.logprobs;
+        this.mediaResolution = builder.mediaResolution;
 
         ChatRequestParameters parameters;
         if (builder.defaultRequestParameters != null) {
@@ -145,6 +146,7 @@ class BaseGeminiChatModel {
                         .responseLogprobs(responseLogprobs)
                         .logprobs(logprobs)
                         .thinkingConfig(this.thinkingConfig)
+                        .mediaResolution(this.mediaResolution)
                         .build())
                 .safetySettings(this.safetySettings)
                 .tools(fromToolSepcsToGTool(chatRequest.toolSpecifications(), this.allowCodeExecution))
@@ -274,6 +276,7 @@ class BaseGeminiChatModel {
         protected Boolean sendThinking;
         protected Integer logprobs;
         protected List<ChatModelListener> listeners;
+        protected GeminiMediaResolutionLevel mediaResolution;
 
         @SuppressWarnings("unchecked")
         protected B builder() {
@@ -577,6 +580,15 @@ class BaseGeminiChatModel {
          */
         public B enableEnhancedCivicAnswers(Boolean enableEnhancedCivicAnswers) {
             this.enableEnhancedCivicAnswers = enableEnhancedCivicAnswers;
+            return builder();
+        }
+
+        /**
+         * Sets the media resolution level for controlling how the Gemini API processes media inputs
+         * like images, videos, and PDF documents.
+         */
+        public B mediaResolution(GeminiMediaResolutionLevel mediaResolution) {
+            this.mediaResolution = mediaResolution;
             return builder();
         }
     }

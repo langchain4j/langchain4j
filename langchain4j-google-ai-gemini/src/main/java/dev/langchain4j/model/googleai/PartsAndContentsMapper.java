@@ -6,9 +6,6 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.googleai.FunctionMapper.toToolExecutionRequests;
-import static dev.langchain4j.model.googleai.GeminiMediaResolutionLevel.MEDIA_RESOLUTION_HIGH;
-import static dev.langchain4j.model.googleai.GeminiMediaResolutionLevel.MEDIA_RESOLUTION_LOW;
-import static dev.langchain4j.model.googleai.GeminiMediaResolutionLevel.MEDIA_RESOLUTION_UNSPECIFIED;
 import static dev.langchain4j.model.googleai.Json.fromJson;
 import static java.util.stream.Collectors.joining;
 
@@ -19,7 +16,6 @@ import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
-import dev.langchain4j.data.message.ImageContent.DetailLevel;
 import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
@@ -36,7 +32,6 @@ import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiExecutableC
 import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiFileData;
 import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiFunctionCall;
 import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiFunctionResponse;
-import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiMediaResolution;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -47,6 +42,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 final class PartsAndContentsMapper {
+
     private PartsAndContentsMapper() {}
 
     static final String THINKING_SIGNATURE_KEY =
@@ -64,12 +60,10 @@ final class PartsAndContentsMapper {
             return GeminiContent.GeminiPart.builder().text(textContent.text()).build();
         } else if (content instanceof ImageContent imageContent) {
             Image image = imageContent.image();
-            GeminiMediaResolution mediaResolution = toGeminiMediaResolution(imageContent.detailLevel());
 
             if (!isNullOrBlank(image.base64Data())) {
                 return GeminiContent.GeminiPart.builder()
                         .inlineData(new GeminiBlob(image.mimeType(), image.base64Data()))
-                        .mediaResolution(mediaResolution)
                         .build();
             } else if (image.url() != null) {
                 URI url = image.url();
@@ -77,7 +71,6 @@ final class PartsAndContentsMapper {
                 if (url.getScheme() != null && url.getScheme().equals("data")) {
                     return GeminiContent.GeminiPart.builder()
                             .inlineData(parseDataUri(url))
-                            .mediaResolution(mediaResolution)
                             .build();
                 } else if (url.getScheme() != null && url.getScheme().startsWith("http")) {
                     byte[] imageBytes = readBytes(url.toString());
@@ -85,14 +78,12 @@ final class PartsAndContentsMapper {
                     return GeminiContent.GeminiPart.builder()
                             .inlineData(new GeminiBlob(
                                     getOrDefault(image.mimeType(), mimeTypeDetector.probeContentType(url)), base64Data))
-                            .mediaResolution(mediaResolution)
                             .build();
                 } else {
                     return GeminiContent.GeminiPart.builder()
                             .fileData(new GeminiFileData(
                                     getOrDefault(image.mimeType(), mimeTypeDetector.probeContentType(url)),
                                     url.toString()))
-                            .mediaResolution(mediaResolution)
                             .build();
                 }
             } else {
@@ -375,24 +366,5 @@ final class PartsAndContentsMapper {
             geminiParts.add(geminiPart);
         }
         return geminiParts;
-    }
-
-    /**
-     * Converts ImageContent.DetailLevel to GeminiMediaResolution for per-part media resolution.
-     *
-     * @param imageDetailLevel the detail level from ImageContent
-     * @return GeminiMediaResolution with the corresponding resolution level, or null if imageDetailLevel is null
-     */
-    private static GeminiMediaResolution toGeminiMediaResolution(DetailLevel imageDetailLevel) {
-        if (imageDetailLevel == null) {
-            return null;
-        }
-        var resolutionLevel =
-                switch (imageDetailLevel) {
-                    case LOW -> MEDIA_RESOLUTION_LOW;
-                    case HIGH -> MEDIA_RESOLUTION_HIGH;
-                    case AUTO -> MEDIA_RESOLUTION_UNSPECIFIED;
-                };
-        return new GeminiMediaResolution(resolutionLevel);
     }
 }
