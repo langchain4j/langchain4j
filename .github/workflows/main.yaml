@@ -60,6 +60,7 @@ jobs:
           annotate_only: true
 
   integration_test:
+    needs: compile_and_unit_test
     runs-on: ubuntu-latest
     continue-on-error: true
     strategy:
@@ -95,6 +96,11 @@ jobs:
 
       - name: Integration test with JDK ${{ matrix.java_version }}
         run: |
+          
+          ## Compile and install ALL modules to ensure that modules selected by GIB in the next step
+          ## reference the latest code (e.g., langchain4j-core and langchain4j)
+          mvn -B -U -T8C -DskipTests -DskipITs -DembeddingsSkipCache install
+
           mvn -B -U verify \
             -Dgib.disable=false -Dgib.referenceBranch=__branch_before \
             -Djunit.jupiter.extensions.autodetection.enabled=true \

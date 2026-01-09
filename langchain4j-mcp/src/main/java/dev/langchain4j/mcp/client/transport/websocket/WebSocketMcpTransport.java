@@ -5,11 +5,11 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.langchain4j.mcp.client.protocol.McpClientMessage;
-import dev.langchain4j.mcp.client.protocol.McpInitializationNotification;
-import dev.langchain4j.mcp.client.protocol.McpInitializeRequest;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
+import dev.langchain4j.mcp.protocol.McpInitializationNotification;
+import dev.langchain4j.mcp.protocol.McpInitializeRequest;
+import dev.langchain4j.mcp.protocol.McpJsonRpcMessage;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.ConnectException;
@@ -154,12 +154,12 @@ public class WebSocketMcpTransport implements McpTransport {
     }
 
     @Override
-    public CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage request) {
+    public CompletableFuture<JsonNode> executeOperationWithResponse(McpJsonRpcMessage request) {
         return execute(request, request.getId(), Optional.empty());
     }
 
     @Override
-    public void executeOperationWithoutResponse(McpClientMessage request) {
+    public void executeOperationWithoutResponse(McpJsonRpcMessage request) {
         execute(request, null, Optional.empty());
     }
 
@@ -204,7 +204,7 @@ public class WebSocketMcpTransport implements McpTransport {
         }
     }
 
-    private CompletableFuture<JsonNode> execute(McpClientMessage message, Long id, Optional<WebSocket> webSocket) {
+    private CompletableFuture<JsonNode> execute(McpJsonRpcMessage message, Long id, Optional<WebSocket> webSocket) {
         CompletableFuture<JsonNode> future = new CompletableFuture<>();
         if (closed) {
             future.completeExceptionally(new IllegalStateException("Transport is closed"));

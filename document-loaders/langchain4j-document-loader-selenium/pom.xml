@@ -15,6 +15,10 @@
         Integration with LangChain4j adds web document loading through browser automation.
         https://www.selenium.dev/documentation/about/copyright</description>
 
+    <properties>
+        <selenium.webdriver.version>4.33.0</selenium.webdriver.version>
+    </properties>
+
     <dependencies>
 
         <dependency>

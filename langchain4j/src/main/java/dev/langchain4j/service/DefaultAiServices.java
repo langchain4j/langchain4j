@@ -22,6 +22,7 @@ import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
+import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.invocation.LangChain4jManaged;
@@ -66,7 +67,6 @@ import java.util.Scanner;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 @Internal
@@ -104,8 +104,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                 context.aiServiceClass.getClassLoader(),
                 new Class<?>[] {context.aiServiceClass},
                 new InvocationHandler() {
-
-                    private final ExecutorService executor = Executors.newCachedThreadPool();
 
                     @Override
                     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
@@ -302,6 +300,8 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         ChatExecutor chatExecutor = ChatExecutor.builder(context.chatModel)
                                 .chatRequest(chatRequest)
+                                .invocationContext(invocationContext)
+                                .eventListenerRegistrar(context.eventListenerRegistrar)
                                 .build();
 
                         ChatResponse chatResponse = chatExecutor.execute();
@@ -437,6 +437,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                     private Future<Moderation> triggerModerationIfNeeded(Method method, List<ChatMessage> messages) {
                         if (method.isAnnotationPresent(Moderate.class)) {
+                            ExecutorService executor = DefaultExecutorProvider.getDefaultExecutorService();
                             return executor.submit(() -> {
                                 List<ChatMessage> messagesToModerate = removeToolMessages(messages);
                                 return context.moderationModel
