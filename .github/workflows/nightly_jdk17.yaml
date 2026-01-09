@@ -85,7 +85,7 @@ jobs:
           ## compile and install ALL modules to avoid running integration tests on dependent modules in the step below
           mvn -B -U -T8C -DskipTests -DskipITs -DembeddingsSkipCache install
 
-          mvn -B -U verify \
+          mvn -B -U clean verify \
             -pl "${modules}" \
             -DskipAzureAiSearchITs -DskipJlamaITs -DskipLocalAiITs -DskipMilvusITs -DskipOllamaITs -DskipOracleITs -DskipVespaITs \
             --fail-at-end -Dmaven.test.failure.ignore=true \

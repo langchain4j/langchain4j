@@ -101,7 +101,7 @@ jobs:
           ## reference the latest code (e.g., langchain4j-core and langchain4j)
           mvn -B -U -T8C -DskipTests -DskipITs -DembeddingsSkipCache install
 
-          mvn -B -U verify \
+          mvn -B -U clean verify \
             -Dgib.disable=false -Dgib.referenceBranch=__branch_before \
             -Djunit.jupiter.extensions.autodetection.enabled=true \
             -DskipAzureAiSearchITs -DskipJlamaITs -DskipLocalAiITs -DskipMilvusITs -DskipOllamaITs -DskipOracleITs -DskipVespaITs \
