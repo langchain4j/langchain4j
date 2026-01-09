@@ -831,6 +831,18 @@ class GoogleAiGeminiBatchChatModelTest {
 
     @Nested
     class ListBatchJobs {
+        @Test
+        void should_return_empty_list_when_none_available() {
+            // given
+            when(mockGeminiService.<GeminiGenerateContentResponse>batchListBatches(null, null))
+                    .thenReturn(new ListOperationsResponse<>(null, null));
+
+            // when
+            var result = subject.listBatchJobs(null, null);
+
+            // then
+            assertThat(result.responses()).isEmpty();
+        }
 
         @Test
         void should_list_batch_jobs_with_default_parameters() {
@@ -1231,7 +1243,8 @@ class GoogleAiGeminiBatchChatModelTest {
 
     private GoogleAiGeminiBatchChatModel createSubject() {
         return new GoogleAiGeminiBatchChatModel(
-                GoogleAiGeminiBatchChatModel.builder().apiKey("does not matter").modelName(MODEL_NAME), mockGeminiService);
+                GoogleAiGeminiBatchChatModel.builder().apiKey("does not matter").modelName(MODEL_NAME),
+                mockGeminiService);
     }
 
     private static ChatRequest createChatRequest(String modelName, String message) {
