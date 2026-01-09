@@ -686,4 +686,144 @@ class GoogleAiGeminiChatModelIT {
         Map<String, Object> address = (Map<String, Object>) result.get("address");
         assertThat(address.keySet()).contains("city", "streetName", "streetNumber");
     }
+
+    @Test
+    void should_process_image_with_media_resolution_low() {
+        // given
+        GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .modelName("gemini-2.5-flash-lite")
+                .mediaResolution(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_LOW)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        byte[] imageBytes = readBytes(CAT_IMAGE_URL);
+        String base64Data = Base64.getEncoder().encodeToString(imageBytes);
+
+        UserMessage userMessage = UserMessage.from(
+                ImageContent.from(base64Data, "image/png"),
+                TextContent.from("What animal is shown in this image? Reply with just the animal name."));
+
+        // when
+        ChatResponse response = gemini.chat(userMessage);
+
+        // then
+        assertThat(response).isNotNull();
+        assertThat(response.aiMessage()).isNotNull();
+        assertThat(response.aiMessage().text()).isNotNull();
+        assertThat(response.aiMessage().text().toLowerCase()).containsAnyOf("cat", "kitten", "feline");
+    }
+
+    @Test
+    void should_process_image_with_media_resolution_high() {
+        // given
+        GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .modelName("gemini-2.5-flash-lite")
+                .mediaResolution(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_HIGH)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        byte[] imageBytes = readBytes(CAT_IMAGE_URL);
+        String base64Data = Base64.getEncoder().encodeToString(imageBytes);
+
+        UserMessage userMessage = UserMessage.from(
+                ImageContent.from(base64Data, "image/png"),
+                TextContent.from("What animal is shown in this image? Reply with just the animal name."));
+
+        // when
+        ChatResponse response = gemini.chat(userMessage);
+
+        // then
+        assertThat(response).isNotNull();
+        assertThat(response.aiMessage()).isNotNull();
+        assertThat(response.aiMessage().text()).isNotNull();
+        assertThat(response.aiMessage().text().toLowerCase()).containsAnyOf("cat", "kitten", "feline");
+    }
+
+    @Test
+    void should_process_image_with_media_resolution_medium() {
+        // given
+        GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .modelName("gemini-2.5-flash-lite")
+                .mediaResolution(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_MEDIUM)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        byte[] imageBytes = readBytes(CAT_IMAGE_URL);
+        String base64Data = Base64.getEncoder().encodeToString(imageBytes);
+
+        UserMessage userMessage = UserMessage.from(
+                ImageContent.from(base64Data, "image/png"),
+                TextContent.from("What animal is shown in this image? Reply with just the animal name."));
+
+        // when
+        ChatResponse response = gemini.chat(userMessage);
+
+        // then
+        assertThat(response).isNotNull();
+        assertThat(response.aiMessage()).isNotNull();
+        assertThat(response.aiMessage().text()).isNotNull();
+        assertThat(response.aiMessage().text().toLowerCase()).containsAnyOf("cat", "kitten", "feline");
+    }
+
+    @Test
+    void should_process_image_with_media_resolution_unspecified() {
+        // given
+        GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .modelName("gemini-2.5-flash-lite")
+                .mediaResolution(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_UNSPECIFIED)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        byte[] imageBytes = readBytes(CAT_IMAGE_URL);
+        String base64Data = Base64.getEncoder().encodeToString(imageBytes);
+
+        UserMessage userMessage = UserMessage.from(
+                ImageContent.from(base64Data, "image/png"),
+                TextContent.from("What animal is shown in this image? Reply with just the animal name."));
+
+        // when
+        ChatResponse response = gemini.chat(userMessage);
+
+        // then
+        assertThat(response).isNotNull();
+        assertThat(response.aiMessage()).isNotNull();
+        assertThat(response.aiMessage().text()).isNotNull();
+        assertThat(response.aiMessage().text().toLowerCase()).containsAnyOf("cat", "kitten", "feline");
+    }
+
+    @Test
+    void should_process_video_with_media_resolution_low() {
+        // given
+        GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .modelName("gemini-2.5-flash-lite")
+                .mediaResolution(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_LOW)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        URI videoUri = Paths.get("src/test/resources/example-video.mp4").toUri();
+        String base64Data = new String(Base64.getEncoder().encode(readBytes(videoUri.toString())));
+
+        UserMessage userMessage = UserMessage.from(
+                VideoContent.from(base64Data, "video/mp4"),
+                TextContent.from("What do you see in this video? Reply with a short description."));
+
+        // when
+        ChatResponse response = gemini.chat(userMessage);
+
+        // then
+        assertThat(response).isNotNull();
+        assertThat(response.aiMessage()).isNotNull();
+        assertThat(response.aiMessage().text()).isNotNull();
+        assertThat(response.aiMessage().text()).containsIgnoringCase("example");
+    }
 }
