@@ -27,12 +27,14 @@ import dev.langchain4j.model.openai.internal.moderation.ModerationRequest;
 import dev.langchain4j.model.openai.internal.moderation.ModerationResponse;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Supplier;
 
 public class DefaultOpenAiClient extends OpenAiClient {
 
     private final HttpClient httpClient;
     private final String baseUrl;
     private final Map<String, String> defaultHeaders;
+    private final Supplier<Map<String, String>> customHeadersSupplier;
     private final Map<String, String> customQueryParams;
 
     public DefaultOpenAiClient(Builder builder) {
@@ -69,10 +71,8 @@ public class DefaultOpenAiClient extends OpenAiClient {
         if (builder.userAgent != null) {
             defaultHeaders.put("User-Agent", builder.userAgent);
         }
-        if (builder.customHeaders != null) {
-            defaultHeaders.putAll(builder.customHeaders);
-        }
         this.defaultHeaders = defaultHeaders;
+        this.customHeadersSupplier = getOrDefault(builder.customHeadersSupplier, () -> Map::of);
         this.customQueryParams = builder.customQueryParams;
     }
 
@@ -87,6 +87,15 @@ public class DefaultOpenAiClient extends OpenAiClient {
         }
     }
 
+    private Map<String, String> buildRequestHeaders() {
+        Map<String, String> headers = new HashMap<>(defaultHeaders);
+        Map<String, String> customHeaders = customHeadersSupplier.get();
+        if (customHeaders != null) {
+            headers.putAll(customHeaders);
+        }
+        return headers;
+    }
+
     @Override
     public SyncOrAsyncOrStreaming<CompletionResponse> completion(CompletionRequest request) {
 
@@ -95,7 +104,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
                 .url(baseUrl, "completions")
                 .addQueryParams(customQueryParams)
                 .addHeader("Content-Type", "application/json")
-                .addHeaders(defaultHeaders)
+                .addHeaders(buildRequestHeaders())
                 .body(Json.toJson(
                         CompletionRequest.builder().from(request).stream(false).build()))
                 .build();
@@ -105,7 +114,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
                 .url(baseUrl, "completions")
                 .addQueryParams(customQueryParams)
                 .addHeader("Content-Type", "application/json")
-                .addHeaders(defaultHeaders)
+                .addHeaders(buildRequestHeaders())
                 .body(Json.toJson(
                         CompletionRequest.builder().from(request).stream(true).build()))
                 .build();
@@ -121,7 +130,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
                 .url(baseUrl, "chat/completions")
                 .addQueryParams(customQueryParams)
                 .addHeader("Content-Type", "application/json")
-                .addHeaders(defaultHeaders)
+                .addHeaders(buildRequestHeaders())
                 .body(Json.toJson(ChatCompletionRequest.builder().from(request).stream(false)
                         .build()))
                 .build();
@@ -131,7 +140,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
                 .url(baseUrl, "chat/completions")
                 .addQueryParams(customQueryParams)
                 .addHeader("Content-Type", "application/json")
-                .addHeaders(defaultHeaders)
+                .addHeaders(buildRequestHeaders())
                 .body(Json.toJson(ChatCompletionRequest.builder().from(request).stream(true)
                         .build()))
                 .build();
@@ -147,7 +156,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
                 .url(baseUrl, "embeddings")
                 .addQueryParams(customQueryParams)
                 .addHeader("Content-Type", "application/json")
-                .addHeaders(defaultHeaders)
+                .addHeaders(buildRequestHeaders())
                 .body(Json.toJson(request))
                 .build();
 
@@ -162,7 +171,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
                 .url(baseUrl, "moderations")
                 .addQueryParams(customQueryParams)
                 .addHeader("Content-Type", "application/json")
-                .addHeaders(defaultHeaders)
+                .addHeaders(buildRequestHeaders())
                 .body(Json.toJson(request))
                 .build();
 
@@ -176,7 +185,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
                 .url(baseUrl, "images/generations")
                 .addQueryParams(customQueryParams)
                 .addHeader("Content-Type", "application/json")
-                .addHeaders(defaultHeaders)
+                .addHeaders(buildRequestHeaders())
                 .body(Json.toJson(request))
                 .build();
 
@@ -189,7 +198,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
                 .method(POST)
                 .url(baseUrl, "audio/transcriptions")
                 .addHeader("Content-Type", "multipart/form-data; boundary=----LangChain4j")
-                .addHeaders(defaultHeaders);
+                .addHeaders(buildRequestHeaders());
 
         httpRequestBuilder.addFormDataField("model", request.model());
 
@@ -217,7 +226,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
                 .method(GET)
                 .url(baseUrl, "models")
                 .addQueryParams(customQueryParams)
-                .addHeaders(defaultHeaders)
+                .addHeaders(buildRequestHeaders())
                 .build();
 
         return new RequestExecutor<>(httpClient, httpRequest, ModelsListResponse.class);
