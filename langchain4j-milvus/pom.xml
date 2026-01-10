@@ -13,7 +13,7 @@
     <name>LangChain4j :: Integration :: Milvus</name>
 
     <properties>
-        <milvus-sdk-java.version>2.5.9</milvus-sdk-java.version>
+        <milvus-sdk-java.version>2.6.11</milvus-sdk-java.version>
         <skipMilvusITs>${skipITs}</skipMilvusITs>
         <!-- TODO: remove enforcer.skipRules -->
         <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
