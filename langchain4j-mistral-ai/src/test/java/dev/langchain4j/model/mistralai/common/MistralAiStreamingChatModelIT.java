@@ -7,7 +7,9 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.mistralai.MistralAiChatResponseMetadata;
 import dev.langchain4j.model.mistralai.MistralAiStreamingChatModel;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.mockito.InOrder;
@@ -54,6 +56,11 @@ class MistralAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
         return ChatRequestParameters.builder()
                 .maxOutputTokens(maxOutputTokens)
                 .build();
+    }
+
+    @Override
+    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(StreamingChatModel model) {
+        return MistralAiChatResponseMetadata.class;
     }
 
     @Override
