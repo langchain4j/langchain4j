@@ -95,6 +95,24 @@ class CompressingQueryTransformerTest {
     }
 
     @Test
+    void should_not_compress_when_chat_memory_contains_only_system_message() {
+
+        // given
+        List<ChatMessage> chatMemory = List.of(SystemMessage.from("Be polite"));
+        UserMessage userMessage = UserMessage.from("Hello");
+        Metadata metadata = Metadata.from(userMessage, "default", chatMemory);
+        Query query = Query.from(userMessage.singleText(), metadata);
+        ChatModel model = mock(ChatModel.class);
+        CompressingQueryTransformer transformer = new CompressingQueryTransformer(model);
+
+        // when
+        Collection<Query> queries = transformer.transform(query);
+        // then
+        assertThat(queries).containsExactly(query);
+        verifyNoInteractions(model);
+    }
+
+    @Test
     void should_compress_query_and_chat_memory_into_single_query_using_custom_prompt_template() {
 
         // given
