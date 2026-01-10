@@ -101,6 +101,10 @@ public class ChatModelMock implements ChatModel {
         }
     }
 
+    public List<List<ChatMessage>> getRequests() {
+        return requests;
+    }
+
     public static ChatModelMock thatAlwaysResponds(String response) {
         return new ChatModelMock(response);
     }

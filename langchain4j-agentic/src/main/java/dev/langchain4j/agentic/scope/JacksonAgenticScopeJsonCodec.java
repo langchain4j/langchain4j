@@ -31,8 +31,7 @@ class JacksonAgenticScopeJsonCodec implements AgenticScopeJsonCodec {
 
         // Configure the ObjectMapper to add type information for users types
         mapper.activateDefaultTyping(
-                mapper.getPolymorphicTypeValidator(),
-                ObjectMapper.DefaultTyping.NON_FINAL
+                mapper.getPolymorphicTypeValidator()
         );
 
         return mapper;
@@ -72,7 +71,7 @@ class JacksonAgenticScopeJsonCodec implements AgenticScopeJsonCodec {
         @JsonCreator
         public AgentMessageMixin(
                 @JsonProperty("agentName") String agentName,
-                @JsonProperty("agentagentId") String agentagentId,
+                @JsonProperty("agentId") String agentId,
                 @JsonProperty("message") ChatMessage message) {
         }
     }
@@ -81,6 +80,7 @@ class JacksonAgenticScopeJsonCodec implements AgenticScopeJsonCodec {
     private static abstract class AgentInvocationMixin {
         @JsonCreator
         public AgentInvocationMixin(
+                @JsonProperty("agentType") Class<?> agentType,
                 @JsonProperty("agentName") String agentName,
                 @JsonProperty("agentId") String agentId,
                 @JsonProperty("input") Map<String, Object> input,

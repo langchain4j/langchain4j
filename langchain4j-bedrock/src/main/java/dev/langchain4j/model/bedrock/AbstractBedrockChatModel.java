@@ -450,6 +450,10 @@ abstract class AbstractBedrockChatModel {
             return FinishReason.TOOL_EXECUTION;
         }
 
+        if (stopReason == StopReason.CONTENT_FILTERED) {
+            return FinishReason.CONTENT_FILTER;
+        }
+
         throw new IllegalArgumentException("Unknown stop reason: " + stopReason);
     }
 

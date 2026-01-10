@@ -1,15 +1,15 @@
 package dev.langchain4j.mcp.client.transport.websocket;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.langchain4j.mcp.client.protocol.McpClientMessage;
-import dev.langchain4j.mcp.client.protocol.McpInitializationNotification;
-import dev.langchain4j.mcp.client.protocol.McpInitializeRequest;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import javax.net.ssl.SSLContext;
+import dev.langchain4j.mcp.protocol.McpInitializationNotification;
+import dev.langchain4j.mcp.protocol.McpInitializeRequest;
+import dev.langchain4j.mcp.protocol.McpJsonRpcMessage;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.ConnectException;
@@ -24,9 +24,9 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import javax.net.ssl.SSLContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class WebSocketMcpTransport implements McpTransport {
 
@@ -54,15 +54,14 @@ public class WebSocketMcpTransport implements McpTransport {
         this.logRequests = builder.logRequests;
         this.trafficLog = getOrDefault(builder.logger, DEFAULT_TRAFFIC_LOG);
         this.connectTimeout = getOrDefault(builder.timeout, Duration.ofSeconds(60));
-        this.headersSupplier = getOrDefault(builder.headersSupplier,
-                (Supplier<Map<String, String>>) () -> Map.of());
+        this.headersSupplier = getOrDefault(builder.headersSupplier, (Supplier<Map<String, String>>) () -> Map.of());
         this.executor = builder.executor;
+        this.sslContext = builder.sslContext;
         this.httpClient = createHttpClient();
     }
 
     private HttpClient createHttpClient() {
-        HttpClient.Builder clientBuilder = HttpClient.newBuilder()
-                .connectTimeout(connectTimeout);
+        HttpClient.Builder clientBuilder = HttpClient.newBuilder().connectTimeout(connectTimeout);
         if (sslContext != null) {
             clientBuilder.sslContext(sslContext);
         }
@@ -75,7 +74,7 @@ public class WebSocketMcpTransport implements McpTransport {
     private synchronized WebSocket getWebSocket() {
         try {
             CompletableFuture<WebSocket> future = this.webSocketRef.get();
-            if(future == null) {
+            if (future == null) {
                 return startWebSocket().get();
             }
             return future.get();
@@ -114,21 +113,29 @@ public class WebSocketMcpTransport implements McpTransport {
         WebSocket.Builder builder = this.httpClient.newWebSocketBuilder();
         headersSupplier.get().forEach((key, value) -> builder.header(key, value));
         builder.connectTimeout(connectTimeout);
-        CompletableFuture<WebSocket> newWebSocketFuture = builder
-                .buildAsync(URI.create(url), new WebSocketMcpListener(operationHandler, trafficLog, logResponses, () -> {
-                    // On close callback: clear the webSocketRef so that a new connection can be created when needed.
-                    // Don't eagerly re-create it because the WebSocket transport does not have proper recovery capabilities,
-                    // so all running operations were lost anyway.
-                    webSocketRef.set(null);
-        }, actionOnFailure));
+        CompletableFuture<WebSocket> newWebSocketFuture = builder.buildAsync(
+                URI.create(url),
+                new WebSocketMcpListener(
+                        operationHandler,
+                        trafficLog,
+                        logResponses,
+                        () -> {
+                            // On close callback: clear the webSocketRef so that a new connection can be created when
+                            // needed.
+                            // Don't eagerly re-create it because the WebSocket transport does not have proper recovery
+                            // capabilities,
+                            // so all running operations were lost anyway.
+                            webSocketRef.set(null);
+                        },
+                        actionOnFailure));
         // if the initialize method was already called and we know the necessary data for initialization, schedule
         // a new initialization right away
         if (this.initializeRequest != null) {
-            newWebSocketFuture = newWebSocketFuture.thenCompose(webSocket ->
-                    execute(this.initializeRequest, this.initializeRequest.getId(), Optional.of(webSocket))
-                            .thenCompose(originalResponse -> execute(new McpInitializationNotification(), null, Optional.of(webSocket))
-                                    .thenCompose(nullNode -> CompletableFuture.completedFuture(webSocket)))
-            );
+            newWebSocketFuture = newWebSocketFuture.thenCompose(
+                    webSocket -> execute(this.initializeRequest, this.initializeRequest.getId(), Optional.of(webSocket))
+                            .thenCompose(originalResponse -> execute(
+                                            new McpInitializationNotification(), null, Optional.of(webSocket))
+                                    .thenCompose(nullNode -> CompletableFuture.completedFuture(webSocket))));
         }
         this.webSocketRef.set(newWebSocketFuture);
         return newWebSocketFuture;
@@ -147,12 +154,12 @@ public class WebSocketMcpTransport implements McpTransport {
     }
 
     @Override
-    public CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage request) {
+    public CompletableFuture<JsonNode> executeOperationWithResponse(McpJsonRpcMessage request) {
         return execute(request, request.getId(), Optional.empty());
     }
 
     @Override
-    public void executeOperationWithoutResponse(McpClientMessage request) {
+    public void executeOperationWithoutResponse(McpJsonRpcMessage request) {
         execute(request, null, Optional.empty());
     }
 
@@ -170,17 +177,18 @@ public class WebSocketMcpTransport implements McpTransport {
     public void close() throws IOException {
         this.closed = true;
         CompletableFuture<WebSocket> future = webSocketRef.get();
-        if(future != null) {
-            if(future.isDone()) {
+        if (future != null) {
+            if (future.isDone()) {
                 try {
                     WebSocket webSocket = future.get();
-                    webSocket.sendClose(WebSocket.NORMAL_CLOSURE, "Client closing").thenRun(() ->
-                            LOG.info("WebSocket connection closed"));
+                    webSocket
+                            .sendClose(WebSocket.NORMAL_CLOSURE, "Client closing")
+                            .thenRun(() -> LOG.info("WebSocket connection closed"));
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     throw new RuntimeException(e);
                 } catch (ExecutionException e) {
-                    if(e.getCause() != null && e.getCause() instanceof ConnectException) {
+                    if (e.getCause() != null && e.getCause() instanceof ConnectException) {
                         // this means the connection was previously attempted but failed, so nothing to close
                     } else {
                         LOG.warn("Failed to close WebSocket connection", e);
@@ -196,10 +204,9 @@ public class WebSocketMcpTransport implements McpTransport {
         }
     }
 
-
-    private CompletableFuture<JsonNode> execute(McpClientMessage message, Long id, Optional<WebSocket> webSocket) {
+    private CompletableFuture<JsonNode> execute(McpJsonRpcMessage message, Long id, Optional<WebSocket> webSocket) {
         CompletableFuture<JsonNode> future = new CompletableFuture<>();
-        if(closed) {
+        if (closed) {
             future.completeExceptionally(new IllegalStateException("Transport is closed"));
             return future;
         }
@@ -259,7 +266,6 @@ public class WebSocketMcpTransport implements McpTransport {
             return this;
         }
 
-
         public Builder logRequests(boolean logRequests) {
             this.logRequests = logRequests;
             return this;
@@ -312,7 +318,5 @@ public class WebSocketMcpTransport implements McpTransport {
         public WebSocketMcpTransport build() {
             return new WebSocketMcpTransport(this);
         }
-
     }
-
 }

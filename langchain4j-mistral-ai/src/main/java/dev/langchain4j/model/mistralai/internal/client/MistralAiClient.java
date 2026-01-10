@@ -6,8 +6,8 @@ import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.mistralai.internal.api.*;
 import dev.langchain4j.spi.ServiceHelper;
-import org.slf4j.Logger;
 import java.time.Duration;
+import org.slf4j.Logger;
 
 @Internal
 public abstract class MistralAiClient {

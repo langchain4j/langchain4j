@@ -6,6 +6,9 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.googleai.FunctionMapper.toToolExecutionRequests;
+import static dev.langchain4j.model.googleai.GeminiMediaResolutionLevel.MEDIA_RESOLUTION_HIGH;
+import static dev.langchain4j.model.googleai.GeminiMediaResolutionLevel.MEDIA_RESOLUTION_LOW;
+import static dev.langchain4j.model.googleai.GeminiMediaResolutionLevel.MEDIA_RESOLUTION_UNSPECIFIED;
 import static dev.langchain4j.model.googleai.Json.fromJson;
 import static java.util.stream.Collectors.joining;
 
@@ -16,6 +19,7 @@ import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.ImageContent.DetailLevel;
 import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
@@ -32,12 +36,15 @@ import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiExecutableC
 import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiFileData;
 import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiFunctionCall;
 import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiFunctionResponse;
+import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiMediaResolution;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 final class PartsAndContentsMapper {
     private PartsAndContentsMapper() {}
@@ -49,30 +56,43 @@ final class PartsAndContentsMapper {
 
     private static final CustomMimeTypesFileTypeDetector mimeTypeDetector = new CustomMimeTypesFileTypeDetector();
 
+    // Pattern to parse data URIs: data:[<mediatype>][;base64],<data>
+    private static final Pattern DATA_URI_PATTERN = Pattern.compile("^data:([^;,]+)(?:;[^,]*)?,(.*)$");
+
     static GeminiContent.GeminiPart fromContentToGPart(Content content) {
         if (content instanceof TextContent textContent) {
             return GeminiContent.GeminiPart.builder().text(textContent.text()).build();
         } else if (content instanceof ImageContent imageContent) {
             Image image = imageContent.image();
+            GeminiMediaResolution mediaResolution = toGeminiMediaResolution(imageContent.detailLevel());
 
             if (!isNullOrBlank(image.base64Data())) {
                 return GeminiContent.GeminiPart.builder()
                         .inlineData(new GeminiBlob(image.mimeType(), image.base64Data()))
+                        .mediaResolution(mediaResolution)
                         .build();
             } else if (image.url() != null) {
                 URI url = image.url();
-                if (url.getScheme() != null && url.getScheme().startsWith("http")) {
+                // Handle data URIs (e.g., "data:image/png;base64,iVBORw0KG...")
+                if (url.getScheme() != null && url.getScheme().equals("data")) {
+                    return GeminiContent.GeminiPart.builder()
+                            .inlineData(parseDataUri(url))
+                            .mediaResolution(mediaResolution)
+                            .build();
+                } else if (url.getScheme() != null && url.getScheme().startsWith("http")) {
                     byte[] imageBytes = readBytes(url.toString());
                     String base64Data = Base64.getEncoder().encodeToString(imageBytes);
                     return GeminiContent.GeminiPart.builder()
                             .inlineData(new GeminiBlob(
                                     getOrDefault(image.mimeType(), mimeTypeDetector.probeContentType(url)), base64Data))
+                            .mediaResolution(mediaResolution)
                             .build();
                 } else {
                     return GeminiContent.GeminiPart.builder()
                             .fileData(new GeminiFileData(
                                     getOrDefault(image.mimeType(), mimeTypeDetector.probeContentType(url)),
                                     url.toString()))
+                            .mediaResolution(mediaResolution)
                             .build();
                 }
             } else {
@@ -81,6 +101,12 @@ final class PartsAndContentsMapper {
         } else if (content instanceof AudioContent audioContent) {
             URI uri = audioContent.audio().url();
             if (uri != null) {
+                // Handle data URIs for audio
+                if (uri.getScheme() != null && uri.getScheme().equals("data")) {
+                    return GeminiContent.GeminiPart.builder()
+                            .inlineData(parseDataUri(uri))
+                            .build();
+                }
                 return GeminiContent.GeminiPart.builder()
                         .fileData(new GeminiFileData(mimeTypeDetector.probeContentType(uri), uri.toString()))
                         .build();
@@ -94,6 +120,12 @@ final class PartsAndContentsMapper {
         } else if (content instanceof VideoContent videoContent) {
             URI uri = videoContent.video().url();
             if (uri != null) {
+                // Handle data URIs for video
+                if (uri.getScheme() != null && uri.getScheme().equals("data")) {
+                    return GeminiContent.GeminiPart.builder()
+                            .inlineData(parseDataUri(uri))
+                            .build();
+                }
                 return GeminiContent.GeminiPart.builder()
                         .fileData(new GeminiFileData(mimeTypeDetector.probeContentType(uri), uri.toString()))
                         .build();
@@ -109,6 +141,12 @@ final class PartsAndContentsMapper {
 
             URI uri = pdfFile.url();
             if (uri != null) {
+                // Handle data URIs for PDF
+                if (uri.getScheme() != null && uri.getScheme().equals("data")) {
+                    return GeminiContent.GeminiPart.builder()
+                            .inlineData(parseDataUri(uri))
+                            .build();
+                }
                 return GeminiContent.GeminiPart.builder()
                         .fileData(new GeminiFileData(mimeTypeDetector.probeContentType(uri), uri.toString()))
                         .build();
@@ -303,6 +341,26 @@ final class PartsAndContentsMapper {
                 .toList();
     }
 
+    /**
+     * Parses a data URI and returns a GeminiBlob with the extracted MIME type and base64 data.
+     *
+     * @param uri the data URI to parse (e.g., "data:image/png;base64,iVBORw0KG...")
+     * @return a GeminiBlob containing the MIME type and base64 data
+     * @throws IllegalArgumentException if the URI is not a valid data URI
+     */
+    private static GeminiBlob parseDataUri(URI uri) {
+        String urlString = uri.toString();
+        Matcher matcher = DATA_URI_PATTERN.matcher(urlString);
+
+        if (matcher.matches()) {
+            String mimeType = matcher.group(1);
+            String base64Data = matcher.group(2);
+            return new GeminiBlob(mimeType, base64Data);
+        }
+
+        throw new IllegalArgumentException("Invalid data URI format: " + urlString);
+    }
+
     private static List<GeminiContent.GeminiPart> toGeminiParts(
             List<ToolExecutionRequest> toolExecutionRequests, String thoughtSignature) {
         List<GeminiContent.GeminiPart> geminiParts = new ArrayList<>();
@@ -317,5 +375,24 @@ final class PartsAndContentsMapper {
             geminiParts.add(geminiPart);
         }
         return geminiParts;
+    }
+
+    /**
+     * Converts ImageContent.DetailLevel to GeminiMediaResolution for per-part media resolution.
+     *
+     * @param imageDetailLevel the detail level from ImageContent
+     * @return GeminiMediaResolution with the corresponding resolution level, or null if imageDetailLevel is null
+     */
+    private static GeminiMediaResolution toGeminiMediaResolution(DetailLevel imageDetailLevel) {
+        if (imageDetailLevel == null) {
+            return null;
+        }
+        var resolutionLevel =
+                switch (imageDetailLevel) {
+                    case LOW -> MEDIA_RESOLUTION_LOW;
+                    case HIGH -> MEDIA_RESOLUTION_HIGH;
+                    case AUTO -> MEDIA_RESOLUTION_UNSPECIFIED;
+                };
+        return new GeminiMediaResolution(resolutionLevel);
     }
 }

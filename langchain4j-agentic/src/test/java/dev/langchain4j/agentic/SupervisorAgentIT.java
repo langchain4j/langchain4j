@@ -2,20 +2,30 @@ package dev.langchain4j.agentic;
 
 import static dev.langchain4j.agentic.Models.baseModel;
 import static dev.langchain4j.agentic.Models.plannerModel;
+import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.offset;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agentic.Agents.LegalExpert;
+import dev.langchain4j.agentic.Agents.LoanApplicationEvaluator;
+import dev.langchain4j.agentic.Agents.LoanApplicationExtractor;
 import dev.langchain4j.agentic.Agents.MedicalExpert;
 import dev.langchain4j.agentic.Agents.RouterAgent;
 import dev.langchain4j.agentic.Agents.TechnicalExpert;
 import dev.langchain4j.agentic.Agents.ColorExpert;
 import dev.langchain4j.agentic.Agents.ColorMixerExpert;
+import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;
 import dev.langchain4j.agentic.supervisor.SupervisorContextStrategy;
@@ -24,22 +34,33 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import dev.langchain4j.service.tool.BeforeToolExecution;
+import dev.langchain4j.service.tool.ToolExecution;
+import dev.langchain4j.service.tool.ToolExecutionResult;
+import dev.langchain4j.service.tool.ToolExecutor;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
+@EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 public class SupervisorAgentIT {
 
     @Test
@@ -101,6 +122,37 @@ public class SupervisorAgentIT {
                 .build();
 
         System.out.println(askToExpert.invoke("I broke my leg what should I do"));
+
+        verify(medicalExpert).medical(any());
+    }
+
+    @Test
+    void supervisor_in_sequence_test() {
+        RequestClassifierAgent requestClassifierAgent = AgenticServices.agentBuilder(RequestClassifierAgent.class)
+                .chatModel(baseModel())
+                .build();
+        MedicalExpert medicalExpert = spy(AgenticServices.agentBuilder(MedicalExpert.class)
+                .chatModel(baseModel())
+                .build());
+        LegalExpert legalExpert = spy(AgenticServices.agentBuilder(LegalExpert.class)
+                .chatModel(baseModel())
+                .build());
+        TechnicalExpert technicalExpert = spy(AgenticServices.agentBuilder(TechnicalExpert.class)
+                .chatModel(baseModel())
+                .build());
+
+        SupervisorAgent askToExpert = AgenticServices.supervisorBuilder()
+                .chatModel(plannerModel())
+                .responseStrategy(SupervisorResponseStrategy.SCORED)
+                .subAgents(requestClassifierAgent, medicalExpert, legalExpert, technicalExpert)
+                .build();
+
+        UntypedAgent askToExpertSequence = AgenticServices.sequenceBuilder()
+                .subAgents(askToExpert)
+                .outputKey("response")
+                .build();
+
+        System.out.println(askToExpertSequence.invoke(Map.of("request", "I broke my leg what should I do")));
 
         verify(medicalExpert).medical(any());
     }
@@ -369,11 +421,30 @@ public class SupervisorAgentIT {
             exchangeAgent = new ExchangeOperator();
         }
 
+        List<String> toolCalls = new ArrayList<>();
+        Map<String, Double> toolResults = new HashMap<>();
+
         SupervisorAgent bankSupervisor = AgenticServices.supervisorBuilder()
                 .chatModel(plannerModel())
                 .responseStrategy(SupervisorResponseStrategy.SCORED)
                 .contextGenerationStrategy(SupervisorContextStrategy.CHAT_MEMORY)
                 .subAgents(withdrawAgent, creditAgent, exchangeAgent)
+                .listener(new AgentListener() {
+                    @Override
+                    public void afterToolExecution(ToolExecution toolExecution) {
+                        toolResults.put(toolExecution.request().name(), (Double) toolExecution.resultObject());
+                    }
+
+                    @Override
+                    public void beforeToolExecution(BeforeToolExecution beforeToolExecution) {
+                        toolCalls.add(beforeToolExecution.request().name());
+                    }
+
+                    @Override
+                    public boolean inheritedBySubagents() {
+                        return true;
+                    }
+                })
                 .build();
 
         ResultWithAgenticScope<String> result = bankSupervisor.invokeWithAgenticScope(userRequest);
@@ -383,6 +454,18 @@ public class SupervisorAgentIT {
         assertThat(bankTool.getBalance("Georgios")).isEqualTo(1115.0);
 
         assertThat(result.agenticScope().readState("exchange", 0.0)).isCloseTo(115.0, offset(0.1));
+
+        assertThat(toolCalls).hasSize(fullyAI ? 3 : 2);
+        assertThat(toolResults).hasSize(fullyAI ? 3 : 2);
+        assertThat(toolCalls).contains("credit", "withdraw");
+
+        assertThat(toolResults.get("credit")).isCloseTo(1115.0, offset(0.1));
+        assertThat(toolResults.get("withdraw")).isCloseTo(885.0, offset(0.1));
+
+        if (fullyAI) {
+            assertThat(toolCalls).contains("exchange");
+            assertThat(toolResults.get("exchange")).isCloseTo(115.0, offset(0.1));
+        }
     }
 
     public record TransactionDetails(String fromUser, String toUser, Double amountInUSD) {}
@@ -404,6 +487,26 @@ public class SupervisorAgentIT {
     }
 
     private void typed_banker_test(boolean useMaxAgentsInvocations) {
+        ToolSpecification toolSpecification = ToolSpecification.builder()
+                .name("exchange")
+                .description("Exchange the given amount of money from the original to the target currency")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("originalCurrency")
+                        .addNumberProperty("amount")
+                        .addStringProperty("targetCurrency")
+                        .build())
+                .build();
+
+        ToolExecutor toolExecutor = (toolExecutionRequest, memoryId) -> {
+            Map<String, Object> arguments = toMap(toolExecutionRequest.arguments());
+            String originalCurrency = (String) arguments.get("originalCurrency");
+            assertThat(originalCurrency).isEqualTo("EUR");
+            Double amount = ((Number) arguments.get("amount")).doubleValue();
+            String targetCurrency = (String) arguments.get("targetCurrency");
+            assertThat(targetCurrency).isEqualTo("USD");
+            return "" + new ExchangeTool().exchange(originalCurrency, amount, targetCurrency);
+        };
+
         BankTool bankTool = new BankTool();
         bankTool.createAccount("Mario", 1000.0);
         bankTool.createAccount("Georgios", 1000.0);
@@ -421,7 +524,7 @@ public class SupervisorAgentIT {
                 .chatModel(baseModel())
                 .description(
                         "A money exchanger that converts a given amount of money from the original to the target currency")
-                .tools(new ExchangeTool())
+                .tools(singletonMap(toolSpecification, toolExecutor))
                 .build();
 
         var supervisorBuilder = AgenticServices.supervisorBuilder(TypedBankerAgent.class)
@@ -448,6 +551,14 @@ public class SupervisorAgentIT {
 
         assertThat(bankTool.getBalance("Mario")).isEqualTo(885.0);
         assertThat(bankTool.getBalance("Georgios")).isEqualTo(1115.0);
+    }
+
+    private static Map<String, Object> toMap(String arguments) {
+        try {
+            return new ObjectMapper().readValue(arguments, new TypeReference<>() {});
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public interface TypedBankerAgentWithMemory extends ChatMemoryAccess {
@@ -543,8 +654,6 @@ public class SupervisorAgentIT {
 
     @Test
     void subagent_unique_name_test() {
-        Map<String, List<ChatMessage>> messageMap = new ConcurrentHashMap<>();
-
         JokesterAssistant jokesterAssistant = AgenticServices.agentBuilder(JokesterAssistant.class)
                 .chatModel(baseModel())
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
@@ -601,7 +710,7 @@ public class SupervisorAgentIT {
         // only 2 agents, the jokester and done
         assertThat(agentNames)
                 .hasSize(2)
-                .containsExactly("JokesterAgent_JokesterAssistant", "done");
+                .containsExactly("JokesterAgent$1", "done");
     }
 
     @Test
@@ -622,4 +731,61 @@ public class SupervisorAgentIT {
         String result = colorSupervisor.invoke("Which color do you get by mixing the color of blood and the color of the sky?");
         assertThat(result).containsIgnoringCase("purple");
     }
+
+    @Test
+    void pojo_argument_test() {
+        LoanApplicationExtractor loanApplicationExtractor = AgenticServices.agentBuilder(LoanApplicationExtractor.class)
+                .chatModel(baseModel())
+                .outputKey("loanApplication")
+                .build();
+        LoanApplicationEvaluator loanApplicationEvaluator = AgenticServices.agentBuilder(LoanApplicationEvaluator.class)
+                .chatModel(baseModel())
+                .build();
+
+        SupervisorAgent loanAgent = AgenticServices.supervisorBuilder()
+                .chatModel(plannerModel())
+                .responseStrategy(SupervisorResponseStrategy.LAST)
+                .subAgents(loanApplicationExtractor, loanApplicationEvaluator)
+                .build();
+
+        String result = loanAgent.invoke("John Doe submitted a loan application of 80000. He is 30 years old. Evaluate his application.");
+        assertThat(result).containsIgnoringCase("rejected");
+    }
+
+    static class PlannerModelReturningDoneWithoutResponse implements ChatModel {
+
+        @Override
+        public ChatResponse chat(ChatRequest request) {
+            String json = """
+                    {
+                      "agentName": "done",
+                      "arguments": {}
+                    }
+                    """;
+
+            return ChatResponse.builder()
+                    .aiMessage(AiMessage.from(json))
+                    .build();
+        }
+    }
+
+    @Test
+    void supervisor_should_not_throw_when_done_has_no_response_argument() {
+        BankTool bankTool = new BankTool();
+        bankTool.createAccount("Mario", 1000.0);
+
+        WithdrawAgent withdrawAgent = AgenticServices.agentBuilder(WithdrawAgent.class)
+                .chatModel(baseModel())
+                .tools(bankTool)
+                .build();
+
+        SupervisorAgent supervisor = AgenticServices.supervisorBuilder()
+                .chatModel(new PlannerModelReturningDoneWithoutResponse())
+                .responseStrategy(SupervisorResponseStrategy.SUMMARY)
+                .subAgents(withdrawAgent)
+                .build();
+
+        assertDoesNotThrow(() -> supervisor.invoke("Withdraw 100 USD from Mario's account"));
+    }
+
 }

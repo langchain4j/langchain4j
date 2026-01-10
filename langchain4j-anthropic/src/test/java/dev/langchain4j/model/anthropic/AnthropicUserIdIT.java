@@ -6,12 +6,14 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicUsage;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicCreateMessageOptions;
+import dev.langchain4j.model.anthropic.internal.client.ParsedAndRawResponse;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -36,7 +38,7 @@ class AnthropicUserIdIT {
         // then
         ArgumentCaptor<AnthropicCreateMessageRequest> requestCaptor =
                 ArgumentCaptor.forClass(AnthropicCreateMessageRequest.class);
-        verify(mockClient).createMessage(requestCaptor.capture());
+        verify(mockClient).createMessageWithRawResponse(requestCaptor.capture());
 
         AnthropicCreateMessageRequest capturedRequest = requestCaptor.getValue();
         assertThat(capturedRequest.getMetadata()).isNotNull();
@@ -78,7 +80,7 @@ class AnthropicUserIdIT {
         // then
         ArgumentCaptor<AnthropicCreateMessageRequest> requestCaptor =
                 ArgumentCaptor.forClass(AnthropicCreateMessageRequest.class);
-        verify(mockClient).createMessage(requestCaptor.capture());
+        verify(mockClient).createMessageWithRawResponse(requestCaptor.capture());
 
         AnthropicCreateMessageRequest capturedRequest = requestCaptor.getValue();
         assertThat(capturedRequest.getMetadata()).isNull();
@@ -96,7 +98,7 @@ class AnthropicUserIdIT {
         // then
         ArgumentCaptor<AnthropicCreateMessageRequest> requestCaptor =
                 ArgumentCaptor.forClass(AnthropicCreateMessageRequest.class);
-        verify(mockClient).createMessage(requestCaptor.capture());
+        verify(mockClient).createMessageWithRawResponse(requestCaptor.capture());
 
         AnthropicCreateMessageRequest capturedRequest = requestCaptor.getValue();
         assertThat(capturedRequest.getMetadata()).isNull();
@@ -114,7 +116,12 @@ class AnthropicUserIdIT {
         mockResponse.stopReason = "end_turn";
         mockResponse.usage = createUsage();
 
-        when(mockClient.createMessage(any(AnthropicCreateMessageRequest.class))).thenReturn(mockResponse);
+        SuccessfulHttpResponse rawResponse = SuccessfulHttpResponse.builder()
+                .statusCode(200)
+                .build();
+        ParsedAndRawResponse parsedAndRawResponse = new ParsedAndRawResponse(mockResponse, rawResponse);
+
+        when(mockClient.createMessageWithRawResponse(any(AnthropicCreateMessageRequest.class))).thenReturn(parsedAndRawResponse);
         return mockClient;
     }
 

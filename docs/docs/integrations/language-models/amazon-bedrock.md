@@ -10,7 +10,7 @@ sidebar_position: 1
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-bedrock</artifactId>
-    <version>1.8.0</version>
+    <version>1.10.0</version>
 </dependency>
 ```
 
@@ -146,9 +146,15 @@ Prompt caching allows you to mark specific points in your conversation to be cac
 ### Supported Models
 
 Prompt caching is supported on the following models:
-- Claude 3.5 Sonnet
-- Claude 3.5 Haiku  
+- Claude Opus 4.5
+- Claude Opus 4.1
+- Claude Opus 4
+- Claude Sonnet 4.5
+- Claude Haiku 4.5
+- Claude Sonnet 4
 - Claude 3.7 Sonnet
+- Claude 3.5 Sonnet
+- Claude 3.5 Haiku 
 - Amazon Nova models
 
 ### Configuration

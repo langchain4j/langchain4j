@@ -480,6 +480,79 @@ EveningPlannerAgent eveningPlannerAgent = AgenticServices
 List<EveningPlan> plans = eveningPlannerAgent.plan("romantic");
 ```
 
+## Streaming agents
+
+In order to support streaming, it is also possible to create an agent that returns a `TokenStream` 
+
+```java
+public interface StreamingCreativeWriter {
+
+    @UserMessage("""
+            You are a creative writer.
+            Generate a draft of a story no more than
+            3 sentences long around the given topic.
+            Return only the story and nothing else.
+            The topic is {{topic}}.
+            """)
+    @Agent("Generates a story based on the given topic")
+    TokenStream generateStory(@V("topic") String topic);
+}
+```
+
+and then configure it to use a `StreamingChatModel`, so that the result can be consumed as it is being generated, instead of waiting for the completion of the agent invocation.
+
+```java
+StreamingCreativeWriter creativeWriter = AgenticServices.agentBuilder(StreamingCreativeWriter.class)
+        .streamingChatModel(streamingBaseModel())
+        .outputKey("story")
+        .build();
+
+TokenStream tokenStream = creativeWriter.generateStory("dragons and wizards");
+```
+
+When used inside an agentic system, a streaming agent can propagate its streaming response to the whole system only if it is the last agent to be invoked. In all other cases it behaves like an asynchronous agent, so that the subsequent agents would need to wait for the completion of its streaming response to get and use its result.
+
+For example, the following `StreamingReviewedWriter` agent 
+
+```java
+public interface StreamingReviewedWriter {
+    @Agent
+    TokenStream writeStory(@V("topic") String topic, @V("audience") String audience, @V("style") String style);
+}
+```
+
+is implemented with a sequence of 3 streaming agents
+
+```java
+StreamingCreativeWriter creativeWriter = AgenticServices.agentBuilder(StreamingCreativeWriter.class)
+        .streamingChatModel(streamingBaseModel())
+        .outputKey("story")
+        .build();
+
+StreamingAudienceEditor audienceEditor = AgenticServices.agentBuilder(StreamingAudienceEditor.class)
+        .streamingChatModel(streamingBaseModel())
+        .outputKey("story")
+        .build();
+
+StreamingStyleEditor styleEditor = AgenticServices.agentBuilder(StreamingStyleEditor.class)
+        .streamingChatModel(streamingBaseModel())
+        .outputKey("story")
+        .build();
+
+StreamingReviewedWriter novelCreator = AgenticServices.sequenceBuilder(StreamingReviewedWriter.class)
+        .subAgents(creativeWriter, audienceEditor, styleEditor)
+        .outputKey("story")
+        .build();
+```
+
+When this `novelCreator` agent is invoked
+
+```java
+TokenStream tokenStream = novelCreator.writeStory("dragons and wizards", "young adults", "fantasy");
+```
+
+the streaming responses of the first two agents are internally fully consumed before the invocation of the subsequent agents can start, and only the streaming response of the last `StyleEditor` agent is propagated as the streaming response of the whole `novelCreator` agent.
+
 ## Error handling
 
 In a complex agentic system, many things can go wrong, such as an agent failing to produce a result, an external tool not being available, or an unexpected error occurring during the execution of an agent.
@@ -539,18 +612,137 @@ UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
 
 ## Observability
 
-Tracking and logging the agents' invocations can be crucial for debugging and understanding the aggregate behavior of the whole agentic system in which those agents participate. For this reason, the `langchain4j-agentic` module allows to register two different listeners through the `beforeAgentInvocation` and `afterAgentInvocation` methods of the agent builders, that are notified respectively immediately before the invocation of an agent and immediately after it has completed its task and returned a result. For instance the following configuration of the `CreativeWriter` agent will log to the console when it is invoked and what is the story it generated.
+Tracking and logging the agents' invocations can be crucial for debugging and understanding the aggregate behavior of the whole agentic system in which those agents participate. For this reason, the `langchain4j-agentic` module allows to register an `AgentListener` through the `listener` method of the agent builders, that is notified of all agents invocations and their results, and it is defined as follows:
+
+```java
+public interface AgentListener {
+
+    default void beforeAgentInvocation(AgentRequest agentRequest) { }
+    default void afterAgentInvocation(AgentResponse agentResponse) { }
+    default void onAgentInvocationError(AgentInvocationError agentInvocationError) { }
+
+    default void afterAgenticScopeCreated(AgenticScope agenticScope) { }
+    default void beforeAgenticScopeDestroyed(AgenticScope agenticScope) { }
+
+    default void beforeToolExecution(BeforeToolExecution beforeToolExecution) { }
+    default void afterToolExecution(ToolExecution toolExecution) { }
+
+    default boolean inheritedBySubagents() {
+        return false;
+    }
+}
+```
+
+Note that all methods of this interface have a default empty implementation, so that it is possible to implement only the methods of interest. This will also allow to add new methods in future releases without breaking existing implementations.
+
+For instance the following configuration of the `CreativeWriter` agent will log to the console when it is invoked and what is the story it generated.
 
 ```java
 CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
-    .chatModel(baseModel())
-    .outputKey("story")
-    .beforeAgentInvocation(request -> System.out.println("Invoking CreativeWriter with topic: " + request.inputs().get("topic")))
-    .afterAgentInvocation(response -> System.out.println("CreativeWriter generated this story: " + response.output()))
-    .build();
+        .chatModel(baseModel())
+        .outputKey("story")
+        .listener(new AgentListener() {
+            @Override
+            public void beforeAgentInvocation(AgentRequest request) {
+                System.out.println("Invoking CreativeWriter with topic: " + request.inputs().get("topic"));
+            }
+        
+            @Override
+            public void afterAgentInvocation(AgentResponse response) {
+                System.out.println("CreativeWriter generated this story: " + response.output());
+            }
+        })
+        .build();
 ```
 
-These listeners receive as argument respectively an `AgentRequest` and an `AgentResponse` that provide useful information about the agent invocation, like its name, the inputs it received and the output it produced, together with the instance of the `AgenticScope` used for that invocation. Note that these listeners are invoked in the same thread used to also perform the agent invocation, so they are synchronous with it and should not perform long blocking operations.
+These listener methods receive as argument respectively an `AgentRequest` and an `AgentResponse` that provide useful information about the agent invocation, like its name, the inputs it received and the output it produced, together with the instance of the `AgenticScope` used for that invocation. Note that these methods are invoked in the same thread used to also perform the agent invocation, so they are synchronous with it and should not perform long blocking operations.
+
+`AgentListener`s have 2 important properties, they are:
+- **composable**, meaning that you can register multiple listeners to the same agent, by invoking the `listener` method more than once, and they will be notified in the order they were registered; 
+- **optionally hierarchical**, meaning that by default they are only local to the agent where they are directly registered, but they can also be inherited by all its subagents, simply making its `inheritedBySubagents` method to return `true`. In that case a listener registered on a top level agent will also be notified of the invocations to all its subagents at any level and composed with all listeners that these subagents could have registered on their own.
+
+### Monitoring
+
+Leveraging the observability features provided by the `AgentListener` interface, the `langchain4j-agentic` module also provides a built-in implementation of this interface, configured to be inherited by all subagents, named `AgentMonitor`, having the goal of recording all agents invocations in an in-memory tree structure, allowing to inspect the sequence of invocations and their results during or after the execution of the agentic system. This monitor can be registered as a listener to the root agent of the agentic system using the `listener` method of the agent builder.
+
+To provide a more comprehensive example, let's reconsider the loop workflow intended to generate and iteratively refine a story until it meets the required style quality, and register a few listeners on it, including an `AgentMonitor`.
+
+```java
+AgentMonitor monitor = new AgentMonitor();
+
+CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
+        .listener(new AgentListener() {
+            @Override
+            public void beforeAgentInvocation(AgentRequest request) {
+                System.out.println("Invoking CreativeWriter with topic: " + request.inputs().get("topic"));
+            }
+        })
+        .chatModel(baseModel())
+        .outputKey("story")
+        .build();
+
+StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
+        .chatModel(baseModel())
+        .outputKey("story")
+        .build();
+
+StyleScorer styleScorer = AgenticServices.agentBuilder(StyleScorer.class)
+        .name("styleScorer")
+        .chatModel(baseModel())
+        .outputKey("score")
+        .build();
+
+UntypedAgent styleReviewLoop = AgenticServices.loopBuilder()
+        .subAgents(styleScorer, styleEditor)
+        .maxIterations(5)
+        .exitCondition(agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
+        .build();
+
+UntypedAgent styledWriter = AgenticServices.sequenceBuilder()
+        .subAgents(creativeWriter, styleReviewLoop)
+        .listener(monitor)
+        .listener(new AgentListener() {
+            @Override
+            public void afterAgentInvocation(AgentResponse response) {
+                if (response.agentName().equals("styleScorer")) {
+                    System.out.println("Current score: " + response.output());
+                }
+            }
+        })
+        .outputKey("story")
+        .build();
+```
+
+Here a first listener is registered directly on the `creativeWriter` agent, so that it logs the request topic for the story to be generated only when that agent is invoked. A second listener is registered on the top level `styledWriter` agent, so that it will be also invoked for all subagents in the hierarchy of that agent at any level. That is why the `afterAgentInvocation` method of that listener checks if the agent being invoked is the `styleScorer`, and only in that case it logs the current score assigned to the style of the generated story.
+
+Finally, the `AgentMonitor` instance is also registered, and automatically composed with the other 2 listeners, as a further listener to the `styledWriter` top level agent, so that it can track all agents invocations in the whole agentic system. 
+
+When invoking the `styledWriter` agent as follows:
+
+```java
+Map<String, Object> input = Map.of(
+        "topic", "dragons and wizards",
+        "style", "comedy");
+String story = styledWriter.invoke(input);
+```
+
+the `AgentMonitor` records all agents invocations in a tree structure that also keeps track of the start time, finish time, duration, inputs and output of each agent invocation. At this point it is possible to retrieve the recorded executions from the monitor and for instance print it to the console for inspection.
+
+```java
+MonitoredExecution execution = monitor.successfulExecutions().get(0);
+System.out.println(execution);
+```
+
+so it will reveal the nested sequence of agents invocations necessary to generate and refine the story, like it follows:
+
+```
+AgentInvocation{agent=Sequential, startTime=2025-12-04T17:23:45.684601233, finishTime=2025-12-04T17:25:31.310476077, duration=105625 ms, inputs={style=comedy, topic=dragons and wiz...}, output=In the shadowy ...}
+|=> AgentInvocation{agent=generateStory, startTime=2025-12-04T17:23:45.687031946, finishTime=2025-12-04T17:23:53.216629832, duration=7529 ms, inputs={topic=dragons and wiz...}, output=In the shadowed...}
+|=> AgentInvocation{agent=reviewLoop, startTime=2025-12-04T17:23:53.218004760, finishTime=2025-12-04T17:25:31.310442197, duration=98092 ms, inputs={score=0.85, topic=dragons and wiz..., style=comedy, story=In the shadowy ...}, output=null}
+    |=> AgentInvocation{agent=scoreStyle, startTime=2025-12-04T17:23:53.218606335, finishTime=2025-12-04T17:23:58.900747685, duration=5682 ms, inputs={style=comedy, story=In the shadowed...}, output=0.25}
+    |=> AgentInvocation{agent=editStory, startTime=2025-12-04T17:23:58.901041911, finishTime=2025-12-04T17:24:58.130857588, duration=59229 ms, inputs={style=comedy, story=In the shadowed...}, output=In the shadowy ...}
+    |=> AgentInvocation{agent=scoreStyle, startTime=2025-12-04T17:24:58.130980855, finishTime=2025-12-04T17:25:31.310076714, duration=33179 ms, inputs={style=comedy, story=In the shadowy ...}, output=0.85}
+```
 
 ## Declarative API
 
@@ -624,8 +816,7 @@ In a very similar way, annotating other `static` methods in the agent interface,
 | `@ChatMemorySupplier`         | Returns the `ChatMemory` to be used by this agent.                                                                                                            |
 | `@ChatMemoryProviderSupplier` | Returns the `ChatMemoryProvider` to be used by this agent.<br/>This method requires as argument an `Object` to be used as the memoryId of the created memory. |
 | `@ContentRetrieverSupplier`   | Returns the `ContentRetriever` to be used by this agent.                                                                                                      |
-| `@BeforeAgentInvocation`      | Notified immediately before to perform an agent invocation.<br/>This method requires as argument an `AgentRequest`.                                           |
-| `@AfterAgentInvocation`       | Notified when an agent invocation has been completed.<br/>This method requires as argument an `AgentResponse`.                                                |
+| `@AgentListenerSupplier`      | Returns the `AgentListener` to be used by this agent.                                                                                                      |
 | `@RetrievalAugmentorSupplier` | Returns the `RetrievalAugmentor` to be used by this agent.                                                                                                    |
 | `@ToolsSupplier`              | Returns the tool or set of tools to be used by this agent.<br/> It can return either a single `Object` or a `Object[]`                                        |
 | `@ToolProviderSupplier`       | Returns the `ToolProvider` to be used by this agent.                                                                                                          |
@@ -711,6 +902,92 @@ Map<String, Object> input = Map.of(
 
 String story = (String) novelCreator.invoke(input);
 ```
+
+## Strongly typed inputs and outputs
+
+Up to this point, all input and output keys used to pass data to and from agents have been identified by a simple `String`. However, this approach can be error-prone, as it relies on the correct spelling of those keys. Also in this way it is not possible to strongly bind these variables to a specific types, thus obliging to type checks and casts when reading their values from the `AgenticScope`. To avoid these issues, it is optionally allowed to define strongly typed input and output keys using the `TypedKey` interface.
+
+For instance, following this approach the input and output keys used in the experts routing example discussed when presenting the conditional workflow can be defined as follows:
+
+```java
+public static class UserRequest implements TypedKey<String> { }
+
+public static class ExpertResponse implements TypedKey<String> { }
+
+public static class Category implements TypedKey<RequestCategory> {
+    @Override
+    public Category defaultValue() {
+        return Category.UNKNOWN;
+    }
+}
+```
+
+Here both the `UserRequest` and `ExpertResponse` keys are strongly typed as `String`, while the `Category` key is typed as `RequestCategory` enum, and also provides a default value to be used when that key is not present in the `AgenticScope`. Using these typed keys, the `CategoryRouter` agent, used to classify the user's request, can be redefined as follows:
+
+```java
+public interface CategoryRouter {
+
+    @UserMessage("""
+        Analyze the following user request and categorize it as 'legal', 'medical' or 'technical'.
+        In case the request doesn't belong to any of those categories categorize it as 'unknown'.
+        Reply with only one of those words and nothing else.
+        The user request is: '{{UserRequest}}'.
+        """)
+    @Agent(description = "Categorizes a user request", typedOutputKey = Category.class)
+    RequestCategory classify(@K(UserRequest.class) String request);
+}
+```
+
+The argument of the `classify` method is now annotated with the `@K` annotation, indicating that its value must be taken from the `AgenticScope` variable identified by the `UserRequest` typed key. Similarly, the output of this agent is written to the `AgenticScope` variable identified by the `Category` typed key. Note that the prompt template has also been updated to use the name of the typed key, which by default corresponds to the simple name of the class implementing the `TypedKey` interface, `{{UserRequest}}` in this case, but this convention can be overridden also implementing the `name()` method of the `TypedKey` interface. In a similar way, one of the 3 expert agents, the `MedicalExpert` one, can be redefined as follows:
+
+```java
+public interface MedicalExpert {
+
+    @UserMessage("""
+        You are a medical expert.
+        Analyze the following user request under a medical point of view and provide the best possible answer.
+        The user request is {{UserRequest}}.
+        """)
+    @Agent("A medical expert")
+    String medical(@K(UserRequest.class) String request);
+}
+```
+
+At this point it is possible to create the whole agentic system using these typed keys to identify the input and output variables in the `AgenticScope`.
+
+```java
+CategoryRouter routerAgent = AgenticServices.agentBuilder(CategoryRouter.class)
+        .chatModel(baseModel())
+        .build();
+
+MedicalExpert medicalExpert = AgenticServices.agentBuilder(MedicalExpert.class)
+        .chatModel(baseModel())
+        .outputKey(ExpertResponse.class)
+        .build();
+LegalExpert legalExpert = AgenticServices.agentBuilder(LegalExpert.class)
+        .chatModel(baseModel())
+        .outputKey(ExpertResponse.class)
+        .build();
+TechnicalExpert technicalExpert = AgenticServices.agentBuilder(TechnicalExpert.class)
+        .chatModel(baseModel())
+        .outputKey(ExpertResponse.class)
+        .build();
+
+UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
+        .subAgents(scope -> scope.readState(Category.class) == Category.MEDICAL, medicalExpert)
+        .subAgents(scope -> scope.readState(Category.class) == Category.LEGAL, legalExpert)
+        .subAgents(scope -> scope.readState(Category.class) == Category.TECHNICAL, technicalExpert)
+        .build();
+
+ExpertChatbot expertChatbot = AgenticServices.sequenceBuilder(ExpertChatbot.class)
+        .subAgents(routerAgent, expertsAgent)
+        .outputKey(ExpertResponse.class)
+        .build();
+
+String response = expertChatbot.ask("I broke my leg what should I do");
+```
+
+The `routerAgent` doesn't need to programmatically specify the output key, since it is already defined in its interface through the `typedOutputKey` attribute of the `@Agent` annotation, while the 3 expert agents still need to specify it programmatically, since their interfaces don't define it, so as usual it is possible to use either one of the 2 approaches. Also, it worth to note that, when reading the values from the `AgenticScope`, like in the conditional workflow definition, there is no need to perform any type check or cast, since the typed keys already provide the necessary type information.
 
 ## Memory and context engineering
 

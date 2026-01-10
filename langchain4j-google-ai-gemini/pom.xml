@@ -5,12 +5,12 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.9.0-beta16-SNAPSHOT</version>
+        <version>1.11.0-beta19-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>langchain4j-google-ai-gemini</artifactId>
-    <version>1.9.0-SNAPSHOT</version>
+    <version>1.11.0-SNAPSHOT</version>
     <name>LangChain4j :: Integration :: Google AI Gemini</name>
 
     <developers>
@@ -22,7 +22,6 @@
     </developers>
 
     <properties>
-        <skipGeminiITs>false</skipGeminiITs>
         <maven.compiler.parameters>true</maven.compiler.parameters>
     </properties>
 
@@ -31,19 +30,19 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.9.0-SNAPSHOT</version>
+            <version>1.11.0-SNAPSHOT</version>
         </dependency>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-http-client</artifactId>
-            <version>1.9.0-SNAPSHOT</version>
+            <version>1.11.0-SNAPSHOT</version>
         </dependency>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-http-client-jdk</artifactId>
-            <version>1.9.0-SNAPSHOT</version>
+            <version>1.11.0-SNAPSHOT</version>
             <scope>runtime</scope>
         </dependency>
 
@@ -65,21 +64,9 @@
         <!-- test dependencies -->
 
         <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-engine</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-params</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.9.0-SNAPSHOT</version>
+            <version>1.11.0-SNAPSHOT</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>
@@ -88,7 +75,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-http-client</artifactId>
-            <version>1.9.0-SNAPSHOT</version>
+            <version>1.11.0-SNAPSHOT</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>
@@ -97,14 +84,14 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
-            <version>1.9.0-SNAPSHOT</version>
+            <version>1.11.0-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
-            <version>1.9.0-SNAPSHOT</version>
+            <version>1.11.0-SNAPSHOT</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>
@@ -118,17 +105,5 @@
         </dependency>
 
     </dependencies>
-
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-failsafe-plugin</artifactId>
-                <configuration>
-                    <skipTests>${skipGeminiITs}</skipTests>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
 
 </project>

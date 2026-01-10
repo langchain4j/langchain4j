@@ -53,14 +53,14 @@ public class ConditionalAgentServiceImpl<T> extends AbstractServiceBuilder<T, Co
 
     @Override
     public ConditionalAgentServiceImpl<T> subAgents(Predicate<AgenticScope> condition, List<AgentExecutor> agentExecutors) {
+        super.subAgents(agentExecutors);
         conditionalAgents.add(new ConditionalAgent(condition, agentExecutors.stream().map(AgentInstance.class::cast).toList()));
         return this;
     }
 
     @Override
     public ConditionalAgentServiceImpl<T> subAgent(Predicate<AgenticScope> condition, AgentExecutor agentExecutor) {
-        conditionalAgents.add(new ConditionalAgent(condition, List.of(agentExecutor)));
-        return this;
+        return subAgents(condition, List.of(agentExecutor));
     }
 
     @Override

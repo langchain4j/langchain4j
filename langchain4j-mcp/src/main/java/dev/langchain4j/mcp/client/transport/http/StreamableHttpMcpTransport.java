@@ -6,11 +6,11 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.langchain4j.mcp.client.protocol.McpClientMessage;
-import dev.langchain4j.mcp.client.protocol.McpInitializationNotification;
-import dev.langchain4j.mcp.client.protocol.McpInitializeRequest;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
+import dev.langchain4j.mcp.protocol.McpInitializationNotification;
+import dev.langchain4j.mcp.protocol.McpInitializeRequest;
+import dev.langchain4j.mcp.protocol.McpJsonRpcMessage;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
@@ -25,6 +25,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
+import javax.net.ssl.SSLContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,6 +42,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
     private final AtomicReference<CompletableFuture<JsonNode>> initializeInProgress = new AtomicReference<>(null);
     private volatile McpOperationHandler operationHandler;
     private final HttpClient httpClient;
+    private final SSLContext sslContext;
     private McpInitializeRequest initializeRequest;
     private final AtomicReference<String> mcpSessionId = new AtomicReference<>();
 
@@ -51,11 +53,15 @@ public class StreamableHttpMcpTransport implements McpTransport {
         trafficLog = getOrDefault(builder.logger, DEFAULT_TRAFFIC_LOG);
         Duration timeout = getOrDefault(builder.timeout, Duration.ofSeconds(60));
         customHeadersSupplier = getOrDefault(builder.customHeadersSupplier, () -> Map::of);
-        HttpClient.Builder clientBuilder = HttpClient.newBuilder();
+        sslContext = builder.sslContext;
+        HttpClient.Builder clientBuilder = HttpClient.newBuilder().connectTimeout(timeout);
         if (builder.executor != null) {
             clientBuilder.executor(builder.executor);
         }
-        httpClient = clientBuilder.connectTimeout(timeout).build();
+        if (sslContext != null) {
+            clientBuilder.sslContext(sslContext);
+        }
+        httpClient = clientBuilder.build();
     }
 
     @Override
@@ -77,7 +83,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
                         .thenCompose(nullNode -> CompletableFuture.completedFuture(originalResponse)));
     }
 
-    private HttpRequest createRequest(McpClientMessage message) throws JsonProcessingException {
+    private HttpRequest createRequest(McpJsonRpcMessage message) throws JsonProcessingException {
         String body = OBJECT_MAPPER.writeValueAsString(message);
         HttpRequest.BodyPublisher bodyPublisher = HttpRequest.BodyPublishers.ofString(body);
         if (logRequests) {
@@ -100,12 +106,12 @@ public class StreamableHttpMcpTransport implements McpTransport {
     }
 
     @Override
-    public CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage operation) {
+    public CompletableFuture<JsonNode> executeOperationWithResponse(McpJsonRpcMessage operation) {
         return execute(operation, operation.getId());
     }
 
     @Override
-    public void executeOperationWithoutResponse(McpClientMessage operation) {
+    public void executeOperationWithoutResponse(McpJsonRpcMessage operation) {
         execute(operation, null);
     }
 
@@ -119,14 +125,16 @@ public class StreamableHttpMcpTransport implements McpTransport {
         // nothing to do here, we don't maintain a long-running SSE channel (yet)
     }
 
-    private CompletableFuture<JsonNode> execute(McpClientMessage message, Long id) {
+    private CompletableFuture<JsonNode> execute(McpJsonRpcMessage message, Long id) {
         return execute(message, id, false);
     }
 
-    private CompletableFuture<JsonNode> execute(McpClientMessage message, Long id, boolean isRetry) {
-        CompletableFuture<JsonNode> reinitializeInProgress = this.initializeInProgress.get();
-        if (reinitializeInProgress != null) {
-            reinitializeInProgress.join();
+    private CompletableFuture<JsonNode> execute(McpJsonRpcMessage message, Long id, boolean isRetry) {
+        if (!(message instanceof McpInitializeRequest)) {
+            CompletableFuture<JsonNode> reinitializeInProgress = this.initializeInProgress.get();
+            if (reinitializeInProgress != null) {
+                reinitializeInProgress.join();
+            }
         }
         HttpRequest request = null;
         try {
@@ -232,6 +240,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         private boolean logRequests = false;
         private boolean logResponses = false;
         private Logger logger;
+        private SSLContext sslContext;
 
         /**
          * The URL of the MCP server.
@@ -301,6 +310,15 @@ public class StreamableHttpMcpTransport implements McpTransport {
          */
         public StreamableHttpMcpTransport.Builder executor(Executor executor) {
             this.executor = executor;
+            return this;
+        }
+
+        /**
+         * Supplies a custom {@link SSLContext} used when establishing HTTPS connections to the MCP server,
+         * allowing private CAs or certificates.
+         */
+        public StreamableHttpMcpTransport.Builder sslContext(SSLContext sslContext) {
+            this.sslContext = sslContext;
             return this;
         }
 

@@ -95,6 +95,97 @@ class OpenAiStreamingChatModelDeepSeekThinkingIT {
                 .doesNotContain(jsonify(aiMessage1.thinking()));
     }
 
+    @Test
+    void should_send_thinking_in_follow_up_request_when_enabled() {
+
+        // given
+        boolean returnThinking = true;
+
+        StreamingChatModel model = OpenAiStreamingChatModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
+                .baseUrl("https://api.deepseek.com/v1")
+                .apiKey(System.getenv("DEEPSEEK_API_KEY"))
+                .modelName("deepseek-reasoner")
+
+                .returnThinking(returnThinking)
+                .sendThinking(true)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        UserMessage userMessage1 = UserMessage.from("What is the capital of Germany?");
+
+        // when
+        TestStreamingChatResponseHandler spyHandler1 = spy(new TestStreamingChatResponseHandler());
+        model.chat(List.of(userMessage1), spyHandler1);
+
+        // then
+        AiMessage aiMessage1 = spyHandler1.get().aiMessage();
+        assertThat(aiMessage1.text()).containsIgnoringCase("Berlin");
+        assertThat(aiMessage1.thinking()).isNotBlank();
+
+        // given
+        UserMessage userMessage2 = UserMessage.from("What is the capital of France?");
+
+        // when
+        TestStreamingChatResponseHandler handler2 = new TestStreamingChatResponseHandler();
+        model.chat(List.of(userMessage1, aiMessage1, userMessage2), handler2);
+
+        // then
+        List<HttpRequest> httpRequests = spyingHttpClient.requests();
+        assertThat(httpRequests).hasSize(2);
+        String secondBody = httpRequests.get(1).body();
+        assertThat(secondBody)
+                .contains("\"reasoning_content\"")
+                .contains(jsonify(aiMessage1.thinking()));
+    }
+
+    @Test
+    void should_use_custom_reasoning_content_field_name_in_follow_up_request() {
+
+        // given
+        boolean returnThinking = true;
+
+        StreamingChatModel model = OpenAiStreamingChatModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
+                .baseUrl("https://api.deepseek.com/v1")
+                .apiKey(System.getenv("DEEPSEEK_API_KEY"))
+                .modelName("deepseek-reasoner")
+
+                .returnThinking(returnThinking)
+                .sendThinking(true, "my_reason")
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        UserMessage userMessage1 = UserMessage.from("What is the capital of Germany?");
+
+        // when
+        TestStreamingChatResponseHandler spyHandler1 = spy(new TestStreamingChatResponseHandler());
+        model.chat(List.of(userMessage1), spyHandler1);
+
+        // then
+        AiMessage aiMessage1 = spyHandler1.get().aiMessage();
+        assertThat(aiMessage1.text()).containsIgnoringCase("Berlin");
+        assertThat(aiMessage1.thinking()).isNotBlank();
+
+        // given
+        UserMessage userMessage2 = UserMessage.from("What is the capital of France?");
+
+        // when
+        TestStreamingChatResponseHandler handler2 = new TestStreamingChatResponseHandler();
+        model.chat(List.of(userMessage1, aiMessage1, userMessage2), handler2);
+
+        // then
+        List<HttpRequest> httpRequests = spyingHttpClient.requests();
+        assertThat(httpRequests).hasSize(2);
+        String secondBody = httpRequests.get(1).body();
+        assertThat(secondBody)
+                .contains("\"my_reason\"")
+                .contains(jsonify(aiMessage1.thinking()))
+                .doesNotContain("\"reasoning_content\"");
+    }
+
     @ParameterizedTest
     @NullSource
     @ValueSource(booleans = false)

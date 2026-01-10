@@ -234,6 +234,20 @@ McpToolProvider toolProvider = McpToolProvider.builder()
         .build();
 ```
 
+### MCP tool metadata
+
+The MCP protocol allows servers to provide additional metadata for each tool either in the form of annotations,
+or in the `_meta` field of a tool definition.
+LangChain4j exposes all of this metadata through the map stored inside `ToolSpecification.metadata()` method.
+Annotations are stored in the map using keys that can be found as 
+constants in the `dev.langchain4j.mcp.client.McpToolMetadataKeys` class.
+Contents of the `_meta` field are stored using their original keys, the JSON values are serialized
+as nested maps.
+
+The `title` field that exists directly in the MCP tool definition is exposed under 
+`McpToolMetadataKeys.TITLE` key in the metadata map to distinguish it from the title
+that is retrieved from annotations - that one is exposed under the `McpToolMetadataKeys.ANNOTATION_TITLE` key.
+
 ## Logging
 
 The MCP protocol also defines a way for the server to send log messages to
