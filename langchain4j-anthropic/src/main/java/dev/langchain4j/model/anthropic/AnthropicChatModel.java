@@ -497,15 +497,15 @@ public class AnthropicChatModel implements ChatModel {
     private ChatResponse createChatResponse(ParsedAndRawResponse parsedAndRawResponse) {
         AnthropicCreateMessageResponse response = parsedAndRawResponse.parsedResponse();
         AnthropicChatResponseMetadata responseMetadata = AnthropicChatResponseMetadata.builder()
-                .id(response.id)
-                .modelName(response.model)
-                .tokenUsage(toTokenUsage(response.usage))
-                .finishReason(toFinishReason(response.stopReason))
+                .id(response.id())
+                .modelName(response.model())
+                .tokenUsage(toTokenUsage(response.usage()))
+                .finishReason(toFinishReason(response.stopReason()))
                 .rawHttpResponse(parsedAndRawResponse.rawResponse())
                 .build();
 
         return ChatResponse.builder()
-                .aiMessage(toAiMessage(response.content, returnThinking, returnServerToolResults))
+                .aiMessage(toAiMessage(response.content(), returnThinking, returnServerToolResults))
                 .metadata(responseMetadata)
                 .build();
     }
