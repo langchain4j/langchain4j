@@ -815,6 +815,10 @@ More details about RAG can be found [here](/tutorials/rag).
 
 More RAG examples can be found [here](https://github.com/langchain4j/langchain4j-examples/tree/main/rag-examples/src/main/java).
 
+### RAG as a Tool 
+
+By default, content retrieval is executed for every user query.
+Retrieval can instead be treated as a tool-like capability that is invoked only when the model determines that additional context is required. This conditional retrieval approach avoids unnecessary searches for simple queries.
 
 ## Auto-Moderation
 
