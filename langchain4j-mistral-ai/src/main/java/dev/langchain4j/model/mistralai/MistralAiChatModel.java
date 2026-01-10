@@ -19,19 +19,17 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionRequest;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionResponse;
 import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
 import dev.langchain4j.model.mistralai.internal.client.ParsedAndRawResponse;
 import dev.langchain4j.model.mistralai.spi.MistralAiChatModelBuilderFactory;
-import org.slf4j.Logger;
-
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
 
 /**
  * Represents a Mistral AI Chat Model with a chat completion interface, such as open-mistral-7b and open-mixtral-8x7b
@@ -102,13 +100,14 @@ public class MistralAiChatModel implements ChatModel {
 
         MistralAiChatCompletionResponse mistralAiResponse = response.parsedResponse();
 
-         return ChatResponse.builder()
+        return ChatResponse.builder()
                 .aiMessage(aiMessageFrom(mistralAiResponse))
                 .metadata(MistralAiChatResponseMetadata.builder()
                         .id(mistralAiResponse.getId())
                         .modelName(mistralAiResponse.getModel())
                         .tokenUsage(tokenUsageFrom(mistralAiResponse.getUsage()))
-                        .finishReason(finishReasonFrom(mistralAiResponse.getChoices().get(0).getFinishReason()))
+                        .finishReason(finishReasonFrom(
+                                mistralAiResponse.getChoices().get(0).getFinishReason()))
                         .rawHttpResponse(response.rawResponse())
                         .build())
                 .build();

@@ -11,16 +11,16 @@ import static dev.langchain4j.model.mistralai.internal.client.MistralAiJsonUtils
 import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.*;
 
 import dev.langchain4j.Internal;
-import dev.langchain4j.http.client.SuccessfulHttpResponse;
-import dev.langchain4j.http.client.sse.ServerSentEventContext;
-import dev.langchain4j.http.client.sse.CancellationUnsupportedHandle;
-import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.sse.CancellationUnsupportedHandle;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
+import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.mistralai.MistralAiChatResponseMetadata;
@@ -30,7 +30,6 @@ import dev.langchain4j.model.mistralai.internal.api.MistralAiToolCall;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiUsage;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
@@ -57,7 +56,8 @@ class MistralAiServerSentEventListener implements ServerSentEventListener {
     final Queue<ServerSentEvent> rawServerSentEvents = new ConcurrentLinkedQueue<>();
 
     public MistralAiServerSentEventListener(
-            StreamingChatResponseHandler handler, BiFunction<String, List<ToolExecutionRequest>, AiMessage> toResponse) {
+            StreamingChatResponseHandler handler,
+            BiFunction<String, List<ToolExecutionRequest>, AiMessage> toResponse) {
         this.contentBuilder = new StringBuffer();
         this.handler = handler;
         this.toResponse = toResponse;

@@ -52,7 +52,8 @@ public class DefaultMistralAiClient extends MistralAiClient {
 
         if (builder.logRequests != null && builder.logRequests
                 || builder.logResponses != null && builder.logResponses) {
-            this.httpClient = new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses, builder.logger);
+            this.httpClient =
+                    new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses, builder.logger);
         } else {
             this.httpClient = httpClient;
         }
@@ -67,7 +68,8 @@ public class DefaultMistralAiClient extends MistralAiClient {
     }
 
     @Override
-    public ParsedAndRawResponse<MistralAiChatCompletionResponse> chatCompletionWithRawResponse(MistralAiChatCompletionRequest request) {
+    public ParsedAndRawResponse<MistralAiChatCompletionResponse> chatCompletionWithRawResponse(
+            MistralAiChatCompletionRequest request) {
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl, "chat/completions")
@@ -78,13 +80,13 @@ public class DefaultMistralAiClient extends MistralAiClient {
                 .build();
 
         SuccessfulHttpResponse rawResponse = httpClient.execute(httpRequest);
-        MistralAiChatCompletionResponse parsedResponse = fromJson(rawResponse.body(), MistralAiChatCompletionResponse.class);
+        MistralAiChatCompletionResponse parsedResponse =
+                fromJson(rawResponse.body(), MistralAiChatCompletionResponse.class);
         return new ParsedAndRawResponse<>(parsedResponse, rawResponse);
     }
 
     @Override
-    public void streamingChatCompletion(
-            MistralAiChatCompletionRequest request, StreamingChatResponseHandler handler) {
+    public void streamingChatCompletion(MistralAiChatCompletionRequest request, StreamingChatResponseHandler handler) {
         ensureNotEmpty(request.getMessages(), "messages");
 
         HttpRequest httpRequest = HttpRequest.builder()
@@ -113,7 +115,8 @@ public class DefaultMistralAiClient extends MistralAiClient {
     }
 
     @Override
-    public ParsedAndRawResponse<MistralAiChatCompletionResponse> fimCompletionWithRawResponse(MistralAiFimCompletionRequest request) {
+    public ParsedAndRawResponse<MistralAiChatCompletionResponse> fimCompletionWithRawResponse(
+            MistralAiFimCompletionRequest request) {
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl, "fim/completions")
@@ -124,7 +127,8 @@ public class DefaultMistralAiClient extends MistralAiClient {
                 .build();
 
         SuccessfulHttpResponse rawResponse = httpClient.execute(httpRequest);
-        MistralAiChatCompletionResponse parsedResponse = fromJson(rawResponse.body(), MistralAiChatCompletionResponse.class);
+        MistralAiChatCompletionResponse parsedResponse =
+                fromJson(rawResponse.body(), MistralAiChatCompletionResponse.class);
         return new ParsedAndRawResponse<>(parsedResponse, rawResponse);
     }
 
@@ -151,7 +155,8 @@ public class DefaultMistralAiClient extends MistralAiClient {
     }
 
     @Override
-    public ParsedAndRawResponse<MistralAiEmbeddingResponse> embeddingWithRawResponse(MistralAiEmbeddingRequest request) {
+    public ParsedAndRawResponse<MistralAiEmbeddingResponse> embeddingWithRawResponse(
+            MistralAiEmbeddingRequest request) {
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl, "embeddings")

@@ -14,7 +14,8 @@ public abstract class MistralAiClient {
 
     public abstract MistralAiChatCompletionResponse chatCompletion(MistralAiChatCompletionRequest request);
 
-    public ParsedAndRawResponse<MistralAiChatCompletionResponse> chatCompletionWithRawResponse(MistralAiChatCompletionRequest request) {
+    public ParsedAndRawResponse<MistralAiChatCompletionResponse> chatCompletionWithRawResponse(
+            MistralAiChatCompletionRequest request) {
         MistralAiChatCompletionResponse parsedResponse = chatCompletion(request);
         return new ParsedAndRawResponse<>(parsedResponse, null);
     }
@@ -24,7 +25,8 @@ public abstract class MistralAiClient {
 
     public abstract MistralAiEmbeddingResponse embedding(MistralAiEmbeddingRequest request);
 
-    public ParsedAndRawResponse<MistralAiEmbeddingResponse> embeddingWithRawResponse(MistralAiEmbeddingRequest request) {
+    public ParsedAndRawResponse<MistralAiEmbeddingResponse> embeddingWithRawResponse(
+            MistralAiEmbeddingRequest request) {
         MistralAiEmbeddingResponse parsedResponse = embedding(request);
         return new ParsedAndRawResponse<>(parsedResponse, null);
     }
@@ -35,7 +37,8 @@ public abstract class MistralAiClient {
 
     public abstract MistralAiChatCompletionResponse fimCompletion(MistralAiFimCompletionRequest request);
 
-    public ParsedAndRawResponse<MistralAiChatCompletionResponse> fimCompletionWithRawResponse(MistralAiFimCompletionRequest request) {
+    public ParsedAndRawResponse<MistralAiChatCompletionResponse> fimCompletionWithRawResponse(
+            MistralAiFimCompletionRequest request) {
         MistralAiChatCompletionResponse parsedResponse = fimCompletion(request);
         return new ParsedAndRawResponse<>(parsedResponse, null);
     }

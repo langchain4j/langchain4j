@@ -1,12 +1,12 @@
 package dev.langchain4j.model.mistralai;
 
+import static dev.langchain4j.internal.Utils.copy;
+
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import java.util.List;
 import java.util.Objects;
-
-import static dev.langchain4j.internal.Utils.copy;
 
 public class MistralAiChatResponseMetadata extends ChatResponseMetadata {
     private final SuccessfulHttpResponse rawHttpResponse;
