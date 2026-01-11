@@ -56,6 +56,12 @@
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-http-client-apache</artifactId>
+                <version>${langchain4j.stable.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-kotlin</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
