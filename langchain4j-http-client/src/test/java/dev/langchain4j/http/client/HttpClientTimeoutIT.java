@@ -75,7 +75,6 @@ public abstract class HttpClientTimeoutIT {
                     .extracting(Throwable::getMessage)
                     .asString()
                     .containsAnyOf("time", "out", "1000", "MILLISECONDS");
-
         }
     }
 
@@ -96,8 +95,7 @@ public abstract class HttpClientTimeoutIT {
                     .build();
 
             // when
-            record StreamingResult(Throwable throwable, Set<Thread> threads) {
-            }
+            record StreamingResult(Throwable throwable, Set<Thread> threads) {}
 
             CompletableFuture<StreamingResult> completableFuture = new CompletableFuture<>();
 
