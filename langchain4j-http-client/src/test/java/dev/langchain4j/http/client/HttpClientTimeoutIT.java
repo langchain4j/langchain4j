@@ -48,7 +48,6 @@ public abstract class HttpClientTimeoutIT {
         return 250;
     }
 
-
     @BeforeEach
     void beforeEach() {
         wireMockServer = new WireMockServer(WireMockConfiguration.options().port(WIREMOCK_PORT));
