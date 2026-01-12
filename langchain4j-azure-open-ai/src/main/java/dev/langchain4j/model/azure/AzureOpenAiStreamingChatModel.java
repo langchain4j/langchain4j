@@ -12,7 +12,7 @@ import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.model.ModelProvider.AZURE_OPEN_AI;
+import static dev.langchain4j.model.ModelProvider.MICROSOFT_FOUNDRY;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupAsyncClient;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toAzureOpenAiResponseFormat;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toOpenAiMessages;
@@ -344,7 +344,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
 
     @Override
     public ModelProvider provider() {
-        return AZURE_OPEN_AI;
+        return MICROSOFT_FOUNDRY;
     }
 
     public static Builder builder() {

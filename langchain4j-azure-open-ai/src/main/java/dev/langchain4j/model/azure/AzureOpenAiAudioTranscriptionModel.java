@@ -1,6 +1,6 @@
 package dev.langchain4j.model.azure;
 
-import static dev.langchain4j.model.ModelProvider.AZURE_OPEN_AI;
+import static dev.langchain4j.model.ModelProvider.MICROSOFT_FOUNDRY;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
@@ -211,7 +211,7 @@ public class AzureOpenAiAudioTranscriptionModel implements AudioTranscriptionMod
 
     @Override
     public ModelProvider provider() {
-        return AZURE_OPEN_AI;
+        return MICROSOFT_FOUNDRY;
     }
 
     /**

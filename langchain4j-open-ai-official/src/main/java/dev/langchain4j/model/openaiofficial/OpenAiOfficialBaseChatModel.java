@@ -150,7 +150,7 @@ abstract class OpenAiOfficialBaseChatModel {
         this.modelProvider =
                 detectModelProvider(isAzure, isGitHubModels, baseUrl, azureDeploymentName, azureOpenAIServiceVersion);
 
-        if (this.modelProvider.equals(ModelProvider.AZURE_OPEN_AI)
+        if (this.modelProvider.equals(ModelProvider.MICROSOFT_FOUNDRY)
                 || this.modelProvider.equals(ModelProvider.GITHUB_MODELS)) {
             if (this.defaultRequestParameters.modelName() != null
                     && !this.defaultRequestParameters.modelName().equals(modelName)) {
