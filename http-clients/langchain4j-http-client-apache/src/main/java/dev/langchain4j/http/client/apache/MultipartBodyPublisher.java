@@ -1,17 +1,16 @@
 package dev.langchain4j.http.client.apache;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import dev.langchain4j.Experimental;
 import dev.langchain4j.http.client.FormDataFile;
-import org.apache.hc.core5.http.ContentType;
-import org.apache.hc.core5.http.HttpEntity;
-import org.apache.hc.core5.http.io.entity.ByteArrayEntity;
-
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.io.entity.ByteArrayEntity;
 
 @Experimental
 public class MultipartBodyPublisher {
@@ -48,7 +47,8 @@ public class MultipartBodyPublisher {
         parts.add(end.getBytes(UTF_8));
     }
 
-    static HttpEntity buildMultipartEntity(Map<String, String> formDataFields, Map<String, FormDataFile> formDataFiles) {
+    static HttpEntity buildMultipartEntity(
+            Map<String, String> formDataFields, Map<String, FormDataFile> formDataFiles) {
         MultipartBodyPublisher publisher = new MultipartBodyPublisher();
 
         for (Map.Entry<String, String> entry : formDataFields.entrySet()) {

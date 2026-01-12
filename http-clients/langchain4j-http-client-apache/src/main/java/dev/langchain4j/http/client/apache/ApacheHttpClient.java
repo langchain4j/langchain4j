@@ -27,6 +27,9 @@ import java.util.concurrent.Executors;
 import org.apache.hc.client5.http.async.methods.SimpleHttpRequest;
 import org.apache.hc.client5.http.async.methods.SimpleHttpResponse;
 import org.apache.hc.client5.http.async.methods.SimpleRequestBuilder;
+import org.apache.hc.client5.http.classic.methods.HttpDelete;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.async.CloseableHttpAsyncClient;
 import org.apache.hc.client5.http.impl.async.HttpAsyncClients;
@@ -42,9 +45,6 @@ import org.apache.hc.core5.http.HttpResponse;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.hc.core5.util.Timeout;
-import org.apache.hc.client5.http.classic.methods.HttpPost;
-import org.apache.hc.client5.http.classic.methods.HttpGet;
-import org.apache.hc.client5.http.classic.methods.HttpDelete;
 
 public class ApacheHttpClient implements HttpClient {
 
@@ -61,10 +61,12 @@ public class ApacheHttpClient implements HttpClient {
         RequestConfig.Builder requestConfigBuilder = RequestConfig.custom();
 
         if (builder.connectTimeout() != null) {
-            requestConfigBuilder.setConnectionRequestTimeout(Timeout.ofMilliseconds(builder.connectTimeout().toMillis()));
+            requestConfigBuilder.setConnectionRequestTimeout(
+                    Timeout.ofMilliseconds(builder.connectTimeout().toMillis()));
         }
         if (builder.readTimeout() != null) {
-            requestConfigBuilder.setResponseTimeout(Timeout.ofMilliseconds(builder.readTimeout().toMillis()));
+            requestConfigBuilder.setResponseTimeout(
+                    Timeout.ofMilliseconds(builder.readTimeout().toMillis()));
         }
 
         RequestConfig requestConfig = requestConfigBuilder.build();
@@ -136,9 +138,7 @@ public class ApacheHttpClient implements HttpClient {
             }
 
             @Override
-            public void cancelled() {
-
-            }
+            public void cancelled() {}
         });
     }
 
@@ -170,7 +170,7 @@ public class ApacheHttpClient implements HttpClient {
                 return "";
             }
             try (InputStream inputStream = entity.getContent();
-                 BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
                 return reader.lines().collect(joining(System.lineSeparator()));
             }
         } catch (Exception e) {
@@ -184,18 +184,20 @@ public class ApacheHttpClient implements HttpClient {
     }
 
     private ClassicHttpRequest toApacheRequest(HttpRequest request) {
-        ClassicHttpRequest apacheRequest = switch (request.method()) {
-            case GET -> new HttpGet(request.url());
-            case DELETE -> new HttpDelete(request.url());
-            case POST -> new HttpPost(request.url());
-        };
+        ClassicHttpRequest apacheRequest =
+                switch (request.method()) {
+                    case GET -> new HttpGet(request.url());
+                    case DELETE -> new HttpDelete(request.url());
+                    case POST -> new HttpPost(request.url());
+                };
 
         if (request.formDataFields().isEmpty() && request.formDataFiles().isEmpty()) {
             if (request.body() != null) {
                 apacheRequest.setEntity(new StringEntity(request.body(), ContentType.APPLICATION_JSON));
             }
         } else {
-            HttpEntity entity = MultipartBodyPublisher.buildMultipartEntity(request.formDataFields(), request.formDataFiles());
+            HttpEntity entity =
+                    MultipartBodyPublisher.buildMultipartEntity(request.formDataFields(), request.formDataFiles());
             apacheRequest.setEntity(entity);
         }
 
@@ -226,11 +228,13 @@ public class ApacheHttpClient implements HttpClient {
             }
         } else {
             builder = SimpleRequestBuilder.post(uri);
-            HttpEntity entity = MultipartBodyPublisher.buildMultipartEntity(request.formDataFields(), request.formDataFiles());
+            HttpEntity entity =
+                    MultipartBodyPublisher.buildMultipartEntity(request.formDataFields(), request.formDataFiles());
             try {
                 byte[] bytes = EntityUtils.toByteArray(entity);
                 String contentTypeStr = entity.getContentType();
-                ContentType contentType = contentTypeStr != null ? ContentType.parse(contentTypeStr) : ContentType.MULTIPART_FORM_DATA;
+                ContentType contentType =
+                        contentTypeStr != null ? ContentType.parse(contentTypeStr) : ContentType.MULTIPART_FORM_DATA;
                 builder.setBody(bytes, contentType);
             } catch (IOException e) {
                 throw new RuntimeException(e);

@@ -1,7 +1,6 @@
 package dev.langchain4j.http.client.apache;
 
 import dev.langchain4j.http.client.HttpClientBuilder;
-
 import java.time.Duration;
 
 public class ApacheHttpClientBuilder implements HttpClientBuilder {

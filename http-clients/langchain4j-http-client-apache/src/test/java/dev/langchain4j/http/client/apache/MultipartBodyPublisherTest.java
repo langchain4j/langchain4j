@@ -1,13 +1,12 @@
 package dev.langchain4j.http.client.apache;
 
-import dev.langchain4j.http.client.FormDataFile;
-import org.junit.jupiter.api.Test;
-
-import java.io.ByteArrayOutputStream;
-import java.util.List;
-
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import dev.langchain4j.http.client.FormDataFile;
+import java.io.ByteArrayOutputStream;
+import java.util.List;
+import org.junit.jupiter.api.Test;
 
 class MultipartBodyPublisherTest {
 
@@ -24,7 +23,7 @@ class MultipartBodyPublisherTest {
                 """
                         ------LangChain4j
                         Content-Disposition: form-data; name="field1"
-                        
+
                         value1
                         ------LangChain4j--
                         """;
@@ -48,7 +47,7 @@ class MultipartBodyPublisherTest {
                         ------LangChain4j
                         Content-Disposition: form-data; name="file"; filename="test.txt"
                         Content-Type: text/plain
-                        
+
                         hello
                         ------LangChain4j--
                         """;
@@ -72,12 +71,12 @@ class MultipartBodyPublisherTest {
                 """
                         ------LangChain4j
                         Content-Disposition: form-data; name="field1"
-                        
+
                         value1
                         ------LangChain4j
                         Content-Disposition: form-data; name="file"; filename="test.txt"
                         Content-Type: text/plain
-                        
+
                         hello
                         ------LangChain4j--
                         """;
