@@ -3,6 +3,7 @@ package dev.langchain4j.model.openai.internal;
 import static dev.langchain4j.http.client.HttpMethod.GET;
 import static dev.langchain4j.http.client.HttpMethod.POST;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.time.Duration.ofSeconds;
 
@@ -88,11 +89,13 @@ public class DefaultOpenAiClient extends OpenAiClient {
     }
 
     private Map<String, String> buildRequestHeaders() {
-        Map<String, String> headers = new HashMap<>(defaultHeaders);
-        Map<String, String> customHeaders = customHeadersSupplier.get();
-        if (customHeaders != null) {
-            headers.putAll(customHeaders);
+        Map<String, String> dynamicHeaders = customHeadersSupplier.get();
+        if (isNullOrEmpty(dynamicHeaders)) {
+            return defaultHeaders;
         }
+
+        Map<String, String> headers = new HashMap<>(defaultHeaders);
+        headers.putAll(dynamicHeaders);
         return headers;
     }
 
