@@ -114,6 +114,14 @@ public class OpenAiOfficialSetupIT {
     }
 
     @Test
+    void calculateBaseUrl_returnsCorrectMicrosoftFoundryUrl_whenMicrosoftFoundryEndpointProvided() {
+        String endpoint = "https://xxx.openai.azure.com/openai/v1/";
+        String result = OpenAiOfficialSetup.calculateBaseUrl(endpoint, ModelProvider.MICROSOFT_FOUNDRY, "test", null);
+
+        assertEquals("https://xxx.openai.azure.com/openai/v1", result);
+    }
+
+    @Test
     void should_not_append_api_version_to_baseUrl_when_azureOpenAIServiceVersion_is_set() {
         // Given: Microsoft Foundry configuration with service version
         String baseUrl = "https://test.openai.azure.com";
