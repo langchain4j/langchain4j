@@ -27,4 +27,9 @@ class ApacheHttpClientTimeoutIT extends HttpClientTimeoutIT {
     protected String[] readAsyncMessageKeywords() {
         return new String[] {"1000", "MILLISECONDS"};
     }
+
+    @Override
+    protected String[] readSyncMessageKeywords() {
+        return new String[] {"Read", "timed", "out"};
+    }
 }
