@@ -92,5 +92,18 @@ class PgVectorEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
         EmbeddingMatch<TextSegment> match = searchResult.matches().get(0);
         assertThat(match.score()).isCloseTo(1, withPercentage(1));
         assertThat(match.embeddingId()).isEqualTo(ids.get(0));
+
+        // In filter escapes values as well
+        Filter filterNotIN = metadataKey("text").isNotIn("This must be escaped '");
+        EmbeddingSearchRequest notInSearchRequest = EmbeddingSearchRequest.builder()
+                .maxResults(1)
+                .queryEmbedding(embeddings.get(0))
+                .filter(filterNotIN)
+                .build();
+
+        searchResult = embeddingStore().search(notInSearchRequest);
+        match = searchResult.matches().get(0);
+        // It must retrieve the second embedding
+        assertThat(match.embeddingId()).isEqualTo(ids.get(1));
     }
 }
