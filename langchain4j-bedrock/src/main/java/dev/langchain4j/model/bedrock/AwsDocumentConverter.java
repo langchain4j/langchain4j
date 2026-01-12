@@ -109,10 +109,6 @@ class AwsDocumentConverter {
         Map<String, Object> schemaMap = new HashMap<>();
         schemaMap.put("type", "object");
 
-        if (toolSpecification.description() != null) {
-            schemaMap.put("description", toolSpecification.description());
-        }
-
         if (toolSpecification.parameters() != null) {
             Map<String, Map<String, Object>> propertiesMap =
                     JsonSchemaElementUtils.toMap(toolSpecification.parameters().properties());

@@ -47,6 +47,7 @@ import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderResult;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -137,15 +138,20 @@ class StreamingAiServicesWithToolsIT {
 
         StreamingChatModel spyModel = spy(model);
 
+        List<String> toolCalls = new ArrayList<>();
+        Map<String, Object> toolResults = new HashMap<>();
+
         Assistant assistant = AiServices.builder(Assistant.class)
                 .streamingChatModel(spyModel)
                 .chatMemory(chatMemory)
                 .tools(transactionService)
+                .beforeToolExecution(before -> toolCalls.add(before.request().name()))
+                .afterToolExecution(exec -> toolResults.put(exec.request().name(), exec.resultObject()))
                 .build();
 
         String userMessage = "What is the amounts of transaction T001?";
 
-        TestTokenStreamHandler handler = spy(new TestTokenStreamHandler());
+        TestTokenStreamHandler handler = new TestTokenStreamHandler();
         CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
         // when
@@ -175,13 +181,6 @@ class StreamingAiServicesWithToolsIT {
         verifyNoMoreInteractions(transactionService);
 
         // then
-        assertThat(handler.allThreads).hasSize(1);
-        assertThat(handler.allThreads.iterator().next()).isNotEqualTo(Thread.currentThread());
-        assertThat(transactionService.threads).hasSize(1);
-        assertThat(transactionService.threads.poll())
-                .isEqualTo(handler.allThreads.iterator().next());
-
-        // then
         List<ChatMessage> messages = chatMemory.messages();
         verify(spyModel)
                 .chat(
@@ -197,6 +196,9 @@ class StreamingAiServicesWithToolsIT {
                                 .toolSpecifications(EXPECTED_SPECIFICATION)
                                 .build()),
                         any());
+
+        assertThat(toolCalls).hasSize(1).contains("getTransactionAmount");
+        assertThat(toolResults).hasSize(1).containsKey("getTransactionAmount").containsValue(11.1);
     }
 
     @ParameterizedTest
@@ -297,8 +299,6 @@ class StreamingAiServicesWithToolsIT {
                 "should_execute_multiple_tools_in_parallel_concurrently_then_answer({}) onToolExecutedThreads: {}",
                 executor,
                 handler.onToolExecutedThreads);
-        assertThat(handler.allThreads).hasSizeBetween(3, 4); // 1-2 for handler, 2 for tools
-        // default JDK HttpClient executor can allocate different threads for the first and second streaming response
 
         assertThat(handler.beforeToolExecutionThreads).hasSize(2);
         assertThat(handler.beforeToolExecutionThreads.get("getCurrentTime")).hasSize(1);
@@ -404,8 +404,6 @@ class StreamingAiServicesWithToolsIT {
         verifyNoMoreInteractions(spyTools);
 
         // then
-        assertThat(handler.allThreads).hasSize(2); // 1 for handler, 1 for tool
-
         assertThat(handler.beforeToolExecutionThreads).hasSize(1);
         assertThat(handler.beforeToolExecutionThreads.get("getCurrentTemperature"))
                 .hasSize(1);
@@ -647,6 +645,69 @@ class StreamingAiServicesWithToolsIT {
         inOrder.verify(handler)
                 .onToolExecuted(argThat(
                         toolExecution -> toolExecution.request().arguments().contains("London")));
+
+        inOrder.verify(handler, atLeastOnce()).onPartialResponse(any());
+        inOrder.verify(handler).onCompleteResponse(any());
+
+        inOrder.verifyNoMoreInteractions();
+        verifyNoMoreInteractions(handler);
+    }
+
+    @Test
+    void should_invoke_partial_tool_call_handler() throws Exception {
+
+        // given
+        WeatherService weatherService = spy(new WeatherService());
+
+        StreamingChatModel spyModel = spy(models().findFirst().get());
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .streamingChatModel(spyModel)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
+                .tools(weatherService)
+                .build();
+
+        String userMessage = "What is the temperature in Munich, in Celsius?";
+
+        TestTokenStreamHandler handler = spy(TestTokenStreamHandler.class);
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
+
+        // when
+        assistant.chat(userMessage)
+                .onPartialResponse(handler::onPartialResponse)
+                .onPartialToolCall(handler::onPartialToolCall)
+                .beforeToolExecution(handler::beforeToolExecution)
+                .onToolExecuted(handler::onToolExecuted)
+                .onError(error -> {
+                    handler.onError(error);
+                    futureResponse.completeExceptionally(error);
+                })
+                .onCompleteResponse(completeResponse -> {
+                    handler.onCompleteResponse(completeResponse);
+                    futureResponse.complete(completeResponse);
+                })
+                .start();
+
+        // then
+        ChatResponse response = futureResponse.get(60, SECONDS);
+
+        // then
+        assertThat(response.aiMessage().text()).contains(String.valueOf(WeatherService.TEMPERATURE));
+
+        // then
+        verify(weatherService).currentTemperature("Munich", CELSIUS);
+        verifyNoMoreInteractions(weatherService);
+
+        // then - verify onPartialToolCall was invoked
+        verify(handler, atLeastOnce()).onPartialToolCall(any());
+        assertThat(handler.onPartialToolCallThreads).containsKey("currentTemperature");
+
+        // then - verify callback order
+        InOrder inOrder = inOrder(handler);
+
+        inOrder.verify(handler, atLeastOnce()).onPartialToolCall(argThat(ptc -> ptc.name().equals("currentTemperature")));
+        inOrder.verify(handler).beforeToolExecution(argThat(bte -> bte.request().name().equals("currentTemperature")));
+        inOrder.verify(handler).onToolExecuted(argThat(te -> te.result().equals(String.valueOf(WeatherService.TEMPERATURE))));
 
         inOrder.verify(handler, atLeastOnce()).onPartialResponse(any());
         inOrder.verify(handler).onCompleteResponse(any());

@@ -434,7 +434,7 @@ Here is an example of how to configure thinking:
 ```java
 ChatModel model = AnthropicChatModel.builder()
         .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-        .modelName(CLAUDE_3_7_SONNET_20250219)
+        .modelName("claude-sonnet-4-5-20250929")
         .thinkingType("enabled")
         .thinkingBudgetTokens(1024)
         .maxTokens(1024 + 100)

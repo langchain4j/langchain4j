@@ -249,4 +249,27 @@ public class Agents {
         @Agent("Provide the resulting color from mixing given colors")
         String colorMix(@V("colors") List<String> colors);
     }
+
+    public record LoanApplication(String applicantName, String applicantAge, int amount) { }
+
+    public interface LoanApplicationExtractor {
+
+        @UserMessage("""
+            Convert user request into a structured LoanApplication.
+            The user request is: '{{request}}'.
+            """)
+        @Agent(description = "Extract a loan application from user request.", outputKey = "loanApplication")
+        LoanApplication extract(@V("request") String request);
+    }
+
+    public interface LoanApplicationEvaluator {
+
+        @UserMessage("""
+            Evaluate a loan application. If the applicant's age is less than 18 or the amount is greater than 50000, reject the application.
+            A response should indicate 'approved' or 'rejected'.
+            The loan application is: '{{loanApplication}}'.
+            """)
+        @Agent("Evaluate a loan application.")
+        String evaluate(@V("loanApplication") LoanApplication loanApplication);
+    }
 }
