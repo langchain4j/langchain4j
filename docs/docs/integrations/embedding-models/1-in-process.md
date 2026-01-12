@@ -15,7 +15,7 @@ For example:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-embeddings-all-minilm-l6-v2</artifactId>
-    <version>1.8.0-beta15</version>
+    <version>1.10.0-beta18</version>
 </dependency>
 ```
 ```java
@@ -29,7 +29,7 @@ Or quantized:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-embeddings-all-minilm-l6-v2-q</artifactId>
-    <version>1.8.0-beta15</version>
+    <version>1.10.0-beta18</version>
 </dependency>
 ```
 ```java
@@ -38,7 +38,7 @@ Response<Embedding> response = embeddingModel.embed("test");
 Embedding embedding = response.content();
 ```
 
-The complete list of all embedding models can be found [here](https://github.com/langchain4j/langchain4j-embeddings).
+The complete list of all embedding models can be found [here](https://github.com/langchain4j/langchain4j/tree/main/embeddings).
 
 
 ## Parallelization
@@ -73,7 +73,7 @@ Example of using custom embedding model:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-embeddings</artifactId>
-    <version>1.8.0-beta15</version>
+    <version>1.10.0-beta18</version>
 </dependency>
 ```
 ```java

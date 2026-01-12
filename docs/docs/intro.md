@@ -106,7 +106,6 @@ LangChain4j features a modular design, comprising:
 - [Community integrations](https://github.com/langchain4j/langchain4j-community)
 - [Examples](https://github.com/langchain4j/langchain4j-examples)
 - [Community resources](https://github.com/langchain4j/langchain4j-community-resources)
-- [In-process embeddings](https://github.com/langchain4j/langchain4j-embeddings)
 
 
 ## Use Cases

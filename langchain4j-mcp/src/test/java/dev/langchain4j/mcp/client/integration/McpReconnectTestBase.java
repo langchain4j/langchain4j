@@ -1,5 +1,6 @@
 package dev.langchain4j.mcp.client.integration;
 
+import static dev.langchain4j.mcp.client.integration.McpServerHelper.destroyProcessTree;
 import static dev.langchain4j.mcp.client.integration.McpServerHelper.startServerHttp;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -32,7 +33,7 @@ public abstract class McpReconnectTestBase {
         executeAToolAndAssertSuccess();
 
         // kill the server and restart it
-        process.destroy();
+        destroyProcessTree(process);
         process = startProcess();
 
         // give the MCP client some time to reconnect
@@ -49,5 +50,4 @@ public abstract class McpReconnectTestBase {
         String result = mcpClient.executeTool(toolExecutionRequest).resultText();
         assertThat(result).isEqualTo("abc");
     }
-
 }

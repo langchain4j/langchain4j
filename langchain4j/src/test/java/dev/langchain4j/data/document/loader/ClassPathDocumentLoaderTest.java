@@ -4,6 +4,7 @@ import static dev.langchain4j.data.document.loader.ClassPathDocumentLoader.loadD
 import static dev.langchain4j.data.document.loader.ClassPathDocumentLoader.loadDocuments;
 import static dev.langchain4j.data.document.loader.ClassPathDocumentLoader.loadDocumentsRecursively;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.parallel.ExecutionMode.SAME_THREAD;
 
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
@@ -18,12 +19,14 @@ import java.util.List;
 import java.util.stream.Stream;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
+@Execution(SAME_THREAD)
 class ClassPathDocumentLoaderTest implements WithAssertions {
     private static final String CLASSPATH_ROOT = ".";
     private static final String CLASSPATH_CHECK_DIRECTORY = "classPathSourceTests";
@@ -121,7 +124,8 @@ class ClassPathDocumentLoaderTest implements WithAssertions {
                         "test-file.banana",
                         "test-file-iso-8859-1.txt",
                         "test-file-utf8.txt",
-                        "chefs-prompt-based-on-ingredients-in-root.txt");
+                        "chefs-prompt-based-on-ingredients-in-root.txt",
+                        "junit-platform.properties");
 
         // when-then
         assertThat(loadDocuments(resourceDirectory, new TextDocumentParser())).isEqualTo(documents);

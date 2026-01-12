@@ -38,8 +38,10 @@ import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
+import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.DefaultToolExecutor;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
+import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
@@ -53,6 +55,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
 
@@ -469,8 +472,49 @@ public abstract class AiServices<T> {
         return this;
     }
 
+    /**
+     * Sets the maximum number of times the LLM may respond with tool calls.
+     * If this limit is exceeded, an exception is thrown and the AI service invocation is terminated.
+     *
+     * <p>
+     * NOTE: This value does not represent the total number of tool calls.
+     * Each LLM response that contains one or more tool calls counts as a single invocation
+     * and reduces this limit by one.
+     *
+     * <p>
+     * The default value is 100.
+     *
+     * @param maxSequentialToolsInvocations the maximum number of LLM responses containing tool calls
+     * @return the builder instance
+     */
     public AiServices<T> maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
         context.toolService.maxSequentialToolsInvocations(maxSequentialToolsInvocations);
+        return this;
+    }
+
+    /**
+     * Configures a callback to be invoked before each tool execution.
+     *
+     * @param beforeToolExecution A {@link Consumer} that accepts a {@link BeforeToolExecution}
+     *                            representing the tool execution request about to be executed.
+     * @return builder
+     * @since 1.11.0
+     */
+    public AiServices<T> beforeToolExecution(Consumer<BeforeToolExecution> beforeToolExecution) {
+        context.toolService.beforeToolExecution(beforeToolExecution);
+        return this;
+    }
+
+    /**
+     * Configures a callback to be invoked after each tool execution.
+     *
+     * @param afterToolExecution A {@link Consumer} that accepts a {@link ToolExecution}
+     *                           containing the tool execution request that was executed and its result.
+     * @return builder
+     * @since 1.11.0
+     */
+    public AiServices<T> afterToolExecution(Consumer<ToolExecution> afterToolExecution) {
+        context.toolService.afterToolExecution(afterToolExecution);
         return this;
     }
 
@@ -928,6 +972,28 @@ public abstract class AiServices<T> {
      */
     public <O extends OutputGuardrail> AiServices<T> outputGuardrails(O... guardrails) {
         context.guardrailServiceBuilder.outputGuardrails(guardrails);
+        return this;
+    }
+
+    /**
+     * Configures whether user messages that were augmented with retrieved content
+     * (RAG) should be stored in {@link ChatMemory}.
+     * <p>
+     * By default, this is {@code true}, meaning that the final augmented user
+     * message (after RAG augmentation) is stored in chat memory. This matches
+     * the historical behaviour and ensures that the model sees the same
+     * augmented content in subsequent turns.
+     * <p>
+     * If set to {@code false}, only the original user message (before RAG
+     * augmentation) is stored in chat memory, while the augmented message is
+     * still used for the LLM request. This helps to avoid storing retrieved
+     * content in the conversation history and keeps the memory size smaller.
+     *
+     * @param storeRetrievedContentInChatMemory whether to store RAG-augmented user messages in chat memory
+     * @return builder
+     */
+    public AiServices<T> storeRetrievedContentInChatMemory(boolean storeRetrievedContentInChatMemory) {
+        context.storeRetrievedContentInChatMemory = storeRetrievedContentInChatMemory;
         return this;
     }
 

@@ -8,9 +8,11 @@ import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
 import dev.langchain4j.model.output.TokenUsage;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.List;
 
+@EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
 
     // TODO https://github.com/langchain4j/langchain4j/issues/2219
@@ -61,11 +63,7 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
     protected boolean assertToolId(ChatModel model) {
         return false; // Gemini does not provide a tool ID
     }
-    
-    @Override
-    protected boolean supportsJsonResponseFormatWithRawSchema() {
-        return false; // not tested
-    }
+
 
     @Override
     protected void assertOutputTokenCount(TokenUsage tokenUsage, Integer maxOutputTokens) {

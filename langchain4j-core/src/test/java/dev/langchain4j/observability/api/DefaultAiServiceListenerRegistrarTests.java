@@ -15,10 +15,12 @@ import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
 import dev.langchain4j.observability.api.event.AiServiceEvent;
+import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
 import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
 import dev.langchain4j.observability.api.event.InputGuardrailExecutedEvent;
@@ -27,6 +29,7 @@ import dev.langchain4j.observability.api.event.ToolExecutedEvent;
 import dev.langchain4j.observability.api.listener.AiServiceCompletedListener;
 import dev.langchain4j.observability.api.listener.AiServiceErrorListener;
 import dev.langchain4j.observability.api.listener.AiServiceListener;
+import dev.langchain4j.observability.api.listener.AiServiceRequestIssuedListener;
 import dev.langchain4j.observability.api.listener.AiServiceResponseReceivedListener;
 import dev.langchain4j.observability.api.listener.AiServiceStartedListener;
 import dev.langchain4j.observability.api.listener.InputGuardrailExecutedListener;
@@ -51,9 +54,19 @@ class DefaultAiServiceListenerRegistrarTests {
             .chatMemoryId("one")
             .build();
 
+    private static final AiServiceRequestIssuedEvent REQUEST_ISSUED_EVENT = AiServiceRequestIssuedEvent.builder()
+            .invocationContext(DEFAULT_INVOCATION_CONTEXT)
+            .request(ChatRequest.builder()
+                    .messages(List.of(UserMessage.from("Hi!")))
+                    .build())
+            .build();
+
     private static final AiServiceResponseReceivedEvent RESPONSE_RECEIVED_EVENT =
             AiServiceResponseReceivedEvent.builder()
                     .invocationContext(DEFAULT_INVOCATION_CONTEXT)
+                    .request(ChatRequest.builder()
+                            .messages(List.of(UserMessage.from("Hi!")))
+                            .build())
                     .response(ChatResponse.builder()
                             .aiMessage(AiMessage.from("Message!"))
                             .build())
@@ -129,6 +142,7 @@ class DefaultAiServiceListenerRegistrarTests {
             .build();
 
     private static final List<AiServiceEvent> ALL_EVENTS = List.of(
+            REQUEST_ISSUED_EVENT,
             RESPONSE_RECEIVED_EVENT,
             INVOCATION_ERROR_EVENT,
             INVOCATION_COMPLETED_EVENT,
@@ -146,6 +160,7 @@ class DefaultAiServiceListenerRegistrarTests {
                     new TestInvocationCompletedListener(),
                     new TestInvocationErrorListener(),
                     new TestLLMResponseReceivedListener(),
+                    new TestLLMRequestIssuedListener(),
                     new TestToolExecutedListener()))
             .flatMap(List::stream)
             .toList();
@@ -189,7 +204,7 @@ class DefaultAiServiceListenerRegistrarTests {
     }
 
     private static void assertListenersNotExecuted() {
-        assertThat(ALL_LISTENERS).isNotNull().hasSize(7 * 2).allSatisfy(l -> assertThat(l)
+        assertThat(ALL_LISTENERS).isNotNull().hasSize(8 * 2).allSatisfy(l -> assertThat(l)
                 .isNotNull()
                 .satisfies(el -> assertThat(el.count()).isZero(), el -> assertThat(el.lastEvent())
                         .isNull()));
@@ -238,6 +253,9 @@ class DefaultAiServiceListenerRegistrarTests {
     private static class TestLLMResponseReceivedListener
             extends AbstractTestEventListener<AiServiceResponseReceivedEvent>
             implements AiServiceResponseReceivedListener {}
+
+    private static class TestLLMRequestIssuedListener extends AbstractTestEventListener<AiServiceRequestIssuedEvent>
+            implements AiServiceRequestIssuedListener {}
 
     private static class TestToolExecutedListener extends AbstractTestEventListener<ToolExecutedEvent>
             implements ToolExecutedEventListener {}
