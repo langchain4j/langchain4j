@@ -5,7 +5,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.10.0-beta18-SNAPSHOT</version>
+        <version>1.11.0-beta19-SNAPSHOT</version>
         <relativePath>../../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -46,6 +46,8 @@
                             <outputFileName>all-minilm-l6-v2.onnx</outputFileName>
                             <sha256>759c3cd2b7fe7e93933ad23c4c9181b7396442a2ed746ec7c1d46192c469c46e</sha256>
                             <skipCache>${embeddingsSkipCache}</skipCache>
+                            <readTimeOut>600000</readTimeOut> <!-- 10 minutes -->
+                            <retries>5</retries>
                         </configuration>
                     </execution>
                 </executions>

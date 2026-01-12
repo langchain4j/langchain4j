@@ -35,13 +35,26 @@ public class AzureBlobStorageDocumentLoader {
         return DocumentLoader.load(source, parser);
     }
 
+    /**
+     * Loads all documents from an Azure Blob Storage container.
+     * Skips any documents that fail to load.
+     *
+     * @param containerName The name of the container to load from.
+     * @param parser The parser to be used for parsing text from the blob.
+     * @return A list of documents.
+     */
     public List<Document> loadDocuments(String containerName, DocumentParser parser) {
         List<Document> documents = new ArrayList<>();
 
         blobServiceClient.getBlobContainerClient(containerName)
                 .listBlobs()
-                .forEach(blob ->
-                        documents.add(loadDocument(containerName, blob.getName(), parser)));
+                .forEach(blob -> {
+                    try {
+                        documents.add(loadDocument(containerName, blob.getName(), parser));
+                    } catch (Exception e) {
+                        log.warn("Failed to load blob '{}' from container '{}', skipping it.", blob.getName(), containerName, e);
+                    }
+                });
 
         return documents;
     }

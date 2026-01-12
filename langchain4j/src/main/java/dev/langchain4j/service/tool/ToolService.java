@@ -28,6 +28,7 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
+import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
 import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.observability.api.event.ToolExecutedEvent;
 import dev.langchain4j.service.AiServiceContext;
@@ -44,6 +45,8 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 @Internal
@@ -74,6 +77,9 @@ public class ToolService {
             HallucinatedToolNameStrategy.THROW_EXCEPTION;
     private ToolSearchStrategy toolSearchStrategy; // TODO default?
 
+    private Consumer<BeforeToolExecution> beforeToolExecution = null;
+    private Consumer<ToolExecution> afterToolExecution = null;
+
     public void hallucinatedToolNameStrategy(
             Function<ToolExecutionRequest, ToolExecutionResultMessage> toolHallucinationStrategy) {
         this.toolHallucinationStrategy = toolHallucinationStrategy;
@@ -101,9 +107,25 @@ public class ToolService {
                 throw illegalConfiguration("Tool '%s' must be an object, not a class", objectWithTool);
             }
 
+            if (objectWithTool instanceof Iterable) {
+                throw illegalConfiguration(
+                        "Tool '%s' is an Iterable (likely a nested collection). "
+                                + "Please pass tool objects directly, not wrapped in collections.",
+                        objectWithTool.getClass().getName());
+            }
+
+            AtomicBoolean hasToolMethods = new AtomicBoolean(false);
             for (Method method : objectWithTool.getClass().getDeclaredMethods()) {
-                getAnnotatedMethod(method, Tool.class)
-                        .ifPresent(toolMethod -> processToolMethod(objectWithTool, toolMethod));
+                getAnnotatedMethod(method, Tool.class).ifPresent(toolMethod -> {
+                    hasToolMethods.set(true);
+                    processToolMethod(objectWithTool, toolMethod);
+                });
+            }
+
+            if (!hasToolMethods.get()) {
+                throw illegalConfiguration(
+                        "Object '%s' does not have any methods annotated with @Tool",
+                        objectWithTool.getClass().getName());
             }
         }
     }
@@ -157,6 +179,20 @@ public class ToolService {
 
     public int maxSequentialToolsInvocations() {
         return maxSequentialToolsInvocations;
+    }
+
+    /**
+     * @since 1.11.0
+     */
+    public void beforeToolExecution(Consumer<BeforeToolExecution> beforeToolExecution) {
+        this.beforeToolExecution = beforeToolExecution;
+    }
+
+    /**
+     * @since 1.11.0
+     */
+    public void afterToolExecution(Consumer<ToolExecution> afterToolExecution) {
+        this.afterToolExecution = afterToolExecution;
     }
 
     /**
@@ -342,11 +378,7 @@ public class ToolService {
                         ToolExecution.builder().request(request).result(result).build();
                 toolExecutions.add(toolExecution);
 
-                context.eventListenerRegistrar.fireEvent(ToolExecutedEvent.builder()
-                        .invocationContext(invocationContext)
-                        .request(request)
-                        .resultText(toolExecution.result())
-                        .build());
+                fireToolExecutedEvent(invocationContext, request, toolExecution, context.eventListenerRegistrar);
 
                 if (chatMemory != null) {
                     chatMemory.add(resultMessage);
@@ -399,8 +431,9 @@ public class ToolService {
                             .build(),
                     memoryId);
 
+            fireRequestIssuedEvent(chatRequest, invocationContext, context.eventListenerRegistrar);
             chatResponse = context.chatModel.chat(chatRequest);
-            fireResponseReceivedEvent(chatResponse, invocationContext, context.eventListenerRegistrar);
+            fireResponseReceivedEvent(chatRequest, chatResponse, invocationContext, context.eventListenerRegistrar);
             aggregateTokenUsage =
                     TokenUsage.sum(aggregateTokenUsage, chatResponse.metadata().tokenUsage());
         }
@@ -413,12 +446,37 @@ public class ToolService {
                 .build();
     }
 
+    private void fireToolExecutedEvent(
+            InvocationContext invocationContext,
+            ToolExecutionRequest request,
+            ToolExecution toolExecution,
+            AiServiceListenerRegistrar listenerRegistrar) {
+        listenerRegistrar.fireEvent(ToolExecutedEvent.builder()
+                .invocationContext(invocationContext)
+                .request(request)
+                .resultText(toolExecution.result())
+                .build());
+    }
+
+    private void fireRequestIssuedEvent(
+            ChatRequest chatRequest,
+            InvocationContext invocationContext,
+            AiServiceListenerRegistrar listenerRegistrar) {
+        listenerRegistrar.fireEvent(AiServiceRequestIssuedEvent.builder()
+                .invocationContext(invocationContext)
+                .request(chatRequest)
+                .build());
+    }
+
     private void fireResponseReceivedEvent(
+            ChatRequest chatRequest,
             ChatResponse chatResponse,
             InvocationContext invocationContext,
             AiServiceListenerRegistrar listenerRegistrar) {
+
         listenerRegistrar.fireEvent(AiServiceResponseReceivedEvent.builder()
                 .invocationContext(invocationContext)
+                .request(chatRequest)
                 .response(chatResponse)
                 .build());
     }
@@ -485,17 +543,64 @@ public class ToolService {
             InvocationContext invocationContext) {
         Map<ToolExecutionRequest, ToolExecutionResult> toolResults = new LinkedHashMap<>();
         for (ToolExecutionRequest toolRequest : toolRequests) {
-            ToolExecutor executor = toolExecutors.get(toolRequest.name());
-            ToolExecutionResult toolResult;
-            if (executor == null) {
-                toolResult = applyToolHallucinationStrategy(toolRequest);
-            } else {
-                toolResult = executeWithErrorHandling(
-                        toolRequest, executor, invocationContext, argumentsErrorHandler(), executionErrorHandler());
-            }
-            toolResults.put(toolRequest, toolResult);
+            toolResults.put(toolRequest, executeTool(invocationContext, toolExecutors, toolRequest));
         }
         return toolResults;
+    }
+
+    private ToolExecutionResult executeTool(
+            InvocationContext invocationContext,
+            Map<String, ToolExecutor> toolExecutors,
+            ToolExecutionRequest toolRequest) {
+        return internalExecuteTool(
+                invocationContext, toolExecutors, toolRequest, this.beforeToolExecution, this.afterToolExecution);
+    }
+
+    public ToolExecutionResult executeTool(
+            InvocationContext invocationContext,
+            Map<String, ToolExecutor> toolExecutors,
+            ToolExecutionRequest toolRequest,
+            Consumer<BeforeToolExecution> externalBeforeToolExecution,
+            Consumer<ToolExecution> externalAfterToolExecution) {
+        return internalExecuteTool(
+                invocationContext,
+                toolExecutors,
+                toolRequest,
+                nullSafeCombineConsumers(this.beforeToolExecution, externalBeforeToolExecution),
+                nullSafeCombineConsumers(this.afterToolExecution, externalAfterToolExecution));
+    }
+
+    private static <T> Consumer<T> nullSafeCombineConsumers(Consumer<T> first, Consumer<T> second) {
+        if (first != null && second != null) {
+            return first.andThen(second);
+        }
+        return first != null ? first : second;
+    }
+
+    private ToolExecutionResult internalExecuteTool(
+            InvocationContext invocationContext,
+            Map<String, ToolExecutor> toolExecutors,
+            ToolExecutionRequest toolRequest,
+            Consumer<BeforeToolExecution> beforeToolExecution,
+            Consumer<ToolExecution> afterToolExecution) {
+        if (beforeToolExecution != null) {
+            beforeToolExecution.accept(
+                    BeforeToolExecution.builder().request(toolRequest).build());
+        }
+
+        ToolExecutor executor = toolExecutors.get(toolRequest.name());
+        ToolExecutionResult toolResult = executor == null
+                ? applyToolHallucinationStrategy(toolRequest)
+                : executeWithErrorHandling(
+                        toolRequest, executor, invocationContext, argumentsErrorHandler(), executionErrorHandler());
+
+        if (afterToolExecution != null) {
+            afterToolExecution.accept(ToolExecution.builder()
+                    .request(toolRequest)
+                    .result(toolResult)
+                    .build());
+        }
+        return toolResult;
     }
 
     public static ToolExecutionResult executeWithErrorHandling(

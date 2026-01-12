@@ -57,7 +57,7 @@ import net.sf.jsqlparser.statement.select.PlainSelect;
  * - {@link Not}: {@code NOT(name = 'Klaus')} / {@code NOT name = 'Klaus'}
  * - {@link Or}: {@code name = 'Klaus' OR age = 18}
  *
- * - YEAR/MONTH(CURDATE()): For example, {@code year = YEAR(CURDATE())} to get the current year. Provided {@link Clock} will be used to resolve {@code CURDATE()}.
+ * - YEAR/MONTH/WEEKOFYEAR/DAYOFYEAR/DAYOFMONTH/DAYOFWEEK(CURDATE()): For example, {@code year = YEAR(CURDATE())} to get the current year. Provided {@link Clock} will be used to resolve {@code CURDATE()}.
  * - EXTRACT(YEAR/MONTH/WEEK/DAY/DOW/DOY/HOUR/MINUTE FROM CURRENT_DATE/CURRENT_TIME/CURRENT_TIMESTAMP): For example: {@code year = EXTRACT(YEAR FROM CURRENT_DATE)} to get the current year. Provided {@link Clock} will be used to resolve {@code CURRENT_DATE}.
  *
  * - Arithmetic: {@code +}, {@code -}, {@code *}, {@code /}. For example: {@code year = YEAR(CURDATE()) - 1} to get previous year.
@@ -264,8 +264,36 @@ public class SqlFilterParser implements FilterParser {
                         return currentMonth();
                     }
                 }
+            } else if (function.getName().equalsIgnoreCase("WEEKOFYEAR")) {
+                ExpressionList<?> parameters = function.getParameters();
+                if (parameters.size() == 1 && parameters.get(0) instanceof Function function2) {
+                    if (function2.getName().equalsIgnoreCase("CURDATE")) {
+                        return currentWeekOfYear();
+                    }
+                }
+            } else if (function.getName().equalsIgnoreCase("DAYOFYEAR")) {
+                ExpressionList<?> parameters = function.getParameters();
+                if (parameters.size() == 1 && parameters.get(0) instanceof Function) {
+                    Function function2 = (Function) parameters.get(0);
+                    if (function2.getName().equalsIgnoreCase("CURDATE")) {
+                        return currentDayOfYear();
+                    }
+                }
+            } else if (function.getName().equalsIgnoreCase("DAYOFMONTH")) {
+                ExpressionList<?> parameters = function.getParameters();
+                if (parameters.size() == 1 && parameters.get(0) instanceof Function function2) {
+                    if (function2.getName().equalsIgnoreCase("CURDATE")) {
+                        return currentDayOfMonth();
+                    }
+                }
+            } else if (function.getName().equalsIgnoreCase("DAYOFWEEK")) {
+                ExpressionList<?> parameters = function.getParameters();
+                if (parameters.size() == 1 && parameters.get(0) instanceof Function function2) {
+                    if (function2.getName().equalsIgnoreCase("CURDATE")) {
+                        return currentDayOfWeek();
+                    }
+                }
             }
-            // TODO add other
         } else if (expression instanceof ExtractExpression) {
             ExtractExpression extractExpression = (ExtractExpression) expression;
             if (extractExpression.getExpression() instanceof TimeKeyExpression) {

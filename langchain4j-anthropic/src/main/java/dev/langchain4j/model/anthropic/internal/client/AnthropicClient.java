@@ -5,12 +5,12 @@ import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCountTokensRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicModelsListResponse;
 import dev.langchain4j.model.anthropic.internal.api.MessageTokenCountResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.spi.ServiceHelper;
-import org.slf4j.Logger;
-
 import java.time.Duration;
+import org.slf4j.Logger;
 
 @Internal
 public abstract class AnthropicClient {
@@ -25,16 +25,21 @@ public abstract class AnthropicClient {
     /**
      * @since 1.2.0
      */
-    public void createMessage(AnthropicCreateMessageRequest request,
-                              AnthropicCreateMessageOptions options,
-                              StreamingChatResponseHandler handler) {
+    public void createMessage(
+            AnthropicCreateMessageRequest request,
+            AnthropicCreateMessageOptions options,
+            StreamingChatResponseHandler handler) {
         createMessage(request, handler);
     }
 
     public abstract void createMessage(AnthropicCreateMessageRequest request, StreamingChatResponseHandler handler);
 
-    public MessageTokenCountResponse countTokens(AnthropicCountTokensRequest request){
+    public MessageTokenCountResponse countTokens(AnthropicCountTokensRequest request) {
         throw new UnsupportedOperationException("Token counting is not implemented");
+    }
+
+    public AnthropicModelsListResponse listModels() {
+        throw new UnsupportedOperationException("Model listing is not supported by this client implementation");
     }
 
     @SuppressWarnings("rawtypes")

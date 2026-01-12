@@ -5,7 +5,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.10.0-beta18-SNAPSHOT</version>
+        <version>1.11.0-beta19-SNAPSHOT</version>
         <relativePath>../../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -46,6 +46,8 @@
                             <outputFileName>bge-small-zh-v1.5.onnx</outputFileName>
                             <sha256>69a0b846f4f116b5e6aabf9546ea6754d02264f3211a13a1bd69b31b8040749a</sha256>
                             <skipCache>${embeddingsSkipCache}</skipCache>
+                            <readTimeOut>600000</readTimeOut> <!-- 10 minutes -->
+                            <retries>5</retries>
                         </configuration>
                     </execution>
                 </executions>

@@ -34,6 +34,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.model.anthropic.AnthropicServerTool;
+import dev.langchain4j.model.anthropic.AnthropicServerToolResult;
 import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicContent;
@@ -72,6 +73,8 @@ public class AnthropicMapper {
             "thinking_signature"; // do not change, will break backward compatibility!
     public static final String REDACTED_THINKING_KEY =
             "redacted_thinking"; // do not change, will break backward compatibility!
+    public static final String SERVER_TOOL_RESULTS_KEY =
+            "server_tool_results"; // do not change, will break backward compatibility!
 
     public static List<AnthropicMessage> toAnthropicMessages(List<ChatMessage> messages) {
         return toAnthropicMessages(messages, false);
@@ -205,10 +208,15 @@ public class AnthropicMapper {
     }
 
     public static AiMessage toAiMessage(List<AnthropicContent> contents) {
-        return toAiMessage(contents, false);
+        return toAiMessage(contents, false, false);
     }
 
     public static AiMessage toAiMessage(List<AnthropicContent> contents, boolean returnThinking) {
+        return toAiMessage(contents, returnThinking, false);
+    }
+
+    public static AiMessage toAiMessage(
+            List<AnthropicContent> contents, boolean returnThinking, boolean returnServerToolResults) {
 
         String text = contents.stream()
                 .filter(content -> "text".equals(content.type))
@@ -240,6 +248,20 @@ public class AnthropicMapper {
             }
         }
 
+        if (returnServerToolResults) {
+            List<AnthropicServerToolResult> serverToolResults = contents.stream()
+                    .filter(content -> isServerToolResultType(content.type))
+                    .map(content -> AnthropicServerToolResult.builder()
+                            .type(content.type)
+                            .toolUseId(content.toolUseId)
+                            .content(content.content)
+                            .build())
+                    .collect(toList());
+            if (!serverToolResults.isEmpty()) {
+                attributes.put(SERVER_TOOL_RESULTS_KEY, serverToolResults);
+            }
+        }
+
         List<ToolExecutionRequest> toolExecutionRequests = contents.stream()
                 .filter(content -> "tool_use".equals(content.type))
                 .map(content -> ToolExecutionRequest.builder()
@@ -255,6 +277,10 @@ public class AnthropicMapper {
                 .toolExecutionRequests(toolExecutionRequests)
                 .attributes(attributes)
                 .build();
+    }
+
+    private static boolean isServerToolResultType(String type) {
+        return type != null && type.endsWith("_tool_result");
     }
 
     public static TokenUsage toTokenUsage(AnthropicUsage anthropicUsage) {
@@ -317,9 +343,11 @@ public class AnthropicMapper {
                 .map(toolSpecification -> {
                     boolean isLastItem = toolSpecification.equals(lastToolSpecification);
                     if (isLastItem && cacheToolsPrompt != AnthropicCacheType.NO_CACHE) {
-                        return toAnthropicTool(toolSpecification, cacheToolsPrompt, toolMetadataKeysToSend, strictTools);
+                        return toAnthropicTool(
+                                toolSpecification, cacheToolsPrompt, toolMetadataKeysToSend, strictTools);
                     }
-                    return toAnthropicTool(toolSpecification, AnthropicCacheType.NO_CACHE, toolMetadataKeysToSend, strictTools);
+                    return toAnthropicTool(
+                            toolSpecification, AnthropicCacheType.NO_CACHE, toolMetadataKeysToSend, strictTools);
                 })
                 .collect(toList());
     }
@@ -336,7 +364,7 @@ public class AnthropicMapper {
             Boolean strictTools) {
         JsonObjectSchema parameters = toolSpecification.parameters();
 
-        //prevent NPE during unboxing
+        // prevent NPE during unboxing
         boolean strict = Boolean.TRUE.equals(strictTools);
 
         AnthropicTool.Builder toolBuilder = AnthropicTool.builder()
@@ -396,11 +424,7 @@ public class AnthropicMapper {
             }
 
             Map<String, Map<String, Object>> properties = new LinkedHashMap<>();
-            objectSchema
-                    .properties()
-                    .forEach((property, value) -> properties.put(
-                            property,
-                            toAnthropicSchema(value)));
+            objectSchema.properties().forEach((property, value) -> properties.put(property, toAnthropicSchema(value)));
             map.put("properties", properties);
 
             if (objectSchema.required() != null) {

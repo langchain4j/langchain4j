@@ -17,6 +17,8 @@ import java.util.List;
 /**
  * Represents a collection of Mistral AI models.
  * You can find description of parameters <a href="https://docs.mistral.ai/api/#operation/listModels">here</a>.
+ *
+ * @see MistralAiModels
  */
 public class MistralAiModels {
 

@@ -3,27 +3,19 @@ Thank you for investing your time and effort in contributing to our project, we 
 # General guidelines
 
 - For new integrations, please consider adding it in [community repo](https://github.com/langchain4j/langchain4j-community) first.
-- If you want to contribute a bug fix or a new feature that isn't listed in the [issues](https://github.com/langchain4j/langchain4j/issues) yet, please open a new issue for it. We will prioritize is shortly.
+- If you want to contribute a bug fix or a new feature that isn't listed in the [issues](https://github.com/langchain4j/langchain4j/issues) yet, please open a new issue for it. We will triage is shortly.
 - Follow [Google's Best Practices for Java Libraries](https://jlbp.dev/)
 - Keep the code compatible with Java 17.
+- When integrating third-party services, use the official SDK whenever possible. If no official SDK is available, implement the client using `langchain4j-http-client` and Jackson.
 - Avoid adding new dependencies as much as possible (new dependencies with test scope are OK). If absolutely necessary, try to use the same libraries which are already used in the project. Make sure you run `mvn dependency:analyze` to identify unnecessary dependencies.
 - Write unit and/or integration tests for your code. This is critical: no tests, no review!
 - The tests should cover both positive and negative cases.
 - Make sure you run all unit tests on all modules with `mvn clean test`
 - Avoid making breaking changes. Always keep backward compatibility in mind. For example, instead of removing fields/methods/etc, mark them `@Deprecated` and make sure they still work as before.
 - Follow existing naming conventions.
-- Avoid using Lombok in the new code, and remove it from the old code if you get a chance.
 - Add Javadoc where necessary. There's no need to duplicate Javadoc from the implemented interfaces.
 - Follow existing code style present in the project. Run `make lint` and `make format` before commit.
-- Large features should be discussed with maintainers before implementation. Please ping @langchain4j in the comments on the issue.
-
-# Priorities
-
-All [issues](https://github.com/langchain4j/langchain4j/issues) are prioritized by maintainers. There are 4 priorities: [P1](https://github.com/langchain4j/langchain4j/issues?q=is%3Aissue+is%3Aopen+label%3AP1), [P2](https://github.com/langchain4j/langchain4j/issues?q=is%3Aissue+is%3Aopen+label%3AP2), [P3](https://github.com/langchain4j/langchain4j/issues?q=is%3Aissue+is%3Aopen+label%3AP3) and [P4](https://github.com/langchain4j/langchain4j/issues?q=is%3Aissue+is%3Aopen+label%3AP4).
-
-Please start with the higher priorities. PRs will be reviewed in order of priority, with bugs being a higher priority than new features.
-
-Please note that we do not have the capacity to review PRs immediately. We ask for your patience. We are doing our best to review your PR as quickly as possible.
+- Large features should be discussed with maintainers before implementation.
 
 # Opening an issue
 
@@ -38,6 +30,8 @@ Please note that we do not have the capacity to review PRs immediately. We ask f
   - Do not combine refactoring with changes in a single PR.
   - Avoid reformatting existing code.
 
+Please note that we do not have the capacity to review PRs immediately. We ask for your patience. We are doing our best to review your PR as quickly as possible.
+
 # Finalizing the draft PR
 
 - Add [documentation](https://github.com/langchain4j/langchain4j/tree/main/docs/docs) (if required).
@@ -49,8 +43,6 @@ Please note that we do not have the capacity to review PRs immediately. We ask f
 
 - Please open PRs with new model integrations in the [langchain4j-community](https://github.com/langchain4j/langchain4j-community) repository
 - [Integration with OpenAI](https://github.com/langchain4j/langchain4j/tree/main/langchain4j-open-ai) is a good example.
-- Use the official SDK if available.
-- If the official SDK is not available, use `langchain4j-http-client` and Jackson to implement the client.
 - Create integration test classes that extend from [`AbstractChatModelIT`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/test/java/dev/langchain4j/model/chat/common/AbstractChatModelIT.java), [`AbstractStreamingChatModelIT`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/test/java/dev/langchain4j/model/chat/common/AbstractStreamingChatModelIT.java), [`AbstractChatModelListenerIT`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/test/java/dev/langchain4j/model/chat/common/AbstractChatModelListenerIT.java), [`AbstractStreamingChatModelListenerIT`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/test/java/dev/langchain4j/model/chat/common/AbstractStreamingChatModelListenerIT.java) and [`AbstractStreamingAiServiceIT`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/test/java/dev/langchain4j/service/common/AbstractStreamingAiServiceIT.java). There are many examples in existing modules.
 - If model provider supports tools, create an integration test class that extends from [`AbstractAiServiceWithToolsIT`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/test/java/dev/langchain4j/service/common/AbstractAiServiceWithToolsIT.java). There are many examples in existing modules.
 - If model provider supports structured outputs, create an integration test class that extends from [`AbstractAiServiceWithJsonSchemaIT`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/test/java/dev/langchain4j/service/common/AbstractAiServiceWithJsonSchemaIT.java). There are many examples in existing modules.
@@ -63,8 +55,6 @@ Please note that we do not have the capacity to review PRs immediately. We ask f
 
 - Please open PRs with new embedding store integrations in the [langchain4j-community](https://github.com/langchain4j/langchain4j-community) repository
 - [Integration with Chroma](https://github.com/langchain4j/langchain4j/tree/main/langchain4j-chroma) is a good example.
-- Use the official SDK if available.
-- If the official SDK is not available, use `langchain4j-http-client` and Jackson to implement the client.
 - Add a `{IntegrationName}EmbeddingStoreIT`. It should extend from `EmbeddingStoreWithFilteringIT` (when store supports metadata filtering) or `EmbeddingStoreIT` and pass all tests.
 - Add a `{IntegrationName}EmbeddingStoreRemovalIT`. It should extend from `EmbeddingStoreWithRemovalIT` and pass all tests.
 - Document the new integration [here](https://github.com/langchain4j/langchain4j/blob/main/README.md), [here](https://github.com/langchain4j/langchain4j/tree/main/docs/docs/integrations/embedding-stores) and [here](https://github.com/langchain4j/langchain4j/blob/main/docs/docs/integrations/embedding-stores/index.md).

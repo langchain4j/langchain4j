@@ -4,7 +4,6 @@ import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
 import com.ibm.watsonx.ai.CloudRegion;
-import com.ibm.watsonx.ai.core.auth.iam.IAMAuthenticator;
 import com.ibm.watsonx.ai.rerank.RerankParameters;
 import com.ibm.watsonx.ai.rerank.RerankResponse;
 import com.ibm.watsonx.ai.rerank.RerankResponse.RerankResult;
@@ -36,13 +35,10 @@ public class WatsonxScoringModel implements ScoringModel {
     private final RerankService rerankService;
 
     private WatsonxScoringModel(Builder builder) {
-        var rerankServiceBuilder = RerankService.builder();
-        if (nonNull(builder.authenticationProvider)) {
-            rerankServiceBuilder.authenticationProvider(builder.authenticationProvider);
-        } else {
-            rerankServiceBuilder.authenticationProvider(
-                    IAMAuthenticator.builder().apiKey(builder.apiKey).build());
-        }
+
+        var rerankServiceBuilder = nonNull(builder.authenticator)
+                ? RerankService.builder().authenticator(builder.authenticator)
+                : RerankService.builder().apiKey(builder.apiKey);
 
         rerankService = rerankServiceBuilder
                 .baseUrl(builder.baseUrl)
@@ -53,6 +49,7 @@ public class WatsonxScoringModel implements ScoringModel {
                 .timeout(builder.timeout)
                 .logRequests(builder.logRequests)
                 .logResponses(builder.logResponses)
+                .httpClient(builder.httpClient)
                 .build();
     }
 
