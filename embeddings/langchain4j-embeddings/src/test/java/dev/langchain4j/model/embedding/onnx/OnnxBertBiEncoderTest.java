@@ -2,6 +2,7 @@ package dev.langchain4j.model.embedding.onnx;
 
 import static dev.langchain4j.model.embedding.onnx.OnnxBertBiEncoder.partition;
 import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -91,5 +92,19 @@ class OnnxBertBiEncoderTest {
 
         // then
         assertThat(partitions).containsExactly(asList("I", "have", "a"));
+    }
+
+    @Test
+    public void testPartitionWithOnlySpecialTokens() {
+
+        // given - simulates empty or whitespace-only input
+        List<String> tokens = asList("[CLS]", "[SEP]");
+        int partitionSize = 10;
+
+        // when
+        List<List<String>> partitions = partition(tokens, partitionSize);
+
+        // then - should return empty list (no content tokens between CLS and SEP)
+        assertThat(partitions).isEqualTo(emptyList());
     }
 }
