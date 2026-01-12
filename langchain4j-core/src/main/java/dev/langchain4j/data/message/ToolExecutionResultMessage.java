@@ -1,10 +1,13 @@
 package dev.langchain4j.data.message;
 
 import static dev.langchain4j.data.message.ChatMessageType.TOOL_EXECUTION_RESULT;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -16,6 +19,19 @@ public class ToolExecutionResultMessage implements ChatMessage {
     private final String id;
     private final String toolName;
     private final String text;
+    private final Map<String, Object> attributes; // TODO serialization, test backwards compatibility
+
+    /**
+     * TODO
+     *
+     * @since 1.11.0
+     */
+    public ToolExecutionResultMessage(Builder builder) {
+        this.id = builder.id;
+        this.toolName = builder.toolName;
+        this.text = ensureNotNull(builder.text, "text");
+        this.attributes = copy(builder.attributes);
+    }
 
     /**
      * Creates a {@link ToolExecutionResultMessage}.
@@ -27,6 +43,7 @@ public class ToolExecutionResultMessage implements ChatMessage {
         this.id = id;
         this.toolName = toolName;
         this.text = ensureNotNull(text, "text");
+        this.attributes = Map.of();
     }
 
     /**
@@ -53,6 +70,15 @@ public class ToolExecutionResultMessage implements ChatMessage {
         return text;
     }
 
+    /**
+     * TODO
+     *
+     * @since 1.11.0
+     */
+    public Map<String, Object> attributes() {
+        return attributes;
+    }
+
     @Override
     public ChatMessageType type() {
         return TOOL_EXECUTION_RESULT;
@@ -65,20 +91,59 @@ public class ToolExecutionResultMessage implements ChatMessage {
         ToolExecutionResultMessage that = (ToolExecutionResultMessage) o;
         return Objects.equals(this.id, that.id)
                 && Objects.equals(this.toolName, that.toolName)
-                && Objects.equals(this.text, that.text);
+                && Objects.equals(this.text, that.text)
+                && Objects.equals(this.attributes, that.attributes);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, toolName, text);
+        return Objects.hash(id, toolName, text, attributes);
     }
 
     @Override
     public String toString() {
-        return "ToolExecutionResultMessage {" + " id = "
-                + quoted(id) + " toolName = "
-                + quoted(toolName) + " text = "
-                + quoted(text) + " }";
+        return "ToolExecutionResultMessage {"
+                + " id = " + quoted(id)
+                + ", toolName = " + quoted(toolName)
+                + ", text = " + quoted(text)
+                + ", attributes = " + attributes
+                + " }";
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+
+        private String id;
+        private String toolName;
+        private String text;
+        private Map<String, Object> attributes;
+
+        public Builder id(String id) {
+            this.id = id;
+            return this;
+        }
+
+        public Builder toolName(String toolName) {
+            this.toolName = toolName;
+            return this;
+        }
+
+        public Builder text(String text) {
+            this.text = text;
+            return this;
+        }
+
+        public Builder attributes(Map<String, Object> attributes) {
+            this.attributes = attributes;
+            return this;
+        }
+
+        public ToolExecutionResultMessage build() {
+            return new ToolExecutionResultMessage(this);
+        }
     }
 
     /**

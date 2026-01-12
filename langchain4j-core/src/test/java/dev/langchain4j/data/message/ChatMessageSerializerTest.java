@@ -97,6 +97,24 @@ class ChatMessageSerializerTest {
                         ToolExecutionResultMessage.from("12345", "weather", "sunny"),
                         "{\"id\":\"12345\",\"toolName\":\"weather\",\"text\":\"sunny\",\"type\":\"TOOL_EXECUTION_RESULT\"}"),
                 Arguments.of(
+                        ToolExecutionResultMessage.from(null, null, "sunny"),
+                        "{\"text\":\"sunny\",\"type\":\"TOOL_EXECUTION_RESULT\"}"),
+                Arguments.of(
+                        ToolExecutionResultMessage.from("", "", "sunny"),
+                        "{\"id\":\"\",\"toolName\":\"\",\"text\":\"sunny\",\"type\":\"TOOL_EXECUTION_RESULT\"}"),
+                Arguments.of(
+                        ToolExecutionResultMessage.builder()
+                                .id("67890")
+                                .toolName("tool_search_tool")
+                                .text("Found following tools: weather, time")
+                                .attributes(new LinkedHashMap<>() {
+                                    {
+                                        put("found_tools", List.of("weather", "time"));
+                                    }
+                                })
+                                .build(),
+                        "{\"id\":\"67890\",\"toolName\":\"tool_search_tool\",\"text\":\"Found following tools: weather, time\",\"attributes\":{\"found_tools\":[\"weather\", \"time\"]},\"type\":\"TOOL_EXECUTION_RESULT\"}"),
+                Arguments.of(
                         CustomMessage.from(new LinkedHashMap<>() {
                             {
                                 put("k1", "v1");

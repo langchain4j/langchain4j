@@ -64,6 +64,7 @@ public class ToolService {
                 isNullOrBlank(error.getMessage()) ? error.getClass().getName() : error.getMessage();
         return ToolErrorHandlerResult.text(errorMessage);
     };
+    private static final String FOUND_TOOLS_ATTRIBUTE = "found_tools"; // do not change, will break backward compatibility!
 
     private final List<ToolSpecification> toolSpecifications = new ArrayList<>();
     private final Map<String, ToolExecutor> toolExecutors = new HashMap<>();
@@ -230,13 +231,14 @@ public class ToolService {
         this.toolSearchStrategy = toolSearchStrategy;
     }
 
-    public ToolServiceContext createContext(InvocationContext invocationContext, UserMessage userMessage) {
+    // TODO breaking change, avoid
+    public ToolServiceContext createContext(InvocationContext invocationContext, UserMessage userMessage, ChatMemory chatMemory) {
         if (this.toolProvider == null) {
             return this.toolSpecifications.isEmpty()
                     ? ToolServiceContext.Empty.INSTANCE
                     : ToolServiceContext.builder()
                             // TODO include all tools that were used in the current conversation?
-                            .toolSpecifications(this.toolSearchStrategy != null ? toolSearchStrategy.toolSearchTools() : this.toolSpecifications)
+                            .toolSpecifications(this.toolSearchStrategy != null ? collectToolSpecs(chatMemory, this.toolSpecifications) : this.toolSpecifications)
                             .allToolSpecifications(this.toolSpecifications)
                             .toolExecutors(this.toolExecutors)
                             .immediateReturnTools(this.immediateReturnTools)
@@ -273,6 +275,28 @@ public class ToolService {
                 .toolExecutors(toolExecutors)
                 .immediateReturnTools(immediateReturnTools)
                 .build();
+    }
+
+    private List<ToolSpecification> collectToolSpecs(ChatMemory chatMemory, List<ToolSpecification> allToolSpecifications) { // TODO name
+        if (chatMemory == null) {
+            return toolSearchStrategy.toolSearchTools();
+        }
+
+        List<ToolSpecification> result = new ArrayList<>(toolSearchStrategy.toolSearchTools());
+        List<String> previouslyFoundToolNames = chatMemory.messages().stream()
+                .filter(it -> it instanceof ToolExecutionResultMessage)
+                .map(it -> (ToolExecutionResultMessage) it)
+                .map(it -> it.attributes().get(FOUND_TOOLS_ATTRIBUTE))
+                .filter(it -> it != null)
+                .map(it -> (List<String>) it)
+                .flatMap(List::stream)
+                .toList();// TODO unit test, optimize
+        if (!previouslyFoundToolNames.isEmpty()) {
+            Map<String, ToolSpecification> toolSpecsByName = new HashMap<>(allToolSpecifications.size());
+            allToolSpecifications.forEach(spec -> toolSpecsByName.put(spec.name(), spec));
+            previouslyFoundToolNames.forEach(toolName -> result.add(toolSpecsByName.get(toolName)));
+        }
+        return result;
     }
 
     public ToolServiceResult executeInferenceAndToolsLoop(
@@ -343,7 +367,16 @@ public class ToolService {
                         searchResultMessages = new ArrayList<>();
                         for (ToolExecutionRequest toolSearch : toolSearches) {
                             // TODO separate found tools
-                            searchResultMessages.add(ToolExecutionResultMessage.from(toolSearch, "Found following tools: " + toolSearchResult.foundTools().stream().map(ToolSpecification::name).collect(joining(", ")))); // TODO
+                            List<String> foundToolNames = toolSearchResult.foundTools().stream()
+                                    .map(ToolSpecification::name)
+                                    .toList();
+                            ToolExecutionResultMessage searchResultMessage = ToolExecutionResultMessage.builder()
+                                    .id(toolSearch.id())
+                                    .toolName(toolSearch.name())
+                                    .text("Found following tools: " + String.join(", ", foundToolNames)) // TODO
+                                    .attributes(Map.of(FOUND_TOOLS_ATTRIBUTE, foundToolNames))
+                                    .build();
+                            searchResultMessages.add(searchResultMessage);
                         }
                     }
                     if (!isNullOrEmpty(searchResultMessages)) { // TODO remove check?

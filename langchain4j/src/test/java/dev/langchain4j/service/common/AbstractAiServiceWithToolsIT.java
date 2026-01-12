@@ -1329,8 +1329,9 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         // TODO verify messages
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
-                request.toolSpecifications().size() == 1
+                request.toolSpecifications().size() == 2
                         && containsTool(request, toolSearchTool)
+                        && containsTool(request, "getWeather")
         ));
 
         inOrder.verify(spyToolSearchStrategy).search(argThat(request ->
@@ -1340,8 +1341,9 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         // TODO verify messages
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
-                request.toolSpecifications().size() == 2
+                request.toolSpecifications().size() == 3
                         && containsTool(request, toolSearchTool)
+                        && containsTool(request, "getWeather")
                         && containsTool(request, "getTime")
         ));
 
@@ -1349,8 +1351,9 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         // TODO verify messages
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
-                request.toolSpecifications().size() == 2
+                request.toolSpecifications().size() == 3
                         && containsTool(request, toolSearchTool)
+                        && containsTool(request, "getWeather")
                         && containsTool(request, "getTime")
         ));
 

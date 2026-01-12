@@ -132,7 +132,7 @@ public class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec {
     @JsonDeserialize(builder = ToolExecutionRequest.Builder.class)
     private abstract static class ToolExecutionRequestMixin {}
 
-    @JsonInclude(NON_NULL)
+    @JsonInclude(NON_EMPTY) // TODO check backward compatibility
     private static class ToolExecutionResultMessageMixin {
 
         @JsonCreator

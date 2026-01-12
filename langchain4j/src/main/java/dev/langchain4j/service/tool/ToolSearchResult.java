@@ -20,6 +20,7 @@ public class ToolSearchResult {
         this.searchResultMessages = List.of(); // TODO
     }
 
+    // TODO in this case tool result message attributes must be filled by user, or add them automatically?
     public ToolSearchResult(List<ToolSpecification> foundTools, List<ToolExecutionResultMessage> searchResultMessages) {
         this.foundTools = copy(foundTools); // TODO
         this.searchResultMessages = copy(searchResultMessages); // TODO

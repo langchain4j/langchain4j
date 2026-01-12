@@ -2,6 +2,7 @@ package dev.langchain4j.model.openai;
 
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_5_MINI;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_5_NANO;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.O3_MINI;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
@@ -32,7 +33,9 @@ import dev.langchain4j.model.output.TokenUsage;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -41,6 +44,84 @@ import org.junit.jupiter.params.provider.EnumSource;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiChatModelIT {
+
+    @Test
+    void test_cache_invalidation() {
+
+        ChatModel model = OpenAiChatModel.builder()
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(GPT_5_MINI)
+//                .logRequests(true)
+//                .logResponses(true)
+                .build();
+
+        List<ToolSpecification> tools = new ArrayList<>();
+
+        tools.add(ToolSpecification.builder()
+                .name("tool_z")
+                .description("tool_z")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("type")
+                        .build())
+                .build());
+
+        tools.add(ToolSpecification.builder()
+                .name("tool_zz")
+                .description("tool_zz")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("type")
+                        .build())
+                .build());
+
+        tools.addAll(createTools(0, 50));
+
+//        tools.add(ToolSpecification.builder()
+//                        .name("tool_x")
+//                        .description("tool_x")
+//                        .parameters(JsonObjectSchema.builder()
+//                                .addStringProperty("type")
+//                                .build())
+//                .build());
+
+        tools.addAll(createTools(50, 100));
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(
+                        SystemMessage.from("hello ".repeat(2000)),
+                        UserMessage.from("hi"),
+                        AiMessage.from("hello there"),
+                        UserMessage.from("hi ".repeat(2000)),
+                        AiMessage.from("yo"),
+                        UserMessage.from("heeey")
+                )
+                .toolSpecifications(tools)
+                .build();
+
+        // when
+        ChatResponse response = model.chat(chatRequest);
+
+        // then
+        OpenAiChatResponseMetadata metadata = (OpenAiChatResponseMetadata) response.metadata();
+        OpenAiTokenUsage tokenUsage = metadata.tokenUsage();
+        System.out.println(tokenUsage.inputTokensDetails().cachedTokens());
+    }
+
+    static List<ToolSpecification> createTools(int from, int to) {
+        List<ToolSpecification> tools = new ArrayList<>();
+        for (int i = from; i < to; i++) {
+            ToolSpecification tool = ToolSpecification.builder()
+                    .name("tool_" + i)
+                    .description("Tool " + i)
+                    .parameters(JsonObjectSchema.builder()
+                            .addStringProperty("city_" + i)
+                            .required("city_" + i)
+                            .build())
+                    .build();
+            tools.add(tool);
+        }
+        return tools;
+    }
 
     @ParameterizedTest
     @EnumSource(
