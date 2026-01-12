@@ -82,7 +82,8 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
                         chatRequest, parameters, strictTools, strictJsonSchema)
                 .build();
 
-        if (modelProvider.equals(ModelProvider.MICROSOFT_FOUNDRY) || modelProvider.equals(ModelProvider.GITHUB_MODELS)) {
+        if (modelProvider.equals(ModelProvider.MICROSOFT_FOUNDRY)
+                || modelProvider.equals(ModelProvider.GITHUB_MODELS)) {
             if (!parameters.modelName().equals(this.modelName)) {
                 // The model name can't be changed in Microsoft Foundry, where it's part of the URL.
                 throw new UnsupportedFeatureException("Modifying the modelName is not supported");

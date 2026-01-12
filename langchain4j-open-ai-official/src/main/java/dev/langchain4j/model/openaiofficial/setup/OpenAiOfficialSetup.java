@@ -52,8 +52,8 @@ public class OpenAiOfficialSetup {
             Map<String, String> customHeaders) {
 
         baseUrl = detectBaseUrlFromEnv(baseUrl);
-        var modelProvider =
-                detectModelProvider(isMicrosoftFoundry, isGitHubModels, baseUrl, microsoftFoundryDeploymentName, azureOpenAiServiceVersion);
+        var modelProvider = detectModelProvider(
+                isMicrosoftFoundry, isGitHubModels, baseUrl, microsoftFoundryDeploymentName, azureOpenAiServiceVersion);
         if (timeout == null) {
             timeout = DEFAULT_DURATION;
         }
@@ -117,8 +117,8 @@ public class OpenAiOfficialSetup {
             Map<String, String> customHeaders) {
 
         baseUrl = detectBaseUrlFromEnv(baseUrl);
-        var modelProvider =
-                detectModelProvider(isMicrosoftFoundry, isGitHubModels, baseUrl, microsoftFoundryDeploymentName, azureOpenAiServiceVersion);
+        var modelProvider = detectModelProvider(
+                isMicrosoftFoundry, isGitHubModels, baseUrl, microsoftFoundryDeploymentName, azureOpenAiServiceVersion);
         if (timeout == null) {
             timeout = DEFAULT_DURATION;
         }
@@ -259,7 +259,7 @@ public class OpenAiOfficialSetup {
         } else if (modelProvider == ModelProvider.MICROSOFT_FOUNDRY && System.getenv(MICROSOFT_FOUNDRY_KEY) != null) {
             return System.getenv(MICROSOFT_FOUNDRY_KEY);
         } else if (modelProvider == ModelProvider.MICROSOFT_FOUNDRY && System.getenv(AZURE_OPENAI_KEY) != null) {
-            return System.getenv(AZURE_OPENAI_KEY);  // Azure OpenAi is deprecated in favor of Microsoft Foundry
+            return System.getenv(AZURE_OPENAI_KEY); // Azure OpenAi is deprecated in favor of Microsoft Foundry
         } else if (modelProvider == ModelProvider.MICROSOFT_FOUNDRY && System.getenv(OPENAI_API_KEY) != null) {
             return System.getenv(OPENAI_API_KEY);
         } else if (modelProvider == ModelProvider.GITHUB_MODELS && System.getenv(GITHUB_TOKEN) != null) {
