@@ -11,6 +11,7 @@ import java.util.Map;
 import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.HttpEntity;
 import org.apache.hc.core5.http.io.entity.ByteArrayEntity;
+import org.apache.hc.core5.http.message.BasicNameValuePair;
 
 @Experimental
 public class MultipartBodyPublisher {
@@ -66,7 +67,8 @@ public class MultipartBodyPublisher {
             out.write(part, 0, part.length);
         }
 
-        String contentType = "multipart/form-data; boundary=" + BOUNDARY;
-        return new ByteArrayEntity(out.toByteArray(), ContentType.create(contentType));
+        ContentType contentType =
+                ContentType.MULTIPART_FORM_DATA.withParameters(new BasicNameValuePair("boundary", BOUNDARY));
+        return new ByteArrayEntity(out.toByteArray(), contentType);
     }
 }

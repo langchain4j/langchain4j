@@ -11,7 +11,7 @@
     </parent>
 
     <artifactId>langchain4j-http-client-apache</artifactId>
-    <version>1.11.0-SNAPSHOT</version>
+    <version>1.11.0-beta19-SNAPSHOT</version>
     <name>LangChain4j :: HTTP Client :: Apache HttpClient5</name>
 
     <dependencies>

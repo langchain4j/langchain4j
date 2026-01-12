@@ -22,8 +22,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import org.apache.hc.client5.http.async.methods.SimpleHttpRequest;
 import org.apache.hc.client5.http.async.methods.SimpleHttpResponse;
 import org.apache.hc.client5.http.async.methods.SimpleRequestBuilder;
@@ -50,7 +48,6 @@ public class ApacheHttpClient implements HttpClient {
 
     private final CloseableHttpClient syncClient;
     private final CloseableHttpAsyncClient asyncClient;
-    private final ExecutorService executorService;
 
     public ApacheHttpClient(ApacheHttpClientBuilder builder) {
         org.apache.hc.client5.http.impl.classic.HttpClientBuilder syncHttpClientBuilder =
@@ -74,11 +71,6 @@ public class ApacheHttpClient implements HttpClient {
         syncHttpClientBuilder.setDefaultRequestConfig(requestConfig);
         this.syncClient = syncHttpClientBuilder.build();
         this.asyncClient = asyncHttpClientBuilder.build();
-        this.executorService = Executors.newCachedThreadPool(r -> {
-            Thread t = new Thread(r, "apache-http-client");
-            t.setDaemon(true);
-            return t;
-        });
         this.asyncClient.start();
     }
 
@@ -128,13 +120,11 @@ public class ApacheHttpClient implements HttpClient {
 
             @Override
             public void failed(Exception ex) {
-                executorService.submit(() -> {
-                    if (ex instanceof SocketTimeoutException) {
-                        ignoringExceptions(() -> listener.onError(new TimeoutException(ex)));
-                    } else {
-                        ignoringExceptions(() -> listener.onError(ex));
-                    }
-                });
+                if (ex instanceof SocketTimeoutException) {
+                    ignoringExceptions(() -> listener.onError(new TimeoutException(ex)));
+                } else {
+                    ignoringExceptions(() -> listener.onError(ex));
+                }
             }
 
             @Override
@@ -143,9 +133,6 @@ public class ApacheHttpClient implements HttpClient {
     }
 
     private InputStream getInputStream(SimpleHttpResponse apacheResponse) {
-        // 对于 SSE 流，我们需要从响应体创建输入流
-        // 注意：SimpleHttpResponse 会将整个响应体加载到内存中
-        // 这对于真正的流式处理不是最优的，但对于测试场景是可接受的
         byte[] bodyBytes = apacheResponse.getBody().getBodyBytes();
         return new ByteArrayInputStream(Objects.requireNonNullElseGet(bodyBytes, () -> new byte[0]));
     }
@@ -220,7 +207,7 @@ public class ApacheHttpClient implements HttpClient {
             builder = switch (request.method()) {
                 case GET -> SimpleRequestBuilder.get(uri);
                 case DELETE -> SimpleRequestBuilder.delete(uri);
-                default -> SimpleRequestBuilder.post(uri);
+                case POST -> SimpleRequestBuilder.post(uri);
             };
 
             if (request.body() != null) {
