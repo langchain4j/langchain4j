@@ -1,9 +1,5 @@
 package dev.langchain4j.model.anthropic;
 
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.model.ModelProvider.ANTHROPIC;
-
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicModelInfo;
@@ -11,12 +7,17 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicModelsListResponse;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
 import dev.langchain4j.model.catalog.ModelCatalog;
 import dev.langchain4j.model.catalog.ModelDescription;
+import org.slf4j.Logger;
+
 import java.time.Duration;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
-import org.slf4j.Logger;
+
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.model.ModelProvider.ANTHROPIC;
 
 /**
  * Anthropic implementation of {@link ModelCatalog}.
@@ -56,7 +57,10 @@ public class AnthropicModelCatalog implements ModelCatalog {
     @Override
     public List<ModelDescription> listModels() {
         AnthropicModelsListResponse response = client.listModels();
-        return response.data.stream().map(this::mapToModelDescription).toList();
+        List<ModelDescription> models = response.data.stream()
+                .map(this::mapToModelDescription)
+                .toList();
+        return models;
     }
 
     private ModelDescription mapToModelDescription(AnthropicModelInfo modelInfo) {
