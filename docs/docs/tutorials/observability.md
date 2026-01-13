@@ -271,12 +271,51 @@ The `attributes` map allows passing information between the `onRequest`, `onResp
   `StreamingChatResponseHandler.onCompleteResponse()` is called. The `ChatModelListener.onError()` is called
   before the `StreamingChatResponseHandler.onError()` is called.
 
-## RAG Observability (EmbeddingStore and ContentRetriever)
+## RAG Observability (EmbeddingModel, EmbeddingStore and ContentRetriever)
 
-`EmbeddingStore` and `ContentRetriever` can be instrumented with listeners to observe:
+`EmbeddingModel`, `EmbeddingStore` and `ContentRetriever` can be instrumented with listeners to observe:
 - Latency (measure duration using `attributes`)
 - Payloads (e.g., `EmbeddingSearchRequest.queryEmbedding()` and retrieved matches/contents)
 - Errors
+
+### EmbeddingModel listener
+
+Implement `EmbeddingModelListener`:
+
+```java
+import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
+import dev.langchain4j.model.embedding.listener.EmbeddingModelRequestContext;
+import dev.langchain4j.model.embedding.listener.EmbeddingModelResponseContext;
+import dev.langchain4j.model.embedding.listener.EmbeddingModelErrorContext;
+
+public class MyEmbeddingModelListener implements EmbeddingModelListener {
+
+    @Override
+    public void onRequest(EmbeddingModelRequestContext requestContext) {
+        requestContext.attributes().put("startNanos", System.nanoTime());
+    }
+
+    @Override
+    public void onResponse(EmbeddingModelResponseContext responseContext) {
+        long startNanos = (long) responseContext.attributes().get("startNanos");
+        long durationNanos = System.nanoTime() - startNanos;
+        // Do something with duration and/or responseContext.response()
+    }
+
+    @Override
+    public void onError(EmbeddingModelErrorContext errorContext) {
+        // Do something with errorContext.error()
+    }
+}
+```
+
+Attach listeners using `EmbeddingModel#addListener(s)`:
+
+```java
+EmbeddingModel observedModel = embeddingModel.addListener(new MyEmbeddingModelListener());
+
+observedModel.embed("hello");
+```
 
 ### EmbeddingStore listener
 
