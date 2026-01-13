@@ -1195,8 +1195,10 @@ public abstract class AbstractAiServiceWithToolsIT {
         ));
     }
 
-    // TODO for streaming as well
     // TODO test with ToolProvider (e.g., MCP)
+    // TODO test when tool search is called together with real tool
+    // TODO verify tool callbacks, also those on ai service
+    // TODO implement for streaming as well
 
     @ParameterizedTest
     @MethodSource("models")
