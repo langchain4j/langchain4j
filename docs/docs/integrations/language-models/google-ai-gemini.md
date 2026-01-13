@@ -38,7 +38,7 @@ https://ai.google.dev/gemini-api/docs
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-google-ai-gemini</artifactId>
-    <version>1.9.1</version>
+    <version>1.10.0</version>
 </dependency>
 ```
 
@@ -277,7 +277,11 @@ WeatherForecast forecast = forecastAssistant.extract("""
 
 ### Response Format / Response Schema
 You can specify a `ResponseFormat` either when creating a `GoogleAiGeminiChatModel` or when calling it.
-Let's have a look at an example to define a JSON schema for a recipe when creating the `GoogleAiGeminiChatModel`:
+
+Especially, in cases of Json format, you can choose to define schema programmatically by creating the respective java objects or by providing raw json schema. 
+#### Response Schema
+Let's have a look at an example to define a JSON schema for a recipe when creating the `GoogleAiGeminiChatModel`.
+In this example we declare the json schema using `JsonObjectSchema` class.
 ```java
 ResponseFormat responseFormat = ResponseFormat.builder()
         .type(ResponseFormatType.JSON)
@@ -330,6 +334,87 @@ ChatResponse chatResponse = gemini.chat(chatRequest);
 System.out.println(chatResponse.aiMessage().text());
 ```
 
+#### Raw Response Schema
+Another example shows how we can use the `responseJsonSchema` of the Gemini API to provide a raw JSON schema using `JsonRawSchema` class.  
+Please be cautious to use only the [supported types](https://ai.google.dev/gemini-api/docs/structured-output?example=recipe#json_schema_support) of the Gemini API.
+```
+String rawSchema = """
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "birthDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "preferredContactTime": {
+      "type": "string",
+      "format": "time"
+      },
+    "height": {
+      "type": "number",
+      "minimum": 1.83,
+      "maximum": 1.88
+    },
+    "role": {
+      "type": "string",
+      "enum": ["developer", "maintainer", "researcher"]
+    },
+    "isAvailable": { "type": "boolean" },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "maxItems": 5
+    },
+    "address": {
+      "type": "object",
+      "properties": {
+        "city": { "type": "string" },
+        "streetName": { "type": "string" },
+        "streetNumber": { "type": "string" }
+      },
+      "required": ["city", "streetName", "streetNumber"],
+      "additionalProperties": true
+    }
+  },
+  "required": ["name", "birthDate", "height", "role", "tags", "address"]
+}
+""";
+
+JsonRawSchema jsonRawSchema = JsonRawSchema.builder().schema(rawSchema).build();
+JsonSchema jsonSchema = JsonSchema.builder().rootElement(jsonRawSchema).build();
+        
+ResponseFormat responseFormat = ResponseFormat.builder()
+        .type(ResponseFormatType.JSON)
+        .jsonSchema(jsonSchema)
+        .build();
+
+GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
+        .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+        .modelName("gemini-2.5-flash-lite")
+        .logRequests(true)
+        .logResponses(true)
+        .responseFormat(responseFormat)
+        .build();
+        
+UserMessage userMessage = UserMessage.from(
+        """
+           Tell me about a detective named Sherlock Holmes,
+           who was born on November 28 1852 and sees the world over six feet from the ground.
+           He is a trouble-seeker, an active volunteer and lives in London at 221B Baker Street.
+           He plays the violin and he likes to conduct various physics and chemistry experiments.
+           He accepts clients or prefers to be contacted at 09:00am.
+           """);
+
+ChatResponse response = gemini.chat(ChatRequest.builder()
+        .messages(userMessage)
+        .build());
+```
 ### JSON Mode
 
 You can force Gemini to reply in JSON:

@@ -114,7 +114,6 @@ public class LocalAiLanguageModel implements LanguageModel {
 
         public LocalAiLanguageModelBuilder() {
             // This is public so it can be extended
-            // By default with Lombok it becomes package private
         }
 
         public LocalAiLanguageModelBuilder baseUrl(String baseUrl) {

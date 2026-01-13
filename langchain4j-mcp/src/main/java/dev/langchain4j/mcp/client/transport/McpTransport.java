@@ -1,8 +1,8 @@
 package dev.langchain4j.mcp.client.transport;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import dev.langchain4j.mcp.client.protocol.McpClientMessage;
-import dev.langchain4j.mcp.client.protocol.McpInitializeRequest;
+import dev.langchain4j.mcp.protocol.McpInitializeRequest;
+import dev.langchain4j.mcp.protocol.McpJsonRpcMessage;
 import java.io.Closeable;
 import java.util.concurrent.CompletableFuture;
 
@@ -25,13 +25,13 @@ public interface McpTransport extends Closeable {
     /**
      * Executes an operation that expects a response from the server.
      */
-    CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage request);
+    CompletableFuture<JsonNode> executeOperationWithResponse(McpJsonRpcMessage request);
 
     /**
      * Sends a message that does not expect a response from the server - either a
      * client-initiated notification or a response to a server-initiated request.
      */
-    void executeOperationWithoutResponse(McpClientMessage request);
+    void executeOperationWithoutResponse(McpJsonRpcMessage request);
 
     /**
      * Performs transport-specific health checks, if applicable. This is called

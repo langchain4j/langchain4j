@@ -50,7 +50,9 @@ import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderResult;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -150,10 +152,15 @@ class AiServicesWithToolsIT {
 
         ChatModel spyChatModel = spy(chatModel);
 
+        List<String> toolCalls = new ArrayList<>();
+        Map<String, Object> toolResults = new HashMap<>();
+
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(spyChatModel)
                 .chatMemory(chatMemory)
                 .tools(transactionService)
+                .beforeToolExecution(before -> toolCalls.add(before.request().name()))
+                .afterToolExecution(exec -> toolResults.put(exec.request().name(), exec.resultObject()))
                 .build();
 
         String userMessage = "What is the amounts of transaction T001?";
@@ -225,6 +232,9 @@ class AiServicesWithToolsIT {
                         .messages(messages.get(0), messages.get(1), messages.get(2))
                         .toolSpecifications(EXPECTED_SPECIFICATION)
                         .build());
+
+        assertThat(toolCalls).hasSize(1).contains("getTransactionAmount");
+        assertThat(toolResults).hasSize(1).containsKey("getTransactionAmount").containsValue(11.1);
     }
 
     @ParameterizedTest

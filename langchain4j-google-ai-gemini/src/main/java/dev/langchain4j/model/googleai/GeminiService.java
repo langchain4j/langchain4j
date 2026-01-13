@@ -167,6 +167,14 @@ class GeminiService {
         return sendRequest(url, apiKey, request, GeminiBatchEmbeddingResponse.class);
     }
 
+    GeminiModelsListResponse listModels(@Nullable Integer pageSize, @Nullable String pageToken) {
+        String url = buildUrl(
+                baseUrl + "/models",
+                new StringPair("pageSize", pageSize != null ? String.valueOf(pageSize) : null),
+                new StringPair("pageToken", pageToken));
+        return sendRequest(url, apiKey, null, GeminiModelsListResponse.class, GET);
+    }
+
     void generateContentStream(
             String modelName,
             GeminiGenerateContentRequest request,

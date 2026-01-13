@@ -91,7 +91,6 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
 
         public OllamaStreamingLanguageModelBuilder() {
             // This is public so it can be extended
-            // By default with Lombok it becomes package private
         }
 
         /**

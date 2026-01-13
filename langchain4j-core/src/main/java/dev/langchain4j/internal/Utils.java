@@ -548,7 +548,7 @@ public class Utils {
      * @return the original value (may be {@code null} or blank)
      */
     public static String warnIfNullOrBlank(String value, String fieldName, Class<?> clazz) {
-        if (isNullOrBlank(fieldName)) {
+        if (isNullOrBlank(value)) {
             log.warn("{}: '{}' is null or blank", clazz.getSimpleName(), fieldName);
         }
         return value;

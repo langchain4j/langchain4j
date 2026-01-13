@@ -31,7 +31,7 @@ LangChain4j provides 3 different integrations with OpenAI for using chat models,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.9.1</version>
+    <version>1.10.0</version>
 </dependency>
 ```
 
@@ -40,7 +40,7 @@ LangChain4j provides 3 different integrations with OpenAI for using chat models,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>1.9.1-beta17</version>
+    <version>1.10.0-beta18</version>
 </dependency>
 ```
 
@@ -200,6 +200,11 @@ ChatModel model = OpenAiChatModel.builder()
         .returnThinking(true)
         .build();
 ```
+
+When the `sendThinking` parameter is enabled while building `OpenAiChatModel` or `OpenAiStreamingChatModel`,
+the `AiMessage.thinking()` will be sent in the request to the DeepSeek API.
+The name of the field can be configured by using the `sendThinking(boolean, String)` builder method.
+By default, the `reasoning_content` field name is used.
 
 ## Creating `OpenAiStreamingChatModel`
 

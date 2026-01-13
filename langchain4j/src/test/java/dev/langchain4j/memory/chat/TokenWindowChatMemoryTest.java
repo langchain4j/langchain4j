@@ -18,9 +18,9 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.model.openai.OpenAiChatModelName;
 import dev.langchain4j.model.openai.OpenAiTokenCountEstimator;
+import java.util.function.Function;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
-import java.util.function.Function;
 
 class TokenWindowChatMemoryTest implements WithAssertions {
 
@@ -30,8 +30,9 @@ class TokenWindowChatMemoryTest implements WithAssertions {
     @Test
     void id() {
         {
-            ChatMemory chatMemory =
-                    TokenWindowChatMemory.builder().maxTokens(2, TOKEN_COUNT_ESTIMATOR).build();
+            ChatMemory chatMemory = TokenWindowChatMemory.builder()
+                    .maxTokens(2, TOKEN_COUNT_ESTIMATOR)
+                    .build();
             assertThat(chatMemory.id()).isEqualTo("default");
         }
         {
@@ -243,7 +244,8 @@ class TokenWindowChatMemoryTest implements WithAssertions {
         // when
         ToolExecutionResultMessage toolExecutionResultMessage =
                 ToolExecutionResultMessage.from(toolExecutionRequest, "4");
-        int toolExecutionResultMessageTokens = TOKEN_COUNT_ESTIMATOR.estimateTokenCountInMessage(toolExecutionResultMessage);
+        int toolExecutionResultMessageTokens =
+                TOKEN_COUNT_ESTIMATOR.estimateTokenCountInMessage(toolExecutionResultMessage);
         assertThat(toolExecutionResultMessageTokens).isEqualTo(5);
         chatMemory.add(toolExecutionResultMessage);
 
@@ -267,7 +269,8 @@ class TokenWindowChatMemoryTest implements WithAssertions {
     }
 
     @Test
-    void should_evict_orphan_ToolExecutionResultMessage_when_evicting_AiMessage_with_ToolExecutionRequest_when_SystemMessage_is_present() {
+    void
+            should_evict_orphan_ToolExecutionResultMessage_when_evicting_AiMessage_with_ToolExecutionRequest_when_SystemMessage_is_present() {
 
         // given
         ChatMemory chatMemory = TokenWindowChatMemory.withMaxTokens(48, TOKEN_COUNT_ESTIMATOR);
@@ -316,7 +319,8 @@ class TokenWindowChatMemoryTest implements WithAssertions {
         // when
         ToolExecutionResultMessage toolExecutionResultMessage =
                 ToolExecutionResultMessage.from(toolExecutionRequest, "4");
-        int toolExecutionResultMessageTokens = TOKEN_COUNT_ESTIMATOR.estimateTokenCountInMessage(toolExecutionResultMessage);
+        int toolExecutionResultMessageTokens =
+                TOKEN_COUNT_ESTIMATOR.estimateTokenCountInMessage(toolExecutionResultMessage);
         assertThat(toolExecutionResultMessageTokens).isEqualTo(5);
         chatMemory.add(toolExecutionResultMessage);
 
@@ -343,7 +347,8 @@ class TokenWindowChatMemoryTest implements WithAssertions {
     }
 
     @Test
-    void should_evict_orphan_ToolExecutionResultMessage_when_evicting_AiMessage_with_ToolExecutionRequest_when_SystemMessage_is_present_2() {
+    void
+            should_evict_orphan_ToolExecutionResultMessage_when_evicting_AiMessage_with_ToolExecutionRequest_when_SystemMessage_is_present_2() {
 
         // given chat memory
         ChatMemory chatMemory = TokenWindowChatMemory.withMaxTokens(36, TOKEN_COUNT_ESTIMATOR);
@@ -392,7 +397,8 @@ class TokenWindowChatMemoryTest implements WithAssertions {
         // when toolExecutionResultMessage is added and aiMessage has to be evicted
         ToolExecutionResultMessage toolExecutionResultMessage =
                 ToolExecutionResultMessage.from(toolExecutionRequest, "4");
-        int toolExecutionResultMessageTokens = TOKEN_COUNT_ESTIMATOR.estimateTokenCountInMessage(toolExecutionResultMessage);
+        int toolExecutionResultMessageTokens =
+                TOKEN_COUNT_ESTIMATOR.estimateTokenCountInMessage(toolExecutionResultMessage);
         assertThat(toolExecutionResultMessageTokens).isEqualTo(5);
         chatMemory.add(toolExecutionResultMessage);
 
@@ -448,7 +454,8 @@ class TokenWindowChatMemoryTest implements WithAssertions {
         // when
         ToolExecutionResultMessage toolExecutionResultMessage1 =
                 ToolExecutionResultMessage.from(toolExecutionRequest1, "4");
-        int toolExecutionResultMessage1Tokens = TOKEN_COUNT_ESTIMATOR.estimateTokenCountInMessage(toolExecutionResultMessage1);
+        int toolExecutionResultMessage1Tokens =
+                TOKEN_COUNT_ESTIMATOR.estimateTokenCountInMessage(toolExecutionResultMessage1);
         assertThat(toolExecutionResultMessage1Tokens).isEqualTo(5);
         chatMemory.add(toolExecutionResultMessage1);
 
@@ -464,7 +471,8 @@ class TokenWindowChatMemoryTest implements WithAssertions {
         // when
         ToolExecutionResultMessage toolExecutionResultMessage2 =
                 ToolExecutionResultMessage.from(toolExecutionRequest2, "6");
-        int toolExecutionResultMessage2Tokens = TOKEN_COUNT_ESTIMATOR.estimateTokenCountInMessage(toolExecutionResultMessage2);
+        int toolExecutionResultMessage2Tokens =
+                TOKEN_COUNT_ESTIMATOR.estimateTokenCountInMessage(toolExecutionResultMessage2);
         assertThat(toolExecutionResultMessage2Tokens).isEqualTo(5);
         chatMemory.add(toolExecutionResultMessage2);
 
@@ -492,7 +500,8 @@ class TokenWindowChatMemoryTest implements WithAssertions {
     }
 
     @Test
-    void should_evict_multiple_orphan_ToolExecutionResultMessages_when_evicting_AiMessage_with_ToolExecutionRequests_when_SystemMessage_is_present() {
+    void
+            should_evict_multiple_orphan_ToolExecutionResultMessages_when_evicting_AiMessage_with_ToolExecutionRequests_when_SystemMessage_is_present() {
 
         // given
         int maxTokens = 91;
@@ -548,7 +557,8 @@ class TokenWindowChatMemoryTest implements WithAssertions {
         // when
         ToolExecutionResultMessage toolExecutionResultMessage1 =
                 ToolExecutionResultMessage.from(toolExecutionRequest1, "4");
-        int toolExecutionResultMessage1Tokens = TOKEN_COUNT_ESTIMATOR.estimateTokenCountInMessage(toolExecutionResultMessage1);
+        int toolExecutionResultMessage1Tokens =
+                TOKEN_COUNT_ESTIMATOR.estimateTokenCountInMessage(toolExecutionResultMessage1);
         assertThat(toolExecutionResultMessage1Tokens).isEqualTo(5);
         chatMemory.add(toolExecutionResultMessage1);
 
@@ -566,7 +576,8 @@ class TokenWindowChatMemoryTest implements WithAssertions {
         // when
         ToolExecutionResultMessage toolExecutionResultMessage2 =
                 ToolExecutionResultMessage.from(toolExecutionRequest2, "6");
-        int toolExecutionResultMessage2Tokens = TOKEN_COUNT_ESTIMATOR.estimateTokenCountInMessage(toolExecutionResultMessage2);
+        int toolExecutionResultMessage2Tokens =
+                TOKEN_COUNT_ESTIMATOR.estimateTokenCountInMessage(toolExecutionResultMessage2);
         assertThat(toolExecutionResultMessage2Tokens).isEqualTo(5);
         chatMemory.add(toolExecutionResultMessage2);
 
@@ -596,8 +607,8 @@ class TokenWindowChatMemoryTest implements WithAssertions {
 
     @Test
     void should_work_even_if_the_first_message_exceeds_max_tokens() {
-        ChatMemory chatMemory = TokenWindowChatMemory.withMaxTokens(2, new
-                OpenAiTokenCountEstimator(OpenAiChatModelName.GPT_3_5_TURBO));
+        ChatMemory chatMemory = TokenWindowChatMemory.withMaxTokens(
+                2, new OpenAiTokenCountEstimator(OpenAiChatModelName.GPT_3_5_TURBO));
 
         chatMemory.add(userMessageWithTokens(25));
         chatMemory.add(aiMessageWithTokens(10));
@@ -608,8 +619,8 @@ class TokenWindowChatMemoryTest implements WithAssertions {
 
     @Test
     void should_not_fail_even_with_just_system_message() {
-        ChatMemory chatMemory = TokenWindowChatMemory.withMaxTokens(2, new
-                OpenAiTokenCountEstimator(OpenAiChatModelName.GPT_3_5_TURBO));
+        ChatMemory chatMemory = TokenWindowChatMemory.withMaxTokens(
+                2, new OpenAiTokenCountEstimator(OpenAiChatModelName.GPT_3_5_TURBO));
         chatMemory.add(systemMessageWithTokens(10));
     }
 
@@ -642,8 +653,7 @@ class TokenWindowChatMemoryTest implements WithAssertions {
         shortMemory.add(msgD);
 
         // Keep the most recent messages that fit within maxTokens
-        assertThat(shortMemory.messages())
-                .containsExactly(msgB, msgC, msgD);
+        assertThat(shortMemory.messages()).containsExactly(msgB, msgC, msgD);
 
         // longMemory: maxTokens = 60
         TokenWindowChatMemory longMemory = TokenWindowChatMemory.builder()
@@ -658,8 +668,7 @@ class TokenWindowChatMemoryTest implements WithAssertions {
         longMemory.add(msgE);
 
         // Total tokens do not exceed 60, all messages are retained
-        assertThat(longMemory.messages())
-                .containsExactly(msgA, msgB, msgC, msgD, msgE);
+        assertThat(longMemory.messages()).containsExactly(msgA, msgB, msgC, msgD, msgE);
 
         // Default ID: maxTokens = 45
         TokenWindowChatMemory defaultMemory = TokenWindowChatMemory.builder()
@@ -673,10 +682,8 @@ class TokenWindowChatMemoryTest implements WithAssertions {
         defaultMemory.add(msgD);
 
         // Keep the most recent messages that fit within maxTokens
-        assertThat(defaultMemory.messages())
-                .containsExactly(msgA, msgB, msgC, msgD);
+        assertThat(defaultMemory.messages()).containsExactly(msgA, msgB, msgC, msgD);
     }
-
 
     @Test
     void dynamic_max_tokens_can_change_for_same_id() {
@@ -702,19 +709,16 @@ class TokenWindowChatMemoryTest implements WithAssertions {
         memory.add(msgB);
         memory.add(msgC);
 
-        assertThat(memory.messages())
-                .containsExactly(msgA, msgB, msgC);
+        assertThat(memory.messages()).containsExactly(msgA, msgB, msgC);
 
         // Add the fourth message, triggering eviction
         memory.add(msgD);
-        assertThat(memory.messages())
-                .containsExactly(msgB, msgC, msgD);
+        assertThat(memory.messages()).containsExactly(msgB, msgC, msgD);
 
         // Increase maxTokens = 43 and add a new message; no eviction triggered
         currentMaxTokens[0] = 43;
         memory.add(msgE);
-        assertThat(memory.messages())
-                .containsExactly(msgB, msgC, msgD, msgE);
+        assertThat(memory.messages()).containsExactly(msgB, msgC, msgD, msgE);
 
         // Decrease maxTokens = 33, which automatically evicts the oldest messages
         currentMaxTokens[0] = 33;
@@ -723,5 +727,93 @@ class TokenWindowChatMemoryTest implements WithAssertions {
                 .containsExactly(msgC, msgD, msgE); // Keep the most recent messages within token limit
     }
 
+    @Test
+    void system_message_first_enabled() {
+        TokenWindowChatMemory chatMemory = TokenWindowChatMemory.builder()
+                .maxTokens(100, TOKEN_COUNT_ESTIMATOR)
+                .alwaysKeepSystemMessageFirst(true)
+                .build();
 
+        SystemMessage systemMessage = systemMessageWithTokens(10);
+        chatMemory.add(systemMessage);
+
+        UserMessage userMessage = userMessageWithTokens(10);
+        chatMemory.add(userMessage);
+
+        AiMessage aiMessage = aiMessageWithTokens(10);
+        chatMemory.add(aiMessage);
+
+        // System message should be at the beginning
+        assertThat(chatMemory.messages()).containsExactly(systemMessage, userMessage, aiMessage);
+
+        chatMemory = TokenWindowChatMemory.builder()
+                .maxTokens(100, TOKEN_COUNT_ESTIMATOR)
+                .alwaysKeepSystemMessageFirst(true)
+                .build();
+
+        chatMemory.add(userMessage);
+        chatMemory.add(systemMessage);
+        chatMemory.add(aiMessage);
+
+        // System message should be at the beginning
+        assertThat(chatMemory.messages()).containsExactly(systemMessage, userMessage, aiMessage);
+    }
+
+    @Test
+    void system_message_first_disabled() {
+        TokenWindowChatMemory chatMemory = TokenWindowChatMemory.builder()
+                .maxTokens(100, TOKEN_COUNT_ESTIMATOR)
+                .alwaysKeepSystemMessageFirst(false)
+                .build();
+
+        SystemMessage systemMessage = systemMessageWithTokens(10);
+        chatMemory.add(systemMessage);
+
+        UserMessage userMessage = userMessageWithTokens(10);
+        chatMemory.add(userMessage);
+
+        AiMessage aiMessage = aiMessageWithTokens(10);
+        chatMemory.add(aiMessage);
+
+        // System message should be at the beginning
+        assertThat(chatMemory.messages()).containsExactly(systemMessage, userMessage, aiMessage);
+
+        chatMemory = TokenWindowChatMemory.builder()
+                .maxTokens(100, TOKEN_COUNT_ESTIMATOR)
+                .alwaysKeepSystemMessageFirst(false)
+                .build();
+
+        chatMemory.add(userMessage);
+        chatMemory.add(systemMessage);
+        chatMemory.add(aiMessage);
+
+        // System message should NOT be at the beginning
+        assertThat(chatMemory.messages()).containsExactly(userMessage, systemMessage, aiMessage);
+    }
+
+    @Test
+    void system_message_first_with_message_eviction() {
+        ChatMemory chatMemory = TokenWindowChatMemory.builder()
+                .maxTokens(35, TOKEN_COUNT_ESTIMATOR)
+                .alwaysKeepSystemMessageFirst(true)
+                .build();
+
+        SystemMessage systemMessage = systemMessageWithTokens(10);
+        chatMemory.add(systemMessage);
+
+        UserMessage msg1 = userMessageWithTokens(10);
+        chatMemory.add(msg1);
+
+        UserMessage msg2 = userMessageWithTokens(10);
+        chatMemory.add(msg2);
+
+        // At capacity: systemMessage, msg1, msg2
+        assertThat(chatMemory.messages()).containsExactly(systemMessage, msg1, msg2);
+
+        UserMessage msg3 = userMessageWithTokens(10);
+        chatMemory.add(msg3);
+
+        // msg1 should be evicted, systemMessage should remain at the beginning
+        assertThat(chatMemory.messages()).containsExactly(systemMessage, msg2, msg3);
+    }
 }

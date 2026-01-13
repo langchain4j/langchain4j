@@ -22,6 +22,7 @@ import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
+import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.invocation.LangChain4jManaged;
@@ -66,7 +67,6 @@ import java.util.Scanner;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 @Internal
@@ -104,8 +104,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                 context.aiServiceClass.getClassLoader(),
                 new Class<?>[] {context.aiServiceClass},
                 new InvocationHandler() {
-
-                    private final ExecutorService executor = Executors.newCachedThreadPool();
 
                     @Override
                     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
@@ -170,29 +168,33 @@ class DefaultAiServices<T> extends AiServices<T> {
                         var userMessageTemplate = getUserMessageTemplate(method, args);
                         var variables = InternalReflectionVariableResolver.findTemplateVariables(
                                 userMessageTemplate, method, args);
-                        UserMessage userMessage = prepareUserMessage(method, args, userMessageTemplate, variables);
+                        UserMessage originalUserMessage =
+                                prepareUserMessage(method, args, userMessageTemplate, variables);
 
                         context.eventListenerRegistrar.fireEvent(AiServiceStartedEvent.builder()
                                 .invocationContext(invocationContext)
                                 .systemMessage(systemMessage)
-                                .userMessage(userMessage)
+                                .userMessage(originalUserMessage)
                                 .build());
 
                         if (context.hasChatMemory()) {
                             systemMessage.ifPresent(chatMemory::add);
                         }
 
+                        UserMessage userMessageForAugmentation = originalUserMessage;
+
                         AugmentationResult augmentationResult = null;
                         if (context.retrievalAugmentor != null) {
                             List<ChatMessage> chatMemoryMessages = chatMemory != null ? chatMemory.messages() : null;
                             Metadata metadata = Metadata.builder()
-                                    .chatMessage(userMessage)
+                                    .chatMessage(userMessageForAugmentation)
                                     .chatMemory(chatMemoryMessages)
                                     .invocationContext(invocationContext)
                                     .build();
-                            AugmentationRequest augmentationRequest = new AugmentationRequest(userMessage, metadata);
+                            AugmentationRequest augmentationRequest =
+                                    new AugmentationRequest(userMessageForAugmentation, metadata);
                             augmentationResult = context.retrievalAugmentor.augment(augmentationRequest);
-                            userMessage = (UserMessage) augmentationResult.chatMessage();
+                            userMessageForAugmentation = (UserMessage) augmentationResult.chatMessage();
                         }
 
                         var commonGuardrailParam = GuardrailRequestParams.builder()
@@ -204,8 +206,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .variables(variables)
                                 .build();
 
-                        userMessage = invokeInputGuardrails(
-                                context.guardrailService(), method, userMessage, commonGuardrailParam);
+                        UserMessage userMessage = invokeInputGuardrails(
+                                context.guardrailService(), method, userMessageForAugmentation, commonGuardrailParam);
 
                         Type returnType = method.getGenericReturnType();
                         boolean streaming = returnType == TokenStream.class || canAdaptTokenStreamTo(returnType);
@@ -236,8 +238,13 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         List<ChatMessage> messages = new ArrayList<>();
                         if (context.hasChatMemory()) {
-                            chatMemory.add(userMessage);
                             messages.addAll(chatMemory.messages());
+                            if (context.storeRetrievedContentInChatMemory) {
+                                chatMemory.add(userMessage);
+                            } else {
+                                chatMemory.add(originalUserMessage);
+                            }
+                            messages.add(userMessage);
                         } else {
                             systemMessage.ifPresent(messages::add);
                             messages.add(userMessage);
@@ -293,6 +300,8 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         ChatExecutor chatExecutor = ChatExecutor.builder(context.chatModel)
                                 .chatRequest(chatRequest)
+                                .invocationContext(invocationContext)
+                                .eventListenerRegistrar(context.eventListenerRegistrar)
                                 .build();
 
                         ChatResponse chatResponse = chatExecutor.execute();
@@ -428,6 +437,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                     private Future<Moderation> triggerModerationIfNeeded(Method method, List<ChatMessage> messages) {
                         if (method.isAnnotationPresent(Moderate.class)) {
+                            ExecutorService executor = DefaultExecutorProvider.getDefaultExecutorService();
                             return executor.submit(() -> {
                                 List<ChatMessage> messagesToModerate = removeToolMessages(messages);
                                 return context.moderationModel
@@ -499,9 +509,32 @@ class DefaultAiServices<T> extends AiServices<T> {
 
     private static UserMessage prepareUserMessage(
             Method method, Object[] args, String userMessageTemplate, Map<String, Object> variables) {
-        Prompt prompt = PromptTemplate.from(userMessageTemplate).apply(variables);
 
         Optional<String> maybeUserName = findUserName(method.getParameters(), args);
+
+        if (userMessageTemplate.isEmpty()) {
+            List<Content> contents = new ArrayList<>();
+
+            for (Object arg : args) {
+                if (arg instanceof Content content) {
+                    contents.add(content);
+                } else if (isListOfContents(arg)) {
+                    contents.addAll((List<Content>) arg);
+                }
+            }
+
+            if (!contents.isEmpty()) {
+                return maybeUserName
+                        .map(userName -> UserMessage.from(userName, contents))
+                        .orElseGet(() -> UserMessage.from(contents));
+            }
+
+            throw illegalConfiguration(
+                    "Error: The method '%s' does not have a user message defined.", method.getName());
+        }
+
+        Prompt prompt = PromptTemplate.from(userMessageTemplate).apply(variables);
+
         return maybeUserName
                 .map(userName -> UserMessage.from(userName, prompt.text()))
                 .orElseGet(prompt::toUserMessage);
@@ -532,7 +565,27 @@ class DefaultAiServices<T> extends AiServices<T> {
             return templateFromTheOnlyArgument.get();
         }
 
+        if (hasContentArgument(method, args)) {
+            return "";
+        }
+
         throw illegalConfiguration("Error: The method '%s' does not have a user message defined.", method.getName());
+    }
+
+    private static boolean hasContentArgument(Method method, Object[] args) {
+        Parameter[] parameters = method.getParameters();
+        for (int i = 0; i < parameters.length; i++) {
+            if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class)) {
+                if (args[i] instanceof Content || isListOfContents(args[i])) {
+                    return true;
+                }
+            }
+        }
+
+        if (parameters.length == 1 && !hasAnyValidAnnotation(parameters[0])) {
+            return args[0] instanceof Content || isListOfContents(args[0]);
+        }
+        return false;
     }
 
     private static Optional<String> findUserMessageTemplateFromMethodAnnotation(Method method) {
@@ -564,6 +617,9 @@ class DefaultAiServices<T> extends AiServices<T> {
 
     private static Optional<String> findUserMessageTemplateFromTheOnlyArgument(Parameter[] parameters, Object[] args) {
         if (parameters != null && parameters.length == 1 && !hasAnyValidAnnotation(parameters[0])) {
+            if (args[0] instanceof Content || isListOfContents(args[0])) {
+                return Optional.empty();
+            }
             return Optional.of(InternalReflectionVariableResolver.asString(args[0]));
         }
         return Optional.empty();
@@ -595,6 +651,14 @@ class DefaultAiServices<T> extends AiServices<T> {
                 } else {
                     contents.add(null); // placeholder
                 }
+            }
+        }
+
+        if (contents.isEmpty() && parameters.length == 1 && !hasAnyValidAnnotation(parameters[0])) {
+            if (args[0] instanceof Content) {
+                contents.add((Content) args[0]);
+            } else if (isListOfContents(args[0])) {
+                contents.addAll((List<Content>) args[0]);
             }
         }
 
