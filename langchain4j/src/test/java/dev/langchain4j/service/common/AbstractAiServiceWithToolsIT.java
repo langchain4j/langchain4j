@@ -58,6 +58,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.spy;
@@ -1199,30 +1200,28 @@ public abstract class AbstractAiServiceWithToolsIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_support_tool_search_tool_1(ChatModel chatModel) { // TODO name
+    void should_support_tool_search_tool_and_keep_previously_found_tools_in_chat_memory(ChatModel chatModel) {
 
         // given
         class Tools {
 
             @Tool
-            int add(int a, int b) {
-                return a + b;
-            }
-
-            @Tool
             String getWeather(String city) {
-                if (city.equals("London")) { // TODO simplify
-                    return "rainy";
-                } else if (city.equals("Barcelona")) {
+                if (city.equals("London")) {
                     return "sunny";
                 } else {
-                    return "cloudy";
+                    return "rainy";
                 }
             }
 
             @Tool
             String getTime(String city) {
                 return "12:34:56";
+            }
+
+            @Tool
+            int add(int a, int b) { // this tool should be ignored and never seen by the LLM
+                return a + b;
             }
         }
 
@@ -1252,14 +1251,14 @@ public abstract class AbstractAiServiceWithToolsIT {
                     List<ToolSpecification> foundTools = request.availableTools().stream()
                             .filter(tool -> tool.name().toLowerCase().contains("weather"))
                             .toList();
-                    return new ToolSearchResult(foundTools);
+                    return new ToolSearchResult(List.of(foundTools));
                 }
 
                 if (containsToolSearch(request, toolSearchTool, "time")) {
                     List<ToolSpecification> foundTools = request.availableTools().stream()
                             .filter(tool -> tool.name().toLowerCase().contains("time"))
                             .toList();
-                    return new ToolSearchResult(foundTools);
+                    return new ToolSearchResult(List.of(foundTools));
                 }
 
                 throw new IllegalStateException();
@@ -1272,7 +1271,7 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         interface Assistant {
 
-            @SystemMessage("Use search_tools if you need to discover other available tools")
+            @SystemMessage("Use 'search_tools' tool if you need to discover other available tools")
             String chat(String userMessage);
         }
 
@@ -1287,36 +1286,42 @@ public abstract class AbstractAiServiceWithToolsIT {
         String answer = assistant.chat("What is the weather in London?");
 
         // then
-        assertThat(answer.toLowerCase()).contains("rain");
+        assertThat(answer.toLowerCase()).contains("sun");
 
         InOrder inOrder = inOrder(spyChatModel, spyToolSearchStrategy, spyTools);
 
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 1
-                        && containsTool(request, toolSearchTool)));
+                        && containsTool(request, toolSearchTool)
+        ));
 
         inOrder.verify(spyToolSearchStrategy).search(argThat(request ->
                 request.toolSearchRequests().size() == 1
                         && containsToolSearch(request, toolSearchTool, "weather")
         ));
 
-        // TODO verify messages
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 2
                         && containsTool(request, toolSearchTool)
                         && containsTool(request, "getWeather")
+
+                        && request.messages().size() == 4
+                        && request.messages().get(3) instanceof ToolExecutionResultMessage toolResultMessage
+                        && toolResultMessage.text().equals("Found tools: getWeather")
+                        && toolResultMessage.attributes().get("found_tools").equals(List.of("getWeather"))
         ));
 
         inOrder.verify(spyTools).getWeather("London");
 
-        // TODO verify messages
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 2
                         && containsTool(request, toolSearchTool)
                         && containsTool(request, "getWeather")
         ));
 
-        verifyNoMoreInteractionsFor(spyChatModel);
+        if (verifyModelInteractions()) {
+            verifyNoMoreInteractionsFor(spyChatModel);
+        }
         ignoreInteractions(spyToolSearchStrategy).toolSearchTools();
         verifyNoMoreInteractions(spyToolSearchStrategy);
         verifyNoMoreInteractions(spyTools);
@@ -1327,7 +1332,6 @@ public abstract class AbstractAiServiceWithToolsIT {
         // then
         assertThat(answer2).contains("12", "34");
 
-        // TODO verify messages
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 2
                         && containsTool(request, toolSearchTool)
@@ -1339,7 +1343,6 @@ public abstract class AbstractAiServiceWithToolsIT {
                         && containsToolSearch(request, toolSearchTool, "time")
         ));
 
-        // TODO verify messages
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 3
                         && containsTool(request, toolSearchTool)
@@ -1349,7 +1352,6 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         inOrder.verify(spyTools).getTime("London");
 
-        // TODO verify messages
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 3
                         && containsTool(request, toolSearchTool)
@@ -1357,7 +1359,9 @@ public abstract class AbstractAiServiceWithToolsIT {
                         && containsTool(request, "getTime")
         ));
 
-        verifyNoMoreInteractionsFor(spyChatModel);
+        if (verifyModelInteractions()) {
+            verifyNoMoreInteractionsFor(spyChatModel);
+        }
         ignoreInteractions(spyToolSearchStrategy).toolSearchTools();
         verifyNoMoreInteractions(spyToolSearchStrategy);
         verifyNoMoreInteractions(spyTools);
@@ -1365,30 +1369,28 @@ public abstract class AbstractAiServiceWithToolsIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_support_tool_search_tool_2(ChatModel chatModel) { // TODO name
+    void should_support_tool_search_tool_and_multiple_simultaneous_searches(ChatModel chatModel) {
 
         // given
         class Tools {
 
             @Tool
-            int add(int a, int b) {
-                return a + b;
-            }
-
-            @Tool
             String getWeather(String city) {
-                if (city.equals("London")) { // TODO simplify
-                    return "rainy";
-                } else if (city.equals("Barcelona")) {
+                if (city.equals("London")) {
                     return "sunny";
                 } else {
-                    return "cloudy";
+                    return "rainy";
                 }
             }
 
             @Tool
             String getTime(String city) {
                 return "12:34:56";
+            }
+
+            @Tool
+            int add(int a, int b) { // this tool should be ignored and never seen by the LLM
+                return a + b;
             }
         }
 
@@ -1412,8 +1414,9 @@ public abstract class AbstractAiServiceWithToolsIT {
 
             @Override
             public ToolSearchResult search(ToolSearchRequest request) {
-                List<ToolSpecification> foundTools = new ArrayList<>();
+                List<List<ToolSpecification>> allFoundTools = new ArrayList<>();
                 for (ToolExecutionRequest toolSearchRequest : request.toolSearchRequests()) {
+                    List<ToolSpecification> foundTools = new ArrayList<>();
                     if (toolSearchRequest.arguments().toLowerCase().contains("weather")) {
                         foundTools.addAll(request.availableTools().stream()
                                 .filter(tool -> tool.name().toLowerCase().contains("weather"))
@@ -1424,8 +1427,9 @@ public abstract class AbstractAiServiceWithToolsIT {
                                 .filter(tool -> tool.name().toLowerCase().contains("time"))
                                 .toList());
                     }
+                    allFoundTools.add(foundTools);
                 }
-                return new ToolSearchResult(foundTools);
+                return new ToolSearchResult(allFoundTools);
             }
         };
 
@@ -1435,7 +1439,13 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         interface Assistant {
 
-            @SystemMessage("Use search_tools if you need to discover other available tools")
+            @SystemMessage("""
+                    Use 'search_tools' tool if you need to discover other available tools.
+                    Use separate tool calls for separate search terms.
+                    For example, when asked "What is the weather and time in London?",
+                    call 'search_tools' tool twice (simultaneously, in parallel),
+                    once with "London weather" argument, once with "London time" argument.
+                    """)
             String chat(String userMessage);
         }
 
@@ -1450,13 +1460,14 @@ public abstract class AbstractAiServiceWithToolsIT {
         String answer = assistant.chat("What is the weather and time in London?");
 
         // then
-        assertThat(answer.toLowerCase()).contains("rain", "12", "34");
+        assertThat(answer.toLowerCase()).contains("sun", "12", "34");
 
         InOrder inOrder = inOrder(spyChatModel, spyToolSearchStrategy, spyTools);
 
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 1
-                        && containsTool(request, toolSearchTool)));
+                        && containsTool(request, toolSearchTool)
+        ));
 
         inOrder.verify(spyToolSearchStrategy).search(argThat(request ->
                 request.toolSearchRequests().size() == 2
@@ -1464,18 +1475,24 @@ public abstract class AbstractAiServiceWithToolsIT {
                         && containsToolSearch(request, toolSearchTool, "time")
         ));
 
-        // TODO verify messages
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 3
                         && containsTool(request, toolSearchTool)
                         && containsTool(request, "getWeather")
                         && containsTool(request, "getTime")
+
+                        && request.messages().size() == 5
+                        && request.messages().get(3) instanceof ToolExecutionResultMessage toolResultMessage
+                        && toolResultMessage.text().equals("Found tools: getWeather")
+                        && toolResultMessage.attributes().get("found_tools").equals(List.of("getWeather"))
+                        && request.messages().get(4) instanceof ToolExecutionResultMessage toolResultMessage2
+                        && toolResultMessage2.text().equals("Found tools: getTime")
+                        && toolResultMessage2.attributes().get("found_tools").equals(List.of("getTime"))
         ));
 
         inOrder.verify(spyTools).getWeather("London");
         inOrder.verify(spyTools).getTime("London");
 
-        // TODO verify messages
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 3
                         && containsTool(request, toolSearchTool)
@@ -1483,7 +1500,9 @@ public abstract class AbstractAiServiceWithToolsIT {
                         && containsTool(request, "getTime")
         ));
 
-        verifyNoMoreInteractionsFor(spyChatModel);
+        if (verifyModelInteractions()) {
+            verifyNoMoreInteractionsFor(spyChatModel);
+        }
         ignoreInteractions(spyToolSearchStrategy).toolSearchTools();
         verifyNoMoreInteractions(spyToolSearchStrategy);
         verifyNoMoreInteractions(spyTools);

@@ -237,7 +237,6 @@ public class ToolService {
             return this.toolSpecifications.isEmpty()
                     ? ToolServiceContext.Empty.INSTANCE
                     : ToolServiceContext.builder()
-                            // TODO include all tools that were used in the current conversation?
                             .toolSpecifications(this.toolSearchStrategy != null ? collectToolSpecs(chatMemory, this.toolSpecifications) : this.toolSpecifications)
                             .allToolSpecifications(this.toolSpecifications)
                             .toolExecutors(this.toolExecutors)
@@ -269,8 +268,7 @@ public class ToolService {
             }
         }
         return ToolServiceContext.builder()
-                // TODO include all tools that were used in the current conversation?
-                .toolSpecifications(toolSearchStrategy != null ? toolSearchStrategy.toolSearchTools() : toolSpecifications)
+                .toolSpecifications(toolSearchStrategy != null ? collectToolSpecs(chatMemory, toolSpecifications) : toolSpecifications)
                 .allToolSpecifications(toolSpecifications)
                 .toolExecutors(toolExecutors)
                 .immediateReturnTools(immediateReturnTools)
@@ -323,7 +321,6 @@ public class ToolService {
 
             AiMessage aiMessage = chatResponse.aiMessage();
 
-            // TODO should tool search tool call be persisted? Only when other tools are called as well?
             if (chatMemory != null) {
                 chatMemory.add(aiMessage);
             } else {
@@ -335,7 +332,6 @@ public class ToolService {
                 break;
             }
 
-            // TODO should we return intermediate response with tool search tool?
             intermediateResponses.add(chatResponse);
 
             // TODO refactor
@@ -358,22 +354,23 @@ public class ToolService {
                             .invocationContext(invocationContext)
                             .build();
                     ToolSearchResult toolSearchResult = toolSearchStrategy.search(toolSearchRequest);
-                    foundTools.addAll(toolSearchResult.foundTools());
+                    toolSearchResult.foundTools().stream()
+                            .flatMap(it -> it.stream())
+                            .forEach(foundTools::add);
 
-                    // TODO instead remove toolSearch request from AiMessage or the whole AiMessage altogether?
                     List<ToolExecutionResultMessage> searchResultMessages = toolSearchResult.searchResultMessages();
                     if (searchResultMessages.isEmpty()) {
                         // TODO good idea?
                         searchResultMessages = new ArrayList<>();
-                        for (ToolExecutionRequest toolSearch : toolSearches) {
-                            // TODO separate found tools
-                            List<String> foundToolNames = toolSearchResult.foundTools().stream()
+                        for (int i = 0; i < toolSearches.size(); i++) {
+                            ToolExecutionRequest toolSearch = toolSearches.get(i);
+                            List<String> foundToolNames = toolSearchResult.foundTools().get(i).stream()
                                     .map(ToolSpecification::name)
                                     .toList();
                             ToolExecutionResultMessage searchResultMessage = ToolExecutionResultMessage.builder()
                                     .id(toolSearch.id())
                                     .toolName(toolSearch.name())
-                                    .text("Found following tools: " + String.join(", ", foundToolNames)) // TODO
+                                    .text("Found tools: " + String.join(", ", foundToolNames)) // TODO
                                     .attributes(Map.of(FOUND_TOOLS_ATTRIBUTE, foundToolNames))
                                     .build();
                             searchResultMessages.add(searchResultMessage);

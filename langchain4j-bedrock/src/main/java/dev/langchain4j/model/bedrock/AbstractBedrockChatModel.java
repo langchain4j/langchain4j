@@ -10,6 +10,7 @@ import static dev.langchain4j.model.bedrock.AwsDocumentConverter.convertJsonObje
 import static dev.langchain4j.model.bedrock.AwsDocumentConverter.documentFromJson;
 import static dev.langchain4j.model.bedrock.AwsDocumentConverter.documentToJson;
 import static dev.langchain4j.model.bedrock.Utils.extractAndValidateFormat;
+import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Objects.nonNull;
 import static software.amazon.awssdk.core.SdkBytes.fromByteArray;
@@ -609,6 +610,10 @@ abstract class AbstractBedrockChatModel {
         public T listeners(List<ChatModelListener> listeners) {
             this.listeners = listeners;
             return self();
+        }
+
+        public T listeners(ChatModelListener... listeners) {
+            return listeners(asList(listeners));
         }
     }
 }

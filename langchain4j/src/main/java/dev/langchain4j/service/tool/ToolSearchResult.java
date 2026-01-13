@@ -12,21 +12,21 @@ import static dev.langchain4j.internal.Utils.copy;
  */
 public class ToolSearchResult {
 
-    private final List<ToolSpecification> foundTools;
+    private final List<List<ToolSpecification>> foundTools;
     private final List<ToolExecutionResultMessage> searchResultMessages;
 
-    public ToolSearchResult(List<ToolSpecification> foundTools) {
+    public ToolSearchResult(List<List<ToolSpecification>> foundTools) {
         this.foundTools = copy(foundTools); // TODO
         this.searchResultMessages = List.of(); // TODO
     }
 
     // TODO in this case tool result message attributes must be filled by user, or add them automatically?
-    public ToolSearchResult(List<ToolSpecification> foundTools, List<ToolExecutionResultMessage> searchResultMessages) {
+    public ToolSearchResult(List<List<ToolSpecification>> foundTools, List<ToolExecutionResultMessage> searchResultMessages) {
         this.foundTools = copy(foundTools); // TODO
         this.searchResultMessages = copy(searchResultMessages); // TODO
     }
 
-    public List<ToolSpecification> foundTools() { // TODO name
+    public List<List<ToolSpecification>> foundTools() { // TODO name
         return foundTools;
     }
 
