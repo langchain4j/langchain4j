@@ -14,7 +14,7 @@ class ToolExecutionResultMessageTest implements WithAssertions {
         assertThat(tm.type()).isEqualTo(ChatMessageType.TOOL_EXECUTION_RESULT);
 
         assertThat(tm)
-                .hasToString("ToolExecutionResultMessage " + "{ id = \"id\" toolName = \"toolName\" text = \"text\" }");
+                .hasToString("ToolExecutionResultMessage " + "{ id = \"id\", toolName = \"toolName\", text = \"text\", attributes = {} }");
     }
 
     @Test
