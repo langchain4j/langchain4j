@@ -13,6 +13,7 @@ import dev.langchain4j.observability.api.listener.AiServiceListener;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.TokenStream;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.AfterAll;
@@ -42,7 +43,7 @@ import software.amazon.awssdk.services.bedrock.model.GuardrailTopicType;
 public class BedrockStreamingGuardrailIT {
 
     private static final String NOVA_MODEL = "us.amazon.nova-micro-v1:0";
-    private static final String GUARDRAIL_NAME = "Langchain_IT";
+    private static final String GUARDRAIL_NAME_PREFIX = "Langchain_IT_";
     private static String guardrailId;
     private static String guardrailVersion;
 
@@ -57,7 +58,7 @@ public class BedrockStreamingGuardrailIT {
                 BedrockClient.builder().region(Region.US_EAST_1).build();
 
         CreateGuardrailResponse response = bedrockClient.createGuardrail(CreateGuardrailRequest.builder()
-                .name(GUARDRAIL_NAME)
+                .name(GUARDRAIL_NAME_PREFIX + UUID.randomUUID())
                 .contentPolicyConfig(GuardrailContentPolicyConfig.builder()
                         .filtersConfig(GuardrailContentFilterConfig.builder()
                                 .type(GuardrailContentFilterType.PROMPT_ATTACK)
