@@ -9,15 +9,19 @@ import dev.langchain4j.service.tool.ToolExecution;
  */
 public interface AgentListener {
 
-    default void beforeAgentInvocation(AgentRequest agentRequest) { }
-    default void afterAgentInvocation(AgentResponse agentResponse) { }
-    default void onAgentInvocationError(AgentInvocationError agentInvocationError) { }
+    default void beforeAgentInvocation(AgentRequest agentRequest) {}
 
-    default void afterAgenticScopeCreated(AgenticScope agenticScope) { }
-    default void beforeAgenticScopeDestroyed(AgenticScope agenticScope) { }
+    default void afterAgentInvocation(AgentResponse agentResponse) {}
 
-    default void beforeToolExecution(BeforeToolExecution beforeToolExecution) { }
-    default void afterToolExecution(ToolExecution toolExecution) { }
+    default void onAgentInvocationError(AgentInvocationError agentInvocationError) {}
+
+    default void afterAgenticScopeCreated(AgenticScope agenticScope) {}
+
+    default void beforeAgenticScopeDestroyed(AgenticScope agenticScope) {}
+
+    default void beforeToolExecution(BeforeToolExecution beforeToolExecution) {}
+
+    default void afterToolExecution(ToolExecution toolExecution) {}
 
     /**
      * Indicates whether this listener should be used only to the agent where it is registered (default)

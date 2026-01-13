@@ -80,7 +80,7 @@ public abstract class AbstractInProcessEmbeddingModel extends DimensionAwareEmbe
                 embeddings.add(Embedding.from(embeddingAndTokenCount.embedding));
                 inputTokenCount += embeddingAndTokenCount.tokenCount - 2; // do not count special tokens [CLS] and [SEP]
             } catch (InterruptedException e) {
-                Thread.currentThread().interrupt(); 
+                Thread.currentThread().interrupt();
                 throw new RuntimeException(e);
             } catch (ExecutionException e) {
                 throw new RuntimeException(e);

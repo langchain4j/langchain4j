@@ -1,7 +1,6 @@
 package dev.langchain4j.agentic;
 
 import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
@@ -10,7 +9,8 @@ public class StreamingAgents {
 
     public interface StreamingCreativeWriter {
 
-        @UserMessage("""
+        @UserMessage(
+                """
                 You are a creative writer.
                 Generate a draft of a story long no more than 3 sentence around the given topic.
                 Return only the story and nothing else.
@@ -20,10 +20,10 @@ public class StreamingAgents {
         TokenStream generateStory(@V("topic") String topic);
     }
 
-
     public interface StreamingAudienceEditor {
 
-        @UserMessage("""
+        @UserMessage(
+                """
             You are a professional editor.
             Analyze and rewrite the following story to better align with the target audience of {{audience}}.
             Return only the story and nothing else.
@@ -35,7 +35,8 @@ public class StreamingAgents {
 
     public interface StreamingStyleEditor {
 
-        @UserMessage("""
+        @UserMessage(
+                """
                 You are a professional editor.
                 Analyze and rewrite the following story to better fit and be more coherent with the {{style}} style.
                 Return only the story and nothing else.
@@ -58,7 +59,8 @@ public class StreamingAgents {
 
     public interface StreamingMedicalExpert {
 
-        @UserMessage("""
+        @UserMessage(
+                """
             You are a medical expert.
             Analyze the following user request under a medical point of view and provide the best possible answer.
             The user request is {{request}}.
@@ -70,7 +72,8 @@ public class StreamingAgents {
 
     public interface StreamingLegalExpert {
 
-        @UserMessage("""
+        @UserMessage(
+                """
             You are a legal expert.
             Analyze the following user request under a legal point of view and provide the best possible answer.
             The user request is {{request}}.
@@ -81,7 +84,8 @@ public class StreamingAgents {
 
     public interface StreamingTechnicalExpert {
 
-        @UserMessage("""
+        @UserMessage(
+                """
             You are a technical expert.
             Analyze the following user request under a technical point of view and provide the best possible answer.
             The user request is {{request}}.

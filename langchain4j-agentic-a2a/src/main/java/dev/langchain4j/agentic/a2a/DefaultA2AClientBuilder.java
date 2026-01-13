@@ -1,9 +1,9 @@
 package dev.langchain4j.agentic.a2a;
 
 import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.internal.A2AClientBuilder;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.observability.AgentListener;
-import dev.langchain4j.agentic.internal.A2AClientBuilder;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
@@ -90,8 +90,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         }
 
         Object agent = Proxy.newProxyInstance(
-                agentServiceClass.getClassLoader(),
-                new Class<?>[] {agentServiceClass, A2AClientInstance.class}, this);
+                agentServiceClass.getClassLoader(), new Class<?>[] {agentServiceClass, A2AClientInstance.class}, this);
 
         return (T) agent;
     }
@@ -107,8 +106,8 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
                 case "agentCard" -> agentCard;
                 case "inputKeys" -> inputKeys;
                 default ->
-                        throw new UnsupportedOperationException(
-                                "Unknown method on A2AClientInstance class : " + method.getName());
+                    throw new UnsupportedOperationException(
+                            "Unknown method on A2AClientInstance class : " + method.getName());
             };
         }
 

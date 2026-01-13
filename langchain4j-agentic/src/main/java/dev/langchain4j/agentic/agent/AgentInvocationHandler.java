@@ -1,11 +1,13 @@
 package dev.langchain4j.agentic.agent;
 
+import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
+
+import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.internal.InternalAgent;
+import dev.langchain4j.agentic.internal.UserMessageRecorder;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
-import dev.langchain4j.agentic.internal.AgenticScopeOwner;
-import dev.langchain4j.agentic.internal.UserMessageRecorder;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.service.AiServiceContext;
@@ -16,8 +18,6 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.util.List;
-
-import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
 
 public class AgentInvocationHandler implements InvocationHandler, InternalAgent {
 
@@ -78,9 +78,10 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
         if (method.getDeclaringClass() == ChatMemoryAccess.class) {
             return switch (method.getName()) {
                 case "getChatMemory" ->
-                    context.hasChatMemory() && (ChatMemoryService.DEFAULT.equals(args[0]) || builder.hasNonDefaultChatMemory()) ?
-                            context.chatMemoryService.getChatMemory(args[0]) :
-                            null;
+                    context.hasChatMemory()
+                                    && (ChatMemoryService.DEFAULT.equals(args[0]) || builder.hasNonDefaultChatMemory())
+                            ? context.chatMemoryService.getChatMemory(args[0])
+                            : null;
                 case "evictChatMemory" ->
                     context.hasChatMemory() && context.chatMemoryService.evictChatMemory(args[0]) != null;
                 default ->
@@ -98,8 +99,7 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
                 case "toString" -> "Agent<" + builder.agentServiceClass.getSimpleName() + ">";
                 case "hashCode" -> System.identityHashCode(agent);
                 default ->
-                        throw new UnsupportedOperationException(
-                                "Unknown method on Object class : " + method.getName());
+                    throw new UnsupportedOperationException("Unknown method on Object class : " + method.getName());
             };
         }
 

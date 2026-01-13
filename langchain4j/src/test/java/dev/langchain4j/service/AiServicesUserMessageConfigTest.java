@@ -107,18 +107,23 @@ class AiServicesUserMessageConfigTest {
         String chat17(@ExternalAnnotation1 @ExternalAnnotation2 String msg);
 
         String chat18_1(Content content);
+
         String chat18_2(AudioContent audioContent);
 
         String chat19_1(@UserMessage Content content);
+
         String chat19_2(@UserMessage AudioContent audioContent);
 
         String chat20_1(List<Content> contents);
+
         String chat20_2(List<AudioContent> audioContents);
 
         String chat21_1(@UserMessage List<Content> contents);
+
         String chat21_2(@UserMessage List<AudioContent> audioContents);
 
         String chat22_1(@UserMessage Content content1, @UserMessage Content content2);
+
         String chat22_2(@UserMessage AudioContent audio, @UserMessage ImageContent image);
 
         // illegal configuration

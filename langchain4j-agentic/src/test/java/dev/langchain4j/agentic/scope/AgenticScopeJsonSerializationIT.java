@@ -1,11 +1,10 @@
 package dev.langchain4j.agentic.scope;
 
-import dev.langchain4j.agentic.Agents;
-import dev.langchain4j.agentic.agent.AgentInvocationException;
-import org.junit.jupiter.api.Test;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import dev.langchain4j.agentic.Agents;
+import org.junit.jupiter.api.Test;
 
 public class AgenticScopeJsonSerializationIT {
 
@@ -44,11 +43,10 @@ public class AgenticScopeJsonSerializationIT {
     @Test
     void agenticScope_secure_serialization_test() throws Exception {
         // Payload targeting the vulnerable codec
-        String payload = "[\"" + DefaultAgenticScope.class.getName() + "\", {" +
-                "\"state\": [\"java.util.HashMap\", {" +
-                "  \"exploit\": [\"" + EvilGadget.class.getName() + "\", {}]" +
-                "}]" +
-                "}]";
+        String payload = "[\"" + DefaultAgenticScope.class.getName() + "\", {" + "\"state\": [\"java.util.HashMap\", {"
+                + "  \"exploit\": [\""
+                + EvilGadget.class.getName() + "\", {}]" + "}]"
+                + "}]";
 
         Class<?> codecClass = JacksonAgenticScopeJsonCodec.class;
         var constructor = codecClass.getDeclaredConstructor();
@@ -58,6 +56,7 @@ public class AgenticScopeJsonSerializationIT {
         var method = codecClass.getDeclaredMethod("fromJson", String.class);
         method.setAccessible(true);
         assertThat(assertThrows(Exception.class, () -> method.invoke(codecInstance, payload)))
-                .cause().hasMessageContaining("Failed to deserialize");
+                .cause()
+                .hasMessageContaining("Failed to deserialize");
     }
 }

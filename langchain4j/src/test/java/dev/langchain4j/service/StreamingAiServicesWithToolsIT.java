@@ -673,7 +673,8 @@ class StreamingAiServicesWithToolsIT {
         CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
         // when
-        assistant.chat(userMessage)
+        assistant
+                .chat(userMessage)
                 .onPartialResponse(handler::onPartialResponse)
                 .onPartialToolCall(handler::onPartialToolCall)
                 .beforeToolExecution(handler::beforeToolExecution)
@@ -705,9 +706,12 @@ class StreamingAiServicesWithToolsIT {
         // then - verify callback order
         InOrder inOrder = inOrder(handler);
 
-        inOrder.verify(handler, atLeastOnce()).onPartialToolCall(argThat(ptc -> ptc.name().equals("currentTemperature")));
-        inOrder.verify(handler).beforeToolExecution(argThat(bte -> bte.request().name().equals("currentTemperature")));
-        inOrder.verify(handler).onToolExecuted(argThat(te -> te.result().equals(String.valueOf(WeatherService.TEMPERATURE))));
+        inOrder.verify(handler, atLeastOnce())
+                .onPartialToolCall(argThat(ptc -> ptc.name().equals("currentTemperature")));
+        inOrder.verify(handler)
+                .beforeToolExecution(argThat(bte -> bte.request().name().equals("currentTemperature")));
+        inOrder.verify(handler)
+                .onToolExecuted(argThat(te -> te.result().equals(String.valueOf(WeatherService.TEMPERATURE))));
 
         inOrder.verify(handler, atLeastOnce()).onPartialResponse(any());
         inOrder.verify(handler).onCompleteResponse(any());

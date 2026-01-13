@@ -1,11 +1,11 @@
 package dev.langchain4j.model.embedding.listener;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import java.util.List;
 import java.util.Map;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * The embedding model request context.
@@ -42,6 +42,3 @@ public class EmbeddingModelRequestContext {
         return attributes;
     }
 }
-
-
-

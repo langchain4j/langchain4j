@@ -1,11 +1,9 @@
 package dev.langchain4j.agentic.observability;
 
 import dev.langchain4j.Internal;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolExecution;
-import dev.langchain4j.service.tool.ToolExecutionResult;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Predicate;
@@ -113,7 +111,8 @@ public class ComposedAgentListener implements AgentListener {
         add(existingListeners, newListener, AgentListener::inheritedBySubagents);
     }
 
-    private static void add(List<AgentListener> existingListeners, AgentListener newListener, Predicate<AgentListener> filter) {
+    private static void add(
+            List<AgentListener> existingListeners, AgentListener newListener, Predicate<AgentListener> filter) {
         if (newListener == null) {
             return;
         }

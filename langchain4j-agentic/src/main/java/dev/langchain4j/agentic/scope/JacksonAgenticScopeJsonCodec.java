@@ -1,5 +1,7 @@
 package dev.langchain4j.agentic.scope;
 
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -11,10 +13,7 @@ import dev.langchain4j.agentic.scope.DefaultAgenticScope.AgentMessage;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope.Kind;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.JacksonChatMessageJsonCodec;
-
 import java.util.Map;
-
-import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 @Internal
 class JacksonAgenticScopeJsonCodec implements AgenticScopeJsonCodec {
@@ -30,9 +29,7 @@ class JacksonAgenticScopeJsonCodec implements AgenticScopeJsonCodec {
         ObjectMapper mapper = agenticScopeJsonMapperBuilder().build();
 
         // Configure the ObjectMapper to add type information for users types
-        mapper.activateDefaultTyping(
-                mapper.getPolymorphicTypeValidator()
-        );
+        mapper.activateDefaultTyping(mapper.getPolymorphicTypeValidator());
 
         return mapper;
     }
@@ -58,33 +55,28 @@ class JacksonAgenticScopeJsonCodec implements AgenticScopeJsonCodec {
     }
 
     @JsonInclude(NON_NULL)
-    private static abstract class AgenticScopeMixin {
+    private abstract static class AgenticScopeMixin {
         @JsonCreator
-        public AgenticScopeMixin(
-                @JsonProperty("memoryId") Object memoryId,
-                @JsonProperty("kind") Kind kind) {
-        }
+        public AgenticScopeMixin(@JsonProperty("memoryId") Object memoryId, @JsonProperty("kind") Kind kind) {}
     }
 
     @JsonInclude(NON_NULL)
-    private static abstract class AgentMessageMixin {
+    private abstract static class AgentMessageMixin {
         @JsonCreator
         public AgentMessageMixin(
                 @JsonProperty("agentName") String agentName,
                 @JsonProperty("agentId") String agentId,
-                @JsonProperty("message") ChatMessage message) {
-        }
+                @JsonProperty("message") ChatMessage message) {}
     }
 
     @JsonInclude(NON_NULL)
-    private static abstract class AgentInvocationMixin {
+    private abstract static class AgentInvocationMixin {
         @JsonCreator
         public AgentInvocationMixin(
                 @JsonProperty("agentType") Class<?> agentType,
                 @JsonProperty("agentName") String agentName,
                 @JsonProperty("agentId") String agentId,
                 @JsonProperty("input") Map<String, Object> input,
-                @JsonProperty("output") Object output) {
-        }
+                @JsonProperty("output") Object output) {}
     }
 }
