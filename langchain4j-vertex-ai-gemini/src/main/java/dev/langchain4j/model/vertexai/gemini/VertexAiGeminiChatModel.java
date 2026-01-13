@@ -591,7 +591,6 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
 
         public VertexAiGeminiChatModelBuilder() {
             // This is public so it can be extended
-            // By default with Lombok it becomes package private
         }
 
         public VertexAiGeminiChatModelBuilder project(String project) {

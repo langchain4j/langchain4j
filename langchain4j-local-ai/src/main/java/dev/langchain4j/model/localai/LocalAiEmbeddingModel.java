@@ -108,7 +108,6 @@ public class LocalAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         public LocalAiEmbeddingModelBuilder() {
             // This is public so it can be extended
-            // By default with Lombok it becomes package private
         }
 
         public LocalAiEmbeddingModelBuilder baseUrl(String baseUrl) {

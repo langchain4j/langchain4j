@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import static dev.langchain4j.data.message.ChatMessageType.TOOL_EXECUTION_RESULT;
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
 import static dev.langchain4j.service.common.AbstractAiServiceWithToolsIT.ToolWithEnumParameter.TemperatureUnit.CELSIUS;
@@ -46,6 +47,7 @@ import static dev.langchain4j.service.common.AbstractAiServiceWithToolsIT.ToolWi
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -1145,5 +1147,41 @@ public abstract class AbstractAiServiceWithToolsIT {
         assertThatThrownBy(() -> assistant.chat(text))
                 .isInstanceOf(IllegalConfigurationException.class)
                 .hasMessageContaining("add");
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_allow_empty_tool_result(ChatModel model) {
+
+        // given
+        class Tools {
+
+            @Tool
+            String modify(int ignored) {
+                return "";
+            }
+        }
+
+        model = spy(model);
+
+        Tools tools = spy(new Tools());
+
+        StringAssistant assistant = AiServices.builder(StringAssistant.class)
+                .chatModel(model)
+                .tools(tools)
+                .build();
+
+        String text = "Call tool 'modify' for argument '7'";
+
+        // when-then
+        assertThatNoException().isThrownBy(() -> assistant.chat(text));
+
+        verify(tools).modify(7);
+
+        verify(model).chat(argThat((ChatRequest request) ->
+                request.messages().size() == 3
+                        && request.messages().get(2).type() == TOOL_EXECUTION_RESULT
+                        && ((ToolExecutionResultMessage) request.messages().get(2)).text().isEmpty()
+        ));
     }
 }

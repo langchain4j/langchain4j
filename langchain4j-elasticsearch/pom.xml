@@ -13,6 +13,7 @@
     <name>LangChain4j :: Integration :: Elasticsearch</name>
 
     <properties>
+        <elastic.version>8.15.3</elastic.version>
         <!-- For tests only -->
         <!-- You can run the tests using
         # Elasticsearch Cloud

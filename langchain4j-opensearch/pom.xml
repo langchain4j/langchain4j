@@ -12,6 +12,12 @@
     <artifactId>langchain4j-opensearch</artifactId>
     <name>LangChain4j :: Integration :: OpenSearch</name>
 
+    <properties>
+        <opensearch-java.version>2.9.0</opensearch-java.version>
+        <opensearch-containers.version>2.0.1</opensearch-containers.version>
+        <jsonpath.version>2.9.0</jsonpath.version>
+    </properties>
+
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -85,12 +91,6 @@
             <version>1.11.0-SNAPSHOT</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
 
