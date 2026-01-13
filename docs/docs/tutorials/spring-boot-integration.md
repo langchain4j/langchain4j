@@ -271,7 +271,9 @@ created by one of our Spring Boot starters.
 
 ## Supported versions
 
-LangChain4j Spring Boot integration requires Java 17 and Spring Boot 3.2.
+LangChain4j Spring Boot integration requires Java 17 and Spring Boot 3.5, in line with the [Spring Boot OSS support policy](https://spring.io/projects/spring-boot#support).
+
+Support for Spring Boot 4.x is not available yet in LangChain4j, but it's planned for a future release.
 
 ## Examples
 - [Low-level Spring Boot example](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/main/java/dev/langchain4j/example/lowlevel/ChatModelController.java) using [ChatModel API](/tutorials/chat-and-language-models)

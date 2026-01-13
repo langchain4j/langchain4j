@@ -83,6 +83,10 @@ public class OnnxBertBiEncoder {
         List<String> tokens = tokenizer.tokenize(text);
         List<List<String>> partitions = partition(tokens, MAX_SEQUENCE_LENGTH);
 
+        if (partitions.isEmpty()) {
+            throw illegalArgument("Cannot embed empty or whitespace-only text");
+        }
+
         List<float[]> embeddings = new ArrayList<>();
         for (List<String> partition : partitions) {
             try (Result result = encode(partition)) {

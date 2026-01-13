@@ -11,14 +11,13 @@ import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.observability.AgentListener;
-import dev.langchain4j.agentic.observability.AgentListenerProvider;
 import dev.langchain4j.agentic.observability.ComposedAgentListener;
-import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.internal.AgentUtil;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.internal.Context;
 import dev.langchain4j.agentic.internal.UserMessageRecorder;
 import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -29,6 +28,7 @@ import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.service.AiServiceContext;
@@ -61,6 +61,7 @@ public class AgentBuilder<T> {
     private final Map<String, Object> defaultValues = new HashMap<>();
 
     private ChatModel model;
+    private StreamingChatModel streamingChatModel;
     private ChatMemory chatMemory;
     private ChatMemoryProvider chatMemoryProvider;
     private Function<AgenticScope, String> contextProvider;
@@ -126,8 +127,15 @@ public class AgentBuilder<T> {
 
         AiServiceContext context = AiServiceContext.create(agentServiceClass);
         AiServices<T> aiServices = AiServices.builder(context);
+        if (model != null && streamingChatModel != null) {
+            throw new AgenticSystemConfigurationException(
+                    "Both chatModel and streamingChatModel are set for agent '" + this.name + "'. Please set only one of them.");
+        }
         if (model != null) {
             aiServices.chatModel(model);
+        }
+        if (streamingChatModel != null) {
+            aiServices.streamingChatModel(streamingChatModel);
         }
         if (chatMemory != null) {
             aiServices.chatMemory(chatMemory);
@@ -143,6 +151,10 @@ public class AgentBuilder<T> {
         }
         if (retrievalAugmentor != null) {
             aiServices.retrievalAugmentor(retrievalAugmentor);
+        }
+        if (agentListener != null) {
+            aiServices.beforeToolExecution(agentListener::beforeToolExecution);
+            aiServices.afterToolExecution(agentListener::afterToolExecution);
         }
 
         setupGuardrails(aiServices);
@@ -168,9 +180,8 @@ public class AgentBuilder<T> {
                 agentServiceClass.getClassLoader(),
                 new Class<?>[] {
                     agentServiceClass,
-                    InternalAgent.class, AgentListenerProvider.class,
-                    ChatMemoryAccess.class, AgenticScopeOwner.class,
-                    ChatMessagesAccess.class
+                    InternalAgent.class, AgenticScopeOwner.class,
+                    ChatMemoryAccess.class, ChatMessagesAccess.class
                 },
                 new AgentInvocationHandler(context, aiServices.build(), this, messageRecorder, agenticScopeDependent));
     }
@@ -233,6 +244,11 @@ public class AgentBuilder<T> {
 
     public AgentBuilder<T> chatModel(ChatModel model) {
         this.model = model;
+        return this;
+    }
+
+    public AgentBuilder<T> streamingChatModel(StreamingChatModel streamingChatModel) {
+        this.streamingChatModel = streamingChatModel;
         return this;
     }
 

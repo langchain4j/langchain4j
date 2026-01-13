@@ -3,7 +3,6 @@ package dev.langchain4j.agentic.a2a;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.observability.AgentListener;
-import dev.langchain4j.agentic.observability.AgentListenerProvider;
 import dev.langchain4j.agentic.internal.A2AClientBuilder;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
@@ -51,7 +50,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
 
     private final String name;
     private String agentId;
-    private AgentInstance parent;
+    private InternalAgent parent;
 
     private String[] inputKeys;
     private String outputKey;
@@ -92,7 +91,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
 
         Object agent = Proxy.newProxyInstance(
                 agentServiceClass.getClassLoader(),
-                new Class<?>[] {agentServiceClass, A2AClientInstance.class, AgentListenerProvider.class}, this);
+                new Class<?>[] {agentServiceClass, A2AClientInstance.class}, this);
 
         return (T) agent;
     }
@@ -101,10 +100,6 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     public Object invoke(Object proxy, Method method, Object[] args) throws Exception {
         if (method.getDeclaringClass() == AgentInstance.class || method.getDeclaringClass() == InternalAgent.class) {
             return method.invoke(Proxy.getInvocationHandler(proxy), args);
-        }
-
-        if (method.getDeclaringClass() == AgentListenerProvider.class) {
-            return agentListener;
         }
 
         if (method.getDeclaringClass() == A2AClientInstance.class) {
@@ -181,7 +176,11 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
             String responseText = messageResponse.get();
             LOG.debug("Response: " + responseText);
             return serviceOutputParser.parseText(returnType, responseText);
-        } catch (InterruptedException | ExecutionException e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            LOG.error("Failed to get response: " + e.getMessage(), e);
+            throw new RuntimeException("Failed to get response: " + e.getMessage(), e);
+        } catch (ExecutionException e) {
             LOG.error("Failed to get response: " + e.getMessage(), e);
             throw new RuntimeException("Failed to get response: " + e.getMessage(), e);
         }
@@ -212,13 +211,18 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     }
 
     @Override
-    public void setParent(AgentInstance parent) {
+    public void setParent(InternalAgent parent) {
         this.parent = parent;
     }
 
     @Override
     public void appendId(String idSuffix) {
         this.agentId = this.agentId + idSuffix;
+    }
+
+    @Override
+    public AgentListener listener() {
+        return agentListener;
     }
 
     @Override

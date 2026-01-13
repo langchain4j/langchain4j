@@ -19,6 +19,7 @@ import dev.langchain4j.model.output.Response;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 
@@ -52,7 +53,7 @@ public class OpenAiImageModel implements ImageModel {
                 .logResponses(getOrDefault(builder.logResponses, false))
                 .logger(builder.logger)
                 .userAgent(DEFAULT_USER_AGENT)
-                .customHeaders(builder.customHeaders)
+                .customHeaders(builder.customHeadersSupplier)
                 .customQueryParams(builder.customQueryParams);
 
         this.client = cBuilder.build();
@@ -117,7 +118,7 @@ public class OpenAiImageModel implements ImageModel {
         private Boolean logRequests;
         private Boolean logResponses;
         private Logger logger;
-        private Map<String, String> customHeaders;
+        private Supplier<Map<String, String>> customHeadersSupplier;
         private Map<String, String> customQueryParams;
 
         public OpenAiImageModelBuilder() {
@@ -213,8 +214,21 @@ public class OpenAiImageModel implements ImageModel {
             return this;
         }
 
+        /**
+         * Sets custom HTTP headers.
+         */
         public OpenAiImageModelBuilder customHeaders(Map<String, String> customHeaders) {
-            this.customHeaders = customHeaders;
+            this.customHeadersSupplier = () -> customHeaders;
+            return this;
+        }
+
+        /**
+         * Sets a supplier for custom HTTP headers.
+         * The supplier is called before each request, allowing dynamic header values.
+         * For example, this is useful for OAuth2 tokens that expire and need refreshing.
+         */
+        public OpenAiImageModelBuilder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
             return this;
         }
 
