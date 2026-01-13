@@ -24,6 +24,10 @@ import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.service.Result;
 import dev.langchain4j.service.SystemMessage;
+import dev.langchain4j.service.tool.ToolExecutor;
+import dev.langchain4j.service.tool.ToolProvider;
+import dev.langchain4j.service.tool.ToolProviderRequest;
+import dev.langchain4j.service.tool.ToolProviderResult;
 import dev.langchain4j.service.tool.ToolSearchRequest;
 import dev.langchain4j.service.tool.ToolSearchResult;
 import dev.langchain4j.service.tool.ToolSearchStrategy;
@@ -37,6 +41,7 @@ import org.mockito.Captor;
 import org.mockito.InOrder;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.lang.reflect.Method;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -45,6 +50,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
 import static dev.langchain4j.data.message.ChatMessageType.TOOL_EXECUTION_RESULT;
 import static dev.langchain4j.MockitoUtils.ignoreInteractions;
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
@@ -1196,7 +1202,6 @@ public abstract class AbstractAiServiceWithToolsIT {
         ));
     }
 
-    // TODO test with ToolProvider (e.g., MCP)
     // TODO verify tool callbacks, also those on ai service
     // TODO implement for streaming as well
 
@@ -1220,9 +1225,48 @@ public abstract class AbstractAiServiceWithToolsIT {
         int add(int a, int b) { // this tool should be ignored and never seen by the LLM
             return a + b;
         }
+
+        static ToolProvider TOOL_PROVIDER = new ToolProvider() {
+
+            @Override
+            public ToolProviderResult provideTools(ToolProviderRequest request) {
+                return ToolProviderResult.builder()
+                        .add(toolSpecificationFrom(getMethod(LazyTools.class, "getWeather", String.class)), new ToolExecutor() {
+                            @Override
+                            public String execute(ToolExecutionRequest request, Object memoryId) {
+                                if (request.arguments().contains("London")) {
+                                    return "sunny";
+                                } else {
+                                    return "rainy";
+                                }
+                            }
+                        })
+                        .add(toolSpecificationFrom(getMethod(LazyTools.class, "getTime", String.class)), new ToolExecutor() {
+                            @Override
+                            public String execute(ToolExecutionRequest request, Object memoryId) {
+                                return "12:34:56";
+                            }
+                        })
+                        .add(toolSpecificationFrom(getMethod(LazyTools.class, "add", int.class, int.class)), new ToolExecutor() {
+                            @Override
+                            public String execute(ToolExecutionRequest request, Object memoryId) {
+                                return "42";
+                            }
+                        })
+                        .build();
+            }
+
+            private static Method getMethod(Class<?> clazz, String name, Class<?>... parameterTypes) {
+                try {
+                    return clazz.getDeclaredMethod(name, parameterTypes);
+                } catch (NoSuchMethodException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
     }
 
-    class CustomToolSearchStrategy implements ToolSearchStrategy { // TODO reduce duplication?
+    class CustomToolSearchStrategy implements ToolSearchStrategy {
 
         static String TOOL_SEARCH_TOOL_NAME = "search_tools";
 
@@ -1371,6 +1415,108 @@ public abstract class AbstractAiServiceWithToolsIT {
 
     @ParameterizedTest
     @MethodSource("models")
+    void should_support_tool_search_tool__keep_previously_found_tools_in_chat_memory__tool_provider(ChatModel chatModel) {
+
+        // given
+        ToolProvider toolProvider = LazyTools.TOOL_PROVIDER;
+        ChatModel spyChatModel = spy(chatModel);
+        ToolSearchStrategy spyToolSearchStrategy = spy(new CustomToolSearchStrategy());
+
+        interface Assistant {
+
+            @SystemMessage("Use 'search_tools' tool if you need to discover other available tools")
+            String chat(String userMessage);
+        }
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(spyChatModel)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
+                .toolProvider(toolProvider)
+                .toolSearchStrategy(spyToolSearchStrategy)
+                .build();
+
+        // when
+        String answer = assistant.chat("What is the weather in London?");
+
+        // then
+        assertThat(answer.toLowerCase()).contains("sun");
+
+        InOrder inOrder = inOrder(spyChatModel, spyToolSearchStrategy);
+
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                request.toolSpecifications().size() == 1
+                        && containsTool(request, TOOL_SEARCH_TOOL)
+        ));
+
+        inOrder.verify(spyToolSearchStrategy).search(argThat(request ->
+                request.toolSearchRequests().size() == 1
+                        && containsToolSearch(request, TOOL_SEARCH_TOOL, "weather")
+        ));
+
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                request.toolSpecifications().size() == 2
+                        && containsTool(request, TOOL_SEARCH_TOOL)
+                        && containsTool(request, "getWeather")
+
+                        && request.messages().size() == 4
+                        && request.messages().get(3) instanceof ToolExecutionResultMessage toolResultMessage
+                        && toolResultMessage.toolName().equals(TOOL_SEARCH_TOOL_NAME)
+                        && toolResultMessage.text().equals("Found tools: getWeather")
+                        && toolResultMessage.attributes().get("found_tools").equals(List.of("getWeather"))
+        ));
+
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                request.toolSpecifications().size() == 2
+                        && containsTool(request, TOOL_SEARCH_TOOL)
+                        && containsTool(request, "getWeather")
+        ));
+
+        if (verifyModelInteractions()) {
+            verifyNoMoreInteractionsFor(spyChatModel);
+        }
+        ignoreInteractions(spyToolSearchStrategy).toolSearchTools();
+        verifyNoMoreInteractions(spyToolSearchStrategy);
+
+        // when
+        String answer2 = assistant.chat("What is the time in London?");
+
+        // then
+        assertThat(answer2).contains("12", "34");
+
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                request.toolSpecifications().size() == 2
+                        && containsTool(request, TOOL_SEARCH_TOOL)
+                        && containsTool(request, "getWeather")
+        ));
+
+        inOrder.verify(spyToolSearchStrategy).search(argThat(request ->
+                request.toolSearchRequests().size() == 1
+                        && containsToolSearch(request, TOOL_SEARCH_TOOL, "time")
+        ));
+
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                request.toolSpecifications().size() == 3
+                        && containsTool(request, TOOL_SEARCH_TOOL)
+                        && containsTool(request, "getWeather")
+                        && containsTool(request, "getTime")
+        ));
+
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                request.toolSpecifications().size() == 3
+                        && containsTool(request, TOOL_SEARCH_TOOL)
+                        && containsTool(request, "getWeather")
+                        && containsTool(request, "getTime")
+        ));
+
+        if (verifyModelInteractions()) {
+            verifyNoMoreInteractionsFor(spyChatModel);
+        }
+        ignoreInteractions(spyToolSearchStrategy).toolSearchTools();
+        verifyNoMoreInteractions(spyToolSearchStrategy);
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
     void should_support_tool_search_tool__multiple_simultaneous_tool_searches(ChatModel chatModel) {
 
         // given
@@ -1449,6 +1595,84 @@ public abstract class AbstractAiServiceWithToolsIT {
         ignoreInteractions(spyToolSearchStrategy).toolSearchTools();
         verifyNoMoreInteractions(spyToolSearchStrategy);
         verifyNoMoreInteractions(spyTools);
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_support_tool_search_tool__multiple_simultaneous_tool_searches__tool_provider(ChatModel chatModel) {
+
+        // given
+        ToolProvider toolProvider = LazyTools.TOOL_PROVIDER;
+        ChatModel spyChatModel = spy(chatModel);
+        ToolSearchStrategy spyToolSearchStrategy = spy(new CustomToolSearchStrategy());
+
+        interface Assistant {
+
+            @SystemMessage("""
+                    Use 'search_tools' tool if you need to discover other available tools.
+                    Use separate tool calls for separate search terms.
+                    For example, when asked "What is the weather and time in London?",
+                    call 'search_tools' tool twice (simultaneously, in parallel),
+                    once with "London weather" argument, once with "London time" argument.
+                    """)
+            String chat(String userMessage);
+        }
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(spyChatModel)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
+                .toolProvider(toolProvider)
+                .toolSearchStrategy(spyToolSearchStrategy)
+                .build();
+
+        // when
+        String answer = assistant.chat("What is the weather and time in London?");
+
+        // then
+        assertThat(answer.toLowerCase()).contains("sun", "12", "34");
+
+        InOrder inOrder = inOrder(spyChatModel, spyToolSearchStrategy);
+
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                request.toolSpecifications().size() == 1
+                        && containsTool(request, TOOL_SEARCH_TOOL)
+        ));
+
+        inOrder.verify(spyToolSearchStrategy).search(argThat(request ->
+                request.toolSearchRequests().size() == 2
+                        && containsToolSearch(request, TOOL_SEARCH_TOOL, "weather")
+                        && containsToolSearch(request, TOOL_SEARCH_TOOL, "time")
+        ));
+
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                request.toolSpecifications().size() == 3
+                        && containsTool(request, TOOL_SEARCH_TOOL)
+                        && containsTool(request, "getWeather")
+                        && containsTool(request, "getTime")
+
+                        && request.messages().size() == 5
+                        && request.messages().get(3) instanceof ToolExecutionResultMessage toolResultMessage
+                        && toolResultMessage.toolName().equals(TOOL_SEARCH_TOOL_NAME)
+                        && toolResultMessage.text().equals("Found tools: getWeather")
+                        && toolResultMessage.attributes().get("found_tools").equals(List.of("getWeather"))
+                        && request.messages().get(4) instanceof ToolExecutionResultMessage toolResultMessage2
+                        && toolResultMessage2.toolName().equals(TOOL_SEARCH_TOOL_NAME)
+                        && toolResultMessage2.text().equals("Found tools: getTime")
+                        && toolResultMessage2.attributes().get("found_tools").equals(List.of("getTime"))
+        ));
+
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                request.toolSpecifications().size() == 3
+                        && containsTool(request, TOOL_SEARCH_TOOL)
+                        && containsTool(request, "getWeather")
+                        && containsTool(request, "getTime")
+        ));
+
+        if (verifyModelInteractions()) {
+            verifyNoMoreInteractionsFor(spyChatModel);
+        }
+        ignoreInteractions(spyToolSearchStrategy).toolSearchTools();
+        verifyNoMoreInteractions(spyToolSearchStrategy);
     }
 
     @ParameterizedTest
@@ -1568,6 +1792,117 @@ public abstract class AbstractAiServiceWithToolsIT {
         ignoreInteractions(spyToolSearchStrategy).toolSearchTools();
         verifyNoMoreInteractions(spyToolSearchStrategy);
         verifyNoMoreInteractions(spyTools);
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_support_tool_search_tool__simultaneous_tool_search_and_normal_tool_call__tool_provider(ChatModel chatModel) {
+
+        // given
+        ToolProvider toolProvider = LazyTools.TOOL_PROVIDER;
+        ChatModel spyChatModel = spy(chatModel);
+        ToolSearchStrategy spyToolSearchStrategy = spy(new CustomToolSearchStrategy());
+
+        interface Assistant {
+
+            @SystemMessage("Use 'search_tools' tool if you need to discover other available tools")
+            String chat(String userMessage);
+        }
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(spyChatModel)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
+                .toolProvider(toolProvider)
+                .toolSearchStrategy(spyToolSearchStrategy)
+                .build();
+
+        // when
+        String answer = assistant.chat("What is the weather in London?");
+
+        // then
+        assertThat(answer.toLowerCase()).contains("sun");
+
+        InOrder inOrder = inOrder(spyChatModel, spyToolSearchStrategy);
+
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                request.toolSpecifications().size() == 1
+                        && containsTool(request, TOOL_SEARCH_TOOL)
+        ));
+
+        inOrder.verify(spyToolSearchStrategy).search(argThat(request ->
+                request.toolSearchRequests().size() == 1
+                        && containsToolSearch(request, TOOL_SEARCH_TOOL, "weather")
+        ));
+
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                request.toolSpecifications().size() == 2
+                        && containsTool(request, TOOL_SEARCH_TOOL)
+                        && containsTool(request, "getWeather")
+
+                        && request.messages().size() == 4
+                        && request.messages().get(3) instanceof ToolExecutionResultMessage toolResultMessage
+                        && toolResultMessage.toolName().equals(TOOL_SEARCH_TOOL_NAME)
+                        && toolResultMessage.text().equals("Found tools: getWeather")
+                        && toolResultMessage.attributes().get("found_tools").equals(List.of("getWeather"))
+        ));
+
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                request.toolSpecifications().size() == 2
+                        && containsTool(request, TOOL_SEARCH_TOOL)
+                        && containsTool(request, "getWeather")
+        ));
+
+        if (verifyModelInteractions()) {
+            verifyNoMoreInteractionsFor(spyChatModel);
+        }
+        ignoreInteractions(spyToolSearchStrategy).toolSearchTools();
+        verifyNoMoreInteractions(spyToolSearchStrategy);
+
+        // when
+        String answer2 = assistant.chat("What is the time in London? What is the weather in Paris?");
+
+        // then
+        assertThat(answer2).contains("12", "34", "rain");
+
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                request.toolSpecifications().size() == 2
+                        && containsTool(request, TOOL_SEARCH_TOOL)
+                        && containsTool(request, "getWeather")
+        ));
+
+        inOrder.verify(spyToolSearchStrategy).search(argThat(request ->
+                request.toolSearchRequests().size() == 1
+                        && containsToolSearch(request, TOOL_SEARCH_TOOL, "time")
+        ));
+
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                request.toolSpecifications().size() == 3
+                        && containsTool(request, TOOL_SEARCH_TOOL)
+                        && containsTool(request, "getWeather")
+                        && containsTool(request, "getTime")
+
+                        && request.messages().size() == 11
+                        && request.messages().get(9) instanceof ToolExecutionResultMessage toolResultMessage
+                        && toolResultMessage.toolName().equals(TOOL_SEARCH_TOOL_NAME)
+                        && toolResultMessage.text().equals("Found tools: getTime")
+                        && toolResultMessage.attributes().get("found_tools").equals(List.of("getTime"))
+                        && request.messages().get(10) instanceof ToolExecutionResultMessage toolResultMessage2
+                        && toolResultMessage2.toolName().equals("getWeather")
+                        && toolResultMessage2.text().equals("rainy")
+        ));
+
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                request.toolSpecifications().size() == 3
+                        && containsTool(request, TOOL_SEARCH_TOOL)
+                        && containsTool(request, "getWeather")
+                        && containsTool(request, "getTime")
+        ));
+
+        if (verifyModelInteractions()) {
+            verifyNoMoreInteractionsFor(spyChatModel);
+        }
+        ignoreInteractions(spyToolSearchStrategy).toolSearchTools();
+        verifyNoMoreInteractions(spyToolSearchStrategy);
     }
 
     private static boolean containsTool(ChatRequest chatRequest, ToolSpecification toolSpecification) {
