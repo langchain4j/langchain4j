@@ -1,7 +1,11 @@
 package dev.langchain4j.agentic.observability;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.service.tool.BeforeToolExecution;
+import dev.langchain4j.service.tool.ToolExecution;
+import dev.langchain4j.service.tool.ToolExecutionResult;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Predicate;
@@ -60,6 +64,20 @@ public class ComposedAgentListener implements AgentListener {
     public void onAgentInvocationError(final AgentInvocationError agentInvocationError) {
         for (AgentListener listener : listeners) {
             listener.onAgentInvocationError(agentInvocationError);
+        }
+    }
+
+    @Override
+    public void afterToolExecution(ToolExecution toolExecution) {
+        for (AgentListener listener : listeners) {
+            listener.afterToolExecution(toolExecution);
+        }
+    }
+
+    @Override
+    public void beforeToolExecution(BeforeToolExecution beforeToolExecution) {
+        for (AgentListener listener : listeners) {
+            listener.beforeToolExecution(beforeToolExecution);
         }
     }
 
