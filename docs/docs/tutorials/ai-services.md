@@ -313,7 +313,7 @@ String chat(@V("answerInstructions") String answerInstructions, @V("country") St
 
 ## Multimodality
 
-Additionally to the text content,
+Additionally to, or instead of, text content,
 AI Service method can accept one or multiple `Content` or `List<Content>` arguments:
 
 ```java
@@ -326,6 +326,18 @@ String chat(@UserMessage String userMessage, @UserMessage ImageContent image, @U
 String chat(@UserMessage String userMessage, @UserMessage List<Content> contents);
 
 String chat(@UserMessage String userMessage, @UserMessage List<ImageContent> images);
+
+String chat(Content content);
+
+String chat(AudioContent content);
+
+String chat(List<Content> contents);
+
+String chat(List<AudioContent> contents);
+
+String chat(@UserMessage Content content1, @UserMessage Content content2);
+
+String chat(@UserMessage AudioContent audio, @UserMessage ImageContent image);
 ```
 
 AI Service will put all contents into the final `UserMessage` in the order of parameter declaration.
