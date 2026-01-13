@@ -46,6 +46,27 @@ public interface ChatMemory {
     }
 
     /**
+     * Sets the messages of the chat memory
+     * @param messages The {@link ChatMessage}s to set
+     */
+    default void set(ChatMessage... messages) {
+        if ((messages != null) && (messages.length > 0)) {
+            set(Arrays.asList(messages));
+        }
+    }
+
+    /**
+     * Sets the messages of the chat memory
+     * @param messages The {@link ChatMessage}s to set
+     */
+    default void set(Iterable<ChatMessage> messages) {
+        clear();
+        if (messages != null) {
+            messages.forEach(this::add);
+        }
+    }
+
+    /**
      * Retrieves messages from the chat memory.
      * Depending on the implementation, it may not return all previously added messages,
      * but rather a subset, a summary, or a combination thereof.

@@ -13,6 +13,8 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
@@ -93,6 +95,25 @@ public class TokenWindowChatMemory implements ChatMemory {
         ensureCapacity(messages, maxTokens, tokenCountEstimator);
 
         store.updateMessages(id, messages);
+    }
+
+    private void set(final List<ChatMessage> messages) {
+        Integer maxTokens = maxTokensProvider.apply(id);
+        ensureGreaterThanZero(maxTokens, "maxTokens");
+        ensureCapacity(messages, maxTokens, tokenCountEstimator);
+        store.updateMessages(id, messages);
+    }
+
+    @Override
+    public void set(final ChatMessage... messages) {
+        set(Arrays.asList(messages));
+    }
+
+    @Override
+    public void set(final Iterable<ChatMessage> iter) {
+        List<ChatMessage> list = new ArrayList<>();
+        iter.forEach(list::add);
+        set(list);
     }
 
     @Override

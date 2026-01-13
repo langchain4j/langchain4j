@@ -12,6 +12,8 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
@@ -89,6 +91,25 @@ public class MessageWindowChatMemory implements ChatMemory {
         ensureCapacity(messages, maxMessages);
 
         store.updateMessages(id, messages);
+    }
+
+    private void set(final List<ChatMessage> messages) {
+        Integer maxMessages = this.maxMessagesProvider.apply(this.id);
+        ensureGreaterThanZero(maxMessages, "maxMessages");
+        ensureCapacity(messages, maxMessages);
+        store.updateMessages(id, messages);
+    }
+
+    @Override
+    public void set(final ChatMessage... messages) {
+        set(Arrays.asList(messages));
+    }
+
+    @Override
+    public void set(final Iterable<ChatMessage> iter) {
+        List<ChatMessage> list = new ArrayList<>();
+        iter.forEach(list::add);
+        set(list);
     }
 
     @Override
