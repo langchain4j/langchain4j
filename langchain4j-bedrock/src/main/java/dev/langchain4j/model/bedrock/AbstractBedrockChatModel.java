@@ -448,9 +448,7 @@ abstract class AbstractBedrockChatModel {
     }
 
     protected FinishReason finishReasonFrom(StopReason stopReason) {
-        if (stopReason == StopReason.END_TURN
-                || stopReason == StopReason.STOP_SEQUENCE
-                || stopReason == StopReason.GUARDRAIL_INTERVENED) {
+        if (stopReason == StopReason.END_TURN || stopReason == StopReason.STOP_SEQUENCE) {
             return FinishReason.STOP;
         }
 
@@ -462,7 +460,7 @@ abstract class AbstractBedrockChatModel {
             return FinishReason.TOOL_EXECUTION;
         }
 
-        if (stopReason == StopReason.CONTENT_FILTERED) {
+        if (stopReason == StopReason.CONTENT_FILTERED || stopReason == StopReason.GUARDRAIL_INTERVENED) {
             return FinishReason.CONTENT_FILTER;
         }
 

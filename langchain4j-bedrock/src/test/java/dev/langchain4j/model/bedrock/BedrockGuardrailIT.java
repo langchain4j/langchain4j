@@ -51,7 +51,8 @@ public class BedrockGuardrailIT {
 
     @BeforeAll
     static void setUp() {
-        BedrockClient bedrockClient = BedrockClient.create();
+        BedrockClient bedrockClient =
+                BedrockClient.builder().region(Region.US_EAST_1).build();
 
         CreateGuardrailResponse response = bedrockClient.createGuardrail(CreateGuardrailRequest.builder()
                 .name(GUARDRAIL_NAME)
@@ -95,7 +96,8 @@ public class BedrockGuardrailIT {
     @AfterAll
     static void tearDown() {
         if (guardrailId != null) {
-            BedrockClient bedrockClient = BedrockClient.create();
+            BedrockClient bedrockClient =
+                    BedrockClient.builder().region(Region.US_EAST_1).build();
             bedrockClient.deleteGuardrail(DeleteGuardrailRequest.builder()
                     .guardrailIdentifier(guardrailId)
                     .build());

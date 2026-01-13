@@ -69,19 +69,10 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
     }
 
     private ConverseRequest buildConverseRequest(ChatRequest chatRequest) {
-        BedrockCachePointPlacement cachePointPlacement = null;
-        if (chatRequest.parameters() instanceof BedrockChatRequestParameters bedrockParams) {
-            cachePointPlacement = bedrockParams.cachePointPlacement();
-        } else if (defaultRequestParameters != null) {
-            cachePointPlacement = defaultRequestParameters.cachePointPlacement();
-        }
+        BedrockChatRequestParameters parameters = (BedrockChatRequestParameters) chatRequest.parameters();
 
-        BedrockGuardrailConfiguration bedrockGuardrailConfiguration = null;
-        if (chatRequest.parameters() instanceof BedrockChatRequestParameters bedrockParams) {
-            bedrockGuardrailConfiguration = bedrockParams.bedrockGuardrailConfiguration();
-        } else if (defaultRequestParameters != null) {
-            bedrockGuardrailConfiguration = defaultRequestParameters.bedrockGuardrailConfiguration();
-        }
+        BedrockCachePointPlacement cachePointPlacement = parameters.cachePointPlacement();
+        BedrockGuardrailConfiguration bedrockGuardrailConfiguration = parameters.bedrockGuardrailConfiguration();
 
         return ConverseRequest.builder()
                 .modelId(chatRequest.modelName())

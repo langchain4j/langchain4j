@@ -182,19 +182,10 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
     }
 
     private ConverseStreamRequest buildConverseStreamRequest(ChatRequest chatRequest) {
-        BedrockCachePointPlacement cachePointPlacement = null;
-        if (chatRequest.parameters() instanceof BedrockChatRequestParameters bedrockParams) {
-            cachePointPlacement = bedrockParams.cachePointPlacement();
-        } else if (defaultRequestParameters != null) {
-            cachePointPlacement = defaultRequestParameters.cachePointPlacement();
-        }
+        BedrockChatRequestParameters parameters = (BedrockChatRequestParameters) chatRequest.parameters();
 
-        BedrockGuardrailConfiguration bedrockGuardrailConfiguration = null;
-        if (chatRequest.parameters() instanceof BedrockChatRequestParameters bedrockParams) {
-            bedrockGuardrailConfiguration = bedrockParams.bedrockGuardrailConfiguration();
-        } else if (defaultRequestParameters != null) {
-            bedrockGuardrailConfiguration = defaultRequestParameters.bedrockGuardrailConfiguration();
-        }
+        BedrockCachePointPlacement cachePointPlacement = parameters.cachePointPlacement();
+        BedrockGuardrailConfiguration bedrockGuardrailConfiguration = parameters.bedrockGuardrailConfiguration();
 
         return ConverseStreamRequest.builder()
                 .modelId(chatRequest.modelName())
