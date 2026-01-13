@@ -7,49 +7,89 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import java.util.Map;
-import org.jspecify.annotations.Nullable;
+import java.util.Objects;
 
 /**
- * Represents a content block in Anthropic API requests and responses.
- *
- * <p>This class supports multiple content types, each using a different subset of fields:</p>
+ * Represents content in an Anthropic API message.
+ * <p>
+ * This class supports multiple content types:
  * <ul>
- *   <li>{@code text} - Text content with the {@link #text()} field</li>
- *   <li>{@code tool_use} - Tool invocation with {@link #id()}, {@link #name()}, and {@link #input()}</li>
- *   <li>{@code thinking} - Model thinking output with {@link #thinking()} and {@link #signature()}</li>
- *   <li>{@code redacted_thinking} - Redacted thinking with {@link #data()}</li>
- *   <li>{@code *_tool_result} - Server tool results (e.g., {@code web_search_tool_result}) with
- *       {@link #toolUseId()} and {@link #content()}</li>
+ *   <li>{@code text} - Plain text content</li>
+ *   <li>{@code tool_use} - Tool/function call requests</li>
+ *   <li>{@code thinking} - Model's thinking/reasoning content</li>
+ *   <li>{@code redacted_thinking} - Redacted thinking content</li>
+ *   <li>{@code *_tool_result} - Results from server-side tool execution</li>
  * </ul>
- *
- * @see AnthropicContent.Builder
  */
 @JsonInclude(NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonNaming(SnakeCaseStrategy.class)
-public record AnthropicContent(
-        String type,
+public class AnthropicContent {
 
-        // when type = "text"
-        @Nullable String text,
+    /**
+     * The type of content (e.g., "text", "tool_use", "thinking").
+     */
+    public String type;
 
-        // when type = "tool_use"
-        @Nullable String id,
-        @Nullable String name,
-        @Nullable Map<String, Object> input,
+    /**
+     * Text content when type is "text".
+     */
+    public String text;
 
-        // when type = "thinking"
-        @Nullable String thinking,
-        @Nullable String signature,
+    /**
+     * Unique identifier when type is "tool_use".
+     */
+    public String id;
 
-        // when type = "redacted_thinking"
-        @Nullable String data,
+    /**
+     * Tool name when type is "tool_use".
+     */
+    public String name;
 
-        // when type ends with "_tool_result" (e.g., web_search_tool_result, code_execution_tool_result)
-        @Nullable String toolUseId,
+    /**
+     * Tool input parameters when type is "tool_use".
+     */
+    public Map<String, Object> input;
 
-        // Raw content - structure varies by tool type
-        Object content) {
+    /**
+     * Thinking content when type is "thinking".
+     */
+    public String thinking;
+
+    /**
+     * Signature for thinking content when type is "thinking".
+     */
+    public String signature;
+
+    /**
+     * Data when type is "redacted_thinking".
+     */
+    public String data;
+
+    /**
+     * Tool use ID when type ends with "_tool_result".
+     */
+    public String toolUseId;
+
+    /**
+     * Raw content for tool results - structure varies by tool type.
+     */
+    public Object content;
+
+    public AnthropicContent() {}
+
+    private AnthropicContent(Builder builder) {
+        this.type = builder.type;
+        this.text = builder.text;
+        this.id = builder.id;
+        this.name = builder.name;
+        this.input = builder.input;
+        this.thinking = builder.thinking;
+        this.signature = builder.signature;
+        this.data = builder.data;
+        this.toolUseId = builder.toolUseId;
+        this.content = builder.content;
+    }
 
     /**
      * Creates a new builder for constructing {@link AnthropicContent} instances.
@@ -58,6 +98,42 @@ public record AnthropicContent(
      */
     public static Builder builder() {
         return new Builder();
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(type, text, id, name, input, thinking, signature, data, toolUseId, content);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (!(obj instanceof final AnthropicContent that)) return false;
+        return Objects.equals(type, that.type)
+                && Objects.equals(text, that.text)
+                && Objects.equals(id, that.id)
+                && Objects.equals(name, that.name)
+                && Objects.equals(input, that.input)
+                && Objects.equals(thinking, that.thinking)
+                && Objects.equals(signature, that.signature)
+                && Objects.equals(data, that.data)
+                && Objects.equals(toolUseId, that.toolUseId)
+                && Objects.equals(content, that.content);
+    }
+
+    @Override
+    public String toString() {
+        return "AnthropicContent{" + "type='"
+                + type + '\'' + ", text='"
+                + text + '\'' + ", id='"
+                + id + '\'' + ", name='"
+                + name + '\'' + ", input="
+                + input + ", thinking='"
+                + thinking + '\'' + ", signature='"
+                + signature + '\'' + ", data='"
+                + data + '\'' + ", toolUseId='"
+                + toolUseId + '\'' + ", content="
+                + content + '}';
     }
 
     /**
@@ -76,22 +152,11 @@ public record AnthropicContent(
         private String toolUseId;
         private Object content;
 
-        private Builder() {}
-
         /**
          * Sets the content type.
          *
-         * <p>Common types include:</p>
-         * <ul>
-         *   <li>{@code "text"} - Plain text content</li>
-         *   <li>{@code "tool_use"} - Tool invocation request</li>
-         *   <li>{@code "thinking"} - Model thinking output</li>
-         *   <li>{@code "redacted_thinking"} - Redacted thinking content</li>
-         *   <li>{@code "*_tool_result"} - Server tool results (e.g., {@code web_search_tool_result})</li>
-         * </ul>
-         *
-         * @param type the content type identifier
-         * @return this builder for method chaining
+         * @param type the content type (e.g., "text", "tool_use", "thinking")
+         * @return this builder for chaining
          */
         public Builder type(String type) {
             this.type = type;
@@ -101,10 +166,8 @@ public record AnthropicContent(
         /**
          * Sets the text content.
          *
-         * <p>Used when {@code type} is {@code "text"}.</p>
-         *
          * @param text the text content
-         * @return this builder for method chaining
+         * @return this builder for chaining
          */
         public Builder text(String text) {
             this.text = text;
@@ -112,13 +175,10 @@ public record AnthropicContent(
         }
 
         /**
-         * Sets the tool use ID.
-         *
-         * <p>Used when {@code type} is {@code "tool_use"}. This is a unique identifier
-         * for the tool invocation.</p>
+         * Sets the unique identifier for tool use.
          *
          * @param id the tool use identifier
-         * @return this builder for method chaining
+         * @return this builder for chaining
          */
         public Builder id(String id) {
             this.id = id;
@@ -128,10 +188,8 @@ public record AnthropicContent(
         /**
          * Sets the tool name.
          *
-         * <p>Used when {@code type} is {@code "tool_use"}.</p>
-         *
-         * @param name the name of the tool being invoked
-         * @return this builder for method chaining
+         * @param name the tool name
+         * @return this builder for chaining
          */
         public Builder name(String name) {
             this.name = name;
@@ -141,11 +199,8 @@ public record AnthropicContent(
         /**
          * Sets the tool input parameters.
          *
-         * <p>Used when {@code type} is {@code "tool_use"}. Contains the arguments
-         * to pass to the tool.</p>
-         *
-         * @param input a map of input parameter names to values
-         * @return this builder for method chaining
+         * @param input the tool input parameters
+         * @return this builder for chaining
          */
         public Builder input(Map<String, Object> input) {
             this.input = input;
@@ -155,11 +210,8 @@ public record AnthropicContent(
         /**
          * Sets the thinking content.
          *
-         * <p>Used when {@code type} is {@code "thinking"}. Contains the model's
-         * internal reasoning process.</p>
-         *
-         * @param thinking the thinking text
-         * @return this builder for method chaining
+         * @param thinking the thinking content
+         * @return this builder for chaining
          */
         public Builder thinking(String thinking) {
             this.thinking = thinking;
@@ -167,13 +219,10 @@ public record AnthropicContent(
         }
 
         /**
-         * Sets the thinking signature.
-         *
-         * <p>Used when {@code type} is {@code "thinking"}. A cryptographic signature
-         * that can be used to verify the thinking content.</p>
+         * Sets the signature for thinking content.
          *
          * @param signature the thinking signature
-         * @return this builder for method chaining
+         * @return this builder for chaining
          */
         public Builder signature(String signature) {
             this.signature = signature;
@@ -181,13 +230,10 @@ public record AnthropicContent(
         }
 
         /**
-         * Sets the redacted thinking data.
-         *
-         * <p>Used when {@code type} is {@code "redacted_thinking"}. Contains
-         * opaque data representing redacted thinking content.</p>
+         * Sets the data for redacted thinking.
          *
          * @param data the redacted thinking data
-         * @return this builder for method chaining
+         * @return this builder for chaining
          */
         public Builder data(String data) {
             this.data = data;
@@ -195,14 +241,10 @@ public record AnthropicContent(
         }
 
         /**
-         * Sets the tool use ID for server tool results.
+         * Sets the tool use ID for tool results.
          *
-         * <p>Used when {@code type} ends with {@code "_tool_result"} (e.g.,
-         * {@code web_search_tool_result}, {@code code_execution_tool_result}).
-         * References the original tool invocation.</p>
-         *
-         * @param toolUseId the ID of the tool invocation this result corresponds to
-         * @return this builder for method chaining
+         * @param toolUseId the tool use ID
+         * @return this builder for chaining
          */
         public Builder toolUseId(String toolUseId) {
             this.toolUseId = toolUseId;
@@ -210,13 +252,10 @@ public record AnthropicContent(
         }
 
         /**
-         * Sets the raw content.
+         * Sets the raw content for tool results.
          *
-         * <p>Used for server tool results where the structure varies by tool type.
-         * The actual structure depends on the specific tool.</p>
-         *
-         * @param content the raw content object
-         * @return this builder for method chaining
+         * @param content the raw content
+         * @return this builder for chaining
          */
         public Builder content(Object content) {
             this.content = content;
@@ -224,12 +263,12 @@ public record AnthropicContent(
         }
 
         /**
-         * Builds a new {@link AnthropicContent} instance with the configured values.
+         * Builds the {@link AnthropicContent} instance.
          *
          * @return a new {@link AnthropicContent} instance
          */
         public AnthropicContent build() {
-            return new AnthropicContent(type, text, id, name, input, thinking, signature, data, toolUseId, content);
+            return new AnthropicContent(this);
         }
     }
 }

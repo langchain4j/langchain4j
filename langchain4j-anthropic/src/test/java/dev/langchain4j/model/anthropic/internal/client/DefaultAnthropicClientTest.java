@@ -444,15 +444,16 @@ class DefaultAnthropicClientTest {
     }
 
     private static AnthropicCreateMessageResponse createMessageResponse(String text) {
-        return new AnthropicCreateMessageResponse(
-                "msg_123",
-                "message",
-                "assistant",
-                List.of(createTextContent(text)),
-                TEST_MODEL_NAME,
-                "end_turn",
-                null,
-                createUsage());
+        return AnthropicCreateMessageResponse.builder()
+                .id("msg_123")
+                .type("message")
+                .role("assistant")
+                .content(List.of(createTextContent(text)))
+                .model(TEST_MODEL_NAME)
+                .stopReason("end_turn")
+                .stopSequence(null)
+                .usage(createUsage())
+                .build();
     }
 
     private static ServerSentEvent createMessageStartEvent() {
@@ -492,11 +493,18 @@ class DefaultAnthropicClientTest {
     }
 
     private static MessageTokenCountResponse createMessageTokenCountResponse() {
-        return new MessageTokenCountResponse(42);
+        // inputTokens is private, so we need to use JSON deserialization or add a setter
+        // Option 1: Use reflection or JSON
+        return Json.fromJson("{\"input_tokens\":42}", MessageTokenCountResponse.class);
     }
 
     private static AnthropicModelsListResponse createEmptyModelsListResponse() {
-        return new AnthropicModelsListResponse(List.of(), null, null, false);
+        AnthropicModelsListResponse response = new AnthropicModelsListResponse();
+        response.data = List.of();
+        response.firstId = null;
+        response.lastId = null;
+        response.hasMore = false;
+        return response;
     }
 
     private static AnthropicContent createTextContent(String text) {
@@ -504,6 +512,11 @@ class DefaultAnthropicClientTest {
     }
 
     private static AnthropicUsage createUsage() {
-        return new AnthropicUsage(/* inputTokens= */ 10, /* outputTokens= */ 20, null, null);
+        AnthropicUsage usage = new AnthropicUsage();
+        usage.inputTokens = 10;
+        usage.outputTokens = 20;
+        usage.cacheCreationInputTokens = null;
+        usage.cacheReadInputTokens = null;
+        return usage;
     }
 }

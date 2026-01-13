@@ -218,29 +218,29 @@ public class AnthropicMapper {
             List<AnthropicContent> contents, boolean returnThinking, boolean returnServerToolResults) {
 
         String text = contents.stream()
-                .filter(content -> "text".equals(content.type()))
-                .map(AnthropicContent::text)
+                .filter(content -> "text".equals(content.type))
+                .map(content -> content.text)
                 .collect(joining("\n"));
 
         String thinking = null;
         Map<String, Object> attributes = new HashMap<>();
         if (returnThinking) {
             thinking = contents.stream()
-                    .filter(content -> "thinking".equals(content.type()))
-                    .map(AnthropicContent::thinking)
+                    .filter(content -> "thinking".equals(content.type))
+                    .map(content -> content.thinking)
                     .collect(joining("\n"));
 
             String signature = contents.stream()
-                    .filter(content -> "thinking".equals(content.type()))
-                    .map(AnthropicContent::signature)
+                    .filter(content -> "thinking".equals(content.type))
+                    .map(content -> content.signature)
                     .collect(joining("\n"));
             if (isNotNullOrEmpty(signature)) {
                 attributes.put(THINKING_SIGNATURE_KEY, signature);
             }
 
             List<String> redactedThinkings = contents.stream()
-                    .filter(content -> REDACTED_THINKING_KEY.equals(content.type()))
-                    .map(AnthropicContent::data)
+                    .filter(content -> REDACTED_THINKING_KEY.equals(content.type))
+                    .map(content -> content.data)
                     .toList();
             if (!redactedThinkings.isEmpty()) {
                 attributes.put(REDACTED_THINKING_KEY, redactedThinkings);
@@ -249,11 +249,11 @@ public class AnthropicMapper {
 
         if (returnServerToolResults) {
             List<AnthropicServerToolResult> serverToolResults = contents.stream()
-                    .filter(content -> isServerToolResultType(content.type()))
+                    .filter(content -> isServerToolResultType(content.type))
                     .map(content -> AnthropicServerToolResult.builder()
-                            .type(content.type())
-                            .toolUseId(content.toolUseId())
-                            .content(content.content())
+                            .type(content.type)
+                            .toolUseId(content.toolUseId)
+                            .content(content.content)
                             .build())
                     .toList();
             if (!serverToolResults.isEmpty()) {
@@ -262,11 +262,11 @@ public class AnthropicMapper {
         }
 
         List<ToolExecutionRequest> toolExecutionRequests = contents.stream()
-                .filter(content -> "tool_use".equals(content.type()))
+                .filter(content -> "tool_use".equals(content.type))
                 .map(content -> ToolExecutionRequest.builder()
-                        .id(content.id())
-                        .name(content.name())
-                        .arguments(toJson(content.input()))
+                        .id(content.id)
+                        .name(content.name)
+                        .arguments(toJson(content.input))
                         .build())
                 .toList();
 
@@ -287,10 +287,10 @@ public class AnthropicMapper {
             return null;
         }
         return AnthropicTokenUsage.builder()
-                .inputTokenCount(anthropicUsage.inputTokens())
-                .outputTokenCount(anthropicUsage.outputTokens())
-                .cacheCreationInputTokens(anthropicUsage.cacheCreationInputTokens())
-                .cacheReadInputTokens(anthropicUsage.cacheReadInputTokens())
+                .inputTokenCount(anthropicUsage.inputTokens)
+                .outputTokenCount(anthropicUsage.outputTokens)
+                .cacheCreationInputTokens(anthropicUsage.cacheCreationInputTokens)
+                .cacheReadInputTokens(anthropicUsage.cacheReadInputTokens)
                 .build();
     }
 

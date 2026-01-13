@@ -343,17 +343,17 @@ public class DefaultAnthropicClient extends AnthropicClient {
             }
 
             private void handleUsage(AnthropicUsage usage) {
-                if (usage.inputTokens() != null) {
-                    this.inputTokenCount.set(usage.inputTokens());
+                if (usage.inputTokens != null) {
+                    this.inputTokenCount.set(usage.inputTokens);
                 }
-                if (usage.outputTokens() != null) {
-                    this.outputTokenCount.set(usage.outputTokens());
+                if (usage.outputTokens != null) {
+                    this.outputTokenCount.set(usage.outputTokens);
                 }
-                if (usage.cacheCreationInputTokens() != null) {
-                    this.cacheCreationInputTokens.set(usage.cacheCreationInputTokens());
+                if (usage.cacheCreationInputTokens != null) {
+                    this.cacheCreationInputTokens.set(usage.cacheCreationInputTokens);
                 }
-                if (usage.cacheReadInputTokens() != null) {
-                    this.cacheReadInputTokens.set(usage.cacheReadInputTokens());
+                if (usage.cacheReadInputTokens != null) {
+                    this.cacheReadInputTokens.set(usage.cacheReadInputTokens);
                 }
             }
 
@@ -362,39 +362,39 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     return;
                 }
 
-                this.currentContentBlockStartType = data.contentBlock.type();
+                this.currentContentBlockStartType = data.contentBlock.type;
 
                 if (CONTENT_BLOCK_TEXT.equals(currentContentBlockStartType)) {
-                    String text = data.contentBlock.text();
+                    String text = data.contentBlock.text;
                     if (isNotNullOrEmpty(text)) {
                         contentBuilder.append(text);
                         onPartialResponse(handler, text, streamingHandle);
                     }
                 } else if (CONTENT_BLOCK_THINKING.equals(currentContentBlockStartType) && options.returnThinking()) {
-                    String thinking = data.contentBlock.thinking();
+                    String thinking = data.contentBlock.thinking;
                     if (isNotNullOrEmpty(thinking)) {
                         thinkingBuilder.append(thinking);
                         onPartialThinking(handler, thinking, streamingHandle);
                     }
-                    String signature = data.contentBlock.signature();
+                    String signature = data.contentBlock.signature;
                     if (isNotNullOrEmpty(signature)) {
                         thinkingSignatures.add(signature);
                     }
                 } else if (CONTENT_BLOCK_REDACTED_THINKING.equals(currentContentBlockStartType)
                         && options.returnThinking()) {
-                    String redactedThinking = data.contentBlock.data();
+                    String redactedThinking = data.contentBlock.data;
                     if (isNotNullOrEmpty(redactedThinking)) {
                         redactedThinkings.add(redactedThinking);
                     }
                 } else if (CONTENT_BLOCK_TOOL_USE.equals(currentContentBlockStartType)) {
                     toolCallBuilder.updateIndex(toolCallBuilder.index() + 1);
-                    toolCallBuilder.updateId(data.contentBlock.id());
-                    toolCallBuilder.updateName(data.contentBlock.name());
+                    toolCallBuilder.updateId(data.contentBlock.id);
+                    toolCallBuilder.updateName(data.contentBlock.name);
                 } else if (isServerToolResultType(currentContentBlockStartType) && options.returnServerToolResults()) {
                     AnthropicServerToolResult result = AnthropicServerToolResult.builder()
-                            .type(data.contentBlock.type())
-                            .toolUseId(data.contentBlock.toolUseId())
-                            .content(data.contentBlock.content())
+                            .type(data.contentBlock.type)
+                            .toolUseId(data.contentBlock.toolUseId)
+                            .content(data.contentBlock.content)
                             .build();
                     serverToolResults.add(result);
                 }

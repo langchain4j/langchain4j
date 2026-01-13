@@ -56,15 +56,15 @@ public class AnthropicModelCatalog implements ModelCatalog {
     @Override
     public List<ModelDescription> listModels() {
         AnthropicModelsListResponse response = client.listModels();
-        return response.data().stream().map(this::mapToModelDescription).toList();
+        return response.data.stream().map(this::mapToModelDescription).toList();
     }
 
     private ModelDescription mapToModelDescription(AnthropicModelInfo modelInfo) {
         return ModelDescription.builder()
-                .name(modelInfo.id())
+                .name(modelInfo.id)
                 .provider(ANTHROPIC)
-                .displayName(isNullOrBlank(modelInfo.displayName()) ? null : modelInfo.displayName())
-                .createdAt(modelInfo.createdAt() != null ? parse(modelInfo.createdAt()) : null)
+                .displayName(isNullOrBlank(modelInfo.displayName) ? null : modelInfo.displayName)
+                .createdAt(modelInfo.createdAt != null ? parse(modelInfo.createdAt) : null)
                 .build();
     }
 

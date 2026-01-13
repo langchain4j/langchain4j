@@ -18,6 +18,6 @@ class AnthropicContentTest {
         AnthropicContent anthropicContent = new ObjectMapper().readValue(json, AnthropicContent.class);
 
         // then
-        assertThat(anthropicContent.type()).isEqualTo("some_new_type");
+        assertThat(anthropicContent.type).isEqualTo("some_new_type");
     }
 }

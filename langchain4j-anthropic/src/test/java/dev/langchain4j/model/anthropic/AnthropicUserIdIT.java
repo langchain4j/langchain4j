@@ -107,15 +107,16 @@ class AnthropicUserIdIT {
     // Helper methods to reduce duplication
     private static AnthropicClient createMockClientWithResponse() {
         AnthropicClient mockClient = mock(AnthropicClient.class);
-        AnthropicCreateMessageResponse mockResponse = new AnthropicCreateMessageResponse(
-                "test-id",
-                "message",
-                "assistant",
-                Collections.singletonList(createTextContent("Hello response")),
-                CLAUDE_3_5_HAIKU_20241022.toString(),
-                null,
-                "end_turn",
-                createUsage());
+        AnthropicCreateMessageResponse mockResponse = AnthropicCreateMessageResponse.builder()
+                .id("test-id")
+                .type("message")
+                .role("assistant")
+                .content(Collections.singletonList(createTextContent("Hello response")))
+                .model(CLAUDE_3_5_HAIKU_20241022.toString())
+                .stopReason("end_turn")
+                .stopSequence(null)
+                .usage(createUsage())
+                .build();
 
         SuccessfulHttpResponse rawResponse =
                 SuccessfulHttpResponse.builder().statusCode(200).build();
@@ -165,6 +166,11 @@ class AnthropicUserIdIT {
     }
 
     private static AnthropicUsage createUsage() {
-        return new AnthropicUsage(/* inputTokens = */ 10, /* outputTokens = */ 5, null, null);
+        AnthropicUsage usage = new AnthropicUsage();
+        usage.inputTokens = 10;
+        usage.outputTokens = 5;
+        usage.cacheCreationInputTokens = null;
+        usage.cacheReadInputTokens = null;
+        return usage;
     }
 }
