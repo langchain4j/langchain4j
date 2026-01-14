@@ -74,7 +74,7 @@ public class ToolService {
     private ToolExecutionErrorHandler executionErrorHandler;
     private Function<ToolExecutionRequest, ToolExecutionResultMessage> toolHallucinationStrategy =
             HallucinatedToolNameStrategy.THROW_EXCEPTION;
-    private ToolSearchStrategy toolSearchStrategy; // TODO default?
+    private ToolSearchStrategy toolSearchStrategy;
 
     private Consumer<BeforeToolExecution> beforeToolExecution = null;
     private Consumer<ToolExecution> afterToolExecution = null;
@@ -243,7 +243,7 @@ public class ToolService {
                     : ToolServiceContext.builder()
                             .toolSpecifications(findEffectiveToolSpecs(chatMemory, this.toolSpecifications, toolSearchTools))
                             .availableToolSpecifications(this.toolSpecifications)
-                            .toolExecutors(findEffectiveToolExecutors(this.toolExecutors, toolSearchTools, this.toolSpecifications))
+                            .toolExecutors(getToolExecutors(this.toolExecutors, toolSearchTools, this.toolSpecifications))
                             .immediateReturnTools(this.immediateReturnTools)
                             .build();
         }
@@ -274,7 +274,7 @@ public class ToolService {
         return ToolServiceContext.builder()
                 .toolSpecifications(findEffectiveToolSpecs(chatMemory, toolSpecifications, toolSearchTools))
                 .availableToolSpecifications(toolSpecifications)
-                .toolExecutors(findEffectiveToolExecutors(toolExecutors, toolSearchTools, toolSpecifications))
+                .toolExecutors(getToolExecutors(toolExecutors, toolSearchTools, toolSpecifications))
                 .immediateReturnTools(immediateReturnTools)
                 .build();
     }
@@ -288,7 +288,7 @@ public class ToolService {
         }
 
         List<ToolSpecification> result = new ArrayList<>(toolSearchTools);
-        List<String> previouslyFoundToolNames = chatMemory.messages().stream()
+        List<String> previouslyFoundToolNames = chatMemory.messages().stream() // TODO Set instead? same tool could be found multiple times
                 .filter(it -> it instanceof ToolExecutionResultMessage)
                 .map(it -> (ToolExecutionResultMessage) it)
                 .map(it -> it.attributes().get(FOUND_TOOLS_ATTRIBUTE))
@@ -304,9 +304,9 @@ public class ToolService {
         return result;
     }
 
-    private Map<String, ToolExecutor> findEffectiveToolExecutors(Map<String, ToolExecutor> toolExecutors,
-                                                                 List<ToolSpecification> toolSearchTools,
-                                                                 List<ToolSpecification> availableToolSpecifications) { // TODO name
+    private Map<String, ToolExecutor> getToolExecutors(Map<String, ToolExecutor> toolExecutors,
+                                                       List<ToolSpecification> toolSearchTools,
+                                                       List<ToolSpecification> availableToolSpecifications) {
         if (toolSearchTools.isEmpty()) {
             return toolExecutors;
         }
