@@ -92,7 +92,9 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         createTable = getOrDefault(createTable, true);
         dropTableFirst = getOrDefault(dropTableFirst, false);
 
-        initTable(dropTableFirst, createTable, useIndex, dimension, indexListSize);
+        if (useIndex || createTable || dropTableFirst) {
+            initTable(dropTableFirst, createTable, useIndex, dimension, indexListSize);
+        }
     }
 
     /**
