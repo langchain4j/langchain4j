@@ -207,6 +207,10 @@ class BaseGeminiChatModel {
     }
 
     protected ChatResponse processResponse(GeminiGenerateContentResponse geminiResponse) {
+        if (geminiResponse == null || geminiResponse.candidates() == null || geminiResponse.candidates().isEmpty()) {
+            throw new RuntimeException("Gemini API returned an empty or error response for this batch item.");
+        } 
+          
         GeminiCandidate firstCandidate = geminiResponse.candidates().get(0);
         AiMessage aiMessage = createAiMessage(firstCandidate);
 

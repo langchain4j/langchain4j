@@ -144,7 +144,9 @@ public final class BatchRequestResponse {
          * @param response The actual Gemini response.
          */
         @JsonIgnoreProperties(ignoreUnknown = true)
-        record InlinedResponseWrapper<RESP>(RESP response) {}
+        record InlinedResponseWrapper<RESP>(
+            @Nullable RESP response, 
+            Operation.@Nullable Status error) {}
     }
 
     /**
