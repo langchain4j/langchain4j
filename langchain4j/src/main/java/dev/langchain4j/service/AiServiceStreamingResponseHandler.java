@@ -296,6 +296,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     try {
                         ToolRequestResult toolRequestResult = toolExecutionFuture.get();
                         fireToolExecutedEvent(toolRequestResult);
+                        // TODO here
                         ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.from(
                                 toolRequestResult.request(),
                                 toolRequestResult.result().resultText());
@@ -318,6 +319,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     ToolExecutionResult toolResult = execute(toolRequest);
                     ToolRequestResult toolRequestResult = new ToolRequestResult(toolRequest, toolResult);
                     fireToolExecutedEvent(toolRequestResult);
+                    // TODO here
                     addToMemory(ToolExecutionResultMessage.from(toolRequest, toolResult.resultText()));
                     immediateToolReturn =
                             immediateToolReturn && context.toolService.isImmediateTool(toolRequest.name());

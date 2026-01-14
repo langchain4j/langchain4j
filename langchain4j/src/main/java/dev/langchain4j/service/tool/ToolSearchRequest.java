@@ -14,22 +14,22 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  */
 public class ToolSearchRequest {
 
+    private final ToolExecutionRequest toolSearchRequest; // TODO name
     private final List<ToolSpecification> availableTools;
-    private final List<ToolExecutionRequest> toolSearchRequests;
     private final InvocationContext invocationContext;
 
     public ToolSearchRequest(Builder builder) {
+        this.toolSearchRequest = ensureNotNull(builder.toolSearchRequest, "toolSearchRequest");
         this.availableTools = copy(builder.availableTools); // TODO
-        this.toolSearchRequests = copy(builder.toolSearchRequests); // TODO
         this.invocationContext = ensureNotNull(builder.invocationContext, "invocationContext");
+    }
+
+    public ToolExecutionRequest toolSearchRequest() { // TODO names
+        return toolSearchRequest;
     }
 
     public List<ToolSpecification> availableTools() { // TODO names
         return availableTools;
-    }
-
-    public List<ToolExecutionRequest> toolSearchRequests() { // TODO names
-        return toolSearchRequests;
     }
 
     public InvocationContext invocationContext() {
@@ -44,12 +44,12 @@ public class ToolSearchRequest {
 
     public static class Builder {
 
+        private ToolExecutionRequest toolSearchRequest;
         private List<ToolSpecification> availableTools;
-        private List<ToolExecutionRequest> toolSearchRequests;
         private InvocationContext invocationContext;
 
-        public Builder toolSearchRequests(List<ToolExecutionRequest> toolSearchRequests) {
-            this.toolSearchRequests = toolSearchRequests;
+        public Builder toolSearchRequest(ToolExecutionRequest toolSearchRequest) {
+            this.toolSearchRequest = toolSearchRequest;
             return this;
         }
 
