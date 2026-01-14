@@ -98,6 +98,11 @@ public abstract class AbstractAgentInvoker implements AgentInvoker, InternalAgen
     }
 
     @Override
+    public <T extends AgentInstance> T as(Class<T> agentInstanceClass) {
+        return agent.as(agentInstanceClass);
+    }
+
+    @Override
     public boolean equals(Object obj) {
         if (obj == this) return true;
         if (obj == null || obj.getClass() != this.getClass()) return false;

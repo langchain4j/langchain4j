@@ -277,6 +277,6 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
 
     @Override
     public AgenticSystemTopology topology() {
-        return AgenticSystemTopology.SINGLE_AGENT;
+        return AgenticSystemTopology.AI_AGENT;
     }
 }

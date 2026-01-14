@@ -4,6 +4,7 @@ import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
+import dev.langchain4j.agentic.workflow.HumanInTheLoop;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Objects;
@@ -52,7 +53,7 @@ public class NonAiAgentInstance implements AgentInstance, InternalAgent {
 
     @Override
     public AgenticSystemTopology topology() {
-        return AgenticSystemTopology.SINGLE_AGENT;
+        return type == HumanInTheLoop.class ? AgenticSystemTopology.HUMAN_IN_THE_LOOP : AgenticSystemTopology.NON_AI_AGENT;
     }
 
     @Override

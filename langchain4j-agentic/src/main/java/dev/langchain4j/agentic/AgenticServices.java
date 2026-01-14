@@ -653,7 +653,7 @@ public class AgenticServices {
                         .positionalArgs();
                 return (boolean) predicateMethod.invoke(null, args);
             } catch (Exception e) {
-                throw new RuntimeException("Error invoking exit condition method: " + predicateMethod.getName(), e);
+                throw new RuntimeException("Error invoking exit predicate method: " + predicateMethod.getName(), e);
             }
         };
     }
