@@ -2,7 +2,9 @@ package dev.langchain4j.memory;
 
 import dev.langchain4j.data.message.ChatMessage;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Represents the memory (history) of a chat conversation.
@@ -46,24 +48,46 @@ public interface ChatMemory {
     }
 
     /**
-     * Sets the messages of the chat memory
-     * @param messages The {@link ChatMessage}s to set
+     * Replaces all messages in the chat memory with the specified messages.
+     * Unlike {@link #add(ChatMessage...) add}, this method replaces the entire message history
+     * rather than appending to it.
+     * <p>
+     * The default implementation delegates to {@link #set(Iterable) set(Iterable&lt;ChatMessage&gt;)}.
+     *
+     * @param messages The {@link ChatMessage}s to set. Must not be {@code null} or empty.
+     * @since 1.11.0
      */
     default void set(ChatMessage... messages) {
-        if ((messages != null) && (messages.length > 0)) {
-            set(Arrays.asList(messages));
-        }
+        Objects.requireNonNull(messages, "messages must not be null");
+        set(Arrays.asList(messages));
     }
 
     /**
-     * Sets the messages of the chat memory
-     * @param messages The {@link ChatMessage}s to set
+     * Replaces all messages in the chat memory with the specified messages.
+     * Unlike {@link #add(Iterable) add}, this method replaces the entire message history
+     * rather than appending to it.
+     * <p>
+     * Implementations should override this method to provide more efficient atomic operations if possible.
+     * The default implementation calls {@link #clear()} followed by {@link #add(Iterable) add(Iterable&lt;ChatMessage&gt;)}
+     * which is not atomic.
+     * <p>
+     * This method will typically be used when chat memory needs to be re-written to implement things like
+     * memory compaction.
+     *
+     * @param messages The {@link ChatMessage}s to set. Must not be {@code null} or empty.
+     * @since 1.11.0
      */
     default void set(Iterable<ChatMessage> messages) {
-        clear();
-        if (messages != null) {
-            messages.forEach(this::add);
+        Objects.requireNonNull(messages, "messages must not be null");
+        if (messages instanceof Collection<?> collection) {
+            if (collection.isEmpty()) {
+                throw new IllegalArgumentException("messages must not be empty");
+            }
+        } else if (!messages.iterator().hasNext()) {
+            throw new IllegalArgumentException("messages must not be empty");
         }
+        clear();
+        add(messages);
     }
 
     /**

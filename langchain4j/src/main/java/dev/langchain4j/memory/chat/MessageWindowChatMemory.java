@@ -107,9 +107,13 @@ public class MessageWindowChatMemory implements ChatMemory {
 
     @Override
     public void set(final Iterable<ChatMessage> iter) {
-        List<ChatMessage> list = new ArrayList<>();
-        iter.forEach(list::add);
-        set(list);
+        if (iter instanceof List) {
+            set((List<ChatMessage>) iter);
+        } else {
+            List<ChatMessage> list = new ArrayList<>();
+            iter.forEach(list::add);
+            set(list);
+        }
     }
 
     @Override
