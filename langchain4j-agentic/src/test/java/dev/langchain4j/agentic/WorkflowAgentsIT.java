@@ -49,7 +49,9 @@ import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.AgenticScopePersister;
 import dev.langchain4j.agentic.scope.AgenticScopeRegistry;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
+import dev.langchain4j.agentic.workflow.ConditionalAgentInstance;
 import dev.langchain4j.agentic.workflow.HumanInTheLoop;
+import dev.langchain4j.agentic.workflow.LoopAgentInstance;
 import dev.langchain4j.agentic.workflow.impl.SequentialPlanner;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
@@ -398,6 +400,16 @@ public class WorkflowAgentsIT {
                 .outputKey("story")
                 .build();
 
+        AgentInstance sequenceInstance = ((AgentInstance) novelCreator);
+        assertThat(sequenceInstance.outputKey()).isEqualTo("story");
+        assertThat(sequenceInstance.subagents()).hasSize(5);
+
+        assertThat(sequenceInstance.subagents().get(0).topology()).isEqualTo(AgenticSystemTopology.HUMAN_IN_THE_LOOP);
+        assertThat(sequenceInstance.subagents().get(1).topology()).isEqualTo(AgenticSystemTopology.AI_AGENT);
+        assertThat(sequenceInstance.subagents().get(2).topology()).isEqualTo(AgenticSystemTopology.NON_AI_AGENT);
+        assertThat(sequenceInstance.subagents().get(3).topology()).isEqualTo(AgenticSystemTopology.AI_AGENT);
+        assertThat(sequenceInstance.subagents().get(4).topology()).isEqualTo(AgenticSystemTopology.NON_AI_AGENT);
+
         Map<String, Object> input = Map.of("topic", "dragons and wizards");
 
         String story = (String) novelCreator.invoke(input);
@@ -616,7 +628,7 @@ public class WorkflowAgentsIT {
                 .subAgents(styleScorer, styleEditor)
                 .maxIterations(5)
                 .testExitAtLoopEnd(testExitAtLoopEnd)
-                .exitCondition((agenticScope, loop) -> {
+                .exitCondition("score greater than 0.8", (agenticScope, loop) -> {
                     loopCount.set(loop);
                     return agenticScope.readState("score", 0.0) >= 0.8;
                 })
@@ -626,6 +638,20 @@ public class WorkflowAgentsIT {
                 .subAgents(creativeWriter, styleReviewLoop)
                 .outputKey("story")
                 .build();
+
+        assertThat(styledWriter.name()).isEqualTo("writeStoryWithStyle");
+        assertThat(styledWriter.subagents()).hasSize(2);
+
+        AgentInstance creativeWriterInstance = styledWriter.subagents().get(0);
+        assertThat(creativeWriterInstance.name()).isEqualTo("generateStory");
+
+        AgentInstance loopAgent = styledWriter.subagents().get(1);
+        assertThat(loopAgent.topology()).isEqualTo(AgenticSystemTopology.LOOP);
+        LoopAgentInstance loopInstance = loopAgent.as(LoopAgentInstance.class);
+        assertThat(loopInstance.subagents()).hasSize(2);
+        assertThat(loopInstance.maxIterations()).isEqualTo(5);
+        assertThat(loopInstance.testExitAtLoopEnd()).isEqualTo(testExitAtLoopEnd);
+        assertThat(loopInstance.exitCondition()).isEqualTo("score greater than 0.8");
 
         ResultWithAgenticScope<String> result = styledWriter.writeStoryWithStyle("dragons and wizards", "comedy");
         String story = result.result();
@@ -701,11 +727,11 @@ public class WorkflowAgentsIT {
                 .build());
 
         UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
-                .subAgents(
+                .subAgents("category is medical",
                         agenticScope ->
                                 agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.MEDICAL,
                         medicalExpert)
-                .subAgents(
+                .subAgents("category is legal",
                         agenticScope ->
                                 agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.LEGAL,
                         legalExpert)
@@ -734,7 +760,7 @@ public class WorkflowAgentsIT {
         assertThat(routerAgentInstance.agentId()).isEqualTo("classify$0");
         assertThat(routerAgentInstance.outputType()).isEqualTo(RequestCategory.class);
         assertThat(routerAgentInstance.outputKey()).isEqualTo("category");
-        assertThat(routerAgentInstance.topology()).isEqualTo(AgenticSystemTopology.SINGLE_AGENT);
+        assertThat(routerAgentInstance.topology()).isEqualTo(AgenticSystemTopology.AI_AGENT);
         assertThat(routerAgentInstance.arguments()).hasSize(1);
         assertThat(routerAgentInstance.arguments().get(0).name()).isEqualTo("request");
         assertThat(routerAgentInstance.arguments().get(0).type()).isEqualTo(String.class);
@@ -748,6 +774,12 @@ public class WorkflowAgentsIT {
         assertThat(conditionalAgentInstance.arguments()).isEmpty(); // untyped agent does not know its arguments
         assertThat(conditionalAgentInstance.subagents()).hasSize(3);
         assertThat(conditionalAgentInstance.parent().agentId()).isEqualTo(agentInstance.agentId());
+
+        ConditionalAgentInstance conditionalInstance = conditionalAgentInstance.as(ConditionalAgentInstance.class);
+        assertThat(conditionalInstance.conditionalSubagents()).hasSize(3);
+        assertThat(conditionalInstance.conditionalSubagents().get(0).condition()).isEqualTo("category is medical");
+        assertThat(conditionalInstance.conditionalSubagents().get(1).condition()).isEqualTo("category is legal");
+        assertThat(conditionalInstance.conditionalSubagents().get(2).condition()).isEqualTo("<unknown>");
 
         checkExpertAgent(conditionalAgentInstance, "medical", 0);
         checkExpertAgent(conditionalAgentInstance, "legal", 1);
@@ -764,7 +796,7 @@ public class WorkflowAgentsIT {
         assertThat(expertAgentInstance.agentId()).isEqualTo(name + "$" + index + "$1");
         assertThat(expertAgentInstance.outputType()).isEqualTo(String.class);
         assertThat(expertAgentInstance.outputKey()).isEqualTo("response");
-        assertThat(expertAgentInstance.topology()).isEqualTo(AgenticSystemTopology.SINGLE_AGENT);
+        assertThat(expertAgentInstance.topology()).isEqualTo(AgenticSystemTopology.AI_AGENT);
         assertThat(expertAgentInstance.arguments()).hasSize(1);
         assertThat(expertAgentInstance.arguments().get(0).name()).isEqualTo("request");
         assertThat(expertAgentInstance.arguments().get(0).type()).isEqualTo(String.class);

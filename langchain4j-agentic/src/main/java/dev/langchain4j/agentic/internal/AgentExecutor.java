@@ -151,6 +151,11 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
         return agentInvoker.listener();
     }
 
+    @Override
+    public <T extends AgentInstance> T as(Class<T> agentInstanceClass) {
+        return agentInvoker.as(agentInstanceClass);
+    }
+
     void setParent(InternalAgent parent, int index) {
         setParent(parent);
         propagateParentIndex(agentInvoker, index);

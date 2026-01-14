@@ -179,6 +179,6 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
 
     @Override
     public AgenticSystemTopology topology() {
-        return AgenticSystemTopology.SINGLE_AGENT;
+        return AgenticSystemTopology.AI_AGENT;
     }
 }
