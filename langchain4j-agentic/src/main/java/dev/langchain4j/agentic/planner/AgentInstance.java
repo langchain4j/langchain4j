@@ -29,4 +29,8 @@ public interface AgentInstance {
     }
 
     AgenticSystemTopology topology();
+
+    default <T extends AgentInstance> T as(Class<T> agentInstanceClass) {
+        throw new ClassCastException("Cannot cast to " + agentInstanceClass.getName() + ": incompatible type");
+    }
 }
