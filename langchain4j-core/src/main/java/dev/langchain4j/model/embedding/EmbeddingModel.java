@@ -18,36 +18,6 @@ import static java.util.Collections.singletonList;
 public interface EmbeddingModel {
 
     /**
-     * Wraps this {@link EmbeddingModel} with an observing model that dispatches events to the provided listener.
-     *
-     * @param listener The listener to add.
-     * @return An observing {@link EmbeddingModel} that will dispatch events to the provided listener.
-     */
-    default EmbeddingModel addListener(EmbeddingModelListener listener) {
-        return addListeners(listener == null ? null : List.of(listener));
-    }
-
-    /**
-     * Wraps this {@link EmbeddingModel} with an observing model that dispatches events to the provided listeners.
-     * <p>
-     * Listeners are called in the order of iteration.
-     *
-     * @param listeners The listeners to add.
-     * @return An observing {@link EmbeddingModel} that will dispatch events to the provided listeners.
-     */
-    default EmbeddingModel addListeners(Iterable<EmbeddingModelListener> listeners) {
-        if (isNullOrEmpty(listeners)) {
-            return this;
-        }
-        List<EmbeddingModelListener> listenerList = new ArrayList<>();
-        listeners.forEach(listenerList::add);
-        if (this instanceof ObservingEmbeddingModel observingEmbeddingModel) {
-            return observingEmbeddingModel.withAdditionalListeners(listenerList);
-        }
-        return new ObservingEmbeddingModel(this, listenerList);
-    }
-
-    /**
      * Embed a text.
      *
      * @param text the text to embed.
@@ -98,5 +68,35 @@ public interface EmbeddingModel {
      */
     default String modelName() {
         return "unknown";
+    }
+
+    /**
+     * Wraps this {@link EmbeddingModel} with an observing model that dispatches events to the provided listener.
+     *
+     * @param listener The listener to add.
+     * @return An observing {@link EmbeddingModel} that will dispatch events to the provided listener.
+     */
+    default EmbeddingModel addListener(EmbeddingModelListener listener) {
+        return addListeners(listener == null ? null : List.of(listener));
+    }
+
+    /**
+     * Wraps this {@link EmbeddingModel} with an observing model that dispatches events to the provided listeners.
+     * <p>
+     * Listeners are called in the order of iteration.
+     *
+     * @param listeners The listeners to add.
+     * @return An observing {@link EmbeddingModel} that will dispatch events to the provided listeners.
+     */
+    default EmbeddingModel addListeners(Iterable<EmbeddingModelListener> listeners) {
+        if (isNullOrEmpty(listeners)) {
+            return this;
+        }
+        List<EmbeddingModelListener> listenerList = new ArrayList<>();
+        listeners.forEach(listenerList::add);
+        if (this instanceof ObservingEmbeddingModel observingEmbeddingModel) {
+            return observingEmbeddingModel.withAdditionalListeners(listenerList);
+        }
+        return new ObservingEmbeddingModel(this, listenerList);
     }
 }

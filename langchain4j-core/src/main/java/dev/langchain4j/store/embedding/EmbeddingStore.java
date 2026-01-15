@@ -21,37 +21,6 @@ import java.util.List;
  * @param <Embedded> The class of the object that has been embedded. Typically, this is {@link dev.langchain4j.data.segment.TextSegment}.
  */
 public interface EmbeddingStore<Embedded> {
-
-    /**
-     * Wraps this {@link EmbeddingStore} with an observing store that dispatches events to the provided listener.
-     * <p>
-     * This is a non-breaking convenience method to add observability to any {@link EmbeddingStore} implementation.
-     *
-     * @param listener The listener to add.
-     * @return An observing {@link EmbeddingStore} that will dispatch events to the provided listener.
-     */
-    default EmbeddingStore<Embedded> addListener(EmbeddingStoreListener listener) {
-        return addListeners(listener == null ? null : List.of(listener));
-    }
-
-    /**
-     * Wraps this {@link EmbeddingStore} with an observing store that dispatches events to the provided listeners.
-     * <p>
-     * Listeners are called in the order of iteration.
-     *
-     * @param listeners The listeners to add.
-     * @return An observing {@link EmbeddingStore} that will dispatch events to the provided listeners.
-     */
-    default EmbeddingStore<Embedded> addListeners(List<EmbeddingStoreListener> listeners) {
-        if (isNullOrEmpty(listeners)) {
-            return this;
-        }
-        if (this instanceof ObservingEmbeddingStore<Embedded> observingEmbeddingStore) {
-            return observingEmbeddingStore.withAdditionalListeners(listeners);
-        }
-        return new ObservingEmbeddingStore<>(this, listeners);
-    }
-
     /**
      * Adds a given embedding to the store.
      *
@@ -171,4 +140,34 @@ public interface EmbeddingStore<Embedded> {
      * @return An {@link EmbeddingSearchResult} containing all found {@link Embedding}s.
      */
     EmbeddingSearchResult<Embedded> search(EmbeddingSearchRequest request);
+
+    /**
+     * Wraps this {@link EmbeddingStore} with an observing store that dispatches events to the provided listener.
+     * <p>
+     * This is a non-breaking convenience method to add observability to any {@link EmbeddingStore} implementation.
+     *
+     * @param listener The listener to add.
+     * @return An observing {@link EmbeddingStore} that will dispatch events to the provided listener.
+     */
+    default EmbeddingStore<Embedded> addListener(EmbeddingStoreListener listener) {
+        return addListeners(listener == null ? null : List.of(listener));
+    }
+
+    /**
+     * Wraps this {@link EmbeddingStore} with an observing store that dispatches events to the provided listeners.
+     * <p>
+     * Listeners are called in the order of iteration.
+     *
+     * @param listeners The listeners to add.
+     * @return An observing {@link EmbeddingStore} that will dispatch events to the provided listeners.
+     */
+    default EmbeddingStore<Embedded> addListeners(List<EmbeddingStoreListener> listeners) {
+        if (isNullOrEmpty(listeners)) {
+            return this;
+        }
+        if (this instanceof ObservingEmbeddingStore<Embedded> observingEmbeddingStore) {
+            return observingEmbeddingStore.withAdditionalListeners(listeners);
+        }
+        return new ObservingEmbeddingStore<>(this, listeners);
+    }
 }

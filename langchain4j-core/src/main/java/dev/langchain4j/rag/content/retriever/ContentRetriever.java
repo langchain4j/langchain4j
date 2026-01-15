@@ -30,6 +30,16 @@ import java.util.List;
 public interface ContentRetriever {
 
     /**
+     * Retrieves relevant {@link Content}s using a given {@link Query}.
+     * The {@link Content}s are sorted by relevance, with the most relevant {@link Content}s appearing
+     * at the beginning of the returned {@code List<Content>}.
+     *
+     * @param query The {@link Query} to use for retrieval.
+     * @return A list of retrieved {@link Content}s.
+     */
+    List<Content> retrieve(Query query);
+
+    /**
      * Wraps this {@link ContentRetriever} with an observing retriever that dispatches events to the provided listener.
      *
      * @param listener The listener to add.
@@ -56,14 +66,4 @@ public interface ContentRetriever {
         }
         return new ObservingContentRetriever(this, List.copyOf(listeners));
     }
-
-    /**
-     * Retrieves relevant {@link Content}s using a given {@link Query}.
-     * The {@link Content}s are sorted by relevance, with the most relevant {@link Content}s appearing
-     * at the beginning of the returned {@code List<Content>}.
-     *
-     * @param query The {@link Query} to use for retrieval.
-     * @return A list of retrieved {@link Content}s.
-     */
-    List<Content> retrieve(Query query);
 }
