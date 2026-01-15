@@ -93,20 +93,8 @@ public class MessageWindowChatMemory implements ChatMemory {
         store.updateMessages(id, messages);
     }
 
-    private void set(final List<ChatMessage> messages) {
-        Integer maxMessages = this.maxMessagesProvider.apply(this.id);
-        ensureGreaterThanZero(maxMessages, "maxMessages");
-        ensureCapacity(messages, maxMessages);
-        store.updateMessages(id, messages);
-    }
-
     @Override
-    public void set(final ChatMessage... messages) {
-        set(Arrays.asList(messages));
-    }
-
-    @Override
-    public void set(final Iterable<ChatMessage> iter) {
+    public void set(Iterable<ChatMessage> iter) {
         if (iter instanceof List) {
             set((List<ChatMessage>) iter);
         } else {
@@ -114,6 +102,13 @@ public class MessageWindowChatMemory implements ChatMemory {
             iter.forEach(list::add);
             set(list);
         }
+    }
+
+    private void set(List<ChatMessage> messages) {
+        Integer maxMessages = this.maxMessagesProvider.apply(this.id);
+        ensureGreaterThanZero(maxMessages, "maxMessages");
+        ensureCapacity(messages, maxMessages);
+        store.updateMessages(id, messages);
     }
 
     @Override

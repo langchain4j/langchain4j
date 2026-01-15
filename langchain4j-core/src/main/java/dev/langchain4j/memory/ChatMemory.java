@@ -2,9 +2,10 @@ package dev.langchain4j.memory;
 
 import dev.langchain4j.data.message.ChatMessage;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
-import java.util.Objects;
+
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * Represents the memory (history) of a chat conversation.
@@ -53,14 +54,14 @@ public interface ChatMemory {
      * rather than appending to it.
      * <p>
      * The default implementation delegates to {@link #set(Iterable) set(Iterable&lt;ChatMessage&gt;)}.
-     *
+     * <p>
      * NOTE: This method is never called automatically by LangChain4j.
      *
      * @param messages The {@link ChatMessage}s to set. Must not be {@code null} or empty.
      * @since 1.11.0
      */
     default void set(ChatMessage... messages) {
-        Objects.requireNonNull(messages, "messages must not be null");
+        ensureNotEmpty(messages, "messages");
         set(Arrays.asList(messages));
     }
 
@@ -75,19 +76,15 @@ public interface ChatMemory {
      * <p>
      * This method will typically be used when chat memory needs to be re-written to implement things like
      * memory compaction.
-     *
+     * <p>
      * NOTE: This method is never called automatically by LangChain4j.
      *
      * @param messages The {@link ChatMessage}s to set. Must not be {@code null} or empty.
      * @since 1.11.0
      */
     default void set(Iterable<ChatMessage> messages) {
-        Objects.requireNonNull(messages, "messages must not be null");
-        if (messages instanceof Collection<?> collection) {
-            if (collection.isEmpty()) {
-                throw new IllegalArgumentException("messages must not be empty");
-            }
-        } else if (!messages.iterator().hasNext()) {
+        ensureNotNull(messages, "messages");
+        if (!messages.iterator().hasNext()) {
             throw new IllegalArgumentException("messages must not be empty");
         }
         clear();
