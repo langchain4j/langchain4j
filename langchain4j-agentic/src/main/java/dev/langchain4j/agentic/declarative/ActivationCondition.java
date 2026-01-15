@@ -22,7 +22,7 @@ import java.lang.annotation.Target;
  *         })
  *         String askExpert(@V("request") String request);
  *
- *         @ActivationCondition(MedicalExpert.class)
+ *         @ActivationCondition(value = MedicalExpert.class, description = "category is medical")
  *         static boolean activateMedical(@V("category") RequestCategory category) {
  *             return category == RequestCategory.MEDICAL;
  *         }
@@ -43,5 +43,19 @@ import java.lang.annotation.Target;
 @Retention(RUNTIME)
 @Target({METHOD})
 public @interface ActivationCondition {
+
+    /**
+     * One or more sub-agent classes that this activation condition applies to.
+     *
+     * @return array of sub-agent classes.
+     */
     Class<?>[] value();
+
+    /**
+     * Description of the activation condition.
+     * It should be clear and descriptive to allow understanding the purpose of the condition.
+     *
+     * @return description of the activation condition.
+     */
+    String description() default "<unknown>";
 }

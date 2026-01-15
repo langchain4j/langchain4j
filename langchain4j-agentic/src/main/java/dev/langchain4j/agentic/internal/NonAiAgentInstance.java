@@ -4,6 +4,7 @@ import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
+import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.workflow.HumanInTheLoop;
 import java.lang.reflect.Type;
 import java.util.List;
@@ -59,6 +60,11 @@ public class NonAiAgentInstance implements AgentInstance, InternalAgent {
     @Override
     public Class<?> type() {
         return type;
+    }
+
+    @Override
+    public Class<? extends Planner> plannerType() {
+        return null;
     }
 
     @Override

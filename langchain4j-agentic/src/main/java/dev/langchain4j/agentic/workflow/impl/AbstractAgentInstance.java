@@ -3,6 +3,7 @@ package dev.langchain4j.agentic.workflow.impl;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
+import dev.langchain4j.agentic.planner.Planner;
 import java.lang.reflect.Type;
 import java.util.List;
 
@@ -16,6 +17,11 @@ abstract class AbstractAgentInstance implements AgentInstance {
     @Override
     public Class<?> type() {
         return delegate.type();
+    }
+
+    @Override
+    public Class<? extends Planner> plannerType() {
+        return delegate.plannerType();
     }
 
     @Override

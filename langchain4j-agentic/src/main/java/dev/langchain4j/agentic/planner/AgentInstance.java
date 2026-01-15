@@ -7,6 +7,8 @@ public interface AgentInstance {
 
     Class<?> type();
 
+    Class<? extends Planner> plannerType();
+
     String name();
 
     String agentId();

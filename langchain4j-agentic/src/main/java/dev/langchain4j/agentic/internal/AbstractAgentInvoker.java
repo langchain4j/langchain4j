@@ -10,6 +10,7 @@ import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
+import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 
@@ -25,6 +26,11 @@ public abstract class AbstractAgentInvoker implements AgentInvoker, InternalAgen
     @Override
     public Class<?> type() {
         return agent.type();
+    }
+
+    @Override
+    public Class<? extends Planner> plannerType() {
+        return agent.plannerType();
     }
 
     @Override

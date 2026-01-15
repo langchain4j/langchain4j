@@ -226,6 +226,11 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
     }
 
     @Override
+    public Class<? extends Planner> plannerType() {
+        return defaultPlannerInstance.getClass();
+    }
+
+    @Override
     public String name() {
         return name;
     }

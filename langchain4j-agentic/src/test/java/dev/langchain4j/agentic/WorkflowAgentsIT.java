@@ -52,6 +52,7 @@ import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.workflow.ConditionalAgentInstance;
 import dev.langchain4j.agentic.workflow.HumanInTheLoop;
 import dev.langchain4j.agentic.workflow.LoopAgentInstance;
+import dev.langchain4j.agentic.workflow.impl.LoopPlanner;
 import dev.langchain4j.agentic.workflow.impl.SequentialPlanner;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
@@ -401,6 +402,8 @@ public class WorkflowAgentsIT {
                 .build();
 
         AgentInstance sequenceInstance = ((AgentInstance) novelCreator);
+        assertThat(sequenceInstance.type()).isSameAs(UntypedAgent.class);
+        assertThat(sequenceInstance.plannerType()).isSameAs(SequentialPlanner.class);
         assertThat(sequenceInstance.outputKey()).isEqualTo("story");
         assertThat(sequenceInstance.subagents()).hasSize(5);
 
@@ -641,12 +644,18 @@ public class WorkflowAgentsIT {
 
         assertThat(styledWriter.name()).isEqualTo("writeStoryWithStyle");
         assertThat(styledWriter.subagents()).hasSize(2);
+        assertThat(styledWriter.type()).isSameAs(StyledWriter.class);
+        assertThat(styledWriter.plannerType()).isSameAs(SequentialPlanner.class);
 
         AgentInstance creativeWriterInstance = styledWriter.subagents().get(0);
         assertThat(creativeWriterInstance.name()).isEqualTo("generateStory");
+        assertThat(creativeWriterInstance.type()).isSameAs(CreativeWriter.class);
+        assertThat(creativeWriterInstance.plannerType()).isNull();
 
         AgentInstance loopAgent = styledWriter.subagents().get(1);
         assertThat(loopAgent.topology()).isEqualTo(AgenticSystemTopology.LOOP);
+        assertThat(loopAgent.type()).isSameAs(UntypedAgent.class);
+        assertThat(loopAgent.plannerType()).isSameAs(LoopPlanner.class);
         LoopAgentInstance loopInstance = loopAgent.as(LoopAgentInstance.class);
         assertThat(loopInstance.subagents()).hasSize(2);
         assertThat(loopInstance.maxIterations()).isEqualTo(5);
