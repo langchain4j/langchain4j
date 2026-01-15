@@ -25,17 +25,17 @@ public class Metadata {
 
     public Metadata(Builder builder) {
         this.chatMessage = ensureNotNull(builder.chatMessage, "chatMessage");
-        this.chatMemory = copy(builder.chatMemory);
         this.systemMessage = builder.systemMessage;
+        this.chatMemory = copy(builder.chatMemory);
         this.invocationContext = ensureNotNull(builder.invocationContext, "invocationContext");
     }
 
     public Metadata(ChatMessage chatMessage, Object chatMemoryId, List<ChatMessage> chatMemory) {
         this.chatMessage = ensureNotNull(chatMessage, "chatMessage");
+        this.systemMessage = null;
         this.chatMemory = copy(chatMemory);
         this.invocationContext =
                 InvocationContext.builder().chatMemoryId(chatMemoryId).build();
-        this.systemMessage = null;
     }
 
     public Metadata(
@@ -55,7 +55,7 @@ public class Metadata {
     }
 
     /**
-     * @return the {@link SystemMessage} from the service call.
+     * @return the effective {@link SystemMessage} from the AI Service invocation, if any
      */
     public SystemMessage systemMessage() {
         return systemMessage;
