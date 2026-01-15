@@ -54,6 +54,8 @@ public interface ChatMemory {
      * <p>
      * The default implementation delegates to {@link #set(Iterable) set(Iterable&lt;ChatMessage&gt;)}.
      *
+     * NOTE: This method is never called automatically by LangChain4j.
+     *
      * @param messages The {@link ChatMessage}s to set. Must not be {@code null} or empty.
      * @since 1.11.0
      */
