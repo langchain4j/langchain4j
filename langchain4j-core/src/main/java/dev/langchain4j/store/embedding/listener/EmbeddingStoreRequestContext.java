@@ -15,47 +15,19 @@ import java.util.Map;
  * The attributes can be used to pass data between methods of an {@link EmbeddingStoreListener}
  * or between multiple {@link EmbeddingStoreListener}s.
  */
-public class EmbeddingStoreRequestContext<Embedded> {
+public abstract class EmbeddingStoreRequestContext<Embedded> {
 
     private final EmbeddingStoreOperation operation;
     private final EmbeddingStore<Embedded> embeddingStore;
     private final Map<Object, Object> attributes;
 
-    private final String id;
-    private final List<String> ids;
-
-    private final Embedding embedding;
-    private final List<Embedding> embeddings;
-
-    private final Embedded embedded;
-    private final List<Embedded> embeddedList;
-
-    private final EmbeddingSearchRequest searchRequest;
-    private final Filter filter;
-
-    public EmbeddingStoreRequestContext(
+    protected EmbeddingStoreRequestContext(
             EmbeddingStoreOperation operation,
             EmbeddingStore<Embedded> embeddingStore,
-            Map<Object, Object> attributes,
-            String id,
-            List<String> ids,
-            Embedding embedding,
-            List<Embedding> embeddings,
-            Embedded embedded,
-            List<Embedded> embeddedList,
-            EmbeddingSearchRequest searchRequest,
-            Filter filter) {
+            Map<Object, Object> attributes) {
         this.operation = ensureNotNull(operation, "operation");
         this.embeddingStore = ensureNotNull(embeddingStore, "embeddingStore");
         this.attributes = ensureNotNull(attributes, "attributes");
-        this.id = id;
-        this.ids = ids;
-        this.embedding = embedding;
-        this.embeddings = embeddings;
-        this.embedded = embedded;
-        this.embeddedList = embeddedList;
-        this.searchRequest = searchRequest;
-        this.filter = filter;
     }
 
     public EmbeddingStoreOperation operation() {
@@ -75,58 +47,193 @@ public class EmbeddingStoreRequestContext<Embedded> {
     }
 
     /**
-     * @return The ID argument for operations like {@code add(String, Embedding)} and {@code remove(String)} (if applicable).
+     * The {@code add(...)} request context.
      */
-    public String id() {
-        return id;
+    public static final class Add<Embedded> extends EmbeddingStoreRequestContext<Embedded> {
+
+        private final String id;
+        private final Embedding embedding;
+        private final Embedded embedded;
+
+        public Add(EmbeddingStore<Embedded> embeddingStore, Map<Object, Object> attributes, Embedding embedding) {
+            this(embeddingStore, attributes, null, embedding, null);
+        }
+
+        public Add(
+                EmbeddingStore<Embedded> embeddingStore,
+                Map<Object, Object> attributes,
+                String id,
+                Embedding embedding) {
+            this(embeddingStore, attributes, id, embedding, null);
+        }
+
+        public Add(
+                EmbeddingStore<Embedded> embeddingStore,
+                Map<Object, Object> attributes,
+                String id,
+                Embedding embedding,
+                Embedded embedded) {
+            super(EmbeddingStoreOperation.ADD, embeddingStore, attributes);
+            this.id = id;
+            this.embedding = embedding;
+            this.embedded = embedded;
+        }
+
+        /**
+         * @return The ID argument for operations like {@code add(String, Embedding)} (if applicable).
+         */
+        public String id() {
+            return id;
+        }
+
+        /**
+         * @return The embedding argument for {@code add(...)} operations.
+         */
+        public Embedding embedding() {
+            return embedding;
+        }
+
+        /**
+         * @return The original embedded content for {@code add(Embedding, Embedded)} (if applicable).
+         */
+        public Embedded embedded() {
+            return embedded;
+        }
     }
 
     /**
-     * @return The IDs argument for operations like {@code addAll(ids, ...)} and {@code removeAll(ids)} (if applicable).
+     * The {@code addAll(...)} request context.
      */
-    public List<String> ids() {
-        return ids;
+    public static final class AddAll<Embedded> extends EmbeddingStoreRequestContext<Embedded> {
+
+        private final List<String> ids;
+        private final List<Embedding> embeddings;
+        private final List<Embedded> embeddedList;
+
+        public AddAll(
+                EmbeddingStore<Embedded> embeddingStore,
+                Map<Object, Object> attributes,
+                List<String> ids,
+                List<Embedding> embeddings,
+                List<Embedded> embeddedList) {
+            super(EmbeddingStoreOperation.ADD_ALL, embeddingStore, attributes);
+            this.ids = ids;
+            this.embeddings = embeddings;
+            this.embeddedList = embeddedList;
+        }
+
+        /**
+         * @return The IDs argument for operations like {@code addAll(ids, ...)} (if applicable).
+         */
+        public List<String> ids() {
+            return ids;
+        }
+
+        /**
+         * @return The embeddings argument for {@code addAll(...)} operations.
+         */
+        public List<Embedding> embeddings() {
+            return embeddings;
+        }
+
+        /**
+         * @return The list of embedded contents for {@code addAll(..., embedded)} (if applicable).
+         */
+        public List<Embedded> embeddedList() {
+            return embeddedList;
+        }
     }
 
     /**
-     * @return The embedding argument for {@code add(...)} operations (if applicable).
+     * The {@code search(...)} request context.
      */
-    public Embedding embedding() {
-        return embedding;
+    public static final class Search<Embedded> extends EmbeddingStoreRequestContext<Embedded> {
+
+        private final EmbeddingSearchRequest searchRequest;
+
+        public Search(
+                EmbeddingStore<Embedded> embeddingStore,
+                Map<Object, Object> attributes,
+                EmbeddingSearchRequest searchRequest) {
+            super(EmbeddingStoreOperation.SEARCH, embeddingStore, attributes);
+            this.searchRequest = searchRequest;
+        }
+
+        /**
+         * @return The search request for {@code search(...)}.
+         */
+        public EmbeddingSearchRequest searchRequest() {
+            return searchRequest;
+        }
     }
 
     /**
-     * @return The embeddings argument for {@code addAll(...)} operations (if applicable).
+     * The {@code remove(String)} request context.
      */
-    public List<Embedding> embeddings() {
-        return embeddings;
+    public static final class Remove<Embedded> extends EmbeddingStoreRequestContext<Embedded> {
+
+        private final String id;
+
+        public Remove(EmbeddingStore<Embedded> embeddingStore, Map<Object, Object> attributes, String id) {
+            super(EmbeddingStoreOperation.REMOVE, embeddingStore, attributes);
+            this.id = id;
+        }
+
+        /**
+         * @return The ID argument for operations like {@code remove(String)}.
+         */
+        public String id() {
+            return id;
+        }
     }
 
     /**
-     * @return The original embedded content for {@code add(Embedding, Embedded)} (if applicable).
+     * The {@code removeAll(ids)} request context.
      */
-    public Embedded embedded() {
-        return embedded;
+    public static final class RemoveAllIds<Embedded> extends EmbeddingStoreRequestContext<Embedded> {
+
+        private final List<String> ids;
+
+        public RemoveAllIds(EmbeddingStore<Embedded> embeddingStore, Map<Object, Object> attributes, List<String> ids) {
+            super(EmbeddingStoreOperation.REMOVE_ALL_IDS, embeddingStore, attributes);
+            this.ids = ids;
+        }
+
+        /**
+         * @return The IDs argument for operations like {@code removeAll(ids)}.
+         */
+        public List<String> ids() {
+            return ids;
+        }
     }
 
     /**
-     * @return The list of embedded contents for {@code addAll(..., embedded)} (if applicable).
+     * The {@code removeAll(Filter)} request context.
      */
-    public List<Embedded> embeddedList() {
-        return embeddedList;
+    public static final class RemoveAllFilter<Embedded> extends EmbeddingStoreRequestContext<Embedded> {
+
+        private final Filter filter;
+
+        public RemoveAllFilter(EmbeddingStore<Embedded> embeddingStore, Map<Object, Object> attributes, Filter filter) {
+            super(EmbeddingStoreOperation.REMOVE_ALL_FILTER, embeddingStore, attributes);
+            this.filter = filter;
+        }
+
+        /**
+         * @return The filter argument for {@code removeAll(Filter)}.
+         */
+        public Filter filter() {
+            return filter;
+        }
     }
 
     /**
-     * @return The search request for {@code search(...)} (if applicable).
+     * The {@code removeAll()} request context.
      */
-    public EmbeddingSearchRequest searchRequest() {
-        return searchRequest;
-    }
+    public static final class RemoveAll<Embedded> extends EmbeddingStoreRequestContext<Embedded> {
 
-    /**
-     * @return The filter argument for {@code removeAll(Filter)} (if applicable).
-     */
-    public Filter filter() {
-        return filter;
+        public RemoveAll(EmbeddingStore<Embedded> embeddingStore, Map<Object, Object> attributes) {
+            super(EmbeddingStoreOperation.REMOVE_ALL, embeddingStore, attributes);
+        }
     }
 }

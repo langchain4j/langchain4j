@@ -19,12 +19,49 @@ public class ContentRetrieverErrorContext {
     private final ContentRetriever contentRetriever;
     private final Map<Object, Object> attributes;
 
-    public ContentRetrieverErrorContext(
-            Throwable error, Query query, ContentRetriever contentRetriever, Map<Object, Object> attributes) {
-        this.error = ensureNotNull(error, "error");
-        this.query = ensureNotNull(query, "query");
-        this.contentRetriever = ensureNotNull(contentRetriever, "contentRetriever");
-        this.attributes = ensureNotNull(attributes, "attributes");
+    public ContentRetrieverErrorContext(Builder builder) {
+        this.error = ensureNotNull(builder.error, "error");
+        this.query = ensureNotNull(builder.query, "query");
+        this.contentRetriever = ensureNotNull(builder.contentRetriever, "contentRetriever");
+        this.attributes = ensureNotNull(builder.attributes, "attributes");
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+
+        private Throwable error;
+        private Query query;
+        private ContentRetriever contentRetriever;
+        private Map<Object, Object> attributes;
+
+        Builder() {}
+
+        public Builder error(Throwable error) {
+            this.error = error;
+            return this;
+        }
+
+        public Builder query(Query query) {
+            this.query = query;
+            return this;
+        }
+
+        public Builder contentRetriever(ContentRetriever contentRetriever) {
+            this.contentRetriever = contentRetriever;
+            return this;
+        }
+
+        public Builder attributes(Map<Object, Object> attributes) {
+            this.attributes = attributes;
+            return this;
+        }
+
+        public ContentRetrieverErrorContext build() {
+            return new ContentRetrieverErrorContext(this);
+        }
     }
 
     /**

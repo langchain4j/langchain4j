@@ -14,23 +14,14 @@ import java.util.Map;
 public class EmbeddingStoreErrorContext<Embedded> {
 
     private final Throwable error;
-    private final EmbeddingStoreOperation operation;
-    private final EmbeddingStore<Embedded> embeddingStore;
+    private final EmbeddingStoreRequestContext<Embedded> requestContext;
     private final Map<Object, Object> attributes;
 
-    private final EmbeddingStoreRequestContext<Embedded> requestContext;
-
     public EmbeddingStoreErrorContext(
-            Throwable error,
-            EmbeddingStoreOperation operation,
-            EmbeddingStore<Embedded> embeddingStore,
-            Map<Object, Object> attributes,
-            EmbeddingStoreRequestContext<Embedded> requestContext) {
+            Throwable error, EmbeddingStoreRequestContext<Embedded> requestContext, Map<Object, Object> attributes) {
         this.error = ensureNotNull(error, "error");
-        this.operation = ensureNotNull(operation, "operation");
-        this.embeddingStore = ensureNotNull(embeddingStore, "embeddingStore");
-        this.attributes = ensureNotNull(attributes, "attributes");
         this.requestContext = ensureNotNull(requestContext, "requestContext");
+        this.attributes = ensureNotNull(attributes, "attributes");
     }
 
     /**
@@ -41,11 +32,11 @@ public class EmbeddingStoreErrorContext<Embedded> {
     }
 
     public EmbeddingStoreOperation operation() {
-        return operation;
+        return requestContext.operation();
     }
 
     public EmbeddingStore<Embedded> embeddingStore() {
-        return embeddingStore;
+        return requestContext.embeddingStore();
     }
 
     /**

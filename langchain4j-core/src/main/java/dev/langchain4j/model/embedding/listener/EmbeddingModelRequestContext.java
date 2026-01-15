@@ -1,11 +1,11 @@
 package dev.langchain4j.model.embedding.listener;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import java.util.List;
 import java.util.Map;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * The embedding model request context.
@@ -19,11 +19,42 @@ public class EmbeddingModelRequestContext {
     private final EmbeddingModel embeddingModel;
     private final Map<Object, Object> attributes;
 
-    public EmbeddingModelRequestContext(
-            List<TextSegment> textSegments, EmbeddingModel embeddingModel, Map<Object, Object> attributes) {
-        this.textSegments = ensureNotNull(textSegments, "textSegments");
-        this.embeddingModel = ensureNotNull(embeddingModel, "embeddingModel");
-        this.attributes = ensureNotNull(attributes, "attributes");
+    public EmbeddingModelRequestContext(Builder builder) {
+        this.textSegments = ensureNotNull(builder.textSegments, "textSegments");
+        this.embeddingModel = ensureNotNull(builder.embeddingModel, "embeddingModel");
+        this.attributes = ensureNotNull(builder.attributes, "attributes");
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+
+        private List<TextSegment> textSegments;
+        private EmbeddingModel embeddingModel;
+        private Map<Object, Object> attributes;
+
+        Builder() {}
+
+        public Builder textSegments(List<TextSegment> textSegments) {
+            this.textSegments = textSegments;
+            return this;
+        }
+
+        public Builder embeddingModel(EmbeddingModel embeddingModel) {
+            this.embeddingModel = embeddingModel;
+            return this;
+        }
+
+        public Builder attributes(Map<Object, Object> attributes) {
+            this.attributes = attributes;
+            return this;
+        }
+
+        public EmbeddingModelRequestContext build() {
+            return new EmbeddingModelRequestContext(this);
+        }
     }
 
     public List<TextSegment> textSegments() {
@@ -42,6 +73,3 @@ public class EmbeddingModelRequestContext {
         return attributes;
     }
 }
-
-
-

@@ -18,11 +18,42 @@ public class ContentRetrieverRequestContext {
     private final ContentRetriever contentRetriever;
     private final Map<Object, Object> attributes;
 
-    public ContentRetrieverRequestContext(
-            Query query, ContentRetriever contentRetriever, Map<Object, Object> attributes) {
-        this.query = ensureNotNull(query, "query");
-        this.contentRetriever = ensureNotNull(contentRetriever, "contentRetriever");
-        this.attributes = ensureNotNull(attributes, "attributes");
+    public ContentRetrieverRequestContext(Builder builder) {
+        this.query = ensureNotNull(builder.query, "query");
+        this.contentRetriever = ensureNotNull(builder.contentRetriever, "contentRetriever");
+        this.attributes = ensureNotNull(builder.attributes, "attributes");
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+
+        private Query query;
+        private ContentRetriever contentRetriever;
+        private Map<Object, Object> attributes;
+
+        Builder() {}
+
+        public Builder query(Query query) {
+            this.query = query;
+            return this;
+        }
+
+        public Builder contentRetriever(ContentRetriever contentRetriever) {
+            this.contentRetriever = contentRetriever;
+            return this;
+        }
+
+        public Builder attributes(Map<Object, Object> attributes) {
+            this.attributes = attributes;
+            return this;
+        }
+
+        public ContentRetrieverRequestContext build() {
+            return new ContentRetrieverRequestContext(this);
+        }
     }
 
     public Query query() {

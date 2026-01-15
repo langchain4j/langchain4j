@@ -1,13 +1,13 @@
 package dev.langchain4j.model.embedding.listener;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import java.util.List;
 import java.util.Map;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * The embedding model response context.
@@ -22,15 +22,49 @@ public class EmbeddingModelResponseContext {
     private final EmbeddingModel embeddingModel;
     private final Map<Object, Object> attributes;
 
-    public EmbeddingModelResponseContext(
-            Response<List<Embedding>> response,
-            List<TextSegment> textSegments,
-            EmbeddingModel embeddingModel,
-            Map<Object, Object> attributes) {
-        this.response = ensureNotNull(response, "response");
-        this.textSegments = ensureNotNull(textSegments, "textSegments");
-        this.embeddingModel = ensureNotNull(embeddingModel, "embeddingModel");
-        this.attributes = ensureNotNull(attributes, "attributes");
+    public EmbeddingModelResponseContext(Builder builder) {
+        this.response = ensureNotNull(builder.response, "response");
+        this.textSegments = ensureNotNull(builder.textSegments, "textSegments");
+        this.embeddingModel = ensureNotNull(builder.embeddingModel, "embeddingModel");
+        this.attributes = ensureNotNull(builder.attributes, "attributes");
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+
+        private Response<List<Embedding>> response;
+        private List<TextSegment> textSegments;
+        private EmbeddingModel embeddingModel;
+        private Map<Object, Object> attributes;
+
+        Builder() {}
+
+        public Builder response(Response<List<Embedding>> response) {
+            this.response = response;
+            return this;
+        }
+
+        public Builder textSegments(List<TextSegment> textSegments) {
+            this.textSegments = textSegments;
+            return this;
+        }
+
+        public Builder embeddingModel(EmbeddingModel embeddingModel) {
+            this.embeddingModel = embeddingModel;
+            return this;
+        }
+
+        public Builder attributes(Map<Object, Object> attributes) {
+            this.attributes = attributes;
+            return this;
+        }
+
+        public EmbeddingModelResponseContext build() {
+            return new EmbeddingModelResponseContext(this);
+        }
     }
 
     public Response<List<Embedding>> response() {
@@ -53,6 +87,3 @@ public class EmbeddingModelResponseContext {
         return attributes;
     }
 }
-
-
-

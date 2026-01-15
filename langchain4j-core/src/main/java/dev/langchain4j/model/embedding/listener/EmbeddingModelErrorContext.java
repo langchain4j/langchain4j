@@ -1,11 +1,11 @@
 package dev.langchain4j.model.embedding.listener;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import java.util.List;
 import java.util.Map;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * The embedding model error context.
@@ -20,12 +20,49 @@ public class EmbeddingModelErrorContext {
     private final EmbeddingModel embeddingModel;
     private final Map<Object, Object> attributes;
 
-    public EmbeddingModelErrorContext(
-            Throwable error, List<TextSegment> textSegments, EmbeddingModel embeddingModel, Map<Object, Object> attributes) {
-        this.error = ensureNotNull(error, "error");
-        this.textSegments = ensureNotNull(textSegments, "textSegments");
-        this.embeddingModel = ensureNotNull(embeddingModel, "embeddingModel");
-        this.attributes = ensureNotNull(attributes, "attributes");
+    public EmbeddingModelErrorContext(Builder builder) {
+        this.error = ensureNotNull(builder.error, "error");
+        this.textSegments = ensureNotNull(builder.textSegments, "textSegments");
+        this.embeddingModel = ensureNotNull(builder.embeddingModel, "embeddingModel");
+        this.attributes = ensureNotNull(builder.attributes, "attributes");
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+
+        private Throwable error;
+        private List<TextSegment> textSegments;
+        private EmbeddingModel embeddingModel;
+        private Map<Object, Object> attributes;
+
+        Builder() {}
+
+        public Builder error(Throwable error) {
+            this.error = error;
+            return this;
+        }
+
+        public Builder textSegments(List<TextSegment> textSegments) {
+            this.textSegments = textSegments;
+            return this;
+        }
+
+        public Builder embeddingModel(EmbeddingModel embeddingModel) {
+            this.embeddingModel = embeddingModel;
+            return this;
+        }
+
+        public Builder attributes(Map<Object, Object> attributes) {
+            this.attributes = attributes;
+            return this;
+        }
+
+        public EmbeddingModelErrorContext build() {
+            return new EmbeddingModelErrorContext(this);
+        }
     }
 
     /**
@@ -51,6 +88,3 @@ public class EmbeddingModelErrorContext {
         return attributes;
     }
 }
-
-
-

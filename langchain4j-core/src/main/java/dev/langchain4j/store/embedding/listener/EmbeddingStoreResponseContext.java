@@ -13,41 +13,23 @@ import java.util.Map;
  * The attributes can be used to pass data between methods of an {@link EmbeddingStoreListener}
  * or between multiple {@link EmbeddingStoreListener}s.
  */
-public class EmbeddingStoreResponseContext<Embedded> {
-
-    private final EmbeddingStoreOperation operation;
-    private final EmbeddingStore<Embedded> embeddingStore;
-    private final Map<Object, Object> attributes;
+public abstract class EmbeddingStoreResponseContext<Embedded> {
 
     private final EmbeddingStoreRequestContext<Embedded> requestContext;
+    private final Map<Object, Object> attributes;
 
-    private final String returnedId;
-    private final List<String> returnedIds;
-    private final EmbeddingSearchResult<Embedded> searchResult;
-
-    public EmbeddingStoreResponseContext(
-            EmbeddingStoreOperation operation,
-            EmbeddingStore<Embedded> embeddingStore,
-            Map<Object, Object> attributes,
-            EmbeddingStoreRequestContext<Embedded> requestContext,
-            String returnedId,
-            List<String> returnedIds,
-            EmbeddingSearchResult<Embedded> searchResult) {
-        this.operation = ensureNotNull(operation, "operation");
-        this.embeddingStore = ensureNotNull(embeddingStore, "embeddingStore");
-        this.attributes = ensureNotNull(attributes, "attributes");
+    protected EmbeddingStoreResponseContext(
+            EmbeddingStoreRequestContext<Embedded> requestContext, Map<Object, Object> attributes) {
         this.requestContext = ensureNotNull(requestContext, "requestContext");
-        this.returnedId = returnedId;
-        this.returnedIds = returnedIds;
-        this.searchResult = searchResult;
+        this.attributes = ensureNotNull(attributes, "attributes");
     }
 
     public EmbeddingStoreOperation operation() {
-        return operation;
+        return requestContext.operation();
     }
 
     public EmbeddingStore<Embedded> embeddingStore() {
-        return embeddingStore;
+        return requestContext.embeddingStore();
     }
 
     /**
@@ -66,23 +48,81 @@ public class EmbeddingStoreResponseContext<Embedded> {
     }
 
     /**
-     * @return The returned ID for operations like {@code add(Embedding)} and {@code add(Embedding, Embedded)} (if applicable).
+     * The {@code add(...)} response context.
      */
-    public String returnedId() {
-        return returnedId;
+    public static final class Add<Embedded> extends EmbeddingStoreResponseContext<Embedded> {
+
+        private final String returnedId;
+
+        public Add(
+                EmbeddingStoreRequestContext<Embedded> requestContext,
+                Map<Object, Object> attributes,
+                String returnedId) {
+            super(requestContext, attributes);
+            this.returnedId = returnedId;
+        }
+
+        /**
+         * @return The returned ID for operations like {@code add(Embedding)} and {@code add(Embedding, Embedded)} (if applicable).
+         */
+        public String returnedId() {
+            return returnedId;
+        }
     }
 
     /**
-     * @return The returned IDs for operations like {@code addAll(List<Embedding>)} and {@code addAll(List<Embedding>, List<Embedded>)} (if applicable).
+     * The {@code addAll(...)} response context.
      */
-    public List<String> returnedIds() {
-        return returnedIds;
+    public static final class AddAll<Embedded> extends EmbeddingStoreResponseContext<Embedded> {
+
+        private final List<String> returnedIds;
+
+        public AddAll(
+                EmbeddingStoreRequestContext<Embedded> requestContext,
+                Map<Object, Object> attributes,
+                List<String> returnedIds) {
+            super(requestContext, attributes);
+            this.returnedIds = returnedIds;
+        }
+
+        /**
+         * @return The returned IDs for operations like {@code addAll(List<Embedding>)} and {@code addAll(List<Embedding>, List<Embedded>)} (if applicable).
+         */
+        public List<String> returnedIds() {
+            return returnedIds;
+        }
     }
 
     /**
-     * @return The search result for {@code search(...)} (if applicable).
+     * The {@code search(...)} response context.
      */
-    public EmbeddingSearchResult<Embedded> searchResult() {
-        return searchResult;
+    public static final class Search<Embedded> extends EmbeddingStoreResponseContext<Embedded> {
+
+        private final EmbeddingSearchResult<Embedded> searchResult;
+
+        public Search(
+                EmbeddingStoreRequestContext<Embedded> requestContext,
+                Map<Object, Object> attributes,
+                EmbeddingSearchResult<Embedded> searchResult) {
+            super(requestContext, attributes);
+            this.searchResult = searchResult;
+        }
+
+        /**
+         * @return The search result for {@code search(...)}.
+         */
+        public EmbeddingSearchResult<Embedded> searchResult() {
+            return searchResult;
+        }
+    }
+
+    /**
+     * A response context for operations that do not produce a response payload.
+     */
+    public static final class Void<Embedded> extends EmbeddingStoreResponseContext<Embedded> {
+
+        public Void(EmbeddingStoreRequestContext<Embedded> requestContext, Map<Object, Object> attributes) {
+            super(requestContext, attributes);
+        }
     }
 }
