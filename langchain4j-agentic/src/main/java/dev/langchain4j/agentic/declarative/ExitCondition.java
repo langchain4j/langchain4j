@@ -25,7 +25,7 @@ import java.lang.annotation.Target;
  *         )
  *         String write(@V("story") String story);
  *
- *         @ExitCondition(testExitAtLoopEnd = true)
+ *         @ExitCondition(testExitAtLoopEnd = true, description = "score greater than 0.8")
  *         static boolean exit(@V("score") double score) {
  *             return score >= 0.8;
  *         }
@@ -45,4 +45,12 @@ public @interface ExitCondition {
      * @return whether to test the exit predicate at the end of the loop iteration.
      */
     boolean testExitAtLoopEnd() default false;
+
+    /**
+     * Description of the exit condition.
+     * It should be clear and descriptive to allow understanding the purpose of the condition.
+     *
+     * @return description of the exit condition.
+     */
+    String description() default "<unknown>";
 }
