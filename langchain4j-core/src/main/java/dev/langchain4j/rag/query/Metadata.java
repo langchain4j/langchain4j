@@ -26,10 +26,17 @@ public class Metadata {
     public Metadata(Builder builder) {
         this.chatMessage = ensureNotNull(builder.chatMessage, "chatMessage");
         this.chatMemory = copy(builder.chatMemory);
+        this.systemMessage = builder.systemMessage;
         this.invocationContext = ensureNotNull(builder.invocationContext, "invocationContext");
-        if (builder.systemMessage != null) {
-            this.systemMessage = copy(this.systemMessage);
-        }
+    }
+
+    public Metadata(ChatMessage chatMessage, Object chatMemoryId, List<ChatMessage> chatMemory) {
+        this.chatMessage = ensureNotNull(chatMessage, "chatMessage");
+        this.chatMemory = copy(chatMemory);
+        this.invocationContext = InvocationContext.builder()
+                .chatMemoryId(chatMemoryId)
+                .build();
+        this.systemMessage = null;
     }
 
     public Metadata(ChatMessage chatMessage, SystemMessage systemMessage, Object chatMemoryId, List<ChatMessage> chatMemory) {
