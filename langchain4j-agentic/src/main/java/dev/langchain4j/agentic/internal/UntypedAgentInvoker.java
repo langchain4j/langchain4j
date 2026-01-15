@@ -11,11 +11,13 @@ public final class UntypedAgentInvoker extends AbstractAgentInvoker {
 
     @Override
     public AgentInvocationArguments toInvocationArguments(AgenticScope agenticScope) {
-        return new AgentInvocationArguments(agenticScope.state(), new Object[] {agenticScope.state()});
+        return new AgentInvocationArguments(agenticScope.state(), new Object[]{agenticScope.state()});
     }
 
     @Override
     public String toString() {
-        return "UntypedAgentInvoker[" + "method=" + method + ", " + "agent=" + agent + ']';
+        return "UntypedAgentInvoker[" +
+                "method=" + method + ", " +
+                "agent=" + agent + ']';
     }
 }

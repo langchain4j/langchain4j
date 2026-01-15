@@ -6,6 +6,7 @@ import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_SONN
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 
+import java.util.List;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -18,7 +19,6 @@ import dev.langchain4j.http.client.jdk.JdkHttpClient;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import java.util.List;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -31,17 +31,13 @@ class AnthropicChatModelThinkingIT {
 
     private static final int THINKING_BUDGET_TOKENS = 1024;
 
-    private final SpyingHttpClient spyingHttpClient =
-            new SpyingHttpClient(JdkHttpClient.builder().build());
+    private final SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
 
     @ParameterizedTest
-    @EnumSource(
-            value = AnthropicChatModelName.class,
-            mode = EXCLUDE,
-            names = {
-                "CLAUDE_3_5_HAIKU_20241022",
-                "CLAUDE_3_HAIKU_20240307",
-            })
+    @EnumSource(value = AnthropicChatModelName.class, mode = EXCLUDE, names = {
+            "CLAUDE_3_5_HAIKU_20241022",
+            "CLAUDE_3_HAIKU_20240307",
+    })
     void should_return_and_send_thinking(AnthropicChatModelName modelName) {
 
         // given
@@ -52,10 +48,12 @@ class AnthropicChatModelThinkingIT {
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(modelName)
+
                 .thinkingType("enabled")
                 .thinkingBudgetTokens(THINKING_BUDGET_TOKENS)
                 .maxTokens(THINKING_BUDGET_TOKENS + 100)
                 .returnThinking(returnThinking)
+
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -94,13 +92,10 @@ class AnthropicChatModelThinkingIT {
     }
 
     @ParameterizedTest
-    @EnumSource(
-            value = AnthropicChatModelName.class,
-            mode = EXCLUDE,
-            names = {
-                "CLAUDE_3_5_HAIKU_20241022",
-                "CLAUDE_3_HAIKU_20240307",
-            })
+    @EnumSource(value = AnthropicChatModelName.class, mode = EXCLUDE, names = {
+            "CLAUDE_3_5_HAIKU_20241022",
+            "CLAUDE_3_HAIKU_20240307",
+    })
     void should_return_and_NOT_send_thinking(AnthropicChatModelName modelName) {
 
         // given
@@ -111,11 +106,13 @@ class AnthropicChatModelThinkingIT {
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(modelName)
+
                 .thinkingType("enabled")
                 .thinkingBudgetTokens(THINKING_BUDGET_TOKENS)
                 .maxTokens(THINKING_BUDGET_TOKENS + 100)
                 .returnThinking(returnThinking)
                 .sendThinking(sendThinking)
+
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -154,13 +151,10 @@ class AnthropicChatModelThinkingIT {
     }
 
     @ParameterizedTest
-    @EnumSource(
-            value = AnthropicChatModelName.class,
-            mode = EXCLUDE,
-            names = {
-                "CLAUDE_3_5_HAIKU_20241022",
-                "CLAUDE_3_HAIKU_20240307",
-            })
+    @EnumSource(value = AnthropicChatModelName.class, mode = EXCLUDE, names = {
+            "CLAUDE_3_5_HAIKU_20241022",
+            "CLAUDE_3_HAIKU_20240307",
+    })
     void should_return_and_send_thinking_with_tools(AnthropicChatModelName modelName) {
 
         // given
@@ -179,11 +173,13 @@ class AnthropicChatModelThinkingIT {
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(modelName)
+
                 .thinkingType("enabled")
                 .thinkingBudgetTokens(THINKING_BUDGET_TOKENS)
                 .maxTokens(THINKING_BUDGET_TOKENS + 100)
                 .returnThinking(returnThinking)
                 .toolSpecifications(toolSpecification)
+
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -200,8 +196,7 @@ class AnthropicChatModelThinkingIT {
         String signature1 = aiMessage1.attribute("thinking_signature", String.class);
         assertThat(signature1).isNotBlank();
         assertThat(aiMessage1.toolExecutionRequests()).hasSize(1);
-        ToolExecutionRequest toolExecutionRequest1 =
-                aiMessage1.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest1 = aiMessage1.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest1.name()).isEqualTo(toolSpecification.name());
         assertThat(toolExecutionRequest1.arguments()).contains("Munich");
 
@@ -231,8 +226,7 @@ class AnthropicChatModelThinkingIT {
         String signature2 = aiMessage3.attribute("thinking_signature", String.class);
         assertThat(signature2).isNotBlank();
         assertThat(aiMessage3.toolExecutionRequests()).hasSize(1);
-        ToolExecutionRequest toolExecutionRequest2 =
-                aiMessage3.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest2 = aiMessage3.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest2.name()).isEqualTo(toolSpecification.name());
         assertThat(toolExecutionRequest2.arguments()).contains("Paris");
 
@@ -240,8 +234,7 @@ class AnthropicChatModelThinkingIT {
         ToolExecutionResultMessage toolResultMessage2 = ToolExecutionResultMessage.from(toolExecutionRequest2, "rainy");
 
         // when
-        ChatResponse chatResponse4 = model.chat(
-                userMessage1, aiMessage1, toolResultMessage1, aiMessage2, userMessage2, aiMessage3, toolResultMessage2);
+        ChatResponse chatResponse4 = model.chat(userMessage1, aiMessage1, toolResultMessage1, aiMessage2, userMessage2, aiMessage3, toolResultMessage2);
 
         // then
         AiMessage aiMessage4 = chatResponse4.aiMessage();
@@ -253,8 +246,12 @@ class AnthropicChatModelThinkingIT {
         // should send thinking in the follow-up requests
         List<HttpRequest> httpRequests = spyingHttpClient.requests();
         assertThat(httpRequests).hasSize(4);
-        assertThat(httpRequests.get(1).body()).contains(jsonify(thinking1)).contains(jsonify(signature1));
-        assertThat(httpRequests.get(3).body()).contains(jsonify(thinking2)).contains(jsonify(signature2));
+        assertThat(httpRequests.get(1).body())
+                .contains(jsonify(thinking1))
+                .contains(jsonify(signature1));
+        assertThat(httpRequests.get(3).body())
+                .contains(jsonify(thinking2))
+                .contains(jsonify(signature2));
     }
 
     @Test
@@ -278,6 +275,7 @@ class AnthropicChatModelThinkingIT {
         ChatModel model = AnthropicChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+
                 .beta(beta)
                 .modelName(modelName)
                 .thinkingType("enabled")
@@ -285,6 +283,7 @@ class AnthropicChatModelThinkingIT {
                 .maxTokens(THINKING_BUDGET_TOKENS + 100)
                 .returnThinking(returnThinking)
                 .toolSpecifications(toolSpecification)
+
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -304,8 +303,7 @@ class AnthropicChatModelThinkingIT {
         assertThat(signature1).isNotBlank();
 
         assertThat(aiMessage1.toolExecutionRequests()).hasSize(1);
-        ToolExecutionRequest toolExecutionRequest1 =
-                aiMessage1.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest1 = aiMessage1.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest1.name()).isEqualTo(toolSpecification.name());
         assertThat(toolExecutionRequest1.arguments()).contains("Munich");
 
@@ -343,8 +341,7 @@ class AnthropicChatModelThinkingIT {
         assertThat(signature3).isNotBlank();
 
         assertThat(aiMessage3.toolExecutionRequests()).hasSize(1);
-        ToolExecutionRequest toolExecutionRequest2 =
-                aiMessage3.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest2 = aiMessage3.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest2.name()).isEqualTo(toolSpecification.name());
         assertThat(toolExecutionRequest2.arguments()).contains("Paris");
 
@@ -352,8 +349,7 @@ class AnthropicChatModelThinkingIT {
         ToolExecutionResultMessage toolResultMessage2 = ToolExecutionResultMessage.from(toolExecutionRequest2, "rainy");
 
         // when
-        ChatResponse chatResponse4 = model.chat(
-                userMessage1, aiMessage1, toolResultMessage1, aiMessage2, userMessage2, aiMessage3, toolResultMessage2);
+        ChatResponse chatResponse4 = model.chat(userMessage1, aiMessage1, toolResultMessage1, aiMessage2, userMessage2, aiMessage3, toolResultMessage2);
 
         // then
         AiMessage aiMessage4 = chatResponse4.aiMessage();
@@ -370,9 +366,15 @@ class AnthropicChatModelThinkingIT {
         // should send thinking in the follow-up requests
         List<HttpRequest> httpRequests = spyingHttpClient.requests();
         assertThat(httpRequests).hasSize(4);
-        assertThat(httpRequests.get(1).body()).contains(jsonify(thinking1)).contains(jsonify(signature1));
-        assertThat(httpRequests.get(2).body()).contains(jsonify(thinking2)).contains(jsonify(signature2));
-        assertThat(httpRequests.get(3).body()).contains(jsonify(thinking3)).contains(jsonify(signature3));
+        assertThat(httpRequests.get(1).body())
+                .contains(jsonify(thinking1))
+                .contains(jsonify(signature1));
+        assertThat(httpRequests.get(2).body())
+                .contains(jsonify(thinking2))
+                .contains(jsonify(signature2));
+        assertThat(httpRequests.get(3).body())
+                .contains(jsonify(thinking3))
+                .contains(jsonify(signature3));
     }
 
     @ParameterizedTest
@@ -384,10 +386,12 @@ class AnthropicChatModelThinkingIT {
         ChatModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_SONNET_4_5_20250929)
+
                 .thinkingType("enabled")
                 .thinkingBudgetTokens(THINKING_BUDGET_TOKENS)
                 .maxTokens(THINKING_BUDGET_TOKENS + 100)
                 .returnThinking(returnThinking)
+
                 .logRequests(true)
                 .logResponses(true)
                 .build();

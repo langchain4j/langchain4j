@@ -58,3 +58,6 @@ final class ObservingEmbeddingModel implements EmbeddingModel {
         return delegate.modelName();
     }
 }
+
+
+

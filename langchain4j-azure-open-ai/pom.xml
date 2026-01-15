@@ -13,6 +13,10 @@
     <version>1.11.0-SNAPSHOT</version>
     <name>LangChain4j :: Integration :: Azure OpenAI</name>
 
+    <properties>
+        <azure-ai-openai.version>1.0.0-beta.16</azure-ai-openai.version>
+    </properties>
+
     <developers>
         <developer>
             <id>jdubois</id>
@@ -21,10 +25,6 @@
             <url>https://www.julien-dubois.com</url>
         </developer>
     </developers>
-
-    <properties>
-        <azure-ai-openai.version>1.0.0-beta.16</azure-ai-openai.version>
-    </properties>
 
     <dependencyManagement>
         <dependencies>

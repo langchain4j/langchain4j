@@ -1,5 +1,9 @@
 package dev.langchain4j.agentic.internal;
 
+import java.lang.reflect.Method;
+import java.lang.reflect.Type;
+import java.util.List;
+import java.util.Objects;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.observability.AgentListener;
@@ -8,10 +12,6 @@ import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
-import java.lang.reflect.Method;
-import java.lang.reflect.Type;
-import java.util.List;
-import java.util.Objects;
 
 public abstract class AbstractAgentInvoker implements AgentInvoker, InternalAgent {
     protected final Method method;
@@ -73,9 +73,7 @@ public abstract class AbstractAgentInvoker implements AgentInvoker, InternalAgen
     }
 
     @Override
-    public Object invoke(
-            final DefaultAgenticScope agenticScope, final Object agent, final AgentInvocationArguments args)
-            throws AgentInvocationException {
+    public Object invoke(final DefaultAgenticScope agenticScope, final Object agent, final AgentInvocationArguments args) throws AgentInvocationException {
         return AgentInvoker.super.invoke(agenticScope, agent, args);
     }
 
@@ -104,7 +102,8 @@ public abstract class AbstractAgentInvoker implements AgentInvoker, InternalAgen
         if (obj == this) return true;
         if (obj == null || obj.getClass() != this.getClass()) return false;
         var that = (AbstractAgentInvoker) obj;
-        return Objects.equals(this.method, that.method) && Objects.equals(this.agent, that.agent);
+        return Objects.equals(this.method, that.method) &&
+                Objects.equals(this.agent, that.agent);
     }
 
     @Override
@@ -114,7 +113,9 @@ public abstract class AbstractAgentInvoker implements AgentInvoker, InternalAgen
 
     @Override
     public String toString() {
-        return "MethodAgentInvoker[" + "method=" + method + ", " + "agentInstance=" + agent + ']';
+        return "MethodAgentInvoker[" +
+                "method=" + method + ", " +
+                "agentInstance=" + agent + ']';
     }
 
     @Override

@@ -15,15 +15,16 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.agentic.Agents.ColorExpert;
-import dev.langchain4j.agentic.Agents.ColorMixerExpert;
 import dev.langchain4j.agentic.Agents.LegalExpert;
 import dev.langchain4j.agentic.Agents.LoanApplicationEvaluator;
 import dev.langchain4j.agentic.Agents.LoanApplicationExtractor;
 import dev.langchain4j.agentic.Agents.MedicalExpert;
 import dev.langchain4j.agentic.Agents.RouterAgent;
 import dev.langchain4j.agentic.Agents.TechnicalExpert;
+import dev.langchain4j.agentic.Agents.ColorExpert;
+import dev.langchain4j.agentic.Agents.ColorMixerExpert;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;
@@ -35,17 +36,14 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
-import dev.langchain4j.service.tool.BeforeToolExecution;
-import dev.langchain4j.service.tool.ToolExecution;
-import dev.langchain4j.service.tool.ToolExecutor;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -53,6 +51,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import dev.langchain4j.service.tool.BeforeToolExecution;
+import dev.langchain4j.service.tool.ToolExecution;
+import dev.langchain4j.service.tool.ToolExecutionResult;
+import dev.langchain4j.service.tool.ToolExecutor;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -672,8 +674,7 @@ public class SupervisorAgentIT {
         String lionJoke1 = supervisorAgent.respond("supervisor", "Tell me a joke about lions");
         assertThat(lionJoke1).isNotNull().containsIgnoringCase("lion");
 
-        // Simulate recreating the same functional Supervisor System, same memory and all, new unique names will be
-        // generated
+        // Simulate recreating the same functional Supervisor System, same memory and all, new unique names will be generated
         JokesterAssistant jokesterAssistant2 = AgenticServices.agentBuilder(JokesterAssistant.class)
                 .chatModel(baseModel())
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
@@ -694,8 +695,7 @@ public class SupervisorAgentIT {
         String lionJoke2 = supervisorAgent2.respond("supervisor", "tell me a joke about cheetahs");
         assertThat(lionJoke2).isNotNull().containsIgnoringCase("cheetah");
 
-        List<ChatMessage> supervisorMessages =
-                supervisorAgent.getChatMemory("supervisor").messages();
+        List<ChatMessage> supervisorMessages = supervisorAgent.getChatMemory("supervisor").messages();
 
         Set<String> agentNames = supervisorMessages.stream()
                 .filter(AiMessage.class::isInstance)
@@ -703,13 +703,14 @@ public class SupervisorAgentIT {
                 .map(AiMessage::text)
                 .map(text -> {
                     int start = text.indexOf("\"agentName\":") + "agentName:".length();
-                    int agentNameStart = text.indexOf('"', start + 1) + 1;
+                    int agentNameStart = text.indexOf('"', start + 1)+1;
                     return text.substring(agentNameStart, text.indexOf('"', agentNameStart + 1));
-                })
-                .collect(Collectors.toSet());
+                }).collect(Collectors.toSet());
 
         // only 2 agents, the jokester and done
-        assertThat(agentNames).hasSize(2).containsExactly("JokesterAgent$1", "done");
+        assertThat(agentNames)
+                .hasSize(2)
+                .containsExactly("JokesterAgent$1", "done");
     }
 
     @Test
@@ -727,8 +728,7 @@ public class SupervisorAgentIT {
                 .subAgents(colorExpert, colorMixerExpert)
                 .build();
 
-        String result =
-                colorSupervisor.invoke("Which color do you get by mixing the color of blood and the color of the sky?");
+        String result = colorSupervisor.invoke("Which color do you get by mixing the color of blood and the color of the sky?");
         assertThat(result).containsIgnoringCase("purple");
     }
 
@@ -748,8 +748,7 @@ public class SupervisorAgentIT {
                 .subAgents(loanApplicationExtractor, loanApplicationEvaluator)
                 .build();
 
-        String result = loanAgent.invoke(
-                "John Doe submitted a loan application of 80000. He is 30 years old. Evaluate his application.");
+        String result = loanAgent.invoke("John Doe submitted a loan application of 80000. He is 30 years old. Evaluate his application.");
         assertThat(result).containsIgnoringCase("rejected");
     }
 
@@ -757,15 +756,16 @@ public class SupervisorAgentIT {
 
         @Override
         public ChatResponse chat(ChatRequest request) {
-            String json =
-                    """
+            String json = """
                     {
                       "agentName": "done",
                       "arguments": {}
                     }
                     """;
 
-            return ChatResponse.builder().aiMessage(AiMessage.from(json)).build();
+            return ChatResponse.builder()
+                    .aiMessage(AiMessage.from(json))
+                    .build();
         }
     }
 
@@ -787,4 +787,5 @@ public class SupervisorAgentIT {
 
         assertDoesNotThrow(() -> supervisor.invoke("Withdraw 100 USD from Mario's account"));
     }
+
 }

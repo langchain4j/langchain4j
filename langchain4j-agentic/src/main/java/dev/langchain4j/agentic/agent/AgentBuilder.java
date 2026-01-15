@@ -9,13 +9,13 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.declarative.TypedKey;
+import dev.langchain4j.agentic.internal.InternalAgent;
+import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.observability.ComposedAgentListener;
 import dev.langchain4j.agentic.internal.AgentUtil;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.internal.Context;
-import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.internal.UserMessageRecorder;
-import dev.langchain4j.agentic.observability.AgentListener;
-import dev.langchain4j.agentic.observability.ComposedAgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -128,8 +128,8 @@ public class AgentBuilder<T> {
         AiServiceContext context = AiServiceContext.create(agentServiceClass);
         AiServices<T> aiServices = AiServices.builder(context);
         if (model != null && streamingChatModel != null) {
-            throw new AgenticSystemConfigurationException("Both chatModel and streamingChatModel are set for agent '"
-                    + this.name + "'. Please set only one of them.");
+            throw new AgenticSystemConfigurationException(
+                    "Both chatModel and streamingChatModel are set for agent '" + this.name + "'. Please set only one of them.");
         }
         if (model != null) {
             aiServices.chatModel(model);
@@ -180,10 +180,8 @@ public class AgentBuilder<T> {
                 agentServiceClass.getClassLoader(),
                 new Class<?>[] {
                     agentServiceClass,
-                    InternalAgent.class,
-                    AgenticScopeOwner.class,
-                    ChatMemoryAccess.class,
-                    ChatMessagesAccess.class
+                    InternalAgent.class, AgenticScopeOwner.class,
+                    ChatMemoryAccess.class, ChatMessagesAccess.class
                 },
                 new AgentInvocationHandler(context, aiServices.build(), this, messageRecorder, agenticScopeDependent));
     }
@@ -421,4 +419,5 @@ public class AgentBuilder<T> {
         }
         return this;
     }
+
 }

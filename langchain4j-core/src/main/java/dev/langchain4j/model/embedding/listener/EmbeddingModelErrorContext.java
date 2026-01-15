@@ -1,11 +1,11 @@
 package dev.langchain4j.model.embedding.listener;
 
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import java.util.List;
 import java.util.Map;
+
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * The embedding model error context.
@@ -21,10 +21,7 @@ public class EmbeddingModelErrorContext {
     private final Map<Object, Object> attributes;
 
     public EmbeddingModelErrorContext(
-            Throwable error,
-            List<TextSegment> textSegments,
-            EmbeddingModel embeddingModel,
-            Map<Object, Object> attributes) {
+            Throwable error, List<TextSegment> textSegments, EmbeddingModel embeddingModel, Map<Object, Object> attributes) {
         this.error = ensureNotNull(error, "error");
         this.textSegments = ensureNotNull(textSegments, "textSegments");
         this.embeddingModel = ensureNotNull(embeddingModel, "embeddingModel");
@@ -54,3 +51,6 @@ public class EmbeddingModelErrorContext {
         return attributes;
     }
 }
+
+
+

@@ -1,33 +1,35 @@
 package dev.langchain4j.agentic;
 
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.service.TokenStream;
+import org.junit.jupiter.api.Test;
+
 import static dev.langchain4j.agentic.Models.baseModel;
 import static dev.langchain4j.agentic.Models.streamingBaseModel;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
+import dev.langchain4j.agentic.Agents.ReviewedWriter;
 import dev.langchain4j.agentic.Agents.AudienceEditor;
 import dev.langchain4j.agentic.Agents.CategoryRouter;
 import dev.langchain4j.agentic.Agents.ExpertRouterAgent;
-import dev.langchain4j.agentic.Agents.ReviewedWriter;
-import dev.langchain4j.agentic.StreamingAgents.StreamingAudienceEditor;
 import dev.langchain4j.agentic.StreamingAgents.StreamingCreativeWriter;
-import dev.langchain4j.agentic.StreamingAgents.StreamingExpertRouterAgent;
-import dev.langchain4j.agentic.StreamingAgents.StreamingLegalExpert;
-import dev.langchain4j.agentic.StreamingAgents.StreamingMedicalExpert;
-import dev.langchain4j.agentic.StreamingAgents.StreamingReviewedWriter;
+import dev.langchain4j.agentic.StreamingAgents.StreamingAudienceEditor;
 import dev.langchain4j.agentic.StreamingAgents.StreamingStyleEditor;
+import dev.langchain4j.agentic.StreamingAgents.StreamingReviewedWriter;
+import dev.langchain4j.agentic.StreamingAgents.StreamingExpertRouterAgent;
+import dev.langchain4j.agentic.StreamingAgents.StreamingMedicalExpert;
+import dev.langchain4j.agentic.StreamingAgents.StreamingLegalExpert;
 import dev.langchain4j.agentic.StreamingAgents.StreamingTechnicalExpert;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.output.FinishReason;
-import dev.langchain4j.service.TokenStream;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 @EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
@@ -218,12 +220,12 @@ public class StreamingIT {
 
         UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
                 .subAgents(
-                        agenticScope -> agenticScope.readState("category", Agents.RequestCategory.UNKNOWN)
-                                == Agents.RequestCategory.MEDICAL,
+                        agenticScope ->
+                                agenticScope.readState("category", Agents.RequestCategory.UNKNOWN) == Agents.RequestCategory.MEDICAL,
                         medicalExpert)
                 .subAgents(
-                        agenticScope -> agenticScope.readState("category", Agents.RequestCategory.UNKNOWN)
-                                == Agents.RequestCategory.LEGAL,
+                        agenticScope ->
+                                agenticScope.readState("category", Agents.RequestCategory.UNKNOWN) == Agents.RequestCategory.LEGAL,
                         legalExpert)
                 .subAgents(
                         agenticScope -> agenticScope.readState("category", Agents.RequestCategory.UNKNOWN)
@@ -269,12 +271,12 @@ public class StreamingIT {
 
         UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
                 .subAgents(
-                        agenticScope -> agenticScope.readState("category", Agents.RequestCategory.UNKNOWN)
-                                == Agents.RequestCategory.MEDICAL,
+                        agenticScope ->
+                                agenticScope.readState("category", Agents.RequestCategory.UNKNOWN) == Agents.RequestCategory.MEDICAL,
                         medicalExpert)
                 .subAgents(
-                        agenticScope -> agenticScope.readState("category", Agents.RequestCategory.UNKNOWN)
-                                == Agents.RequestCategory.LEGAL,
+                        agenticScope ->
+                                agenticScope.readState("category", Agents.RequestCategory.UNKNOWN) == Agents.RequestCategory.LEGAL,
                         legalExpert)
                 .subAgents(
                         agenticScope -> agenticScope.readState("category", Agents.RequestCategory.UNKNOWN)

@@ -34,3 +34,6 @@ public interface EmbeddingModelListener {
      */
     default void onError(EmbeddingModelErrorContext errorContext) {}
 }
+
+
+

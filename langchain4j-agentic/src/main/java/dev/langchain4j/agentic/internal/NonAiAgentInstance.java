@@ -21,14 +21,8 @@ public class NonAiAgentInstance implements AgentInstance, InternalAgent {
     private InternalAgent parent;
     private String agentId;
 
-    public NonAiAgentInstance(
-            Class<?> type,
-            String name,
-            String description,
-            Type outputType,
-            String outputKey,
-            boolean async,
-            List<AgentArgument> arguments,
+    public NonAiAgentInstance(Class<?> type, String name, String description,
+            Type outputType, String outputKey, boolean async, List<AgentArgument> arguments,
             AgentListener listener) {
         this.type = type;
         this.name = name;
@@ -106,14 +100,14 @@ public class NonAiAgentInstance implements AgentInstance, InternalAgent {
         if (obj == this) return true;
         if (obj == null || obj.getClass() != this.getClass()) return false;
         var that = (NonAiAgentInstance) obj;
-        return Objects.equals(this.type, that.type)
-                && Objects.equals(this.name, that.name)
-                && Objects.equals(this.description, that.description)
-                && Objects.equals(this.outputType, that.outputType)
-                && Objects.equals(this.outputKey, that.outputKey)
-                && this.async == that.async
-                && Objects.equals(this.arguments, that.arguments)
-                && Objects.equals(this.listener, that.listener);
+        return Objects.equals(this.type, that.type) &&
+                Objects.equals(this.name, that.name) &&
+                Objects.equals(this.description, that.description) &&
+                Objects.equals(this.outputType, that.outputType) &&
+                Objects.equals(this.outputKey, that.outputKey) &&
+                this.async == that.async &&
+                Objects.equals(this.arguments, that.arguments) &&
+                Objects.equals(this.listener, that.listener);
     }
 
     @Override
@@ -123,15 +117,15 @@ public class NonAiAgentInstance implements AgentInstance, InternalAgent {
 
     @Override
     public String toString() {
-        return "NonAiAgentInstance[" + "type="
-                + type + ", " + "name="
-                + name + ", " + "description="
-                + description + ", " + "outputType="
-                + outputType + ", " + "outputKey="
-                + outputKey + ", " + "async="
-                + async + ", " + "arguments="
-                + arguments + ", " + "listener="
-                + listener + ']';
+        return "NonAiAgentInstance[" +
+                "type=" + type + ", " +
+                "name=" + name + ", " +
+                "description=" + description + ", " +
+                "outputType=" + outputType + ", " +
+                "outputKey=" + outputKey + ", " +
+                "async=" + async + ", " +
+                "arguments=" + arguments + ", " +
+                "listener=" + listener + ']';
     }
 
     @Override
