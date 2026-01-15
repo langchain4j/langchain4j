@@ -2,6 +2,7 @@ package dev.langchain4j.rag.query.transformer;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.input.PromptTemplate;
@@ -27,12 +28,14 @@ class ExpandingQueryTransformerTest {
     void should_expand_query(String queriesString) {
 
         // given
+        SystemMessage systemMessage = SystemMessage.from("Be polite");
         List<ChatMessage> chatMemory = asList(
+                systemMessage,
                 UserMessage.from("Hi"),
                 AiMessage.from("Hello")
         );
         UserMessage userMessage = UserMessage.from("query");
-        Metadata metadata = Metadata.from(userMessage, "default", chatMemory);
+        Metadata metadata = Metadata.from(userMessage, systemMessage, "default", chatMemory);
 
         Query query = Query.from(userMessage.singleText(), metadata);
 

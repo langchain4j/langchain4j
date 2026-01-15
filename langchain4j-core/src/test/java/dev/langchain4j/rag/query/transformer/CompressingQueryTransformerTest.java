@@ -26,8 +26,9 @@ class CompressingQueryTransformerTest {
     void should_compress_query_and_chat_memory_into_single_query() {
 
         // given
+        SystemMessage systemMessage = SystemMessage.from("Be polite");
         List<ChatMessage> chatMemory = asList(
-                SystemMessage.from("Be polite"), // this message will be ignored
+                systemMessage, // this message will be ignored
                 UserMessage.from("Tell me about Klaus Heisler"),
                 AiMessage.from("He is a cool guy"),
                 AiMessage.from(ToolExecutionRequest.builder() // this message will be ignored
@@ -37,7 +38,7 @@ class CompressingQueryTransformerTest {
                         .build()));
 
         UserMessage userMessage = UserMessage.from("How old is he?");
-        Metadata metadata = Metadata.from(userMessage, "default", chatMemory);
+        Metadata metadata = Metadata.from(userMessage, systemMessage, "default", chatMemory);
 
         Query query = Query.from(userMessage.singleText(), metadata);
 
@@ -77,8 +78,9 @@ class CompressingQueryTransformerTest {
         // given
         List<ChatMessage> chatMemory = emptyList();
 
+        SystemMessage systemMessage = SystemMessage.from("Be polite");
         UserMessage userMessage = UserMessage.from("Hello");
-        Metadata metadata = Metadata.from(userMessage, "default", chatMemory);
+        Metadata metadata = Metadata.from(userMessage, systemMessage, "default", chatMemory);
 
         Query query = Query.from(userMessage.singleText(), metadata);
 
@@ -103,8 +105,9 @@ class CompressingQueryTransformerTest {
 
         List<ChatMessage> chatMemory =
                 asList(UserMessage.from("Tell me about Klaus Heisler"), AiMessage.from("He is a cool guy"));
+        SystemMessage systemMessage = SystemMessage.from("Be polite");
         UserMessage userMessage = UserMessage.from("How old is he?");
-        Metadata metadata = Metadata.from(userMessage, "default", chatMemory);
+        Metadata metadata = Metadata.from(userMessage, systemMessage, "default", chatMemory);
         Query query = Query.from(userMessage.singleText(), metadata);
 
         String expectedCompressedQuery = "How old is Klaus Heisler?";
@@ -134,10 +137,11 @@ class CompressingQueryTransformerTest {
         PromptTemplate promptTemplate = PromptTemplate.from(
                 "Given the following conversation: {{chatMemory}} reformulate the following query: {{query}}");
 
+        SystemMessage systemMessage = SystemMessage.from("Be polite");
         List<ChatMessage> chatMemory =
-                asList(UserMessage.from("Tell me about Klaus Heisler"), AiMessage.from("He is a cool guy"));
+                asList(systemMessage, UserMessage.from("Tell me about Klaus Heisler"), AiMessage.from("He is a cool guy"));
         UserMessage userMessage = UserMessage.from("How old is he?");
-        Metadata metadata = Metadata.from(userMessage, "default", chatMemory);
+        Metadata metadata = Metadata.from(userMessage, systemMessage, "default", chatMemory);
         Query query = Query.from(userMessage.singleText(), metadata);
 
         String expectedCompressedQuery = "How old is Klaus Heisler?";

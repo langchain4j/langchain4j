@@ -58,7 +58,6 @@ import dev.langchain4j.store.memory.chat.InMemoryChatMemoryStore;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;

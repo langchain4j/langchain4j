@@ -186,7 +186,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .chatMessage(userMessageForAugmentation)
                                     .chatMemory(chatMemoryMessages)
                                     .invocationContext(invocationContext)
-                                    .systemMessage(systemMessage)
+                                    .systemMessage(systemMessage.orElse(null))
                                     .build();
                             AugmentationRequest augmentationRequest =
                                     new AugmentationRequest(userMessageForAugmentation, metadata);
