@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.data.MapEntry.entry;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -18,6 +19,7 @@ import dev.langchain4j.store.embedding.listener.EmbeddingStoreRequestContext;
 import dev.langchain4j.store.embedding.listener.EmbeddingStoreResponseContext;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 
 class EmbeddingStoreListenerTest {
@@ -272,5 +274,291 @@ class EmbeddingStoreListenerTest {
 
         // then
         verify(listener2).onError(any());
+    }
+
+    @Test
+    void should_provide_operation_specific_context_types_for_search() {
+        // given
+        EmbeddingStoreListener listener = spy(new SuccessfulListener());
+        EmbeddingStore<String> store = new TestEmbeddingStore().addListener(listener);
+        EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
+                .queryEmbedding(Embedding.from(List.of(1f, 2f, 3f)))
+                .build();
+
+        // when
+        store.search(request);
+
+        // then
+        ArgumentCaptor<EmbeddingStoreRequestContext> requestCaptor = ArgumentCaptor.forClass(EmbeddingStoreRequestContext.class);
+        verify(listener).onRequest(requestCaptor.capture());
+        assertThat(requestCaptor.getValue()).isInstanceOf(EmbeddingStoreRequestContext.Search.class);
+        EmbeddingStoreRequestContext.Search<?> searchRequestContext =
+                (EmbeddingStoreRequestContext.Search<?>) requestCaptor.getValue();
+        assertThat(searchRequestContext.searchRequest()).isSameAs(request);
+
+        ArgumentCaptor<EmbeddingStoreResponseContext> responseCaptor =
+                ArgumentCaptor.forClass(EmbeddingStoreResponseContext.class);
+        verify(listener).onResponse(responseCaptor.capture());
+        assertThat(responseCaptor.getValue()).isInstanceOf(EmbeddingStoreResponseContext.Search.class);
+        EmbeddingStoreResponseContext.Search<?> searchResponseContext =
+                (EmbeddingStoreResponseContext.Search<?>) responseCaptor.getValue();
+        assertThat(searchResponseContext.searchResult()).isNotNull();
+    }
+
+    @Test
+    void should_provide_operation_specific_context_types_for_remove() {
+        // given
+        EmbeddingStoreListener listener = spy(new SuccessfulListener());
+        EmbeddingStore<String> store = new TestEmbeddingStore().addListener(listener);
+
+        // when
+        store.remove("id-123");
+
+        // then
+        ArgumentCaptor<EmbeddingStoreRequestContext> requestCaptor = ArgumentCaptor.forClass(EmbeddingStoreRequestContext.class);
+        verify(listener).onRequest(requestCaptor.capture());
+        assertThat(requestCaptor.getValue()).isInstanceOf(EmbeddingStoreRequestContext.Remove.class);
+        EmbeddingStoreRequestContext.Remove<?> removeRequestContext =
+                (EmbeddingStoreRequestContext.Remove<?>) requestCaptor.getValue();
+        assertThat(removeRequestContext.id()).isEqualTo("id-123");
+
+        ArgumentCaptor<EmbeddingStoreResponseContext> responseCaptor =
+                ArgumentCaptor.forClass(EmbeddingStoreResponseContext.class);
+        verify(listener).onResponse(responseCaptor.capture());
+        assertThat(responseCaptor.getValue()).isInstanceOf(EmbeddingStoreResponseContext.Void.class);
+    }
+
+    @Test
+    void error_context_should_reference_the_corresponding_request_context() {
+        // given
+        EmbeddingStoreListener listener = spy(new SuccessfulListener());
+        EmbeddingStore<String> failingStore = new TestEmbeddingStore() {
+            @Override
+            public EmbeddingSearchResult<String> search(EmbeddingSearchRequest request) {
+                throw new RuntimeException("Embedding store failed");
+            }
+        };
+        EmbeddingStore<String> store = failingStore.addListener(listener);
+        EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
+                .queryEmbedding(Embedding.from(List.of(1f, 2f, 3f)))
+                .build();
+
+        // when
+        assertThatThrownBy(() -> store.search(request)).hasMessage("Embedding store failed");
+
+        // then
+        ArgumentCaptor<EmbeddingStoreErrorContext> errorCaptor = ArgumentCaptor.forClass(EmbeddingStoreErrorContext.class);
+        verify(listener).onError(errorCaptor.capture());
+        assertThat(errorCaptor.getValue().requestContext()).isInstanceOf(EmbeddingStoreRequestContext.Search.class);
+        EmbeddingStoreRequestContext.Search<?> searchRequestContext =
+                (EmbeddingStoreRequestContext.Search<?>) errorCaptor.getValue().requestContext();
+        assertThat(searchRequestContext.searchRequest()).isSameAs(request);
+    }
+
+    @Test
+    void should_provide_operation_specific_context_types_for_add() {
+        // given
+        EmbeddingStoreListener listener = spy(new SuccessfulListener());
+        EmbeddingStore<String> store = new TestEmbeddingStore().addListener(listener);
+        Embedding embedding = Embedding.from(List.of(1f, 2f, 3f));
+
+        // when
+        String returnedId = store.add(embedding);
+
+        // then
+        assertThat(returnedId).isEqualTo("id");
+
+        ArgumentCaptor<EmbeddingStoreRequestContext> requestCaptor =
+                ArgumentCaptor.forClass(EmbeddingStoreRequestContext.class);
+        verify(listener).onRequest(requestCaptor.capture());
+        assertThat(requestCaptor.getValue()).isInstanceOf(EmbeddingStoreRequestContext.Add.class);
+        EmbeddingStoreRequestContext.Add<?> addRequestContext = (EmbeddingStoreRequestContext.Add<?>) requestCaptor.getValue();
+        assertThat(addRequestContext.embedding()).isSameAs(embedding);
+        assertThat(addRequestContext.id()).isNull();
+        assertThat(addRequestContext.embedded()).isNull();
+
+        ArgumentCaptor<EmbeddingStoreResponseContext> responseCaptor =
+                ArgumentCaptor.forClass(EmbeddingStoreResponseContext.class);
+        verify(listener).onResponse(responseCaptor.capture());
+        assertThat(responseCaptor.getValue()).isInstanceOf(EmbeddingStoreResponseContext.Add.class);
+        EmbeddingStoreResponseContext.Add<?> addResponseContext = (EmbeddingStoreResponseContext.Add<?>) responseCaptor.getValue();
+        assertThat(addResponseContext.returnedId()).isEqualTo("id");
+    }
+
+    @Test
+    void should_provide_operation_specific_context_types_for_add_with_id() {
+        // given
+        EmbeddingStoreListener listener = spy(new SuccessfulListener());
+        EmbeddingStore<String> store = new TestEmbeddingStore().addListener(listener);
+        Embedding embedding = Embedding.from(List.of(1f, 2f, 3f));
+
+        // when
+        store.add("id-123", embedding);
+
+        // then
+        ArgumentCaptor<EmbeddingStoreRequestContext> requestCaptor =
+                ArgumentCaptor.forClass(EmbeddingStoreRequestContext.class);
+        verify(listener).onRequest(requestCaptor.capture());
+        assertThat(requestCaptor.getValue()).isInstanceOf(EmbeddingStoreRequestContext.Add.class);
+        EmbeddingStoreRequestContext.Add<?> addRequestContext = (EmbeddingStoreRequestContext.Add<?>) requestCaptor.getValue();
+        assertThat(addRequestContext.embedding()).isSameAs(embedding);
+        assertThat(addRequestContext.id()).isEqualTo("id-123");
+
+        ArgumentCaptor<EmbeddingStoreResponseContext> responseCaptor =
+                ArgumentCaptor.forClass(EmbeddingStoreResponseContext.class);
+        verify(listener).onResponse(responseCaptor.capture());
+        assertThat(responseCaptor.getValue()).isInstanceOf(EmbeddingStoreResponseContext.Add.class);
+        EmbeddingStoreResponseContext.Add<?> addResponseContext = (EmbeddingStoreResponseContext.Add<?>) responseCaptor.getValue();
+        assertThat(addResponseContext.returnedId()).isEqualTo("id-123");
+    }
+
+    @Test
+    void should_provide_operation_specific_context_types_for_add_with_embedded() {
+        // given
+        EmbeddingStoreListener listener = spy(new SuccessfulListener());
+        EmbeddingStore<String> store = new TestEmbeddingStore().addListener(listener);
+        Embedding embedding = Embedding.from(List.of(1f, 2f, 3f));
+
+        // when
+        String returnedId = store.add(embedding, "embedded");
+
+        // then
+        assertThat(returnedId).isEqualTo("id");
+
+        ArgumentCaptor<EmbeddingStoreRequestContext> requestCaptor =
+                ArgumentCaptor.forClass(EmbeddingStoreRequestContext.class);
+        verify(listener).onRequest(requestCaptor.capture());
+        assertThat(requestCaptor.getValue()).isInstanceOf(EmbeddingStoreRequestContext.Add.class);
+        EmbeddingStoreRequestContext.Add<?> addRequestContext = (EmbeddingStoreRequestContext.Add<?>) requestCaptor.getValue();
+        assertThat(addRequestContext.embedding()).isSameAs(embedding);
+        assertThat(addRequestContext.embedded()).isEqualTo("embedded");
+    }
+
+    @Test
+    void should_provide_operation_specific_context_types_for_addAll() {
+        // given
+        EmbeddingStoreListener listener = spy(new SuccessfulListener());
+        EmbeddingStore<String> store = new TestEmbeddingStore().addListener(listener);
+        List<Embedding> embeddings = List.of(Embedding.from(List.of(1f)), Embedding.from(List.of(2f)));
+
+        // when
+        List<String> ids = store.addAll(embeddings);
+
+        // then
+        assertThat(ids).containsExactly("id-1", "id-2");
+
+        ArgumentCaptor<EmbeddingStoreRequestContext> requestCaptor =
+                ArgumentCaptor.forClass(EmbeddingStoreRequestContext.class);
+        verify(listener).onRequest(requestCaptor.capture());
+        assertThat(requestCaptor.getValue()).isInstanceOf(EmbeddingStoreRequestContext.AddAll.class);
+        EmbeddingStoreRequestContext.AddAll<?> addAllRequestContext =
+                (EmbeddingStoreRequestContext.AddAll<?>) requestCaptor.getValue();
+        assertThat(addAllRequestContext.embeddings()).isSameAs(embeddings);
+        assertThat(addAllRequestContext.ids()).isNull();
+
+        ArgumentCaptor<EmbeddingStoreResponseContext> responseCaptor =
+                ArgumentCaptor.forClass(EmbeddingStoreResponseContext.class);
+        verify(listener).onResponse(responseCaptor.capture());
+        assertThat(responseCaptor.getValue()).isInstanceOf(EmbeddingStoreResponseContext.AddAll.class);
+        EmbeddingStoreResponseContext.AddAll<?> addAllResponseContext =
+                (EmbeddingStoreResponseContext.AddAll<?>) responseCaptor.getValue();
+        assertThat(addAllResponseContext.returnedIds()).containsExactly("id-1", "id-2");
+    }
+
+    @Test
+    void should_provide_operation_specific_context_types_for_addAll_with_ids_and_embedded_list() {
+        // given
+        EmbeddingStoreListener listener = spy(new SuccessfulListener());
+        EmbeddingStore<String> store = new TestEmbeddingStore().addListener(listener);
+        List<String> ids = List.of("a", "b");
+        List<Embedding> embeddings = List.of(Embedding.from(List.of(1f)), Embedding.from(List.of(2f)));
+        List<String> embedded = List.of("e1", "e2");
+
+        // when
+        store.addAll(ids, embeddings, embedded);
+
+        // then
+        ArgumentCaptor<EmbeddingStoreRequestContext> requestCaptor =
+                ArgumentCaptor.forClass(EmbeddingStoreRequestContext.class);
+        verify(listener).onRequest(requestCaptor.capture());
+        assertThat(requestCaptor.getValue()).isInstanceOf(EmbeddingStoreRequestContext.AddAll.class);
+        EmbeddingStoreRequestContext.AddAll<?> addAllRequestContext =
+                (EmbeddingStoreRequestContext.AddAll<?>) requestCaptor.getValue();
+        assertThat(addAllRequestContext.ids()).isSameAs(ids);
+        assertThat(addAllRequestContext.embeddings()).isSameAs(embeddings);
+        assertThat(addAllRequestContext.embeddedList()).isSameAs(embedded);
+
+        ArgumentCaptor<EmbeddingStoreResponseContext> responseCaptor =
+                ArgumentCaptor.forClass(EmbeddingStoreResponseContext.class);
+        verify(listener).onResponse(responseCaptor.capture());
+        assertThat(responseCaptor.getValue()).isInstanceOf(EmbeddingStoreResponseContext.AddAll.class);
+        EmbeddingStoreResponseContext.AddAll<?> addAllResponseContext =
+                (EmbeddingStoreResponseContext.AddAll<?>) responseCaptor.getValue();
+        assertThat(addAllResponseContext.returnedIds()).isSameAs(ids);
+    }
+
+    @Test
+    void should_provide_operation_specific_context_types_for_removeAll_ids() {
+        // given
+        EmbeddingStoreListener listener = spy(new SuccessfulListener());
+        EmbeddingStore<String> store = new TestEmbeddingStore().addListener(listener);
+
+        // when
+        store.removeAll(List.of("x", "y"));
+
+        // then
+        ArgumentCaptor<EmbeddingStoreRequestContext> requestCaptor =
+                ArgumentCaptor.forClass(EmbeddingStoreRequestContext.class);
+        verify(listener).onRequest(requestCaptor.capture());
+        assertThat(requestCaptor.getValue()).isInstanceOf(EmbeddingStoreRequestContext.RemoveAllIds.class);
+        EmbeddingStoreRequestContext.RemoveAllIds<?> removeAllIdsRequestContext =
+                (EmbeddingStoreRequestContext.RemoveAllIds<?>) requestCaptor.getValue();
+        assertThat(removeAllIdsRequestContext.ids()).containsExactly("x", "y");
+
+        ArgumentCaptor<EmbeddingStoreResponseContext> responseCaptor =
+                ArgumentCaptor.forClass(EmbeddingStoreResponseContext.class);
+        verify(listener).onResponse(responseCaptor.capture());
+        assertThat(responseCaptor.getValue()).isInstanceOf(EmbeddingStoreResponseContext.Void.class);
+    }
+
+    @Test
+    void should_provide_operation_specific_context_types_for_removeAll_filter() {
+        // given
+        EmbeddingStoreListener listener = spy(new SuccessfulListener());
+        EmbeddingStore<String> store = new TestEmbeddingStore().addListener(listener);
+        Filter filter = mock(Filter.class);
+
+        // when
+        store.removeAll(filter);
+
+        // then
+        ArgumentCaptor<EmbeddingStoreRequestContext> requestCaptor =
+                ArgumentCaptor.forClass(EmbeddingStoreRequestContext.class);
+        verify(listener).onRequest(requestCaptor.capture());
+        assertThat(requestCaptor.getValue()).isInstanceOf(EmbeddingStoreRequestContext.RemoveAllFilter.class);
+        EmbeddingStoreRequestContext.RemoveAllFilter<?> removeAllFilterRequestContext =
+                (EmbeddingStoreRequestContext.RemoveAllFilter<?>) requestCaptor.getValue();
+        assertThat(removeAllFilterRequestContext.filter()).isSameAs(filter);
+    }
+
+    @Test
+    void should_provide_operation_specific_context_types_for_removeAll() {
+        // given
+        EmbeddingStoreListener listener = spy(new SuccessfulListener());
+        EmbeddingStore<String> store = new TestEmbeddingStore().addListener(listener);
+
+        // when
+        store.removeAll();
+
+        // then
+        ArgumentCaptor<EmbeddingStoreRequestContext> requestCaptor =
+                ArgumentCaptor.forClass(EmbeddingStoreRequestContext.class);
+        verify(listener).onRequest(requestCaptor.capture());
+        assertThat(requestCaptor.getValue()).isInstanceOf(EmbeddingStoreRequestContext.RemoveAll.class);
+
+        ArgumentCaptor<EmbeddingStoreResponseContext> responseCaptor =
+                ArgumentCaptor.forClass(EmbeddingStoreResponseContext.class);
+        verify(listener).onResponse(responseCaptor.capture());
+        assertThat(responseCaptor.getValue()).isInstanceOf(EmbeddingStoreResponseContext.Void.class);
     }
 }
