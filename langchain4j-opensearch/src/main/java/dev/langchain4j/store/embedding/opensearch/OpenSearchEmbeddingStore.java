@@ -1,5 +1,12 @@
 package dev.langchain4j.store.embedding.opensearch;
 
+import static dev.langchain4j.internal.Utils.*;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
+import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.toList;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
@@ -8,6 +15,14 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.filter.Filter;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import org.apache.hc.client5.http.auth.AuthScope;
 import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
 import org.apache.hc.client5.http.impl.auth.BasicCredentialsProvider;
@@ -17,8 +32,11 @@ import org.apache.hc.core5.http.message.BasicHeader;
 import org.opensearch.client.json.JsonData;
 import org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import org.opensearch.client.opensearch.OpenSearchClient;
+import org.opensearch.client.opensearch._types.BulkIndexByScrollFailure;
 import org.opensearch.client.opensearch._types.ErrorCause;
 import org.opensearch.client.opensearch._types.InlineScript;
+import org.opensearch.client.opensearch._types.OpenSearchException;
+import org.opensearch.client.opensearch._types.mapping.DynamicMapping;
 import org.opensearch.client.opensearch._types.mapping.Property;
 import org.opensearch.client.opensearch._types.mapping.TextProperty;
 import org.opensearch.client.opensearch._types.mapping.TypeMapping;
@@ -26,6 +44,7 @@ import org.opensearch.client.opensearch._types.query_dsl.Query;
 import org.opensearch.client.opensearch._types.query_dsl.ScriptScoreQuery;
 import org.opensearch.client.opensearch.core.BulkRequest;
 import org.opensearch.client.opensearch.core.BulkResponse;
+import org.opensearch.client.opensearch.core.DeleteByQueryResponse;
 import org.opensearch.client.opensearch.core.SearchRequest;
 import org.opensearch.client.opensearch.core.SearchResponse;
 import org.opensearch.client.opensearch.core.bulk.BulkResponseItem;
@@ -39,20 +58,6 @@ import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.http.SdkHttpClient;
 import software.amazon.awssdk.http.apache.ApacheHttpClient;
 import software.amazon.awssdk.regions.Region;
-
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-
-import static dev.langchain4j.internal.Utils.*;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.toList;
 
 /**
  * Represents an <a href="https://opensearch.org/">OpenSearch</a> index as an
@@ -75,11 +80,8 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param password  OpenSearch password (optional)
      * @param indexName OpenSearch index name.
      */
-    public OpenSearchEmbeddingStore(String serverUrl,
-                                    String apiKey,
-                                    String userName,
-                                    String password,
-                                    String indexName) {
+    public OpenSearchEmbeddingStore(
+            String serverUrl, String apiKey, String userName, String password, String indexName) {
         HttpHost openSearchHost;
         try {
             openSearchHost = HttpHost.create(serverUrl);
@@ -88,25 +90,24 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
             throw new OpenSearchRequestFailedException(se.getMessage());
         }
 
-        OpenSearchTransport transport = ApacheHttpClient5TransportBuilder
-                .builder(openSearchHost)
+        OpenSearchTransport transport = ApacheHttpClient5TransportBuilder.builder(openSearchHost)
                 .setMapper(new JacksonJsonpMapper())
                 .setHttpClientConfigCallback(httpClientBuilder -> {
-
                     if (!isNullOrBlank(apiKey)) {
-                        httpClientBuilder.setDefaultHeaders(singletonList(
-                                new BasicHeader("Authorization", "ApiKey " + apiKey)
-                        ));
+                        httpClientBuilder.setDefaultHeaders(
+                                singletonList(new BasicHeader("Authorization", "ApiKey " + apiKey)));
                     }
 
                     if (!isNullOrBlank(userName) && !isNullOrBlank(password)) {
                         BasicCredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-                        credentialsProvider.setCredentials(new AuthScope(openSearchHost),
+                        credentialsProvider.setCredentials(
+                                new AuthScope(openSearchHost),
                                 new UsernamePasswordCredentials(userName, password.toCharArray()));
                         httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
                     }
 
-                    httpClientBuilder.setConnectionManager(PoolingAsyncClientConnectionManagerBuilder.create().build());
+                    httpClientBuilder.setConnectionManager(
+                            PoolingAsyncClientConnectionManagerBuilder.create().build());
 
                     return httpClientBuilder;
                 })
@@ -126,16 +127,14 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param options     The options to establish connection with the service. It must include which credentials should be used.
      * @param indexName   OpenSearch index name.
      */
-    public OpenSearchEmbeddingStore(String serverUrl,
-                                    String serviceName,
-                                    String region,
-                                    AwsSdk2TransportOptions options,
-                                    String indexName) {
+    public OpenSearchEmbeddingStore(
+            String serverUrl, String serviceName, String region, AwsSdk2TransportOptions options, String indexName) {
 
         Region selectedRegion = Region.of(region);
 
         SdkHttpClient httpClient = ApacheHttpClient.builder().build();
-        OpenSearchTransport transport = new AwsSdk2Transport(httpClient, serverUrl, serviceName, selectedRegion, options);
+        OpenSearchTransport transport =
+                new AwsSdk2Transport(httpClient, serverUrl, serviceName, selectedRegion, options);
 
         this.client = new OpenSearchClient(transport);
         this.indexName = ensureNotNull(indexName, "indexName");
@@ -147,8 +146,7 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param openSearchClient OpenSearch client provided
      * @param indexName        OpenSearch index name.
      */
-    public OpenSearchEmbeddingStore(OpenSearchClient openSearchClient,
-                                    String indexName) {
+    public OpenSearchEmbeddingStore(OpenSearchClient openSearchClient, String indexName) {
 
         this.client = ensureNotNull(openSearchClient, "openSearchClient");
         this.indexName = ensureNotNull(indexName, "indexName");
@@ -214,6 +212,7 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
             this.openSearchClient = openSearchClient;
             return this;
         }
+
         public OpenSearchEmbeddingStore build() {
             if (openSearchClient != null) {
                 return new OpenSearchEmbeddingStore(openSearchClient, indexName);
@@ -223,7 +222,6 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
             }
             return new OpenSearchEmbeddingStore(serverUrl, apiKey, userName, password, indexName);
         }
-
     }
 
     @Override
@@ -247,9 +245,7 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public List<String> addAll(List<Embedding> embeddings) {
-        List<String> ids = embeddings.stream()
-                .map(ignored -> randomUUID())
-                .collect(toList());
+        List<String> ids = embeddings.stream().map(ignored -> randomUUID()).collect(toList());
         addAll(ids, embeddings, null);
         return ids;
     }
@@ -264,15 +260,12 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
         List<EmbeddingMatch<TextSegment>> matches;
         try {
             ScriptScoreQuery scriptScoreQuery = buildDefaultScriptScoreQuery(
-                request.queryEmbedding().vector(),
-                (float) request.minScore()
-            );
+                    request.queryEmbedding().vector(), (float) request.minScore(), request.filter());
             SearchResponse<Document> response = client.search(
                     SearchRequest.of(s -> s.index(indexName)
                             .query(n -> n.scriptScore(scriptScoreQuery))
                             .size(request.maxResults())),
-                    Document.class
-            );
+                    Document.class);
             matches = toEmbeddingMatch(response);
         } catch (IOException ex) {
             log.error("[I/O OpenSearch Exception]", ex);
@@ -282,12 +275,18 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
         return new EmbeddingSearchResult<>(matches);
     }
 
-    private ScriptScoreQuery buildDefaultScriptScoreQuery(float[] vector, float minScore) throws JsonProcessingException {
+    private ScriptScoreQuery buildDefaultScriptScoreQuery(float[] vector, float minScore, Filter filter)
+            throws JsonProcessingException {
+        Query query;
+        if (filter == null) {
+            query = Query.of(qu -> qu.matchAll(m -> m));
+        } else {
+            query = OpenSearchMetadataFilterMapper.map(filter);
+        }
 
         return ScriptScoreQuery.of(q -> q.minScore(minScore)
-                .query(Query.of(qu -> qu.matchAll(m -> m)))
-                .script(s -> s.inline(InlineScript.of(i -> i
-                        .source("knn_score")
+                .query(query)
+                .script(s -> s.inline(InlineScript.of(i -> i.source("knn_score")
                         .lang("knn")
                         .params("field", JsonData.of("vector"))
                         .params("query_value", JsonData.of(vector))
@@ -314,7 +313,9 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
-        ensureTrue(embedded == null || embeddings.size() == embedded.size(), "embeddings size is not equal to embedded size");
+        ensureTrue(
+                embedded == null || embeddings.size() == embedded.size(),
+                "embeddings size is not equal to embedded size");
 
         try {
             createIndexIfNotExist(embeddings.get(0).dimension());
@@ -325,22 +326,94 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
     }
 
+    @Override
+    public void removeAll(Collection<String> ids) {
+        ensureNotEmpty(ids, "ids");
+        try {
+            bulkRemove(ids);
+        } catch (IOException ex) {
+            log.error("[I/O OpenSearch Exception]", ex);
+            throw new OpenSearchRequestFailedException(ex.getMessage());
+        }
+    }
+
+    @Override
+    public void removeAll(Filter filter) {
+        ensureNotNull(filter, "filter");
+        Query query = OpenSearchMetadataFilterMapper.map(filter);
+        try {
+            removeByQuery(query);
+        } catch (IOException ex) {
+            log.error("[I/O OpenSearch Exception]", ex);
+            throw new OpenSearchRequestFailedException(ex.getMessage());
+        }
+    }
+
+    /**
+     * The OpenSearch implementation will simply drop the index instead
+     * of removing all documents one by one.
+     */
+    @Override
+    public void removeAll() {
+        try {
+            client.indices().delete(dir -> dir.index(indexName));
+        } catch (OpenSearchException e) {
+            if (e.status() == 404) {
+                log.debug("The index [{}] does not exist.", indexName);
+            } else {
+                throw new OpenSearchRequestFailedException(e.getMessage());
+            }
+        } catch (IOException ex) {
+            log.error("[I/O OpenSearch Exception]", ex);
+            throw new OpenSearchRequestFailedException(ex.getMessage());
+        }
+    }
+
+    private void bulkRemove(Collection<String> ids) throws IOException {
+        BulkRequest.Builder bulkBuilder = new BulkRequest.Builder();
+        for (String id : ids) {
+            bulkBuilder.operations(op -> op.delete(dlt -> dlt.index(indexName).id(id)));
+        }
+        BulkResponse bulkResponse = client.bulk(bulkBuilder.build());
+
+        if (bulkResponse.errors()) {
+            for (BulkResponseItem item : bulkResponse.items()) {
+                if (item.error() != null) {
+                    ErrorCause errorCause = item.error();
+                    throw new OpenSearchRequestFailedException(
+                            "type: " + errorCause.type() + "," + "reason: " + errorCause.reason());
+                }
+            }
+        }
+    }
+
+    private void removeByQuery(Query query) throws IOException {
+        DeleteByQueryResponse response =
+                client.deleteByQuery(delete -> delete.index(indexName).query(query));
+
+        if (!response.failures().isEmpty()) {
+            for (BulkIndexByScrollFailure failure : response.failures()) {
+                ErrorCause errorCause = failure.cause();
+                throw new OpenSearchRequestFailedException(
+                        "type: " + errorCause.type() + "," + "reason: " + errorCause.reason());
+            }
+        }
+    }
+
     private void createIndexIfNotExist(int dimension) throws IOException {
         BooleanResponse response = client.indices().exists(c -> c.index(indexName));
         if (!response.value()) {
             client.indices()
-                    .create(c -> c.index(indexName)
-                            .settings(s -> s.knn(true))
-                            .mappings(getDefaultMappings(dimension)));
+                    .create(c -> c.index(indexName).settings(s -> s.knn(true)).mappings(getDefaultMappings(dimension)));
         }
     }
 
     private TypeMapping getDefaultMappings(int dimension) {
         Map<String, Property> properties = new HashMap<>(4);
         properties.put("text", Property.of(p -> p.text(TextProperty.of(t -> t))));
-        properties.put("vector", Property.of(p -> p.knnVector(
-                k -> k.dimension(dimension)
-        )));
+        properties.put("vector", Property.of(p -> p.knnVector(k -> k.dimension(dimension))));
+        // Add metadata field with dynamic mapping and keyword sub-field for string values
+        properties.put("metadata", Property.of(p -> p.object(o -> o.dynamic(DynamicMapping.True))));
         return TypeMapping.of(c -> c.properties(properties));
     }
 
@@ -354,16 +427,15 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
             Document document = Document.builder()
                     .vector(embeddings.get(i).vector())
                     .text(embedded == null ? null : embedded.get(i).text())
-                    .metadata(embedded == null ? null : Optional.ofNullable(embedded.get(i).metadata())
-                            .map(Metadata::toMap)
-                            .orElse(null))
+                    .metadata(
+                            embedded == null
+                                    ? null
+                                    : Optional.ofNullable(embedded.get(i).metadata())
+                                            .map(Metadata::toMap)
+                                            .orElse(null))
                     .build();
-            bulkBuilder.operations(op -> op.index(
-                    idx -> idx
-                            .index(indexName)
-                            .id(ids.get(finalI))
-                            .document(document)
-            ));
+            bulkBuilder.operations(op ->
+                    op.index(idx -> idx.index(indexName).id(ids.get(finalI)).document(document)));
         }
 
         BulkResponse bulkResponse = client.bulk(bulkBuilder.build());
@@ -374,8 +446,7 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
                     ErrorCause errorCause = item.error();
                     if (errorCause != null) {
                         throw new OpenSearchRequestFailedException(
-                                "type: " + errorCause.type() + "," +
-                                        "reason: " + errorCause.reason());
+                                "type: " + errorCause.type() + "," + "reason: " + errorCause.reason());
                     }
                 }
             }
@@ -391,8 +462,8 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
                                 new Embedding(document.getVector()),
                                 document.getText() == null
                                         ? null
-                                        : TextSegment.from(document.getText(), new Metadata(document.getMetadata()))
-                        )).orElse(null))
+                                        : TextSegment.from(document.getText(), new Metadata(document.getMetadata()))))
+                        .orElse(null))
                 .collect(toList());
     }
 }
