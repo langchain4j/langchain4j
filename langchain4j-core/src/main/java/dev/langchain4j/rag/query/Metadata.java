@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Objects;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.rag.AugmentationRequest;
@@ -18,17 +19,20 @@ import dev.langchain4j.rag.RetrievalAugmentor;
 public class Metadata {
 
     private final ChatMessage chatMessage;
+    private final SystemMessage systemMessage;
     private final List<ChatMessage> chatMemory;
     private final InvocationContext invocationContext;
 
     public Metadata(Builder builder) {
         this.chatMessage = ensureNotNull(builder.chatMessage, "chatMessage");
+        this.systemMessage = ensureNotNull(builder.systemMessage, "systemMessage");
         this.chatMemory = copy(builder.chatMemory);
         this.invocationContext = ensureNotNull(builder.invocationContext, "invocationContext");
     }
 
-    public Metadata(ChatMessage chatMessage, Object chatMemoryId, List<ChatMessage> chatMemory) {
+    public Metadata(ChatMessage chatMessage, SystemMessage systemMessage, Object chatMemoryId, List<ChatMessage> chatMemory) {
         this.chatMessage = ensureNotNull(chatMessage, "chatMessage");
+        this.systemMessage = ensureNotNull(systemMessage, "systemMessage");
         this.chatMemory = copy(chatMemory);
         this.invocationContext = InvocationContext.builder()
                 .chatMemoryId(chatMemoryId)
@@ -40,6 +44,13 @@ public class Metadata {
      */
     public ChatMessage chatMessage() {
         return chatMessage;
+    }
+
+    /**
+     * @return the {@link SystemMessage} from the service call.
+     */
+    public SystemMessage systemMessage() {
+        return systemMessage;
     }
 
     /**
@@ -78,26 +89,28 @@ public class Metadata {
         if (o == null || getClass() != o.getClass()) return false;
         Metadata that = (Metadata) o;
         return Objects.equals(this.chatMessage, that.chatMessage)
+                && Objects.equals(this.systemMessage, that.systemMessage)
                 && Objects.equals(this.chatMemory, that.chatMemory)
                 && Objects.equals(this.invocationContext, that.invocationContext);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(chatMessage, chatMemory, invocationContext);
+        return Objects.hash(chatMessage, systemMessage, chatMemory, invocationContext);
     }
 
     @Override
     public String toString() {
         return "Metadata {" +
                 " chatMessage = " + chatMessage +
+                ", systemMessage = " + systemMessage +
                 ", chatMemory = " + chatMemory +
                 ", invocationContext = " + invocationContext +
                 " }";
     }
 
-    public static Metadata from(ChatMessage chatMessage, Object chatMemoryId, List<ChatMessage> chatMemory) {
-        return new Metadata(chatMessage, chatMemoryId, chatMemory);
+    public static Metadata from(ChatMessage chatMessage, SystemMessage systemMessage, Object chatMemoryId, List<ChatMessage> chatMemory) {
+        return new Metadata(chatMessage, systemMessage, chatMemoryId, chatMemory);
     }
 
     public static Builder builder() {
@@ -107,11 +120,17 @@ public class Metadata {
     public static class Builder {
 
         private ChatMessage chatMessage;
+        private SystemMessage systemMessage;
         private List<ChatMessage> chatMemory;
         private InvocationContext invocationContext;
 
         public Builder chatMessage(ChatMessage chatMessage) {
             this.chatMessage = chatMessage;
+            return this;
+        }
+
+        public Builder systemMessage(SystemMessage systemMessage) {
+            this.systemMessage = systemMessage;
             return this;
         }
 
