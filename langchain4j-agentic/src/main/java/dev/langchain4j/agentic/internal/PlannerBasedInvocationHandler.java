@@ -42,13 +42,14 @@ import dev.langchain4j.agentic.scope.AgenticScopeAccess;
 import dev.langchain4j.agentic.scope.AgenticScopeRegistry;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
+import dev.langchain4j.agentic.workflow.LoopAgentInstance;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.ParameterNameResolver;
 import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 
-public class PlannerBasedInvocationHandler implements InvocationHandler, AgentInstance, InternalAgent {
+public class PlannerBasedInvocationHandler implements InvocationHandler, InternalAgent {
     private final Executor executor;
 
     private final Function<AgenticScope, Object> output;
@@ -145,7 +146,11 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, AgentIn
         }
 
         if (method.getDeclaringClass() == AgentInstance.class || method.getDeclaringClass() == InternalAgent.class) {
-            return method.invoke(Proxy.getInvocationHandler(proxy), args);
+            try {
+                return method.invoke(Proxy.getInvocationHandler(proxy), args);
+            } catch (Exception e) {
+                throw e.getCause() != null ? (Exception) e.getCause() : e;
+            }
         }
 
         if (method.getDeclaringClass() == Object.class) {
@@ -286,6 +291,11 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, AgentIn
     @Override
     public AgenticSystemTopology topology() {
         return defaultPlannerInstance.topology();
+    }
+
+    @Override
+    public <T extends AgentInstance> T as(Class<T> agentInstanceClass) {
+        return defaultPlannerInstance.as(agentInstanceClass, this);
     }
 
     @Override

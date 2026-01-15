@@ -7,7 +7,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
 /**
- * Marks a method as an activation condition for one or more sub-agents of a conditional agent.
+ * Marks a method as an activation predicate for one or more sub-agents of a conditional agent.
  * The method must be static and return a boolean indicating whether the sub-agent(s) should be activated.
  * <p>
  * Example:

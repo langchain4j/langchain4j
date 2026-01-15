@@ -8,8 +8,8 @@ import dev.langchain4j.agentic.internal.AbstractServiceBuilder;
 import dev.langchain4j.agentic.internal.AgentExecutor;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.workflow.ConditionalAgent;
 import dev.langchain4j.agentic.workflow.ConditionalAgentService;
-import dev.langchain4j.agentic.workflow.impl.ConditionalPlanner.ConditionalAgent;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
@@ -43,7 +43,12 @@ public class ConditionalAgentServiceImpl<T> extends AbstractServiceBuilder<T, Co
 
     @Override
     public ConditionalAgentServiceImpl<T> subAgents(Predicate<AgenticScope> condition, Object... agents) {
-        return subAgents(condition, agentsToExecutors(agents));
+        return subAgents("<unknown>", condition, agentsToExecutors(agents));
+    }
+
+    @Override
+    public ConditionalAgentServiceImpl<T> subAgents(String conditionDescription, Predicate<AgenticScope> condition, Object... agents) {
+        return subAgents(conditionDescription, condition, agentsToExecutors(agents));
     }
 
     @Override
@@ -53,14 +58,24 @@ public class ConditionalAgentServiceImpl<T> extends AbstractServiceBuilder<T, Co
 
     @Override
     public ConditionalAgentServiceImpl<T> subAgents(Predicate<AgenticScope> condition, List<AgentExecutor> agentExecutors) {
+        return subAgents("<unknown>", condition, agentExecutors);
+    }
+
+    @Override
+    public ConditionalAgentServiceImpl<T> subAgents(String conditionDescription, Predicate<AgenticScope> condition, List<AgentExecutor> agentExecutors) {
         super.subAgents(agentExecutors);
-        conditionalAgents.add(new ConditionalAgent(condition, agentExecutors.stream().map(AgentInstance.class::cast).toList()));
+        conditionalAgents.add(new ConditionalAgent(conditionDescription, condition, agentExecutors.stream().map(AgentInstance.class::cast).toList()));
         return this;
     }
 
     @Override
     public ConditionalAgentServiceImpl<T> subAgent(Predicate<AgenticScope> condition, AgentExecutor agentExecutor) {
         return subAgents(condition, List.of(agentExecutor));
+    }
+
+    @Override
+    public ConditionalAgentServiceImpl<T> subAgent(String conditionDescription, Predicate<AgenticScope> condition, AgentExecutor agentExecutor) {
+        return subAgents(conditionDescription, condition, List.of(agentExecutor));
     }
 
     @Override
