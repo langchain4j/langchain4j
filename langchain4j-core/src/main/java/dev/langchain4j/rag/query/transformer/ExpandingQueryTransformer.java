@@ -1,11 +1,25 @@
 package dev.langchain4j.rag.query.transformer;
 
-import dev.langchain4j.internal.Utils;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
+import dev.langchain4j.model.chat.request.json.JsonArraySchema;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.chat.request.json.JsonStringSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
+import dev.langchain4j.rag.query.Metadata;
 import dev.langchain4j.rag.query.Query;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -33,17 +47,17 @@ import static java.util.stream.Collectors.toList;
  * @see CompressingQueryTransformer
  */
 public class ExpandingQueryTransformer implements QueryTransformer {
-
+    private static final Logger log = LoggerFactory.getLogger(ExpandingQueryTransformer.class);
     public static final PromptTemplate DEFAULT_PROMPT_TEMPLATE = PromptTemplate.from(
             """
-                    Generate {{n}} different versions of a provided user query. \
+                    Generate EXACTLY {{n}} different versions of the provided user query. \
+                    CONSTRAINTS: \
                     Each version should be worded differently, using synonyms or alternative sentence structures, \
                     but they should all retain the original meaning. \
-                    These versions will be used to retrieve relevant documents. \
-                    It is very important to provide each query version on a separate line, \
-                    without enumerations, hyphens, or any additional formatting!
+                    INPUT: \
                     User query: {{query}}"""
     );
+
     public static final int DEFAULT_N = 3;
 
     protected final ChatModel chatModel;
@@ -75,13 +89,19 @@ public class ExpandingQueryTransformer implements QueryTransformer {
     @Override
     public Collection<Query> transform(Query query) {
         Prompt prompt = createPrompt(query);
-        String response = chatModel.chat(prompt.text());
-        List<String> queries = parse(response);
-        return queries.stream()
-                .map(queryText -> query.metadata() == null
-                        ? Query.from(queryText)
-                        : Query.from(queryText, query.metadata()))
-                .collect(toList());
+        ResponseFormat responseFormat = getResponseFormat();
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(prompt.toUserMessage())
+                .responseFormat(responseFormat)
+                .build();
+        ChatResponse response = chatModel.chat(chatRequest);
+
+        try {
+            return parse(response.aiMessage().text(), query.metadata());
+        } catch (Exception e) {
+            log.error("Failed to expand the query to {} different versions. Returning the original query.", n, e);
+            return List.of(query);
+        }
     }
 
     protected Prompt createPrompt(Query query) {
@@ -91,10 +111,63 @@ public class ExpandingQueryTransformer implements QueryTransformer {
         return promptTemplate.apply(variables);
     }
 
-    protected List<String> parse(String queries) {
-        return stream(queries.split("\n"))
-                .filter(Utils::isNotNullOrBlank)
-                .collect(toList());
+    protected Collection<Query> parse(String response, Metadata metadata)  {
+        JsonNode root = extractJsonNode(response);
+        List<String> queries = new ArrayList<>();
+        JsonNode queriesNode = root.get("queries");
+
+        if (queriesNode == null || !queriesNode.isArray()) {
+            throw new IllegalArgumentException("value of queries is empty or not a valid array.");
+        }
+
+        for (JsonNode queryNode : queriesNode) {
+            queries.add(queryNode.asText().trim());
+        }
+
+        return queries.stream()
+                .filter(queryText -> !queryText.isEmpty())
+                .distinct()
+                .limit(n)
+                .map(queryText -> metadata == null
+                        ? Query.from(queryText)
+                        : Query.from(queryText, metadata))
+                .toList();
+    }
+
+    protected JsonNode extractJsonNode(String response) {
+        int jsonStartIndex = response.indexOf("{");
+        int jsonEndIndex = response.lastIndexOf("}");
+
+        if (jsonStartIndex == -1 || jsonEndIndex == -1 || jsonStartIndex >= jsonEndIndex) {
+            throw new IllegalArgumentException("Response doesn't contain a valid JSON.");
+        }
+        String JsonResponse = response.substring(jsonStartIndex, jsonEndIndex + 1);
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            return mapper.readTree(JsonResponse);
+        }
+        catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    protected ResponseFormat getResponseFormat() {
+        JsonArraySchema queriesString = JsonArraySchema.builder()
+                                                        .items(JsonStringSchema
+                                                                .builder()
+                                                                .build())
+                                                        .build();
+        JsonObjectSchema jsonObjectSchema = JsonObjectSchema.builder()
+                                                            .addProperty("queries", queriesString)
+                                                            .build();
+        JsonSchema schema = JsonSchema.builder()
+                                        .rootElement(jsonObjectSchema)
+                                        .build();
+
+        return ResponseFormat.builder()
+                .type(ResponseFormatType.JSON)
+                .jsonSchema(schema)
+                .build();
     }
 
     public static class ExpandingQueryTransformerBuilder {
