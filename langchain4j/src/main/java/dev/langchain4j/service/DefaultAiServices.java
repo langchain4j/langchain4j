@@ -177,10 +177,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .userMessage(originalUserMessage)
                                 .build());
 
-                        if (context.hasChatMemory()) {
-                            systemMessage.ifPresent(chatMemory::add);
-                        }
-
                         UserMessage userMessageForAugmentation = originalUserMessage;
 
                         AugmentationResult augmentationResult = null;
@@ -190,6 +186,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .chatMessage(userMessageForAugmentation)
                                     .chatMemory(chatMemoryMessages)
                                     .invocationContext(invocationContext)
+                                    .systemMessage(systemMessage)
                                     .build();
                             AugmentationRequest augmentationRequest =
                                     new AugmentationRequest(userMessageForAugmentation, metadata);
@@ -238,6 +235,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         List<ChatMessage> messages = new ArrayList<>();
                         if (context.hasChatMemory()) {
+                            systemMessage.ifPresent(chatMemory::add);
                             messages.addAll(chatMemory.messages());
                             if (context.storeRetrievedContentInChatMemory) {
                                 chatMemory.add(userMessage);
