@@ -469,11 +469,31 @@ abstract class AbstractBedrockChatModel {
     }
 
     /**
-     * Counts total cache points from all sources:
-     * - Granular cache points in BedrockSystemMessage instances
-     * - BedrockCachePointPlacement.AFTER_SYSTEM (if last system message is core SystemMessage)
-     * - BedrockCachePointPlacement.AFTER_USER_MESSAGE
-     * - BedrockCachePointPlacement.AFTER_TOOLS (if tools are present)
+     * Counts total cache points from all sources in a request.
+     * <p>
+     * AWS Bedrock limits cache points to {@link #MAX_CACHE_POINTS_PER_REQUEST} (4) per request.
+     * This method counts cache points from all possible sources to ensure the limit is not exceeded.
+     * <p>
+     * <b>Cache point sources counted:</b>
+     * <ol>
+     *   <li><b>Granular cache points:</b> Each {@link BedrockSystemMessage} can contain multiple
+     *       content blocks with individual cache points via {@link BedrockSystemTextContent#withCachePoint(String)}</li>
+     *   <li><b>AFTER_SYSTEM placement:</b> Adds 1 cache point if:
+     *       <ul>
+     *         <li>{@link BedrockCachePointPlacement#AFTER_SYSTEM} is configured, AND</li>
+     *         <li>There are system messages, AND</li>
+     *         <li>The LAST system message is a core {@link SystemMessage} (not {@link BedrockSystemMessage})</li>
+     *       </ul>
+     *       Note: AFTER_SYSTEM is ignored if the last system message is a BedrockSystemMessage,
+     *       as granular cache points take precedence.</li>
+     *   <li><b>AFTER_USER_MESSAGE placement:</b> Adds 1 cache point if configured and user messages exist</li>
+     *   <li><b>AFTER_TOOLS placement:</b> Adds 1 cache point if configured and tools are present</li>
+     * </ol>
+     *
+     * @param messages the chat messages (may contain SystemMessage, BedrockSystemMessage, UserMessage, etc.)
+     * @param cachePointPlacement the legacy cache point placement strategy (may be null)
+     * @param hasTools whether tool specifications are present in the request
+     * @return the total count of cache points that will be created in the AWS Bedrock request
      */
     private int countTotalCachePoints(
             List<ChatMessage> messages, BedrockCachePointPlacement cachePointPlacement, boolean hasTools) {
@@ -486,16 +506,19 @@ abstract class AbstractBedrockChatModel {
         boolean lastSystemIsCoreMessage = false;
         boolean hasAnySystemMessage = false;
 
+        // First pass: count granular cache points and track message types
         for (ChatMessage message : messages) {
             if (message == null) {
                 continue;
             }
 
             if (message instanceof BedrockSystemMessage bedrockMsg) {
+                // Count granular cache points within BedrockSystemMessage
                 count += bedrockMsg.cachePointCount();
                 lastSystemIsCoreMessage = false;
                 hasAnySystemMessage = true;
             } else if (message instanceof SystemMessage) {
+                // Core SystemMessage - may have AFTER_SYSTEM cache point added
                 lastSystemIsCoreMessage = true;
                 hasAnySystemMessage = true;
             } else if (message instanceof UserMessage) {
@@ -503,16 +526,21 @@ abstract class AbstractBedrockChatModel {
             }
         }
 
-        // Add placement-based cache points
+        // Second pass: add placement-based cache points
+        // These are mutually exclusive with granular cache points for system messages
         if (cachePointPlacement != null) {
+            // AFTER_SYSTEM only applies if the last system message is a core SystemMessage
+            // (BedrockSystemMessage handles its own cache points internally)
             if (cachePointPlacement == BedrockCachePointPlacement.AFTER_SYSTEM
                     && hasAnySystemMessage
                     && lastSystemIsCoreMessage) {
                 count++;
             }
+            // AFTER_USER_MESSAGE adds cache point after the first user message
             if (cachePointPlacement == BedrockCachePointPlacement.AFTER_USER_MESSAGE && hasUserMessage) {
                 count++;
             }
+            // AFTER_TOOLS adds cache point after tool definitions (only if tools exist)
             if (cachePointPlacement == BedrockCachePointPlacement.AFTER_TOOLS && hasTools) {
                 count++;
             }
