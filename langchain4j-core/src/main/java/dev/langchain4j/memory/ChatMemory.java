@@ -74,6 +74,8 @@ public interface ChatMemory {
      * This method will typically be used when chat memory needs to be re-written to implement things like
      * memory compaction.
      *
+     * NOTE: This method is never called automatically by LangChain4j.
+     *
      * @param messages The {@link ChatMessage}s to set. Must not be {@code null} or empty.
      * @since 1.11.0
      */
