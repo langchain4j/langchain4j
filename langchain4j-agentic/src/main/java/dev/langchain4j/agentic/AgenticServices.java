@@ -418,8 +418,8 @@ public class AgenticServices {
                             method.getAnnotation(ExitCondition.class).testExitAtLoopEnd());
                     return method;
                 })
-                .map(AgenticServices::loopExitConditionPredicate)
-                .ifPresent(builder::exitCondition);
+                .ifPresent(method -> builder.exitCondition(
+                        method.getAnnotation(ExitCondition.class).description(), loopExitConditionPredicate(method)));
 
         return builder.build();
     }
@@ -446,9 +446,10 @@ public class AgenticServices {
                         return activationCondition != null
                                 && Arrays.asList(activationCondition.value()).contains(subagent);
                     })
-                    .map(AgenticServices::agenticScopePredicate)
-                    .ifPresent(condition ->
-                            builder.subAgent(condition, createSubagent(subagent, chatModel, agentConfigurator)));
+                    .ifPresent(method ->
+                            builder.subAgent(method.getAnnotation(ActivationCondition.class).description(),
+                                    agenticScopePredicate(method),
+                                    createSubagent(subagent, chatModel, agentConfigurator)));
         }
 
         return builder.build();
@@ -653,7 +654,7 @@ public class AgenticServices {
                         .positionalArgs();
                 return (boolean) predicateMethod.invoke(null, args);
             } catch (Exception e) {
-                throw new RuntimeException("Error invoking exit condition method: " + predicateMethod.getName(), e);
+                throw new RuntimeException("Error invoking exit predicate method: " + predicateMethod.getName(), e);
             }
         };
     }

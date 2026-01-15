@@ -16,6 +16,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.bedrock.BedrockChatRequestParameters;
+import dev.langchain4j.model.bedrock.BedrockChatResponseMetadata;
 import dev.langchain4j.model.bedrock.BedrockStreamingChatModel;
 import dev.langchain4j.model.bedrock.BedrockTokenUsage;
 import dev.langchain4j.model.bedrock.TestedModels;
@@ -25,6 +26,7 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
 import java.lang.reflect.Method;
@@ -89,6 +91,11 @@ class BedrockStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected boolean supportsJsonResponseFormatWithRawSchema() {
         return false; // output format not supported
+    }
+
+    @Override
+    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(final StreamingChatModel model) {
+        return BedrockChatResponseMetadata.class;
     }
 
     @Override
