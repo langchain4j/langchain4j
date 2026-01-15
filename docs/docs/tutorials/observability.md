@@ -338,7 +338,10 @@ public class MyEmbeddingStoreListener implements EmbeddingStoreListener {
     public void onResponse(EmbeddingStoreResponseContext<?> responseContext) {
         long startNanos = (long) responseContext.attributes().get("startNanos");
         long durationNanos = System.nanoTime() - startNanos;
-        // Do something with duration and/or responseContext.searchResult()
+        // Do something with duration and/or the response payload (if any), e.g.:
+        if (responseContext instanceof EmbeddingStoreResponseContext.Search<?> search) {
+            // Do something with search.searchResult()
+        }
     }
 
     @Override
