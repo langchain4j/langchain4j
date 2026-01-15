@@ -3,15 +3,15 @@ package dev.langchain4j.rag.query;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import java.util.List;
-import java.util.Objects;
-import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.RetrievalAugmentor;
+import java.util.List;
+import java.util.Objects;
 
 /**
  * Represents metadata that may be useful or necessary for retrieval or augmentation purposes.
@@ -33,19 +33,18 @@ public class Metadata {
     public Metadata(ChatMessage chatMessage, Object chatMemoryId, List<ChatMessage> chatMemory) {
         this.chatMessage = ensureNotNull(chatMessage, "chatMessage");
         this.chatMemory = copy(chatMemory);
-        this.invocationContext = InvocationContext.builder()
-                .chatMemoryId(chatMemoryId)
-                .build();
+        this.invocationContext =
+                InvocationContext.builder().chatMemoryId(chatMemoryId).build();
         this.systemMessage = null;
     }
 
-    public Metadata(ChatMessage chatMessage, SystemMessage systemMessage, Object chatMemoryId, List<ChatMessage> chatMemory) {
+    public Metadata(
+            ChatMessage chatMessage, SystemMessage systemMessage, Object chatMemoryId, List<ChatMessage> chatMemory) {
         this.chatMessage = ensureNotNull(chatMessage, "chatMessage");
         this.systemMessage = ensureNotNull(systemMessage, "systemMessage");
         this.chatMemory = copy(chatMemory);
-        this.invocationContext = InvocationContext.builder()
-                .chatMemoryId(chatMemoryId)
-                .build();
+        this.invocationContext =
+                InvocationContext.builder().chatMemoryId(chatMemoryId).build();
     }
 
     /**
@@ -110,19 +109,19 @@ public class Metadata {
 
     @Override
     public String toString() {
-        return "Metadata {" +
-                " chatMessage = " + chatMessage +
-                ", systemMessage = " + systemMessage +
-                ", chatMemory = " + chatMemory +
-                ", invocationContext = " + invocationContext +
-                " }";
+        return "Metadata {" + " chatMessage = "
+                + chatMessage + ", systemMessage = "
+                + systemMessage + ", chatMemory = "
+                + chatMemory + ", invocationContext = "
+                + invocationContext + " }";
     }
 
     public static Metadata from(ChatMessage chatMessage, Object chatMemoryId, List<ChatMessage> chatMemory) {
         return new Metadata(chatMessage, chatMemoryId, chatMemory);
     }
 
-    public static Metadata from(ChatMessage chatMessage, SystemMessage systemMessage, Object chatMemoryId, List<ChatMessage> chatMemory) {
+    public static Metadata from(
+            ChatMessage chatMessage, SystemMessage systemMessage, Object chatMemoryId, List<ChatMessage> chatMemory) {
         return new Metadata(chatMessage, systemMessage, chatMemoryId, chatMemory);
     }
 

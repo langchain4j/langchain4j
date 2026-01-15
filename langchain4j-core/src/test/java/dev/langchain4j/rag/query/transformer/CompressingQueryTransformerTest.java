@@ -138,8 +138,8 @@ class CompressingQueryTransformerTest {
                 "Given the following conversation: {{chatMemory}} reformulate the following query: {{query}}");
 
         SystemMessage systemMessage = SystemMessage.from("Be polite");
-        List<ChatMessage> chatMemory =
-                asList(systemMessage, UserMessage.from("Tell me about Klaus Heisler"), AiMessage.from("He is a cool guy"));
+        List<ChatMessage> chatMemory = asList(
+                systemMessage, UserMessage.from("Tell me about Klaus Heisler"), AiMessage.from("He is a cool guy"));
         UserMessage userMessage = UserMessage.from("How old is he?");
         Metadata metadata = Metadata.from(userMessage, systemMessage, "default", chatMemory);
         Query query = Query.from(userMessage.singleText(), metadata);

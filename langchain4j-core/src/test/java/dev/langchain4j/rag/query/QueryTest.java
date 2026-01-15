@@ -5,8 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
 import org.junit.jupiter.api.Test;
 
 class QueryTest {
@@ -92,7 +92,8 @@ class QueryTest {
 
         // then
         assertThat(toString)
-                .isEqualToIgnoringWhitespace("""
+                .isEqualToIgnoringWhitespace(
+                        """
                         Query { text = "query", metadata = Metadata { chatMessage = UserMessage { name = null, contents = [TextContent { text = "user message" }], attributes = {} }, systemMessage = SystemMessage { text = "Be polite" }, chatMemory = [UserMessage { name = null, contents = [TextContent { text = "Hello" }], attributes = {} }, AiMessage { text = "Hi, how can I help you today?", thinking = null, toolExecutionRequests = [], attributes = {} }], invocationContext = DefaultInvocationContext{invocationId=null, interfaceName='null', methodName='null', methodArguments=[], chatMemoryId=42, invocationParameters=null, managedParameters=null, timestamp=null} } }
                         """);
     }
