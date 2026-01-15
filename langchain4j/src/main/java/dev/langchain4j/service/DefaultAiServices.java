@@ -13,6 +13,7 @@ import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.SystemMessage;
@@ -35,6 +36,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.moderation.Moderation;
+import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
 import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
@@ -42,12 +44,14 @@ import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
 import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.query.Metadata;
+import dev.langchain4j.service.agentskills.AgentSkillsService;
 import dev.langchain4j.service.guardrail.GuardrailService;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.service.output.ServiceOutputParser;
 import dev.langchain4j.service.tool.ToolServiceContext;
 import dev.langchain4j.service.tool.ToolServiceResult;
+import dev.langchain4j.agentskills.instruction.AgentSkillsInstruction;
 import dev.langchain4j.spi.services.TokenStreamAdapter;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
@@ -68,9 +72,13 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Internal
 class DefaultAiServices<T> extends AiServices<T> {
+
+    private static final Logger log = LoggerFactory.getLogger(DefaultAiServices.class);
 
     private final ServiceOutputParser serviceOutputParser = new ServiceOutputParser();
     private final Collection<TokenStreamAdapter> tokenStreamAdapters = loadFactories(TokenStreamAdapter.class);
@@ -170,6 +178,18 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 userMessageTemplate, method, args);
                         UserMessage originalUserMessage =
                                 prepareUserMessage(method, args, userMessageTemplate, variables);
+
+                        // Enhance system message with Agent Skills if configured
+                        if (context.agentSkillsService.hasSkills()) {
+                            String skillsAddition = context.agentSkillsService.generateSystemPromptAddition(
+                                    invocationContext, originalUserMessage);
+                            if (!skillsAddition.isEmpty()) {
+                                String enhancedText = systemMessage
+                                        .map(msg -> msg.text() + skillsAddition)
+                                        .orElse(skillsAddition);
+                                systemMessage = Optional.of(SystemMessage.from(enhancedText));
+                            }
+                        }
 
                         context.eventListenerRegistrar.fireEvent(AiServiceStartedEvent.builder()
                                 .invocationContext(invocationContext)
@@ -347,6 +367,100 @@ class DefaultAiServices<T> extends AiServices<T> {
                         }
 
                         ChatResponse aggregateResponse = toolServiceResult.aggregateResponse();
+                        TokenUsage aggregateTokenUsage = toolServiceResult.aggregateTokenUsage();
+                        List<ChatResponse> allIntermediateResponses = new ArrayList<>(toolServiceResult.intermediateResponses());
+
+                        // Agent Skills instruction loop
+                        if (context.agentSkillsService.hasSkills()) {
+                            int skillIterations = 0;
+                            int maxSkillIterations = context.agentSkillsService.maxIterations();
+
+                            // When chatMemory is null, Tool loop updates a local copy of messages,
+                            // so we need to rebuild messages for Skills loop.
+                            // Note: This only includes the final AI response, not intermediate tool messages.
+                            // For full message history with tools + skills, use chatMemory.
+                            if (chatMemory == null && aggregateResponse.aiMessage() != null) {
+                                messages = new ArrayList<>();
+                                systemMessage.ifPresent(messages::add);
+                                messages.add(userMessage);
+                                messages.add(aggregateResponse.aiMessage());
+                            }
+
+                            while (skillIterations < maxSkillIterations) {
+                                AiMessage aiMessage = aggregateResponse.aiMessage();
+                                if (aiMessage == null) {
+                                    break;
+                                }
+
+                                String responseText = aiMessage.text();
+                                if (responseText == null) {
+                                    break;
+                                }
+
+                                AgentSkillsInstruction instruction =
+                                        context.agentSkillsService.parseInstruction(responseText);
+
+                                if (instruction == null) {
+                                    // No instruction found, this is the final response
+                                    break;
+                                }
+
+                                // Record intermediate response (contains instruction, needs further processing)
+                                // This follows the same pattern as Tool loop: only responses that need
+                                // further processing are added to intermediateResponses
+                                allIntermediateResponses.add(aggregateResponse);
+
+                                skillIterations++;
+
+                                // Handle the instruction
+                                String instructionResult = context.agentSkillsService.handleInstruction(instruction);
+
+                                // Add instruction result to messages
+                                if (chatMemory != null) {
+                                    chatMemory.add(UserMessage.from(instructionResult));
+                                    messages = new ArrayList<>(chatMemory.messages());
+                                } else {
+                                    messages.add(UserMessage.from(instructionResult));
+                                }
+
+                                // Send next request
+                                ChatRequest skillRequest = context.chatRequestTransformer.apply(
+                                        ChatRequest.builder()
+                                                .messages(messages)
+                                                .parameters(parameters)
+                                                .build(),
+                                        memoryId);
+
+                                aggregateResponse = context.chatModel.chat(skillRequest);
+
+                                // Accumulate token usage from each skill iteration
+                                aggregateTokenUsage = TokenUsage.sum(
+                                        aggregateTokenUsage,
+                                        aggregateResponse.metadata().tokenUsage()
+                                );
+
+                                // Add new response to messages/chatMemory
+                                AiMessage newAiMessage = aggregateResponse.aiMessage();
+                                if (newAiMessage != null) {
+                                    if (chatMemory != null) {
+                                        chatMemory.add(newAiMessage);
+                                    } else {
+                                        messages.add(newAiMessage);
+                                    }
+                                }
+
+                                context.eventListenerRegistrar.fireEvent(AiServiceResponseReceivedEvent.builder()
+                                        .invocationContext(invocationContext)
+                                        .response(aggregateResponse)
+                                        .request(skillRequest)
+                                        .build());
+                            }
+
+                            // Warn if max iterations reached
+                            if (skillIterations >= maxSkillIterations) {
+                                log.warn("Agent Skills loop reached maximum iterations ({})", maxSkillIterations);
+                            }
+                        }
 
                         var response = invokeOutputGuardrails(
                                 context.guardrailService(),
@@ -368,14 +482,12 @@ class DefaultAiServices<T> extends AiServices<T> {
                         var actualResponse = (isReturnTypeResult)
                                 ? Result.builder()
                                         .content(parsedResponse)
-                                        .tokenUsage(toolServiceResult.aggregateTokenUsage())
+                                        .tokenUsage(aggregateTokenUsage)
                                         .sources(augmentationResult == null ? null : augmentationResult.contents())
-                                        .finishReason(toolServiceResult
-                                                .finalResponse()
-                                                .finishReason())
+                                        .finishReason(aggregateResponse.finishReason())
                                         .toolExecutions(toolServiceResult.toolExecutions())
-                                        .intermediateResponses(toolServiceResult.intermediateResponses())
-                                        .finalResponse(toolServiceResult.finalResponse())
+                                        .intermediateResponses(allIntermediateResponses)
+                                        .finalResponse(aggregateResponse)
                                         .build()
                                 : parsedResponse;
 
