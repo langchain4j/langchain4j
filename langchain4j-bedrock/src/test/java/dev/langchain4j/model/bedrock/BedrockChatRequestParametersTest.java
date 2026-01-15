@@ -148,8 +148,8 @@ class BedrockChatRequestParametersTest {
         BedrockChatRequestParameters merged = original.overrideWith(override);
 
         // Then
-        assertThat(merged.bedrockGuardrailConfiguration().getGuardrailIdentifier())
+        assertThat(merged.bedrockGuardrailConfiguration().guardrailIdentifier())
                 .isEqualTo("67890");
-        assertThat(merged.bedrockGuardrailConfiguration().getGuardrailVersion()).isEqualTo("LIVE");
+        assertThat(merged.bedrockGuardrailConfiguration().guardrailVersion()).isEqualTo("LIVE");
     }
 }

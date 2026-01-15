@@ -483,8 +483,8 @@ abstract class AbstractBedrockChatModel {
         }
 
         return GuardrailConfiguration.builder()
-                .guardrailVersion(bedrockGuardrailConfiguration.getGuardrailVersion())
-                .guardrailIdentifier(bedrockGuardrailConfiguration.getGuardrailIdentifier())
+                .guardrailVersion(bedrockGuardrailConfiguration.guardrailVersion())
+                .guardrailIdentifier(bedrockGuardrailConfiguration.guardrailIdentifier())
                 .trace(GuardrailTrace.ENABLED)
                 .build();
     }
@@ -497,8 +497,8 @@ abstract class AbstractBedrockChatModel {
         }
 
         return GuardrailStreamConfiguration.builder()
-                .guardrailVersion(bedrockGuardrailConfiguration.getGuardrailVersion())
-                .guardrailIdentifier(bedrockGuardrailConfiguration.getGuardrailIdentifier())
+                .guardrailVersion(bedrockGuardrailConfiguration.guardrailVersion())
+                .guardrailIdentifier(bedrockGuardrailConfiguration.guardrailIdentifier())
                 .trace(GuardrailTrace.ENABLED)
                 .build();
     }
