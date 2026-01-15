@@ -41,14 +41,32 @@ final class ObservingEmbeddingModel implements EmbeddingModel {
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        EmbeddingModelRequestContext requestContext = new EmbeddingModelRequestContext(textSegments, this, attributes);
+        EmbeddingModelRequestContext requestContext = EmbeddingModelRequestContext.builder()
+                .textSegments(textSegments)
+                .embeddingModel(this)
+                .attributes(attributes)
+                .build();
         onRequest(requestContext, listeners);
         try {
             Response<List<Embedding>> response = delegate.embedAll(textSegments);
-            onResponse(new EmbeddingModelResponseContext(response, textSegments, this, attributes), listeners);
+            onResponse(
+                    EmbeddingModelResponseContext.builder()
+                            .response(response)
+                            .textSegments(textSegments)
+                            .embeddingModel(this)
+                            .attributes(attributes)
+                            .build(),
+                    listeners);
             return response;
         } catch (Exception error) {
-            onError(new EmbeddingModelErrorContext(error, textSegments, this, attributes), listeners);
+            onError(
+                    EmbeddingModelErrorContext.builder()
+                            .error(error)
+                            .textSegments(textSegments)
+                            .embeddingModel(this)
+                            .attributes(attributes)
+                            .build(),
+                    listeners);
             throw error;
         }
     }
@@ -58,6 +76,3 @@ final class ObservingEmbeddingModel implements EmbeddingModel {
         return delegate.modelName();
     }
 }
-
-
-

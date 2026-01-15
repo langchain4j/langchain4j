@@ -41,14 +41,32 @@ final class ObservingContentRetriever implements ContentRetriever {
     @Override
     public List<Content> retrieve(Query query) {
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        ContentRetrieverRequestContext requestContext = new ContentRetrieverRequestContext(query, this, attributes);
+        ContentRetrieverRequestContext requestContext = ContentRetrieverRequestContext.builder()
+                .query(query)
+                .contentRetriever(this)
+                .attributes(attributes)
+                .build();
         onRequest(requestContext, listeners);
         try {
             List<Content> contents = delegate.retrieve(query);
-            onResponse(new ContentRetrieverResponseContext(contents, query, this, attributes), listeners);
+            onResponse(
+                    ContentRetrieverResponseContext.builder()
+                            .contents(contents)
+                            .query(query)
+                            .contentRetriever(this)
+                            .attributes(attributes)
+                            .build(),
+                    listeners);
             return contents;
         } catch (Exception error) {
-            onError(new ContentRetrieverErrorContext(error, query, this, attributes), listeners);
+            onError(
+                    ContentRetrieverErrorContext.builder()
+                            .error(error)
+                            .query(query)
+                            .contentRetriever(this)
+                            .attributes(attributes)
+                            .build(),
+                    listeners);
             throw error;
         }
     }
