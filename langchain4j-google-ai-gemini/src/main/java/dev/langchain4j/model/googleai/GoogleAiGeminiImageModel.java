@@ -87,7 +87,6 @@ public class GoogleAiGeminiImageModel implements ImageModel {
     private final List<GeminiSafetySetting> safetySettings;
 
     private GoogleAiGeminiImageModel(GoogleAiGeminiImageModelBuilder builder) {
-        ensureNotBlank(builder.apiKey, "apiKey");
 
         this.geminiService = new GeminiService(
                 builder.httpClientBuilder,

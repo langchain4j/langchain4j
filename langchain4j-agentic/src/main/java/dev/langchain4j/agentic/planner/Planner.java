@@ -39,4 +39,8 @@ public interface Planner {
     default Action done(Object result) {
         return new Action.DoneWithResultAction(result);
     }
+
+    default <T extends AgentInstance> T as(Class<T> agentInstanceClass, AgentInstance agentInstance) {
+        throw new ClassCastException("Cannot cast to " + agentInstanceClass.getName() + ": incompatible type");
+    }
 }
