@@ -86,8 +86,7 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
         try {
             openSearchHost = HttpHost.create(serverUrl);
         } catch (URISyntaxException se) {
-            log.error("[I/O OpenSearch Exception]", se);
-            throw new OpenSearchRequestFailedException(se.getMessage());
+            throw new OpenSearchRequestFailedException("Failed to create HttpHost from server URL", se);
         }
 
         OpenSearchTransport transport = ApacheHttpClient5TransportBuilder.builder(openSearchHost)
@@ -268,8 +267,7 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
                     Document.class);
             matches = toEmbeddingMatch(response);
         } catch (IOException ex) {
-            log.error("[I/O OpenSearch Exception]", ex);
-            throw new OpenSearchRequestFailedException(ex.getMessage());
+            throw new OpenSearchRequestFailedException("Failed to search embeddings", ex);
         }
 
         return new EmbeddingSearchResult<>(matches);
@@ -321,8 +319,7 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
             createIndexIfNotExist(embeddings.get(0).dimension());
             bulk(ids, embeddings, embedded);
         } catch (IOException ex) {
-            log.error("[I/O OpenSearch Exception]", ex);
-            throw new OpenSearchRequestFailedException(ex.getMessage());
+            throw new OpenSearchRequestFailedException("Failed to add embeddings", ex);
         }
     }
 
@@ -332,8 +329,7 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
         try {
             bulkRemove(ids);
         } catch (IOException ex) {
-            log.error("[I/O OpenSearch Exception]", ex);
-            throw new OpenSearchRequestFailedException(ex.getMessage());
+            throw new OpenSearchRequestFailedException("Failed to remove embeddings", ex);
         }
     }
 
@@ -344,8 +340,7 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
         try {
             removeByQuery(query);
         } catch (IOException ex) {
-            log.error("[I/O OpenSearch Exception]", ex);
-            throw new OpenSearchRequestFailedException(ex.getMessage());
+            throw new OpenSearchRequestFailedException("Failed to remove embeddings by filter", ex);
         }
     }
 
@@ -361,11 +356,10 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
             if (e.status() == 404) {
                 log.debug("The index [{}] does not exist.", indexName);
             } else {
-                throw new OpenSearchRequestFailedException(e.getMessage());
+                throw new OpenSearchRequestFailedException("Failed to delete index", e);
             }
         } catch (IOException ex) {
-            log.error("[I/O OpenSearch Exception]", ex);
-            throw new OpenSearchRequestFailedException(ex.getMessage());
+            throw new OpenSearchRequestFailedException("Failed to delete index", ex);
         }
     }
 
