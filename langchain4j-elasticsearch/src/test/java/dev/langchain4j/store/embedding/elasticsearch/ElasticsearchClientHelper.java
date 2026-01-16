@@ -3,15 +3,17 @@ package dev.langchain4j.store.embedding.elasticsearch;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.store.embedding.elasticsearch.SSLUtils.createContextFromCaCert;
 import static dev.langchain4j.store.embedding.elasticsearch.SSLUtils.createTrustAllCertsContext;
+import static java.time.Duration.ofSeconds;
+import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 
+import java.io.IOException;
+import java.util.Properties;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch.core.InfoResponse;
 import co.elastic.clients.elasticsearch.license.GetLicenseResponse;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
-import java.io.IOException;
-import java.util.Properties;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.Header;
 import org.apache.http.HttpHost;
@@ -72,6 +74,8 @@ public class ElasticsearchClientHelper {
                     .withPassword(localPassword)
                     .withEnv("xpack.license.self_generated.type", tcLicense);
             elasticsearch.start();
+            log.info("Elasticsearch [{}] started.", tcVersion);
+
             byte[] certAsBytes = elasticsearch.copyFileFromContainer(
                     "/usr/share/elasticsearch/config/certs/http_ca.crt", IOUtils::toByteArray);
             restClient = getClient("https://" + elasticsearch.getHttpHostAddress(), null, localPassword, certAsBytes);
@@ -142,14 +146,25 @@ public class ElasticsearchClientHelper {
             version = info.version().number();
             log.info("Found Elasticsearch cluster version [{}] running at [{}].", version, address);
 
-            final GetLicenseResponse licenseResponse = client.license().get();
-            license = licenseResponse.license().type().name();
-            log.info("Elasticsearch cluster is running with a [{}] license.", license);
+            await("Elasticsearch license to be ready")
+                    .pollInterval(ofSeconds(1))
+                    .atMost(ofSeconds(30))
+                    .until(() -> {
+                        try {
+                            final GetLicenseResponse licenseResponse = client.license().get();
+                            license = licenseResponse.license().type().name();
+                            return true;
+                        } catch (Exception e) {
+                            log.debug("Elasticsearch cluster not ready yet at {}.", address);
+                            return false;
+                        }
+                    });
 
             return restClient;
         } catch (Exception e) {
             // No cluster is running. Return a null client.
             log.debug("No cluster is running yet at {}.", address);
+            log.debug("Exception: ", e);
             return null;
         }
     }
