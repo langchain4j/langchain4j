@@ -110,7 +110,6 @@ public final class GoogleAiGeminiBatchImageModel {
     }
 
     GoogleAiGeminiBatchImageModel(GoogleAiGeminiBatchImageModelBuilder builder, GeminiService geminiService) {
-        ensureNotBlank(builder.apiKey, "apiKey");
 
         this.modelName = getOrDefault(builder.modelName, "gemini-2.5-flash-preview-image-generation");
         this.responseModalities = List.of(IMAGE);

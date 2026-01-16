@@ -7,6 +7,7 @@ import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.internal.UserMessageRecorder;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
+import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.service.AiServiceContext;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
@@ -133,6 +134,11 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
     }
 
     @Override
+    public Class<? extends Planner> plannerType() {
+        return null;
+    }
+
+    @Override
     public String name() {
         return builder.name;
     }
@@ -179,6 +185,6 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
 
     @Override
     public AgenticSystemTopology topology() {
-        return AgenticSystemTopology.SINGLE_AGENT;
+        return AgenticSystemTopology.AI_AGENT;
     }
 }

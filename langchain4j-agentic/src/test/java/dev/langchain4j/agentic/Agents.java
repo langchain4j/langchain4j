@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic;
 
 import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScopeAccess;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.service.MemoryId;
@@ -190,7 +191,7 @@ public class Agents {
         String scoreAndReview(@V("story") String story, @V("style") String style);
     }
 
-    public interface StyledWriter extends AgenticScopeAccess {
+    public interface StyledWriter extends AgentInstance, AgenticScopeAccess {
 
         @Agent
         ResultWithAgenticScope<String> writeStoryWithStyle(@V("topic") String topic, @V("style") String style);

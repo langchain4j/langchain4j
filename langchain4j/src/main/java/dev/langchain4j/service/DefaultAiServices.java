@@ -177,10 +177,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .userMessage(originalUserMessage)
                                 .build());
 
-                        if (context.hasChatMemory()) {
-                            systemMessage.ifPresent(chatMemory::add);
-                        }
-
                         UserMessage userMessageForAugmentation = originalUserMessage;
 
                         AugmentationResult augmentationResult = null;
@@ -188,6 +184,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                             List<ChatMessage> chatMemoryMessages = chatMemory != null ? chatMemory.messages() : null;
                             Metadata metadata = Metadata.builder()
                                     .chatMessage(userMessageForAugmentation)
+                                    .systemMessage(systemMessage.orElse(null))
                                     .chatMemory(chatMemoryMessages)
                                     .invocationContext(invocationContext)
                                     .build();
@@ -238,6 +235,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         List<ChatMessage> messages = new ArrayList<>();
                         if (context.hasChatMemory()) {
+                            systemMessage.ifPresent(chatMemory::add);
                             messages.addAll(chatMemory.messages());
                             if (context.storeRetrievedContentInChatMemory) {
                                 chatMemory.add(userMessage);
@@ -509,9 +507,32 @@ class DefaultAiServices<T> extends AiServices<T> {
 
     private static UserMessage prepareUserMessage(
             Method method, Object[] args, String userMessageTemplate, Map<String, Object> variables) {
-        Prompt prompt = PromptTemplate.from(userMessageTemplate).apply(variables);
 
         Optional<String> maybeUserName = findUserName(method.getParameters(), args);
+
+        if (userMessageTemplate.isEmpty()) {
+            List<Content> contents = new ArrayList<>();
+
+            for (Object arg : args) {
+                if (arg instanceof Content content) {
+                    contents.add(content);
+                } else if (isListOfContents(arg)) {
+                    contents.addAll((List<Content>) arg);
+                }
+            }
+
+            if (!contents.isEmpty()) {
+                return maybeUserName
+                        .map(userName -> UserMessage.from(userName, contents))
+                        .orElseGet(() -> UserMessage.from(contents));
+            }
+
+            throw illegalConfiguration(
+                    "Error: The method '%s' does not have a user message defined.", method.getName());
+        }
+
+        Prompt prompt = PromptTemplate.from(userMessageTemplate).apply(variables);
+
         return maybeUserName
                 .map(userName -> UserMessage.from(userName, prompt.text()))
                 .orElseGet(prompt::toUserMessage);
@@ -542,7 +563,27 @@ class DefaultAiServices<T> extends AiServices<T> {
             return templateFromTheOnlyArgument.get();
         }
 
+        if (hasContentArgument(method, args)) {
+            return "";
+        }
+
         throw illegalConfiguration("Error: The method '%s' does not have a user message defined.", method.getName());
+    }
+
+    private static boolean hasContentArgument(Method method, Object[] args) {
+        Parameter[] parameters = method.getParameters();
+        for (int i = 0; i < parameters.length; i++) {
+            if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class)) {
+                if (args[i] instanceof Content || isListOfContents(args[i])) {
+                    return true;
+                }
+            }
+        }
+
+        if (parameters.length == 1 && !hasAnyValidAnnotation(parameters[0])) {
+            return args[0] instanceof Content || isListOfContents(args[0]);
+        }
+        return false;
     }
 
     private static Optional<String> findUserMessageTemplateFromMethodAnnotation(Method method) {
@@ -574,6 +615,9 @@ class DefaultAiServices<T> extends AiServices<T> {
 
     private static Optional<String> findUserMessageTemplateFromTheOnlyArgument(Parameter[] parameters, Object[] args) {
         if (parameters != null && parameters.length == 1 && !hasAnyValidAnnotation(parameters[0])) {
+            if (args[0] instanceof Content || isListOfContents(args[0])) {
+                return Optional.empty();
+            }
             return Optional.of(InternalReflectionVariableResolver.asString(args[0]));
         }
         return Optional.empty();
@@ -605,6 +649,14 @@ class DefaultAiServices<T> extends AiServices<T> {
                 } else {
                     contents.add(null); // placeholder
                 }
+            }
+        }
+
+        if (contents.isEmpty() && parameters.length == 1 && !hasAnyValidAnnotation(parameters[0])) {
+            if (args[0] instanceof Content) {
+                contents.add((Content) args[0]);
+            } else if (isListOfContents(args[0])) {
+                contents.addAll((List<Content>) args[0]);
             }
         }
 

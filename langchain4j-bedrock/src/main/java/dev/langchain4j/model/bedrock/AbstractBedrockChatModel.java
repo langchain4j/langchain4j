@@ -9,6 +9,11 @@ import static dev.langchain4j.model.bedrock.AwsDocumentConverter.convertAddition
 import static dev.langchain4j.model.bedrock.AwsDocumentConverter.convertJsonObjectSchemaToDocument;
 import static dev.langchain4j.model.bedrock.AwsDocumentConverter.documentFromJson;
 import static dev.langchain4j.model.bedrock.AwsDocumentConverter.documentToJson;
+import static dev.langchain4j.model.bedrock.GuardrailAssessment.Policy.CONTENT;
+import static dev.langchain4j.model.bedrock.GuardrailAssessment.Policy.CONTEXT;
+import static dev.langchain4j.model.bedrock.GuardrailAssessment.Policy.SENSITIVE;
+import static dev.langchain4j.model.bedrock.GuardrailAssessment.Policy.TOPIC;
+import static dev.langchain4j.model.bedrock.GuardrailAssessment.Policy.WORD;
 import static dev.langchain4j.model.bedrock.Utils.extractAndValidateFormat;
 import static java.util.Collections.emptyList;
 import static java.util.Objects.nonNull;
@@ -56,9 +61,13 @@ import software.amazon.awssdk.services.bedrockruntime.model.AnyToolChoice;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ConversationRole;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseResponse;
+import software.amazon.awssdk.services.bedrockruntime.model.ConverseTrace;
 import software.amazon.awssdk.services.bedrockruntime.model.DocumentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.DocumentFormat;
 import software.amazon.awssdk.services.bedrockruntime.model.DocumentSource;
+import software.amazon.awssdk.services.bedrockruntime.model.GuardrailConfiguration;
+import software.amazon.awssdk.services.bedrockruntime.model.GuardrailStreamConfiguration;
+import software.amazon.awssdk.services.bedrockruntime.model.GuardrailTrace;
 import software.amazon.awssdk.services.bedrockruntime.model.ImageBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ImageSource;
 import software.amazon.awssdk.services.bedrockruntime.model.InferenceConfiguration;
@@ -119,6 +128,7 @@ abstract class AbstractBedrockChatModel {
                 // Bedrock-specific parameters
                 .additionalModelRequestFields(bedrockParameters.additionalModelRequestFields())
                 .promptCaching(bedrockParameters.cachePointPlacement())
+                .guardrailConfiguration(bedrockParameters.bedrockGuardrailConfiguration())
                 .build();
     }
 
@@ -450,7 +460,7 @@ abstract class AbstractBedrockChatModel {
             return FinishReason.TOOL_EXECUTION;
         }
 
-        if (stopReason == StopReason.CONTENT_FILTERED) {
+        if (stopReason == StopReason.CONTENT_FILTERED || stopReason == StopReason.GUARDRAIL_INTERVENED) {
             return FinishReason.CONTENT_FILTER;
         }
 
@@ -463,6 +473,33 @@ abstract class AbstractBedrockChatModel {
                 .temperature(dblToFloat(parameters.temperature()))
                 .topP(dblToFloat(parameters.topP()))
                 .stopSequences(isNullOrEmpty(parameters.stopSequences()) ? null : parameters.stopSequences())
+                .build();
+    }
+
+    protected GuardrailConfiguration guardrailConfigFrom(BedrockGuardrailConfiguration bedrockGuardrailConfiguration) {
+
+        if (bedrockGuardrailConfiguration == null) {
+            return null;
+        }
+
+        return GuardrailConfiguration.builder()
+                .guardrailVersion(bedrockGuardrailConfiguration.guardrailVersion())
+                .guardrailIdentifier(bedrockGuardrailConfiguration.guardrailIdentifier())
+                .trace(GuardrailTrace.ENABLED)
+                .build();
+    }
+
+    protected GuardrailStreamConfiguration guardrailStreamConfigFrom(
+            BedrockGuardrailConfiguration bedrockGuardrailConfiguration) {
+
+        if (bedrockGuardrailConfiguration == null) {
+            return null;
+        }
+
+        return GuardrailStreamConfiguration.builder()
+                .guardrailVersion(bedrockGuardrailConfiguration.guardrailVersion())
+                .guardrailIdentifier(bedrockGuardrailConfiguration.guardrailIdentifier())
+                .trace(GuardrailTrace.ENABLED)
                 .build();
     }
 
@@ -480,6 +517,208 @@ abstract class AbstractBedrockChatModel {
         } else {
             return convertAdditionalModelRequestFields(additionalModelRequestFieldsMap);
         }
+    }
+
+    protected GuardrailAssessmentSummary guardrailAssessmentSummaryFrom(ConverseTrace trace) {
+
+        if (trace == null) {
+            return null;
+        }
+
+        GuardrailAssessmentSummary.Builder builder = GuardrailAssessmentSummary.builder();
+
+        if (trace.guardrail().hasInputAssessment()) {
+            List<GuardrailAssessment> inputAssessments = new ArrayList<>();
+
+            for (var assessment : trace.guardrail().inputAssessment().values()) {
+
+                // --- Topic Policy ---
+                var topicPolicy = assessment.topicPolicy();
+                if (topicPolicy != null && topicPolicy.topics() != null) {
+                    for (var policy : topicPolicy.topics()) {
+                        inputAssessments.add(InputGuardrailAssessment.builder()
+                                .policy(TOPIC)
+                                .name(policy.name())
+                                .action(policy.actionAsString())
+                                .build());
+                    }
+                }
+
+                // --- Content Policy ---
+                var contentPolicy = assessment.contentPolicy();
+                if (contentPolicy != null && contentPolicy.filters() != null) {
+                    for (var policy : contentPolicy.filters()) {
+                        inputAssessments.add(InputGuardrailAssessment.builder()
+                                .policy(CONTENT)
+                                .name(policy.typeAsString())
+                                .action(policy.actionAsString())
+                                .build());
+                    }
+                }
+
+                // --- Word Policy ---
+                var wordPolicy = assessment.wordPolicy();
+                if (wordPolicy != null) {
+                    if (wordPolicy.customWords() != null) {
+                        for (var policy : wordPolicy.customWords()) {
+                            inputAssessments.add(InputGuardrailAssessment.builder()
+                                    .policy(WORD)
+                                    .name(policy.match())
+                                    .action(policy.actionAsString())
+                                    .build());
+                        }
+                    }
+                    if (wordPolicy.managedWordLists() != null) {
+                        for (var policy : wordPolicy.managedWordLists()) {
+                            inputAssessments.add(InputGuardrailAssessment.builder()
+                                    .policy(WORD)
+                                    .name(policy.typeAsString())
+                                    .action(policy.actionAsString())
+                                    .build());
+                        }
+                    }
+                }
+
+                // --- Sensitive Information Policy ---
+                var sensitivePolicy = assessment.sensitiveInformationPolicy();
+                if (sensitivePolicy != null) {
+                    if (sensitivePolicy.piiEntities() != null) {
+                        for (var policy : sensitivePolicy.piiEntities()) {
+                            inputAssessments.add(InputGuardrailAssessment.builder()
+                                    .policy(SENSITIVE)
+                                    .name(policy.typeAsString())
+                                    .action(policy.actionAsString())
+                                    .build());
+                        }
+                    }
+                    if (sensitivePolicy.regexes() != null) {
+                        for (var policy : sensitivePolicy.regexes()) {
+                            inputAssessments.add(InputGuardrailAssessment.builder()
+                                    .policy(SENSITIVE)
+                                    .name(policy.name())
+                                    .action(policy.actionAsString())
+                                    .build());
+                        }
+                    }
+                }
+
+                // --- Contextual Grounding Policy ---
+                var contextualPolicy = assessment.contextualGroundingPolicy();
+                if (contextualPolicy != null && contextualPolicy.filters() != null) {
+                    for (var policy : contextualPolicy.filters()) {
+                        inputAssessments.add(InputGuardrailAssessment.builder()
+                                .policy(CONTEXT)
+                                .name(policy.typeAsString())
+                                .action(policy.actionAsString())
+                                .build());
+                    }
+                }
+            }
+
+            builder.inputAssessments(inputAssessments);
+        }
+
+        if (trace.guardrail().hasOutputAssessments()) {
+
+            List<GuardrailAssessment> outputAssessments = new ArrayList<>();
+            var outputAssessmentValues = trace.guardrail().outputAssessments();
+
+            if (outputAssessmentValues != null) {
+                for (var assessments : outputAssessmentValues.values()) {
+                    if (assessments == null) continue;
+
+                    for (var assessment : assessments) {
+                        if (assessment == null) continue;
+
+                        // --- Topic Policy ---
+                        var topicPolicy = assessment.topicPolicy();
+                        if (topicPolicy != null && topicPolicy.topics() != null) {
+                            for (var policy : topicPolicy.topics()) {
+                                outputAssessments.add(OutputGuardrailAssessment.builder()
+                                        .policy(TOPIC)
+                                        .name(policy.name())
+                                        .action(policy.actionAsString())
+                                        .build());
+                            }
+                        }
+
+                        // --- Content Policy ---
+                        var contentPolicy = assessment.contentPolicy();
+                        if (contentPolicy != null && contentPolicy.filters() != null) {
+                            for (var policy : contentPolicy.filters()) {
+                                outputAssessments.add(OutputGuardrailAssessment.builder()
+                                        .policy(CONTENT)
+                                        .name(policy.typeAsString())
+                                        .action(policy.actionAsString())
+                                        .build());
+                            }
+                        }
+
+                        // --- Word Policy ---
+                        var wordPolicy = assessment.wordPolicy();
+                        if (wordPolicy != null) {
+                            if (wordPolicy.customWords() != null) {
+                                for (var policy : wordPolicy.customWords()) {
+                                    outputAssessments.add(OutputGuardrailAssessment.builder()
+                                            .policy(WORD)
+                                            .name(policy.match())
+                                            .action(policy.actionAsString())
+                                            .build());
+                                }
+                            }
+                            if (wordPolicy.managedWordLists() != null) {
+                                for (var policy : wordPolicy.managedWordLists()) {
+                                    outputAssessments.add(OutputGuardrailAssessment.builder()
+                                            .policy(WORD)
+                                            .name(policy.typeAsString())
+                                            .action(policy.actionAsString())
+                                            .build());
+                                }
+                            }
+                        }
+
+                        // --- Sensitive Information Policy ---
+                        var sensitivePolicy = assessment.sensitiveInformationPolicy();
+                        if (sensitivePolicy != null) {
+                            if (sensitivePolicy.piiEntities() != null) {
+                                for (var policy : sensitivePolicy.piiEntities()) {
+                                    outputAssessments.add(OutputGuardrailAssessment.builder()
+                                            .policy(SENSITIVE)
+                                            .name(policy.typeAsString())
+                                            .action(policy.actionAsString())
+                                            .build());
+                                }
+                            }
+                            if (sensitivePolicy.regexes() != null) {
+                                for (var policy : sensitivePolicy.regexes()) {
+                                    outputAssessments.add(OutputGuardrailAssessment.builder()
+                                            .policy(SENSITIVE)
+                                            .name(policy.name())
+                                            .action(policy.actionAsString())
+                                            .build());
+                                }
+                            }
+                        }
+
+                        // --- Contextual Grounding Policy ---
+                        var contextualPolicy = assessment.contextualGroundingPolicy();
+                        if (contextualPolicy != null && contextualPolicy.filters() != null) {
+                            for (var policy : contextualPolicy.filters()) {
+                                outputAssessments.add(OutputGuardrailAssessment.builder()
+                                        .policy(CONTEXT)
+                                        .name(policy.typeAsString())
+                                        .action(policy.actionAsString())
+                                        .build());
+                            }
+                        }
+                    }
+                }
+            }
+
+            builder.ouputAssessments(outputAssessments);
+        }
+
+        return builder.build();
     }
 
     protected static void validate(ChatRequestParameters parameters) {
