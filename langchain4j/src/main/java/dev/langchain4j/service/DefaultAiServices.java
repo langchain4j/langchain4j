@@ -350,7 +350,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         ChatResponse aggregateResponse = toolServiceResult.aggregateResponse();
 
-                        ChatResponse response = invokeOutputGuardrails(
+                        var response = invokeOutputGuardrails(
                                 context.guardrailService(),
                                 method,
                                 aggregateResponse,
@@ -358,8 +358,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 commonGuardrailParam);
 
                         if (response != null) {
-                            if (isInternalData) {
-                                return fireEventAndReturn(invocationContext, parseInternalData(response, returnType));
+                            if (isInternalData && response instanceof ChatResponse cResponse) {
+                                return fireEventAndReturn(invocationContext, parseInternalData(cResponse, returnType));
                             }
 
                             if (typeHasRawClass(returnType, response.getClass())) {
@@ -367,7 +367,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                             }
                         }
 
-                        var parsedResponse = serviceOutputParser.parse(response, returnType);
+                        var parsedResponse = serviceOutputParser.parse((ChatResponse) response, returnType);
                         var actualResponse = (isReturnTypeResult)
                                 ? Result.builder()
                                         .content(parsedResponse)
@@ -505,7 +505,7 @@ class DefaultAiServices<T> extends AiServices<T> {
         return userMessage;
     }
 
-    private ChatResponse invokeOutputGuardrails(
+    private <T> T invokeOutputGuardrails(
             GuardrailService guardrailService,
             Method method,
             ChatResponse responseFromLLM,
@@ -521,7 +521,7 @@ class DefaultAiServices<T> extends AiServices<T> {
             return guardrailService.executeGuardrails(method, outputGuardrailRequest);
         }
 
-        return responseFromLLM;
+        return (T) responseFromLLM;
     }
 
     private Optional<SystemMessage> prepareSystemMessage(Object memoryId, Method method, Object[] args) {
