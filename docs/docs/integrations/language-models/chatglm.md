@@ -44,7 +44,7 @@ Or, you can use BOM to manage dependencies consistently:
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-community-bom</artifactId>
         <version>${latest version here}</version>
-        <typ>pom</typ>
+        <type>pom</type>
         <scope>import</scope>
     </dependency>
 </dependencyManagement>
@@ -56,14 +56,14 @@ Or, you can use BOM to manage dependencies consistently:
 You can instantiate `ChatGlmChatModel` using following code:
 
 ```java
-ChatLanguageModel model = ChatGlmChatModel.builder()
+ChatModel model = ChatGlmChatModel.builder()
         .baseUrl(System.getenv("CHATGLM_BASE_URL"))
         .logRequests(true)
         .logResponses(true)
         .build();
 ```
 
-Now you can use it like a normal `ChatLanguageModel`.
+Now you can use it like a normal `ChatModel`.
 
 :::note
 `ChatGlmChatModel` does not support Function Calling and Structured Output. see [index](index.md)

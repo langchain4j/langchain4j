@@ -35,7 +35,7 @@ class SearchApiWebSearchEngineIT extends WebSearchEngineIT {
 
         // when
         WebSearchRequest request = WebSearchRequest.builder()
-                .searchTerms("What is Langchain4j?")
+                .searchTerms("What is LangChain4j?")
                 .build();
         WebSearchResults webSearchResults = searchEngine.search(request);
 
@@ -90,7 +90,7 @@ class SearchApiWebSearchEngineIT extends WebSearchEngineIT {
         additionalParams.put("num", "3");
         additionalParams.put("page", "1");
         WebSearchRequest request = WebSearchRequest.builder()
-                .searchTerms("What is Langchain4j?")
+                .searchTerms("What is LangChain4j?")
                 .additionalParams(additionalParams)
                 .build();
         WebSearchResults webSearchResults = searchEngine.search(request);
@@ -132,7 +132,7 @@ class SearchApiWebSearchEngineIT extends WebSearchEngineIT {
 
         // when
         WebSearchRequest request = WebSearchRequest.builder()
-                .searchTerms("What is Langchain4j?")
+                .searchTerms("What is LangChain4j?")
                 .build();
         WebSearchResults webSearchResults = searchEngine.search(request);
 

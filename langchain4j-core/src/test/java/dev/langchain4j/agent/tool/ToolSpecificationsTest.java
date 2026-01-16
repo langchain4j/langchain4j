@@ -13,7 +13,6 @@ import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -115,6 +114,11 @@ class ToolSpecificationsTest implements WithAssertions {
         }
     }
 
+    public static class ToolWithSameCustomParametersButDifferentDescriptions {
+        @Tool
+        public void toolMethod(@P("first person") Person p0, @P("second person") Person p1) {}
+    }
+
     private static Method getF() throws NoSuchMethodException {
         return Wrapper.class.getMethod(
                 "f",
@@ -149,40 +153,6 @@ class ToolSpecificationsTest implements WithAssertions {
                 int.class);
     }
 
-    public static <K, V> Map<K, V> mapOf(K k1, V v1) {
-        Map<K, V> map = new HashMap<>();
-        map.put(k1, v1);
-        return map;
-    }
-
-    public static <K, V> Map<K, V> mapOf(K k1, V v1, K k2, V v2) {
-        Map<K, V> map = new HashMap<>();
-        map.put(k1, v1);
-        map.put(k2, v2);
-        return map;
-    }
-
-    public static <K, V> Map<K, V> mapOf(K k1, V v1, K k2, V v2, K k3, V v3) {
-        Map<K, V> map = new HashMap<>();
-        map.put(k1, v1);
-        map.put(k2, v2);
-        map.put(k3, v3);
-        return map;
-    }
-
-    public static <K, V> Map<K, V> mapOf(
-            K k1, V v1, K k2, V v2, K k3, V v3, K k4, V v4, K k5, V v5, K k6, V v6, K k7, V v7) {
-        Map<K, V> map = new HashMap<>();
-        map.put(k1, v1);
-        map.put(k2, v2);
-        map.put(k3, v3);
-        map.put(k4, v4);
-        map.put(k5, v5);
-        map.put(k6, v6);
-        map.put(k7, v7);
-        return map;
-    }
-
     @Test
     void tool_specifications_from() {
         List<ToolSpecification> specs = ToolSpecifications.toolSpecificationsFrom(new Wrapper());
@@ -215,7 +185,15 @@ class ToolSpecificationsTest implements WithAssertions {
         assertThat(ts.name()).isEqualTo("func_name");
         assertThat(ts.description()).isNull();
         assertThat(ts.parameters()).isNull();
-        assertThat(ts.toolParameters()).isNull();
+    }
+
+    @Test
+    void tool_specification_metadata() {
+        ToolSpecification ts = ToolSpecification.builder()
+                .name("some_tool")
+                .addMetadata("foo", "bar")
+                .build();
+        assertThat(ts.metadata().get("foo")).isEqualTo("bar");
     }
 
     @Test
@@ -227,6 +205,7 @@ class ToolSpecificationsTest implements WithAssertions {
         assertThat(ts.name()).isEqualTo("f");
         assertThat(ts.description()).isEqualTo("line1\nline2");
         assertThat(ts.parameters()).isInstanceOf(JsonObjectSchema.class);
+        assertThat(ts.metadata()).isEmpty();
 
         Map<String, JsonSchemaElement> properties = ts.parameters().properties();
 
@@ -367,6 +346,44 @@ class ToolSpecificationsTest implements WithAssertions {
                                         .build())
                         .required("arg0")
                         .build());
-        assertThat(toolSpecification.toolParameters()).isNull();
+    }
+
+    @Test
+    void two_custom_params_same_type_have_distinct_descriptions() throws NoSuchMethodException {
+        Method method = ToolWithSameCustomParametersButDifferentDescriptions.class.getMethod(
+                "toolMethod", Person.class, Person.class);
+        ToolSpecification ts = ToolSpecifications.toolSpecificationFrom(method);
+
+        Map<String, JsonSchemaElement> props = ts.parameters().properties();
+        JsonObjectSchema p0Schema = (JsonObjectSchema) props.get("arg0");
+        JsonObjectSchema p1Schema = (JsonObjectSchema) props.get("arg1");
+
+        assertThat(p0Schema.description()).isEqualTo("first person");
+        assertThat(p1Schema.description()).isEqualTo("second person");
+        assertThat(p0Schema.properties().keySet())
+                .containsExactlyInAnyOrder(
+                        "name", "aliases", "active", "parent", "currentAddress", "previousAddresses");
+        assertThat(p1Schema.properties().keySet())
+                .containsExactlyInAnyOrder(
+                        "name", "aliases", "active", "parent", "currentAddress", "previousAddresses");
+    }
+
+    @Test
+    void parses_tool_metadata_correctly() throws NoSuchMethodException {
+
+        // given
+        class Tools {
+
+            @Tool(metadata = "{\"one\": \"one\", \"two\": 2}")
+            public void tool() {}
+        }
+
+        Method method = Tools.class.getMethod("tool");
+
+        // when
+        ToolSpecification toolSpecification = ToolSpecifications.toolSpecificationFrom(method);
+
+        // then
+        assertThat(toolSpecification.metadata()).containsExactly(Map.entry("one", "one"), Map.entry("two", 2));
     }
 }

@@ -1,6 +1,6 @@
 package dev.langchain4j.data.document;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.mockito.Mockito.mock;
 
 import dev.langchain4j.data.segment.TextSegment;
@@ -32,10 +32,10 @@ class DocumentTest implements WithAssertions {
 
         final var document = Document.from("foo bar");
         assertThat(document.text()).isEqualTo("foo bar");
-        assertThat(document.metadata().asMap()).isEmpty();
         assertThat(document.metadata().toMap()).isEmpty();
 
-        assertThat(document).hasToString("DefaultDocument[text=foo bar, metadata=Metadata { metadata = {} }]");
+        assertThat(document)
+                .hasToString("DefaultDocument { text = \"foo bar\", metadata = Metadata { metadata = {} } }");
 
         final var expectedMetadata = new HashMap<String, Object>();
         expectedMetadata.put("index", "0");
@@ -47,17 +47,25 @@ class DocumentTest implements WithAssertions {
         final var document = Document.from("foo bar", Metadata.from("foo", "bar"));
         assertThat(document.text()).isEqualTo("foo bar");
 
-        assertThat(document.metadata().asMap()).hasSize(1);
         assertThat(document.metadata().toMap()).hasSize(1);
-        assertThat(document.metadata("foo")).isEqualTo("bar");
         assertThat(document.metadata().getString("foo")).isEqualTo("bar");
 
-        assertThat(document).hasToString("DefaultDocument[text=foo bar, metadata=Metadata { metadata = {foo=bar} }]");
+        assertThat(document)
+                .hasToString("DefaultDocument { text = \"foo bar\", metadata = Metadata { metadata = {foo=bar} } }");
 
         final var expectedMetadata = new HashMap<String, Object>();
         expectedMetadata.put("index", "0");
         expectedMetadata.put("foo", "bar");
         assertThat(document.toTextSegment()).isEqualTo(new TextSegment("foo bar", Metadata.from(expectedMetadata)));
+    }
+
+    @Test
+    void index_metadata() {
+        final var textSegmentWithIndex =
+                Document.from("foo bar", Metadata.from("index", "1")).toTextSegment();
+
+        assertThat(textSegmentWithIndex.metadata().toMap()).hasSize(1);
+        assertThat(textSegmentWithIndex.metadata().getString("index")).isEqualTo("1");
     }
 
     @Test
@@ -76,17 +84,22 @@ class DocumentTest implements WithAssertions {
     @ValueSource(strings = {"", " ", "\t"})
     @NullSource
     void constructor_should_fail_on_empty_text(String text) {
-        final var exception = assertThrows(IllegalArgumentException.class, () -> Document.from(text));
+        final var exception = assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> Document.from(text))
+                .actual();
         assertThat(exception).hasMessage("text cannot be null or blank");
 
-        final var exception2 =
-                assertThrows(IllegalArgumentException.class, () -> Document.from(text, mock(Metadata.class)));
+        final var exception2 = assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> Document.from(text, mock(Metadata.class)))
+                .actual();
         assertThat(exception2).hasMessage("text cannot be null or blank");
     }
 
     @Test
     void constructor_should_fail_on_empty_metadata() {
-        final var exception = assertThrows(IllegalArgumentException.class, () -> Document.from("ok", null));
+        final var exception = assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> Document.from("ok", null))
+                .actual();
         assertThat(exception).hasMessage("metadata cannot be null");
     }
 }

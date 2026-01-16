@@ -48,7 +48,8 @@ class MilvusMetadataFilterMapper {
     private static String mapContains(ContainsString containsString, String metadataFieldName) {
         return format(
                 "%s LIKE %s",
-                formatKey(containsString.key(), metadataFieldName), formatValue("%" + containsString.comparisonValue() + "%"));
+                formatKey(containsString.key(), metadataFieldName),
+                formatValue("%" + containsString.comparisonValue() + "%"));
     }
 
     private static String mapEqual(IsEqualTo isEqualTo, String metadataFieldName) {
@@ -114,7 +115,11 @@ class MilvusMetadataFilterMapper {
     }
 
     private static String formatValue(Object value) {
-        if (value instanceof String || value instanceof UUID) {
+        if (value instanceof String stringValue) {
+            // Escape double quotes by replacing them with \"
+            final String escapedValue = stringValue.replace("\"", "\\\"");
+            return "\"" + escapedValue + "\"";
+        } else if (value instanceof UUID) {
             return "\"" + value + "\"";
         } else {
             return value.toString();

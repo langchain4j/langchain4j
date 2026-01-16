@@ -1,11 +1,14 @@
 package dev.langchain4j.model.github;
 
+/**
+ * @deprecated This module is deprecated and will be removed in a future release. Please use the langchain4j-openai-official module instead.
+ */
+@Deprecated(since = "1.10.0", forRemoval = true)
 public enum GitHubModelsChatModelName {
 
     GPT_4_O("gpt-4o", "gpt-4"),
     GPT_4_O_MINI("gpt-4o-mini", "gpt-4"),
     //O1_MINI("o1-mini", "o1"),
-    //O1_PREVIEW("o1-preview", "o1"),
 
     PHI_3_5_MINI_INSTRUCT("Phi-3.5-mini-instruct", "phi"),
     PHI_3_5_VISION_INSTRUCT("Phi-3.5-vision-instruct", "phi"),

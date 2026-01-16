@@ -1,28 +1,31 @@
 package dev.langchain4j.http.client.sse;
 
-import dev.langchain4j.Experimental;
+import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 
-@Experimental
 public class DefaultServerSentEventParser implements ServerSentEventParser {
 
     @Override
     public void parse(InputStream httpResponseBody, ServerSentEventListener listener) {
+        ServerSentEventParsingHandle parsingHandle = new DefaultServerSentEventParsingHandle(httpResponseBody);
+        ServerSentEventContext context = new ServerSentEventContext(parsingHandle);
 
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(httpResponseBody))) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(httpResponseBody, UTF_8))) {
 
             String event = null;
             StringBuilder data = new StringBuilder();
 
             String line;
-            while ((line = reader.readLine()) != null) {
+            while (!parsingHandle.isCancelled() && (line = reader.readLine()) != null) {
                 if (line.isEmpty()) {
                     if (!data.isEmpty()) {
-                        listener.onEvent(new ServerSentEvent(event, data.toString()));
+                        ServerSentEvent sse = new ServerSentEvent(event, data.toString());
+                        ignoringExceptions(() -> listener.onEvent(sse, context));
                         event = null;
                         data.setLength(0);
                     }
@@ -40,11 +43,12 @@ public class DefaultServerSentEventParser implements ServerSentEventParser {
                 }
             }
 
-            if (!data.isEmpty()) {
-                listener.onEvent(new ServerSentEvent(event, data.toString()));
+            if (!parsingHandle.isCancelled() && !data.isEmpty()) {
+                ServerSentEvent sse = new ServerSentEvent(event, data.toString());
+                ignoringExceptions(() -> listener.onEvent(sse, context));
             }
         } catch (IOException e) {
-            listener.onError(e);
+            ignoringExceptions(() -> listener.onError(e));
         }
     }
 }

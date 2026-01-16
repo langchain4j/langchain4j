@@ -6,8 +6,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import dev.langchain4j.internal.Utils;
-import lombok.Builder;
 import okhttp3.OkHttpClient;
+import org.slf4j.Logger;
 import retrofit2.Retrofit;
 import retrofit2.converter.jackson.JacksonConverterFactory;
 
@@ -27,8 +27,7 @@ class NomicClient {
     private final NomicApi nomicApi;
     private final String authorizationHeader;
 
-    @Builder
-    NomicClient(String baseUrl, String apiKey, Duration timeout, Boolean logRequests, Boolean logResponses) {
+    NomicClient(String baseUrl, String apiKey, Duration timeout, Boolean logRequests, Boolean logResponses, Logger logger) {
 
         OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
                 .callTimeout(timeout)
@@ -37,10 +36,10 @@ class NomicClient {
                 .writeTimeout(timeout);
 
         if (logRequests) {
-            okHttpClientBuilder.addInterceptor(new RequestLoggingInterceptor());
+            okHttpClientBuilder.addInterceptor(new RequestLoggingInterceptor(logger));
         }
         if (logResponses) {
-            okHttpClientBuilder.addInterceptor(new ResponseLoggingInterceptor());
+            okHttpClientBuilder.addInterceptor(new ResponseLoggingInterceptor(logger));
         }
 
         Retrofit retrofit = new Retrofit.Builder()
@@ -51,6 +50,10 @@ class NomicClient {
 
         this.nomicApi = retrofit.create(NomicApi.class);
         this.authorizationHeader = "Bearer " + ensureNotBlank(apiKey, "apiKey");
+    }
+
+    public static NomicClientBuilder builder() {
+        return new NomicClientBuilder();
     }
 
     public EmbeddingResponse embed(EmbeddingRequest request) {
@@ -73,5 +76,55 @@ class NomicClient {
         String body = response.errorBody().string();
         String errorMessage = String.format("status code: %s; body: %s", code, body);
         return new RuntimeException(errorMessage);
+    }
+
+    public static class NomicClientBuilder {
+        private String baseUrl;
+        private String apiKey;
+        private Duration timeout;
+        private Boolean logRequests;
+        private Boolean logResponses;
+        private Logger logger;
+
+        NomicClientBuilder() {
+        }
+
+        public NomicClientBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public NomicClientBuilder apiKey(String apiKey) {
+            this.apiKey = apiKey;
+            return this;
+        }
+
+        public NomicClientBuilder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public NomicClientBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public NomicClientBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        public NomicClientBuilder logger(Logger logger) {
+            this.logger = logger;
+            return this;
+        }
+
+        public NomicClient build() {
+            return new NomicClient(this.baseUrl, this.apiKey, this.timeout, this.logRequests, this.logResponses, this.logger);
+        }
+
+        public String toString() {
+            return "NomicClient.NomicClientBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + this.apiKey + ", timeout=" + this.timeout + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
+        }
     }
 }

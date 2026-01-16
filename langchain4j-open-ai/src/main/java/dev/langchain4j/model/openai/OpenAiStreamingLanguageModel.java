@@ -1,27 +1,27 @@
 package dev.langchain4j.model.openai;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_OPENAI_URL;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_USER_AGENT;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.time.Duration.ofSeconds;
+
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.language.StreamingLanguageModel;
-import dev.langchain4j.model.language.TokenCountEstimator;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
 import dev.langchain4j.model.openai.internal.completion.CompletionChoice;
 import dev.langchain4j.model.openai.internal.completion.CompletionRequest;
 import dev.langchain4j.model.openai.internal.shared.StreamOptions;
 import dev.langchain4j.model.openai.spi.OpenAiStreamingLanguageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
-
 import java.time.Duration;
 import java.util.Map;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_OPENAI_URL;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.time.Duration.ofSeconds;
+import java.util.function.Supplier;
+import org.slf4j.Logger;
 
 /**
  * Represents an OpenAI language model with a completion interface, such as gpt-3.5-turbo-instruct.
@@ -29,12 +29,11 @@ import static java.time.Duration.ofSeconds;
  * However, it's recommended to use {@link OpenAiStreamingChatModel} instead,
  * as it offers more advanced features like function calling, multi-turn conversations, etc.
  */
-public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, TokenCountEstimator {
+public class OpenAiStreamingLanguageModel implements StreamingLanguageModel {
 
     private final OpenAiClient client;
     private final String modelName;
     private final Double temperature;
-    private final Tokenizer tokenizer;
 
     public OpenAiStreamingLanguageModel(OpenAiStreamingLanguageModelBuilder builder) {
         this.client = OpenAiClient.builder()
@@ -47,12 +46,13 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
                 .readTimeout(getOrDefault(builder.timeout, ofSeconds(60)))
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
+                .logger(builder.logger)
                 .userAgent(DEFAULT_USER_AGENT)
-                .customHeaders(builder.customHeaders)
+                .customHeaders(builder.customHeadersSupplier)
+                .customQueryParams(builder.customQueryParams)
                 .build();
         this.modelName = builder.modelName;
         this.temperature = builder.temperature;
-        this.tokenizer = getOrDefault(builder.tokenizer, OpenAiTokenizer::new);
     }
 
     public String modelName() {
@@ -62,11 +62,8 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
     @Override
     public void generate(String prompt, StreamingResponseHandler<String> handler) {
 
-        CompletionRequest request = CompletionRequest.builder()
-                .stream(true)
-                .streamOptions(StreamOptions.builder()
-                        .includeUsage(true)
-                        .build())
+        CompletionRequest request = CompletionRequest.builder().stream(true)
+                .streamOptions(StreamOptions.builder().includeUsage(true).build())
                 .model(modelName)
                 .prompt(prompt)
                 .temperature(temperature)
@@ -89,30 +86,17 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
                     handler.onComplete(Response.from(
                             chatResponse.aiMessage().text(),
                             chatResponse.metadata().tokenUsage(),
-                            chatResponse.metadata().finishReason()
-                    ));
+                            chatResponse.metadata().finishReason()));
                 })
-                .onError(handler::onError)
+                .onError(throwable -> {
+                    handler.onError(ExceptionMapper.DEFAULT.mapException(throwable));
+                })
                 .execute();
     }
 
-    @Override
-    public int estimateTokenCount(String prompt) {
-        return tokenizer.estimateTokenCountInText(prompt);
-    }
-
-    /**
-     * @deprecated Please use {@code builder()} instead, and explicitly set the model name and,
-     * if necessary, other parameters.
-     * <b>The default values for the model name and temperature will be removed in future releases!</b>
-     */
-    @Deprecated(forRemoval = true)
-    public static OpenAiStreamingLanguageModel withApiKey(String apiKey) {
-        return builder().apiKey(apiKey).build();
-    }
-
     public static OpenAiStreamingLanguageModelBuilder builder() {
-        for (OpenAiStreamingLanguageModelBuilderFactory factory : loadFactories(OpenAiStreamingLanguageModelBuilderFactory.class)) {
+        for (OpenAiStreamingLanguageModelBuilderFactory factory :
+                loadFactories(OpenAiStreamingLanguageModelBuilderFactory.class)) {
             return factory.get();
         }
         return new OpenAiStreamingLanguageModelBuilder();
@@ -131,8 +115,9 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
         private Duration timeout;
         private Boolean logRequests;
         private Boolean logResponses;
-        private Tokenizer tokenizer;
-        private Map<String, String> customHeaders;
+        private Logger logger;
+        private Supplier<Map<String, String>> customHeadersSupplier;
+        private Map<String, String> customQueryParams;
 
         public OpenAiStreamingLanguageModelBuilder() {
             // This is public so it can be extended
@@ -193,13 +178,35 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
             return this;
         }
 
-        public OpenAiStreamingLanguageModelBuilder tokenizer(Tokenizer tokenizer) {
-            this.tokenizer = tokenizer;
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public OpenAiStreamingLanguageModelBuilder logger(Logger logger) {
+            this.logger = logger;
             return this;
         }
 
+        /**
+         * Sets custom HTTP headers.
+         */
         public OpenAiStreamingLanguageModelBuilder customHeaders(Map<String, String> customHeaders) {
-            this.customHeaders = customHeaders;
+            this.customHeadersSupplier = () -> customHeaders;
+            return this;
+        }
+
+        /**
+         * Sets a supplier for custom HTTP headers.
+         * The supplier is called before each request, allowing dynamic header values.
+         * For example, this is useful for OAuth2 tokens that expire and need refreshing.
+         */
+        public OpenAiStreamingLanguageModelBuilder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
+            return this;
+        }
+
+        public OpenAiStreamingLanguageModelBuilder customQueryParams(Map<String, String> customQueryParams) {
+            this.customQueryParams = customQueryParams;
             return this;
         }
 

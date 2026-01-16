@@ -1,51 +1,41 @@
 package dev.langchain4j.model.mistralai;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiModelCard;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiModelResponse;
 import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
 import dev.langchain4j.model.mistralai.spi.MistralAiModelsBuilderFactory;
 import dev.langchain4j.model.output.Response;
+import org.slf4j.Logger;
 import java.time.Duration;
 import java.util.List;
 
 /**
  * Represents a collection of Mistral AI models.
  * You can find description of parameters <a href="https://docs.mistral.ai/api/#operation/listModels">here</a>.
+ *
+ * @see MistralAiModels
  */
 public class MistralAiModels {
 
     private final MistralAiClient client;
     private final Integer maxRetries;
 
-    /**
-     * Constructs a new instance of MistralAiModels.
-     *
-     * @param baseUrl      the base URL of the Mistral AI API. It uses the default value if not specified
-     * @param apiKey       the API key for authentication
-     * @param timeout      the timeout duration for API requests. It uses the default value of 60 seconds if not specified
-     * @param logRequests  a flag whether to log raw HTTP requests
-     * @param logResponses a flag whether to log raw HTTP responses
-     * @param maxRetries   the maximum number of retries for API requests. It uses the default value of 3 if not specified
-     */
-    public MistralAiModels(
-            String baseUrl,
-            String apiKey,
-            Duration timeout,
-            Boolean logRequests,
-            Boolean logResponses,
-            Integer maxRetries) {
+    public MistralAiModels(MistralAiModelsBuilder builder) {
         this.client = MistralAiClient.builder()
-                .baseUrl(getOrDefault(baseUrl, "https://api.mistral.ai/v1"))
-                .apiKey(apiKey)
-                .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
-                .logRequests(getOrDefault(logRequests, false))
-                .logResponses(getOrDefault(logResponses, false))
+                .httpClientBuilder(builder.httpClientBuilder)
+                .baseUrl(getOrDefault(builder.baseUrl, "https://api.mistral.ai/v1"))
+                .apiKey(builder.apiKey)
+                .timeout(builder.timeout)
+                .logRequests(getOrDefault(builder.logRequests, false))
+                .logResponses(getOrDefault(builder.logResponses, false))
+                .logger(builder.logger)
                 .build();
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(builder.maxRetries, 2);
     }
 
     public static MistralAiModels withApiKey(String apiKey) {
@@ -58,7 +48,7 @@ public class MistralAiModels {
      * @return the response containing the list of models
      */
     public Response<List<MistralAiModelCard>> availableModels() {
-        MistralAiModelResponse response = withRetry(client::listModels, maxRetries);
+        MistralAiModelResponse response = withRetryMappingExceptions(client::listModels, maxRetries);
         return Response.from(response.getData());
     }
 
@@ -71,25 +61,27 @@ public class MistralAiModels {
 
     public static class MistralAiModelsBuilder {
 
+        private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
-
         private String apiKey;
-
         private Duration timeout;
-
         private Boolean logRequests;
-
         private Boolean logResponses;
-
+        private Logger logger;
         private Integer maxRetries;
 
         public MistralAiModelsBuilder() {}
+
+        public MistralAiModelsBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
 
         /**
          * @param baseUrl the base URL of the Mistral AI API. It uses the default value if not specified
          * @return {@code this}.
          */
-        public MistralAiModelsBuilder baseUrl(final String baseUrl) {
+        public MistralAiModelsBuilder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
             return this;
         }
@@ -98,7 +90,7 @@ public class MistralAiModels {
          * @param apiKey the API key for authentication
          * @return {@code this}.
          */
-        public MistralAiModelsBuilder apiKey(final String apiKey) {
+        public MistralAiModelsBuilder apiKey(String apiKey) {
             this.apiKey = apiKey;
             return this;
         }
@@ -108,7 +100,7 @@ public class MistralAiModels {
          * specified
          * @return {@code this}.
          */
-        public MistralAiModelsBuilder timeout(final Duration timeout) {
+        public MistralAiModelsBuilder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
         }
@@ -117,7 +109,7 @@ public class MistralAiModels {
          * @param logRequests a flag whether to log raw HTTP requests
          * @return {@code this}.
          */
-        public MistralAiModelsBuilder logRequests(final Boolean logRequests) {
+        public MistralAiModelsBuilder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
         }
@@ -126,34 +118,30 @@ public class MistralAiModels {
          * @param logResponses a flag whether to log raw HTTP responses
          * @return {@code this}.
          */
-        public MistralAiModelsBuilder logResponses(final Boolean logResponses) {
+        public MistralAiModelsBuilder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
+            return this;
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public MistralAiModelsBuilder logger(Logger logger) {
+            this.logger = logger;
             return this;
         }
 
         /**
          * @return {@code this}.
          */
-        public MistralAiModelsBuilder maxRetries(final Integer maxRetries) {
+        public MistralAiModelsBuilder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
             return this;
         }
 
         public MistralAiModels build() {
-            return new MistralAiModels(
-                    this.baseUrl, this.apiKey, this.timeout, this.logRequests, this.logResponses, this.maxRetries);
-        }
-
-        @Override
-        public String toString() {
-            return "MistralAiModelsBuilder(" + "baseUrl=" + this.baseUrl + ", apiKey=" + this.apiKey == null
-                    ? ""
-                    : "*****"
-                            + ", timeout=" + this.timeout
-                            + ", logRequests=" + this.logRequests
-                            + ", logResponses=" + this.logResponses
-                            + ", maxRetries=" + this.maxRetries
-                            + ")";
+            return new MistralAiModels(this);
         }
     }
 }

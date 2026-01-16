@@ -6,15 +6,22 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.azure.ai.openai.OpenAIAsyncClient;
 import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.OpenAIServiceVersion;
-import com.azure.ai.openai.models.*;
+import com.azure.ai.openai.models.ChatCompletionsFunctionToolDefinition;
+import com.azure.ai.openai.models.ChatCompletionsToolDefinition;
+import com.azure.ai.openai.models.ChatRequestMessage;
+import com.azure.ai.openai.models.ChatRequestUserMessage;
+import com.azure.ai.openai.models.ChatResponseMessage;
+import com.azure.ai.openai.models.CompletionsFinishReason;
+import com.azure.core.http.policy.ExponentialBackoffOptions;
+import com.azure.core.http.policy.RetryOptions;
 import com.azure.json.JsonOptions;
 import com.azure.json.JsonReader;
 import com.azure.json.implementation.DefaultJsonReader;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.output.FinishReason;
 import java.io.IOException;
@@ -23,7 +30,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 
+@Execution(ExecutionMode.CONCURRENT)
 class InternalAzureOpenAiHelperTest {
 
     @Test
@@ -36,7 +46,17 @@ class InternalAzureOpenAiHelperTest {
         boolean logRequestsAndResponses = true;
 
         OpenAIClient client = InternalAzureOpenAiHelper.setupSyncClient(
-                endpoint, serviceVersion, apiKey, timeout, maxRetries, null, logRequestsAndResponses, null, null);
+                endpoint,
+                serviceVersion,
+                apiKey,
+                timeout,
+                maxRetries,
+                null,
+                null,
+                null,
+                logRequestsAndResponses,
+                null,
+                null);
 
         assertThat(client).isNotNull();
     }
@@ -51,7 +71,17 @@ class InternalAzureOpenAiHelperTest {
         boolean logRequestsAndResponses = true;
 
         OpenAIAsyncClient client = InternalAzureOpenAiHelper.setupAsyncClient(
-                endpoint, serviceVersion, apiKey, timeout, maxRetries, null, logRequestsAndResponses, null, null);
+                endpoint,
+                serviceVersion,
+                apiKey,
+                timeout,
+                maxRetries,
+                null,
+                null,
+                null,
+                logRequestsAndResponses,
+                null,
+                null);
 
         assertThat(client).isNotNull();
     }
@@ -82,7 +112,7 @@ class InternalAzureOpenAiHelperTest {
 
         List<ChatRequestMessage> openAiMessages = InternalAzureOpenAiHelper.toOpenAiMessages(messages);
 
-        assertThat(openAiMessages).hasSize(messages.size());
+        assertThat(openAiMessages).hasSameSizeAs(messages);
         assertThat(openAiMessages.get(0)).isInstanceOf(ChatRequestUserMessage.class);
     }
 
@@ -92,12 +122,11 @@ class InternalAzureOpenAiHelperTest {
         toolSpecifications.add(ToolSpecification.builder()
                 .name("test-tool")
                 .description("test-description")
-                .parameters(ToolParameters.builder().build())
                 .build());
 
         List<ChatCompletionsToolDefinition> tools = InternalAzureOpenAiHelper.toToolDefinitions(toolSpecifications);
 
-        assertThat(tools).hasSize(toolSpecifications.size());
+        assertThat(tools).hasSameSizeAs(toolSpecifications);
         assertThat(tools.get(0)).isInstanceOf(ChatCompletionsFunctionToolDefinition.class);
         assertThat(((ChatCompletionsFunctionToolDefinition) tools.get(0))
                         .getFunction()
@@ -118,18 +147,22 @@ class InternalAzureOpenAiHelperTest {
 
         String functionName = "current_time";
         String functionArguments = "{}";
-        String responseJson = "{\n" + "        \"role\": \"ASSISTANT\",\n"
-                + "        \"content\": \"Hello\",\n"
-                + "        \"tool_calls\": [\n"
-                + "          {\n"
-                + "            \"type\": \"function\",\n"
-                + "            \"function\": {\n"
-                + "              \"name\": \"current_time\",\n"
-                + "              \"arguments\": \"{}\"\n"
-                + "            }\n"
-                + "          }\n"
-                + "        ]\n"
-                + "      }";
+        // language=json
+        String responseJson =
+                """
+                {
+                        "role": "ASSISTANT",
+                        "content": "Hello",
+                        "tool_calls": [
+                          {
+                            "type": "function",
+                            "function": {
+                              "name": "current_time",
+                              "arguments": "{}"
+                            }
+                          }
+                        ]
+                      }""";
         ChatResponseMessage responseMessage;
         try (JsonReader jsonReader = DefaultJsonReader.fromString(responseJson, new JsonOptions())) {
             responseMessage = ChatResponseMessage.fromJson(jsonReader);
@@ -143,5 +176,93 @@ class InternalAzureOpenAiHelperTest {
                         .name(functionName)
                         .arguments(functionArguments)
                         .build());
+    }
+
+    @Test
+    void resolveRetryOptions_returnsProvidedRetryOptions() {
+        ExponentialBackoffOptions backoff = new ExponentialBackoffOptions();
+        backoff.setMaxRetries(42);
+        RetryOptions custom = new RetryOptions(backoff);
+        RetryOptions result = InternalAzureOpenAiHelper.resolveRetryOptions(5, custom);
+        assertThat(result).isSameAs(custom);
+    }
+
+    @Test
+    void resolveRetryOptions_createsDefaultWithGivenMaxRetries() {
+        RetryOptions result = InternalAzureOpenAiHelper.resolveRetryOptions(7, null);
+        assertThat(result.getExponentialBackoffOptions().getMaxRetries()).isEqualTo(7);
+    }
+
+    @Test
+    void resolveRetryOptions_usesDefaultMaxRetriesIfBothNull() {
+        RetryOptions result = InternalAzureOpenAiHelper.resolveRetryOptions(null, null);
+        assertThat(result.getExponentialBackoffOptions().getMaxRetries()).isEqualTo(2);
+    }
+
+    @Test
+    void resolveRetryOptions_handlesZeroMaxRetries() {
+        RetryOptions result = InternalAzureOpenAiHelper.resolveRetryOptions(0, null);
+        assertThat(result.getExponentialBackoffOptions().getMaxRetries()).isZero();
+    }
+
+    @Test
+    void toOpenAiMessages_shouldConvertBase64ImageToDataUri() {
+        // Given
+        String base64Data =
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+        String mimeType = "image/png";
+        ImageContent imageContent = ImageContent.from(base64Data, mimeType);
+        UserMessage userMessage = UserMessage.from("Describe this image", imageContent);
+        List<ChatMessage> messages = List.of(userMessage);
+
+        // When
+        List<ChatRequestMessage> openAiMessages = InternalAzureOpenAiHelper.toOpenAiMessages(messages);
+
+        // Then - verify conversion succeeds and message is created
+        assertThat(openAiMessages).hasSize(1);
+        assertThat(openAiMessages.get(0)).isInstanceOf(ChatRequestUserMessage.class);
+        ChatRequestUserMessage requestMessage = (ChatRequestUserMessage) openAiMessages.get(0);
+
+        // Verify the content is not null
+        assertThat(requestMessage.getContent()).isNotNull();
+
+        // Verify the content contains the expected data URI format in its string representation
+        // The Azure SDK serializes the content to BinaryData, so we check the JSON representation
+        String contentJson = requestMessage.getContent().toString();
+        String expectedDataUri = "data:" + mimeType + ";base64," + base64Data;
+
+        // The JSON should contain the image URL in data URI format
+        assertThat(contentJson).contains(expectedDataUri).contains("image_url").contains("url");
+    }
+
+    @Test
+    void toOpenAiMessages_shouldKeepHttpUrlAsIs() {
+        // Given
+        String imageUrl = "https://example.com/image.png";
+        ImageContent imageContent = ImageContent.from(imageUrl);
+        UserMessage userMessage = UserMessage.from("Describe this image", imageContent);
+        List<ChatMessage> messages = List.of(userMessage);
+
+        // When
+        List<ChatRequestMessage> openAiMessages = InternalAzureOpenAiHelper.toOpenAiMessages(messages);
+
+        // Then - verify conversion succeeds and message is created
+        assertThat(openAiMessages).hasSize(1);
+        assertThat(openAiMessages.get(0)).isInstanceOf(ChatRequestUserMessage.class);
+        ChatRequestUserMessage requestMessage = (ChatRequestUserMessage) openAiMessages.get(0);
+
+        // Verify the content is not null
+        assertThat(requestMessage.getContent()).isNotNull();
+
+        // Verify the content contains the HTTP URL as-is (not converted to data URI)
+        String contentJson = requestMessage.getContent().toString();
+
+        // The JSON should contain the image URL as provided (HTTP URL, not data URI)
+        assertThat(contentJson)
+                .contains(imageUrl)
+                .contains("image_url")
+                .contains("url")
+                .doesNotContain("data:image")
+                .doesNotContain("base64");
     }
 }

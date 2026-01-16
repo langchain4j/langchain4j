@@ -11,15 +11,11 @@ import org.junit.jupiter.api.Test;
 class StructuredPromptProcessorTest {
 
     @StructuredPrompt("Hello, my name is {{name}}")
-    static class Greeting {
-
-        private String name;
-    }
+    record Greeting(String name) {}
 
     @Test
     void prompt_with_single_variable() {
-        Greeting structuredPrompt = new Greeting();
-        structuredPrompt.name = "Klaus";
+        Greeting structuredPrompt = new Greeting("Klaus");
 
         Prompt prompt = toPrompt(structuredPrompt);
 

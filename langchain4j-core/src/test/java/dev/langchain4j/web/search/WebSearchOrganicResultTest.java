@@ -2,7 +2,7 @@ package dev.langchain4j.web.search;
 
 import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 
 import dev.langchain4j.data.document.Metadata;
 import java.net.URI;
@@ -22,7 +22,7 @@ class WebSearchOrganicResultTest {
         assertThat(webSearchOrganicResult.url()).hasToString("https://google.com");
         assertThat(webSearchOrganicResult.snippet()).isNull();
         assertThat(webSearchOrganicResult.content()).isNull();
-        assertThat(webSearchOrganicResult.metadata()).isNull();
+        assertThat(webSearchOrganicResult.metadata()).isEmpty();
     }
 
     @Test
@@ -34,11 +34,11 @@ class WebSearchOrganicResultTest {
         assertThat(webSearchOrganicResult.url()).hasToString("https://google.com");
         assertThat(webSearchOrganicResult.snippet()).isEqualTo("snippet");
         assertThat(webSearchOrganicResult.content()).isNull();
-        assertThat(webSearchOrganicResult.metadata()).isNull();
+        assertThat(webSearchOrganicResult.metadata()).isEmpty();
 
         assertThat(webSearchOrganicResult)
                 .hasToString(
-                        "WebSearchOrganicResult{title='title', url=https://google.com, snippet='snippet', content='null', metadata=null}");
+                        "WebSearchOrganicResult{title='title', url=https://google.com, snippet='snippet', content='null', metadata={}}");
     }
 
     @Test
@@ -50,11 +50,11 @@ class WebSearchOrganicResultTest {
         assertThat(webSearchOrganicResult.url()).hasToString("https://google.com");
         assertThat(webSearchOrganicResult.snippet()).isNull();
         assertThat(webSearchOrganicResult.content()).isEqualTo("content");
-        assertThat(webSearchOrganicResult.metadata()).isNull();
+        assertThat(webSearchOrganicResult.metadata()).isEmpty();
 
         assertThat(webSearchOrganicResult)
                 .hasToString(
-                        "WebSearchOrganicResult{title='title', url=https://google.com, snippet='null', content='content', metadata=null}");
+                        "WebSearchOrganicResult{title='title', url=https://google.com, snippet='null', content='content', metadata={}}");
     }
 
     @Test
@@ -158,6 +158,39 @@ class WebSearchOrganicResultTest {
     }
 
     @Test
+    void should_return_textSegment_when_metadata_is_null_with_all_factories_and_constructors() {
+        URI url = URI.create("https://google.com");
+
+        // 1. Using factory method with content and metadata (both null)
+        WebSearchOrganicResult fromWithContentAndMetadata =
+                WebSearchOrganicResult.from("title", url, "snippet", null, null);
+
+        // 2. Using factory method without content (metadata is null)
+        WebSearchOrganicResult fromWithoutContent = WebSearchOrganicResult.from(
+                "title", url, "snippet", null // metadata
+                );
+
+        // 3. Using constructor directly
+        WebSearchOrganicResult usingConstructor = new WebSearchOrganicResult("title", url, "snippet", null, null);
+
+        // Expected text
+        String expectedText = "title\nsnippet";
+
+        // Expected metadata
+        Metadata expectedMetadata = Metadata.from(Map.of("url", "https://google.com"));
+
+        // Assertions
+        assertThat(fromWithContentAndMetadata.toTextSegment().text()).isEqualTo(expectedText);
+        assertThat(fromWithContentAndMetadata.toTextSegment().metadata()).isEqualTo(expectedMetadata);
+
+        assertThat(fromWithoutContent.toTextSegment().text()).isEqualTo(expectedText);
+        assertThat(fromWithoutContent.toTextSegment().metadata()).isEqualTo(expectedMetadata);
+
+        assertThat(usingConstructor.toTextSegment().text()).isEqualTo(expectedText);
+        assertThat(usingConstructor.toTextSegment().metadata()).isEqualTo(expectedMetadata);
+    }
+
+    @Test
     void should_return_document() {
         WebSearchOrganicResult webSearchOrganicResult = WebSearchOrganicResult.from(
                 "title",
@@ -177,9 +210,10 @@ class WebSearchOrganicResultTest {
 
     @Test
     void should_throw_illegalArgumentException_without_title() {
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> WebSearchOrganicResult.from(null, URI.create("https://google.com"), "snippet", "content"));
+        IllegalArgumentException exception = assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(
+                        () -> WebSearchOrganicResult.from(null, URI.create("https://google.com"), "snippet", "content"))
+                .actual();
         assertThat(exception).hasMessage("title cannot be null or blank");
     }
 }

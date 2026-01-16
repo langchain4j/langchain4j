@@ -3,8 +3,8 @@ package dev.langchain4j.model.jlama;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class JlamaChatModelIT {
 
     static File tmpDir;
-    static ChatLanguageModel model;
+    static ChatModel model;
 
     @BeforeAll
     static void setup() {
@@ -40,10 +40,10 @@ class JlamaChatModelIT {
         List<ChatMessage> messages = singletonList(UserMessage.from("When is the best time of year to visit Japan?"));
 
         // when
-        Response<AiMessage> response = model.generate(messages);
+        ChatResponse response = model.chat(messages);
 
         // then
-        AiMessage aiMessage = response.content();
+        AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage.text()).isNotBlank();
 
         assertThat(response.tokenUsage()).isNotNull();

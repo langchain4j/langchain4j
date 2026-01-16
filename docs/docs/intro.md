@@ -14,8 +14,8 @@ Here's how:
    LLM providers (like OpenAI or Google Vertex AI) and embedding (vector) stores (such as Pinecone or Milvus)
    use proprietary APIs. LangChain4j offers a unified API to avoid the need for learning and implementing specific APIs for each of them.
    To experiment with different LLMs or embedding stores, you can easily switch between them without the need to rewrite your code.
-   LangChain4j currently supports [15+ popular LLM providers](/integrations/language-models/)
-   and [20+ embedding stores](/integrations/embedding-stores/).
+   LangChain4j currently supports [20+ popular LLM providers](/integrations/language-models/)
+   and [30+ embedding stores](/integrations/embedding-stores/).
 2. **Comprehensive Toolbox:**
    Since early 2023, the community has been building numerous LLM-powered applications,
    identifying common abstractions, patterns, and techniques. LangChain4j has refined these into a ready to use package.
@@ -40,18 +40,20 @@ The library is under active development. While some features are still being wor
 the core functionality is in place, allowing you to start building LLM-powered apps now!
 
 For easier integration, LangChain4j also includes integration with
-[Quarkus](/tutorials/quarkus-integration) and [Spring Boot](/tutorials/spring-boot-integration).
+[Quarkus](/tutorials/quarkus-integration), [Spring Boot](/tutorials/spring-boot-integration), [Helidon](/tutorials/helidon-integration) and [Micronaut](/tutorials/micronaut-integration)
 
 
 ## LangChain4j Features
-- Integration with [15+ LLM providers](/integrations/language-models)
-- Integration with [20+ embedding (vector) stores](/integrations/embedding-stores)
-- Integration with [15+ embedding models](/category/embedding-models)
-- Integration with [5 image generation models](/category/image-models)
-- Integration with [2 scoring (re-ranking) models](/category/scoring-reranking-models)
+- Integration with [20+ LLM providers](/integrations/language-models)
+- Integration with [30+ embedding (vector) stores](/integrations/embedding-stores)
+- Integration with [20+ embedding models](/category/embedding-models)
+- Integration with [5+ chat memory stores](/category/chat-memory-stores) 
+- Integration with [5+ image generation models](/category/image-models)
+- Integration with [5+ scoring (re-ranking) models](/category/scoring-reranking-models)
 - Integration with one moderation model (OpenAI)
 - Support for texts and images as inputs (multimodality)
 - [AI Services](/tutorials/ai-services) (high-level LLM API)
+- [Agents and Agentic AI](/tutorials/agents)
 - Prompt templates
 - Implementation of persistent and in-memory [chat memory](/tutorials/chat-memory) algorithms: message window and token window
 - [Streaming of responses from LLMs](/tutorials/response-streaming)
@@ -79,7 +81,7 @@ For easier integration, LangChain4j also includes integration with
 ## 2 levels of abstraction
 LangChain4j operates on two levels of abstraction:
 - Low level. At this level, you have the most freedom and access to all the low-level components such as
-[ChatLanguageModel](/tutorials/chat-and-language-models), `UserMessage`, `AiMessage`, `EmbeddingStore`, `Embedding`, etc.
+[ChatModel](/tutorials/chat-and-language-models), `UserMessage`, `AiMessage`, `EmbeddingStore`, `Embedding`, etc.
 These are the "primitives" of your LLM-powered application.
 You have complete control over how to combine them, but you will need to write more glue code.
 - High level. At this level, you interact with LLMs using high-level APIs like [AI Services](/tutorials/ai-services),
@@ -91,7 +93,7 @@ You still have the flexibility to adjust and fine-tune the behavior, but it is d
 
 ## LangChain4j Library Structure
 LangChain4j features a modular design, comprising:
-- The `langchain4j-core` module, which defines core abstractions (such as `ChatLanguageModel` and `EmbeddingStore`) and their APIs.
+- The `langchain4j-core` module, which defines core abstractions (such as `ChatModel` and `EmbeddingStore`) and their APIs.
 - The main `langchain4j` module, containing useful tools like document loaders, [chat memory](/tutorials/chat-memory) implementations as well as a high-level features like [AI Services](/tutorials/ai-services).
 - A wide array of `langchain4j-{integration}` modules, each providing integration with various LLM providers and embedding stores into LangChain4j.
   You can use the `langchain4j-{integration}` modules independently. For additional features, simply import the main `langchain4j` dependency.
@@ -104,7 +106,6 @@ LangChain4j features a modular design, comprising:
 - [Community integrations](https://github.com/langchain4j/langchain4j-community)
 - [Examples](https://github.com/langchain4j/langchain4j-examples)
 - [Community resources](https://github.com/langchain4j/langchain4j-community-resources)
-- [In-process embeddings](https://github.com/langchain4j/langchain4j-embeddings)
 
 
 ## Use Cases

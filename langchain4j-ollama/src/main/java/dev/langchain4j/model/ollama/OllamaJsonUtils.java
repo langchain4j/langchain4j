@@ -3,9 +3,11 @@ package dev.langchain4j.model.ollama;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.Internal;
 
 import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 
+@Internal
 class OllamaJsonUtils {
 
     private OllamaJsonUtils() throws InstantiationException {
@@ -15,9 +17,20 @@ class OllamaJsonUtils {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
             .enable(INDENT_OUTPUT);
 
+    private static final ObjectMapper OBJECT_MAPPER_WITHOUT_IDENT = new ObjectMapper()
+            .disable(INDENT_OUTPUT);
+
     static String toJson(Object object) {
         try {
             return OBJECT_MAPPER.writeValueAsString(object);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    static String toJsonWithoutIdent(Object object) {
+        try {
+            return OBJECT_MAPPER_WITHOUT_IDENT.writeValueAsString(object);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }

@@ -60,7 +60,8 @@ abstract class PgVectorFilterMapper {
     }
 
     private String mapContains(ContainsString containsString) {
-        String key = formatKey(containsString.key(), containsString.comparisonValue().getClass());
+        String key =
+                formatKey(containsString.key(), containsString.comparisonValue().getClass());
         return format("%s is not null and %s ~ %s", key, key, formatValue(containsString.comparisonValue()));
     }
 
@@ -133,14 +134,26 @@ abstract class PgVectorFilterMapper {
     abstract String formatKeyAsString(String key);
 
     String formatValue(Object value) {
-        if (value instanceof String || value instanceof UUID) {
+        if (value instanceof String stringValue) {
+            final String escapedValue = stringValue.replace("'", "''");
+            return "'" + escapedValue + "'";
+        } else if (value instanceof UUID) {
             return "'" + value + "'";
         } else {
             return value.toString();
         }
     }
 
+    String formatCollectionValue(Object value) {
+        if (value instanceof String stringValue) {
+            final String escapedValue = stringValue.replace("'", "''");
+            return '\'' + escapedValue + '\'';
+        } else {
+            return '\'' + value.toString() + '\'';
+        }
+    }
+
     String formatValuesAsString(Collection<?> values) {
-        return "(" + values.stream().map(v -> format("'%s'", v)).collect(Collectors.joining(",")) + ")";
+        return "(" + values.stream().map(this::formatCollectionValue).collect(Collectors.joining(",")) + ")";
     }
 }

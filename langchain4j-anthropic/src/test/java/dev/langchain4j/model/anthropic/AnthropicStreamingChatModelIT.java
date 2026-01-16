@@ -1,122 +1,55 @@
 package dev.langchain4j.model.anthropic;
 
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.OBJECT;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.property;
-import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.internal.Utils.readBytes;
-import static dev.langchain4j.model.anthropic.AnthropicChatModelIT.CAT_IMAGE_URL;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelIT.randomString;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
-import static dev.langchain4j.model.output.FinishReason.STOP;
-import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_HAIKU_4_5_20251001;
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_SONNET_4_5_20250929;
 import static java.lang.System.getenv;
 import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
-import static java.util.Collections.singletonMap;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.TestStreamingResponseHandler;
+import dev.langchain4j.http.client.MockHttpClientBuilder;
+import dev.langchain4j.http.client.SpyingHttpClient;
+import dev.langchain4j.http.client.jdk.JdkHttpClient;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.time.Duration;
-import java.util.Base64;
 import java.util.List;
-import org.jetbrains.annotations.NotNull;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
+@EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".+")
 class AnthropicStreamingChatModelIT {
 
-    StreamingChatLanguageModel model = AnthropicStreamingChatModel.builder()
-            .apiKey(getenv("ANTHROPIC_API_KEY"))
-            .maxTokens(20)
-            .logRequests(true)
-            .logResponses(true)
-            .build();
-
-    ToolSpecification calculator = ToolSpecification.builder()
-            .name("calculator")
-            .description("returns a sum of two numbers")
-            .addParameter("first", INTEGER)
-            .addParameter("second", INTEGER)
-            .build();
-
-    ToolSpecification weather = ToolSpecification.builder()
-            .name("weather")
-            .description("returns a weather forecast for a given location")
-            // TODO simplify defining nested properties
-            .addParameter(
-                    "location", OBJECT, property("properties", singletonMap("city", singletonMap("type", "string"))))
-            .build();
-
-    @Test
-    void should_stream_answer_and_return_token_usage_and_finish_reason_stop() {
-
-        // given
-        String userMessage = "What is the capital of Germany?";
-
-        // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(userMessage, handler);
-        Response<AiMessage> response = handler.get();
-
-        // then
-        assertThat(response.content().text()).contains("Berlin");
-
-        TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(14);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(1);
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
-
-        assertThat(response.finishReason()).isEqualTo(STOP);
-    }
-
-    @Test
-    void should_accept_base64_image() {
-
-        // given
-        StreamingChatLanguageModel visionModel = AnthropicStreamingChatModel.builder()
-                .apiKey(getenv("ANTHROPIC_API_KEY"))
-                .maxTokens(20)
-                .logRequests(false) // base64-encoded images are huge
-                .logResponses(true)
-                .build();
-
-        String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
-        ImageContent imageContent = ImageContent.from(base64Data, "image/png");
-        UserMessage userMessage = UserMessage.from(imageContent);
-
-        // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        visionModel.generate(userMessage, handler);
-        Response<AiMessage> response = handler.get();
-
-        // then
-        assertThat(response.content().text()).containsIgnoringCase("cat");
-    }
-
     @ParameterizedTest
-    @EnumSource(AnthropicChatModelName.class)
+    @EnumSource(
+            value = AnthropicChatModelName.class,
+            mode = EXCLUDE,
+            names = {"CLAUDE_OPUS_4_20250514" // Run manually before release. Expensive to run very often.
+            })
     void should_support_all_enum_model_names(AnthropicChatModelName modelName) {
 
         // given
-        StreamingChatLanguageModel model = AnthropicStreamingChatModel.builder()
+        StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .apiKey(getenv("ANTHROPIC_API_KEY"))
                 .modelName(modelName)
                 .maxTokens(1)
@@ -127,19 +60,19 @@ class AnthropicStreamingChatModelIT {
         String userMessage = "Hi";
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(userMessage, handler);
-        Response<AiMessage> response = handler.get();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(userMessage, handler);
+        ChatResponse response = handler.get();
 
         // then
-        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.aiMessage().text()).isNotBlank();
     }
 
     @Test
     void all_parameters() {
 
         // given
-        StreamingChatLanguageModel model = AnthropicStreamingChatModel.builder()
+        StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .baseUrl("https://api.anthropic.com/v1/")
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .version("2023-06-01")
@@ -157,12 +90,12 @@ class AnthropicStreamingChatModelIT {
         UserMessage userMessage = userMessage("Hi");
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(userMessage, handler);
-        Response<AiMessage> response = handler.get();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(List.of(userMessage), handler);
+        ChatResponse response = handler.get();
 
         // then
-        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.aiMessage().text()).isNotBlank();
     }
 
     @Test
@@ -184,8 +117,8 @@ class AnthropicStreamingChatModelIT {
                 new UserMessage(TextContent.from("What types of messages are supported in LangChain?"));
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(asList(userMessage, systemMessage), handler);
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(List.of(userMessage, systemMessage), handler);
         AnthropicTokenUsage responseAnthropicTokenUsage =
                 (AnthropicTokenUsage) handler.get().tokenUsage();
 
@@ -215,12 +148,18 @@ class AnthropicStreamingChatModelIT {
                 .parameters(JsonObjectSchema.builder()
                         .addIntegerProperty("first")
                         .addIntegerProperty("second")
+                        .required("first", "second")
                         .build())
                 .build();
 
+        ChatRequest request = ChatRequest.builder()
+                .messages(userMessage)
+                .toolSpecifications(toolSpecification)
+                .build();
+
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(singletonList(userMessage), List.of(toolSpecification), handler);
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(request, handler);
         AnthropicTokenUsage responseAnthropicTokenUsage =
                 (AnthropicTokenUsage) handler.get().tokenUsage();
 
@@ -232,219 +171,223 @@ class AnthropicStreamingChatModelIT {
     @Test
     void should_fail_to_create_without_api_key() {
 
-        assertThatThrownBy(() -> AnthropicStreamingChatModel.withApiKey(null))
+        assertThatThrownBy(
+                        () -> AnthropicStreamingChatModel.builder().apiKey(null).build())
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Anthropic API key must be defined. "
-                        + "It can be generated here: https://console.anthropic.com/settings/keys");
+                .hasMessage("apiKey cannot be null or blank");
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 10, 100})
+    void should_handle_timeout(int millis) throws Exception {
+
+        // given
+        Duration timeout = Duration.ofMillis(millis);
+
+        StreamingChatModel model = AnthropicStreamingChatModel.builder()
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(CLAUDE_HAIKU_4_5_20251001)
+                .logRequests(true)
+                .logResponses(true)
+                .timeout(timeout)
+                .build();
+
+        CompletableFuture<Throwable> futureError = new CompletableFuture<>();
+
+        // when
+        model.chat("hi", new StreamingChatResponseHandler() {
+
+            @Override
+            public void onPartialResponse(String partialResponse) {
+                futureError.completeExceptionally(new RuntimeException("onPartialResponse should not be called"));
+            }
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                futureError.completeExceptionally(new RuntimeException("onCompleteResponse should not be called"));
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                futureError.complete(error);
+            }
+        });
+
+        Throwable error = futureError.get(5, SECONDS);
+
+        assertThat(error).isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class);
     }
 
     @Test
-    void should_execute_a_tool_then_stream_answer() {
+    void should_work_with_userId() {
+        // given
+        StreamingChatModel model = AnthropicStreamingChatModel.builder()
+                .apiKey(getenv("ANTHROPIC_API_KEY"))
+                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .userId("test-user-12345")
+                .maxTokens(10)
+                .build();
+
+        String userMessage = "Say hello";
+
+        // when
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(userMessage, handler);
+        ChatResponse response = handler.get();
+
+        // then
+        assertThat(response.aiMessage().text()).isNotBlank();
+    }
+
+    @Test
+    void should_set_custom_parameters_and_get_raw_response() {
 
         // given
-        StreamingChatLanguageModel model = AnthropicStreamingChatModel.builder()
+        Map<String, Object> customParameters =
+                Map.of("context_management", Map.of("edits", List.of(Map.of("type", "clear_tool_uses_20250919"))));
+
+        SpyingHttpClient spyingHttpClient =
+                new SpyingHttpClient(JdkHttpClient.builder().build());
+
+        StreamingChatModel model = AnthropicStreamingChatModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
-                .temperature(0.0)
+                .modelName(CLAUDE_SONNET_4_5_20250929)
+                .beta("context-management-2025-06-27")
+                .customParameters(customParameters)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
 
-        UserMessage userMessage = userMessage("2+2=?");
-        List<ToolSpecification> toolSpecifications = singletonList(calculator);
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("What is the capital of Germany?"))
+                .build();
 
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(singletonList(userMessage), toolSpecifications, handler);
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(chatRequest, handler);
+        ChatResponse chatResponse = handler.get();
 
         // then
-        Response<AiMessage> response = handler.get();
-        AiMessage aiMessage = response.content();
+        assertThat(chatResponse.aiMessage().text()).contains("Berlin");
 
-        List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
-        assertThat(toolExecutionRequests).hasSize(1);
+        assertThat(spyingHttpClient.request().body().contains("context_management"));
 
-        ToolExecutionRequest toolExecutionRequest = toolExecutionRequests.get(0);
-        assertThat(toolExecutionRequest.name()).isEqualTo("calculator");
-        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
-
-        assertTokenUsage(response.tokenUsage());
-        assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
-
-        // given
-        ToolExecutionResultMessage toolExecutionResultMessage =
-                ToolExecutionResultMessage.from(toolExecutionRequest, "4");
-        List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage);
-
-        // when
-        TestStreamingResponseHandler<AiMessage> secondHandler = new TestStreamingResponseHandler<>();
-        model.generate(messages, toolSpecifications, secondHandler);
-        Response<AiMessage> secondResponse = secondHandler.get();
-
-        // then
-        AiMessage secondAiMessage = secondResponse.content();
-        assertThat(secondAiMessage.text()).contains("4");
-        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
-
-        assertTokenUsage(secondResponse.tokenUsage());
-        assertThat(secondResponse.finishReason()).isEqualTo(STOP);
+        AnthropicChatResponseMetadata metadata = (AnthropicChatResponseMetadata) chatResponse.metadata();
+        assertThat(metadata.rawHttpResponse().headers()).containsKey("anthropic-organization-id");
+        assertThat(metadata.rawHttpResponse().body()).isNull();
+        assertThat(metadata.rawServerSentEvents()).isNotEmpty();
     }
 
     @Test
-    void must_execute_a_tool() {
+    void should_send_strict_true_in_tools_definition_streaming() {
+        SpyingHttpClient spyingHttpClient =
+                new SpyingHttpClient(JdkHttpClient.builder().build());
 
-        // given
-        StreamingChatLanguageModel model = AnthropicStreamingChatModel.builder()
+        AnthropicStreamingChatModel model = AnthropicStreamingChatModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .modelName(CLAUDE_SONNET_4_5_20250929)
                 .temperature(0.0)
+                .disableParallelToolUse(true)
+                .beta("structured-outputs-2025-11-13")
+                .strictTools(true)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
 
-        UserMessage userMessage = userMessage("2+2=?");
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        ToolSpecification weatherTool = ToolSpecification.builder()
+                .name("get_weather")
+                .description("Get the current weather in a given location")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("location")
+                        .required("location")
+                        .build())
+                .build();
 
-        // when
-        model.generate(singletonList(userMessage), calculator, handler);
+        ChatRequest request = ChatRequest.builder()
+                .messages(UserMessage.from("What's the weather in Munich? "
+                        + "When calling tools, include a parameter unit='celsius' in the tool input."))
+                .toolSpecifications(weatherTool)
+                .build();
 
-        // then
-        Response<AiMessage> response = handler.get();
-        AiMessage aiMessage = response.content();
-        assertThat(aiMessage.text()).isNull();
+        // when: stream call (same pattern as should_cache_tools)
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(request, handler);
+        ChatResponse chatResponse = handler.get();
 
-        List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
-        assertThat(toolExecutionRequests).hasSize(1);
+        String body = spyingHttpClient.request().body();
 
-        ToolExecutionRequest toolExecutionRequest = toolExecutionRequests.get(0);
-        assertThat(toolExecutionRequest.name()).isEqualTo("calculator");
-        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
+        assertThat(body)
+                .contains("\"name\" : \"get_weather\"")
+                .contains("\"strict\" : true")
+                .contains("\"additionalProperties\" : false");
 
-        assertTokenUsage(response.tokenUsage());
-        assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
+        AiMessage aiMessage = chatResponse.aiMessage();
+        List<ToolExecutionRequest> toolCalls = aiMessage.toolExecutionRequests();
+        assertThat(toolCalls).hasSize(1);
+
+        ToolExecutionRequest call = toolCalls.get(0);
+        assertThat(call.name()).isEqualTo("get_weather");
+
+        assertThat(call.arguments()).contains("\"location\"").doesNotContain("\"unit\"");
     }
 
     @Test
-    void should_execute_multiple_tools_in_parallel_then_answer() {
+    void should_return_server_tool_results_in_attributes_when_enabled_streaming() throws Exception {
 
         // given
-        StreamingChatLanguageModel model = AnthropicStreamingChatModel.builder()
+        AnthropicServerTool webSearchTool = AnthropicServerTool.builder()
+                .type("web_search_20250305")
+                .name("web_search")
+                .addAttribute("max_uses", 3)
+                .build();
+
+        StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
-                .temperature(0.0)
+                .modelName(CLAUDE_SONNET_4_5_20250929)
+                .serverTools(webSearchTool)
+                .returnServerToolResults(true)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
 
-        SystemMessage systemMessage =
-                systemMessage("Do not think, nor explain step by step what you do. Output the result only.");
-        UserMessage userMessage = userMessage("How much is 2+2 and 3+3? Call tools in parallel!");
-        List<ToolSpecification> toolSpecifications = singletonList(calculator);
-
-        // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(asList(systemMessage, userMessage), toolSpecifications, handler);
-
-        // then
-        Response<AiMessage> response = handler.get();
-        AiMessage aiMessage = response.content();
-
-        assertThat(aiMessage.hasToolExecutionRequests()).isTrue();
-        List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
-        assertThat(toolExecutionRequests).hasSize(2);
-
-        ToolExecutionRequest toolExecutionRequest1 =
-                aiMessage.toolExecutionRequests().get(0);
-        assertThat(toolExecutionRequest1.name()).isEqualTo("calculator");
-        assertThat(toolExecutionRequest1.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
-
-        ToolExecutionRequest toolExecutionRequest2 =
-                aiMessage.toolExecutionRequests().get(1);
-        assertThat(toolExecutionRequest2.name()).isEqualTo("calculator");
-        assertThat(toolExecutionRequest2.arguments()).isEqualToIgnoringWhitespace("{\"first\": 3, \"second\": 3}");
-
-        assertTokenUsage(response.tokenUsage());
-        assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
-
-        // given
-        ToolExecutionResultMessage toolExecutionResultMessage1 =
-                ToolExecutionResultMessage.from(toolExecutionRequest1, "4");
-        ToolExecutionResultMessage toolExecutionResultMessage2 =
-                ToolExecutionResultMessage.from(toolExecutionRequest2, "6");
-        List<ChatMessage> messages =
-                asList(systemMessage, userMessage, aiMessage, toolExecutionResultMessage1, toolExecutionResultMessage2);
-
-        // when
-        TestStreamingResponseHandler<AiMessage> secondHandler = new TestStreamingResponseHandler<>();
-        model.generate(messages, toolSpecifications, secondHandler);
-        Response<AiMessage> secondResponse = secondHandler.get();
-
-        // then
-        AiMessage secondAiMessage = secondResponse.content();
-        assertThat(secondAiMessage.text()).contains("4", "6");
-        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
-
-        assertTokenUsage(secondResponse.tokenUsage());
-        assertThat(secondResponse.finishReason()).isEqualTo(STOP);
-    }
-
-    @Test
-    void should_execute_a_tool_with_nested_properties_then_answer() {
-
-        // given
-        StreamingChatLanguageModel model = AnthropicStreamingChatModel.builder()
-                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
-                .temperature(0.0)
-                .logRequests(true)
-                .logResponses(true)
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("What is the weather in Munich right now?"))
                 .build();
 
-        UserMessage userMessage = userMessage("What is the weather in Berlin in Celsius?");
-        List<ToolSpecification> toolSpecifications = singletonList(weather);
-
         // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(singletonList(userMessage), toolSpecifications, handler);
+        // Note: Using simple handler instead of TestStreamingChatResponseHandler because
+        // server tools cause text to be split across multiple content blocks (similar to
+        // tool_use), making the strict text equality assertion invalid
+        // Didn't want to include anthropic specific check in generic TestStreamingChatResponseHandler
+        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
+        model.chat(chatRequest, new StreamingChatResponseHandler() {
+            @Override
+            public void onPartialResponse(String partialResponse) {}
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                future.complete(completeResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                future.completeExceptionally(error);
+            }
+        });
+        ChatResponse chatResponse = future.get(60, SECONDS);
 
         // then
-        Response<AiMessage> response = handler.get();
-        AiMessage aiMessage = response.content();
-        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.text()).isNotBlank();
 
-        ToolExecutionRequest toolExecutionRequest =
-                aiMessage.toolExecutionRequests().get(0);
-        assertThat(toolExecutionRequest.id()).isNotBlank();
-        assertThat(toolExecutionRequest.name()).isEqualTo("weather");
-        assertThat(toolExecutionRequest.arguments())
-                .isEqualToIgnoringWhitespace("{\"location\": {\"city\": \"Berlin\"}}");
+        List<AnthropicServerToolResult> results = aiMessage.attribute("server_tool_results", List.class);
+        assertThat(results).isNotEmpty();
 
-        assertTokenUsage(response.tokenUsage());
-        assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
-
-        // given
-        ToolExecutionResultMessage toolExecutionResultMessage =
-                ToolExecutionResultMessage.from(toolExecutionRequest, "Super hot, 42 Celsius");
-        List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage);
-
-        // when
-        TestStreamingResponseHandler<AiMessage> secondHandler = new TestStreamingResponseHandler<>();
-        model.generate(messages, toolSpecifications, secondHandler);
-        Response<AiMessage> secondResponse = secondHandler.get();
-
-        // then
-        AiMessage secondAiMessage = secondResponse.content();
-        assertThat(secondAiMessage.text()).contains("42");
-        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
-
-        assertTokenUsage(secondResponse.tokenUsage());
-        assertThat(secondResponse.finishReason()).isEqualTo(STOP);
-    }
-
-    private static void assertTokenUsage(@NotNull TokenUsage tokenUsage) {
-        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+        AnthropicServerToolResult result = results.get(0);
+        assertThat(result.type()).isEqualTo("web_search_tool_result");
+        assertThat(result.toolUseId()).isNotBlank();
+        assertThat(result.content()).isNotNull();
     }
 }

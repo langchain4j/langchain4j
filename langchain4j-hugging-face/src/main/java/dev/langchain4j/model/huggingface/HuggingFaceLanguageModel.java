@@ -1,6 +1,6 @@
 package dev.langchain4j.model.huggingface;
 
-import static dev.langchain4j.model.huggingface.HuggingFaceModelName.TII_UAE_FALCON_7B_INSTRUCT;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 import dev.langchain4j.model.huggingface.client.HuggingFaceClient;
@@ -14,6 +14,17 @@ import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.output.Response;
 import java.time.Duration;
 
+/**
+ * @deprecated Please use {@code OpenAiChatModel} from the {@code langchain4j-open-ai} module instead:
+ * <pre>
+ * ChatModel model = OpenAiChatModel.builder()
+ *     .apiKey(System.getenv("HF_API_KEY"))
+ *     .baseUrl("https://router.huggingface.co/v1")
+ *     .modelName("HuggingFaceTB/SmolLM3-3B:hf-inference")
+ *     .build();
+ * </pre>
+ */
+@Deprecated(forRemoval = true, since = "1.7.0-beta13")
 public class HuggingFaceLanguageModel implements LanguageModel {
 
     private final HuggingFaceClient client;
@@ -118,7 +129,7 @@ public class HuggingFaceLanguageModel implements LanguageModel {
 
         private String baseUrl;
         private String accessToken;
-        private String modelId = TII_UAE_FALCON_7B_INSTRUCT;
+        private String modelId;
         private Duration timeout = Duration.ofSeconds(15);
         private Double temperature;
         private Integer maxNewTokens;
@@ -174,10 +185,7 @@ public class HuggingFaceLanguageModel implements LanguageModel {
         }
 
         public HuggingFaceLanguageModel build() {
-            if (accessToken == null || accessToken.trim().isEmpty()) {
-                throw new IllegalArgumentException(
-                        "HuggingFace access token must be defined. It can be generated here: https://huggingface.co/settings/tokens");
-            }
+            ensureNotBlank(accessToken, "%s", "HuggingFace access token must be defined. It can be generated here: https://huggingface.co/settings/tokens");
             return new HuggingFaceLanguageModel(this);
         }
     }

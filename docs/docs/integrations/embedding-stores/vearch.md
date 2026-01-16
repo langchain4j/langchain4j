@@ -1,5 +1,5 @@
 ---
-sidebar_position: 24
+sidebar_position: 25
 ---
 
 # Vearch
@@ -19,7 +19,7 @@ Since `1.0.0-alpha1`, `langchain4j-vearch` has migrated to `langchain4j-communit
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-vearch</artifactId>
-    <version>1.0.0-beta1</version>
+    <version>1.10.0-beta18</version>
 </dependency>
 ```
 
@@ -29,7 +29,7 @@ Since `1.0.0-alpha1`, `langchain4j-vearch` has migrated to `langchain4j-communit
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-community-vearch</artifactId>
-    <version>1.0.0-beta1</version>
+    <version>${latest version here}</version>
 </dependency>
 ```
 
@@ -40,8 +40,8 @@ Or, you can use BOM to manage dependencies consistently:
     <dependency>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-community-bom</artifactId>
-        <version>1.0.0-beta1</version>
-        <typ>pom</typ>
+        <version>${latest version here}</version>
+        <type>pom</type>
         <scope>import</scope>
     </dependency>
 </dependencyManagement>

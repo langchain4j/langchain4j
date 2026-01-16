@@ -1,9 +1,7 @@
 package dev.langchain4j.service.tool;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-import com.google.gson.internal.LinkedTreeMap;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -20,12 +18,13 @@ class ToolExecutionRequestUtilTest implements WithAssertions {
         ToolExecutionRequest request = ToolExecutionRequest.builder()
                 .id("id")
                 .name("name")
-                .arguments("{\"foo\":\"bar\", \"qux\": 12}")
+                .arguments("{\"foo\":\"bar\", \"qux\": 12, \"abc\": 1.23}")
                 .build();
 
         assertThat(ToolExecutionRequestUtil.argumentsAsMap(request.arguments()))
                 .containsEntry("foo", "bar")
-                .containsEntry("qux", 12.0);
+                .containsEntry("qux", 12)
+                .containsEntry("abc", 1.23);
     }
 
     @Test
@@ -38,7 +37,85 @@ class ToolExecutionRequestUtilTest implements WithAssertions {
 
         assertThat(ToolExecutionRequestUtil.argumentsAsMap(request.arguments()))
                 .containsEntry("foo", "bar")
-                .containsEntry("qux", 12.0);
+                .containsEntry("qux", 12);
+    }
+
+    @Test
+    void argument_leading_trailing_quotes() {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("id")
+                .name("name")
+                .arguments("\"{\"foo\":\"bar\"}\"")
+                .build();
+
+        assertThat(ToolExecutionRequestUtil.argumentsAsMap(request.arguments())).containsEntry("foo", "bar");
+    }
+
+    @Test
+    void argumentsAsMap_should_parse_arguments_containing_escaped_double_quotes_1() {
+
+        // given JSON containing escaped double quotes (\")
+        String arguments = """
+                {"arg0":"SELECT COUNT(A) FROM \\"Samples\\".\\"samples.example.com\\".\\"zip_lookup.csv\\""}
+                """;
+
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("id")
+                .name("name")
+                .arguments(arguments)
+                .build();
+
+        // when
+        Map<String, Object> argumentsMap = ToolExecutionRequestUtil.argumentsAsMap(request.arguments());
+
+        // then result does not contain escaping
+        assertThat(argumentsMap).containsEntry("arg0", """
+                SELECT COUNT(A) FROM "Samples"."samples.example.com"."zip_lookup.csv"
+                """.trim());
+    }
+
+    @Test
+    void argumentsAsMap_should_parse_arguments_containing_escaped_double_quotes_2() {
+
+        // given JSON containing escaped double quotes (\")
+        String arguments = """
+                {
+                    "conditionalTaskCreation":{
+                        "firstNameInput":"${$context.personal_info.first_name}",
+                        "lastNameInput":"${$context.personal_info.last_name}",
+                        "conditionInput":"${($context.personal_info.first_name | startswith(\\"d\\"))}"
+                    }
+                }
+                """;
+
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("id")
+                .name("name")
+                .arguments(arguments)
+                .build();
+
+        // when
+        Map<String, Object> argumentsMap = ToolExecutionRequestUtil.argumentsAsMap(request.arguments());
+
+        // then result does not contain escaping
+        assertThat(argumentsMap).containsEntry("conditionalTaskCreation", Map.of(
+                "firstNameInput", "${$context.personal_info.first_name}",
+                "lastNameInput", "${$context.personal_info.last_name}",
+                "conditionInput", """
+                        ${($context.personal_info.first_name | startswith("d"))}
+                        """.trim()
+        ));
+    }
+
+    @Test
+    void argument_leading_trailing_and_escaped_quotes() {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("id")
+                .name("name")
+                .arguments("\"{\\\"foo\\\":\\\"bar\\\"}\"")
+                .build();
+
+        assertThat(ToolExecutionRequestUtil.argumentsAsMap(request.arguments())).containsEntry("foo", "bar");
     }
 
     @Test
@@ -54,11 +131,11 @@ class ToolExecutionRequestUtilTest implements WithAssertions {
 
         List<Object> keys = (List<Object>) argumentsAsMap.get("key");
         keys.forEach(key -> {
-            assertThat(key).isInstanceOf(LinkedTreeMap.class);
-            assertThat(((LinkedTreeMap<?, ?>) key).containsKey("foo")).isTrue();
-            assertThat(((LinkedTreeMap<?, ?>) key).containsKey("qux")).isTrue();
-            assertThat(((LinkedTreeMap<?, ?>) key).get("foo")).isEqualTo("bar");
-            assertThat(((LinkedTreeMap<?, ?>) key).get("qux")).isEqualTo(12.0);
+            assertThat(key).isInstanceOf(LinkedHashMap.class);
+            assertThat(((LinkedHashMap<?, ?>) key).containsKey("foo")).isTrue();
+            assertThat(((LinkedHashMap<?, ?>) key).containsKey("qux")).isTrue();
+            assertThat(((LinkedHashMap<?, ?>) key).get("foo")).isEqualTo("bar");
+            assertThat(((LinkedHashMap<?, ?>) key).get("qux")).isEqualTo(12);
         });
     }
 

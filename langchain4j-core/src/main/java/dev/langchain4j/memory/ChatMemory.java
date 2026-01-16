@@ -1,8 +1,11 @@
 package dev.langchain4j.memory;
 
 import dev.langchain4j.data.message.ChatMessage;
-
+import java.util.Arrays;
 import java.util.List;
+
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * Represents the memory (history) of a chat conversation.
@@ -24,6 +27,69 @@ public interface ChatMemory {
      * @param message The {@link ChatMessage} to add.
      */
     void add(ChatMessage message);
+
+    /**
+     * Adds messages to the chat memory
+     * @param messages The {@link ChatMessage}s to add
+     */
+    default void add(ChatMessage... messages) {
+        if ((messages != null) && (messages.length > 0)) {
+            add(Arrays.asList(messages));
+        }
+    }
+
+    /**
+     * Adds messages to the chat memory
+     * @param messages The {@link ChatMessage}s to add
+     */
+    default void add(Iterable<ChatMessage> messages) {
+        if (messages != null) {
+            messages.forEach(this::add);
+        }
+    }
+
+    /**
+     * Replaces all messages in the chat memory with the specified messages.
+     * Unlike {@link #add(ChatMessage...) add}, this method replaces the entire message history
+     * rather than appending to it.
+     * <p>
+     * The default implementation delegates to {@link #set(Iterable) set(Iterable&lt;ChatMessage&gt;)}.
+     * <p>
+     * NOTE: This method is never called automatically by LangChain4j.
+     *
+     * @param messages The {@link ChatMessage}s to set. Must not be {@code null} or empty.
+     * @since 1.11.0
+     */
+    default void set(ChatMessage... messages) {
+        ensureNotEmpty(messages, "messages");
+        set(Arrays.asList(messages));
+    }
+
+    /**
+     * Replaces all messages in the chat memory with the specified messages.
+     * Unlike {@link #add(Iterable) add}, this method replaces the entire message history
+     * rather than appending to it.
+     * <p>
+     * Implementations should override this method to provide more efficient atomic operations if possible.
+     * The default implementation calls {@link #clear()} followed by {@link #add(Iterable) add(Iterable&lt;ChatMessage&gt;)}
+     * which is not atomic.
+     * <p>
+     * This method will typically be used when chat memory needs to be re-written to implement things like
+     * memory compaction.
+     * <p>
+     * NOTE: This method is never called automatically by LangChain4j.
+     *
+     * @param messages The {@link ChatMessage}s to set. Must not be {@code null} or empty.
+     * @since 1.11.0
+     */
+    default void set(Iterable<ChatMessage> messages) {
+        ensureNotNull(messages, "messages");
+        if (!messages.iterator().hasNext()) {
+            throw new IllegalArgumentException("messages must not be empty");
+        }
+        clear();
+        add(messages);
+    }
 
     /**
      * Retrieves messages from the chat memory.

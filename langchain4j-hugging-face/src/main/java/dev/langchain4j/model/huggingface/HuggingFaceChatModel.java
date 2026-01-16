@@ -1,13 +1,21 @@
 package dev.langchain4j.model.huggingface;
 
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.model.huggingface.HuggingFaceModelName.TII_UAE_FALCON_7B_INSTRUCT;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.stream.Collectors.joining;
 
+import java.time.Duration;
+import java.util.List;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.internal.ChatRequestValidationUtils;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.huggingface.client.HuggingFaceClient;
 import dev.langchain4j.model.huggingface.client.Options;
 import dev.langchain4j.model.huggingface.client.Parameters;
@@ -16,10 +24,19 @@ import dev.langchain4j.model.huggingface.client.TextGenerationResponse;
 import dev.langchain4j.model.huggingface.spi.HuggingFaceChatModelBuilderFactory;
 import dev.langchain4j.model.huggingface.spi.HuggingFaceClientFactory;
 import dev.langchain4j.model.output.Response;
-import java.time.Duration;
-import java.util.List;
 
-public class HuggingFaceChatModel implements ChatLanguageModel {
+/**
+ * @deprecated Please use {@code OpenAiChatModel} from the {@code langchain4j-open-ai} module instead:
+ * <pre>
+ * ChatModel model = OpenAiChatModel.builder()
+ *     .apiKey(System.getenv("HF_API_KEY"))
+ *     .baseUrl("https://router.huggingface.co/v1")
+ *     .modelName("HuggingFaceTB/SmolLM3-3B:hf-inference")
+ *     .build();
+ * </pre>
+ */
+@Deprecated(forRemoval = true, since = "1.7.0-beta13")
+public class HuggingFaceChatModel implements ChatModel {
 
     private final HuggingFaceClient client;
     private final Double temperature;
@@ -94,10 +111,29 @@ public class HuggingFaceChatModel implements ChatLanguageModel {
     }
 
     @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages) {
+    public ChatResponse chat(ChatRequest chatRequest) {
+        ChatRequestValidationUtils.validateMessages(chatRequest.messages());
+        ChatRequestParameters parameters = chatRequest.parameters();
+        ChatRequestValidationUtils.validateParameters(parameters);
+        ChatRequestValidationUtils.validate(parameters.toolSpecifications());
+        ChatRequestValidationUtils.validate(parameters.toolChoice());
+        ChatRequestValidationUtils.validate(parameters.responseFormat());
+
+        Response<AiMessage> response = generate(chatRequest.messages());
+
+        return ChatResponse.builder()
+                .aiMessage(response.content())
+                .metadata(ChatResponseMetadata.builder()
+                        .tokenUsage(response.tokenUsage())
+                        .finishReason(response.finishReason())
+                        .build())
+                .build();
+    }
+
+    private Response<AiMessage> generate(List<ChatMessage> messages) {
 
         TextGenerationRequest request = TextGenerationRequest.builder()
-                .inputs(messages.stream().map(ChatMessage::text).collect(joining("\n")))
+                .inputs(messages.stream().map(HuggingFaceChatModel::toText).collect(joining("\n")))
                 .parameters(Parameters.builder()
                         .temperature(temperature)
                         .maxNewTokens(maxNewTokens)
@@ -111,6 +147,18 @@ public class HuggingFaceChatModel implements ChatLanguageModel {
         return Response.from(AiMessage.from(textGenerationResponse.getGeneratedText()));
     }
 
+    private static String toText(ChatMessage chatMessage) {
+        if (chatMessage instanceof SystemMessage systemMessage) {
+            return systemMessage.text();
+        } else if (chatMessage instanceof UserMessage userMessage) {
+            return userMessage.singleText();
+        } else if (chatMessage instanceof AiMessage aiMessage) {
+            return aiMessage.text();
+        } else {
+            throw new IllegalArgumentException("Unsupported message type: " + chatMessage.type());
+        }
+    }
+
     public static Builder builder() {
         for (HuggingFaceChatModelBuilderFactory factory : loadFactories(HuggingFaceChatModelBuilderFactory.class)) {
             return factory.get();
@@ -122,7 +170,7 @@ public class HuggingFaceChatModel implements ChatLanguageModel {
 
         private String baseUrl;
         private String accessToken;
-        private String modelId = TII_UAE_FALCON_7B_INSTRUCT;
+        private String modelId;
         private Duration timeout = Duration.ofSeconds(15);
         private Double temperature;
         private Integer maxNewTokens;
@@ -178,10 +226,7 @@ public class HuggingFaceChatModel implements ChatLanguageModel {
         }
 
         public HuggingFaceChatModel build() {
-            if (isNullOrBlank(accessToken)) {
-                throw new IllegalArgumentException(
-                        "HuggingFace access token must be defined. It can be generated here: https://huggingface.co/settings/tokens");
-            }
+            ensureNotBlank(accessToken, "%s", "HuggingFace access token must be defined. It can be generated here: https://huggingface.co/settings/tokens");
             return new HuggingFaceChatModel(this);
         }
     }

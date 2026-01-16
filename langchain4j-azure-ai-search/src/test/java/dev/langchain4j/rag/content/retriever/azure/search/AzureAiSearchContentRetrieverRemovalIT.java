@@ -1,7 +1,8 @@
 package dev.langchain4j.rag.content.retriever.azure.search;
 
-import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.rag.content.retriever.azure.search.AzureAiSearchQueryType.HYBRID;
+import static dev.langchain4j.store.embedding.azure.search.AbstractAzureAiSearchEmbeddingStore.DEFAULT_INDEX_NAME;
 
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -23,7 +24,7 @@ class AzureAiSearchContentRetrieverRemovalIT extends EmbeddingStoreWithRemovalIT
     private final AzureAiSearchContentRetriever contentRetrieverWithVector = AzureAiSearchContentRetriever.builder()
             .endpoint(System.getenv("AZURE_SEARCH_ENDPOINT"))
             .apiKey(System.getenv("AZURE_SEARCH_KEY"))
-            .indexName("aaa" + randomUUID())
+            .indexName(DEFAULT_INDEX_NAME)
             .dimensions(embeddingModel.dimension())
             .embeddingModel(embeddingModel)
             .queryType(HYBRID)
@@ -47,7 +48,7 @@ class AzureAiSearchContentRetrieverRemovalIT extends EmbeddingStoreWithRemovalIT
 
     private void deleteIndex() {
         try {
-            contentRetrieverWithVector.deleteIndex();
+            withRetry(contentRetrieverWithVector::deleteIndex, 5);
         } catch (RuntimeException e) {
             log.error("Failed to delete the index. You should look at deleting it manually.", e);
         }

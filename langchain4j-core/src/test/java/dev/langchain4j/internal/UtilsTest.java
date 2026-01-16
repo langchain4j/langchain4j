@@ -1,23 +1,36 @@
 package dev.langchain4j.internal;
 
+import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.internal.Utils.quoted;
+import static dev.langchain4j.internal.Utils.toStringValueMap;
+import static java.lang.annotation.ElementType.METHOD;
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
+import static java.util.Collections.emptySet;
 import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.entry;
 
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
@@ -27,6 +40,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 @SuppressWarnings({"ObviousNullCheck", "ConstantValue"})
 class UtilsTest {
+
     @Test
     void get_or_default() {
         assertThat(Utils.getOrDefault("foo", "bar")).isEqualTo("foo");
@@ -134,11 +148,24 @@ class UtilsTest {
     }
 
     @Test
-    @SuppressWarnings("deprecation")
-    void is_collection_empty() {
-        assertThat(Utils.isCollectionEmpty(null)).isTrue();
-        assertThat(Utils.isCollectionEmpty(emptyList())).isTrue();
-        assertThat(Utils.isCollectionEmpty(Collections.singletonList("abc"))).isFalse();
+    void array_is_null_or_empty() {
+        // Null array
+        assertThat(Utils.isNullOrEmpty((Object[]) null)).isTrue();
+
+        // Empty array
+        assertThat(Utils.isNullOrEmpty(new Object[0])).isTrue();
+
+        // Non-empty array with one element
+        assertThat(Utils.isNullOrEmpty(new Object[] {"abc"})).isFalse();
+
+        // Non-empty array with multiple elements
+        assertThat(Utils.isNullOrEmpty(new Object[] {"a", "b", "c"})).isFalse();
+
+        // Array with a null element (still non-empty)
+        assertThat(Utils.isNullOrEmpty(new Object[] {null})).isFalse();
+
+        // Mixed null and non-null elements
+        assertThat(Utils.isNullOrEmpty(new Object[] {null, "xyz"})).isFalse();
     }
 
     @Test
@@ -258,11 +285,52 @@ class UtilsTest {
     }
 
     @Test
+    void copy_if_not_null_set() {
+        assertThat(Utils.copyIfNotNull((Set<?>) null)).isNull();
+        assertThat(Utils.copyIfNotNull(emptySet())).isEmpty();
+        assertThat(Utils.copyIfNotNull(Set.of("one"))).containsExactly("one");
+        assertThat(Utils.copyIfNotNull(Set.of("one", "two"))).containsExactlyInAnyOrder("one", "two");
+    }
+
+    @Test
+    void copy_set() {
+        assertThat(Utils.copy((Set<?>) null)).isEmpty();
+        assertThat(Utils.copy(emptySet())).isEmpty();
+        assertThat(Utils.copy(Set.of("one"))).containsExactly("one");
+        assertThat(Utils.copy(Set.of("one", "two"))).containsExactlyInAnyOrder("one", "two");
+    }
+
+    @Test
     void copy_if_not_null_list() {
         assertThat(Utils.copyIfNotNull((List<?>) null)).isNull();
         assertThat(Utils.copyIfNotNull(emptyList())).isEmpty();
         assertThat(Utils.copyIfNotNull(singletonList("one"))).containsExactly("one");
         assertThat(Utils.copyIfNotNull(asList("one", "two"))).containsExactly("one", "two");
+    }
+
+    @Test
+    void copy_list() {
+        assertThat(Utils.copy((List<?>) null)).isEmpty();
+        assertThat(Utils.copy(emptyList())).isEmpty();
+        assertThat(Utils.copy(singletonList("one"))).containsExactly("one");
+        assertThat(Utils.copy(asList("one", "two"))).containsExactly("one", "two");
+    }
+
+    @Test
+    void mutableCopy_list() {
+        assertThat(Utils.mutableCopy((List<?>) null)).isEmpty();
+        assertThat(Utils.mutableCopy(emptyList())).isEmpty();
+        assertThat(Utils.mutableCopy(singletonList("one"))).containsExactly("one");
+        assertThat(Utils.mutableCopy(asList("one", "two"))).containsExactly("one", "two");
+
+        List<String> emptyCopy = Utils.mutableCopy((List<String>) null);
+        assertThatNoException().isThrownBy(() -> emptyCopy.add("one"));
+
+        List<String> source = List.of("one");
+        List<String> copy = Utils.mutableCopy(source);
+        copy.add("two");
+        assertThat(source).containsExactlyInAnyOrder("one");
+        assertThat(copy).containsExactly("one", "two");
     }
 
     @Test
@@ -273,11 +341,124 @@ class UtilsTest {
     }
 
     @Test
+    void copy_map() {
+        assertThat(Utils.copy((Map<?, ?>) null)).isEmpty();
+        assertThat(Utils.copy(emptyMap())).isEmpty();
+        assertThat(Utils.copy(singletonMap("key", "value"))).containsExactly(entry("key", "value"));
+    }
+
+    @Test
     void ensure_trailing_forward_slash() {
         assertThat(Utils.ensureTrailingForwardSlash("https://example.com")).isEqualTo("https://example.com/");
         assertThat(Utils.ensureTrailingForwardSlash("https://example.com/")).isEqualTo("https://example.com/");
         assertThat(Utils.ensureTrailingForwardSlash("https://example.com/a")).isEqualTo("https://example.com/a/");
         assertThat(Utils.ensureTrailingForwardSlash("https://example.com/a/")).isEqualTo("https://example.com/a/");
         assertThat(Utils.ensureTrailingForwardSlash("https://example.com/a/b")).isEqualTo("https://example.com/a/b/");
+    }
+
+    @Test
+    void shouldThrowNullPointerExceptionForNullInput() {
+        assertThat(toStringValueMap(null)).isNull();
+    }
+
+    @Test
+    void shouldReturnEmptyMapForEmptyInput() {
+        Map<String, Object> input = new HashMap<>();
+        Map<String, String> result = toStringValueMap(input);
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void shouldConvertValuesToString() {
+        Map<String, Object> input = new HashMap<>();
+        input.put("int", 42);
+        input.put("double", 3.14);
+        input.put("boolean", true);
+        input.put("string", "hello");
+
+        Map<String, String> result = toStringValueMap(input);
+
+        assertThat(result)
+                .containsEntry("int", "42")
+                .containsEntry("double", "3.14")
+                .containsEntry("boolean", "true")
+                .containsEntry("string", "hello");
+    }
+
+    @Test
+    void shouldHandleNullValuesCorrectly() {
+        Map<String, Object> input = new HashMap<>();
+        input.put("key1", null);
+
+        Map<String, String> result = toStringValueMap(input);
+
+        assertThat(result).containsEntry("key1", null);
+    }
+
+    @MethodSource
+    @ParameterizedTest
+    void test_firstNotNull(Object[] values, Object expected) {
+        assertThat(Utils.firstNotNull("testParam", values)).isEqualTo(expected);
+    }
+
+    static Stream<Arguments> test_firstNotNull() {
+        return Stream.of(
+                Arguments.of(new Object[] {"first", "second"}, "first"),
+                Arguments.of(new Object[] {null, "second"}, "second"),
+                Arguments.of(new Object[] {null, null, "third"}, "third"),
+                Arguments.of(new Object[] {42, null}, 42),
+                Arguments.of(new Object[] {null, true}, true));
+    }
+
+    @Test
+    void firstNotNull_throwsWhenAllValuesAreNull() {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> Utils.firstNotNull("testParam", (Object) null, null))
+                .withMessageContaining("At least one of the given 'testParam' values must be not null");
+    }
+
+    @Test
+    void firstNotNull_throwsWhenValuesArrayIsEmpty() {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> Utils.firstNotNull("testParam"))
+                .withMessageContaining("testParam values cannot be null or empty");
+    }
+
+    @Retention(RUNTIME)
+    @Target({METHOD})
+    public @interface MyAnnotation {}
+
+    @Retention(RUNTIME)
+    @Target({METHOD})
+    public @interface AnotherAnnotation {}
+
+    public interface MyInterface {
+        @MyAnnotation
+        void myMethod();
+    }
+
+    @Test
+    void shouldRetrieveAnnotationOnActualMethod() throws NoSuchMethodException {
+        Method myMethod = MyInterface.class.getDeclaredMethod("myMethod");
+        assertThat(getAnnotatedMethod(myMethod, MyAnnotation.class)).contains(myMethod);
+        assertThat(getAnnotatedMethod(myMethod, AnotherAnnotation.class)).isEmpty();
+    }
+
+    @Test
+    void shouldRetrieveAnnotationOnProxyMethod() throws NoSuchMethodException {
+        Object proxyInstance = Proxy.newProxyInstance(
+                MyInterface.class.getClassLoader(), new Class<?>[] {MyInterface.class}, new InvocationHandler() {
+                    @Override
+                    public Object invoke(Object proxy, Method method, Object[] args) throws Exception {
+                        return null;
+                    }
+                });
+
+        Method proxyMethod = proxyInstance.getClass().getDeclaredMethod("myMethod");
+        Method myMethod = MyInterface.class.getDeclaredMethod("myMethod");
+
+        assertThat(getAnnotatedMethod(proxyMethod, MyAnnotation.class)).contains(myMethod);
+        assertThat(getAnnotatedMethod(proxyMethod, AnotherAnnotation.class)).isEmpty();
     }
 }

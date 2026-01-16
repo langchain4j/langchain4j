@@ -6,7 +6,7 @@ import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import lombok.Builder;
+import org.slf4j.Logger;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -32,7 +32,7 @@ public class CohereEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final String inputType;
     private final int maxSegmentsPerBatch;
 
-    @Builder
+    @Deprecated(forRemoval = true, since = "1.4.0")
     public CohereEmbeddingModel(String baseUrl,
                                 String apiKey,
                                 String modelName,
@@ -53,6 +53,20 @@ public class CohereEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.maxSegmentsPerBatch = getOrDefault(maxSegmentsPerBatch, DEFAULT_MAX_SEGMENTS_PER_BATCH);
     }
 
+    public CohereEmbeddingModel(CohereEmbeddingModelBuilder builder) {
+        this.client = CohereClient.builder()
+                .baseUrl(getOrDefault(builder.baseUrl, DEFAULT_BASE_URL))
+                .apiKey(ensureNotBlank(builder.apiKey, "apiKey"))
+                .timeout(getOrDefault(builder.timeout, ofSeconds(60)))
+                .logRequests(getOrDefault(builder.logRequests, false))
+                .logResponses(getOrDefault(builder.logResponses, false))
+                .logger(builder.logger)
+                .build();
+        this.modelName = builder.modelName;
+        this.inputType = builder.inputType;
+        this.maxSegmentsPerBatch = getOrDefault(builder.maxSegmentsPerBatch, DEFAULT_MAX_SEGMENTS_PER_BATCH);
+    }
+
     /**
      * @deprecated Please use {@code builder()} instead, and explicitly set the model name and,
      * if necessary, other parameters.
@@ -60,6 +74,10 @@ public class CohereEmbeddingModel extends DimensionAwareEmbeddingModel {
     @Deprecated(forRemoval = true)
     public static CohereEmbeddingModel withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
+    }
+
+    public static CohereEmbeddingModelBuilder builder() {
+        return new CohereEmbeddingModelBuilder();
     }
 
     @Override
@@ -72,6 +90,10 @@ public class CohereEmbeddingModel extends DimensionAwareEmbeddingModel {
         return embedTexts(texts);
     }
 
+    @Override
+    public String modelName() {
+        return this.modelName;
+    }
 
     private Response<List<Embedding>> embedTexts(List<String> texts) {
 
@@ -114,5 +136,77 @@ public class CohereEmbeddingModel extends DimensionAwareEmbeddingModel {
             return response.getMeta().getBilledUnits().getInputTokens();
         }
         return 0;
+    }
+
+    public static class CohereEmbeddingModelBuilder {
+        private String baseUrl;
+        private String apiKey;
+        private String modelName;
+        private String inputType;
+        private Duration timeout;
+        private Boolean logRequests;
+        private Boolean logResponses;
+        private Logger logger;
+        private Integer maxSegmentsPerBatch;
+
+        CohereEmbeddingModelBuilder() {
+        }
+
+        public CohereEmbeddingModelBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public CohereEmbeddingModelBuilder apiKey(String apiKey) {
+            this.apiKey = apiKey;
+            return this;
+        }
+
+        public CohereEmbeddingModelBuilder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public CohereEmbeddingModelBuilder inputType(String inputType) {
+            this.inputType = inputType;
+            return this;
+        }
+
+        public CohereEmbeddingModelBuilder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public CohereEmbeddingModelBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public CohereEmbeddingModelBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public CohereEmbeddingModelBuilder logger(Logger logger) {
+            this.logger = logger;
+            return this;
+        }
+
+        public CohereEmbeddingModelBuilder maxSegmentsPerBatch(Integer maxSegmentsPerBatch) {
+            this.maxSegmentsPerBatch = maxSegmentsPerBatch;
+            return this;
+        }
+
+        public CohereEmbeddingModel build() {
+            return new CohereEmbeddingModel(this);
+        }
+
+        public String toString() {
+            return "CohereEmbeddingModel.CohereEmbeddingModelBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + this.apiKey + ", modelName=" + this.modelName + ", inputType=" + this.inputType + ", timeout=" + this.timeout + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ", maxSegmentsPerBatch=" + this.maxSegmentsPerBatch + ")";
+        }
     }
 }

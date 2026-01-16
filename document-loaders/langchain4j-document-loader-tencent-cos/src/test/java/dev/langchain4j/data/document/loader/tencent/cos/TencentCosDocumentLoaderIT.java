@@ -19,7 +19,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 @EnabledIfEnvironmentVariable(named = "TENCENT_SECRET_KEY", matches = ".+")
 class TencentCosDocumentLoaderIT {
 
-    private static final String TEST_BUCKET = "test-buket";
+    private static final String TEST_BUCKET = "test-bucket";
     private static final String TEST_KEY = "test-file.txt";
     private static final String TEST_KEY_2 = "test-directory/test-file-2.txt";
     private static final String TEST_CONTENT = "Hello, World!";
@@ -90,7 +90,7 @@ class TencentCosDocumentLoaderIT {
 
         assertThat(documents.get(1).text()).isEqualTo(TEST_CONTENT);
         assertThat(documents.get(1).metadata().toMap()).hasSize(1);
-        assertThat(documents.get(1).metadata("source")).isEqualTo(String.format("cos://%s/%s", TEST_BUCKET, TEST_KEY));
+        assertThat(documents.get(1).metadata().getString("source")).isEqualTo(String.format("cos://%s/%s", TEST_BUCKET, TEST_KEY));
     }
 
     @Test

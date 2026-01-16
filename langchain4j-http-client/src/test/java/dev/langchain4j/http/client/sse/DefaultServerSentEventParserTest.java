@@ -1,8 +1,10 @@
 package dev.langchain4j.http.client.sse;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -13,7 +15,6 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -54,7 +55,7 @@ class DefaultServerSentEventParserTest {
         parser.parse(stream, listener);
 
         // then
-        verify(listener).onEvent(new ServerSentEvent(null, "Simple message"));
+        verify(listener).onEvent(eq(new ServerSentEvent(null, "Simple message")), any());
     }
 
     @Test
@@ -68,7 +69,7 @@ class DefaultServerSentEventParserTest {
         parser.parse(stream, listener);
 
         // then
-        verify(listener).onEvent(new ServerSentEvent(null, "First line\nSecond line\nThird line"));
+        verify(listener).onEvent(eq(new ServerSentEvent(null, "First line\nSecond line\nThird line")), any());
     }
 
     @Test
@@ -82,7 +83,7 @@ class DefaultServerSentEventParserTest {
         parser.parse(stream, listener);
 
         // then
-        verify(listener).onEvent(new ServerSentEvent("custom-event", "Message content"));
+        verify(listener).onEvent(eq(new ServerSentEvent("custom-event", "Message content")), any());
     }
 
     @Test
@@ -96,9 +97,9 @@ class DefaultServerSentEventParserTest {
         parser.parse(stream, listener);
 
         // then
-        verify(listener).onEvent(new ServerSentEvent(null, "First event"));
-        verify(listener).onEvent(new ServerSentEvent(null, "Second event"));
-        verify(listener).onEvent(new ServerSentEvent(null, "Third event"));
+        verify(listener).onEvent(eq(new ServerSentEvent(null, "First event")), any());
+        verify(listener).onEvent(eq(new ServerSentEvent(null, "Second event")), any());
+        verify(listener).onEvent(eq(new ServerSentEvent(null, "Third event")), any());
     }
 
     @Test
@@ -112,7 +113,7 @@ class DefaultServerSentEventParserTest {
         parser.parse(stream, listener);
 
         // then
-        verify(listener).onEvent(new ServerSentEvent(null, "actual message"));
+        verify(listener).onEvent(eq(new ServerSentEvent(null, "actual message")), any());
     }
 
     @Test
@@ -135,7 +136,7 @@ class DefaultServerSentEventParserTest {
         // given
         InputStream mockStream = mock(InputStream.class);
         IOException simulatedIoException = new IOException("Simulated IO exception");
-        Assertions.assertDoesNotThrow(
+        assertDoesNotThrow(
                 () -> {
                     when(mockStream.read(any(byte[].class), anyInt(), anyInt())).thenThrow(simulatedIoException);
                 },

@@ -1,41 +1,67 @@
 package dev.langchain4j.service.output;
 
+import dev.langchain4j.Internal;
+import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.output.structured.Description;
 
 import java.lang.reflect.Field;
 import java.util.Locale;
 import java.util.Optional;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.service.output.ParsingUtils.outputParsingException;
+import static dev.langchain4j.service.output.ParsingUtils.parseAsStringOrJson;
+import static java.util.Arrays.stream;
 
-@SuppressWarnings("rawtypes")
-class EnumOutputParser implements OutputParser<Enum> {
+@Internal
+class EnumOutputParser<E extends Enum<E>> implements OutputParser<E> {
 
-    private final Class<? extends Enum> enumClass;
+    private final Class<E> enumClass;
 
-    EnumOutputParser(Class<? extends Enum> enumClass) {
+    EnumOutputParser(Class<E> enumClass) {
         this.enumClass = ensureNotNull(enumClass, "enumClass");
     }
 
     @Override
-    public Enum parse(String string) {
-        string = trimAndRemoveBracketsIfPresent(string);
-        for (Enum enumConstant : enumClass.getEnumConstants()) {
-            if (enumConstant.name().equalsIgnoreCase(string)) {
+    public E parse(String text) {
+        return parseAsStringOrJson(text, this::parseEnum, enumClass);
+    }
+
+    private E parseEnum(String text) {
+        text = trimAndRemoveBracketsIfPresent(text);
+        for (E enumConstant : enumClass.getEnumConstants()) {
+            if (enumConstant.name().equalsIgnoreCase(text)) {
                 return enumConstant;
             }
         }
-        throw new RuntimeException("Unknown enum value: " + string);
+        throw outputParsingException(text, enumClass);
+    }
+
+    @Override
+    public Optional<JsonSchema> jsonSchema() {
+        JsonSchema jsonSchema = JsonSchema.builder()
+                .name(enumClass.getSimpleName())
+                .rootElement(JsonObjectSchema.builder()
+                        .addProperty("value", JsonEnumSchema.builder()
+                                .enumValues(stream(enumClass.getEnumConstants())
+                                        .map(e -> ((Enum<?>) e).name())
+                                        .toList())
+                                .build())
+                        .required("value")
+                        .build())
+                .build();
+        return Optional.of(jsonSchema);
     }
 
     @Override
     public String formatInstructions() {
         try {
-            Enum[] enumConstants = enumClass.getEnumConstants();
+            E[] enumConstants = enumClass.getEnumConstants();
 
-            if (enumConstants.length == 0) {
-                throw new IllegalArgumentException("Should be at least one enum constant defined.");
-            }
+            ensureNotEmpty(enumConstants, "%s", "Should be at least one enum constant defined.");
 
             StringBuilder instruction = new StringBuilder();
 
@@ -43,7 +69,7 @@ class EnumOutputParser implements OutputParser<Enum> {
             // no description should be included (if present)
             instruction.append("\nYou must answer strictly with one of these enums:");
 
-            for (Enum enumConstant : enumConstants) {
+            for (E enumConstant : enumConstants) {
                 instruction.append("\n").append(enumConstant.name().toUpperCase(Locale.ROOT));
                 Optional<String> optionalEnumDescription = getEnumDescription(enumClass, enumConstant);
                 optionalEnumDescription.ifPresent(description -> instruction.append(" - ").append(description));

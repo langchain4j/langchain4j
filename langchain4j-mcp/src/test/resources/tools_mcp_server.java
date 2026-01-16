@@ -1,20 +1,34 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
-//DEPS io.quarkus:quarkus-bom:${quarkus.version:3.17.5}@pom
-//DEPS io.quarkiverse.mcp:quarkus-mcp-server-stdio:1.0.0.Alpha6
-//DEPS io.quarkiverse.mcp:quarkus-mcp-server-sse:1.0.0.Alpha6
+//DEPS io.quarkus:quarkus-bom:${quarkus.version:3.27.0}@pom
+//DEPS io.quarkiverse.mcp:quarkus-mcp-server-stdio:1.7.2
+//DEPS io.quarkiverse.mcp:quarkus-mcp-server-sse:1.7.2
+//DEPS io.quarkiverse.mcp:quarkus-mcp-server-websocket:1.7.2
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import io.quarkiverse.mcp.server.Cancellation;
+import io.quarkiverse.mcp.server.ImageContent;
 import io.quarkiverse.mcp.server.TextContent;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
+import io.quarkiverse.mcp.server.ToolResponse;
+import jakarta.inject.Inject;
 
 public class tools_mcp_server {
 
     @Tool(description = "Echoes a string")
     public String echoString(@ToolArg(description = "The string to be echoed") String input) {
         return input;
+    }
+
+    public record Foo(Integer bar, String baz) {}
+
+    @Tool(description = "Returns structured content", structuredContent = true)
+    public Foo structuredContent() {
+        return new Foo(1, "hello");
     }
 
     @Tool(description = "Echoes an integer")
@@ -27,15 +41,66 @@ public class tools_mcp_server {
         return Boolean.valueOf(input).toString();
     }
 
-    @Tool(description = "Takes 10 seconds to complete")
-    public String longOperation() throws Exception {
-        TimeUnit.SECONDS.sleep(10);
-        return "ok";
+    volatile boolean cancellationReceived = false;
+
+    @Tool(description = "Takes 10 seconds to complete. If the execution is cancelled, the wasCancellationReceived tool will start returning true")
+    public String longOperation(Cancellation cancellation) throws Exception {
+        long start = System.currentTimeMillis();
+        while(System.currentTimeMillis() - start < 10000) {
+            if(cancellation.check().isRequested()) {
+                cancellationReceived = true;
+                return "CANCELLED";
+            }
+            TimeUnit.SECONDS.sleep(1);
+        }
+        return "FINISHED";
+    }
+
+    @Tool(description = "Will return true if longOperation was previously cancelled while running")
+    public String wasCancellationReceived() {
+        return Boolean.toString(cancellationReceived);
+    }
+
+    @Tool(description = "Takes an untyped array")
+    public String untypedArray(Object[] arr) throws Exception {
+        // note: I would return something like 'wrong' and 'correct' here but that 'wrong' seems to cause the model to keep retrying the call.
+        // so, 6789 is considered to be the expected output
+        if(Arrays.equals(arr, new Object[] {0, "abs", null})) {
+            return "6789";
+        } else {
+            return "1234";
+        }
     }
 
     @Tool(description = "Throws a business error")
     public String error() throws Exception {
         throw new RuntimeException("business error");
     }
+    
+    @Tool(description = "Returns a response as an error")
+    public ToolResponse errorResponse() throws Exception {
+        List<TextContent> lst = new ArrayList<>();
+        lst.add(new TextContent("This is an actual error"));
+        return new ToolResponse(true, lst);
+    }
 
+    @Tool
+    public ToolResponse getWeatherThrowingException(String arg0) {
+        return new ToolResponse(true, List.of(new TextContent("Weather service is unavailable")));
+    }
+
+    @Tool
+    public ToolResponse getWeatherThrowingExceptionWithoutMessage(String arg0) {
+        return new ToolResponse(true, List.of());
+    }
+
+    @Tool
+    public String getWeather(String arg0) {
+        return "Sunny";
+    }
+
+    @Tool
+    public ToolResponse getImage() {
+        return new ToolResponse(false, List.of(new ImageContent("does not matter", "does not matter")));
+    }
 }

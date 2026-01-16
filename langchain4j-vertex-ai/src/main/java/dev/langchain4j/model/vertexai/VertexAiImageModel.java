@@ -27,10 +27,10 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static com.google.protobuf.Value.newBuilder;
-import static dev.langchain4j.internal.Json.toJson;
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.vertexai.Json.toJson;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.singletonList;
 
@@ -296,7 +296,7 @@ public class VertexAiImageModel implements ImageModel {
                 }
 
                 PredictResponse predictResponse =
-                    withRetry(() -> client.predict(this.endpointName, instances, parameters), this.maxRetries);
+                    withRetryMappingExceptions(() -> client.predict(this.endpointName, instances, parameters), this.maxRetries);
 
                 if (this.logResponses && logger.isDebugEnabled()) {
                     logger.debug("IMAGEN ({}) response: {}", modelName, predictResponse);

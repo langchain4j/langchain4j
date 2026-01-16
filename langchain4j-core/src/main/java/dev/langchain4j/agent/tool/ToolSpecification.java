@@ -1,13 +1,15 @@
 package dev.langchain4j.agent.tool;
 
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.mutableCopy;
 import static dev.langchain4j.internal.Utils.quoted;
-import static java.util.Arrays.asList;
 
 /**
  * Describes a tool that language model can execute.
@@ -19,8 +21,7 @@ public class ToolSpecification {
     private final String name;
     private final String description;
     private final JsonObjectSchema parameters;
-    @Deprecated(forRemoval = true)
-    private final ToolParameters toolParameters;
+    private final Map<String, Object> metadata;
 
     /**
      * Creates a {@link ToolSpecification} from a {@link Builder}.
@@ -30,12 +31,8 @@ public class ToolSpecification {
     private ToolSpecification(Builder builder) {
         this.name = builder.name;
         this.description = builder.description;
-        if (builder.parameters != null && builder.toolParameters != null) {
-            throw new IllegalArgumentException("Both (new) JsonObjectSchema and (old) ToolParameters " +
-                    "are used to specify tool parameters. Please use only (new) JsonObjectSchema.");
-        }
         this.parameters = builder.parameters;
-        this.toolParameters = builder.toolParameters;
+        this.metadata = copy(builder.metadata);
     }
 
     /**
@@ -58,19 +55,21 @@ public class ToolSpecification {
 
     /**
      * Returns the parameters of the tool.
-     * <p>
-     * The old method that returns the deprecated {@link ToolParameters} has been renamed to {@link #toolParameters()}.
      */
     public JsonObjectSchema parameters() {
         return parameters;
     }
 
     /**
-     * @deprecated please use {@link #parameters()} instead
+     * Returns the metadata relevant to the tool.
+     * <p>
+     * NOTE: this metadata is not sent to the LLM provider API by default,
+     * you must explicitly specify which metadata keys should be sent when creating a {@link ChatModel}.
+     * <p>
+     * NOTE: Currently, tool metadata is supported only by the {@code langchain4j-anthropic} module.
      */
-    @Deprecated(forRemoval = true)
-    public ToolParameters toolParameters() {
-        return toolParameters;
+    public Map<String, Object> metadata() {
+        return metadata;
     }
 
     @Override
@@ -84,7 +83,7 @@ public class ToolSpecification {
         return Objects.equals(name, another.name)
                 && Objects.equals(description, another.description)
                 && Objects.equals(parameters, another.parameters)
-                && Objects.equals(toolParameters, another.toolParameters);
+                && Objects.equals(metadata, another.metadata);
     }
 
     @Override
@@ -93,7 +92,7 @@ public class ToolSpecification {
         h += (h << 5) + Objects.hashCode(name);
         h += (h << 5) + Objects.hashCode(description);
         h += (h << 5) + Objects.hashCode(parameters);
-        h += (h << 5) + Objects.hashCode(toolParameters);
+        h += (h << 5) + Objects.hashCode(metadata);
         return h;
     }
 
@@ -103,8 +102,16 @@ public class ToolSpecification {
                 + " name = " + quoted(name)
                 + ", description = " + quoted(description)
                 + ", parameters = " + parameters
-                + ", toolParameters = " + toolParameters
+                + ", metadata = " + metadata
                 + " }";
+    }
+
+    public Builder toBuilder() {
+        return builder()
+                .name(name)
+                .description(description)
+                .parameters(parameters)
+                .metadata(mutableCopy(metadata));
     }
 
     /**
@@ -124,13 +131,13 @@ public class ToolSpecification {
         private String name;
         private String description;
         private JsonObjectSchema parameters;
-        @Deprecated(forRemoval = true)
-        private ToolParameters toolParameters;
+        private Map<String, Object> metadata;
 
         /**
          * Creates a {@link Builder}.
          */
         private Builder() {
+            this.metadata = new HashMap<>();
         }
 
         /**
@@ -167,134 +174,21 @@ public class ToolSpecification {
         }
 
         /**
-         * Sets the {@code parameters}.
+         * Sets the {@code metadata}.
          *
-         * @param parameters the {@code parameters}
+         * @param metadata
          * @return {@code this}
-         * @deprecated please use {@link #parameters(JsonObjectSchema)} instead. Example:
-         * <pre>
-         * ToolSpecification.builder()
-         *     .name("weather")
-         *     .description("Returns the current weather in the specified city")
-         *     .parameters(JsonObjectSchema.builder()
-         *         .addStringProperty("city", "The name of the city, e.g., Munich")
-         *         .addEnumProperty("units", List.of("CELSIUS", "FAHRENHEIT"))
-         *         .required("city") // please specify mandatory properties explicitly
-         *         .build())
-         *     .build();
-         * </pre>
          */
-        @Deprecated(forRemoval = true)
-        public Builder parameters(ToolParameters parameters) {
-            this.toolParameters = parameters;
+        public Builder metadata(Map<String, Object> metadata) {
+            this.metadata = metadata;
             return this;
         }
 
         /**
-         * Adds a parameter to the tool.
-         *
-         * @param name                 the name of the parameter.
-         * @param jsonSchemaProperties the properties of the parameter.
-         * @return {@code this}
-         * @deprecated please use {@link Builder#parameters(JsonObjectSchema)} instead. Example:
-         * <pre>
-         * ToolSpecification.builder()
-         *     .name("weather")
-         *     .description("Returns the current weather in the specified city")
-         *     .parameters(JsonObjectSchema.builder()
-         *         .addStringProperty("city", "The name of the city, e.g., Munich")
-         *         .addEnumProperty("units", List.of("CELSIUS", "FAHRENHEIT"))
-         *         .required("city") // please specify mandatory properties explicitly
-         *         .build())
-         *     .build();
-         * </pre>
+         * Adds a key-value pair to the tool's {@code metadata}.
          */
-        @Deprecated(forRemoval = true)
-        public Builder addParameter(String name, JsonSchemaProperty... jsonSchemaProperties) {
-            return addParameter(name, asList(jsonSchemaProperties));
-        }
-
-        /**
-         * Adds a parameter to the tool.
-         *
-         * @param name                 the name of the parameter.
-         * @param jsonSchemaProperties the properties of the parameter.
-         * @return {@code this}
-         * @deprecated please use {@link Builder#parameters(JsonObjectSchema)} instead. Example:
-         * <pre>
-         * ToolSpecification.builder()
-         *     .name("weather")
-         *     .description("Returns the current weather in the specified city")
-         *     .parameters(JsonObjectSchema.builder()
-         *         .addStringProperty("city", "The name of the city, e.g., Munich")
-         *         .addEnumProperty("units", List.of("CELSIUS", "FAHRENHEIT"))
-         *         .required("city") // please specify mandatory properties explicitly
-         *         .build())
-         *     .build();
-         * </pre>
-         */
-        @Deprecated(forRemoval = true)
-        public Builder addParameter(String name, Iterable<JsonSchemaProperty> jsonSchemaProperties) {
-            addOptionalParameter(name, jsonSchemaProperties);
-            this.toolParameters.required().add(name);
-            return this;
-        }
-
-        /**
-         * Adds an optional parameter to the tool.
-         *
-         * @param name                 the name of the parameter.
-         * @param jsonSchemaProperties the properties of the parameter.
-         * @return {@code this}
-         * @deprecated please use {@link Builder#parameters(JsonObjectSchema)} instead. Example:
-         * <pre>
-         * ToolSpecification.builder()
-         *     .name("weather")
-         *     .description("Returns the current weather in the specified city")
-         *     .parameters(JsonObjectSchema.builder()
-         *         .addStringProperty("city", "The name of the city, e.g., Munich")
-         *         .addEnumProperty("units", List.of("CELSIUS", "FAHRENHEIT"))
-         *         .required("city") // please specify mandatory properties explicitly
-         *         .build())
-         *     .build();
-         * </pre>
-         */
-        @Deprecated(forRemoval = true)
-        public Builder addOptionalParameter(String name, JsonSchemaProperty... jsonSchemaProperties) {
-            return addOptionalParameter(name, asList(jsonSchemaProperties));
-        }
-
-        /**
-         * Adds an optional parameter to the tool.
-         *
-         * @param name                 the name of the parameter.
-         * @param jsonSchemaProperties the properties of the parameter.
-         * @return {@code this}
-         * @deprecated please use {@link Builder#parameters(JsonObjectSchema)} instead. Example:
-         * <pre>
-         * ToolSpecification.builder()
-         *     .name("weather")
-         *     .description("Returns the current weather in the specified city")
-         *     .parameters(JsonObjectSchema.builder()
-         *         .addStringProperty("city", "The name of the city, e.g., Munich")
-         *         .addEnumProperty("units", List.of("CELSIUS", "FAHRENHEIT"))
-         *         .required("city") // please specify mandatory properties explicitly
-         *         .build())
-         *     .build();
-         * </pre>
-         */
-        @Deprecated(forRemoval = true)
-        public Builder addOptionalParameter(String name, Iterable<JsonSchemaProperty> jsonSchemaProperties) {
-            if (this.toolParameters == null) {
-                this.toolParameters = ToolParameters.builder().build();
-            }
-
-            Map<String, Object> jsonSchemaPropertiesMap = new HashMap<>();
-            for (JsonSchemaProperty jsonSchemaProperty : jsonSchemaProperties) {
-                jsonSchemaPropertiesMap.put(jsonSchemaProperty.key(), jsonSchemaProperty.value());
-            }
-
-            this.toolParameters.properties().put(name, jsonSchemaPropertiesMap);
+        public Builder addMetadata(String key, Object value) {
+            this.metadata.put(key, value);
             return this;
         }
 

@@ -19,9 +19,11 @@ import static java.util.Collections.unmodifiableList;
 public final class Delta {
 
     @JsonProperty
-    private final Role role;
+    private final String role;
     @JsonProperty
     private final String content;
+    @JsonProperty
+    private final String reasoningContent;
     @JsonProperty
     private final List<ToolCall> toolCalls;
     @JsonProperty
@@ -31,16 +33,21 @@ public final class Delta {
     public Delta(Builder builder) {
         this.role = builder.role;
         this.content = builder.content;
+        this.reasoningContent = builder.reasoningContent;
         this.toolCalls = builder.toolCalls;
         this.functionCall = builder.functionCall;
     }
 
-    public Role role() {
+    public String role() {
         return role;
     }
 
     public String content() {
         return content;
+    }
+
+    public String reasoningContent() {
+        return reasoningContent;
     }
 
     public List<ToolCall> toolCalls() {
@@ -62,6 +69,7 @@ public final class Delta {
     private boolean equalTo(Delta another) {
         return Objects.equals(role, another.role)
                 && Objects.equals(content, another.content)
+                && Objects.equals(reasoningContent, another.reasoningContent)
                 && Objects.equals(toolCalls, another.toolCalls)
                 && Objects.equals(functionCall, another.functionCall);
     }
@@ -71,6 +79,7 @@ public final class Delta {
         int h = 5381;
         h += (h << 5) + Objects.hashCode(role);
         h += (h << 5) + Objects.hashCode(content);
+        h += (h << 5) + Objects.hashCode(reasoningContent);
         h += (h << 5) + Objects.hashCode(toolCalls);
         h += (h << 5) + Objects.hashCode(functionCall);
         return h;
@@ -81,6 +90,7 @@ public final class Delta {
         return "Delta{"
                 + "role=" + role
                 + ", content=" + content
+                + ", reasoningContent=" + reasoningContent
                 + ", toolCalls=" + toolCalls
                 + ", functionCall=" + functionCall
                 + "}";
@@ -95,19 +105,25 @@ public final class Delta {
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public static final class Builder {
 
-        private Role role;
+        private String role;
         private String content;
+        private String reasoningContent;
         private List<ToolCall> toolCalls;
         @Deprecated
         private FunctionCall functionCall;
 
-        public Builder role(Role role) {
+        public Builder role(String role) {
             this.role = role;
             return this;
         }
 
         public Builder content(String content) {
             this.content = content;
+            return this;
+        }
+
+        public Builder reasoningContent(String reasoningContent) {
+            this.reasoningContent = reasoningContent;
             return this;
         }
 
@@ -123,7 +139,6 @@ public final class Delta {
             this.functionCall = functionCall;
             return this;
         }
-
 
         public Delta build() {
             return new Delta(this);

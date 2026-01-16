@@ -1,7 +1,8 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
-//DEPS io.quarkus:quarkus-bom:${quarkus.version:3.17.5}@pom
-//DEPS io.quarkiverse.mcp:quarkus-mcp-server-stdio:1.0.0.Alpha6
-//DEPS io.quarkiverse.mcp:quarkus-mcp-server-sse:1.0.0.Alpha6
+//DEPS io.quarkus:quarkus-bom:${quarkus.version:3.27.0}@pom
+//DEPS io.quarkiverse.mcp:quarkus-mcp-server-stdio:1.7.2
+//DEPS io.quarkiverse.mcp:quarkus-mcp-server-sse:1.7.2
+//DEPS io.quarkiverse.mcp:quarkus-mcp-server-websocket:1.7.2
 //Q:CONFIG quarkus.mcp.server.client-logging.default-level=DEBUG
 
 import java.util.List;
@@ -16,7 +17,8 @@ public class logging_mcp_server {
 
     @Tool(description = "Log an INFO-level message")
     public String info(McpLog log) {
-        log.info("HELLO");
+        // put an additional 'data:' into the message just to test that it doesn't break the SSE event parsing logic
+        log.info("HELLO. data: 1234");
         return "ok";
     }
 

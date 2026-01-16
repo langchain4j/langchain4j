@@ -1,5 +1,7 @@
 package dev.langchain4j.spi;
 
+import dev.langchain4j.Internal;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -8,11 +10,25 @@ import java.util.ServiceLoader;
 /**
  * Utility wrapper around {@code ServiceLoader.load()}.
  */
+@Internal
 public class ServiceHelper {
+
     /**
      * Utility class, no public constructor.
      */
     private ServiceHelper() {
+    }
+
+    /**
+     * Load the first available service of a given type.
+     *
+     * @param clazz the type of service
+     * @param <T>   the type of service
+     * @return the first service, null if none
+     */
+    public static <T> T loadFactory(Class<T> clazz) {
+        Collection<T> factories = loadFactories(clazz, null);
+        return factories.isEmpty() ? null : factories.iterator().next();
     }
 
     /**

@@ -1,12 +1,93 @@
 package dev.langchain4j.service.output;
 
+import static dev.langchain4j.service.output.EnumOutputParserTest.Animal.CAT;
+import static dev.langchain4j.service.output.EnumOutputParserTest.Weather.SUNNY;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.output.structured.Description;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class EnumOutputParserTest {
 
-    EnumOutputParser sut = new EnumOutputParser(Weather.class);
+    EnumOutputParser<Weather> sut = new EnumOutputParser<>(Weather.class);
+
+    enum Animal {
+        CAT,
+        DOG,
+        BIRD
+    }
+
+    @ParameterizedTest
+    @MethodSource
+    void should_parse_enum(String text, Animal expected) {
+
+        // given
+        EnumOutputParser<Animal> parser = new EnumOutputParser<>(Animal.class);
+
+        // when
+        Animal animal = parser.parse(text);
+
+        // then
+        assertThat(animal).isEqualTo(expected);
+    }
+
+    static Stream<Arguments> should_parse_enum() {
+        return Stream.of(
+
+                // Plain text
+                Arguments.of("CAT", CAT),
+                Arguments.of("cat", CAT),
+                Arguments.of("Cat", CAT),
+                Arguments.of(" CAT ", CAT),
+                Arguments.of("[CAT]", CAT),
+                Arguments.of("  [ CAT ]  ", CAT),
+
+                // JSON
+                Arguments.of("{\"value\":\"CAT\"}", CAT),
+                Arguments.of("  {\"value\":\"CAT\"}  ", CAT),
+                Arguments.of("  {\"value\":[\"CAT\"]}  ", CAT));
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {"", " ", "{}", "{\"value\": null}", "{\"value\": \"\"}"})
+    void should_fail_to_parse_empty_input(String input) {
+
+        assertThatThrownBy(() -> new EnumOutputParser<>(Animal.class).parse(input))
+                .isExactlyInstanceOf(OutputParsingException.class)
+                .hasMessageContaining("Failed to parse")
+                .hasMessageContaining("Animal");
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "BANANA",
+                "{\"value\":\"BANANA\"}",
+            })
+    void should_fail_to_parse_invalid_input(String text) {
+
+        // given
+        EnumOutputParser<Animal> parser = new EnumOutputParser<>(Animal.class);
+
+        // when-then
+        assertThatThrownBy(() -> parser.parse(text))
+                .isExactlyInstanceOf(OutputParsingException.class)
+                .hasMessageContaining("Failed to parse")
+                .hasMessageContaining("Animal");
+    }
 
     enum Weather {
         SUNNY,
@@ -17,11 +98,8 @@ class EnumOutputParserTest {
 
     @Test
     void generateInstruction() {
-        // When
-        String instruction = sut.formatInstructions();
 
-        // Then
-        assertThat(instruction)
+        assertThat(sut.formatInstructions())
                 .isEqualTo("\n" + "You must answer strictly with one of these enums:\n"
                         + "SUNNY\n"
                         + "CLOUDY\n"
@@ -31,28 +109,115 @@ class EnumOutputParserTest {
 
     @Test
     void parseResponse() {
+
         // When
-        Enum<?> resultedEnum = sut.parse(Weather.SUNNY.name());
+        Weather weather = sut.parse(SUNNY.name());
 
         // Then
-        assertThat(resultedEnum).isEqualTo(Weather.SUNNY);
+        assertThat(weather).isEqualTo(SUNNY);
     }
 
     @Test
     void parseResponseWithSpaces() {
+
         // When
-        Enum<?> resultedEnum = sut.parse(" " + Weather.SUNNY.name() + "    ");
+        Weather weather = sut.parse(" " + SUNNY.name() + "    ");
 
         // Then
-        assertThat(resultedEnum).isEqualTo(Weather.SUNNY);
+        assertThat(weather).isEqualTo(SUNNY);
     }
 
     @Test
     void parseResponseWithBrackets() {
+
         // When
-        Enum<?> resultedEnum = sut.parse(" [  " + Weather.SUNNY.name() + "  ]  ");
+        Weather weather = sut.parse(" [  " + SUNNY.name() + "  ]  ");
 
         // Then
-        assertThat(resultedEnum).isEqualTo(Weather.SUNNY);
+        assertThat(weather).isEqualTo(SUNNY);
+    }
+
+    public enum Category {
+        A,
+        B,
+        C
+    }
+
+    public enum CategoryWithDescription {
+        @Description("Majority of keywords starting with A")
+        A,
+        @Description("Majority of keywords starting with B")
+        B,
+        @Description("Majority of keywords starting with C")
+        C
+    }
+
+    @Test
+    void enum_format_instruction() {
+        EnumOutputParser<Category> parser = new EnumOutputParser<>(Category.class);
+        assertThat(parser.formatInstructions())
+                .isEqualTo("\nYou must answer strictly with one of these enums:\n" + "A\n" + "B\n" + "C");
+    }
+
+    @Test
+    void enum_with_description_format_instruction() {
+        EnumOutputParser<CategoryWithDescription> parser = new EnumOutputParser<>(CategoryWithDescription.class);
+        assertThat(parser.formatInstructions())
+                .isEqualTo("\nYou must answer strictly with one of these enums:\n"
+                        + "A - Majority of keywords starting with A\n"
+                        + "B - Majority of keywords starting with B\n"
+                        + "C - Majority of keywords starting with C");
+    }
+
+    @Test
+    void should_handle_single_character_enums() {
+        // given
+        EnumOutputParser<Category> parser = new EnumOutputParser<>(Category.class);
+
+        // when/then
+        assertThat(parser.parse("A")).isEqualTo(Category.A);
+        assertThat(parser.parse("a")).isEqualTo(Category.A);
+        assertThat(parser.parse("{\"value\":\"B\"}")).isEqualTo(Category.B);
+    }
+
+    @Test
+    void should_handle_json_with_non_string_value() {
+        // given
+        EnumOutputParser<Animal> parser = new EnumOutputParser<>(Animal.class);
+
+        // when/then
+        assertThatThrownBy(() -> parser.parse("{\"value\":1}"))
+                .isExactlyInstanceOf(OutputParsingException.class)
+                .hasMessageContaining("Failed to parse");
+    }
+
+    @Test
+    void should_create_schema_for_enum_with_custom_toString() {
+
+        // given
+        enum MyEnumWithToString {
+            A, B, C;
+
+            @Override
+            public String toString() {
+                return "[" + name() + "]";
+            }
+        }
+
+        assertThat(MyEnumWithToString.A.toString()).isEqualTo("[A]");
+
+        EnumOutputParser<MyEnumWithToString> parser = new EnumOutputParser<>(MyEnumWithToString.class);
+
+        // when
+        Optional<JsonSchema> jsonSchema = parser.jsonSchema();
+
+        // then
+        assertThat(jsonSchema).hasValue(JsonSchema.builder()
+                .name("MyEnumWithToString")
+                .rootElement(JsonObjectSchema.builder()
+                        .addEnumProperty("value", List.of("A", "B", "C"))
+                        .required("value")
+                        .build())
+                .build());
     }
 }

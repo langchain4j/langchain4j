@@ -1,17 +1,12 @@
 package dev.langchain4j.http.client.sse;
 
-import dev.langchain4j.Experimental;
-
 import java.io.InputStream;
 
 /**
  * Parses server-sent events (SSE) from an {@link InputStream},
  * constructs {@link ServerSentEvent} objects,
  * and delivers them to the provided {@link ServerSentEventListener}.
- * <p>
- * This interface is currently experimental and subject to change.
  */
-@Experimental
 public interface ServerSentEventParser {
 
     /**

@@ -6,6 +6,7 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.store.embedding.CosineSimilarity;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.List;
 
@@ -13,13 +14,17 @@ import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
+@EnabledIfEnvironmentVariable(named = "NOMIC_API_KEY", matches = ".+")
 class NomicEmbeddingModelIT {
 
     @Test
     void should_embed_single_text() {
 
         // given
-        EmbeddingModel model = NomicEmbeddingModel.withApiKey(System.getenv("NOMIC_API_KEY"));
+        EmbeddingModel model = NomicEmbeddingModel.builder()
+                .apiKey(System.getenv("NOMIC_API_KEY"))
+                .modelName("nomic-embed-text-v1")
+                .build();
 
         String text = "hello";
 
@@ -45,9 +50,8 @@ class NomicEmbeddingModelIT {
                 .taskType("clustering")
                 .maxSegmentsPerBatch(1)
                 .timeout(ofSeconds(10))
-                .maxRetries(2)
                 .logRequests(true)
-                .logResponses(true)
+                .logResponses(false) // embeddings are huge in logs
                 .build();
 
         TextSegment segment1 = TextSegment.from("hello");

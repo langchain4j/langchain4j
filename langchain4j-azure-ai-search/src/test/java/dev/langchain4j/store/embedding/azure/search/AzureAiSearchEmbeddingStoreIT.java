@@ -1,6 +1,6 @@
 package dev.langchain4j.store.embedding.azure.search;
 
-import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.store.embedding.azure.search.AbstractAzureAiSearchEmbeddingStore.DEFAULT_FIELD_ID;
 import static dev.langchain4j.store.embedding.azure.search.AbstractAzureAiSearchEmbeddingStore.DEFAULT_INDEX_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -38,7 +38,7 @@ class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
     private final AzureAiSearchEmbeddingStore embeddingStore = AzureAiSearchEmbeddingStore.builder()
             .endpoint(AZURE_SEARCH_ENDPOINT)
             .apiKey(AZURE_SEARCH_KEY)
-            .indexName("ccc" + randomUUID())
+            .indexName(DEFAULT_INDEX_NAME)
             .dimensions(embeddingModel.dimension())
             .build();
 
@@ -60,7 +60,7 @@ class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
     private void deleteIndex() {
         try {
-            embeddingStore.deleteIndex();
+            withRetry(embeddingStore::deleteIndex, 5);
         } catch (RuntimeException e) {
             log.error("Failed to delete the index. You should look at deleting it manually.", e);
         }

@@ -1,28 +1,31 @@
 package dev.langchain4j.data.pdf;
 
-import dev.langchain4j.Experimental;
-
 import java.net.URI;
 import java.util.Objects;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.quoted;
 
-@Experimental
 public class PdfFile {
+
     private final URI url;
     private final String base64Data;
+    private final String mimeType;
 
     /**
      * Create a new {@link PdfFile} from the Builder.
+     *
      * @param builder the builder.
      */
     private PdfFile(Builder builder) {
         this.url = builder.url;
         this.base64Data = builder.base64Data;
+        this.mimeType = getOrDefault(builder.mimeType, "application/pdf");
     }
 
     /**
      * Create a new {@link Builder}.
+     *
      * @return the new {@link Builder}.
      */
     public static Builder builder() {
@@ -31,6 +34,7 @@ public class PdfFile {
 
     /**
      * Get the url of the PDF.
+     *
      * @return the url of the PDF, or null if not set.
      */
     public URI url() {
@@ -39,10 +43,20 @@ public class PdfFile {
 
     /**
      * Get the base64 data of the rich format document.
+     *
      * @return the base64 data of the rich format document, or null if not set.
      */
     public String base64Data() {
         return base64Data;
+    }
+
+    /**
+     * Get the mime type of the rich format document.
+     *
+     * @return the mime type of the rich format document.
+     */
+    public String mimeType() {
+        return mimeType;
     }
 
     @Override
@@ -51,20 +65,22 @@ public class PdfFile {
         if (o == null || getClass() != o.getClass()) return false;
         PdfFile that = (PdfFile) o;
         return Objects.equals(this.url, that.url)
-            && Objects.equals(this.base64Data, that.base64Data);
+                && Objects.equals(this.base64Data, that.base64Data)
+                && Objects.equals(this.mimeType, that.mimeType);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(url, base64Data);
+        return Objects.hash(url, base64Data, mimeType);
     }
 
     @Override
     public String toString() {
         return "PdfFile {" +
-            " url = " + quoted(url) +
-            ", base64Data = " + quoted(base64Data) +
-            " }";
+                " url = " + quoted(url) +
+                ", base64Data = " + quoted(base64Data) +
+                ", mimeType = " + quoted(mimeType) +
+                " }";
     }
 
     /**
@@ -74,14 +90,17 @@ public class PdfFile {
 
         private URI url;
         private String base64Data;
+        private String mimeType;
 
         /**
          * Create a new {@link Builder}.
          */
-        public Builder() {}
+        public Builder() {
+        }
 
         /**
          * Set the url of the PDF document.
+         *
          * @param url the url of the PDF document.
          * @return {@code this}
          */
@@ -92,6 +111,7 @@ public class PdfFile {
 
         /**
          * Set the url of the PDF document.
+         *
          * @param url the url of the PDF document.
          * @return {@code this}
          */
@@ -101,6 +121,7 @@ public class PdfFile {
 
         /**
          * Set the base64 data of the PDF document.
+         *
          * @param base64Data the base64 data of the PDF document.
          * @return {@code this}
          */
@@ -110,7 +131,19 @@ public class PdfFile {
         }
 
         /**
+         * Set the mime type of the PDF document.
+         *
+         * @param mimeType the mime type of the PDF document.
+         * @return {@code this}
+         */
+        public Builder mimeType(String mimeType) {
+            this.mimeType = mimeType;
+            return this;
+        }
+
+        /**
          * Build the {@link PdfFile}.
+         *
          * @return the {@link PdfFile}.
          */
         public PdfFile build() {

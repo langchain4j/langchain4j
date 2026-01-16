@@ -3,6 +3,7 @@ package dev.langchain4j.web.search;
 import java.util.Map;
 import java.util.Objects;
 
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
@@ -39,7 +40,7 @@ public class WebSearchInformationResult {
     public WebSearchInformationResult(Long totalResults, Integer pageNumber, Map<String, Object> metadata) {
         this.totalResults = ensureNotNull(totalResults, "totalResults");
         this.pageNumber = pageNumber;
-        this.metadata = metadata;
+        this.metadata = copy(metadata);
     }
 
     /**

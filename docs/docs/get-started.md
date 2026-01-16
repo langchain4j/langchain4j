@@ -1,5 +1,7 @@
 ---
 sidebar_position: 5
+stableVersion: 1.10.0
+betaVersion: 1.10.0-beta18
 ---
 
 # Get Started
@@ -8,18 +10,24 @@ sidebar_position: 5
 If you are using Quarkus, see [Quarkus Integration](/tutorials/quarkus-integration/).
 
 If you are using Spring Boot, see [Spring Boot Integration](/tutorials/spring-boot-integration).
+
+If you are using Helidon, see [Helidon Integration](/tutorials/helidon-integration)
 :::
 
-LangChain4j offers [integration with many LLM providers](/integrations/language-models/).
+LangChain4j offers integrations with many [LLM providers](/integrations/language-models/),
+[embedding/vector stores](/integrations/embedding-stores), etc.
 Each integration has its own maven dependency.
-The simplest way to begin is with the OpenAI integration:
+
+The minimum supported JDK version is 17.
+
+As an example, let's import the OpenAI dependency:
 
 - For Maven in `pom.xml`:
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.0.0-beta1</version>
+    <version>1.10.0</version>
 </dependency>
 ```
 
@@ -30,14 +38,14 @@ the following dependency:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>1.0.0-beta1</version>
+    <version>1.10.0</version>
 </dependency>
 ```
 
 - For Gradle in `build.gradle`:
 ```groovy
-implementation 'dev.langchain4j:langchain4j-open-ai:1.0.0-beta1'
-implementation 'dev.langchain4j:langchain4j:1.0.0-beta1'
+implementation 'dev.langchain4j:langchain4j-open-ai:1.10.0'
+implementation 'dev.langchain4j:langchain4j:1.10.0'
 ```
 
 <details>
@@ -49,36 +57,50 @@ implementation 'dev.langchain4j:langchain4j:1.0.0-beta1'
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-bom</artifactId>
-            <version>1.0.0-beta1</version>
+            <version>1.10.0</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
     </dependencies>
 </dependencyManagement>
 ```
+
+:::note
+Please note that `langchain4j-bom` always contains the latest versions of all LangChain4j modules.
+:::
+
+:::note
+Please note that while the `langchain4j-bom` version is `1.10.0`,
+many of the modules still have version `1.10.0-beta18`,
+so there might be some breaking changes for these modules in the future.
+:::
 </details>
 
 <details>
 <summary>SNAPSHOT dependencies (newest features)</summary>
 
 If you'd like to test the newest features before their official release,
-you can use the most recent SNAPSHOT dependency:
+you can use the most recent `SNAPSHOT` dependency:
 ```xml
 <repositories>
-    <repository>
-        <id>snapshots-repo</id>
-        <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
-        <snapshots>
-            <enabled>true</enabled>
-        </snapshots>
-    </repository>
+  <repository>
+    <name>Central Portal Snapshots</name>
+    <id>central-portal-snapshots</id>
+    <url>https://central.sonatype.com/repository/maven-snapshots/</url>
+    <releases>
+      <enabled>false</enabled>
+    </releases>
+    <snapshots>
+      <enabled>true</enabled>
+    </snapshots>
+  </repository>
 </repositories>
 
 <dependencies>
     <dependency>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j</artifactId>
-        <version>1.0.0-beta2-SNAPSHOT</version>
+        <version>1.10.0-SNAPSHOT</version>
     </dependency>
 </dependencies>
 ```

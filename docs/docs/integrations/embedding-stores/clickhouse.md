@@ -19,7 +19,7 @@ vectors with SQL.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-community-clickhouse</artifactId>
-    <version>1.0.0-beta1</version>
+    <version>${latest version here}</version>
 </dependency>
 ```
 

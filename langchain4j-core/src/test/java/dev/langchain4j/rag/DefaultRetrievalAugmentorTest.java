@@ -17,6 +17,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.aggregator.ContentAggregator;
@@ -92,14 +93,16 @@ class DefaultRetrievalAugmentorTest {
                 .executor(executor)
                 .build();
 
+        SystemMessage systemMessage = SystemMessage.from("Be polite");
         UserMessage userMessage = UserMessage.from("query");
 
-        Metadata metadata = Metadata.from(userMessage, null, null);
+        Metadata metadata = Metadata.from(userMessage, systemMessage, null, null);
 
         // when
-        UserMessage augmented = retrievalAugmentor.augment(userMessage, metadata);
+        AugmentationResult result = retrievalAugmentor.augment(new AugmentationRequest(userMessage, metadata));
 
         // then
+        UserMessage augmented = (UserMessage) result.chatMessage();
         assertThat(augmented.singleText())
                 .isEqualTo(
                         """
@@ -177,14 +180,16 @@ class DefaultRetrievalAugmentorTest {
                 .executor(executor)
                 .build();
 
+        SystemMessage systemMessage = SystemMessage.from("Be polite");
         UserMessage userMessage = UserMessage.from("query");
 
-        Metadata metadata = Metadata.from(userMessage, null, null);
+        Metadata metadata = Metadata.from(userMessage, systemMessage, null, null);
 
         // when
-        UserMessage augmented = retrievalAugmentor.augment(userMessage, metadata);
+        AugmentationResult result = retrievalAugmentor.augment(new AugmentationRequest(userMessage, metadata));
 
         // then
+        UserMessage augmented = (UserMessage) result.chatMessage();
         assertThat(augmented.singleText())
                 .isEqualTo(
                         """
@@ -256,13 +261,14 @@ class DefaultRetrievalAugmentorTest {
                 .build();
 
         UserMessage userMessage = UserMessage.from("query");
-
-        Metadata metadata = Metadata.from(userMessage, null, null);
+        SystemMessage systemMessage = SystemMessage.from("Be polite");
+        Metadata metadata = Metadata.from(userMessage, systemMessage, null, null);
 
         // when
-        UserMessage augmented = retrievalAugmentor.augment(userMessage, metadata);
+        AugmentationResult result = retrievalAugmentor.augment(new AugmentationRequest(userMessage, metadata));
 
         // then
+        UserMessage augmented = (UserMessage) result.chatMessage();
         assertThat(augmented.singleText())
                 .isEqualTo("""
                 query
@@ -306,13 +312,15 @@ class DefaultRetrievalAugmentorTest {
 
         UserMessage userMessage = UserMessage.from("query");
 
-        Metadata metadata = Metadata.from(userMessage, null, null);
+        SystemMessage systemMessage = SystemMessage.from("Be polite");
+        Metadata metadata = Metadata.from(userMessage, systemMessage, null, null);
 
         // when
-        UserMessage augmentedUserMessage = retrievalAugmentor.augment(userMessage, metadata);
+        AugmentationResult result = retrievalAugmentor.augment(new AugmentationRequest(userMessage, metadata));
 
         // then
-        assertThat(augmentedUserMessage).isEqualTo(userMessage);
+        UserMessage augmented = (UserMessage) result.chatMessage();
+        assertThat(augmented).isEqualTo(userMessage);
 
         verify(queryRouter).route(Query.from("query", metadata));
         verifyNoMoreInteractions(queryRouter);
@@ -386,10 +394,10 @@ class DefaultRetrievalAugmentorTest {
     static class TestContentInjector implements ContentInjector {
 
         @Override
-        public UserMessage inject(List<Content> contents, UserMessage userMessage) {
+        public ChatMessage inject(List<Content> contents, ChatMessage chatMessage) {
             String joinedContents =
                     contents.stream().map(it -> it.textSegment().text()).collect(joining("\n"));
-            return UserMessage.from(userMessage.singleText() + "\n" + joinedContents);
+            return UserMessage.from(((UserMessage) chatMessage).singleText() + "\n" + joinedContents);
         }
     }
 }

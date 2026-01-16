@@ -2,14 +2,13 @@ package dev.langchain4j.service;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -37,7 +36,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 class StreamingAiServicesWithToolsWithoutMemoryIT {
 
     @Spy
-    StreamingChatLanguageModel spyModel = OpenAiStreamingChatModel.builder()
+    StreamingChatModel spyModel = OpenAiStreamingChatModel.builder()
             .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
@@ -72,24 +71,23 @@ class StreamingAiServicesWithToolsWithoutMemoryIT {
 
         Assistant assistant = AiServices
                 .builder(Assistant.class)
-                .streamingChatLanguageModel(spyModel)
+                .streamingChatModel(spyModel)
                 .tools(calculator)
                 .build();
 
         String userMessage = "What is the square root of 485906798473894056 in scientific notation?";
 
         // when
-        CompletableFuture<Response<AiMessage>> future = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
         assistant.chat(userMessage)
-                .onNext(token -> {
-                })
-                .onComplete(future::complete)
+                .onPartialResponse(ignored -> {})
+                .onCompleteResponse(future::complete)
                 .onError(future::completeExceptionally)
                 .start();
-        Response<AiMessage> response = future.get(60, TimeUnit.SECONDS);
+        ChatResponse response = future.get(60, TimeUnit.SECONDS);
 
         // then
-        assertThat(response.content().text()).contains("6.97");
+        assertThat(response.aiMessage().text()).contains("6.97");
         assertThat(response.finishReason()).isEqualTo(STOP);
 
         TokenUsage tokenUsage = response.tokenUsage();
@@ -123,7 +121,7 @@ class StreamingAiServicesWithToolsWithoutMemoryIT {
         // given
         Calculator calculator = spy(new Calculator());
 
-        StreamingChatLanguageModel model = OpenAiStreamingChatModel
+        StreamingChatModel model = OpenAiStreamingChatModel
                 .builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
@@ -135,28 +133,27 @@ class StreamingAiServicesWithToolsWithoutMemoryIT {
                 .logResponses(true)
                 .build();
 
-        StreamingChatLanguageModel spyModel = spy(model);
+        StreamingChatModel spyModel = spy(model);
 
         Assistant assistant = AiServices
                 .builder(Assistant.class)
-                .streamingChatLanguageModel(spyModel)
+                .streamingChatModel(spyModel)
                 .tools(calculator)
                 .build();
 
         String userMessage = "What is the square root of 485906798473894056 and 97866249624785 in scientific notation?";
 
         // when
-        CompletableFuture<Response<AiMessage>> future = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
         assistant.chat(userMessage)
-                .onNext(token -> {
-                })
-                .onComplete(future::complete)
+                .onPartialResponse(ignored -> {})
+                .onCompleteResponse(future::complete)
                 .onError(future::completeExceptionally)
                 .start();
-        Response<AiMessage> response = future.get(60, TimeUnit.SECONDS);
+        ChatResponse response = future.get(60, TimeUnit.SECONDS);
 
         // then
-        assertThat(response.content().text()).contains("6.97", "9.89");
+        assertThat(response.aiMessage().text()).contains("6.97", "9.89");
         assertThat(response.finishReason()).isEqualTo(STOP);
 
         TokenUsage tokenUsage = response.tokenUsage();
@@ -202,24 +199,23 @@ class StreamingAiServicesWithToolsWithoutMemoryIT {
 
         Assistant assistant = AiServices
                 .builder(Assistant.class)
-                .streamingChatLanguageModel(spyModel)
+                .streamingChatModel(spyModel)
                 .tools(calculator)
                 .build();
 
         String userMessage = "What is the square root of 485906798473894056 and 97866249624785 in scientific notation?";
 
         // when
-        CompletableFuture<Response<AiMessage>> future = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
         assistant.chat(userMessage)
-                .onNext(token -> {
-                })
-                .onComplete(future::complete)
+                .onPartialResponse(ignored -> {})
+                .onCompleteResponse(future::complete)
                 .onError(future::completeExceptionally)
                 .start();
-        Response<AiMessage> response = future.get(60, TimeUnit.SECONDS);
+        ChatResponse response = future.get(60, TimeUnit.SECONDS);
 
         // then
-        assertThat(response.content().text()).contains("6.97", "9.89");
+        assertThat(response.aiMessage().text()).contains("6.97", "9.89");
         assertThat(response.finishReason()).isEqualTo(STOP);
 
         TokenUsage tokenUsage = response.tokenUsage();

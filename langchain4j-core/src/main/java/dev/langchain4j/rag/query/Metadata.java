@@ -1,36 +1,64 @@
 package dev.langchain4j.rag.query;
 
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.rag.RetrievalAugmentor;
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.invocation.InvocationParameters;
+import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.rag.AugmentationRequest;
+import dev.langchain4j.rag.RetrievalAugmentor;
 import java.util.List;
 import java.util.Objects;
-
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * Represents metadata that may be useful or necessary for retrieval or augmentation purposes.
  */
 public class Metadata {
 
-    private final UserMessage userMessage;
-    private final Object chatMemoryId;
+    private final ChatMessage chatMessage;
+    private final SystemMessage systemMessage;
     private final List<ChatMessage> chatMemory;
+    private final InvocationContext invocationContext;
 
-    public Metadata(UserMessage userMessage, Object chatMemoryId, List<ChatMessage> chatMemory) {
-        this.userMessage = ensureNotNull(userMessage, "userMessage");
-        this.chatMemoryId = chatMemoryId;
-        this.chatMemory = copyIfNotNull(chatMemory);
+    public Metadata(Builder builder) {
+        this.chatMessage = ensureNotNull(builder.chatMessage, "chatMessage");
+        this.systemMessage = builder.systemMessage;
+        this.chatMemory = copy(builder.chatMemory);
+        this.invocationContext = ensureNotNull(builder.invocationContext, "invocationContext");
+    }
+
+    public Metadata(ChatMessage chatMessage, Object chatMemoryId, List<ChatMessage> chatMemory) {
+        this.chatMessage = ensureNotNull(chatMessage, "chatMessage");
+        this.systemMessage = null;
+        this.chatMemory = copy(chatMemory);
+        this.invocationContext =
+                InvocationContext.builder().chatMemoryId(chatMemoryId).build();
+    }
+
+    public Metadata(
+            ChatMessage chatMessage, SystemMessage systemMessage, Object chatMemoryId, List<ChatMessage> chatMemory) {
+        this.chatMessage = ensureNotNull(chatMessage, "chatMessage");
+        this.systemMessage = ensureNotNull(systemMessage, "systemMessage");
+        this.chatMemory = copy(chatMemory);
+        this.invocationContext =
+                InvocationContext.builder().chatMemoryId(chatMemoryId).build();
     }
 
     /**
-     * @return an original {@link UserMessage} passed to the {@link RetrievalAugmentor#augment(UserMessage, Metadata)}.
+     * @return an original {@link ChatMessage} passed to the {@link RetrievalAugmentor#augment(AugmentationRequest)}.
      */
-    public UserMessage userMessage() {
-        return userMessage;
+    public ChatMessage chatMessage() {
+        return chatMessage;
+    }
+
+    /**
+     * @return the effective {@link SystemMessage} from the AI Service invocation, if any
+     */
+    public SystemMessage systemMessage() {
+        return systemMessage;
     }
 
     /**
@@ -38,7 +66,7 @@ public class Metadata {
      * See {@code @dev.langchain4j.service.MemoryId} annotation from a {@code dev.langchain4j:langchain4j} module.
      */
     public Object chatMemoryId() {
-        return chatMemoryId;
+        return invocationContext.chatMemoryId();
     }
 
     /**
@@ -49,31 +77,87 @@ public class Metadata {
         return chatMemory;
     }
 
+    /**
+     * @since 1.6.0
+     */
+    public InvocationContext invocationContext() {
+        return invocationContext;
+    }
+
+    /**
+     * @since 1.6.0
+     */
+    public InvocationParameters invocationParameters() {
+        return invocationContext.invocationParameters();
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Metadata that = (Metadata) o;
-        return Objects.equals(this.userMessage, that.userMessage)
-                && Objects.equals(this.chatMemoryId, that.chatMemoryId)
-                && Objects.equals(this.chatMemory, that.chatMemory);
+        return Objects.equals(this.chatMessage, that.chatMessage)
+                && Objects.equals(this.systemMessage, that.systemMessage)
+                && Objects.equals(this.chatMemory, that.chatMemory)
+                && Objects.equals(this.invocationContext, that.invocationContext);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(userMessage, chatMemoryId, chatMemory);
+        return Objects.hash(chatMessage, systemMessage, chatMemory, invocationContext);
     }
 
     @Override
     public String toString() {
-        return "Metadata {" +
-                " userMessage = " + userMessage +
-                ", chatMemoryId = " + chatMemoryId +
-                ", chatMemory = " + chatMemory +
-                " }";
+        return "Metadata {" + " chatMessage = "
+                + chatMessage + ", systemMessage = "
+                + systemMessage + ", chatMemory = "
+                + chatMemory + ", invocationContext = "
+                + invocationContext + " }";
     }
 
-    public static Metadata from(UserMessage userMessage, Object chatMemoryId, List<ChatMessage> chatMemory) {
-        return new Metadata(userMessage, chatMemoryId, chatMemory);
+    public static Metadata from(ChatMessage chatMessage, Object chatMemoryId, List<ChatMessage> chatMemory) {
+        return new Metadata(chatMessage, chatMemoryId, chatMemory);
+    }
+
+    public static Metadata from(
+            ChatMessage chatMessage, SystemMessage systemMessage, Object chatMemoryId, List<ChatMessage> chatMemory) {
+        return new Metadata(chatMessage, systemMessage, chatMemoryId, chatMemory);
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+
+        private ChatMessage chatMessage;
+        private SystemMessage systemMessage;
+        private List<ChatMessage> chatMemory;
+        private InvocationContext invocationContext;
+
+        public Builder chatMessage(ChatMessage chatMessage) {
+            this.chatMessage = chatMessage;
+            return this;
+        }
+
+        public Builder systemMessage(SystemMessage systemMessage) {
+            this.systemMessage = systemMessage;
+            return this;
+        }
+
+        public Builder chatMemory(List<ChatMessage> chatMemory) {
+            this.chatMemory = chatMemory;
+            return this;
+        }
+
+        public Builder invocationContext(InvocationContext invocationContext) {
+            this.invocationContext = invocationContext;
+            return this;
+        }
+
+        public Metadata build() {
+            return new Metadata(this);
+        }
     }
 }

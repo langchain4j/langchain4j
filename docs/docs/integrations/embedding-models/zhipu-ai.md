@@ -1,5 +1,5 @@
 ---
-sidebar_position: 19
+sidebar_position: 21
 ---
 
 # Zhipu AI
@@ -38,7 +38,7 @@ Before `1.0.0-alpha1`:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-community-zhipu-ai</artifactId>
-    <version>1.0.0-beta1</version>
+    <version>${latest version here}</version>
 </dependency>
 ```
 
@@ -50,8 +50,8 @@ Or, you can use BOM to manage dependencies consistently:
     <dependency>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-community-bom</artifactId>
-        <version>1.0.0-beta1</version>
-        <typ>pom</typ>
+        <version>${latest version here}</version>
+        <type>pom</type>
         <scope>import</scope>
     </dependency>
 </dependencyManagement>

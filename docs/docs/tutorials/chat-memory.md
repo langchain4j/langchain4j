@@ -46,7 +46,7 @@ Currently, LangChain4j offers 2 out-of-the-box implementations:
   which also operates as a sliding window but focuses on keeping the `N` most recent **tokens**,
   evicting older messages as needed.
   Messages are indivisible. If a message doesn't fit, it is evicted completely.
-  `TokenWindowChatMemory` requires a `Tokenizer` to count the tokens in each `ChatMessage`.
+  `TokenWindowChatMemory` requires a `TokenCountEstimator` to count the tokens in each `ChatMessage`.
 
 ## Persistence
 
@@ -116,6 +116,8 @@ If you do not use this functionality, you can leave this method empty.
 - Only one `SystemMessage` can be held at a time.
 - If a new `SystemMessage` with the same content is added, it is ignored.
 - If a new `SystemMessage` with different content is added, it replaces the previous one.
+  By default, the new `SystemMessage` is added to the end of the message list. You can change this by setting
+  `alwaysKeepSystemMessageFirst` property when creating `ChatMemory`.
 
 ## Special treatment of tool messages
 
@@ -133,6 +135,9 @@ that prohibit sending orphan `ToolExecutionResultMessage`(s) in the request.
 - With legacy `Chain`s
   - [Chat memory with ConversationalChain](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ChatMemoryExamples.java)
   - [Chat memory with ConversationalRetrievalChain](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ChatWithDocumentsExamples.java)
+
+All supported chat memory stores can be found [here](/integrations/chat-memory-stores/).
+
 
 ## Related Tutorials
 - [Generative AI Conversations using LangChain4j ChatMemory](https://www.sivalabs.in/generative-ai-conversations-using-langchain4j-chat-memory/) by [Siva](https://www.sivalabs.in/)

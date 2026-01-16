@@ -3,24 +3,30 @@ package dev.langchain4j.data.document.loader;
 import static dev.langchain4j.data.document.loader.ClassPathDocumentLoader.loadDocument;
 import static dev.langchain4j.data.document.loader.ClassPathDocumentLoader.loadDocuments;
 import static dev.langchain4j.data.document.loader.ClassPathDocumentLoader.loadDocumentsRecursively;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.parallel.ExecutionMode.SAME_THREAD;
 
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
 import dev.langchain4j.data.document.parser.TextDocumentParser;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.nio.file.FileSystems;
 import java.nio.file.PathMatcher;
 import java.util.List;
 import java.util.stream.Stream;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
+@Execution(SAME_THREAD)
 class ClassPathDocumentLoaderTest implements WithAssertions {
     private static final String CLASSPATH_ROOT = ".";
     private static final String CLASSPATH_CHECK_DIRECTORY = "classPathSourceTests";
@@ -80,6 +86,26 @@ class ClassPathDocumentLoaderTest implements WithAssertions {
     }
 
     @Test
+    void should_load_documents_from_multiple_subdirs() {
+        // given
+        var resourceDirectory = "%s/anotherDir/".formatted(CLASSPATH_CHECK_DIRECTORY);
+
+        // when
+        var documents = loadDocuments(resourceDirectory, new TextDocumentParser());
+
+        // then
+        var fileNames = documents.stream()
+                .map(document -> document.metadata().getString(Document.FILE_NAME))
+                .toList();
+
+        assertThat(fileNames).singleElement().isEqualTo("file2.txt");
+
+        // when-then
+        assertThat(loadDocuments(resourceDirectory, new TextDocumentParser())).isEqualTo(documents);
+        assertThat(loadDocuments(resourceDirectory)).isEqualTo(documents);
+    }
+
+    @Test
     void should_load_documents_including_unknown_document_types_from_filesystem() {
         // given
         var resourceDirectory = CLASSPATH_ROOT;
@@ -98,7 +124,8 @@ class ClassPathDocumentLoaderTest implements WithAssertions {
                         "test-file.banana",
                         "test-file-iso-8859-1.txt",
                         "test-file-utf8.txt",
-                        "chefs-prompt-based-on-ingredients-in-root.txt");
+                        "chefs-prompt-based-on-ingredients-in-root.txt",
+                        "junit-platform.properties");
 
         // when-then
         assertThat(loadDocuments(resourceDirectory, new TextDocumentParser())).isEqualTo(documents);
@@ -285,6 +312,60 @@ class ClassPathDocumentLoaderTest implements WithAssertions {
                 .isEqualTo(documents);
 
         assertThat(loadDocumentsRecursively(path, pathMatcher)).isEqualTo(documents);
+    }
+
+    @Test
+    void should_use_provided_class_loader() throws Exception {
+        String testResourceName = "test-custom-classloader.txt";
+        String testResourceContent = "This is test-custom-classloader.txt";
+
+        java.nio.file.Path tempDir = java.nio.file.Files.createTempDirectory("custom-classloader-test");
+        java.nio.file.Path testFile = tempDir.resolve(testResourceName);
+        java.nio.file.Files.writeString(testFile, testResourceContent);
+
+        java.net.URLClassLoader customClassLoader = new java.net.URLClassLoader(
+                new java.net.URL[] {tempDir.toUri().toURL()}, null // no parent loader — isolates from context classpath
+                );
+
+        Document document = loadDocument(testResourceName, customClassLoader);
+
+        assertThat(document.text()).isEqualTo(testResourceContent);
+        assertThat(document.metadata().getString(Document.FILE_NAME)).isEqualTo(testResourceName);
+    }
+
+    @Test
+    void should_throw_when_classloader_does_not_have_resource() {
+        String missingResource = "non-existent-resource.txt";
+
+        // Create a classloader with no classpath URLs and no parent classloader.
+        // This ensures that it won't find any resources (fully isolated).
+        ClassLoader emptyClassLoader = new URLClassLoader(new URL[0], null);
+
+        // Attempt to load the missing resource using the empty classloader
+        // and verify that a RuntimeException is thrown with the resource name in the message.
+        assertThatExceptionOfType(RuntimeException.class)
+                .isThrownBy(() -> ClassPathDocumentLoader.loadDocument(missingResource, emptyClassLoader))
+                .withMessageContaining(missingResource);
+    }
+
+    @Test
+    void should_throw_when_resource_not_visible_to_custom_classloader_but_exists_in_classpath() {
+        String resourceFromClassPath = "test-file-utf8.txt";
+
+        // This must be visible from default class loader
+        Document document = ClassPathDocumentLoader.loadDocument(resourceFromClassPath);
+        assertNotNull(document);
+        assertThat(document.text()).isEqualToIgnoringWhitespace("test content");
+
+        // Create a classloader with no classpath URLs and no parent classloader.
+        // This ensures that it won't find any resources (fully isolated).
+        ClassLoader emptyClassLoader = new URLClassLoader(new URL[0], null);
+
+        // Attempt to load the missing resource using the empty classloader
+        // and verify that a RuntimeException is thrown with the resource name in the message.
+        assertThatExceptionOfType(RuntimeException.class)
+                .isThrownBy(() -> ClassPathDocumentLoader.loadDocument(resourceFromClassPath, emptyClassLoader))
+                .withMessageContaining(resourceFromClassPath);
     }
 
     private class FailOnFirstNonBlankDocumentParser implements DocumentParser {

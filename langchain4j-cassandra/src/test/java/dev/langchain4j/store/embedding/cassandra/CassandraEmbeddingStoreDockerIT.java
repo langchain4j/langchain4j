@@ -6,7 +6,7 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.testcontainers.DockerClientFactory;
-import org.testcontainers.containers.CassandraContainer;
+import org.testcontainers.cassandra.CassandraContainer;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
@@ -24,7 +24,7 @@ class CassandraEmbeddingStoreDockerIT extends CassandraEmbeddingStoreIT {
     static final String CASSANDRA_IMAGE = "cassandra:5.0";
     static final String DATACENTER = "datacenter1";
     static final String CLUSTER = "langchain4j";
-    static CassandraContainer<?> cassandraContainer;
+    static CassandraContainer cassandraContainer;
 
     /**
      * Check Docker is installed and running on host
@@ -33,7 +33,7 @@ class CassandraEmbeddingStoreDockerIT extends CassandraEmbeddingStoreIT {
     static void ensureDockerIsRunning() {
         DockerClientFactory.instance().client();
         if (cassandraContainer == null) {
-            cassandraContainer = new CassandraContainer<>(
+            cassandraContainer = new CassandraContainer(
                     DockerImageName.parse(CASSANDRA_IMAGE))
                     .withEnv("CLUSTER_NAME", CLUSTER)
                     .withEnv("DC", DATACENTER);
