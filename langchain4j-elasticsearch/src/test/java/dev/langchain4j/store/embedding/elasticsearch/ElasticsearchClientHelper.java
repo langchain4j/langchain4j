@@ -6,6 +6,7 @@ import static dev.langchain4j.store.embedding.elasticsearch.SSLUtils.createTrust
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch.core.InfoResponse;
+import co.elastic.clients.elasticsearch.license.GetLicenseResponse;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
@@ -41,6 +42,8 @@ public class ElasticsearchClientHelper {
     ElasticsearchContainer elasticsearch;
     public ElasticsearchClient client;
     public String version;
+    public String license;
+    public String tcLicense = "basic";
 
     public void startServices() throws IOException {
         String cloudUrl = System.getenv("ELASTICSEARCH_CLOUD_URL");
@@ -59,14 +62,15 @@ public class ElasticsearchClientHelper {
         } else {
             Properties props = new Properties();
             props.load(ElasticsearchClientHelper.class.getResourceAsStream("/version.properties"));
-            String version = props.getProperty("elastic.version");
+            String tcVersion = props.getProperty("elastic.version");
 
             // Start the container. This step might take some time...
-            log.info("Starting testcontainers with Elasticsearch [{}].", version);
+            log.info("Starting testcontainers with Elasticsearch [{}].", tcVersion);
             elasticsearch = new ElasticsearchContainer(
                             DockerImageName.parse("docker.elastic.co/elasticsearch/elasticsearch")
-                                    .withTag(version))
-                    .withPassword(localPassword);
+                                    .withTag(tcVersion))
+                    .withPassword(localPassword)
+                    .withEnv("xpack.license.self_generated.type", tcLicense);
             elasticsearch.start();
             byte[] certAsBytes = elasticsearch.copyFileFromContainer(
                     "/usr/share/elasticsearch/config/certs/http_ca.crt", IOUtils::toByteArray);
@@ -134,12 +138,13 @@ public class ElasticsearchClientHelper {
             // And create the API client
             client = new ElasticsearchClient(transport);
 
-            InfoResponse info = client.info();
-            log.info(
-                    "Found Elasticsearch cluster version [{}] running at [{}].",
-                    info.version().number(),
-                    address);
+            final InfoResponse info = client.info();
             version = info.version().number();
+            log.info("Found Elasticsearch cluster version [{}] running at [{}].", version, address);
+
+            final GetLicenseResponse licenseResponse = client.license().get();
+            license = licenseResponse.license().type().name();
+            log.info("Elasticsearch cluster is running with a [{}] license.", license);
 
             return restClient;
         } catch (Exception e) {
@@ -149,9 +154,24 @@ public class ElasticsearchClientHelper {
         }
     }
 
-    public static boolean isGTENineTwo(String version) {
+    public boolean isGTENineTwo() {
         int major = Integer.parseInt(version.split("\\.")[0]);
         int minor = Integer.parseInt(version.split("\\.")[1]);
         return major >= 9 && minor >= 2;
+    }
+
+    public boolean supportsRrf() {
+        int major = Integer.parseInt(version.split("\\.")[0]);
+        int minor = Integer.parseInt(version.split("\\.")[1]);
+        boolean hasRrfLicense = isEnterprise() || isTrial();
+        return ((major == 8 && minor >= 9) || major >= 9) && hasRrfLicense;
+    }
+
+    public boolean isTrial() {
+        return "trial".equalsIgnoreCase(license);
+    }
+
+    public boolean isEnterprise() {
+        return "enterprise".equalsIgnoreCase(license);
     }
 }

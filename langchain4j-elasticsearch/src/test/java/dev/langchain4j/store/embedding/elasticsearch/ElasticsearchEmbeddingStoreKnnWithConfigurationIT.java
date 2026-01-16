@@ -1,7 +1,6 @@
 package dev.langchain4j.store.embedding.elasticsearch;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
-import static dev.langchain4j.store.embedding.elasticsearch.ElasticsearchClientHelper.isGTENineTwo;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.embedding.Embedding;
@@ -54,10 +53,7 @@ class ElasticsearchEmbeddingStoreKnnWithConfigurationIT {
         Embedding embedding3 = embeddingModel.embed("buen día").content();
         List<Embedding> embeddings = Arrays.asList(embedding1, embedding2, embedding3);
 
-        boolean includeVector = false;
-        if (isGTENineTwo(elasticsearchClientHelper.version)) {
-            includeVector = true;
-        }
+        boolean includeVector = elasticsearchClientHelper.isGTENineTwo();
         // Test with a high numCandidates
         {
             EmbeddingStore<TextSegment> embeddingStore = ElasticsearchEmbeddingStore.builder()
