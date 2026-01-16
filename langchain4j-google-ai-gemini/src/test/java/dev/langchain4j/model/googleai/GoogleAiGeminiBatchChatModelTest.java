@@ -1188,7 +1188,7 @@ class GoogleAiGeminiBatchChatModelTest {
             String operationName, List<ChatResponse> chatResponses) {
         var inlinedResponses = chatResponses.stream()
                 .map(GoogleAiGeminiBatchChatModelTest::toGeminiResponse)
-                .map(BatchCreateResponse.InlinedResponseWrapper::new)
+                .map(resp -> new BatchCreateResponse.InlinedResponseWrapper<>(resp, null))
                 .toList();
 
         var response = new BatchCreateResponse<>(

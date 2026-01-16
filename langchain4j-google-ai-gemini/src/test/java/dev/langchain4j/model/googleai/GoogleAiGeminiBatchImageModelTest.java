@@ -700,7 +700,7 @@ class GoogleAiGeminiBatchImageModelTest {
     private static Operation<GeminiGenerateContentResponse> createSuccessOperation(
             String operationName, List<GeminiGenerateContentResponse> imageResponses) {
         var inlinedResponses = imageResponses.stream()
-                .map(BatchCreateResponse.InlinedResponseWrapper::new)
+                .map(resp -> new BatchCreateResponse.InlinedResponseWrapper<>(resp, null))
                 .toList();
 
         var response = new BatchCreateResponse<>(

@@ -1216,7 +1216,7 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
         var inlinedResponses = embeddings.stream()
                 .map(embedding -> new GeminiEmbeddingResponse(
                         new GeminiEmbeddingResponse.GeminiEmbeddingResponseValues(embedding.vectorAsList())))
-                .map(BatchCreateResponse.InlinedResponseWrapper::new)
+                .map(resp -> new BatchCreateResponse.InlinedResponseWrapper<>(resp, null))
                 .toList();
 
         var response = new BatchCreateResponse<>(
