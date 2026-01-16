@@ -121,6 +121,13 @@ public class AiMessage implements ChatMessage {
         return thinking;
     }
 
+    /**
+     * Get the generated images of the message.
+     * At the moment it works for Gemini only.
+     *
+     * @return the generated images of the message.
+     * @since 1.11.0
+     */
     public List<Image> images() {
         return (List<Image>) attributes.getOrDefault(GENERATED_IMAGES_KEY, List.of());
     }
