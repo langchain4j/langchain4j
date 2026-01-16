@@ -5,21 +5,14 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.0.0-alpha2-SNAPSHOT</version>
+        <version>1.11.0-beta19-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>langchain4j-micrometer</artifactId>
-    <name>LangChain4J :: Micrometer</name>
+    <version>1.11.0-SNAPSHOT</version>
+    <name>LangChain4J :: Observability :: Micrometer</name>
     <description>Micrometer implementation for LangChain4J</description>
-
-    <licenses>
-        <license>
-            <name>Apache License, Version 2.0</name>
-            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
-            <distribution>repo</distribution>
-        </license>
-    </licenses>
 
     <properties>
         <micrometer.version>1.13.8</micrometer.version>
