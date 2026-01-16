@@ -63,7 +63,7 @@ public class ElasticsearchConfigurationKnn extends ElasticsearchConfiguration {
     }
 
     @Override
-    SearchResponse<Document> internalSearch(
+    SearchResponse<Document> vectorSearch(
             ElasticsearchClient client,
             String indexName,
             EmbeddingSearchRequest embeddingSearchRequest)
@@ -99,14 +99,14 @@ public class ElasticsearchConfigurationKnn extends ElasticsearchConfiguration {
     }
 
     @Override
-    SearchResponse<Document> internalSearch(
+    SearchResponse<Document> fullTextSearch(
             final ElasticsearchClient client, final String indexName, final String textQuery)
             throws ElasticsearchException {
         throw new UnsupportedOperationException("Knn configuration does not support full text search");
     }
 
     @Override
-    SearchResponse<Document> internalSearch(
+    SearchResponse<Document> hybridSearch(
             final ElasticsearchClient client,
             final String indexName,
             final EmbeddingSearchRequest embeddingSearchRequest,

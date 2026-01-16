@@ -140,7 +140,7 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
                 embeddingSearchRequest.minScore());
         try {
             SearchResponse<Document> response =
-                    this.configuration.internalSearch(client, indexName, embeddingSearchRequest);
+                    this.configuration.vectorSearch(client, indexName, embeddingSearchRequest);
             log.trace("found [{}] results", response);
 
             List<EmbeddingMatch<TextSegment>> results = toMatches(response);
@@ -166,7 +166,7 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
                 embeddingSearchRequest.maxResults(),
                 embeddingSearchRequest.minScore());
         try {
-            SearchResponse<Document> response = this.configuration.internalSearch(
+            SearchResponse<Document> response = this.configuration.hybridSearch(
                     client, indexName, embeddingSearchRequest, textQuery);
             log.trace("found [{}] results", response);
 
@@ -188,7 +188,7 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
     public List<TextSegment> fullTextSearch(String textQuery) {
         log.debug("full text search([...{}...])", textQuery.length());
         try {
-            SearchResponse<Document> response = this.configuration.internalSearch(client, indexName, textQuery);
+            SearchResponse<Document> response = this.configuration.fullTextSearch(client, indexName, textQuery);
             log.trace("found [{}] results", response);
 
             List<TextSegment> results = toTextList(response);
