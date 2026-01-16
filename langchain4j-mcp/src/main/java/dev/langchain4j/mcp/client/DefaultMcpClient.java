@@ -96,7 +96,7 @@ public class DefaultMcpClient implements McpClient {
             key = getOrDefault(builder.key, () -> UUID.randomUUID().toString());
             clientName = getOrDefault(builder.clientName, "langchain4j");
             clientVersion = getOrDefault(builder.clientVersion, "1.0");
-            protocolVersion = getOrDefault(builder.protocolVersion, "2025-06-18");
+            protocolVersion = getOrDefault(builder.protocolVersion, "2025-11-25");
             initializationTimeout = getOrDefault(builder.initializationTimeout, Duration.ofSeconds(30));
             toolExecutionTimeout = getOrDefault(builder.toolExecutionTimeout, Duration.ofSeconds(60));
             resourcesTimeout = getOrDefault(builder.resourcesTimeout, Duration.ofSeconds(60));
