@@ -88,7 +88,8 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
                         "test-file.banana",
                         "test-file-iso-8859-1.txt",
                         "test-file-utf8.txt",
-                        "chefs-prompt-based-on-ingredients-in-root.txt");
+                        "chefs-prompt-based-on-ingredients-in-root.txt",
+                        "junit-platform.properties");
 
         // when-then
         assertThat(loadDocuments(resourceDirectory.toString(), new TextDocumentParser()))
@@ -181,7 +182,8 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
                         "file1.txt",
                         "file2.txt",
                         "test-file-3.banana",
-                        "test-file-4.banana");
+                        "test-file-4.banana",
+                        "junit-platform.properties");
 
         // when-then
         assertThat(loadDocumentsRecursively(resourceDirectory.toString(), new TextDocumentParser()))

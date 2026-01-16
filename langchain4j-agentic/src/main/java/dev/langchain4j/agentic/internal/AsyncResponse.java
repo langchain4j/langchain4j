@@ -4,7 +4,7 @@ import dev.langchain4j.internal.DefaultExecutorProvider;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 
-public class AsyncResponse<T> {
+public class AsyncResponse<T> implements DelayedResponse<T> {
 
     private final CompletableFuture<T> futureResponse;
 
@@ -12,6 +12,12 @@ public class AsyncResponse<T> {
         this.futureResponse = CompletableFuture.supplyAsync(responseSupplier, DefaultExecutorProvider.getDefaultExecutorService());
     }
 
+    @Override
+    public boolean isDone() {
+        return futureResponse.isDone();
+    }
+
+    @Override
     public T blockingGet() {
         return futureResponse.join();
     }
@@ -19,9 +25,5 @@ public class AsyncResponse<T> {
     @Override
     public String toString() {
         return result().toString();
-    }
-
-    public Object result() {
-        return futureResponse.isDone() ? futureResponse.join() : "<pending>";
     }
 }

@@ -1,5 +1,6 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.internal.Utils.firstNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
 import dev.langchain4j.Experimental;
@@ -108,7 +109,7 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
 
         return new BatchList<>(
                 response.nextPageToken(),
-                response.operations().stream()
+                firstNotNull("operationsResponse", response.operations(), List.of()).stream()
                         .map(operation -> processResponse((Operation<API_RESPONSE>) operation, preparer))
                         .toList());
     }

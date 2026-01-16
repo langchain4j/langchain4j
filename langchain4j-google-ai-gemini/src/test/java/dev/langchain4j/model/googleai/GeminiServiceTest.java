@@ -2,7 +2,6 @@ package dev.langchain4j.model.googleai;
 
 import static dev.langchain4j.model.googleai.GeminiService.BatchOperationType.BATCH_GENERATE_CONTENT;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.http.client.HttpMethod;
 import dev.langchain4j.http.client.HttpRequest;
@@ -31,14 +30,6 @@ class GeminiServiceTest {
     private static final String TEST_API_KEY = "test-api-key";
     private static final String TEST_BASE_URL = "https://test.googleapis.com/v1beta";
     private static final String TEST_MODEL_NAME = "gemini-pro";
-
-    @Test
-    void shouldThrownWhenApiKeyIsMissing() {
-        assertThatThrownBy(() ->
-                        new GeminiService(null, /* apiKey= */ null, TEST_BASE_URL, false, false, false, null, null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("apiKey cannot be null or blank");
-    }
 
     @Nested
     class GenerateContentTest {

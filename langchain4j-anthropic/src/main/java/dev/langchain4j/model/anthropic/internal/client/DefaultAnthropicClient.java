@@ -1,45 +1,6 @@
 package dev.langchain4j.model.anthropic.internal.client;
 
-import dev.langchain4j.Internal;
-import dev.langchain4j.http.client.sse.ServerSentEventContext;
-import dev.langchain4j.model.anthropic.internal.api.AnthropicCountTokensRequest;
-import dev.langchain4j.http.client.sse.CancellationUnsupportedHandle;
-import dev.langchain4j.model.chat.response.CompleteToolCall;
-import dev.langchain4j.model.chat.response.PartialToolCall;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.http.client.HttpClient;
-import dev.langchain4j.http.client.HttpClientBuilder;
-import dev.langchain4j.http.client.HttpClientBuilderLoader;
-import dev.langchain4j.http.client.HttpRequest;
-import dev.langchain4j.http.client.SuccessfulHttpResponse;
-import dev.langchain4j.http.client.log.LoggingHttpClient;
-import dev.langchain4j.http.client.sse.ServerSentEvent;
-import dev.langchain4j.http.client.sse.ServerSentEventListener;
-import dev.langchain4j.internal.ExceptionMapper;
-import dev.langchain4j.internal.ToolCallBuilder;
-import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
-import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
-import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
-import dev.langchain4j.model.anthropic.internal.api.AnthropicDelta;
-import dev.langchain4j.model.anthropic.internal.api.AnthropicResponseMessage;
-import dev.langchain4j.model.anthropic.internal.api.AnthropicStreamingData;
-import dev.langchain4j.model.anthropic.internal.api.AnthropicUsage;
-import dev.langchain4j.model.anthropic.internal.api.MessageTokenCountResponse;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.ChatResponseMetadata;
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.chat.response.StreamingHandle;
-import dev.langchain4j.model.output.FinishReason;
-
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
-
+import static dev.langchain4j.http.client.HttpMethod.GET;
 import static dev.langchain4j.http.client.HttpMethod.POST;
 import static dev.langchain4j.http.client.sse.ServerSentEventParsingHandleUtils.toStreamingHandle;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
@@ -56,10 +17,55 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.anthropic.internal.client.Json.fromJson;
 import static dev.langchain4j.model.anthropic.internal.client.Json.toJson;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.REDACTED_THINKING_KEY;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.SERVER_TOOL_RESULTS_KEY;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.THINKING_SIGNATURE_KEY;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toFinishReason;
 import static java.util.Collections.synchronizedList;
 import static java.util.stream.Collectors.joining;
+
+import dev.langchain4j.Internal;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.http.client.HttpClient;
+import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.http.client.HttpClientBuilderLoader;
+import dev.langchain4j.http.client.HttpRequest;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.log.LoggingHttpClient;
+import dev.langchain4j.http.client.sse.CancellationUnsupportedHandle;
+import dev.langchain4j.http.client.sse.ServerSentEvent;
+import dev.langchain4j.http.client.sse.ServerSentEventContext;
+import dev.langchain4j.http.client.sse.ServerSentEventListener;
+import dev.langchain4j.internal.ExceptionMapper;
+import dev.langchain4j.internal.ToolCallBuilder;
+import dev.langchain4j.model.anthropic.AnthropicChatResponseMetadata;
+import dev.langchain4j.model.anthropic.AnthropicServerToolResult;
+import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicCountTokensRequest;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicDelta;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicModelsListResponse;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicResponseMessage;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicStreamingData;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicUsage;
+import dev.langchain4j.model.anthropic.internal.api.MessageTokenCountResponse;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.chat.response.CompleteToolCall;
+import dev.langchain4j.model.chat.response.PartialToolCall;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
+import dev.langchain4j.model.output.FinishReason;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Internal
 public class DefaultAnthropicClient extends AnthropicClient {
@@ -95,7 +101,8 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
         if (builder.logRequests != null && builder.logRequests
                 || builder.logResponses != null && builder.logResponses) {
-            this.httpClient = new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses, builder.logger);
+            this.httpClient =
+                    new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses, builder.logger);
         } else {
             this.httpClient = httpClient;
         }
@@ -108,15 +115,23 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
     @Override
     public AnthropicCreateMessageResponse createMessage(AnthropicCreateMessageRequest request) {
-        HttpRequest httpRequest = toHttpRequest(toJson(request), "messages");
-        SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
-        return fromJson(successfulHttpResponse.body(), AnthropicCreateMessageResponse.class);
+        return createMessageWithRawResponse(request).parsedResponse();
     }
 
     @Override
-    public void createMessage(AnthropicCreateMessageRequest request,
-                              AnthropicCreateMessageOptions options,
-                              StreamingChatResponseHandler handler) {
+    public ParsedAndRawResponse createMessageWithRawResponse(AnthropicCreateMessageRequest request) {
+        HttpRequest httpRequest = toHttpRequest(toJson(request), "messages");
+        SuccessfulHttpResponse rawResponse = httpClient.execute(httpRequest);
+        AnthropicCreateMessageResponse parsedResponse =
+                fromJson(rawResponse.body(), AnthropicCreateMessageResponse.class);
+        return new ParsedAndRawResponse(parsedResponse, rawResponse);
+    }
+
+    @Override
+    public void createMessage(
+            AnthropicCreateMessageRequest request,
+            AnthropicCreateMessageOptions options,
+            StreamingChatResponseHandler handler) {
 
         ServerSentEventListener eventListener = new ServerSentEventListener() {
 
@@ -131,6 +146,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
             volatile String currentContentBlockStartType;
 
             final ToolCallBuilder toolCallBuilder = new ToolCallBuilder(-1);
+            final List<AnthropicServerToolResult> serverToolResults = synchronizedList(new ArrayList<>());
 
             final AtomicInteger inputTokenCount = new AtomicInteger();
             final AtomicInteger outputTokenCount = new AtomicInteger();
@@ -143,6 +159,14 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
             volatile String stopReason;
             volatile StreamingHandle streamingHandle;
+
+            final AtomicReference<SuccessfulHttpResponse> rawHttpResponse = new AtomicReference<>();
+            final Queue<ServerSentEvent> rawServerSentEvents = new ConcurrentLinkedQueue<>();
+
+            @Override
+            public void onOpen(SuccessfulHttpResponse response) {
+                rawHttpResponse.set(response);
+            }
 
             @Override
             public void onEvent(ServerSentEvent event) {
@@ -172,6 +196,8 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 } else if ("error".equals(event.event())) {
                     handleError(event.data());
                 }
+
+                rawServerSentEvents.add(event);
             }
 
             private void handleMessageStart(AnthropicStreamingData data) {
@@ -236,7 +262,18 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     toolCallBuilder.updateIndex(toolCallBuilder.index() + 1);
                     toolCallBuilder.updateId(data.contentBlock.id);
                     toolCallBuilder.updateName(data.contentBlock.name);
+                } else if (isServerToolResultType(currentContentBlockStartType) && options.returnServerToolResults()) {
+                    AnthropicServerToolResult result = AnthropicServerToolResult.builder()
+                            .type(data.contentBlock.type)
+                            .toolUseId(data.contentBlock.toolUseId)
+                            .content(data.contentBlock.content)
+                            .build();
+                    serverToolResults.add(result);
                 }
+            }
+
+            private boolean isServerToolResultType(String type) {
+                return type != null && type.endsWith("_tool_result");
             }
 
             private void handleContentBlockDelta(AnthropicStreamingData data, StreamingHandle streamingHandle) {
@@ -296,7 +333,8 @@ public class DefaultAnthropicClient extends AnthropicClient {
                                 .index(completeToolCall.index())
                                 .id(completeToolCall.toolExecutionRequest().id())
                                 .name(completeToolCall.toolExecutionRequest().name())
-                                .partialArguments(completeToolCall.toolExecutionRequest().arguments())
+                                .partialArguments(
+                                        completeToolCall.toolExecutionRequest().arguments())
                                 .build();
                         onPartialToolCall(handler, partialToolRequest, streamingHandle);
                     }
@@ -324,13 +362,11 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
             private ChatResponse build() {
 
-                String text = contents.stream()
-                        .filter(content -> !content.isEmpty())
-                        .collect(joining("\n"));
+                String text =
+                        contents.stream().filter(content -> !content.isEmpty()).collect(joining("\n"));
 
-                String thinking = thinkings.stream()
-                        .filter(content -> !content.isEmpty())
-                        .collect(joining("\n"));
+                String thinking =
+                        thinkings.stream().filter(content -> !content.isEmpty()).collect(joining("\n"));
 
                 Map<String, Object> attributes = new HashMap<>();
                 String thinkingSignature = thinkingSignatures.stream()
@@ -341,6 +377,9 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 }
                 if (!redactedThinkings.isEmpty()) {
                     attributes.put(REDACTED_THINKING_KEY, redactedThinkings);
+                }
+                if (options.returnServerToolResults() && !serverToolResults.isEmpty()) {
+                    attributes.put(SERVER_TOOL_RESULTS_KEY, serverToolResults);
                 }
 
                 List<ToolExecutionRequest> toolExecutionRequests = List.of();
@@ -373,7 +412,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
             }
 
             private ChatResponseMetadata createMetadata(AnthropicTokenUsage tokenUsage, FinishReason finishReason) {
-                var metadataBuilder = ChatResponseMetadata.builder();
+                var metadataBuilder = AnthropicChatResponseMetadata.builder();
                 if (responseId.get() != null) {
                     metadataBuilder.id(responseId.get());
                 }
@@ -385,6 +424,12 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 }
                 if (finishReason != null) {
                     metadataBuilder.finishReason(finishReason);
+                }
+                if (rawHttpResponse.get() != null) {
+                    metadataBuilder.rawHttpResponse(rawHttpResponse.get());
+                }
+                if (!rawServerSentEvents.isEmpty()) {
+                    metadataBuilder.rawServerSentEvents(new ArrayList<>(rawServerSentEvents));
                 }
                 return metadataBuilder.build();
             }
@@ -410,6 +455,18 @@ public class DefaultAnthropicClient extends AnthropicClient {
         HttpRequest httpRequest = toHttpRequest(toJson(request), "messages/count_tokens");
         SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
         return fromJson(successfulHttpResponse.body(), MessageTokenCountResponse.class);
+    }
+
+    @Override
+    public AnthropicModelsListResponse listModels() {
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(GET)
+                .url(baseUrl, "models")
+                .addHeader("x-api-key", apiKey)
+                .addHeader("anthropic-version", version)
+                .build();
+        SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
+        return fromJson(successfulHttpResponse.body(), AnthropicModelsListResponse.class);
     }
 
     public void createMessage(AnthropicCreateMessageRequest request, StreamingChatResponseHandler handler) {

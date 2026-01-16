@@ -1,22 +1,23 @@
 package dev.langchain4j.model.bedrock.common;
 
-import static dev.langchain4j.model.bedrock.common.BedrockAiServicesIT.sleepIfNeeded;
 import static dev.langchain4j.model.bedrock.TestedModels.*;
+import static dev.langchain4j.model.bedrock.common.BedrockAiServicesIT.sleepIfNeeded;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.bedrock.BedrockChatModel;
+import dev.langchain4j.model.bedrock.BedrockChatResponseMetadata;
 import dev.langchain4j.model.bedrock.BedrockTokenUsage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import java.util.List;
-
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.TokenUsage;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -38,9 +39,7 @@ class BedrockChatModelNovaWithVisionIT extends AbstractChatModelIT {
 
     @Override
     protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
-        return ChatRequestParameters.builder()
-                .maxOutputTokens(maxOutputTokens)
-                .build();
+        return ChatRequestParameters.builder().maxOutputTokens(maxOutputTokens).build();
     }
 
     @Override
@@ -70,6 +69,11 @@ class BedrockChatModelNovaWithVisionIT extends AbstractChatModelIT {
     @Override
     protected boolean supportsJsonResponseFormatWithRawSchema() {
         return false; // output format not supported
+    }
+
+    @Override
+    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(final ChatModel model) {
+        return BedrockChatResponseMetadata.class;
     }
 
     // OVERRIDE BECAUSE OF INCOHERENCY IN STOPSEQUENCE MANAGEMENT (Nova models include stopSequence)

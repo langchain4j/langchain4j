@@ -42,7 +42,7 @@ public final class GeminiFiles {
     private final String apiKey;
 
     private GeminiFiles(Builder builder) {
-        this.apiKey = ensureNotBlank(builder.apiKey, "apiKey");
+        this.apiKey = builder.apiKey;
         this.httpClient = firstNotNull("httpClient", builder.httpClient, HttpClient.newHttpClient());
         this.baseUrl = firstNotNull("baseUrl", builder.baseUrl, BASE_URL);
     }

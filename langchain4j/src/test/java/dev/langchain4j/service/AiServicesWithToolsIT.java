@@ -50,7 +50,9 @@ import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderResult;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -150,10 +152,15 @@ class AiServicesWithToolsIT {
 
         ChatModel spyChatModel = spy(chatModel);
 
+        List<String> toolCalls = new ArrayList<>();
+        Map<String, Object> toolResults = new HashMap<>();
+
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(spyChatModel)
                 .chatMemory(chatMemory)
                 .tools(transactionService)
+                .beforeToolExecution(before -> toolCalls.add(before.request().name()))
+                .afterToolExecution(exec -> toolResults.put(exec.request().name(), exec.resultObject()))
                 .build();
 
         String userMessage = "What is the amounts of transaction T001?";
@@ -225,6 +232,9 @@ class AiServicesWithToolsIT {
                         .messages(messages.get(0), messages.get(1), messages.get(2))
                         .toolSpecifications(EXPECTED_SPECIFICATION)
                         .build());
+
+        assertThat(toolCalls).hasSize(1).contains("getTransactionAmount");
+        assertThat(toolResults).hasSize(1).containsKey("getTransactionAmount").containsValue(11.1);
     }
 
     @ParameterizedTest
@@ -1190,24 +1200,20 @@ class AiServicesWithToolsIT {
             ChatModel chatModel) {
 
         // given
-        TransactionService transactionService = spy(new TransactionService());
-
-        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
-
-        ChatModel spyChatModel = spy(chatModel);
+        int maxSequentialToolsInvocations = 1; // only one sequential tool call allowed, the test makes 3
 
         AssistantReturningResult assistant = AiServices.builder(AssistantReturningResult.class)
-                .chatModel(spyChatModel)
-                .chatMemory(chatMemory)
-                .tools(transactionService)
-                .maxSequentialToolsInvocations(1) // only one sequential tool call allowed, the test makes 3
+                .chatModel(chatModel)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
+                .tools(new TransactionService())
+                .maxSequentialToolsInvocations(maxSequentialToolsInvocations)
                 .build();
 
         String userMessage = "What are the amounts of transactions T001 and T002?";
 
         assertThatExceptionOfType(RuntimeException.class)
                 .isThrownBy(() -> assistant.chat(userMessage))
-                .withMessage("Something is wrong, exceeded 1 sequential tool executions");
+                .withMessage("Something is wrong, exceeded 1 sequential tool invocations");
     }
 
     @ParameterizedTest
