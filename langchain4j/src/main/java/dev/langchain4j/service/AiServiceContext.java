@@ -11,6 +11,7 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
 import dev.langchain4j.rag.RetrievalAugmentor;
+import dev.langchain4j.service.agentskills.AgentSkillsService;
 import dev.langchain4j.service.guardrail.GuardrailService;
 import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.service.tool.ToolService;
@@ -34,6 +35,8 @@ public class AiServiceContext {
     public ChatMemoryService chatMemoryService;
 
     public ToolService toolService = new ToolService();
+
+    public AgentSkillsService agentSkillsService = new AgentSkillsService();
 
     public final GuardrailService.Builder guardrailServiceBuilder;
     private final AtomicReference<GuardrailService> guardrailService = new AtomicReference<>();

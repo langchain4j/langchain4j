@@ -45,6 +45,9 @@ import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
+import dev.langchain4j.agentskills.AgentSkillsConfig;
+import dev.langchain4j.agentskills.AgentSkillsProvider;
+import dev.langchain4j.agentskills.execution.ScriptExecutor;
 import dev.langchain4j.spi.services.AiServicesFactory;
 import java.util.Collection;
 import java.util.List;
@@ -386,6 +389,53 @@ public abstract class AiServices<T> {
      */
     public AiServices<T> toolProvider(ToolProvider toolProvider) {
         context.toolService.toolProvider(toolProvider);
+        return this;
+    }
+
+    /**
+     * Configures Agent Skills functionality.
+     * <p>
+     * Agent Skills are modular, reusable instructions that enhance the AI's capabilities.
+     * When configured, the AI can use skills to perform specific tasks by:
+     * <ul>
+     *   <li>Loading skill content using {@code <use_skill>skill-name</use_skill>}</li>
+     *   <li>Executing scripts using {@code <execute_script skill="name">command</execute_script>}</li>
+     *   <li>Reading resources using {@code <read_resource skill="name">path</read_resource>}</li>
+     * </ul>
+     * <p>
+     * Skills follow the specification from <a href="https://agentskills.io">agentskills.io</a>.
+     * <p>
+     * Example:
+     * <pre>{@code
+     * AgentSkillsProvider provider = DefaultAgentSkillsProvider.builder()
+     *     .skillDirectories(Path.of("/my-skills"))
+     *     .build();
+     *
+     * AgentSkillsConfig config = AgentSkillsConfig.builder()
+     *     .skillsProvider(provider)
+     *     .maxIterations(15)
+     *     .build();
+     *
+     * Assistant assistant = AiServices.builder(Assistant.class)
+     *     .chatModel(chatModel)
+     *     .agentSkillsConfig(config)
+     *     .build();
+     * }</pre>
+     *
+     * @param config the Agent Skills configuration
+     * @return builder
+     * @since 1.12.0
+     */
+    public AiServices<T> agentSkillsConfig(AgentSkillsConfig config) {
+        if (config.skillsProvider() != null) {
+            context.agentSkillsService.agentSkillsProvider(config.skillsProvider());
+        }
+        if (config.scriptExecutor() != null) {
+            context.agentSkillsService.scriptExecutor(config.scriptExecutor());
+        }
+        if (config.maxIterations() != null) {
+            context.agentSkillsService.maxIterations(config.maxIterations());
+        }
         return this;
     }
 
