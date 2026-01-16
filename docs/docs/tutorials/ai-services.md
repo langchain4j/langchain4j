@@ -811,6 +811,78 @@ Assistant assistant = AiServices.builder(Assistant.class)
     .build();
 ```
 
+### RAG as a Tool 
+
+By default, content retrieval is executed for every user query.
+Alternatively, retrieval can be treated as a tool-like capability that is invoked only when the model determines that additional context is required.
+With this approach, retrieval remains part of the RAG pipeline but is executed conditionally, avoiding unnecessary searches for simple queries.
+
+To implement this, you can encapsulate a `ContentRetriever` within a `@Tool` and register it with AiServices. This allows the LLM to autonomously decide whether to trigger retrieval based on the tool's description.
+
+#### 1. Define the Retrieval Tool
+
+Create a class that wraps your `ContentRetriever`.  
+The `@Tool` description is crucial, as it informs the LLM when to invoke the search.
+
+```java
+import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.rag.content.retriever.ContentRetriever;
+import dev.langchain4j.rag.query.Query;
+
+import java.util.stream.Collectors;
+
+static class SearchTool {
+
+    private final ContentRetriever contentRetriever;
+
+    SearchTool(ContentRetriever contentRetriever) {
+        this.contentRetriever = contentRetriever;
+    }
+
+    @Tool("Search for technical information about LangChain4j and RAG configurations")
+    public String search(String query) {
+        // This logic is only executed when the LLM determines retrieval is necessary
+        return contentRetriever.retrieve(new Query(query)).stream()
+                .map(content -> content.textSegment().text())
+                .collect(Collectors.joining("\n\n"));
+    }
+}
+```
+
+#### 2. Register the Tool with AiServices
+
+Instead of using a global RetrievalAugmentor, register the retrieval logic as a tool.
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatLanguageModel(model)
+        .tools(new SearchTool(contentRetriever))
+        .build();
+```
+
+#### 3. Expected Behavior
+
+The LLM evaluates the user's intent against the tool's description to decide whether to perform a search.
+
+**Scenario A — General conversation**
+
+- **Input:**  
+  `Hello, how are you today?`
+
+- **Behavior:**  
+  The LLM responds directly from its internal knowledge without invoking the tool.
+
+
+**Scenario B — Technical question**
+
+- **Input:**  
+  `How do I configure a ContentRetriever?`
+
+- **Behavior:**  
+  The LLM identifies the technical intent, invokes `search()`, and generates a response based on the retrieved documentation.
+
+This approach allows retrieval to function as an **on-demand capability**, similar to a tool, rather than a mandatory step for every query.
+
 More details about RAG can be found [here](/tutorials/rag).
 
 More RAG examples can be found [here](https://github.com/langchain4j/langchain4j-examples/tree/main/rag-examples/src/main/java).
