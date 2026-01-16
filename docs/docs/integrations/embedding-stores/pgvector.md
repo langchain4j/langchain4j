@@ -115,4 +115,202 @@ EmbeddingStore<TextSegment> embeddingStore = PgVectorEmbeddingStore.builder()
 Use the first example if you just want the minimal configuration to get started quickly.
 The second example shows how you can leverage all available builder parameters for more control and customization.
 
-- [Examples](https://github.com/langchain4j/langchain4j-examples/tree/main/pgvector-example/src/main/java)
+## Complete RAG Example with PGVector
+
+This section demonstrates how to build a complete Retrieval-Augmented Generation (RAG) system using PostgreSQL with the PGVector extension for semantic search.
+
+### Overview
+
+A RAG system consists of two main stages:
+1. **Indexing Stage (Offline)**: Load documents, split into chunks, generate embeddings, and store in pgvector
+2. **Retrieval Stage (Online)**: Embed user query, search similar chunks, inject context into LLM prompt
+
+### Prerequisites
+
+Ensure you have a PostgreSQL instance with PGVector running (see Docker setup above).
+
+### 1. Document Ingestion (Indexing Stage)
+
+This example shows how to load documents, split them into chunks, and store embeddings in pgvector:
+
+```java
+import dev.langchain4j.data.document.Document;
+import dev.langchain4j.data.document.DocumentParser;
+import dev.langchain4j.data.document.DocumentSplitter;
+import dev.langchain4j.data.document.parser.apache.pdfbox.ApachePdfBoxDocumentParser;
+import dev.langchain4j.data.document.splitter.DocumentSplitters;
+import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.allminilml6v2.AllMiniLmL6V2EmbeddingModel;
+import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
+
+import static dev.langchain4j.data.document.loader.FileSystemDocumentLoader.loadDocument;
+
+// Load document (PDF, TXT, etc.)
+Document document = loadDocument("/path/to/document.pdf", new ApachePdfBoxDocumentParser());
+
+// Split document into smaller chunks
+// 300 tokens per chunk, 50 tokens overlap for context continuity
+DocumentSplitter splitter = DocumentSplitters.recursive(300, 50);
+
+// Create embedding model (384 dimensions for AllMiniLmL6V2)
+EmbeddingModel embeddingModel = new AllMiniLmL6V2EmbeddingModel();
+
+// Create pgvector embedding store
+EmbeddingStore<TextSegment> embeddingStore = PgVectorEmbeddingStore.builder()
+        .host("localhost")
+        .port(5432)
+        .database("postgres")
+        .user("my_user")
+        .password("my_password")
+        .table("document_embeddings")
+        .dimension(embeddingModel.dimension())  // 384 for AllMiniLmL6V2
+        .build();
+
+// Ingest: split document, generate embeddings, and store in pgvector
+EmbeddingStoreIngestor.builder()
+        .documentSplitter(splitter)
+        .embeddingModel(embeddingModel)
+        .embeddingStore(embeddingStore)
+        .build()
+        .ingest(document);
+
+System.out.println("Document ingested successfully!");
+```
+
+### 2. Querying (Retrieval Stage)
+
+This example shows how to query the RAG system with a user question:
+
+```java
+import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.store.embedding.EmbeddingMatch;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+// User's question
+String question = "What is the refund policy?";
+
+// Generate embedding for the question
+Embedding questionEmbedding = embeddingModel.embed(question).content();
+
+// Search for the most similar text segments (top 3 results)
+List<EmbeddingMatch<TextSegment>> relevantSegments = embeddingStore.findRelevant(
+        questionEmbedding,
+        3  // Retrieve top 3 most similar chunks
+);
+
+// Build context from retrieved segments
+String context = relevantSegments.stream()
+        .map(match -> match.embedded().text())
+        .collect(Collectors.joining("\n\n"));
+
+// Create prompt with retrieved context
+String promptWithContext = String.format("""
+        Answer the question based on the following context.
+        If the context doesn't contain relevant information, say "I don't have enough information to answer."
+
+        Context:
+        %s
+
+        Question: %s
+
+        Answer:
+        """, context, question);
+
+// Send to LLM with context
+ChatLanguageModel chatModel = OpenAiChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("gpt-4")
+        .build();
+
+String answer = chatModel.generate(promptWithContext);
+System.out.println("Answer: " + answer);
+```
+
+### Production Considerations
+
+Based on real-world usage, here are important considerations for production deployments:
+
+#### 1. Connection Pooling
+For production environments, use a `DataSource` with connection pooling instead of individual connection parameters:
+
+```java
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
+
+HikariConfig config = new HikariConfig();
+config.setJdbcUrl("jdbc:postgresql://localhost:5432/postgres");
+config.setUsername("my_user");
+config.setPassword("my_password");
+config.setMaximumPoolSize(10);
+
+HikariDataSource dataSource = new HikariDataSource(config);
+
+EmbeddingStore<TextSegment> embeddingStore = PgVectorEmbeddingStore.datasourceBuilder()
+        .datasource(dataSource)
+        .table("document_embeddings")
+        .dimension(384)
+        .build();
+```
+
+#### 2. Index Optimization
+For large datasets (>100k embeddings), enable IVFFlat indexing to improve query performance:
+
+```java
+EmbeddingStore<TextSegment> embeddingStore = PgVectorEmbeddingStore.builder()
+        // ... other config ...
+        .useIndex(true)
+        .indexListSize(100)  // Adjust based on dataset size
+        .build();
+```
+
+**Note**: Index creation can take time on large datasets. Balance between query speed and index build time.
+
+#### 3. Metadata Storage
+For better query performance on large datasets, use JSONB for metadata storage:
+
+```java
+import dev.langchain4j.store.embedding.pgvector.MetadataStorageConfig;
+
+EmbeddingStore<TextSegment> embeddingStore = PgVectorEmbeddingStore.builder()
+        // ... other config ...
+        .metadataStorageConfig(MetadataStorageConfig.combinedJsonb())
+        .build();
+```
+
+#### 4. Chunk Size Tuning
+Experiment with different chunk sizes based on your use case:
+- **Smaller chunks (200-300 tokens)**: Better precision, more specific answers
+- **Larger chunks (500-800 tokens)**: More context, but may reduce relevance
+
+#### 5. Error Handling
+Always handle database connection failures gracefully:
+
+```java
+try {
+    embeddingStore.add(embedding, textSegment);
+} catch (Exception e) {
+    logger.error("Failed to store embedding", e);
+    // Implement retry logic or fallback behavior
+}
+```
+
+### Spring Boot Integration
+
+For a complete production-ready example integrating pgvector with Spring Boot microservices,
+see the [pgvector RAG Spring Boot example](https://github.com/langchain4j/langchain4j-examples/tree/main/pgvector-rag-springboot).
+
+This example demonstrates:
+- Spring Boot autoconfiguration for PgVectorEmbeddingStore
+- REST API endpoints for document ingestion and querying
+- Proper connection pooling and error handling
+- Docker Compose setup for local development
+
+- [More Examples](https://github.com/langchain4j/langchain4j-examples/tree/main/pgvector-example/src/main/java)

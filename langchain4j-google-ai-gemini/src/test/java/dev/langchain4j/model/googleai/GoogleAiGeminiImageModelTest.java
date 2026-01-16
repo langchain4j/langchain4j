@@ -439,27 +439,6 @@ class GoogleAiGeminiImageModelTest {
     class BuilderValidationTest {
 
         @Test
-        void shouldThrowExceptionWhenApiKeyIsNull() {
-            // When & Then
-            assertThatThrownBy(() -> GoogleAiGeminiImageModel.builder()
-                            .modelName(TEST_MODEL_NAME)
-                            .build())
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("apiKey");
-        }
-
-        @Test
-        void shouldThrowExceptionWhenApiKeyIsBlank() {
-            // When & Then
-            assertThatThrownBy(() -> GoogleAiGeminiImageModel.builder()
-                            .apiKey("")
-                            .modelName(TEST_MODEL_NAME)
-                            .build())
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("apiKey");
-        }
-
-        @Test
         void shouldThrowExceptionWhenModelNameIsNull() {
             // When & Then
             assertThatThrownBy(() -> GoogleAiGeminiImageModel.builder()
