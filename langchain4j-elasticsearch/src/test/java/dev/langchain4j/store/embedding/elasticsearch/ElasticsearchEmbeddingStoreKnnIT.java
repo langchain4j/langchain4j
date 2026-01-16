@@ -9,7 +9,9 @@ class ElasticsearchEmbeddingStoreKnnIT extends AbstractElasticsearchEmbeddingSto
     @Override
     ElasticsearchConfiguration withConfiguration() {
         boolean includeVector = elasticsearchClientHelper.isGTENineTwo();
-        return ElasticsearchConfigurationKnn.builder().includeVectorResponse(includeVector).build();
+        return ElasticsearchConfigurationKnn.builder()
+                .includeVectorResponse(includeVector)
+                .build();
     }
 
     void optionallyCreateIndex(String indexName) throws IOException {

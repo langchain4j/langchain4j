@@ -62,7 +62,9 @@ public class ElasticsearchContentRetrieverIT extends EmbeddingStoreWithFiltering
                 .build();
 
         contentRetrieverWithVector = ElasticsearchContentRetriever.builder()
-                .configuration(ElasticsearchConfigurationKnn.builder().includeVectorResponse(includeVector).build())
+                .configuration(ElasticsearchConfigurationKnn.builder()
+                        .includeVectorResponse(includeVector)
+                        .build())
                 .restClient(elasticsearchClientHelper.restClient)
                 .indexName(indexName)
                 .embeddingModel(embeddingModel)
@@ -71,7 +73,9 @@ public class ElasticsearchContentRetrieverIT extends EmbeddingStoreWithFiltering
                 .build();
 
         contentRetrieverWithHybrid = ElasticsearchContentRetriever.builder()
-                .configuration(ElasticsearchConfigurationHybrid.builder().includeVectorResponse(includeVector).build())
+                .configuration(ElasticsearchConfigurationHybrid.builder()
+                        .includeVectorResponse(includeVector)
+                        .build())
                 .restClient(elasticsearchClientHelper.restClient)
                 .indexName(indexName)
                 .embeddingModel(embeddingModel)

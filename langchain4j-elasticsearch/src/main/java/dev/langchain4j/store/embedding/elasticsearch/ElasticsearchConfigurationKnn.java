@@ -64,9 +64,7 @@ public class ElasticsearchConfigurationKnn extends ElasticsearchConfiguration {
 
     @Override
     SearchResponse<Document> vectorSearch(
-            ElasticsearchClient client,
-            String indexName,
-            EmbeddingSearchRequest embeddingSearchRequest)
+            ElasticsearchClient client, String indexName, EmbeddingSearchRequest embeddingSearchRequest)
             throws ElasticsearchException, IOException {
         KnnQuery.Builder krb = new KnnQuery.Builder()
                 .field(VECTOR_FIELD)

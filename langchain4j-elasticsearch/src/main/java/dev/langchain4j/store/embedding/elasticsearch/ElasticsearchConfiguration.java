@@ -22,9 +22,7 @@ public abstract class ElasticsearchConfiguration {
      * @throws IOException            if an I/O error occurs
      */
     abstract SearchResponse<Document> vectorSearch(
-            ElasticsearchClient client,
-            String indexName,
-            EmbeddingSearchRequest embeddingSearchRequest)
+            ElasticsearchClient client, String indexName, EmbeddingSearchRequest embeddingSearchRequest)
             throws ElasticsearchException, IOException;
 
     /**

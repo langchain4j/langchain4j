@@ -71,9 +71,7 @@ public class ElasticsearchConfigurationHybrid extends ElasticsearchConfiguration
 
     @Override
     SearchResponse<Document> vectorSearch(
-            ElasticsearchClient client,
-            String indexName,
-            EmbeddingSearchRequest embeddingSearchRequest)
+            ElasticsearchClient client, String indexName, EmbeddingSearchRequest embeddingSearchRequest)
             throws ElasticsearchException {
         throw new UnsupportedOperationException("Hybrid configuration does not support vector search");
     }

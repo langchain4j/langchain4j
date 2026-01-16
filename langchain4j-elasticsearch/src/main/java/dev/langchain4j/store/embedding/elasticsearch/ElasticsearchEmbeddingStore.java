@@ -107,9 +107,7 @@ public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingS
      *                      Index will be created automatically if not exists.
      */
     public ElasticsearchEmbeddingStore(
-            ElasticsearchConfiguration configuration,
-            RestClient restClient,
-            String indexName) {
+            ElasticsearchConfiguration configuration, RestClient restClient, String indexName) {
         this.initialize(configuration, restClient, indexName);
     }
 

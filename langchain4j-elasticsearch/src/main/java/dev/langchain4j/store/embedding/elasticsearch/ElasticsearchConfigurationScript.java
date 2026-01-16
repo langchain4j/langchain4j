@@ -56,9 +56,7 @@ public class ElasticsearchConfigurationScript extends ElasticsearchConfiguration
 
     @Override
     SearchResponse<Document> vectorSearch(
-            ElasticsearchClient client,
-            String indexName,
-            EmbeddingSearchRequest embeddingSearchRequest)
+            ElasticsearchClient client, String indexName, EmbeddingSearchRequest embeddingSearchRequest)
             throws ElasticsearchException, IOException {
         ScriptScoreQuery scriptScoreQuery = buildDefaultScriptScoreQuery(
                 embeddingSearchRequest.queryEmbedding().vector(),

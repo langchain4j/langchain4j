@@ -173,13 +173,7 @@ public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddin
 
         public ElasticsearchContentRetriever build() {
             return new ElasticsearchContentRetriever(
-                    configuration,
-                    restClient,
-                    indexName,
-                    embeddingModel,
-                    maxResults,
-                    minScore,
-                    filter);
+                    configuration, restClient, indexName, embeddingModel, maxResults, minScore, filter);
         }
     }
 }

@@ -67,10 +67,7 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
      * @param indexName             Elasticsearch index name (optional). Default value: "default".
      *                              Index will be created automatically if not exists.
      */
-    protected void initialize(
-            ElasticsearchConfiguration configuration,
-            RestClient restClient,
-            String indexName) {
+    protected void initialize(ElasticsearchConfiguration configuration, RestClient restClient, String indexName) {
         JsonpMapper mapper = new JacksonJsonpMapper();
         ElasticsearchTransport transport = new RestClientTransport(restClient, mapper);
 
@@ -166,8 +163,8 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
                 embeddingSearchRequest.maxResults(),
                 embeddingSearchRequest.minScore());
         try {
-            SearchResponse<Document> response = this.configuration.hybridSearch(
-                    client, indexName, embeddingSearchRequest, textQuery);
+            SearchResponse<Document> response =
+                    this.configuration.hybridSearch(client, indexName, embeddingSearchRequest, textQuery);
             log.trace("found [{}] results", response);
 
             List<EmbeddingMatch<TextSegment>> results = toMatches(response);
