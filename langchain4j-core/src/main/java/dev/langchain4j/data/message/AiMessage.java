@@ -10,6 +10,7 @@ import static java.util.Arrays.asList;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.image.Image;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -28,6 +29,9 @@ import java.util.Objects;
  * the response to this message should be one {@link ToolExecutionResultMessage} for each tool execution request.
  */
 public class AiMessage implements ChatMessage {
+
+    public static final String GENERATED_IMAGES_KEY =
+            "generated_images"; // key for storing generated images in AiMessage attributes
 
     private final String text;
     private final String thinking;
@@ -115,6 +119,17 @@ public class AiMessage implements ChatMessage {
     @Experimental
     public String thinking() {
         return thinking;
+    }
+
+    /**
+     * Get the generated images of the message.
+     * At the moment it works for Gemini only.
+     *
+     * @return the generated images of the message.
+     * @since 1.11.0
+     */
+    public List<Image> images() {
+        return (List<Image>) attributes.getOrDefault(GENERATED_IMAGES_KEY, List.of());
     }
 
     /**

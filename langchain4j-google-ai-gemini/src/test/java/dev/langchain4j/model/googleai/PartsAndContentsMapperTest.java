@@ -154,7 +154,7 @@ class PartsAndContentsMapperTest {
         assertThat(result.toolExecutionRequests()).isEmpty();
 
         // Verify generated images are stored in attributes
-        List<Image> generatedImages = GeneratedImageHelper.getGeneratedImages(result);
+        List<Image> generatedImages = result.images();
         assertThat(generatedImages).hasSize(1);
         assertThat(generatedImages.get(0).base64Data()).isEqualTo(imageBlob.data());
         assertThat(generatedImages.get(0).mimeType()).isEqualTo("image/png");
@@ -173,7 +173,7 @@ class PartsAndContentsMapperTest {
 
         // Then
         assertThat(result).isNotNull();
-        List<Image> generatedImages = GeneratedImageHelper.getGeneratedImages(result);
+        List<Image> generatedImages = result.images();
         assertThat(generatedImages).isEmpty(); // Should ignore non-image data
     }
 

@@ -1,5 +1,6 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.data.message.AiMessage.GENERATED_IMAGES_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.image.Image;
@@ -27,12 +28,12 @@ class GeneratedImageHelperTest {
 
         AiMessage message = AiMessage.builder()
                 .text("Here are the generated images")
-                .attributes(Map.of(PartsAndContentsMapper.GENERATED_IMAGES_KEY, List.of(image1, image2)))
+                .attributes(Map.of(GENERATED_IMAGES_KEY, List.of(image1, image2)))
                 .build();
 
         // when
-        List<Image> generatedImages = GeneratedImageHelper.getGeneratedImages(message);
-        boolean hasImages = GeneratedImageHelper.hasGeneratedImages(message);
+        List<Image> generatedImages = message.images();
+        boolean hasImages = !generatedImages.isEmpty();
 
         // then
         assertThat(hasImages).isTrue();
@@ -49,19 +50,8 @@ class GeneratedImageHelperTest {
         AiMessage message = AiMessage.builder().text("Just text, no images").build();
 
         // when
-        List<Image> generatedImages = GeneratedImageHelper.getGeneratedImages(message);
-        boolean hasImages = GeneratedImageHelper.hasGeneratedImages(message);
-
-        // then
-        assertThat(hasImages).isFalse();
-        assertThat(generatedImages).isEmpty();
-    }
-
-    @Test
-    void should_handle_null_message() {
-        // when
-        List<Image> generatedImages = GeneratedImageHelper.getGeneratedImages(null);
-        boolean hasImages = GeneratedImageHelper.hasGeneratedImages(null);
+        List<Image> generatedImages = message.images();
+        boolean hasImages = !generatedImages.isEmpty();
 
         // then
         assertThat(hasImages).isFalse();

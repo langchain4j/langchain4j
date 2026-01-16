@@ -1,11 +1,11 @@
 package dev.langchain4j.model.googleai;
 
-import static dev.langchain4j.model.googleai.PartsAndContentsMapper.GENERATED_IMAGES_KEY;
-
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import java.util.Collections;
 import java.util.List;
+
+import static dev.langchain4j.data.message.AiMessage.GENERATED_IMAGES_KEY;
 
 /**
  * Helper class for accessing generated images from AiMessage attributes.

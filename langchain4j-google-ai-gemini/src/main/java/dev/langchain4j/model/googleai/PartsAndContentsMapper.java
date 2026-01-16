@@ -1,5 +1,6 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.data.message.AiMessage.GENERATED_IMAGES_KEY;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
@@ -47,8 +48,6 @@ final class PartsAndContentsMapper {
 
     static final String THINKING_SIGNATURE_KEY =
             "thinking_signature"; // do not change, will break backward compatibility!
-    static final String GENERATED_IMAGES_KEY =
-            "generated_images"; // key for storing generated images in AiMessage attributes
 
     private static final CustomMimeTypesFileTypeDetector mimeTypeDetector = new CustomMimeTypesFileTypeDetector();
 
