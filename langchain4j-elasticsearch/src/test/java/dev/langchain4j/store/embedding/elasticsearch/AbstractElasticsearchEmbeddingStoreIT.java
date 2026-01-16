@@ -1,7 +1,6 @@
 package dev.langchain4j.store.embedding.elasticsearch;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
-import static dev.langchain4j.store.embedding.elasticsearch.ElasticsearchClientHelper.isGTENineTwo;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.segment.TextSegment;
@@ -49,10 +48,7 @@ public abstract class AbstractElasticsearchEmbeddingStoreIT extends EmbeddingSto
         indexName = randomUUID();
         elasticsearchClientHelper.removeDataStore(indexName);
         optionallyCreateIndex(indexName);
-        boolean includeVector = false;
-        if (isGTENineTwo(elasticsearchClientHelper.version)) {
-            includeVector = true;
-        }
+        boolean includeVector = elasticsearchClientHelper.isGTENineTwo();
         embeddingStore = ElasticsearchEmbeddingStore.builder()
                 .configuration(withConfiguration())
                 .restClient(elasticsearchClientHelper.restClient)

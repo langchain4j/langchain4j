@@ -2,9 +2,10 @@ package dev.langchain4j.rag.content.retriever.elasticsearch;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
-import static dev.langchain4j.store.embedding.elasticsearch.ElasticsearchClientHelper.isGTENineTwo;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assume.assumeThat;
 
 import co.elastic.clients.elasticsearch._types.mapping.DenseVectorIndexOptionsType;
 import co.elastic.clients.transport.endpoints.BooleanResponse;
@@ -26,7 +27,6 @@ import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,10 +51,7 @@ public class ElasticsearchContentRetrieverIT extends EmbeddingStoreWithFiltering
         embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
         indexName = randomUUID();
-        boolean includeVector = false;
-        if (isGTENineTwo(elasticsearchClientHelper.version)) {
-            includeVector = true;
-        }
+        boolean includeVector = elasticsearchClientHelper.isGTENineTwo();
 
         contentRetrieverWithFullText = ElasticsearchContentRetriever.builder()
                 .configuration(ElasticsearchConfigurationFullText.builder().build())
@@ -87,6 +84,8 @@ public class ElasticsearchContentRetrieverIT extends EmbeddingStoreWithFiltering
 
     @BeforeAll
     static void startServices() throws IOException {
+        // If we need to start TC, we need a trial license for the hybrid search (addEmbeddingsAndRetrieveRelevantWithHybrid)
+        elasticsearchClientHelper.tcLicense = "trial";
         elasticsearchClientHelper.startServices();
         assertThat(elasticsearchClientHelper.restClient).isNotNull();
         assertThat(elasticsearchClientHelper.client).isNotNull();
@@ -184,8 +183,9 @@ public class ElasticsearchContentRetrieverIT extends EmbeddingStoreWithFiltering
     }
 
     @Test
-    @Disabled("RRF is not available in free elasticsearch license")
     void addEmbeddingsAndRetrieveRelevantWithHybrid() {
+        // check if RRF feature is available
+        assumeThat(elasticsearchClientHelper.supportsRrf(), is(true));
         String content1 =
                 "Albert Camus (7 November 1913 – 4 January 1960) was a French philosopher, author, dramatist, journalist, world federalist, and political activist. He was the recipient of the 1957 Nobel Prize in Literature at the age of 44, the second-youngest recipient in history. His works include The Stranger, The Plague, The Myth of Sisyphus, The Fall, and The Rebel.\n"
                         + "\n"
