@@ -35,17 +35,17 @@ public class ElasticsearchContentRetrieverIT extends EmbeddingStoreWithFiltering
 
     private static final Logger log = LoggerFactory.getLogger(ElasticsearchContentRetrieverIT.class);
 
-    private String indexName;
+    private final String indexName;
 
-    private static ElasticsearchClientHelper elasticsearchClientHelper = new ElasticsearchClientHelper();
+    private static final ElasticsearchClientHelper elasticsearchClientHelper = new ElasticsearchClientHelper();
 
-    private EmbeddingModel embeddingModel;
+    private final EmbeddingModel embeddingModel;
 
-    private ElasticsearchContentRetriever contentRetrieverWithVector;
+    private final ElasticsearchContentRetriever contentRetrieverWithVector;
 
-    private ElasticsearchContentRetriever contentRetrieverWithFullText;
+    private final ElasticsearchContentRetriever contentRetrieverWithFullText;
 
-    private ElasticsearchContentRetriever contentRetrieverWithHybrid;
+    private final ElasticsearchContentRetriever contentRetrieverWithHybrid;
 
     public ElasticsearchContentRetrieverIT() {
         embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
@@ -62,21 +62,19 @@ public class ElasticsearchContentRetrieverIT extends EmbeddingStoreWithFiltering
                 .build();
 
         contentRetrieverWithVector = ElasticsearchContentRetriever.builder()
-                .configuration(ElasticsearchConfigurationKnn.builder().build())
+                .configuration(ElasticsearchConfigurationKnn.builder().includeVectorResponse(includeVector).build())
                 .restClient(elasticsearchClientHelper.restClient)
                 .indexName(indexName)
                 .embeddingModel(embeddingModel)
-                .includeVectorResponse(includeVector)
                 .maxResults(3)
                 .minScore(0.0)
                 .build();
 
         contentRetrieverWithHybrid = ElasticsearchContentRetriever.builder()
-                .configuration(ElasticsearchConfigurationHybrid.builder().build())
+                .configuration(ElasticsearchConfigurationHybrid.builder().includeVectorResponse(includeVector).build())
                 .restClient(elasticsearchClientHelper.restClient)
                 .indexName(indexName)
                 .embeddingModel(embeddingModel)
-                .includeVectorResponse(includeVector)
                 .maxResults(3)
                 .minScore(0.0)
                 .build();

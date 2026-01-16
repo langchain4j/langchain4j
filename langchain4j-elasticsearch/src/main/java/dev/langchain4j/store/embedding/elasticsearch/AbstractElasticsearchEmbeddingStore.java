@@ -58,7 +58,6 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
     protected ElasticsearchConfiguration configuration;
     protected ElasticsearchClient client;
     protected String indexName;
-    protected boolean includeVectorResponse;
 
     /**
      * Initialize using a RestClient
@@ -67,13 +66,11 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
      * @param restClient            Elasticsearch Rest Client (mandatory)
      * @param indexName             Elasticsearch index name (optional). Default value: "default".
      *                              Index will be created automatically if not exists.
-     * @param includeVectorResponse If server version 9.2 or forward is used, this needs to be enabled to receive vector data as part of the response
      */
     protected void initialize(
             ElasticsearchConfiguration configuration,
             RestClient restClient,
-            String indexName,
-            boolean includeVectorResponse) {
+            String indexName) {
         JsonpMapper mapper = new JacksonJsonpMapper();
         ElasticsearchTransport transport = new RestClientTransport(restClient, mapper);
 
@@ -82,7 +79,6 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
         this.client = new ElasticsearchClient(transport)
                 .withTransportOptions(t -> t.addHeader("user-agent", "langchain4j elastic-java/" + version));
         this.indexName = ensureNotNull(indexName, "indexName");
-        this.includeVectorResponse = includeVectorResponse;
     }
 
     @Override
@@ -144,7 +140,7 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
                 embeddingSearchRequest.minScore());
         try {
             SearchResponse<Document> response =
-                    this.configuration.internalSearch(client, indexName, embeddingSearchRequest, includeVectorResponse);
+                    this.configuration.vectorSearch(client, indexName, embeddingSearchRequest);
             log.trace("found [{}] results", response);
 
             List<EmbeddingMatch<TextSegment>> results = toMatches(response);
@@ -152,7 +148,7 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
             return new EmbeddingSearchResult<>(results);
         } catch (ElasticsearchException e) {
             if (e.getLocalizedMessage().contains("Unknown key for a VALUE_BOOLEAN in [exclude_vectors]")
-                    && includeVectorResponse) {
+                    && this.configuration.includeVectorResponse) {
                 log.warn(
                         "Property [includeVectorResponse] is not needed for elasticsearch server versions previous to 9.2, remove it to fix the exception.");
             }
@@ -170,8 +166,8 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
                 embeddingSearchRequest.maxResults(),
                 embeddingSearchRequest.minScore());
         try {
-            SearchResponse<Document> response = this.configuration.internalSearch(
-                    client, indexName, embeddingSearchRequest, textQuery, includeVectorResponse);
+            SearchResponse<Document> response = this.configuration.hybridSearch(
+                    client, indexName, embeddingSearchRequest, textQuery);
             log.trace("found [{}] results", response);
 
             List<EmbeddingMatch<TextSegment>> results = toMatches(response);
@@ -179,7 +175,7 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
             return new EmbeddingSearchResult<>(results);
         } catch (ElasticsearchException e) {
             if (e.getLocalizedMessage().contains("Unknown key for a VALUE_BOOLEAN in [exclude_vectors]")
-                    && includeVectorResponse) {
+                    && this.configuration.includeVectorResponse) {
                 log.warn(
                         "Property [includeVectorResponse] is not needed for elasticsearch server versions previous to 9.2, remove it to fix the exception.");
             }
@@ -192,7 +188,7 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
     public List<TextSegment> fullTextSearch(String textQuery) {
         log.debug("full text search([...{}...])", textQuery.length());
         try {
-            SearchResponse<Document> response = this.configuration.internalSearch(client, indexName, textQuery);
+            SearchResponse<Document> response = this.configuration.fullTextSearch(client, indexName, textQuery);
             log.trace("found [{}] results", response);
 
             List<TextSegment> results = toTextList(response);

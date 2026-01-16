@@ -28,8 +28,21 @@ public class ElasticsearchConfigurationScript extends ElasticsearchConfiguration
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public static class Builder {
+        private boolean includeVectorResponse = false;
+
+        /**
+         * Whether to include vector fields in the search response (from Elasticsearch 9.2).
+         *
+         * @param includeVectorResponse true to include vector fields, false otherwise
+         * @return the builder instance
+         */
+        public Builder includeVectorResponse(boolean includeVectorResponse) {
+            this.includeVectorResponse = includeVectorResponse;
+            return this;
+        }
+
         public ElasticsearchConfigurationScript build() {
-            return new ElasticsearchConfigurationScript();
+            return new ElasticsearchConfigurationScript(includeVectorResponse);
         }
     }
 
@@ -37,21 +50,15 @@ public class ElasticsearchConfigurationScript extends ElasticsearchConfiguration
         return new ElasticsearchConfigurationScript.Builder();
     }
 
-    private ElasticsearchConfigurationScript() {}
-
-    @Override
-    SearchResponse<Document> internalSearch(
-            ElasticsearchClient client, String indexName, EmbeddingSearchRequest embeddingSearchRequest)
-            throws ElasticsearchException, IOException {
-        return internalSearch(client, indexName, embeddingSearchRequest, false);
+    private ElasticsearchConfigurationScript(final boolean includeVectorResponse) {
+        this.includeVectorResponse = includeVectorResponse;
     }
 
     @Override
-    SearchResponse<Document> internalSearch(
+    SearchResponse<Document> vectorSearch(
             ElasticsearchClient client,
             String indexName,
-            EmbeddingSearchRequest embeddingSearchRequest,
-            boolean includeVectorResponse)
+            EmbeddingSearchRequest embeddingSearchRequest)
             throws ElasticsearchException, IOException {
         ScriptScoreQuery scriptScoreQuery = buildDefaultScriptScoreQuery(
                 embeddingSearchRequest.queryEmbedding().vector(),
@@ -71,20 +78,19 @@ public class ElasticsearchConfigurationScript extends ElasticsearchConfiguration
     }
 
     @Override
-    SearchResponse<Document> internalSearch(
+    SearchResponse<Document> fullTextSearch(
             final ElasticsearchClient client, final String indexName, final String textQuery)
-            throws ElasticsearchException, IOException {
+            throws ElasticsearchException {
         throw new UnsupportedOperationException("Script configuration does not support full text search");
     }
 
     @Override
-    SearchResponse<Document> internalSearch(
+    SearchResponse<Document> hybridSearch(
             final ElasticsearchClient client,
             final String indexName,
             final EmbeddingSearchRequest embeddingSearchRequest,
-            final String textQuery,
-            final boolean includeVectorResponse)
-            throws ElasticsearchException, IOException {
+            final String textQuery)
+            throws ElasticsearchException {
         throw new UnsupportedOperationException("Script configuration does not support hybrid search");
     }
 

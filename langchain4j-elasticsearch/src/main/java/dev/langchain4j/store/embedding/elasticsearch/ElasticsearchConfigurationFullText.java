@@ -29,26 +29,16 @@ public class ElasticsearchConfigurationFullText extends ElasticsearchConfigurati
     }
 
     @Override
-    SearchResponse<Document> internalSearch(
+    SearchResponse<Document> vectorSearch(
             final ElasticsearchClient client,
             final String indexName,
             final EmbeddingSearchRequest embeddingSearchRequest)
-            throws ElasticsearchException, IOException {
+            throws ElasticsearchException {
         throw new UnsupportedOperationException("Full text configuration does not support embedded search");
     }
 
     @Override
-    SearchResponse<Document> internalSearch(
-            final ElasticsearchClient client,
-            final String indexName,
-            final EmbeddingSearchRequest embeddingSearchRequest,
-            final boolean includeVectorResponse)
-            throws ElasticsearchException, IOException {
-        throw new UnsupportedOperationException("Full text configuration does not support embedded search");
-    }
-
-    @Override
-    SearchResponse<Document> internalSearch(
+    SearchResponse<Document> fullTextSearch(
             final ElasticsearchClient client, final String indexName, final String textQuery)
             throws ElasticsearchException, IOException {
         log.trace("Searching for text matches in index [{}] with query [{}].", indexName, textQuery);
@@ -60,13 +50,12 @@ public class ElasticsearchConfigurationFullText extends ElasticsearchConfigurati
     }
 
     @Override
-    SearchResponse<Document> internalSearch(
+    SearchResponse<Document> hybridSearch(
             final ElasticsearchClient client,
             final String indexName,
             final EmbeddingSearchRequest embeddingSearchRequest,
-            final String textQuery,
-            final boolean includeVectorResponse)
-            throws ElasticsearchException, IOException {
+            final String textQuery)
+            throws ElasticsearchException {
         throw new UnsupportedOperationException("Full text configuration does not support embedded search");
     }
 }

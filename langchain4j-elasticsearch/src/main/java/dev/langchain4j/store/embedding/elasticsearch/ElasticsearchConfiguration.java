@@ -10,25 +10,49 @@ public abstract class ElasticsearchConfiguration {
     static final String VECTOR_FIELD = "vector";
     static final String TEXT_FIELD = "text";
 
-    abstract SearchResponse<Document> internalSearch(
-            ElasticsearchClient client, String indexName, EmbeddingSearchRequest embeddingSearchRequest)
+    boolean includeVectorResponse;
+
+    /**
+     * Used for vector search
+     * @param client    The Elasticsearch client
+     * @param indexName The index name
+     * @param embeddingSearchRequest The embedding search request
+     * @return SearchResponse<Document> The search response
+     * @throws ElasticsearchException if an error occurs during the search
+     * @throws IOException            if an I/O error occurs
+     */
+    abstract SearchResponse<Document> vectorSearch(
+            ElasticsearchClient client,
+            String indexName,
+            EmbeddingSearchRequest embeddingSearchRequest)
             throws ElasticsearchException, IOException;
 
-    abstract SearchResponse<Document> internalSearch(
+    /**
+     * Used for full text search
+     * @param client    The Elasticsearch client
+     * @param indexName The index name
+     * @param textQuery The text query
+     * @return SearchResponse<Document> The search response
+     * @throws ElasticsearchException if an error occurs during the search
+     * @throws IOException            if an I/O error occurs
+     */
+    abstract SearchResponse<Document> fullTextSearch(ElasticsearchClient client, String indexName, String textQuery)
+            throws ElasticsearchException, IOException;
+
+    /**
+     * Used for hybrid search
+     * @param client                  The Elasticsearch client
+     * @param indexName               The index name
+     * @param embeddingSearchRequest  The embedding search request
+     * @param textQuery               The text query
+     * @return SearchResponse<Document> The search response
+     * @throws ElasticsearchException if an error occurs during the search
+     * @throws IOException            if an I/O error occurs
+     */
+    abstract SearchResponse<Document> hybridSearch(
             ElasticsearchClient client,
             String indexName,
             EmbeddingSearchRequest embeddingSearchRequest,
-            boolean includeVectorResponse)
-            throws ElasticsearchException, IOException;
-
-    abstract SearchResponse<Document> internalSearch(ElasticsearchClient client, String indexName, String textQuery)
-            throws ElasticsearchException, IOException;
-
-    abstract SearchResponse<Document> internalSearch(
-            ElasticsearchClient client,
-            String indexName,
-            EmbeddingSearchRequest embeddingSearchRequest,
-            String textQuery,
-            boolean includeVectorResponse)
+            String textQuery)
             throws ElasticsearchException, IOException;
 }

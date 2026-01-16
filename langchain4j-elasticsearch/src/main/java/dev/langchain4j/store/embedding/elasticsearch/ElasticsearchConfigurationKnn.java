@@ -22,9 +22,10 @@ public class ElasticsearchConfigurationKnn extends ElasticsearchConfiguration {
 
     public static class Builder {
         private Integer numCandidates;
+        private boolean includeVectorResponse = false;
 
         public ElasticsearchConfigurationKnn build() {
-            return new ElasticsearchConfigurationKnn(numCandidates);
+            return new ElasticsearchConfigurationKnn(numCandidates, includeVectorResponse);
         }
 
         /**
@@ -39,29 +40,33 @@ public class ElasticsearchConfigurationKnn extends ElasticsearchConfiguration {
             this.numCandidates = numCandidates;
             return this;
         }
+
+        /**
+         * Whether to include vector fields in the search response (from Elasticsearch 9.2).
+         *
+         * @param includeVectorResponse true to include vector fields, false otherwise
+         * @return the builder instance
+         */
+        public Builder includeVectorResponse(boolean includeVectorResponse) {
+            this.includeVectorResponse = includeVectorResponse;
+            return this;
+        }
     }
 
     public static ElasticsearchConfigurationKnn.Builder builder() {
         return new Builder();
     }
 
-    private ElasticsearchConfigurationKnn(Integer numCandidates) {
+    private ElasticsearchConfigurationKnn(final Integer numCandidates, final boolean includeVectorResponse) {
         this.numCandidates = numCandidates;
+        this.includeVectorResponse = includeVectorResponse;
     }
 
     @Override
-    SearchResponse<Document> internalSearch(
-            ElasticsearchClient client, String indexName, EmbeddingSearchRequest embeddingSearchRequest)
-            throws ElasticsearchException, IOException {
-        return internalSearch(client, indexName, embeddingSearchRequest, false);
-    }
-
-    @Override
-    SearchResponse<Document> internalSearch(
+    SearchResponse<Document> vectorSearch(
             ElasticsearchClient client,
             String indexName,
-            EmbeddingSearchRequest embeddingSearchRequest,
-            boolean includeVectorResponse)
+            EmbeddingSearchRequest embeddingSearchRequest)
             throws ElasticsearchException, IOException {
         KnnQuery.Builder krb = new KnnQuery.Builder()
                 .field(VECTOR_FIELD)
@@ -94,20 +99,19 @@ public class ElasticsearchConfigurationKnn extends ElasticsearchConfiguration {
     }
 
     @Override
-    SearchResponse<Document> internalSearch(
+    SearchResponse<Document> fullTextSearch(
             final ElasticsearchClient client, final String indexName, final String textQuery)
-            throws ElasticsearchException, IOException {
+            throws ElasticsearchException {
         throw new UnsupportedOperationException("Knn configuration does not support full text search");
     }
 
     @Override
-    SearchResponse<Document> internalSearch(
+    SearchResponse<Document> hybridSearch(
             final ElasticsearchClient client,
             final String indexName,
             final EmbeddingSearchRequest embeddingSearchRequest,
-            final String textQuery,
-            final boolean includeVectorResponse)
-            throws ElasticsearchException, IOException {
+            final String textQuery)
+            throws ElasticsearchException {
         throw new UnsupportedOperationException("Knn configuration does not support hybrid search");
     }
 }
