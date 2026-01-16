@@ -271,6 +271,144 @@ The `attributes` map allows passing information between the `onRequest`, `onResp
   `StreamingChatResponseHandler.onCompleteResponse()` is called. The `ChatModelListener.onError()` is called
   before the `StreamingChatResponseHandler.onError()` is called.
 
+## RAG Observability (EmbeddingModel, EmbeddingStore and ContentRetriever)
+
+`EmbeddingModel`, `EmbeddingStore` and `ContentRetriever` can be instrumented with listeners to observe:
+- Latency (measure duration using `attributes`)
+- Payloads (e.g., `EmbeddingSearchRequest.queryEmbedding()` and retrieved matches/contents)
+- Errors
+
+### EmbeddingModel listener
+
+Implement `EmbeddingModelListener`:
+
+```java
+import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
+import dev.langchain4j.model.embedding.listener.EmbeddingModelRequestContext;
+import dev.langchain4j.model.embedding.listener.EmbeddingModelResponseContext;
+import dev.langchain4j.model.embedding.listener.EmbeddingModelErrorContext;
+
+public class MyEmbeddingModelListener implements EmbeddingModelListener {
+
+    @Override
+    public void onRequest(EmbeddingModelRequestContext requestContext) {
+        requestContext.attributes().put("startNanos", System.nanoTime());
+    }
+
+    @Override
+    public void onResponse(EmbeddingModelResponseContext responseContext) {
+        long startNanos = (long) responseContext.attributes().get("startNanos");
+        long durationNanos = System.nanoTime() - startNanos;
+        // Do something with duration and/or responseContext.response()
+    }
+
+    @Override
+    public void onError(EmbeddingModelErrorContext errorContext) {
+        // Do something with errorContext.error()
+    }
+}
+```
+
+Attach listeners using `EmbeddingModel#addListener(s)`:
+
+```java
+EmbeddingModel observedModel = embeddingModel.addListener(new MyEmbeddingModelListener());
+
+observedModel.embed("hello");
+```
+
+### EmbeddingStore listener
+
+Implement `EmbeddingStoreListener`:
+
+```java
+import dev.langchain4j.store.embedding.listener.EmbeddingStoreListener;
+import dev.langchain4j.store.embedding.listener.EmbeddingStoreRequestContext;
+import dev.langchain4j.store.embedding.listener.EmbeddingStoreResponseContext;
+import dev.langchain4j.store.embedding.listener.EmbeddingStoreErrorContext;
+
+public class MyEmbeddingStoreListener implements EmbeddingStoreListener {
+
+    @Override
+    public void onRequest(EmbeddingStoreRequestContext<?> requestContext) {
+        requestContext.attributes().put("startNanos", System.nanoTime());
+    }
+
+    @Override
+    public void onResponse(EmbeddingStoreResponseContext<?> responseContext) {
+        long startNanos = (long) responseContext.attributes().get("startNanos");
+        long durationNanos = System.nanoTime() - startNanos;
+        // Do something with duration and/or the response payload (if any), e.g.:
+        if (responseContext instanceof EmbeddingStoreResponseContext.Search<?> search) {
+            // Do something with search.searchResult()
+        }
+    }
+
+    @Override
+    public void onError(EmbeddingStoreErrorContext<?> errorContext) {
+        // Do something with errorContext.error()
+    }
+}
+```
+
+Attach listeners using `EmbeddingStore#addListener(s)`:
+
+```java
+EmbeddingStore<TextSegment> observedStore = embeddingStore.addListener(new MyEmbeddingStoreListener());
+
+// Use observedStore as usual, e.g. in EmbeddingStoreIngestor / EmbeddingStoreContentRetriever
+```
+
+### ContentRetriever listener
+
+Implement `ContentRetrieverListener`:
+
+```java
+import dev.langchain4j.rag.content.retriever.listener.ContentRetrieverListener;
+import dev.langchain4j.rag.content.retriever.listener.ContentRetrieverRequestContext;
+import dev.langchain4j.rag.content.retriever.listener.ContentRetrieverResponseContext;
+import dev.langchain4j.rag.content.retriever.listener.ContentRetrieverErrorContext;
+
+public class MyContentRetrieverListener implements ContentRetrieverListener {
+
+    @Override
+    public void onRequest(ContentRetrieverRequestContext requestContext) {
+        requestContext.attributes().put("startNanos", System.nanoTime());
+    }
+
+    @Override
+    public void onResponse(ContentRetrieverResponseContext responseContext) {
+        long startNanos = (long) responseContext.attributes().get("startNanos");
+        long durationNanos = System.nanoTime() - startNanos;
+        // Do something with duration and/or responseContext.contents()
+    }
+
+    @Override
+    public void onError(ContentRetrieverErrorContext errorContext) {
+        // Do something with errorContext.error()
+    }
+}
+```
+
+Attach listeners using `ContentRetriever#addListener(s)`:
+
+```java
+ContentRetriever observedRetriever = contentRetriever.addListener(new MyContentRetrieverListener());
+
+observedRetriever.retrieve(Query.from("my query"));
+```
+
+### How listeners work
+
+- Listeners are specified as a `List` and are called in the order of iteration.
+- Listeners are called synchronously and in the same thread.
+- `onRequest()` is called right before executing the underlying operation.
+- `onResponse()` is called once after successful completion.
+- `onError()` is called once if an exception is thrown by the underlying operation.
+- If an exception is thrown from one of the listener methods, it will be logged at the `WARN` level and ignored.
+- The `attributes` map allows passing information between the `onRequest`, `onResponse`, and `onError` methods of the same
+  listener, as well as between multiple listeners.
+
 
 ## Observability in Spring Boot Application
 
