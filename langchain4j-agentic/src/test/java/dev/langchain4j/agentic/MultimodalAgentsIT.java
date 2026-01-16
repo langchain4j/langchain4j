@@ -149,7 +149,7 @@ public class MultimodalAgentsIT {
         assertThat(image.image().base64Data()).isNotEmpty();
         assertThat(image.image().mimeType()).startsWith("image/");
 
-        writeToDisk(image.image(), "/tmp/output");
+//        writeToDisk(image.image(), "/tmp/output");
     }
 
     private static void writeToDisk(Image image, String destination) {
