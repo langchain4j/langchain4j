@@ -84,7 +84,8 @@ public class ElasticsearchContentRetrieverIT extends EmbeddingStoreWithFiltering
 
     @BeforeAll
     static void startServices() throws IOException {
-        // If we need to start TC, we need a trial license for the hybrid search (addEmbeddingsAndRetrieveRelevantWithHybrid)
+        // If we need to start TC, we need a trial license for the hybrid search
+        // (addEmbeddingsAndRetrieveRelevantWithHybrid)
         elasticsearchClientHelper.tcLicense = "trial";
         elasticsearchClientHelper.startServices();
         assertThat(elasticsearchClientHelper.restClient).isNotNull();

@@ -6,14 +6,14 @@ import static dev.langchain4j.store.embedding.elasticsearch.SSLUtils.createTrust
 import static java.time.Duration.ofSeconds;
 import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 
-import java.io.IOException;
-import java.util.Properties;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch.core.InfoResponse;
 import co.elastic.clients.elasticsearch.license.GetLicenseResponse;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
+import java.io.IOException;
+import java.util.Properties;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.Header;
 import org.apache.http.HttpHost;
@@ -151,7 +151,8 @@ public class ElasticsearchClientHelper {
                     .atMost(ofSeconds(30))
                     .until(() -> {
                         try {
-                            final GetLicenseResponse licenseResponse = client.license().get();
+                            final GetLicenseResponse licenseResponse =
+                                    client.license().get();
                             license = licenseResponse.license().type().name();
                             return true;
                         } catch (Exception e) {
