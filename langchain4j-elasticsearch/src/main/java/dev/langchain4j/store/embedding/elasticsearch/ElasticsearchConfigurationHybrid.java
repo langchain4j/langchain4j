@@ -29,9 +29,10 @@ public class ElasticsearchConfigurationHybrid extends ElasticsearchConfiguration
 
     public static class Builder {
         private Integer numCandidates;
+        private boolean includeVectorResponse = false;
 
         public ElasticsearchConfigurationHybrid build() {
-            return new ElasticsearchConfigurationHybrid(numCandidates);
+            return new ElasticsearchConfigurationHybrid(numCandidates, includeVectorResponse);
         }
 
         /**
@@ -46,29 +47,33 @@ public class ElasticsearchConfigurationHybrid extends ElasticsearchConfiguration
             this.numCandidates = numCandidates;
             return this;
         }
+
+        /**
+         * Whether to include vector fields in the search response (from Elasticsearch 9.2).
+         *
+         * @param includeVectorResponse true to include vector fields, false otherwise
+         * @return the builder instance
+         */
+        public Builder includeVectorResponse(boolean includeVectorResponse) {
+            this.includeVectorResponse = includeVectorResponse;
+            return this;
+        }
     }
 
     public static ElasticsearchConfigurationHybrid.Builder builder() {
         return new Builder();
     }
 
-    private ElasticsearchConfigurationHybrid(Integer numCandidates) {
+    private ElasticsearchConfigurationHybrid(final Integer numCandidates, final boolean includeVectorResponse) {
         this.numCandidates = numCandidates;
-    }
-
-    @Override
-    SearchResponse<Document> internalSearch(
-            ElasticsearchClient client, String indexName, EmbeddingSearchRequest embeddingSearchRequest)
-            throws ElasticsearchException {
-        return internalSearch(client, indexName, embeddingSearchRequest, false);
+        this.includeVectorResponse = includeVectorResponse;
     }
 
     @Override
     SearchResponse<Document> internalSearch(
             ElasticsearchClient client,
             String indexName,
-            EmbeddingSearchRequest embeddingSearchRequest,
-            boolean includeVectorResponse)
+            EmbeddingSearchRequest embeddingSearchRequest)
             throws ElasticsearchException {
         throw new UnsupportedOperationException("Hybrid configuration does not support vector search");
     }
@@ -85,8 +90,7 @@ public class ElasticsearchConfigurationHybrid extends ElasticsearchConfiguration
             final ElasticsearchClient client,
             final String indexName,
             final EmbeddingSearchRequest embeddingSearchRequest,
-            final String textQuery,
-            final boolean includeVectorResponse)
+            final String textQuery)
             throws ElasticsearchException, IOException {
 
         // Building KNN part of the hybrid query

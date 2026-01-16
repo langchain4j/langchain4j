@@ -10,15 +10,12 @@ public abstract class ElasticsearchConfiguration {
     static final String VECTOR_FIELD = "vector";
     static final String TEXT_FIELD = "text";
 
-    abstract SearchResponse<Document> internalSearch(
-            ElasticsearchClient client, String indexName, EmbeddingSearchRequest embeddingSearchRequest)
-            throws ElasticsearchException, IOException;
+    boolean includeVectorResponse;
 
     abstract SearchResponse<Document> internalSearch(
             ElasticsearchClient client,
             String indexName,
-            EmbeddingSearchRequest embeddingSearchRequest,
-            boolean includeVectorResponse)
+            EmbeddingSearchRequest embeddingSearchRequest)
             throws ElasticsearchException, IOException;
 
     abstract SearchResponse<Document> internalSearch(ElasticsearchClient client, String indexName, String textQuery)
@@ -28,7 +25,6 @@ public abstract class ElasticsearchConfiguration {
             ElasticsearchClient client,
             String indexName,
             EmbeddingSearchRequest embeddingSearchRequest,
-            String textQuery,
-            boolean includeVectorResponse)
+            String textQuery)
             throws ElasticsearchException, IOException;
 }

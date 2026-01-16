@@ -72,7 +72,8 @@ public class ElasticsearchClientHelper {
                             DockerImageName.parse("docker.elastic.co/elasticsearch/elasticsearch")
                                     .withTag(tcVersion))
                     .withPassword(localPassword)
-                    .withEnv("xpack.license.self_generated.type", tcLicense);
+                    .withEnv("xpack.license.self_generated.type", tcLicense)
+                    .withReuse(true);
             elasticsearch.start();
             log.info("Elasticsearch [{}] started.", tcVersion);
 

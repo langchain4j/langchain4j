@@ -59,10 +59,10 @@ class ElasticsearchEmbeddingStoreKnnWithConfigurationIT {
             EmbeddingStore<TextSegment> embeddingStore = ElasticsearchEmbeddingStore.builder()
                     .configuration(ElasticsearchConfigurationKnn.builder()
                             .numCandidates(10)
+                            .includeVectorResponse(includeVector)
                             .build())
                     .restClient(elasticsearchClientHelper.restClient)
                     .indexName(indexName)
-                    .includeVectorResponse(includeVector)
                     .build();
 
             // given
@@ -88,10 +88,10 @@ class ElasticsearchEmbeddingStoreKnnWithConfigurationIT {
             EmbeddingStore<TextSegment> embeddingStore = ElasticsearchEmbeddingStore.builder()
                     .configuration(ElasticsearchConfigurationKnn.builder()
                             .numCandidates(1)
+                            .includeVectorResponse(includeVector)
                             .build())
                     .restClient(elasticsearchClientHelper.restClient)
                     .indexName(indexName)
-                    .includeVectorResponse(includeVector)
                     .build();
 
             // given

@@ -46,11 +46,9 @@ class ElasticsearchEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
     void createEmbeddingStore() throws IOException {
         indexName = randomUUID();
         elasticsearchClientHelper.removeDataStore(indexName);
-        boolean includeVector = elasticsearchClientHelper.isGTENineTwo();
         embeddingStore = ElasticsearchEmbeddingStore.builder()
                 .restClient(elasticsearchClientHelper.restClient)
                 .indexName(indexName)
-                .includeVectorResponse(includeVector)
                 .build();
     }
 

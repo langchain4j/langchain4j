@@ -33,17 +33,7 @@ public class ElasticsearchConfigurationFullText extends ElasticsearchConfigurati
             final ElasticsearchClient client,
             final String indexName,
             final EmbeddingSearchRequest embeddingSearchRequest)
-            throws ElasticsearchException, IOException {
-        throw new UnsupportedOperationException("Full text configuration does not support embedded search");
-    }
-
-    @Override
-    SearchResponse<Document> internalSearch(
-            final ElasticsearchClient client,
-            final String indexName,
-            final EmbeddingSearchRequest embeddingSearchRequest,
-            final boolean includeVectorResponse)
-            throws ElasticsearchException, IOException {
+            throws ElasticsearchException {
         throw new UnsupportedOperationException("Full text configuration does not support embedded search");
     }
 
@@ -64,9 +54,8 @@ public class ElasticsearchConfigurationFullText extends ElasticsearchConfigurati
             final ElasticsearchClient client,
             final String indexName,
             final EmbeddingSearchRequest embeddingSearchRequest,
-            final String textQuery,
-            final boolean includeVectorResponse)
-            throws ElasticsearchException, IOException {
+            final String textQuery)
+            throws ElasticsearchException {
         throw new UnsupportedOperationException("Full text configuration does not support embedded search");
     }
 }

@@ -48,12 +48,10 @@ public abstract class AbstractElasticsearchEmbeddingStoreIT extends EmbeddingSto
         indexName = randomUUID();
         elasticsearchClientHelper.removeDataStore(indexName);
         optionallyCreateIndex(indexName);
-        boolean includeVector = elasticsearchClientHelper.isGTENineTwo();
         embeddingStore = ElasticsearchEmbeddingStore.builder()
                 .configuration(withConfiguration())
                 .restClient(elasticsearchClientHelper.restClient)
                 .indexName(indexName)
-                .includeVectorResponse(includeVector)
                 .build();
     }
 
