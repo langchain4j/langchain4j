@@ -44,6 +44,33 @@ public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddin
     /**
      * Creates an instance of ElasticsearchContentRetriever using a RestClient.
      *
+     * @param configuration  Elasticsearch retriever configuration to use (knn, script, full text, hybrid, hybrid with reranker)
+     * @param restClient     Elasticsearch Rest Client (mandatory)
+     * @param indexName      Elasticsearch index name (optional). Default value: "default".
+     *                       Index will be created automatically if not exists.
+     * @param embeddingModel Embedding model to be used by the retriever
+     * @param maxResults     Maximum number of results to retrieve
+     * @param minScore       Minimum score threshold for retrieved results
+     * @param filter         Filter to apply during retrieval
+     */
+    public ElasticsearchContentRetriever(
+            ElasticsearchConfiguration configuration,
+            RestClient restClient,
+            String indexName,
+            EmbeddingModel embeddingModel,
+            final int maxResults,
+            final double minScore,
+            final Filter filter) {
+        this.embeddingModel = embeddingModel;
+        this.maxResults = maxResults;
+        this.minScore = minScore;
+        this.filter = filter;
+        this.initialize(configuration, restClient, indexName, false);
+    }
+
+    /**
+     * Creates an instance of ElasticsearchContentRetriever using a RestClient.
+     *
      * @param configuration         Elasticsearch retriever configuration to use (knn, script, full text, hybrid, hybrid with reranker)
      * @param restClient            Elasticsearch Rest Client (mandatory)
      * @param indexName             Elasticsearch index name (optional). Default value: "default".
