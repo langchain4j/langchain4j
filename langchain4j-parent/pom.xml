@@ -54,7 +54,6 @@
         <awaitility.version>4.2.2</awaitility.version>
         <aws.java.sdk.version>2.33.5</aws.java.sdk.version>
         <azure-sdk.version>1.3.3</azure-sdk.version>
-        <elastic.version>8.19.7</elastic.version>
         <github-api.version>1.329</github-api.version>
         <httpclient5.version>5.2.1</httpclient5.version>
         <infinispan.version>16.0.3</infinispan.version>
