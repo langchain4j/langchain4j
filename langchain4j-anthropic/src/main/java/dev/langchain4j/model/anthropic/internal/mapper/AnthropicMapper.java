@@ -18,7 +18,6 @@ import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toList;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -87,8 +86,8 @@ public class AnthropicMapper {
 
         for (ChatMessage message : messages) {
 
-            if (message instanceof ToolExecutionResultMessage) {
-                toolContents.add(toAnthropicToolResultContent((ToolExecutionResultMessage) message));
+            if (message instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
+                toolContents.add(toAnthropicToolResultContent(toolExecutionResultMessage));
             } else if (message instanceof SystemMessage) {
                 // ignore, it is handled in the "toAnthropicSystemPrompt" method
             } else {
@@ -97,8 +96,8 @@ public class AnthropicMapper {
                     toolContents = new ArrayList<>();
                 }
 
-                if (message instanceof UserMessage) {
-                    List<AnthropicMessageContent> contents = toAnthropicMessageContents((UserMessage) message);
+                if (message instanceof UserMessage userMessage) {
+                    List<AnthropicMessageContent> contents = toAnthropicMessageContents(userMessage);
                     anthropicMessages.add(new AnthropicMessage(USER, contents));
                 } else if (message instanceof AiMessage aiMessage) {
                     List<AnthropicMessageContent> contents = toAnthropicMessageContents(aiMessage, sendThinking);
@@ -142,7 +141,7 @@ public class AnthropicMapper {
                         throw illegalArgument("Unknown content type: " + content);
                     }
                 })
-                .collect(toList());
+                .toList();
     }
 
     private static List<AnthropicMessageContent> toAnthropicMessageContents(AiMessage message, boolean sendThinking) {
@@ -190,9 +189,9 @@ public class AnthropicMapper {
     public static List<AnthropicTextContent> toAnthropicSystemPrompt(
             List<ChatMessage> messages, AnthropicCacheType cacheType) {
         List<SystemMessage> systemMessages = messages.stream()
-                .filter(message -> message instanceof SystemMessage)
-                .map(message -> (SystemMessage) message)
-                .collect(toList());
+                .filter(SystemMessage.class::isInstance)
+                .map(SystemMessage.class::cast)
+                .toList();
 
         SystemMessage lastSystemMessage =
                 systemMessages.isEmpty() ? null : systemMessages.get(systemMessages.size() - 1);
@@ -204,7 +203,7 @@ public class AnthropicMapper {
                     }
                     return new AnthropicTextContent(message.text());
                 })
-                .collect(toList());
+                .toList();
     }
 
     public static AiMessage toAiMessage(List<AnthropicContent> contents) {
@@ -240,9 +239,9 @@ public class AnthropicMapper {
             }
 
             List<String> redactedThinkings = contents.stream()
-                    .filter(content -> "redacted_thinking".equals(content.type))
+                    .filter(content -> REDACTED_THINKING_KEY.equals(content.type))
                     .map(content -> content.data)
-                    .collect(toList());
+                    .toList();
             if (!redactedThinkings.isEmpty()) {
                 attributes.put(REDACTED_THINKING_KEY, redactedThinkings);
             }
@@ -256,7 +255,7 @@ public class AnthropicMapper {
                             .toolUseId(content.toolUseId)
                             .content(content.content)
                             .build())
-                    .collect(toList());
+                    .toList();
             if (!serverToolResults.isEmpty()) {
                 attributes.put(SERVER_TOOL_RESULTS_KEY, serverToolResults);
             }
@@ -269,7 +268,7 @@ public class AnthropicMapper {
                         .name(content.name)
                         .arguments(toJson(content.input))
                         .build())
-                .collect(toList());
+                .toList();
 
         return AiMessage.builder()
                 .text(isNullOrEmpty(text) ? null : text)
@@ -349,7 +348,7 @@ public class AnthropicMapper {
                     return toAnthropicTool(
                             toolSpecification, AnthropicCacheType.NO_CACHE, toolMetadataKeysToSend, strictTools);
                 })
-                .collect(toList());
+                .toList();
     }
 
     public static AnthropicTool toAnthropicTool(

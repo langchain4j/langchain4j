@@ -67,8 +67,61 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+/**
+ * Default implementation of {@link AnthropicClient} that provides methods to interact with the
+ * Anthropic API for creating messages, counting tokens, and listing models.
+ *
+ * <p>This client handles both synchronous and streaming responses, managing HTTP requests efficiently
+ * and processing server-sent events (SSE) for streaming data. It supports detailed logging of requests
+ * and responses for debugging purposes.</p>
+ *
+ * <h2>HTTP Client Configuration</h2>
+ * <p>Uses {@link HttpClientBuilderLoader} for flexible HTTP client construction with configurable timeouts:</p>
+ * <ul>
+ *   <li>Connection timeout: defaults to 15 seconds</li>
+ *   <li>Read timeout: defaults to 60 seconds</li>
+ * </ul>
+ * <p>Request/response logging can be enabled via {@link LoggingHttpClient} using builder flags.</p>
+ *
+ * <h2>Usage Example</h2>
+ * <pre>{@code
+ * DefaultAnthropicClient client = DefaultAnthropicClient.builder()
+ *     .baseUrl("https://api.anthropic.com/v1")
+ *     .apiKey("your-api-key")
+ *     .version("2023-06-01")
+ *     .timeout(Duration.ofSeconds(30))
+ *     .logRequests(true)
+ *     .logResponses(true)
+ *     .build();
+ *
+ * // Synchronous message creation
+ * AnthropicCreateMessageResponse response = client.createMessage(request);
+ *
+ * // Streaming message creation
+ * client.createMessage(request, options, new StreamingChatResponseHandler() {
+ *     @Override
+ *     public void onPartialResponse(String partialResponse, StreamingHandle handle) {
+ *         System.out.print(partialResponse);
+ *     }
+ *
+ *     @Override
+ *     public void onCompleteResponse(ChatResponse completeResponse) {
+ *         System.out.println("\nComplete: " + completeResponse.aiMessage().text());
+ *     }
+ *
+ *     @Override
+ *     public void onError(Throwable error) {
+ *         error.printStackTrace();
+ *     }
+ * });
+ * }</pre>
+ */
 @Internal
 public class DefaultAnthropicClient extends AnthropicClient {
+    private static final String CONTENT_BLOCK_TEXT = "text";
+    private static final String CONTENT_BLOCK_THINKING = "thinking";
+    private static final String CONTENT_BLOCK_REDACTED_THINKING = "redacted_thinking";
+    private static final String CONTENT_BLOCK_TOOL_USE = "tool_use";
 
     private final HttpClient httpClient;
     private final String baseUrl;
@@ -76,17 +129,40 @@ public class DefaultAnthropicClient extends AnthropicClient {
     private final String version;
     private final String beta;
 
+    /**
+     * Creates a new builder for constructing a {@link DefaultAnthropicClient} instance.
+     *
+     * @return a new {@link Builder} instance
+     */
     public static Builder builder() {
         return new Builder();
     }
 
+    /**
+     * Builder for constructing {@link DefaultAnthropicClient} instances.
+     */
     public static class Builder extends AnthropicClient.Builder<DefaultAnthropicClient, Builder> {
 
+        /**
+         * Builds a new {@link DefaultAnthropicClient} instance with the configured settings.
+         *
+         * @return a new {@link DefaultAnthropicClient} instance
+         * @throws IllegalArgumentException if required parameters ({@code baseUrl}, {@code apiKey}, {@code version}) are blank
+         */
         public DefaultAnthropicClient build() {
             return new DefaultAnthropicClient(this);
         }
     }
 
+    /**
+     * Constructs a new {@link DefaultAnthropicClient} using the provided builder configuration.
+     *
+     * <p>Initializes the HTTP client with configured timeouts (defaulting to 15s connect, 60s read)
+     * and optionally wraps it with {@link LoggingHttpClient} if request/response logging is enabled.</p>
+     *
+     * @param builder the builder containing configuration parameters
+     * @throws IllegalArgumentException if {@code baseUrl}, {@code apiKey}, or {@code version} are blank
+     */
     DefaultAnthropicClient(Builder builder) {
 
         HttpClientBuilder httpClientBuilder =
@@ -113,11 +189,32 @@ public class DefaultAnthropicClient extends AnthropicClient {
         this.beta = builder.beta;
     }
 
+    /**
+     * Creates a message synchronously using the Anthropic API.
+     *
+     * <p>Sends a request to the {@code /messages} endpoint and blocks until the response is received.</p>
+     *
+     * @param request the message creation request containing the model, messages, and other parameters
+     * @return the parsed response from the Anthropic API
+     * @throws RuntimeException if the HTTP request fails or the response cannot be parsed
+     * @see #createMessageWithRawResponse(AnthropicCreateMessageRequest)
+     */
     @Override
     public AnthropicCreateMessageResponse createMessage(AnthropicCreateMessageRequest request) {
         return createMessageWithRawResponse(request).parsedResponse();
     }
 
+    /**
+     * Creates a message synchronously and returns both the parsed response and the raw HTTP response.
+     *
+     * <p>Useful when access to raw HTTP response details (headers, status code) is needed alongside
+     * the parsed API response.</p>
+     *
+     * @param request the message creation request containing the model, messages, and other parameters
+     * @return a {@link ParsedAndRawResponse} containing both the parsed {@link AnthropicCreateMessageResponse}
+     *         and the raw {@link SuccessfulHttpResponse}
+     * @throws RuntimeException if the HTTP request fails or the response cannot be parsed
+     */
     @Override
     public ParsedAndRawResponse createMessageWithRawResponse(AnthropicCreateMessageRequest request) {
         HttpRequest httpRequest = toHttpRequest(toJson(request), "messages");
@@ -127,6 +224,36 @@ public class DefaultAnthropicClient extends AnthropicClient {
         return new ParsedAndRawResponse(parsedResponse, rawResponse);
     }
 
+    /**
+     * Creates a message with streaming response handling.
+     *
+     * <p>Sends a request to the {@code /messages} endpoint and processes the response as a stream
+     * of server-sent events (SSE). The handler receives callbacks for:</p>
+     * <ul>
+     *   <li>Partial text responses as they arrive</li>
+     *   <li>Partial thinking outputs (if {@code options.returnThinking()} is true)</li>
+     *   <li>Partial and complete tool calls</li>
+     *   <li>The complete response when streaming finishes</li>
+     *   <li>Errors if they occur</li>
+     * </ul>
+     *
+     * Supported SSE Event Types
+     * <ul>
+     *   <li>{@code message_start}: Initial message metadata including usage and model info</li>
+     *   <li>{@code content_block_start}: Start of a content block (text, thinking, tool_use, server tool results)</li>
+     *   <li>{@code content_block_delta}: Incremental content updates</li>
+     *   <li>{@code content_block_stop}: End of a content block</li>
+     *   <li>{@code message_delta}: Message-level updates including stop reason and final usage</li>
+     *   <li>{@code message_stop}: End of message, triggers complete response callback</li>
+     *   <li>{@code error}: Error event from the API</li>
+     * </ul>
+     *
+     * @param request the message creation request (should have {@code stream: true})
+     * @param options options controlling what data to return (e.g., thinking outputs, server tool results)
+     * @param handler the callback handler for streaming events
+     * @see AnthropicCreateMessageOptions
+     * @see StreamingChatResponseHandler
+     */
     @Override
     public void createMessage(
             AnthropicCreateMessageRequest request,
@@ -237,13 +364,13 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
                 this.currentContentBlockStartType = data.contentBlock.type;
 
-                if ("text".equals(currentContentBlockStartType)) {
+                if (CONTENT_BLOCK_TEXT.equals(currentContentBlockStartType)) {
                     String text = data.contentBlock.text;
                     if (isNotNullOrEmpty(text)) {
                         contentBuilder.append(text);
                         onPartialResponse(handler, text, streamingHandle);
                     }
-                } else if ("thinking".equals(currentContentBlockStartType) && options.returnThinking()) {
+                } else if (CONTENT_BLOCK_THINKING.equals(currentContentBlockStartType) && options.returnThinking()) {
                     String thinking = data.contentBlock.thinking;
                     if (isNotNullOrEmpty(thinking)) {
                         thinkingBuilder.append(thinking);
@@ -253,12 +380,13 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     if (isNotNullOrEmpty(signature)) {
                         thinkingSignatures.add(signature);
                     }
-                } else if ("redacted_thinking".equals(currentContentBlockStartType) && options.returnThinking()) {
+                } else if (CONTENT_BLOCK_REDACTED_THINKING.equals(currentContentBlockStartType)
+                        && options.returnThinking()) {
                     String redactedThinking = data.contentBlock.data;
                     if (isNotNullOrEmpty(redactedThinking)) {
                         redactedThinkings.add(redactedThinking);
                     }
-                } else if ("tool_use".equals(currentContentBlockStartType)) {
+                } else if (CONTENT_BLOCK_TOOL_USE.equals(currentContentBlockStartType)) {
                     toolCallBuilder.updateIndex(toolCallBuilder.index() + 1);
                     toolCallBuilder.updateId(data.contentBlock.id);
                     toolCallBuilder.updateName(data.contentBlock.name);
@@ -281,13 +409,13 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     return;
                 }
 
-                if ("text".equals(currentContentBlockStartType)) {
+                if (CONTENT_BLOCK_TEXT.equals(currentContentBlockStartType)) {
                     String text = data.delta.text;
                     if (isNotNullOrEmpty(text)) {
                         contentBuilder.append(text);
                         onPartialResponse(handler, text, streamingHandle);
                     }
-                } else if ("thinking".equals(currentContentBlockStartType) && options.returnThinking()) {
+                } else if (CONTENT_BLOCK_THINKING.equals(currentContentBlockStartType) && options.returnThinking()) {
                     String thinking = data.delta.thinking;
                     if (isNotNullOrEmpty(thinking)) {
                         thinkingBuilder.append(thinking);
@@ -297,12 +425,13 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     if (isNotNullOrEmpty(signature)) {
                         thinkingSignatures.add(signature);
                     }
-                } else if ("redacted_thinking".equals(currentContentBlockStartType) && options.returnThinking()) {
+                } else if (CONTENT_BLOCK_REDACTED_THINKING.equals(currentContentBlockStartType)
+                        && options.returnThinking()) {
                     String redactedThinking = data.delta.data;
                     if (isNotNullOrEmpty(redactedThinking)) {
                         redactedThinkings.add(redactedThinking);
                     }
-                } else if ("tool_use".equals(currentContentBlockStartType)) {
+                } else if (CONTENT_BLOCK_TOOL_USE.equals(currentContentBlockStartType)) {
                     String partialJson = data.delta.partialJson;
                     if (isNotNullOrEmpty(partialJson)) {
                         toolCallBuilder.appendArguments(partialJson);
@@ -319,13 +448,13 @@ public class DefaultAnthropicClient extends AnthropicClient {
             }
 
             private void handleContentBlockStop(StreamingHandle streamingHandle) {
-                if ("text".equals(currentContentBlockStartType)) {
+                if (CONTENT_BLOCK_TEXT.equals(currentContentBlockStartType)) {
                     contents.add(contentBuilder.toString());
                     contentBuilder.setLength(0);
-                } else if ("thinking".equals(currentContentBlockStartType) && options.returnThinking()) {
+                } else if (CONTENT_BLOCK_THINKING.equals(currentContentBlockStartType) && options.returnThinking()) {
                     thinkings.add(thinkingBuilder.toString());
                     thinkingBuilder.setLength(0);
-                } else if ("tool_use".equals(currentContentBlockStartType)) {
+                } else if (CONTENT_BLOCK_TOOL_USE.equals(currentContentBlockStartType)) {
                     CompleteToolCall completeToolCall = toolCallBuilder.buildAndReset();
 
                     if (completeToolCall.toolExecutionRequest().arguments().equals("{}")) {
@@ -450,6 +579,16 @@ public class DefaultAnthropicClient extends AnthropicClient {
         httpClient.execute(httpRequest, eventListener);
     }
 
+    /**
+     * Counts the number of tokens in a message request.
+     *
+     * <p>Sends a request to the {@code /messages/count_tokens} endpoint to estimate
+     * token usage before making an actual message creation request.</p>
+     *
+     * @param request the token counting request containing the messages and model
+     * @return the response containing the token count
+     * @throws RuntimeException if the HTTP request fails or the response cannot be parsed
+     */
     @Override
     public MessageTokenCountResponse countTokens(AnthropicCountTokensRequest request) {
         HttpRequest httpRequest = toHttpRequest(toJson(request), "messages/count_tokens");
@@ -457,6 +596,15 @@ public class DefaultAnthropicClient extends AnthropicClient {
         return fromJson(successfulHttpResponse.body(), MessageTokenCountResponse.class);
     }
 
+    /**
+     * Lists available models from the Anthropic API.
+     *
+     * <p>Sends a GET request to the {@code /models} endpoint to retrieve
+     * information about available Claude models.</p>
+     *
+     * @return the response containing the list of available models
+     * @throws RuntimeException if the HTTP request fails or the response cannot be parsed
+     */
     @Override
     public AnthropicModelsListResponse listModels() {
         HttpRequest httpRequest = HttpRequest.builder()
@@ -469,10 +617,35 @@ public class DefaultAnthropicClient extends AnthropicClient {
         return fromJson(successfulHttpResponse.body(), AnthropicModelsListResponse.class);
     }
 
+    /**
+     * Creates a message with streaming response handling using default options.
+     *
+     * <p>Convenience method that calls {@link #createMessage(AnthropicCreateMessageRequest, AnthropicCreateMessageOptions, StreamingChatResponseHandler)}
+     * with default options (thinking outputs and server tool results disabled).</p>
+     *
+     * @param request the message creation request (should have {@code stream: true})
+     * @param handler the callback handler for streaming events
+     * @see #createMessage(AnthropicCreateMessageRequest, AnthropicCreateMessageOptions, StreamingChatResponseHandler)
+     */
     public void createMessage(AnthropicCreateMessageRequest request, StreamingChatResponseHandler handler) {
         createMessage(request, new AnthropicCreateMessageOptions(false), handler);
     }
 
+    /**
+     * Converts a JSON request body and path into an HTTP request with required headers.
+     *
+     * <p>Constructs a POST request with the following headers:</p>
+     * <ul>
+     *   <li>{@code Content-Type: application/json}</li>
+     *   <li>{@code x-api-key}: The configured API key</li>
+     *   <li>{@code anthropic-version}: The configured API version</li>
+     *   <li>{@code anthropic-beta}: The configured beta features (if set)</li>
+     * </ul>
+     *
+     * @param jsonRequest the JSON-serialized request body
+     * @param path the API endpoint path (e.g., "messages", "messages/count_tokens")
+     * @return the constructed {@link HttpRequest}
+     */
     private HttpRequest toHttpRequest(String jsonRequest, String path) {
         HttpRequest.Builder builder = HttpRequest.builder()
                 .method(POST)

@@ -107,21 +107,23 @@ class AnthropicUserIdIT {
     // Helper methods to reduce duplication
     private static AnthropicClient createMockClientWithResponse() {
         AnthropicClient mockClient = mock(AnthropicClient.class);
-        AnthropicCreateMessageResponse mockResponse = new AnthropicCreateMessageResponse();
-        mockResponse.id = "test-id";
-        mockResponse.type = "message";
-        mockResponse.role = "assistant";
-        mockResponse.content = Collections.singletonList(createTextContent("Hello response"));
-        mockResponse.model = CLAUDE_3_5_HAIKU_20241022.toString();
-        mockResponse.stopReason = "end_turn";
-        mockResponse.usage = createUsage();
-
-        SuccessfulHttpResponse rawResponse = SuccessfulHttpResponse.builder()
-                .statusCode(200)
+        AnthropicCreateMessageResponse mockResponse = AnthropicCreateMessageResponse.builder()
+                .id("test-id")
+                .type("message")
+                .role("assistant")
+                .content(Collections.singletonList(createTextContent("Hello response")))
+                .model(CLAUDE_3_5_HAIKU_20241022.toString())
+                .stopReason("end_turn")
+                .stopSequence(null)
+                .usage(createUsage())
                 .build();
+
+        SuccessfulHttpResponse rawResponse =
+                SuccessfulHttpResponse.builder().statusCode(200).build();
         ParsedAndRawResponse parsedAndRawResponse = new ParsedAndRawResponse(mockResponse, rawResponse);
 
-        when(mockClient.createMessageWithRawResponse(any(AnthropicCreateMessageRequest.class))).thenReturn(parsedAndRawResponse);
+        when(mockClient.createMessageWithRawResponse(any(AnthropicCreateMessageRequest.class)))
+                .thenReturn(parsedAndRawResponse);
         return mockClient;
     }
 
@@ -160,16 +162,15 @@ class AnthropicUserIdIT {
     }
 
     private static AnthropicContent createTextContent(String text) {
-        AnthropicContent content = new AnthropicContent();
-        content.type = "text";
-        content.text = text;
-        return content;
+        return AnthropicContent.builder().type("text").text(text).build();
     }
 
     private static AnthropicUsage createUsage() {
         AnthropicUsage usage = new AnthropicUsage();
         usage.inputTokens = 10;
         usage.outputTokens = 5;
+        usage.cacheCreationInputTokens = null;
+        usage.cacheReadInputTokens = null;
         return usage;
     }
 }
