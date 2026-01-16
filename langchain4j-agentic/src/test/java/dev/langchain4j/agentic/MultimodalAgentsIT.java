@@ -107,9 +107,9 @@ public class MultimodalAgentsIT {
 
     public interface SceneDescriptorGenerator {
 
-        @UserMessage("Generate a detailed description of a {{style}} scene containing {{sceneContent}}.")
+        @UserMessage("Generate a detailed description of a scene containing {{sceneContent}}.")
         @Agent
-        String describeScene(@V("sceneContent") String sceneContent, @V("style") String style);
+        String describeScene(@V("sceneContent") String sceneContent);
     }
 
     public interface ImageGenerator {
@@ -117,6 +117,13 @@ public class MultimodalAgentsIT {
         @UserMessage("A high-resolution, studio-lit product photograph of {{requiredImage}}")
         @Agent
         ImageContent generateImageOf(@V("requiredImage") String requiredImage);
+    }
+
+    public interface ImageStyler {
+
+        @UserMessage("Edit the provided image to better fit the {{style}} style.")
+        @Agent
+        ImageContent generateImageOf(@UserMessage @V("generatedImage") ImageContent image, @V("style") String style);
     }
 
     public interface ImageGeneratorWithStyle {
@@ -139,9 +146,14 @@ public class MultimodalAgentsIT {
                 .outputKey("generatedImage")
                 .build();
 
+        ImageStyler imageStyler = AgenticServices.agentBuilder(ImageStyler.class)
+                .chatModel(imageGenerationModel(gemini))
+                .outputKey("editedImage")
+                .build();
+
         ImageGeneratorWithStyle imageExpert = AgenticServices.sequenceBuilder(ImageGeneratorWithStyle.class)
-                .subAgents(sceneDescriptorGenerator, imageGenerator)
-                .outputKey("generatedImage")
+                .subAgents(sceneDescriptorGenerator, imageGenerator, imageStyler)
+                .outputKey("editedImage")
                 .build();
 
         ImageContent image = imageExpert.generateImageWithStyle("pack of wolves", "cyberpunk");
@@ -149,7 +161,7 @@ public class MultimodalAgentsIT {
         assertThat(image.image().base64Data()).isNotEmpty();
         assertThat(image.image().mimeType()).startsWith("image/");
 
-//        writeToDisk(image.image(), "/tmp/output");
+        writeToDisk(image.image(), "/tmp/output");
     }
 
     private static void writeToDisk(Image image, String destination) {

@@ -18,7 +18,6 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
-import dev.langchain4j.data.message.LangChain4jData;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
@@ -395,19 +394,19 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                     private static boolean internalData(Type returnType) {
                         Class<?> rawReturnType = getRawClass(returnType);
-                        if (LangChain4jData.class.isAssignableFrom(rawReturnType)) {
+                        if (ImageContent.class.isAssignableFrom(rawReturnType)) {
                             return true;
                         }
                         if (Collection.class.isAssignableFrom(rawReturnType)) {
                             Class<?> genericParam = resolveFirstGenericParameterClass(returnType);
-                            return genericParam != null && LangChain4jData.class.isAssignableFrom(genericParam);
+                            return genericParam != null && ImageContent.class.isAssignableFrom(genericParam);
                         }
                         return false;
                     }
 
                     private static Object parseInternalData(ChatResponse response, Type returnType) {
                         Class<?> rawReturnType = getRawClass(returnType);
-                        if (LangChain4jData.class.isAssignableFrom(rawReturnType)) {
+                        if (ImageContent.class.isAssignableFrom(rawReturnType)) {
                             if (rawReturnType == ImageContent.class) {
                                 List<ImageContent> images = ImageContent.from(response.aiMessage());
                                 return images.isEmpty() ? null : images.get(0);

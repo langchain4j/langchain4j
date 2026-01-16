@@ -14,7 +14,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 /**
  * Represents an image with a DetailLevel.
  */
-public class ImageContent implements Content, LangChain4jData {
+public class ImageContent implements Content {
     /**
      * The detail level of an {@code Image}.
      */
