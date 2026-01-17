@@ -112,7 +112,6 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param textSearchConfig      PostgreSQL text search configuration (null for default)
      * @param rrfK                  RRF k parameter (null for default)
      */
-
     protected PgVectorEmbeddingStore(
             DataSource datasource,
             String table,
