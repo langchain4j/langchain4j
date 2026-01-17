@@ -112,7 +112,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param textSearchConfig      PostgreSQL text search configuration (null for default)
      * @param rrfK                  RRF k parameter (null for default)
      */
-    private PgVectorEmbeddingStore(
+
+    protected PgVectorEmbeddingStore(
             DataSource datasource,
             String table,
             Integer dimension,
@@ -137,7 +138,9 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.textSearchConfig = getOrDefault(textSearchConfig, DEFAULT_TEXT_SEARCH_CONFIG);
         this.rrfK = ensureGreaterThanZero(getOrDefault(rrfK, DEFAULT_RRF_K), "rrfK");
 
-        initTable(dropTableFirst, createTable, useIndex, dimension, indexListSize);
+        if (useIndex || createTable || dropTableFirst) {
+            initTable(dropTableFirst, createTable, useIndex, dimension, indexListSize);
+        }
     }
 
     /**
@@ -442,23 +445,16 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             String whereClause = (filter == null) ? "" : metadataHandler.whereClause(filter);
             whereClause = (whereClause.isEmpty()) ? "" : "AND " + whereClause;
             String query = String.format(
-                    """
-                    SELECT (2 - (embedding <=> '%1$s')) / 2 AS score,
-                           embedding_id,
-                           embedding,
-                           text,
-                           %2$s
-                    FROM %3$s
-                    WHERE round(cast(float8 (embedding <=> '%1$s') as numeric), 8) <= round(2 - 2 * %4$s, 8)
-                          %5$s
-                    ORDER BY embedding <=> '%1$s'
-                    LIMIT %6$s;
-                    """,
+                    "SELECT (2 - (embedding <=> '%s')) / 2 AS score, embedding_id, embedding, text, %s FROM %s "
+                            + "WHERE round(cast(float8 (embedding <=> '%s') as numeric), 8) <= round(2 - 2 * %s, 8) %s "
+                            + "ORDER BY embedding <=> '%s' LIMIT %s;",
                     referenceVector,
                     join(",", metadataHandler.columnsNames()),
                     table,
+                    referenceVector,
                     minScore,
                     whereClause,
+                    referenceVector,
                     maxResults);
             try (PreparedStatement selectStmt = connection.prepareStatement(query)) {
                 try (ResultSet resultSet = selectStmt.executeQuery()) {

@@ -313,7 +313,7 @@ String chat(@V("answerInstructions") String answerInstructions, @V("country") St
 
 ## Multimodality
 
-Additionally to the text content,
+Additionally to, or instead of, text content,
 AI Service method can accept one or multiple `Content` or `List<Content>` arguments:
 
 ```java
@@ -326,6 +326,18 @@ String chat(@UserMessage String userMessage, @UserMessage ImageContent image, @U
 String chat(@UserMessage String userMessage, @UserMessage List<Content> contents);
 
 String chat(@UserMessage String userMessage, @UserMessage List<ImageContent> images);
+
+String chat(Content content);
+
+String chat(AudioContent content);
+
+String chat(List<Content> contents);
+
+String chat(List<AudioContent> contents);
+
+String chat(@UserMessage Content content1, @UserMessage Content content2);
+
+String chat(@UserMessage AudioContent audio, @UserMessage ImageContent image);
 ```
 
 AI Service will put all contents into the final `UserMessage` in the order of parameter declaration.
@@ -613,9 +625,11 @@ tokenStream
     .onPartialThinking((PartialThinking partialThinking) -> System.out.println(partialThinking))
     .onRetrieved((List<Content> contents) -> System.out.println(contents))
     .onIntermediateResponse((ChatResponse intermediateResponse) -> System.out.println(intermediateResponse))
-     // This will be invoked right before a tool is executed. BeforeToolExecution contains ToolExecutionRequest (e.g. tool name, tool arguments, etc.)  
+     // This will be invoked every time a new partial tool call (usually containing a single token of the tool's arguments) is available.
+    .onPartialToolCall((PartialToolCall partialToolCall) -> System.out.println(partialToolCall))
+     // This will be invoked right before a tool is executed. BeforeToolExecution contains ToolExecutionRequest (e.g. tool name, tool arguments, etc.)
     .beforeToolExecution((BeforeToolExecution beforeToolExecution) -> System.out.println(beforeToolExecution))
-     // This will be invoked right after a tool is executed. ToolExecution contains ToolExecutionRequest and tool execution result. 
+     // This will be invoked right after a tool is executed. ToolExecution contains ToolExecutionRequest and tool execution result.
     .onToolExecuted((ToolExecution toolExecution) -> System.out.println(toolExecution))
     .onCompleteResponse((ChatResponse response) -> futureResponse.complete(response))
     .onError((Throwable error) -> futureResponse.completeExceptionally(error))

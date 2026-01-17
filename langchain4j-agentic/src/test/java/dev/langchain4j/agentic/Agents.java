@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic;
 
 import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScopeAccess;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.service.MemoryId;
@@ -190,7 +191,7 @@ public class Agents {
         String scoreAndReview(@V("story") String story, @V("style") String style);
     }
 
-    public interface StyledWriter extends AgenticScopeAccess {
+    public interface StyledWriter extends AgentInstance, AgenticScopeAccess {
 
         @Agent
         ResultWithAgenticScope<String> writeStoryWithStyle(@V("topic") String topic, @V("style") String style);
@@ -248,5 +249,28 @@ public class Agents {
             """)
         @Agent("Provide the resulting color from mixing given colors")
         String colorMix(@V("colors") List<String> colors);
+    }
+
+    public record LoanApplication(String applicantName, String applicantAge, int amount) { }
+
+    public interface LoanApplicationExtractor {
+
+        @UserMessage("""
+            Convert user request into a structured LoanApplication.
+            The user request is: '{{request}}'.
+            """)
+        @Agent(description = "Extract a loan application from user request.", outputKey = "loanApplication")
+        LoanApplication extract(@V("request") String request);
+    }
+
+    public interface LoanApplicationEvaluator {
+
+        @UserMessage("""
+            Evaluate a loan application. If the applicant's age is less than 18 or the amount is greater than 50000, reject the application.
+            A response should indicate 'approved' or 'rejected'.
+            The loan application is: '{{loanApplication}}'.
+            """)
+        @Agent("Evaluate a loan application.")
+        String evaluate(@V("loanApplication") LoanApplication loanApplication);
     }
 }
