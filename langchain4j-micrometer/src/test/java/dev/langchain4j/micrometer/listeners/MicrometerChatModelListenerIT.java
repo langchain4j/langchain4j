@@ -28,7 +28,9 @@ class MicrometerChatModelListenerIT {
     void setUp() {
         meterRegistry = new SimpleMeterRegistry();
         observationRegistry = TestObservationRegistry.create();
-        listener = new MicrometerChatModelListener(meterRegistry, observationRegistry, "azure_openai");
+        observationRegistry.observationConfig()
+            .observationHandler(new dev.langchain4j.micrometer.observation.ChatModelMeterObservationHandler(meterRegistry));
+        listener = new MicrometerChatModelListener(observationRegistry, "azure_openai");
     }
 
     @Test
@@ -43,15 +45,15 @@ class MicrometerChatModelListenerIT {
                 .hasLowCardinalityKeyValue(KeyValue.of(OTelGenAiAttributes.OPERATION_NAME.value(), "chat"))
                 .hasLowCardinalityKeyValue(KeyValue.of(OTelGenAiAttributes.SYSTEM.value(), "azure_openai"))
                 .hasLowCardinalityKeyValue(KeyValue.of(OTelGenAiAttributes.REQUEST_MODEL.value(), "gpt-4o"))
-                .hasLowCardinalityKeyValue(KeyValue.of(OTelGenAiAttributes.RESPONSE_MODEL.value(), "gpt-4o"));
+                .hasLowCardinalityKeyValue(KeyValue.of(OTelGenAiAttributes.RESPONSE_MODEL.value(), "gpt-4o"))
+                .hasLowCardinalityKeyValue(KeyValue.of("outcome", "SUCCESS"));
     }
 
     @Test
     void should_contain_metrics_no_error() {
         doChatRequest(System.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"));
 
-        assertThat(meterRegistry.getMeters()).hasSize(3);
-        assertThat(meterRegistry.find("langchain4j.chat.model.request").meter()).isNotNull();
+        // Only token usage metrics should be present
         assertThat(meterRegistry.find(OTelGenAiMetricName.TOKEN_USAGE.value()).meter())
                 .isNotNull();
         assertThat(meterRegistry
@@ -65,8 +67,6 @@ class MicrometerChatModelListenerIT {
                         .meter())
                 .isNotNull();
 
-        assertThat(meterRegistry.get("langchain4j.chat.model.request").counter().count())
-                .isEqualTo(1.0);
         assertThat(meterRegistry
                         .get(OTelGenAiMetricName.TOKEN_USAGE.value())
                         .tag(OTelGenAiAttributes.TOKEN_TYPE.value(), OTelGenAiTokenType.INPUT.value())
@@ -90,9 +90,7 @@ class MicrometerChatModelListenerIT {
     void should_contain_metrics_with_error_on_request() {
         doChatRequest("wrongDeploymentName");
 
-        assertThat(meterRegistry.getMeters()).hasSize(2);
-        assertThat(meterRegistry.find("langchain4j.chat.model.request").meter()).isNotNull();
-        assertThat(meterRegistry.find("langchain4j.chat.model.error").meter()).isNotNull();
+        // No token usage metrics on error
         assertThat(meterRegistry.find(OTelGenAiMetricName.TOKEN_USAGE.value()).meter())
                 .isNull();
         assertThat(meterRegistry
@@ -105,11 +103,6 @@ class MicrometerChatModelListenerIT {
                         .tag(OTelGenAiAttributes.TOKEN_TYPE.value(), OTelGenAiTokenType.OUTPUT.value())
                         .meter())
                 .isNull();
-
-        assertThat(meterRegistry.get("langchain4j.chat.model.request").counter().count())
-                .isEqualTo(1.0);
-        assertThat(meterRegistry.get("langchain4j.chat.model.error").counter().count())
-                .isEqualTo(1.0);
     }
 
     private void doChatRequest(String deploymentName) {
