@@ -2,12 +2,12 @@
 The `langchain4j-micrometer` module provides a Micrometer-based metrics implementation for the `langchain4j` library. For now, it only provides metrics for a chat model interaction.
 It uses the Micrometer Observation API in a `ChatModelListener` to collect metrics about the usage of a chat model. The naming of the metrics is based on the [OpenTelemetry Semantic Conventions for Generative AI Metrics](https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-metrics/). 
 
+> **⚠️ Warning**: The OpenTelemetry Semantic Conventions for Generative AI are currently **experimental and not stable**. This means they may have breaking changes in future versions. If you follow these conventions, you may need to introduce breaking changes to your dashboards, alerts, and automations when the conventions are updated. Consider using the `ObservationConvention` component to support multiple convention versions or define your own custom conventions.
+
 The following metrics are collected:
 
-- `langchain4j.chat.model.request` - The number of requests made to the chat model. Not part of the OpenTelemetry Semantic Conventions.
-- `langchain4j.chat.model.error` - The number of errors that occurred during the chat model interaction. Not part of the OpenTelemetry Semantic Conventions.
-- `gen_ai.client.operation.duration` - The duration of the GenAI operation.
-- `gen_ai.client.token.usage` - The number of tokens used by the model for input, output, or both.
+- `gen_ai.client.operation.duration` - The duration of the GenAI operation with an `outcome` tag (SUCCESS or ERROR).
+- `gen_ai.client.token.usage` - The number of tokens used by the model for input or output.
 
 ## Usage
 The micrometer module is added to the project from version 1.0.0-alpha2.
@@ -58,38 +58,52 @@ management:
 ```
 
 ### Add observability to your ChatModel
-The `MicrometerChatModelListener` collects the metrics for the chat model. It uses a `ObservationRegistry` and `MeterRegistry` provided by Micrometer to collect the metrics in an Observation.
-Therefore, you need to create a `MicrometerChatModelListener` with the available `ObservationRegistry` and `MeterRegistry`.
+The `MicrometerChatModelListener` collects the metrics for the chat model. It uses an `ObservationRegistry` and `MeterRegistry` provided by Micrometer to collect the metrics in an Observation.
 
-Then, add the `MicrometerChatModelListener` to a list of listeners for your ChatModel.
-Finally, add this list of listeners to the chat model in its builder.
+**Important**: You must register the `ChatModelMeterObservationHandler` with the `ObservationRegistry` **once** at application startup before creating the listener.
 
 ```java
+import dev.langchain4j.micrometer.listeners.MicrometerChatModelListener;
+import dev.langchain4j.micrometer.observation.ChatModelMeterObservationHandler;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.observation.ObservationRegistry;
+import java.util.List;
 
-List<ChatModelListener> list;
+// Get the MeterRegistry and ObservationRegistry (from Spring context or create manually)
+MeterRegistry meterRegistry = ...; // e.g., new SimpleMeterRegistry() or injected from Spring
+ObservationRegistry observationRegistry = ...; // e.g., ObservationRegistry.create() or injected from Spring
 
-public ChatApp(MeterRegistry meterRegistry, ObservationRegistry observationRegistry) {
-        this.list = List.of(new MicrometerChatModelListener(meterRegistry, observationRegistry, "azure_openai"));
-    }
-    
+// 1. Register the handler ONCE globally (typically at application startup)
+observationRegistry.observationConfig()
+    .observationHandler(new ChatModelMeterObservationHandler(meterRegistry));
+
+// 2. Create the listener (no need to pass MeterRegistry, it's in the handler)
+List<ChatModelListener> listeners = List.of(
+    new MicrometerChatModelListener(observationRegistry, "azure_openai")
+);
+
+// 3. Add listeners to your ChatModel
 // For example an AzureOpenAiChatModel
-public AzureOpenAiChatModel createChatModel() {
-        return AzureOpenAiChatModel.builder()
-                // Omitted for brevity
-                .listeners(list)
-                .build();
-    }
+AzureOpenAiChatModel chatModel = AzureOpenAiChatModel.builder()
+    // Omitted for brevity
+    .listeners(listeners)
+    .build();
 ```
 
 ## Viewing the metrics
 You can view the metrics by visiting the `/actuator/metrics` endpoint of your application. For example, if you are running your application on `localhost:8080`, you can visit `http://localhost:8080/actuator/metrics` to view the metrics.
 
-- `langchain4j.chat.model.request`: `/actuator/metrics/langchain4j.chat.model.request`
-- `langchain4j.chat.model.error`: `/actuator/metrics/langchain4j.chat.model.error`
 - `gen_ai.client.operation.duration`: `/actuator/metrics/gen_ai.client.operation.duration`
 - `gen_ai.client.token.usage`: `/actuator/metrics/gen_ai.client.token.usage`
+
+The `gen_ai.client.operation.duration` metric includes an `outcome` tag with values:
+- `SUCCESS`: The operation completed successfully
+- `ERROR`: The operation failed with an error
+
+You can filter by outcome:
+- Success: `/actuator/metrics/gen_ai.client.operation.duration?tag=outcome:SUCCESS`
+- Error: `/actuator/metrics/gen_ai.client.operation.duration?tag=outcome:ERROR`
 
 The measurement of tokens for the `gen_ai.client.token.usage` metric is based on the `gen_ai.token.type` tag. The tag can have the following values:
 - `output`: The number of tokens used for the output.
