@@ -20,6 +20,9 @@ import java.util.function.Supplier;
 public class MicrometerChatModelListener implements ChatModelListener {
 
     private static final String OBSERVATION_SCOPE_KEY = "micrometer.observation.scope";
+    private static final String OUTCOME_KEY = "outcome";
+    private static final String OUTCOME_SUCCESS = "SUCCESS";
+    private static final String OUTCOME_ERROR = "ERROR";
 
     private final ObservationRegistry observationRegistry;
     private final String aiSystemName;
@@ -83,7 +86,7 @@ public class MicrometerChatModelListener implements ChatModelListener {
                     chatModelObservationContext.setResponseContext(responseContext);
                 }
                 updateObservationWithResponse(observation, responseContext);
-                observation.lowCardinalityKeyValue("outcome", "SUCCESS");
+                observation.lowCardinalityKeyValue(OUTCOME_KEY, OUTCOME_SUCCESS);
             } finally {
                 currentScope.close();
                 observation.stop();
@@ -110,7 +113,7 @@ public class MicrometerChatModelListener implements ChatModelListener {
                     chatModelObservationContext.setErrorContext(errorContext);
                 }
                 updateObservationWithError(observation, errorContext);
-                observation.lowCardinalityKeyValue("outcome", "ERROR");
+                observation.lowCardinalityKeyValue(OUTCOME_KEY, OUTCOME_ERROR);
                 observation.error(errorContext.error());
             } finally {
                 currentScope.close();
