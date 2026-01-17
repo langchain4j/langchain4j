@@ -6,47 +6,40 @@ import dev.langchain4j.Experimental;
 import dev.langchain4j.micrometer.conventions.OTelGenAiAttributes;
 import dev.langchain4j.micrometer.conventions.OTelGenAiMetricName;
 import dev.langchain4j.micrometer.conventions.OTelGenAiOperationName;
-import dev.langchain4j.micrometer.observation.ChatModelMeterObservationHandler;
 import dev.langchain4j.micrometer.observation.ChatModelObservationContext;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
-import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 @Experimental
 public class MicrometerChatModelListener implements ChatModelListener {
 
-    private final ObservationRegistry observationRegistry;
-    private final AtomicReference<Observation.Scope> scope;
+    private static final String OBSERVATION_SCOPE_KEY = "micrometer.observation.scope";
 
+    private final ObservationRegistry observationRegistry;
     private final String aiSystemName;
 
     /**
      * Default constructor.
-     * @param meterRegistry         Provided MeterRegistry by Micrometer Actuator
      * @param observationRegistry   Provided ObservationRegistry by Micrometer Observation API
      * @param aiSystemName          AI system name should be in line with OpenTelemetry Semantic Convention for Generative AI Metrics.
      */
-    public MicrometerChatModelListener(
-            final MeterRegistry meterRegistry, ObservationRegistry observationRegistry, String aiSystemName) {
+    public MicrometerChatModelListener(ObservationRegistry observationRegistry, String aiSystemName) {
         this.observationRegistry = ensureNotNull(observationRegistry, "observationRegistry");
-        this.scope = new AtomicReference<>();
         this.aiSystemName = ensureNotNull(aiSystemName, "aiSystemName");
-
-        observationRegistry.observationConfig().observationHandler(new ChatModelMeterObservationHandler(meterRegistry));
     }
 
     @Override
     public void onRequest(final ChatModelRequestContext requestContext) {
         setAiProvider(requestContext);
         Observation observation = createObservation(requestContext);
-        scope.set(observation.openScope());
+        Observation.Scope scope = observation.openScope();
+        requestContext.attributes().put(OBSERVATION_SCOPE_KEY, scope);
     }
 
     @Override
@@ -82,13 +75,15 @@ public class MicrometerChatModelListener implements ChatModelListener {
     }
 
     private void handleResponseObservationScope(ChatModelResponseContext responseContext) {
-        Observation.Scope currentScope = this.scope.getAndSet(null);
+        Observation.Scope currentScope = (Observation.Scope) responseContext.attributes().remove(OBSERVATION_SCOPE_KEY);
         if (currentScope != null) {
             Observation observation = currentScope.getCurrentObservation();
             if (observation.getContext() instanceof ChatModelObservationContext chatModelObservationContext) {
                 chatModelObservationContext.setResponseContext(responseContext);
             }
             updateObservationWithResponse(observation, responseContext);
+            observation.lowCardinalityKeyValue("outcome", "SUCCESS");
+            currentScope.close();
             observation.stop();
         }
     }
@@ -104,14 +99,16 @@ public class MicrometerChatModelListener implements ChatModelListener {
     }
 
     private void handleErrorObservationScope(ChatModelErrorContext errorContext) {
-        Observation.Scope currentScope = this.scope.getAndSet(null);
+        Observation.Scope currentScope = (Observation.Scope) errorContext.attributes().remove(OBSERVATION_SCOPE_KEY);
         if (currentScope != null) {
             Observation observation = currentScope.getCurrentObservation();
             if (observation.getContext() instanceof ChatModelObservationContext chatModelObservationContext) {
                 chatModelObservationContext.setErrorContext(errorContext);
             }
             updateObservationWithError(observation, errorContext);
+            observation.lowCardinalityKeyValue("outcome", "ERROR");
             observation.error(errorContext.error());
+            currentScope.close();
             observation.stop();
         }
     }
