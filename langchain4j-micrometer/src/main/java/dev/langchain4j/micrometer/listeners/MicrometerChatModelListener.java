@@ -78,13 +78,16 @@ public class MicrometerChatModelListener implements ChatModelListener {
         Observation.Scope currentScope = (Observation.Scope) responseContext.attributes().remove(OBSERVATION_SCOPE_KEY);
         if (currentScope != null) {
             Observation observation = currentScope.getCurrentObservation();
-            if (observation.getContext() instanceof ChatModelObservationContext chatModelObservationContext) {
-                chatModelObservationContext.setResponseContext(responseContext);
+            try {
+                if (observation.getContext() instanceof ChatModelObservationContext chatModelObservationContext) {
+                    chatModelObservationContext.setResponseContext(responseContext);
+                }
+                updateObservationWithResponse(observation, responseContext);
+                observation.lowCardinalityKeyValue("outcome", "SUCCESS");
+            } finally {
+                currentScope.close();
+                observation.stop();
             }
-            updateObservationWithResponse(observation, responseContext);
-            observation.lowCardinalityKeyValue("outcome", "SUCCESS");
-            currentScope.close();
-            observation.stop();
         }
     }
 
@@ -102,14 +105,17 @@ public class MicrometerChatModelListener implements ChatModelListener {
         Observation.Scope currentScope = (Observation.Scope) errorContext.attributes().remove(OBSERVATION_SCOPE_KEY);
         if (currentScope != null) {
             Observation observation = currentScope.getCurrentObservation();
-            if (observation.getContext() instanceof ChatModelObservationContext chatModelObservationContext) {
-                chatModelObservationContext.setErrorContext(errorContext);
+            try {
+                if (observation.getContext() instanceof ChatModelObservationContext chatModelObservationContext) {
+                    chatModelObservationContext.setErrorContext(errorContext);
+                }
+                updateObservationWithError(observation, errorContext);
+                observation.lowCardinalityKeyValue("outcome", "ERROR");
+                observation.error(errorContext.error());
+            } finally {
+                currentScope.close();
+                observation.stop();
             }
-            updateObservationWithError(observation, errorContext);
-            observation.lowCardinalityKeyValue("outcome", "ERROR");
-            observation.error(errorContext.error());
-            currentScope.close();
-            observation.stop();
         }
     }
 
