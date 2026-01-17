@@ -17,21 +17,18 @@ public class ChatModelMeterObservationHandler implements ObservationHandler<Chat
 
     private final MeterRegistry meterRegistry;
 
-    private static final String LC_REQUEST_COUNTER = "langchain4j.chat.model.request";
-    private static final String LC_ERROR_COUNTER = "langchain4j.chat.model.error";
-
     public ChatModelMeterObservationHandler(MeterRegistry meterRegistry) {
         this.meterRegistry = meterRegistry;
     }
 
     @Override
     public void onStart(ChatModelObservationContext context) {
-        addRequestMetrics(context.getRequestContext());
+        // Observation started - timing handled by default MeterObservationHandler
     }
 
     @Override
     public void onError(ChatModelObservationContext context) {
-        addErrorMetric(context.getErrorContext());
+        // Error handling is done via observation.error() in the listener
     }
 
     @Override
@@ -44,32 +41,8 @@ public class ChatModelMeterObservationHandler implements ObservationHandler<Chat
         return context instanceof ChatModelObservationContext;
     }
 
-    private void addRequestMetrics(ChatModelRequestContext requestContext) {
-        Counter.builder(LC_REQUEST_COUNTER)
-                .tag(OTelGenAiAttributes.OPERATION_NAME.value(), OTelGenAiOperationName.CHAT.value())
-                .tag(OTelGenAiAttributes.SYSTEM.value(), getSystemValue(requestContext.attributes()))
-                .tag(
-                        OTelGenAiAttributes.REQUEST_MODEL.value(),
-                        requestContext.chatRequest().parameters().modelName())
-                .description("The number of requests that were made to the chat model")
-                .register(meterRegistry)
-                .increment();
-    }
-
-    private void addErrorMetric(ChatModelErrorContext errorContext) {
-        Counter.builder(LC_ERROR_COUNTER)
-                .tag(OTelGenAiAttributes.OPERATION_NAME.value(), OTelGenAiOperationName.CHAT.value())
-                .tag(OTelGenAiAttributes.SYSTEM.value(), getSystemValue(errorContext.attributes()))
-                .tag(
-                        OTelGenAiAttributes.REQUEST_MODEL.value(),
-                        errorContext.chatRequest().parameters().modelName())
-                .description("The number of errors that occurred in the chat model")
-                .register(meterRegistry)
-                .increment();
-    }
-
     private void addResponseMetrics(ChatModelResponseContext responseContext) {
-        if (responseContext.chatResponse().tokenUsage() != null) {
+        if (responseContext != null && responseContext.chatResponse().tokenUsage() != null) {
             addTokenUsageMetrics(responseContext);
         }
     }
