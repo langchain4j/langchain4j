@@ -10,10 +10,4 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 @JsonInclude(NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonNaming(SnakeCaseStrategy.class)
-public class AnthropicModelInfo {
-
-    public String id;
-    public String createdAt;
-    public String displayName;
-    public String type;
-}
+public record AnthropicModelInfo(String id, String createdAt, String displayName, String type) {}

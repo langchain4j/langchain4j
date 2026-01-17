@@ -55,7 +55,7 @@ public class AnthropicTokenCountEstimator implements TokenCountEstimator {
                 .messages(List.of(new AnthropicMessage(AnthropicRole.USER, List.of(new AnthropicTextContent(text)))))
                 .build();
 
-        return client.countTokens(request).getInputTokens();
+        return client.countTokens(request).inputTokens();
     }
 
     @Override
@@ -94,7 +94,7 @@ public class AnthropicTokenCountEstimator implements TokenCountEstimator {
                     + "to auto-insert a minimal dummy user message for token estimation.");
         }
 
-        return client.countTokens(requestBuilder.build()).getInputTokens();
+        return client.countTokens(requestBuilder.build()).inputTokens();
     }
 
     public static Builder builder() {
