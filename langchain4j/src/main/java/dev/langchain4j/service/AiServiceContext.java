@@ -11,6 +11,7 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
 import dev.langchain4j.rag.RetrievalAugmentor;
+import dev.langchain4j.reasoning.ReasoningAugmentor;
 import dev.langchain4j.service.guardrail.GuardrailService;
 import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.service.tool.ToolService;
@@ -41,6 +42,8 @@ public class AiServiceContext {
     public ModerationModel moderationModel;
 
     public RetrievalAugmentor retrievalAugmentor;
+
+    public ReasoningAugmentor reasoningAugmentor;
 
     public boolean storeRetrievedContentInChatMemory = true;
 
