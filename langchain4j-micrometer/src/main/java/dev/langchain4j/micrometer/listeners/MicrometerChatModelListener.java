@@ -1,7 +1,10 @@
 package dev.langchain4j.micrometer.listeners;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import java.util.Map;
+import java.util.function.Supplier;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.micrometer.conventions.OTelGenAiAttributes;
 import dev.langchain4j.micrometer.conventions.OTelGenAiMetricName;
@@ -13,9 +16,18 @@ import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
-import java.util.Map;
-import java.util.function.Supplier;
 
+/**
+ * A {@link ChatModelListener} that uses Micrometer Observation API to collect metrics
+ * about chat model interactions following OpenTelemetry Semantic Conventions for Generative AI.
+ * <p>
+ * This listener is thread-safe and supports concurrent requests by storing the observation
+ * scope in the request context attributes.
+ * <p>
+ * Note: The {@link dev.langchain4j.micrometer.observation.ChatModelMeterObservationHandler}
+ * must be registered with the {@link ObservationRegistry} separately (e.g., via Spring Boot
+ * auto-configuration or manual registration).
+ */
 @Experimental
 public class MicrometerChatModelListener implements ChatModelListener {
 
@@ -28,13 +40,16 @@ public class MicrometerChatModelListener implements ChatModelListener {
     private final String aiSystemName;
 
     /**
-     * Default constructor.
-     * @param observationRegistry   Provided ObservationRegistry by Micrometer Observation API
-     * @param aiSystemName          AI system name should be in line with OpenTelemetry Semantic Convention for Generative AI Metrics.
+     * Constructor.
+     * @param observationRegistry   Provided ObservationRegistry by Micrometer Observation API.
+     *                              The {@link dev.langchain4j.micrometer.observation.ChatModelMeterObservationHandler}
+     *                              should be registered with this registry separately.
+     * @param aiSystemName          AI system name should be in line with OpenTelemetry Semantic Convention
+     *                              for Generative AI Metrics (e.g., "openai", "azure_openai", "anthropic").
      */
     public MicrometerChatModelListener(ObservationRegistry observationRegistry, String aiSystemName) {
         this.observationRegistry = ensureNotNull(observationRegistry, "observationRegistry");
-        this.aiSystemName = ensureNotNull(aiSystemName, "aiSystemName");
+        this.aiSystemName = ensureNotBlank(aiSystemName, "aiSystemName");
     }
 
     @Override
@@ -42,6 +57,7 @@ public class MicrometerChatModelListener implements ChatModelListener {
         setAiProvider(requestContext);
         Observation observation = createObservation(requestContext);
         Observation.Scope scope = observation.openScope();
+        // Store scope in attributes for thread-safe access in onResponse/onError
         requestContext.attributes().put(OBSERVATION_SCOPE_KEY, scope);
     }
 
