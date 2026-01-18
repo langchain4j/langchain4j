@@ -23,7 +23,7 @@ public final class BatchRequestResponse {
     /**
      * Represents a successful batch operation.
      */
-    public record BatchSuccess<T>(BatchName batchName, List<T> responses, List<Operation.Status> errors)
+    public record BatchSuccess<T>(BatchName batchName, List<T> responses, @Nullable List<Operation.Status> errors)
             implements BatchResponse<T> {}
 
     /**

@@ -128,9 +128,9 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
                         extractBatchState(operation.metadata()),
                         operation.error().details());
             } else {
-                var extractedResponses = preparer.extractResults(operation.response());
+                var extractedResults = preparer.extractResults(operation.response());
                 return new BatchSuccess<>(
-                        new BatchName(operation.name()), extractedResponses.responses(), extractedResponses.errors());
+                        new BatchName(operation.name()), extractedResults.responses(), extractedResults.errors());
             }
         } else {
             return new BatchRequestResponse.BatchIncomplete<>(
