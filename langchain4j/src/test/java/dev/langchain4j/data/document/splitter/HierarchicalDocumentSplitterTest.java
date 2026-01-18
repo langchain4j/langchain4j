@@ -17,7 +17,8 @@ class HierarchicalDocumentSplitterTest implements WithAssertions {
             super(maxSegmentSizeInChars, maxOverlapSizeInChars, subSplitter);
         }
 
-        public ExampleImpl(int maxSegmentSizeInTokens, int maxOverlapSizeInTokens, TokenCountEstimator tokenCountEstimator) {
+        public ExampleImpl(
+                int maxSegmentSizeInTokens, int maxOverlapSizeInTokens, TokenCountEstimator tokenCountEstimator) {
             super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenCountEstimator);
         }
 
@@ -84,6 +85,32 @@ class HierarchicalDocumentSplitterTest implements WithAssertions {
             assertThat(splitter.maxOverlapSize).isEqualTo(1);
             assertThat(splitter.tokenCountEstimator).isSameAs(tokenCountEstimator);
             assertThat(splitter.subSplitter).isSameAs(subSplitter);
+
+            assertThat(splitter.estimateSize("abc def")).isEqualTo(2);
+        }
+    }
+
+    @Test
+    void estimateSize_should_return_zero_for_null_and_blank_text() {
+        {
+            ExampleImpl splitter = new ExampleImpl(1, 1);
+
+            assertThat(splitter.estimateSize(null)).isEqualTo(0);
+            assertThat(splitter.estimateSize("")).isEqualTo(0);
+            assertThat(splitter.estimateSize("   ")).isEqualTo(3);
+            assertThat(splitter.estimateSize("\t\n")).isEqualTo(2);
+
+            assertThat(splitter.estimateSize("abc def")).isEqualTo(7);
+        }
+
+        {
+            TokenCountEstimator tokenCountEstimator = new ExampleTestTokenCountEstimator();
+            ExampleImpl splitter = new ExampleImpl(1, 1, tokenCountEstimator);
+
+            assertThat(splitter.estimateSize(null)).isEqualTo(0);
+            assertThat(splitter.estimateSize("")).isEqualTo(0);
+            assertThat(splitter.estimateSize("   ")).isEqualTo(3);
+            assertThat(splitter.estimateSize("\t\n")).isEqualTo(2);
 
             assertThat(splitter.estimateSize("abc def")).isEqualTo(2);
         }
