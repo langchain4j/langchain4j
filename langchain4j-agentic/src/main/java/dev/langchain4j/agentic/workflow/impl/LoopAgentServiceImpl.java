@@ -31,7 +31,7 @@ public class LoopAgentServiceImpl<T> extends AbstractServiceBuilder<T, LoopAgent
     }
 
     public static <T> LoopAgentServiceImpl<T> builder(Class<T> agentServiceClass) {
-        return new LoopAgentServiceImpl<>(agentServiceClass, validateAgentClass(agentServiceClass, false));
+        return new LoopAgentServiceImpl<>(agentServiceClass, validateAgentClass(agentServiceClass, false, dev.langchain4j.agentic.declarative.LoopAgent.class));
     }
 
     @Override
