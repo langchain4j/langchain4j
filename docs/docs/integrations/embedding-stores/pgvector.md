@@ -43,7 +43,11 @@ RAG, and more.
 | `indexListSize`         | The number of lists for the IVFFlat index.                                                                                                                                                                                                                                                                                                                                                                                                                     | None            | When Required: If `useIndex` is `true`, `indexListSize` must be provided and must be greater than zero. Otherwise, the program will throw an exception during table initialization. When Optional: If `useIndex` is `false`, this property is ignored and doesn’t need to be set. |
 | `createTable`           | Specifies whether to automatically create the embeddings table.                                                                                                                                                                                                                                                                                                                                                                                                | `true`          | Optional                                                                                                                                                                                                                                                                          |
 | `dropTableFirst`        | Specifies whether to drop the table before recreating it (useful for tests).                                                                                                                                                                                                                                                                                                                                                                                   | `false`         | Optional                                                                                                                                                                                                                                                                          |
-| `metadataStorageConfig` | Configuration object for handling metadata associated with embeddings. Supports three storage modes: <ul><li>**COLUMN_PER_KEY**: For static metadata when you know the metadata keys in advance.</li><li>**COMBINED_JSON**: For dynamic metadata when you don’t know the metadata keys in advance. Stores data as JSON. (Default)</li><li>**COMBINED_JSONB**: Similar to JSON, but stored in binary format for optimized querying on large datasets.</li></ul> | `COMBINED_JSON` | Optional. If not set, a default configuration is used with `COMBINED_JSON`.                                                                                                                                                                                                       |
+| `metadataStorageConfig` | Configuration object for handling metadata associated with embeddings. Supports three storage modes: <ul><li>**COLUMN_PER_KEY**: For static metadata when you know the metadata keys in advance.</li><li>**COMBINED_JSON**: For dynamic metadata when you don't know the metadata keys in advance. Stores data as JSON. (Default)</li><li>**COMBINED_JSONB**: Similar to JSON, but stored in binary format for optimized querying on large datasets.</li></ul> | `COMBINED_JSON` | Optional. If not set, a default configuration is used with `COMBINED_JSON`.                                                                                                                                                                                                       |
+| `queryType`             | The query type for search operations. Options: `VECTOR` (cosine similarity), `FULL_TEXT` (PostgreSQL FTS), `HYBRID` (combined).                                                                                                                                                                                                                                                                                                                                 | `VECTOR`        | Optional                                                                                                                                                                                                                                                                          |
+| `vectorWeight`          | Weight for vector similarity score in hybrid search. Value between 0 and 1.                                                                                                                                                                                                                                                                                                                                                                                     | `0.6`           | Optional. Only used when `queryType` is `HYBRID`.                                                                                                                                                                                                                                 |
+| `textWeight`            | Weight for full-text search score in hybrid search. Value between 0 and 1.                                                                                                                                                                                                                                                                                                                                                                                      | `0.4`           | Optional. Only used when `queryType` is `HYBRID`.                                                                                                                                                                                                                                 |
+| `ftsLanguage`           | PostgreSQL full-text search language configuration. Affects stemming and stop words.                                                                                                                                                                                                                                                                                                                                                                            | `english`       | Optional. Only used when `queryType` is `HYBRID` or `FULL_TEXT`.                                                                                                                                                                                                                  |
 
 ## Examples
 
@@ -273,7 +277,82 @@ EmbeddingStore<TextSegment> embeddingStore = PgVectorEmbeddingStore.builder()
 
 **Note**: Index creation can take time on large datasets. Balance between query speed and index build time.
 
-#### 3. Metadata Storage
+#### 3. Hybrid Search (Vector + Full-Text)
+
+PgVector now supports hybrid search, combining vector similarity with PostgreSQL full-text search for improved RAG results.
+Hybrid search is particularly effective when you want both semantic understanding AND keyword matching.
+
+**Query Types:**
+- `VECTOR`: Default. Uses cosine similarity for semantic search.
+- `FULL_TEXT`: Uses PostgreSQL full-text search (ts_vector/ts_query).
+- `HYBRID`: Combines both with configurable weights.
+
+**Basic Hybrid Search Setup:**
+
+```java
+import dev.langchain4j.store.embedding.pgvector.PgVectorQueryType;
+
+EmbeddingStore<TextSegment> embeddingStore = PgVectorEmbeddingStore.builder()
+        .host("localhost")
+        .port(5432)
+        .database("postgres")
+        .user("my_user")
+        .password("my_password")
+        .table("document_embeddings")
+        .dimension(384)
+        .queryType(PgVectorQueryType.HYBRID)  // Enable hybrid search
+        .vectorWeight(0.6)                     // 60% weight to vector similarity
+        .textWeight(0.4)                       // 40% weight to full-text search
+        .createTable(true)
+        .build();
+```
+
+**Custom Weights for Different Use Cases:**
+
+```java
+// For keyword-heavy searches (e.g., technical documentation)
+EmbeddingStore<TextSegment> keywordFocused = PgVectorEmbeddingStore.builder()
+        // ... connection config ...
+        .queryType(PgVectorQueryType.HYBRID)
+        .vectorWeight(0.3)  // Lower semantic weight
+        .textWeight(0.7)    // Higher keyword weight
+        .build();
+
+// For semantic-heavy searches (e.g., conversational queries)
+EmbeddingStore<TextSegment> semanticFocused = PgVectorEmbeddingStore.builder()
+        // ... connection config ...
+        .queryType(PgVectorQueryType.HYBRID)
+        .vectorWeight(0.8)  // Higher semantic weight
+        .textWeight(0.2)    // Lower keyword weight
+        .build();
+```
+
+**Multi-Language Support:**
+
+```java
+// For German documents
+EmbeddingStore<TextSegment> germanStore = PgVectorEmbeddingStore.builder()
+        // ... connection config ...
+        .queryType(PgVectorQueryType.HYBRID)
+        .ftsLanguage("german")  // Use German stemming/stop words
+        .build();
+
+// For French documents
+EmbeddingStore<TextSegment> frenchStore = PgVectorEmbeddingStore.builder()
+        // ... connection config ...
+        .queryType(PgVectorQueryType.HYBRID)
+        .ftsLanguage("french")
+        .build();
+```
+
+**When to Use Hybrid Search:**
+- **Use HYBRID** when your queries contain both natural language AND specific keywords (e.g., "What is the refund policy for order #12345?")
+- **Use VECTOR** when queries are purely conversational/semantic (e.g., "How do I return an item?")
+- **Use FULL_TEXT** when queries are purely keyword-based (rare for RAG applications)
+
+**Performance Note:** Hybrid search creates an additional GIN index on the `text_search` column. This slightly increases storage but significantly improves full-text search performance.
+
+#### 4. Metadata Storage
 For better query performance on large datasets, use JSONB for metadata storage:
 
 ```java
