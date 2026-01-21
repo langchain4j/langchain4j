@@ -57,12 +57,11 @@ class PgVectorEmbeddingStoreHybridSearchIT {
 
         // When - search for something semantically similar to "fox"
         Embedding queryEmbedding = embeddingModel.embed("fox animal").content();
-        EmbeddingSearchResult<TextSegment> result = store.search(
-                EmbeddingSearchRequest.builder()
-                        .queryEmbedding(queryEmbedding)
-                        .maxResults(3)
-                        .minScore(0.0)
-                        .build());
+        EmbeddingSearchResult<TextSegment> result = store.search(EmbeddingSearchRequest.builder()
+                .queryEmbedding(queryEmbedding)
+                .maxResults(3)
+                .minScore(0.0)
+                .build());
 
         // Then
         assertThat(result.matches()).isNotEmpty();
@@ -76,7 +75,8 @@ class PgVectorEmbeddingStoreHybridSearchIT {
 
         TextSegment segment1 = TextSegment.from("The quick brown fox jumps over the lazy dog");
         TextSegment segment2 = TextSegment.from("Machine learning and artificial intelligence are related fields");
-        TextSegment segment3 = TextSegment.from("Programming in Java requires understanding of object-oriented concepts");
+        TextSegment segment3 =
+                TextSegment.from("Programming in Java requires understanding of object-oriented concepts");
 
         Embedding embedding1 = embeddingModel.embed(segment1.text()).content();
         Embedding embedding2 = embeddingModel.embed(segment2.text()).content();
@@ -89,13 +89,12 @@ class PgVectorEmbeddingStoreHybridSearchIT {
         // When - search for "machine learning"
         String searchQuery = "machine learning AI";
         Embedding queryEmbedding = embeddingModel.embed(searchQuery).content();
-        EmbeddingSearchResult<TextSegment> result = store.search(
-                EmbeddingSearchRequest.builder()
-                        .queryEmbedding(queryEmbedding)
-                        .query(searchQuery)  // Required for hybrid search full-text component
-                        .maxResults(3)
-                        .minScore(0.0)
-                        .build());
+        EmbeddingSearchResult<TextSegment> result = store.search(EmbeddingSearchRequest.builder()
+                .queryEmbedding(queryEmbedding)
+                .query(searchQuery) // Required for hybrid search full-text component
+                .maxResults(3)
+                .minScore(0.0)
+                .build());
 
         // Then - hybrid search should return results
         assertThat(result.matches()).isNotEmpty();
@@ -116,8 +115,8 @@ class PgVectorEmbeddingStoreHybridSearchIT {
                 .dimension(384)
                 .dropTableFirst(true)
                 .queryType(PgVectorQueryType.HYBRID)
-                .vectorWeight(0.3)  // Lower vector weight
-                .textWeight(0.7)    // Higher text weight
+                .vectorWeight(0.3) // Lower vector weight
+                .textWeight(0.7) // Higher text weight
                 .build();
 
         TextSegment segment1 = TextSegment.from("PostgreSQL database management system");
@@ -132,13 +131,12 @@ class PgVectorEmbeddingStoreHybridSearchIT {
         // When
         String searchQuery = "PostgreSQL database";
         Embedding queryEmbedding = embeddingModel.embed(searchQuery).content();
-        EmbeddingSearchResult<TextSegment> result = store.search(
-                EmbeddingSearchRequest.builder()
-                        .queryEmbedding(queryEmbedding)
-                        .query(searchQuery)  // Required for hybrid search full-text component
-                        .maxResults(2)
-                        .minScore(0.0)
-                        .build());
+        EmbeddingSearchResult<TextSegment> result = store.search(EmbeddingSearchRequest.builder()
+                .queryEmbedding(queryEmbedding)
+                .query(searchQuery) // Required for hybrid search full-text component
+                .maxResults(2)
+                .minScore(0.0)
+                .build());
 
         // Then
         assertThat(result.matches()).hasSize(2);
@@ -178,13 +176,12 @@ class PgVectorEmbeddingStoreHybridSearchIT {
         // When
         String searchQuery = "Java development";
         Embedding queryEmbedding = embeddingModel.embed(searchQuery).content();
-        EmbeddingSearchResult<TextSegment> result = store.search(
-                EmbeddingSearchRequest.builder()
-                        .queryEmbedding(queryEmbedding)
-                        .query(searchQuery)  // Required for hybrid search full-text component
-                        .maxResults(2)
-                        .minScore(0.0)
-                        .build());
+        EmbeddingSearchResult<TextSegment> result = store.search(EmbeddingSearchRequest.builder()
+                .queryEmbedding(queryEmbedding)
+                .query(searchQuery) // Required for hybrid search full-text component
+                .maxResults(2)
+                .minScore(0.0)
+                .build());
 
         // Then
         assertThat(result.matches()).isNotEmpty();
@@ -222,13 +219,12 @@ class PgVectorEmbeddingStoreHybridSearchIT {
         // When
         String searchQuery = "Software Entwicklung";
         Embedding queryEmbedding = embeddingModel.embed(searchQuery).content();
-        EmbeddingSearchResult<TextSegment> result = store.search(
-                EmbeddingSearchRequest.builder()
-                        .queryEmbedding(queryEmbedding)
-                        .query(searchQuery)  // Required for hybrid search full-text component
-                        .maxResults(2)
-                        .minScore(0.0)
-                        .build());
+        EmbeddingSearchResult<TextSegment> result = store.search(EmbeddingSearchRequest.builder()
+                .queryEmbedding(queryEmbedding)
+                .query(searchQuery) // Required for hybrid search full-text component
+                .maxResults(2)
+                .minScore(0.0)
+                .build());
 
         // Then
         assertThat(result.matches()).isNotEmpty();
@@ -245,13 +241,12 @@ class PgVectorEmbeddingStoreHybridSearchIT {
 
         // When - search with exact same text (should get high score)
         String searchQuery = "LangChain4j Java library LLM applications";
-        EmbeddingSearchResult<TextSegment> result = store.search(
-                EmbeddingSearchRequest.builder()
-                        .queryEmbedding(embedding)
-                        .query(searchQuery)  // Required for hybrid search full-text component
-                        .maxResults(1)
-                        .minScore(0.0)
-                        .build());
+        EmbeddingSearchResult<TextSegment> result = store.search(EmbeddingSearchRequest.builder()
+                .queryEmbedding(embedding)
+                .query(searchQuery) // Required for hybrid search full-text component
+                .maxResults(1)
+                .minScore(0.0)
+                .build());
 
         // Then
         assertThat(result.matches()).hasSize(1);
@@ -272,13 +267,12 @@ class PgVectorEmbeddingStoreHybridSearchIT {
         // When - search with very high minScore that won't match anything
         String searchQuery = "completely unrelated topic xyz123";
         Embedding queryEmbedding = embeddingModel.embed(searchQuery).content();
-        EmbeddingSearchResult<TextSegment> result = store.search(
-                EmbeddingSearchRequest.builder()
-                        .queryEmbedding(queryEmbedding)
-                        .query(searchQuery)  // Required for hybrid search full-text component
-                        .maxResults(10)
-                        .minScore(0.99)  // Very high threshold
-                        .build());
+        EmbeddingSearchResult<TextSegment> result = store.search(EmbeddingSearchRequest.builder()
+                .queryEmbedding(queryEmbedding)
+                .query(searchQuery) // Required for hybrid search full-text component
+                .maxResults(10)
+                .minScore(0.99) // Very high threshold
+                .build());
 
         // Then
         assertThat(result.matches()).isEmpty();
@@ -318,20 +312,18 @@ class PgVectorEmbeddingStoreHybridSearchIT {
         String searchQuery = "hybrid vector text search";
         Embedding queryEmbedding = embeddingModel.embed(searchQuery).content();
 
-        EmbeddingSearchResult<TextSegment> vectorResult = vectorStore.search(
-                EmbeddingSearchRequest.builder()
-                        .queryEmbedding(queryEmbedding)
-                        .maxResults(3)
-                        .minScore(0.0)
-                        .build());
+        EmbeddingSearchResult<TextSegment> vectorResult = vectorStore.search(EmbeddingSearchRequest.builder()
+                .queryEmbedding(queryEmbedding)
+                .maxResults(3)
+                .minScore(0.0)
+                .build());
 
-        EmbeddingSearchResult<TextSegment> hybridResult = hybridStore.search(
-                EmbeddingSearchRequest.builder()
-                        .queryEmbedding(queryEmbedding)
-                        .query(searchQuery)  // Required for hybrid search full-text component
-                        .maxResults(3)
-                        .minScore(0.0)
-                        .build());
+        EmbeddingSearchResult<TextSegment> hybridResult = hybridStore.search(EmbeddingSearchRequest.builder()
+                .queryEmbedding(queryEmbedding)
+                .query(searchQuery) // Required for hybrid search full-text component
+                .maxResults(3)
+                .minScore(0.0)
+                .build());
 
         // Then - both should return results
         assertThat(vectorResult.matches()).isNotEmpty();

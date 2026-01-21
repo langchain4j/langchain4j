@@ -262,8 +262,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                 if (queryType == PgVectorQueryType.HYBRID || queryType == PgVectorQueryType.FULL_TEXT) {
                     final String ftsIndexName = table + "_fts_gin_index";
                     query = String.format(
-                            "CREATE INDEX IF NOT EXISTS %s ON %s USING GIN (text_search)",
-                            ftsIndexName, table);
+                            "CREATE INDEX IF NOT EXISTS %s ON %s USING GIN (text_search)", ftsIndexName, table);
                     statement.executeUpdate(query);
                 }
             }
@@ -437,7 +436,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param queryText       The query text for full-text search (from EmbeddingSearchRequest.query())
      * @return The SQL query string
      */
-    private String buildSearchQuery(String referenceVector, int maxResults, double minScore, String whereClause, String queryText) {
+    private String buildSearchQuery(
+            String referenceVector, int maxResults, double minScore, String whereClause, String queryText) {
         String metadataColumns = join(",", metadataHandler.columnsNames());
 
         switch (queryType) {
@@ -448,7 +448,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                 return buildVectorSearchQuery(referenceVector, maxResults, minScore, whereClause, metadataColumns);
 
             case HYBRID:
-                return buildHybridSearchQuery(referenceVector, maxResults, minScore, whereClause, metadataColumns, queryText);
+                return buildHybridSearchQuery(
+                        referenceVector, maxResults, minScore, whereClause, metadataColumns, queryText);
 
             case VECTOR:
             default:
@@ -485,7 +486,12 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param queryText The query text from EmbeddingSearchRequest.query() for full-text search
      */
     private String buildHybridSearchQuery(
-            String referenceVector, int maxResults, double minScore, String whereClause, String metadataColumns, String queryText) {
+            String referenceVector,
+            int maxResults,
+            double minScore,
+            String whereClause,
+            String metadataColumns,
+            String queryText) {
         // Hybrid search combines vector similarity with full-text search relevance
         // Vector score: (2 - cosine_distance) / 2 normalized to [0, 1]
         // FTS score: ts_rank normalized (we use ts_rank which returns values typically 0-1)
