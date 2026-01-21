@@ -6,7 +6,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.mcp.client.McpCallContext;
 import dev.langchain4j.mcp.client.McpHeadersSupplier;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
@@ -83,7 +82,8 @@ public class StreamableHttpMcpTransport implements McpTransport {
                     initializeInProgress.set(null);
                     return CompletableFuture.completedFuture(originalResponse);
                 })
-                .thenCompose(originalResponse -> execute(new McpCallContext(null, new McpInitializationNotification()), false)
+                .thenCompose(originalResponse -> execute(
+                                new McpCallContext(null, new McpInitializationNotification()), false)
                         .thenCompose(nullNode -> CompletableFuture.completedFuture(originalResponse)));
     }
 
@@ -150,7 +150,8 @@ public class StreamableHttpMcpTransport implements McpTransport {
         }
         HttpRequest request = null;
         try {
-            request = createRequest(context.message(), new McpCallContext(context.invocationContext(), context.message()));
+            request = createRequest(
+                    context.message(), new McpCallContext(context.invocationContext(), context.message()));
         } catch (JsonProcessingException e) {
             return CompletableFuture.failedFuture(e);
         }

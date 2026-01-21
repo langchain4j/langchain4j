@@ -1,7 +1,6 @@
 package dev.langchain4j.mcp.client.transport;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.mcp.client.McpCallContext;
 import dev.langchain4j.mcp.protocol.McpClientMessage;
 import dev.langchain4j.mcp.protocol.McpInitializeRequest;

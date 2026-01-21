@@ -16,8 +16,7 @@ import dev.langchain4j.mcp.protocol.McpInitializationNotification;
 import dev.langchain4j.mcp.protocol.McpInitializeRequest;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.UserMessage;
 import java.io.IOException;
@@ -27,7 +26,6 @@ import java.util.concurrent.TimeoutException;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 public abstract class McpHeadersTestBase {
 
@@ -103,22 +101,13 @@ public abstract class McpHeadersTestBase {
 
     @Test
     void toolCallsViaAiService() {
-        ChatModel mockChatModel = Mockito.mock(ChatModel.class);
-        ChatResponse toolRequestingResponse = ChatResponse.builder()
-                .aiMessage(AiMessage.from(ToolExecutionRequest.builder()
-                        .name("echoHeader")
-                        .arguments("{\"headerName\": \"X-Test-Header\"}")
-                        .build()))
-                .build();
-
-        // when no tools are requested, return the tool requesting response
-        //        Mockito.when(mockChatModel.chat(Mockito.argThat((ArgumentMatcher<ChatRequest>) chatRequest ->
-        // chatRequest != null && chatRequest.toolSpecifications().isEmpty()))).thenReturn(toolRequestingResponse);
-        Mockito.when(mockChatModel.chat(Mockito.any(ChatRequest.class))).thenAnswer((i) -> {
-            ChatRequest request = i.getArgument(0);
+        ChatModel mockChatModel = ChatModelMock.thatResponds((request) -> {
             if (request.messages().size() == 1) {
                 // this is the initial chat request, respond with tool requesting response
-                return toolRequestingResponse;
+                return AiMessage.from(ToolExecutionRequest.builder()
+                        .name("echoHeader")
+                        .arguments("{\"headerName\": \"X-Test-Header\"}")
+                        .build());
             } else {
                 // this is the follow-up request containing the result from the MCP tool execution, so just forward that
                 // result as the final response
@@ -126,9 +115,7 @@ public abstract class McpHeadersTestBase {
                         .filter(m -> m instanceof ToolExecutionResultMessage)
                         .findFirst()
                         .get();
-                return ChatResponse.builder()
-                        .aiMessage(AiMessage.aiMessage(toolResult.text()))
-                        .build();
+                return AiMessage.aiMessage(toolResult.text());
             }
         });
 
