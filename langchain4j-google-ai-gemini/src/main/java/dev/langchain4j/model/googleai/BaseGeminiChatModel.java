@@ -11,7 +11,6 @@ import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromMessageT
 import static dev.langchain4j.model.googleai.SchemaMapper.fromJsonSchemaToGSchema;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -41,6 +40,7 @@ class BaseGeminiChatModel {
     protected final GeminiService geminiService;
     protected final GeminiFunctionCallingConfig functionCallingConfig;
     protected final boolean allowCodeExecution;
+    protected final boolean allowGoogleSearch;
     protected final boolean includeCodeExecutionOutput;
     protected final List<GeminiSafetySetting> safetySettings;
     protected final List<ChatModelListener> listeners;
@@ -60,6 +60,7 @@ class BaseGeminiChatModel {
 
         this.functionCallingConfig = builder.functionCallingConfig;
         this.allowCodeExecution = getOrDefault(builder.allowCodeExecution, false);
+        this.allowGoogleSearch = getOrDefault(builder.allowGoogleSearch, false);
         this.includeCodeExecutionOutput = getOrDefault(builder.includeCodeExecutionOutput, false);
         this.safetySettings = copyIfNotNull(builder.safetySettings);
         this.listeners = copy(builder.listeners);
@@ -147,7 +148,8 @@ class BaseGeminiChatModel {
                         .thinkingConfig(this.thinkingConfig)
                         .build())
                 .safetySettings(this.safetySettings)
-                .tools(fromToolSepcsToGTool(chatRequest.toolSpecifications(), this.allowCodeExecution))
+                .tools(fromToolSepcsToGTool(
+                        chatRequest.toolSpecifications(), this.allowCodeExecution, this.allowGoogleSearch))
                 .toolConfig(toToolConfig(parameters.toolChoice(), this.functionCallingConfig))
                 .build();
     }
@@ -261,6 +263,7 @@ class BaseGeminiChatModel {
         protected List<String> stopSequences;
         protected GeminiFunctionCallingConfig functionCallingConfig;
         protected Boolean allowCodeExecution;
+        protected Boolean allowGoogleSearch;
         protected Boolean includeCodeExecutionOutput;
         protected Boolean logRequestsAndResponses;
         protected Boolean logRequests;
@@ -495,6 +498,14 @@ class BaseGeminiChatModel {
          */
         public B allowCodeExecution(Boolean allowCodeExecution) {
             this.allowCodeExecution = allowCodeExecution;
+            return builder();
+        }
+
+        /**
+         * Enabled <a href="https://ai.google.dev/gemini-api/docs/google-search">Google Search tool</a> in Gemini.
+         */
+        public B allowGoogleSearch(Boolean allowGoogleSearch) {
+            this.allowGoogleSearch = allowGoogleSearch;
             return builder();
         }
 
