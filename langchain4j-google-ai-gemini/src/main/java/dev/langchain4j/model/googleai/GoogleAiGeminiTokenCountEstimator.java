@@ -27,7 +27,7 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
     public GoogleAiGeminiTokenCountEstimator(Builder builder) {
         this.geminiService = new GeminiService(
                 builder.httpClientBuilder,
-                ensureNotBlank(builder.apiKey, "apiKey"),
+                builder.apiKey,
                 builder.baseUrl,
                 getOrDefault(builder.logRequestsAndResponses, false),
                 getOrDefault(builder.logRequests, false),

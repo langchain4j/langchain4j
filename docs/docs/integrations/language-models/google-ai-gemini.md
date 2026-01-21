@@ -548,12 +548,12 @@ ChatResponse response = gemini.chat(
 
 ### Image Generation Output
 
-Some Gemini models (such as `gemini-2.5-flash-image-preview`) can generate images as part of their response. When images are generated, they are stored in the `AiMessage` attributes and can be accessed using the `GeneratedImageHelper` utility class.
+Some Gemini models (such as `gemini-2.5-flash-image`) can generate images as part of their response. When images are generated, they are stored in the `AiMessage` attributes and can be accessed using the `GeneratedImageHelper` utility class.
 
 ```java
 ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey("Your API Key")
-    .modelName("gemini-2.5-flash-image-preview")
+    .modelName("gemini-2.5-flash-image")
     .build();
 
 ChatResponse response = gemini.chat(UserMessage.from("A high-resolution, studio-lit product photograph of a minimalist ceramic coffee mug in matte black"));
