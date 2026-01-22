@@ -165,7 +165,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 : null;
 
                         Optional<SystemMessage> systemMessage = prepareSystemMessage(memoryId, method, args);
-                        var userMessageTemplate = getUserMessageTemplate(method, args);
+                        var userMessageTemplate = getUserMessageTemplate(memoryId, method, args);
                         var variables = InternalReflectionVariableResolver.findTemplateVariables(
                                 userMessageTemplate, method, args);
                         UserMessage originalUserMessage =
@@ -206,7 +206,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         UserMessage userMessage = invokeInputGuardrails(
                                 context.guardrailService(), method, userMessageForAugmentation, commonGuardrailParam);
 
-                        Type returnType = method.getGenericReturnType();
+                        Type returnType = context.returnType != null ? context.returnType : method.getGenericReturnType();
                         boolean streaming = returnType == TokenStream.class || canAdaptTokenStreamTo(returnType);
 
                         // TODO should it be called when returnType==String?
@@ -538,7 +538,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                 .orElseGet(prompt::toUserMessage);
     }
 
-    private static String getUserMessageTemplate(Method method, Object[] args) {
+    private String getUserMessageTemplate(Object memoryId, Method method, Object[] args) {
 
         Optional<String> templateFromMethodAnnotation = findUserMessageTemplateFromMethodAnnotation(method);
         Optional<String> templateFromParameterAnnotation =
@@ -567,7 +567,8 @@ class DefaultAiServices<T> extends AiServices<T> {
             return "";
         }
 
-        throw illegalConfiguration("Error: The method '%s' does not have a user message defined.", method.getName());
+        return context.userMessageProvider.apply(memoryId)
+                .orElseThrow(() -> illegalConfiguration("Error: The method '%s' does not have a user message defined.", method.getName()));
     }
 
     private static boolean hasContentArgument(Method method, Object[] args) {
