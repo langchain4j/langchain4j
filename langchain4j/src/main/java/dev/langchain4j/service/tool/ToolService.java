@@ -347,6 +347,17 @@ public class ToolService {
                 messages = chatMemory.messages();
             }
 
+            UserMessage lastUserMessage = extractLastUserMessage(messages);
+            if (lastUserMessage != null) {
+                toolServiceContext = createContext(invocationContext, lastUserMessage);
+
+                parameters = parameters.overrideWith(
+                        ChatRequestParameters.builder()
+                                .toolSpecifications(toolServiceContext.toolSpecifications())
+                                .build()
+                );
+            }
+
             ChatRequest chatRequest = context.chatRequestTransformer.apply(
                     ChatRequest.builder()
                             .messages(messages)
@@ -368,6 +379,16 @@ public class ToolService {
                 .aggregateTokenUsage(aggregateTokenUsage)
                 .build();
     }
+
+    private UserMessage extractLastUserMessage(List<ChatMessage> messages) {
+        for (int i = messages.size() - 1; i >= 0; i--) {
+            if (messages.get(i) instanceof UserMessage) {
+                return (UserMessage) messages.get(i);
+            }
+        }
+        return null;
+    }
+    //debug ends
 
     private void fireToolExecutedEvent(
             InvocationContext invocationContext,
