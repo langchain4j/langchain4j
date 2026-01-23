@@ -110,7 +110,7 @@ class PartsAndContentsMapperTest {
     @Test
     void fromMessageToGContent_systemMessageWithText() {
         SystemMessage msg = new SystemMessage("system text");
-        List<GeminiContent> result = PartsAndContentsMapper.fromMessageToGContent(List.of(msg), null, false);
+        List<GeminiContent> result = PartsAndContentsMapper.fromMessageToGContent(List.of(msg), null, false, false);
         assertThat(result).hasSize(1);
         assertThat(result.get(0).role()).isEqualTo("model");
         assertThat(result.get(0).parts().get(0).text()).isEqualTo("system text");
@@ -119,7 +119,7 @@ class PartsAndContentsMapperTest {
     @Test
     void fromMessageToGContent_userMessageWithTextContent() {
         UserMessage msg = new UserMessage(List.of(new dev.langchain4j.data.message.TextContent("user text")));
-        List<GeminiContent> result = PartsAndContentsMapper.fromMessageToGContent(List.of(msg), null, false);
+        List<GeminiContent> result = PartsAndContentsMapper.fromMessageToGContent(List.of(msg), null, false, false);
         assertThat(result).hasSize(1);
         assertThat(result.get(0).role()).isEqualTo("user");
         assertThat(result.get(0).parts().get(0).text()).isEqualTo("user text");
@@ -127,7 +127,7 @@ class PartsAndContentsMapperTest {
 
     @Test
     void fromMessageToGContent_emptyMessageListReturnsEmpty() {
-        List<GeminiContent> result = PartsAndContentsMapper.fromMessageToGContent(List.of(), null, false);
+        List<GeminiContent> result = PartsAndContentsMapper.fromMessageToGContent(List.of(), null, false, false);
         assertThat(result).isEmpty();
     }
 
@@ -405,17 +405,17 @@ class PartsAndContentsMapperTest {
     void fromContentToGPart_handlesDataUriImageWithDifferentMimeTypes() {
         // Test various image MIME types
         String base64Data = "R0lGODlhAQABAAAAACw=";
-        
+
         // GIF
         ImageContent gifContent = ImageContent.from("data:image/gif;base64," + base64Data);
         GeminiContent.GeminiPart gifResult = PartsAndContentsMapper.fromContentToGPart(gifContent);
         assertThat(gifResult.inlineData().mimeType()).isEqualTo("image/gif");
-        
+
         // WebP
         ImageContent webpContent = ImageContent.from("data:image/webp;base64," + base64Data);
         GeminiContent.GeminiPart webpResult = PartsAndContentsMapper.fromContentToGPart(webpContent);
         assertThat(webpResult.inlineData().mimeType()).isEqualTo("image/webp");
-        
+
         // SVG
         ImageContent svgContent = ImageContent.from("data:image/svg+xml;base64," + base64Data);
         GeminiContent.GeminiPart svgResult = PartsAndContentsMapper.fromContentToGPart(svgContent);
@@ -426,17 +426,17 @@ class PartsAndContentsMapperTest {
     void fromContentToGPart_handlesDataUriAudioWithDifferentMimeTypes() {
         // Test various audio MIME types
         String base64Data = "QXVkaW9EYXRh";
-        
+
         // WAV
         Audio wavAudio = Audio.builder().url("data:audio/wav;base64," + base64Data).build();
         GeminiContent.GeminiPart wavResult = PartsAndContentsMapper.fromContentToGPart(new AudioContent(wavAudio));
         assertThat(wavResult.inlineData().mimeType()).isEqualTo("audio/wav");
-        
+
         // OGG
         Audio oggAudio = Audio.builder().url("data:audio/ogg;base64," + base64Data).build();
         GeminiContent.GeminiPart oggResult = PartsAndContentsMapper.fromContentToGPart(new AudioContent(oggAudio));
         assertThat(oggResult.inlineData().mimeType()).isEqualTo("audio/ogg");
-        
+
         // FLAC
         Audio flacAudio = Audio.builder().url("data:audio/flac;base64," + base64Data).build();
         GeminiContent.GeminiPart flacResult = PartsAndContentsMapper.fromContentToGPart(new AudioContent(flacAudio));
@@ -447,17 +447,17 @@ class PartsAndContentsMapperTest {
     void fromContentToGPart_handlesDataUriVideoWithDifferentMimeTypes() {
         // Test various video MIME types
         String base64Data = "VmlkZW9EYXRh";
-        
+
         // MP4
         Video mp4Video = Video.builder().url("data:video/mp4;base64," + base64Data).build();
         GeminiContent.GeminiPart mp4Result = PartsAndContentsMapper.fromContentToGPart(new VideoContent(mp4Video));
         assertThat(mp4Result.inlineData().mimeType()).isEqualTo("video/mp4");
-        
+
         // WebM
         Video webmVideo = Video.builder().url("data:video/webm;base64," + base64Data).build();
         GeminiContent.GeminiPart webmResult = PartsAndContentsMapper.fromContentToGPart(new VideoContent(webmVideo));
         assertThat(webmResult.inlineData().mimeType()).isEqualTo("video/webm");
-        
+
         // MPEG
         Video mpegVideo = Video.builder().url("data:video/mpeg;base64," + base64Data).build();
         GeminiContent.GeminiPart mpegResult = PartsAndContentsMapper.fromContentToGPart(new VideoContent(mpegVideo));
