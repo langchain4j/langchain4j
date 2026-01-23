@@ -16,21 +16,21 @@ For Maven project `pom.xml`
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>1.7.1</version>
+    <version>1.9.1</version>
 </dependency>
 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-mistral-ai</artifactId>
-    <version>1.7.1</version>
+    <version>1.9.1</version>
 </dependency>
 ```
 
 For Gradle project `build.gradle`
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j:1.7.1'
-implementation 'dev.langchain4j:langchain4j-mistral-ai:1.7.1'
+implementation 'dev.langchain4j:langchain4j:1.9.1'
+implementation 'dev.langchain4j:langchain4j-mistral-ai:1.9.1'
 ```
 ### API Key setup
 Add your MistralAI API key to your project, you can create a class ```ApiKeys.java``` with the following code
@@ -279,7 +279,7 @@ The status of transaction T1005 is Pending. The payment date is October 8, 2021.
 ### JSON mode
 You can also use the JSON mode to get the response in JSON format. To do this, you need to set the `responseFormat` parameter to `ResponseFormat.JSON`  in the `MistralAiChatModel` builder OR `MistralAiStreamingChatModel` builder.
 
-Syncronous example:
+Synchronous example:
 
 ```java
 ChatModel model = MistralAiChatModel.builder()
@@ -363,7 +363,7 @@ ChatModel model = MistralAiChatModel.builder()
 ### Guardrailing
 Guardrails are a way to limit the behavior of the model to prevent it from generating harmful or unwanted content. You can set optionally `safePrompt` parameter in the `MistralAiChatModel` builder or `MistralAiStreamingChatModel` builder.
 
-Syncronous example:
+Synchronous example:
 
 ```java
 ChatModel model = MistralAiChatModel.builder()

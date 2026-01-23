@@ -21,7 +21,7 @@ LangChain4j provides 3 different integrations with OpenAI for generating images,
 This integration uses the [OpenAI Java SDK GitHub Repository](https://github.com/openai/openai-java), and will work for all OpenAI models which can be provided by:
 
 - OpenAI
-- Azure OpenAI
+- Microsoft Foundry
 
 It will also work with models supporting the OpenAI API.
 
@@ -37,7 +37,7 @@ It will also work with models supporting the OpenAI API.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-official</artifactId>
-    <version>1.7.1-beta14</version>
+    <version>1.9.1-beta17</version>
 </dependency>
 ```
 
@@ -53,29 +53,29 @@ import com.openai.models.images.ImageModel;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialImageModel;
 
-import static com.openai.models.images.ImageModel.DALL_E_3;
+import static com.openai.models.images.ImageModel.GPT_IMAGE_1_MINI;
 
 // ....
 
 ImageModel model = OpenAiOfficialImageModel.builder()
         .baseUrl(System.getenv("OPENAI_BASE_URL"))
         .apiKey(System.getenv("OPENAI_API_KEY"))
-        .modelName(DALL_E_3)
+        .modelName(GPT_IMAGE_1_MINI)
         .build();
 ```
 
-### Specific configurations for Azure OpenAI and GitHub Models.
+### Specific configurations for Microsoft Foundry and GitHub Models.
 
 Similar to configuring the [OpenAI Official Chat Model](/integrations/language-models/open-ai-official), you can configure the `OpenAiOfficialImageModel` with
-Azure OpenAI and GitHub Models, using the `isAzure()` and `isGitHubModels()` methods.
+Microsoft Foundry and GitHub Models, using the `isAzure()` and `isGitHubModels()` methods.
 
-#### Azure OpenAI
+#### Microsoft Foundry
 
 ```java
 ImageModel model = OpenAiOfficialImageModel.builder()
         .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
         .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-        .modelName(DALL_E_3)
+        .modelName(GPT_IMAGE_1_MINI)
         .isAzure(true) // Not necessary if the base URL ends with `openai.azure.com`
         .build();
 ```
@@ -86,7 +86,7 @@ You can also use "passwordless" authentication, as described in the [OpenAI Offi
 
 ```java
 ImageModel model = OpenAiOfficialImageModel.builder()
-        .modelName(DALL_E_3)
+        .modelName(GPT_IMAGE_1_MINI)
         .isGitHubModels(true)
         .build();
 ```
@@ -99,6 +99,5 @@ Once the model is configured, you can use it to generate images:
 String imageUrl = imageModel
         .generate("A coffee mug in Paris, France")
         .content()
-        .url()
-        .toString();
+        .base64Data();
 ```

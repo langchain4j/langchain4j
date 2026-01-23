@@ -78,12 +78,10 @@ public class WatsonxStreamingChatModelThinkingIT {
     void should_return_and_NOT_send_thinking() {
 
         StreamingChatModel streamingChatModel = WatsonxStreamingChatModel.builder()
-                .url(URL)
+                .baseUrl(URL)
                 .apiKey(API_KEY)
                 .projectId(PROJECT_ID)
                 .modelName("ibm/granite-3-3-8b-instruct")
-                .logRequests(true)
-                .logResponses(true)
                 .build();
 
         CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();
@@ -160,14 +158,12 @@ public class WatsonxStreamingChatModelThinkingIT {
 
     private WatsonxStreamingChatModel.Builder createStreamingChatModel(String model) {
         return WatsonxStreamingChatModel.builder()
-                .url(URL)
+                .baseUrl(URL)
                 .apiKey(API_KEY)
                 .projectId(PROJECT_ID)
                 .modelName("ibm/granite-3-3-8b-instruct")
                 .thinking(ExtractionTags.of("think", "response"))
-                .logRequests(true)
-                .logResponses(true)
                 .maxOutputTokens(0)
-                .timeLimit(Duration.ofSeconds(30));
+                .timeout(Duration.ofSeconds(30));
     }
 }

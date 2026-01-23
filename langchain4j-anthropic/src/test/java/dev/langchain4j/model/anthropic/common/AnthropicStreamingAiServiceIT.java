@@ -2,8 +2,10 @@ package dev.langchain4j.model.anthropic.common;
 
 import static dev.langchain4j.model.anthropic.common.AnthropicStreamingChatModelIT.ANTHROPIC_STREAMING_CHAT_MODEL;
 
+import dev.langchain4j.model.anthropic.AnthropicChatResponseMetadata;
 import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.common.AbstractStreamingAiServiceIT;
 import java.util.List;
@@ -18,7 +20,12 @@ class AnthropicStreamingAiServiceIT extends AbstractStreamingAiServiceIT {
     }
 
     @Override
-    protected Class<? extends TokenUsage> tokenUsageType(StreamingChatModel streamingChatModel) {
+    protected Class<? extends TokenUsage> tokenUsageType(StreamingChatModel model) {
         return AnthropicTokenUsage.class;
+    }
+
+    @Override
+    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(StreamingChatModel model) {
+        return AnthropicChatResponseMetadata.class;
     }
 }

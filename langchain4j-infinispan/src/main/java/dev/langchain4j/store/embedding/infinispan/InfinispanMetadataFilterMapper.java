@@ -53,11 +53,9 @@ class InfinispanMetadataFilterMapper {
         } else if (filter instanceof IsGreaterThan) {
             i++;
             filterQuery = mapGreaterThan((IsGreaterThan) filter);
-            i++;
         } else if (filter instanceof IsGreaterThanOrEqualTo) {
             i++;
             filterQuery = mapGreaterThanOrEqual((IsGreaterThanOrEqualTo) filter);
-            i++;
         } else if (filter instanceof IsLessThan) {
             i++;
             filterQuery = mapLessThan((IsLessThan) filter);

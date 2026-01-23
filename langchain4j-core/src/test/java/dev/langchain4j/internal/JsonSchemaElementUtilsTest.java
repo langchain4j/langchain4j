@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
@@ -281,5 +282,46 @@ class JsonSchemaElementUtilsTest {
         assertThat(isJsonArray(Deque.class)).isTrue();
         assertThat(isJsonArray(Collection.class)).isTrue();
         assertThat(isJsonArray(Iterable.class)).isTrue();
+    }
+
+    @Test
+    void should_create_schema_for_enum() {
+
+        // given
+        enum MyEnum {
+            A, B, C;
+        }
+
+        // when
+        JsonSchemaElement schema = jsonSchemaElementFrom(MyEnum.class);
+
+        // then
+        assertThat(schema).isEqualTo(JsonEnumSchema.builder()
+                .enumValues("A", "B", "C")
+                .build());
+    }
+
+    @Test
+    void should_create_schema_for_enum_with_custom_toString() {
+
+        // given
+        enum MyEnumWithToString {
+            A, B, C;
+
+            @Override
+            public String toString() {
+                return "[" + name() + "]";
+            }
+        }
+
+        assertThat(MyEnumWithToString.A.toString()).isEqualTo("[A]");
+
+        // when
+        JsonSchemaElement schema = jsonSchemaElementFrom(MyEnumWithToString.class);
+
+        // then
+        assertThat(schema).isEqualTo(JsonEnumSchema.builder()
+                .enumValues("A", "B", "C")
+                .build());
     }
 }

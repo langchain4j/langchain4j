@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.thingsboard.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.8.0-beta15-TB</version>
+        <version>1.10.0-beta18-TB</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -13,7 +13,6 @@
     <name>LangChain4j :: Integration :: Google Vertex AI Gemini</name>
 
     <properties>
-        <skipVertexAiGeminiITs>false</skipVertexAiGeminiITs>
         <maven.compiler.parameters>true</maven.compiler.parameters>
     </properties>
 
@@ -34,7 +33,7 @@
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.8.0-TB</version>
+            <version>1.10.0-TB</version>
         </dependency>
 
         <dependency>
@@ -45,21 +44,9 @@
         <!-- test dependencies -->
 
         <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-engine</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-params</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.8.0-TB</version>
+            <version>1.10.0-TB</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>
@@ -68,31 +55,19 @@
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
-            <version>1.8.0-TB</version>
+            <version>1.10.0-TB</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
-            <version>1.8.0-TB</version>
+            <version>1.10.0-TB</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>
 
     </dependencies>
-
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-failsafe-plugin</artifactId>
-                <configuration>
-                    <skipTests>${skipVertexAiGeminiITs}</skipTests>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
 
 </project>

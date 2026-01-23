@@ -1,24 +1,25 @@
 package dev.langchain4j.model.googleai;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 record GeminiGenerateContentRequest(
-        @JsonProperty List<GeminiContent> contents,
-        @JsonProperty GeminiTool tools,
-        @JsonProperty GeminiToolConfig toolConfig,
-        @JsonProperty List<GeminiSafetySetting> safetySettings,
-        @JsonProperty GeminiContent systemInstruction,
-        @JsonProperty GeminiGenerationConfig generationConfig,
-        @JsonProperty String cachedContent) {
+        String model,
+        List<GeminiContent> contents,
+        GeminiTool tools,
+        GeminiToolConfig toolConfig,
+        List<GeminiSafetySetting> safetySettings,
+        GeminiContent systemInstruction,
+        GeminiGenerationConfig generationConfig,
+        String cachedContent) {
 
     static GeminiGenerateContentRequestBuilder builder() {
         return new GeminiGenerateContentRequestBuilder();
     }
 
     static class GeminiGenerateContentRequestBuilder {
+        private String model;
         private List<GeminiContent> contents;
         private GeminiTool tools;
         private GeminiToolConfig toolConfig;
@@ -28,6 +29,11 @@ record GeminiGenerateContentRequest(
         private String cachedContent;
 
         GeminiGenerateContentRequestBuilder() {}
+
+        GeminiGenerateContentRequestBuilder model(String model) {
+            this.model = model;
+            return this;
+        }
 
         GeminiGenerateContentRequestBuilder contents(List<GeminiContent> contents) {
             this.contents = contents;
@@ -66,6 +72,7 @@ record GeminiGenerateContentRequest(
 
         public GeminiGenerateContentRequest build() {
             return new GeminiGenerateContentRequest(
+                    this.model,
                     this.contents,
                     this.tools,
                     this.toolConfig,
@@ -75,4 +82,5 @@ record GeminiGenerateContentRequest(
                     this.cachedContent);
         }
     }
+
 }

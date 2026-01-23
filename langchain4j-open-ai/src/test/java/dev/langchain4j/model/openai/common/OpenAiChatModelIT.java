@@ -1,12 +1,6 @@
 package dev.langchain4j.model.openai.common;
 
-import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
-import static dev.langchain4j.model.output.FinishReason.LENGTH;
-import static org.assertj.core.api.Assertions.assertThat;
-
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.http.client.MockHttpClient;
 import dev.langchain4j.http.client.MockHttpClientBuilder;
@@ -21,12 +15,24 @@ import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiChatRequestParameters;
 import dev.langchain4j.model.openai.OpenAiChatResponseMetadata;
 import dev.langchain4j.model.openai.OpenAiTokenUsage;
+import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import org.junit.jupiter.api.Test;
+import java.util.Set;
 
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_5_MINI;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static org.assertj.core.api.Assertions.assertThat;
+
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiChatModelIT extends AbstractChatModelIT {
 
     // TODO https://github.com/langchain4j/langchain4j/issues/2219
@@ -36,7 +42,7 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName(GPT_4_O_MINI)
+                .modelName(GPT_5_MINI)
                 .logRequests(false) // images are huge in logs
                 .logResponses(true);
     }
@@ -45,7 +51,6 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
     protected List<ChatModel> models() {
         return List.of(
                 defaultModelBuilder().build(),
-                defaultModelBuilder().strictTools(true).build(),
                 defaultModelBuilder()
                         .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)
                         .strictJsonSchema(true)
@@ -55,7 +60,7 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
                         .strictJsonSchema(true)
                         .build()
                 // TODO json_object?
-                );
+        );
     }
 
     @Override
@@ -64,24 +69,56 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .defaultRequestParameters(parameters)
+                .defaultRequestParameters(adjustForGpt5(parameters))
                 .logRequests(true)
                 .logResponses(true);
         if (parameters.modelName() == null) {
-            openAiChatModelBuilder.modelName(GPT_4_O_MINI);
+            openAiChatModelBuilder.modelName(GPT_5_MINI);
         }
         return openAiChatModelBuilder.build();
     }
 
+    static ChatRequestParameters adjustForGpt5(ChatRequestParameters parameters) {
+        // GPT-5 does not support maxOutputTokens, need to use maxCompletionTokens instead
+        return OpenAiChatRequestParameters.builder()
+                .overrideWith(parameters)
+                .maxOutputTokens(null)
+                .maxCompletionTokens(parameters.maxOutputTokens())
+                .build();
+    }
+
+    @Override
+    protected int maxOutputTokens() {
+        return 1000;
+    }
+
+    @Override
+    protected ChatRequestParameters createParameters(int maxOutputTokens) {
+        // GPT-5 does not support maxOutputTokens, need to use maxCompletionTokens instead
+        return createIntegrationSpecificParameters(maxOutputTokens);
+    }
+
+    @Override
+    protected void assertOutputTokenCount(TokenUsage tokenUsage, Integer maxOutputTokens) {
+        OpenAiTokenUsage openAiTokenUsage = (OpenAiTokenUsage) tokenUsage;
+        assertThat(tokenUsage.outputTokenCount() - openAiTokenUsage.outputTokensDetails().reasoningTokens())
+                .isLessThanOrEqualTo(maxOutputTokens);
+    }
+
+    @Override
+    protected Set<FinishReason> finishReasonForMaxOutputTokens() {
+        return Set.of(LENGTH, STOP); // It is hard to make GPT-5 to hit LENGTH because of unpredictable reasoning
+    }
+
     @Override
     protected String customModelName() {
-        return "gpt-4o-2024-11-20";
+        return "gpt-5-nano-2025-08-07";
     }
 
     @Override
     protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
         return OpenAiChatRequestParameters.builder()
-                .maxOutputTokens(maxOutputTokens)
+                .maxCompletionTokens(maxOutputTokens)
                 .build();
     }
 
@@ -95,13 +132,38 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
         return OpenAiTokenUsage.class;
     }
 
+    @Override
+    protected boolean supportsStopSequencesParameter() {
+        return false; // GPT-5 does not support stop sequences
+    }
+
+    @Override
+    protected void should_fail_if_stopSequences_parameter_is_not_supported(ChatModel model) {
+        // GPT-5 does not support stop sequences, but other models do support
+    }
+
+    @Override
+    protected String catImageUrl() {
+        return "https://images.all-free-download.com/images/graphicwebp/cat_hangover_relax_213869.webp";
+    }
+
+    @Override
+    protected String diceImageUrl() {
+        return "https://images.all-free-download.com/images/graphicwebp/double_six_dice_196084.webp";
+    }
+
+    @Override
+    protected ChatRequestParameters saveTokens(ChatRequestParameters parameters) {
+        return parameters.overrideWith(OpenAiChatRequestParameters.builder().reasoningEffort("low").build());
+    }
+
     @Test
     void should_respect_logitBias_parameter() {
 
         // given
         Map<String, Integer> logitBias = Map.of(
                 "72782", 100 // token ID for "Paris", see https://platform.openai.com/tokenizer -> "Token IDs"
-                );
+        );
 
         OpenAiChatRequestParameters openAiParameters =
                 OpenAiChatRequestParameters.builder().logitBias(logitBias).build();
@@ -112,6 +174,7 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
                 .build();
 
         ChatModel chatModel = defaultModelBuilder()
+                .modelName(GPT_4_O_MINI)
                 .maxTokens(20) // to save tokens
                 .build();
 
@@ -141,7 +204,9 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
         ChatRequest.Builder chatRequestBuilder =
                 ChatRequest.builder().messages(UserMessage.from("How much is 2+2 and 3+3?"));
 
-        ChatModel chatModel = defaultModelBuilder().build();
+        ChatModel chatModel = defaultModelBuilder()
+                .modelName(GPT_4_O_MINI)
+                .build();
 
         // when parallelToolCalls = true
         OpenAiChatRequestParameters openAiParameters = OpenAiChatRequestParameters.builder()
@@ -210,53 +275,17 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
     }
 
     @Test
-    void should_respect_default_common_chat_parameters() {
-
-        // given
-        int maxOutputTokens = 3;
-        ChatRequestParameters parameters =
-                ChatRequestParameters.builder().maxOutputTokens(maxOutputTokens).build();
-
-        ChatModel chatModel =
-                defaultModelBuilder().defaultRequestParameters(parameters).build();
-
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("Tell me a long story"))
-                .build();
-
-        // when
-        ChatResponse chatResponse = chatModel.chat(chatRequest);
-
-        // then
-        AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text()).isNotBlank();
-        assertThat(aiMessage.toolExecutionRequests()).isEmpty();
-
-        TokenUsage tokenUsage = chatResponse.metadata().tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isPositive();
-        assertThat(tokenUsage.outputTokenCount()).isEqualTo(maxOutputTokens);
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
-
-        if (assertFinishReason()) {
-            assertThat(chatResponse.metadata().finishReason()).isEqualTo(LENGTH);
-        }
-    }
-
-    @Test
     void should_return_model_specific_response_metadata() {
 
         // given
-        int maxOutputTokens = 1;
         String serviceTier = "default";
 
-        OpenAiChatRequestParameters openAiParameters = OpenAiChatRequestParameters.builder()
-                .maxOutputTokens(maxOutputTokens) // to save tokens
+        OpenAiChatRequestParameters parameters = OpenAiChatRequestParameters.builder()
                 .serviceTier(serviceTier) // required to get the "serviceTier" attribute in the response
                 .build();
 
         ChatRequest chatRequest = ChatRequest.builder()
-                .parameters(openAiParameters)
+                .parameters(saveTokens(parameters))
                 .messages(UserMessage.from("Hi"))
                 .build();
 
@@ -276,11 +305,8 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
         assertThat(tokenUsage.inputTokenCount()).isPositive();
         assertThat(tokenUsage.inputTokensDetails().cachedTokens()).isZero();
 
-        assertThat(tokenUsage.outputTokenCount()).isEqualTo(maxOutputTokens);
-        assertThat(tokenUsage.outputTokensDetails().reasoningTokens()).isZero();
-
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+        assertThat(tokenUsage.outputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokensDetails().reasoningTokens()).isNotNegative();
     }
 
     @Test

@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.thingsboard.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.8.0-beta15-TB</version>
+        <version>1.10.0-beta18-TB</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
     <artifactId>langchain4j-jlama</artifactId>
@@ -16,7 +16,7 @@
         <jlama.version>0.8.4</jlama.version>
         <java.version>21</java.version>
         <maven.compiler.release>${java.version}</maven.compiler.release>
-        <skipJlamaITs>false</skipJlamaITs>
+        <skipJlamaITs>${skipITs}</skipJlamaITs>
     </properties>
 
     <dependencies>
@@ -24,7 +24,7 @@
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.8.0-TB</version>
+            <version>1.10.0-TB</version>
         </dependency>
 
         <dependency>
@@ -51,12 +51,6 @@
         </dependency>
 
         <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-engine</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
             <scope>test</scope>
@@ -65,7 +59,7 @@
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.8.0-TB</version>
+            <version>1.10.0-TB</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>
@@ -74,13 +68,13 @@
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
-            <version>1.8.0-TB</version>
+            <version>1.10.0-TB</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
-            <version>1.8.0-TB</version>
+            <version>1.10.0-TB</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>
@@ -105,7 +99,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <configuration>
-                    <skipTests>${skipJlamaITs}</skipTests>
+                    <skipITs>${skipJlamaITs}</skipITs>
                     <forkCount>1</forkCount>
                     <argLine>--add-modules=jdk.incubator.vector
                         --add-exports java.base/sun.nio.ch=ALL-UNNAMED

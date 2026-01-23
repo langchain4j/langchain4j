@@ -91,7 +91,7 @@ Just point to your document(s), and LangChain4j will do its magic.
 If you need a customizable RAG, skip to the [next section](/tutorials/rag#core-rag-apis).
 
 If you are using Quarkus, there is an even easier way to do Easy RAG.
-Please read [Quarkus documentation](https://docs.quarkiverse.io/quarkus-langchain4j/dev/easy-rag.html).
+Please read [Quarkus documentation](https://docs.quarkiverse.io/quarkus-langchain4j/dev/rag-easy-rag.html).
 
 :::note
 The quality of such "Easy RAG" will, of course, be lower than that of a tailored RAG setup.
@@ -105,7 +105,7 @@ adjusting and customizing more and more aspects.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>1.7.1-beta14</version>
+    <version>1.9.1-beta17</version>
 </dependency>
 ```
 
@@ -171,8 +171,8 @@ Therefore, we can easily load it into memory and run it in the same process usin
 
 Yes, that's right, you can convert text into embeddings entirely offline, without any external services,
 in the same JVM process.
-LangChain4j offers 5 popular embedding models
-[out-of-the-box](https://github.com/langchain4j/langchain4j-embeddings).
+LangChain4j offers some popular embedding models
+[out-of-the-box](/integrations/embedding-models/in-process).
 :::
 
 3. All `TextSegment`-`Embedding` pairs are stored in the `EmbeddingStore`.
@@ -1023,6 +1023,62 @@ assistant.chat("How to do Easy RAG with LangChain4j?")
     .onCompleteResponse(...)
     .onError(...)
     .start();
+```
+
+## Controlling what is stored in chat memory
+
+When using a `RetrievalAugmentor` with [AI Services](/tutorials/ai-services),
+you can control whether the **augmented** user message (with retrieved `Content` injected)
+or the **original** user message is stored in chat memory.
+
+This behavior is configured using the `storeRetrievedContentInChatMemory` option
+on the `AiServices` builder.
+
+### Configuration
+
+- `true` (default)  
+  Stores the **augmented** `UserMessage` (original query plus retrieved content)
+  in chat memory.  
+  The same augmented message is also sent to the LLM.
+
+- `false`  
+  Stores only the **original** `UserMessage` (without retrieved content)
+  in chat memory.  
+  The augmented message is still sent to the LLM during inference.
+
+Storing only the original user message can be useful when you want to keep
+chat history concise and aligned with the user’s actual input,
+while still providing the LLM with retrieved context for answer generation.
+
+### Example
+
+```java
+interface Assistant {
+
+    String chat(String userMessage);
+}
+
+ChatModel chatModel = OpenAiChatModel.builder()
+    .apiKey(System.getenv("OPENAI_API_KEY"))
+    .modelName(GPT_4_O_MINI)
+    .build();
+
+MessageWindowChatMemory chatMemory =
+    MessageWindowChatMemory.withMaxMessages(10);
+
+RetrievalAugmentor retrievalAugmentor =
+    DefaultRetrievalAugmentor.builder()
+        .contentRetriever(
+            EmbeddingStoreContentRetriever.from(embeddingStore, embeddingModel))
+        .build();
+
+Assistant assistant = AiServices.builder(Assistant.class)
+    .chatModel(chatModel)
+    .chatMemory(chatMemory)
+    .retrievalAugmentor(retrievalAugmentor)
+    // Store only the original user message in chat memory
+    .storeRetrievedContentInChatMemory(false)
+    .build();
 ```
 
 

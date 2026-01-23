@@ -30,6 +30,8 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
 
     protected abstract void configureGetWeatherTool(AiServices<?> aiServiceBuilder);
 
+    protected abstract void configureGetImageTool(AiServices<?> aiServiceBuilder);
+
     interface Assistant {
 
         String chat(String userMessage);
@@ -108,6 +110,42 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
         verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 3
                 && chatRequest.messages().get(2) instanceof ToolExecutionResultMessage toolResult
                 && toolResult.text().equals("java.lang.RuntimeException")));
+        ignoreOtherInteractions(spyModel);
+        verifyNoMoreInteractions(spyModel);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void should_propagate_exception_to_LLM_when_exception_without_cause_is_thrown_from_tool(boolean executeToolsConcurrently) {
+
+        // given
+        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
+                .name("getImage")
+                .build();
+
+        ChatModel spyModel = spy(ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(toolExecutionRequest),
+                AiMessage.from("I was not able to get the image")
+        ));
+
+        AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
+                .chatModel(spyModel);
+
+        configureGetImageTool(assistantBuilder);
+
+        if (executeToolsConcurrently) {
+            assistantBuilder.executeToolsConcurrently();
+        }
+        Assistant assistant = assistantBuilder.build();
+
+        // when
+        assistant.chat("Get me an image");
+
+        // then
+        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 1));
+        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 3
+                && chatRequest.messages().get(2) instanceof ToolExecutionResultMessage toolResult
+                && toolResult.text().equals("Unsupported content type: \"image\"")));
         ignoreOtherInteractions(spyModel);
         verifyNoMoreInteractions(spyModel);
     }

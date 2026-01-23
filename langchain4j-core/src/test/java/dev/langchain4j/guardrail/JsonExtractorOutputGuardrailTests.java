@@ -6,15 +6,16 @@ import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import dev.langchain4j.data.message.AiMessage;
 import java.util.Map;
 import java.util.stream.Stream;
+import com.fasterxml.jackson.core.type.TypeReference;
+import dev.langchain4j.data.message.AiMessage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+@Deprecated(forRemoval = true)
 class JsonExtractorOutputGuardrailTests {
     private static final String JSON =
             """

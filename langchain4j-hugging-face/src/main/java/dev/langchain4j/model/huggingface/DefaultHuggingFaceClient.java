@@ -17,7 +17,7 @@ import retrofit2.converter.jackson.JacksonConverterFactory;
 
 class DefaultHuggingFaceClient implements HuggingFaceClient {
 
-    private static final String BASE_URL = "https://api-inference.huggingface.co/";
+    private static final String BASE_URL = "https://router.huggingface.co/hf-inference/";
 
     private final HuggingFaceApi huggingFaceApi;
     private final String modelId;

@@ -188,6 +188,15 @@ class ToolSpecificationsTest implements WithAssertions {
     }
 
     @Test
+    void tool_specification_metadata() {
+        ToolSpecification ts = ToolSpecification.builder()
+                .name("some_tool")
+                .addMetadata("foo", "bar")
+                .build();
+        assertThat(ts.metadata().get("foo")).isEqualTo("bar");
+    }
+
+    @Test
     void tool_specification_from() throws NoSuchMethodException {
         Method method = getF();
 
@@ -196,6 +205,7 @@ class ToolSpecificationsTest implements WithAssertions {
         assertThat(ts.name()).isEqualTo("f");
         assertThat(ts.description()).isEqualTo("line1\nline2");
         assertThat(ts.parameters()).isInstanceOf(JsonObjectSchema.class);
+        assertThat(ts.metadata()).isEmpty();
 
         Map<String, JsonSchemaElement> properties = ts.parameters().properties();
 
@@ -356,5 +366,24 @@ class ToolSpecificationsTest implements WithAssertions {
         assertThat(p1Schema.properties().keySet())
                 .containsExactlyInAnyOrder(
                         "name", "aliases", "active", "parent", "currentAddress", "previousAddresses");
+    }
+
+    @Test
+    void parses_tool_metadata_correctly() throws NoSuchMethodException {
+
+        // given
+        class Tools {
+
+            @Tool(metadata = "{\"one\": \"one\", \"two\": 2}")
+            public void tool() {}
+        }
+
+        Method method = Tools.class.getMethod("tool");
+
+        // when
+        ToolSpecification toolSpecification = ToolSpecifications.toolSpecificationFrom(method);
+
+        // then
+        assertThat(toolSpecification.metadata()).containsExactly(Map.entry("one", "one"), Map.entry("two", 2));
     }
 }

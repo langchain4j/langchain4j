@@ -1,6 +1,7 @@
 package dev.langchain4j.model.watsonx;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static java.util.Objects.nonNull;
 
 import com.ibm.watsonx.ai.chat.model.ExtractionTags;
 import com.ibm.watsonx.ai.chat.model.Thinking;
@@ -9,6 +10,7 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import java.time.Duration;
 import java.util.Map;
+import java.util.Set;
 
 public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
 
@@ -23,7 +25,12 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
     private final Integer topLogprobs;
     private final Integer seed;
     private final String toolChoiceName;
-    private final Duration timeLimit;
+    private final Set<String> guidedChoice;
+    private final String guidedRegex;
+    private final String guidedGrammar;
+    private final Double repetitionPenalty;
+    private final Double lengthPenalty;
+    private final Duration timeout;
 
     private WatsonxChatRequestParameters(Builder builder) {
         super(builder);
@@ -34,8 +41,13 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
         this.topLogprobs = builder.topLogprobs;
         this.seed = builder.seed;
         this.toolChoiceName = builder.toolChoiceName;
-        this.timeLimit = builder.timeLimit;
+        this.timeout = builder.timeout;
         this.thinking = builder.thinking;
+        this.guidedChoice = builder.guidedChoice;
+        this.guidedRegex = builder.guidedRegex;
+        this.guidedGrammar = builder.guidedGrammar;
+        this.repetitionPenalty = builder.repetitionPenalty;
+        this.lengthPenalty = builder.lengthPenalty;
     }
 
     public String projectId() {
@@ -66,12 +78,32 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
         return toolChoiceName;
     }
 
-    public Duration timeLimit() {
-        return timeLimit;
+    public Duration timeout() {
+        return timeout;
     }
 
     public Thinking thinking() {
         return thinking;
+    }
+
+    public Set<String> guidedChoice() {
+        return guidedChoice;
+    }
+
+    public String guidedRegex() {
+        return guidedRegex;
+    }
+
+    public String guidedGrammar() {
+        return guidedGrammar;
+    }
+
+    public Double repetitionPenalty() {
+        return repetitionPenalty;
+    }
+
+    public Double lengthPenalty() {
+        return lengthPenalty;
     }
 
     public static Builder builder() {
@@ -86,6 +118,14 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
                 .build();
     }
 
+    @Override
+    public WatsonxChatRequestParameters defaultedBy(ChatRequestParameters that) {
+        return WatsonxChatRequestParameters.builder()
+                .overrideWith(that)
+                .overrideWith(this)
+                .build();
+    }
+
     public static class Builder extends DefaultChatRequestParameters.Builder<Builder> {
         private String projectId;
         private String spaceId;
@@ -94,7 +134,12 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
         private Integer topLogprobs;
         private Integer seed;
         private String toolChoiceName;
-        private Duration timeLimit;
+        private Duration timeout;
+        private Set<String> guidedChoice;
+        private String guidedRegex;
+        private String guidedGrammar;
+        private Double repetitionPenalty;
+        private Double lengthPenalty;
         private Thinking thinking;
 
         @Override
@@ -108,8 +153,13 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
                 topLogprobs(getOrDefault(watsonxParameters.topLogprobs(), topLogprobs));
                 seed(getOrDefault(watsonxParameters.seed(), seed));
                 toolChoiceName(getOrDefault(watsonxParameters.toolChoiceName(), toolChoiceName));
-                timeLimit(getOrDefault(watsonxParameters.timeLimit(), timeLimit));
+                timeout(getOrDefault(watsonxParameters.timeout(), timeout));
                 thinking(getOrDefault(watsonxParameters.thinking(), thinking));
+                guidedChoice(getOrDefault(watsonxParameters.guidedChoice(), guidedChoice));
+                guidedRegex(getOrDefault(watsonxParameters.guidedRegex(), guidedRegex));
+                guidedGrammar(getOrDefault(watsonxParameters.guidedGrammar(), guidedGrammar));
+                repetitionPenalty(getOrDefault(watsonxParameters.repetitionPenalty(), repetitionPenalty));
+                lengthPenalty(getOrDefault(watsonxParameters.lengthPenalty(), lengthPenalty));
             }
             return this;
         }
@@ -149,25 +199,60 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
             return this;
         }
 
-        public Builder timeLimit(Duration timeLimit) {
-            this.timeLimit = timeLimit;
+        public Builder timeout(Duration timeout) {
+            this.timeout = timeout;
             return this;
         }
 
         public Builder thinking(boolean enabled) {
-            return enabled ? thinking(Thinking.builder().build()) : this;
+            return thinking(Thinking.builder().enabled(enabled).build());
         }
 
         public Builder thinking(ExtractionTags tags) {
-            return thinking(Thinking.of(tags));
+            if (nonNull(tags)) return thinking(Thinking.of(tags));
+
+            this.thinking = null;
+            return this;
         }
 
         public Builder thinking(ThinkingEffort thinkingEffort) {
-            return thinking(Thinking.of(thinkingEffort));
+            if (nonNull(thinkingEffort)) return thinking(Thinking.of(thinkingEffort));
+
+            this.thinking = null;
+            return this;
         }
 
         public Builder thinking(Thinking thinking) {
             this.thinking = thinking;
+            return this;
+        }
+
+        public Builder guidedChoice(String... guidedChoice) {
+            return guidedChoice(Set.of(guidedChoice));
+        }
+
+        public Builder guidedChoice(Set<String> guidedChoices) {
+            this.guidedChoice = guidedChoices;
+            return this;
+        }
+
+        public Builder guidedRegex(String guidedRegex) {
+            this.guidedRegex = guidedRegex;
+            return this;
+        }
+
+        public Builder guidedGrammar(String guidedGrammar) {
+            this.guidedGrammar = guidedGrammar;
+            return this;
+        }
+
+        public Builder repetitionPenalty(Double repetitionPenalty) {
+            this.repetitionPenalty = repetitionPenalty;
+            return this;
+        }
+
+        public Builder lengthPenalty(Double lengthPenalty) {
+            this.lengthPenalty = lengthPenalty;
             return this;
         }
 

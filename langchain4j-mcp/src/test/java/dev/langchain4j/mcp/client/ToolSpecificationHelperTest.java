@@ -1,10 +1,17 @@
 package dev.langchain4j.mcp.client;
 
+import static dev.langchain4j.mcp.client.McpToolMetadataKeys.DESTRUCTIVE_HINT;
+import static dev.langchain4j.mcp.client.McpToolMetadataKeys.IDEMPOTENT_HINT;
+import static dev.langchain4j.mcp.client.McpToolMetadataKeys.OPEN_WORLD_HINT;
+import static dev.langchain4j.mcp.client.McpToolMetadataKeys.READ_ONLY_HINT;
+import static dev.langchain4j.mcp.client.McpToolMetadataKeys.TITLE;
+import static dev.langchain4j.mcp.client.McpToolMetadataKeys.TITLE_ANNOTATION;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.TextNode;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
@@ -17,6 +24,7 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class ToolSpecificationHelperTest {
@@ -447,5 +455,62 @@ class ToolSpecificationHelperTest {
                 toolSpecifications.get(0).parameters().properties().get("arrayparam");
         assertThat(parameter).isInstanceOf(JsonArraySchema.class);
         assertThat(((JsonArraySchema) parameter).items()).isNull();
+    }
+
+    @Test
+    void toolWithAnnotations() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "something",
+                    "inputSchema": {
+                    },
+                    "annotations": {
+                      "destructiveHint": true,
+                      "idempotentHint": false,
+                      "openWorldHint": true,
+                      "readOnlyHint": false,
+                      "title": "A tool with annotations"
+                    },
+                    "title": "A title in the root tool object"
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        Map<String, Object> metadata = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json).get(0).metadata();
+        assertThat(metadata.get(TITLE_ANNOTATION)).isEqualTo("A tool with annotations");
+        assertThat(metadata.get(TITLE)).isEqualTo("A title in the root tool object");
+        assertThat(metadata.get(READ_ONLY_HINT)).isEqualTo(false);
+        assertThat(metadata.get(DESTRUCTIVE_HINT)).isEqualTo(true);
+        assertThat(metadata.get(IDEMPOTENT_HINT)).isEqualTo(false);
+        assertThat(metadata.get(OPEN_WORLD_HINT)).isEqualTo(true);
+    }
+
+    @Test
+    void toolWithMetadata() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "something",
+                    "inputSchema": {
+                    },
+                    "_meta": {
+                      "example.org/array": [1, 2, 3],
+                      "example.org/string": "hello",
+                      "complex": {
+                        "a": true
+                      }
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        Map<String, Object> metadata = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json).get(0).metadata();
+
+        assertThat(metadata.get("example.org/array")).isEqualTo(List.of(1, 2, 3));
+        assertThat(metadata.get("example.org/string")).isEqualTo("hello");
+        assertThat(metadata.get("complex")).isInstanceOf(Map.class);
+        Map<String, Object> complex = (Map<String, Object>) metadata.get("complex");
+        assertThat(complex.get("a")).isEqualTo(true);
     }
 }
