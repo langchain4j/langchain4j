@@ -45,6 +45,7 @@ class BaseGeminiChatModel {
     protected final GeminiThinkingConfig thinkingConfig;
     protected final Boolean returnThinking;
     protected final boolean sendThinking;
+    protected final boolean sendOriginalContentParts;
     protected final Integer seed;
     protected final Integer logprobs;
     protected final Boolean responseLogprobs;
@@ -65,6 +66,7 @@ class BaseGeminiChatModel {
         this.thinkingConfig = builder.thinkingConfig;
         this.returnThinking = builder.returnThinking;
         this.sendThinking = getOrDefault(builder.sendThinking, false);
+        this.sendOriginalContentParts = getOrDefault(builder.sendOriginalContentParts, false);
         this.seed = builder.seed;
         this.responseLogprobs = getOrDefault(builder.responseLogprobs, false);
         this.enableEnhancedCivicAnswers = getOrDefault(builder.enableEnhancedCivicAnswers, false);
@@ -120,7 +122,7 @@ class BaseGeminiChatModel {
 
         GeminiContent systemInstruction = new GeminiContent(List.of(), GeminiRole.MODEL.toString());
         List<GeminiContent> geminiContentList =
-                fromMessageToGContent(chatRequest.messages(), systemInstruction, sendThinking);
+                fromMessageToGContent(chatRequest.messages(), systemInstruction, sendThinking, sendOriginalContentParts);
         String cachedContent = null;
         if (systemInstruction.parts().isEmpty()) {
             systemInstruction = null;
@@ -290,6 +292,7 @@ class BaseGeminiChatModel {
         protected GeminiThinkingConfig thinkingConfig;
         protected Boolean returnThinking;
         protected Boolean sendThinking;
+        protected boolean sendOriginalContentParts;
         protected Integer logprobs;
         protected GeminiCachingConfig cachingConfig;
         protected List<ChatModelListener> listeners;
@@ -555,6 +558,28 @@ class BaseGeminiChatModel {
          */
         public B returnThinking(Boolean returnThinking) {
             this.returnThinking = returnThinking;
+            return builder();
+        }
+
+        /**
+         * Configures whether to send the original, raw Gemini content parts back to the model
+         * in the chat history, bypassing LangChain4j's standard message conversion logic.
+         *
+         * <p>Standard LangChain4j conversion of {@code AiMessage} to Gemini {@code Content} handles
+         * "Thought Signatures" (used by reasoning models like {@code gemini-2.5-pro})
+         * incorrectly.</p>
+         *
+         * <p>Setting this to {@code true} ensures that the integration sends the exact list of
+         * {@code Content.Part} objects as received from the API, preserving the valid thought
+         * signatures required for the model's reasoning context.</p>
+         *
+         * @param sendOriginalContentParts {@code true} to bypass standard conversion and send
+         * original content parts; {@code false} to use standard
+         * LangChain4j logic.
+         * @return the builder instance.
+         */
+        public B sendOriginalContentParts(boolean sendOriginalContentParts) {
+            this.sendOriginalContentParts = sendOriginalContentParts;
             return builder();
         }
 

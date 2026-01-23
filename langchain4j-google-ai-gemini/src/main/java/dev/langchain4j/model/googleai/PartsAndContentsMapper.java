@@ -9,6 +9,7 @@ import static dev.langchain4j.model.googleai.FunctionMapper.toToolExecutionReque
 import static dev.langchain4j.model.googleai.Json.fromJson;
 import static java.util.stream.Collectors.joining;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
@@ -48,9 +49,11 @@ final class PartsAndContentsMapper {
             "thinking_signature"; // do not change, will break backward compatibility!
     static final String GENERATED_IMAGES_KEY =
             "generated_images"; // key for storing generated images in AiMessage attributes
+    static final String ORIGINAL_PARTS_KEY =
+            "original_parts"; // key for storing original content parts as returned by Gemini API
 
     private static final CustomMimeTypesFileTypeDetector mimeTypeDetector = new CustomMimeTypesFileTypeDetector();
-    
+
     // Pattern to parse data URIs: data:[<mediatype>][;base64],<data>
     private static final Pattern DATA_URI_PATTERN = Pattern.compile("^data:([^;,]+)(?:;[^,]*)?,(.*)$");
 
@@ -245,6 +248,8 @@ final class PartsAndContentsMapper {
             attributes.put(GENERATED_IMAGES_KEY, generatedImages);
         }
 
+        attributes.put(ORIGINAL_PARTS_KEY, parts);
+
         return AiMessage.builder()
                 .text(isNullOrEmpty(text) ? null : text)
                 .thinking(isNullOrEmpty(thinking) ? null : thinking)
@@ -254,7 +259,9 @@ final class PartsAndContentsMapper {
     }
 
     static List<GeminiContent> fromMessageToGContent(
-            List<ChatMessage> messages, GeminiContent systemInstruction, boolean sendThinking) {
+            List<ChatMessage> messages, GeminiContent systemInstruction,
+            boolean sendThinking, boolean sendOriginalContentParts
+    ) {
         return messages.stream()
                 .map(msg -> {
                     switch (msg.type()) {
@@ -279,6 +286,13 @@ final class PartsAndContentsMapper {
                             return null;
                         case AI:
                             AiMessage aiMessage = (AiMessage) msg;
+
+                            if (sendOriginalContentParts) {
+                                List<GeminiContent.GeminiPart> originalParts = Json.convertValue(aiMessage.attributes().get(ORIGINAL_PARTS_KEY), new TypeReference<>() {});
+                                if (originalParts != null) {
+                                    return new GeminiContent(originalParts, GeminiRole.MODEL.toString());
+                                }
+                            }
 
                             List<GeminiContent.GeminiPart> parts = new ArrayList<>();
 
@@ -333,7 +347,7 @@ final class PartsAndContentsMapper {
 
     /**
      * Parses a data URI and returns a GeminiBlob with the extracted MIME type and base64 data.
-     * 
+     *
      * @param uri the data URI to parse (e.g., "data:image/png;base64,iVBORw0KG...")
      * @return a GeminiBlob containing the MIME type and base64 data
      * @throws IllegalArgumentException if the URI is not a valid data URI
@@ -341,13 +355,13 @@ final class PartsAndContentsMapper {
     private static GeminiBlob parseDataUri(URI uri) {
         String urlString = uri.toString();
         Matcher matcher = DATA_URI_PATTERN.matcher(urlString);
-        
+
         if (matcher.matches()) {
             String mimeType = matcher.group(1);
             String base64Data = matcher.group(2);
             return new GeminiBlob(mimeType, base64Data);
         }
-        
+
         throw new IllegalArgumentException("Invalid data URI format: " + urlString);
     }
 
