@@ -23,7 +23,7 @@ import software.amazon.awssdk.regions.Region;
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
 class BedrockPromptCachingIT {
 
-    private static final String NOVA_MODEL = "us.amazon.nova-micro-v1:0";
+    private static final String NOVA_MODEL = "amazon.nova-micro-v1:0";
 
     interface Assistant {
         Result<String> chat(String userMessage);

@@ -14,6 +14,10 @@
     <name>LangChain4j</name>
     <description>Build LLM-powered applications in Java: chatbots, agents, RAG, and much more</description>
 
+    <properties>
+        <opennlp-tools.version>2.5.4</opennlp-tools.version>
+    </properties>
+
     <dependencies>
 
         <dependency>
@@ -112,9 +116,15 @@
                         <goals>
                             <goal>test-jar</goal>
                         </goals>
+                        <configuration>
+                            <excludes>
+                                <exclude>junit-platform.properties</exclude>
+                            </excludes>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
@@ -129,6 +139,7 @@
                     </execution>
                 </executions>
             </plugin>
+
             <plugin>
                 <groupId>org.honton.chas</groupId>
                 <artifactId>license-maven-plugin</artifactId>
@@ -139,6 +150,7 @@
                     </excludes>
                 </configuration>
             </plugin>
+
         </plugins>
     </build>
 </project>

@@ -1,10 +1,10 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.internal.Utils.mutableCopy;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.List;
 import java.util.Map;
-
-import static dev.langchain4j.internal.Utils.mutableCopy;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 record GeminiContent(List<GeminiPart> parts, String role) {
@@ -28,6 +28,10 @@ record GeminiContent(List<GeminiPart> parts, String role) {
             GeminiCodeExecutionResult codeExecutionResult,
             Boolean thought,
             String thoughtSignature) {
+
+        static GeminiPart ofText(String text) {
+            return GeminiPart.builder().text(text).build();
+        }
 
         static Builder builder() {
             return new Builder();

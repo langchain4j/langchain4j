@@ -16,9 +16,9 @@ import com.github.dockerjava.core.DockerClientImpl;
 import com.github.dockerjava.core.NameParser;
 import com.github.dockerjava.httpclient5.ApacheDockerHttpClient;
 import com.github.dockerjava.transport.DockerHttpClient;
-import dev.langchain4j.mcp.client.protocol.McpClientMessage;
-import dev.langchain4j.mcp.client.protocol.McpInitializationNotification;
-import dev.langchain4j.mcp.client.protocol.McpInitializeRequest;
+import dev.langchain4j.mcp.protocol.McpJsonRpcMessage;
+import dev.langchain4j.mcp.protocol.McpInitializationNotification;
+import dev.langchain4j.mcp.protocol.McpInitializeRequest;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.client.transport.websocket.WebSocketMcpTransport;
@@ -167,7 +167,7 @@ public class DockerMcpTransport  implements McpTransport {
     }
 
     @Override
-    public CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage operation) {
+    public CompletableFuture<JsonNode> executeOperationWithResponse(McpJsonRpcMessage operation) {
         try {
             String requestString = OBJECT_MAPPER.writeValueAsString(operation);
             return execute(requestString, operation.getId());
@@ -177,7 +177,7 @@ public class DockerMcpTransport  implements McpTransport {
     }
 
     @Override
-    public void executeOperationWithoutResponse(McpClientMessage operation) {
+    public void executeOperationWithoutResponse(McpJsonRpcMessage operation) {
         try {
             String requestString = OBJECT_MAPPER.writeValueAsString(operation);
             execute(requestString, null);

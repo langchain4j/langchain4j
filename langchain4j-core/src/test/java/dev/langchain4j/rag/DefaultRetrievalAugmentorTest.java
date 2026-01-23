@@ -17,6 +17,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.rag.content.Content;
@@ -93,9 +94,10 @@ class DefaultRetrievalAugmentorTest {
                 .executor(executor)
                 .build();
 
+        SystemMessage systemMessage = SystemMessage.from("Be polite");
         UserMessage userMessage = UserMessage.from("query");
 
-        Metadata metadata = Metadata.from(userMessage, null, null);
+        Metadata metadata = Metadata.from(userMessage, systemMessage, null, null);
 
         // when
         AugmentationResult result = retrievalAugmentor.augment(new AugmentationRequest(userMessage, metadata));
@@ -179,9 +181,10 @@ class DefaultRetrievalAugmentorTest {
                 .executor(executor)
                 .build();
 
+        SystemMessage systemMessage = SystemMessage.from("Be polite");
         UserMessage userMessage = UserMessage.from("query");
 
-        Metadata metadata = Metadata.from(userMessage, null, null);
+        Metadata metadata = Metadata.from(userMessage, systemMessage, null, null);
 
         // when
         AugmentationResult result = retrievalAugmentor.augment(new AugmentationRequest(userMessage, metadata));
@@ -259,8 +262,8 @@ class DefaultRetrievalAugmentorTest {
                 .build();
 
         UserMessage userMessage = UserMessage.from("query");
-
-        Metadata metadata = Metadata.from(userMessage, null, null);
+        SystemMessage systemMessage = SystemMessage.from("Be polite");
+        Metadata metadata = Metadata.from(userMessage, systemMessage, null, null);
 
         // when
         AugmentationResult result = retrievalAugmentor.augment(new AugmentationRequest(userMessage, metadata));
@@ -310,7 +313,8 @@ class DefaultRetrievalAugmentorTest {
 
         UserMessage userMessage = UserMessage.from("query");
 
-        Metadata metadata = Metadata.from(userMessage, null, null);
+        SystemMessage systemMessage = SystemMessage.from("Be polite");
+        Metadata metadata = Metadata.from(userMessage, systemMessage, null, null);
 
         // when
         AugmentationResult result = retrievalAugmentor.augment(new AugmentationRequest(userMessage, metadata));

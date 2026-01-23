@@ -14,6 +14,7 @@ public class LoopAgentServiceImpl<T> extends AbstractServiceBuilder<T, LoopAgent
 
     private int maxIterations = Integer.MAX_VALUE;
     private BiPredicate<AgenticScope, Integer> exitCondition = (scope, loopCounter) -> false;
+    private String exitConditionDescription;
     private boolean testExitAtLoopEnd = false;
 
     public LoopAgentServiceImpl(Class<T> agentServiceClass, Method agenticMethod) {
@@ -22,7 +23,7 @@ public class LoopAgentServiceImpl<T> extends AbstractServiceBuilder<T, LoopAgent
 
     @Override
     public T build() {
-        return build(() -> new LoopPlanner(maxIterations, testExitAtLoopEnd, exitCondition));
+        return build(() -> new LoopPlanner(maxIterations, testExitAtLoopEnd, exitCondition, exitConditionDescription));
     }
 
     public static LoopAgentServiceImpl<UntypedAgent> builder() {
@@ -30,7 +31,7 @@ public class LoopAgentServiceImpl<T> extends AbstractServiceBuilder<T, LoopAgent
     }
 
     public static <T> LoopAgentServiceImpl<T> builder(Class<T> agentServiceClass) {
-        return new LoopAgentServiceImpl<>(agentServiceClass, validateAgentClass(agentServiceClass, false));
+        return new LoopAgentServiceImpl<>(agentServiceClass, validateAgentClass(agentServiceClass, false, dev.langchain4j.agentic.declarative.LoopAgent.class));
     }
 
     @Override
@@ -41,13 +42,23 @@ public class LoopAgentServiceImpl<T> extends AbstractServiceBuilder<T, LoopAgent
 
     @Override
     public LoopAgentServiceImpl<T> exitCondition(Predicate<AgenticScope> exitCondition) {
-        this.exitCondition = (scope, loopCounter) -> exitCondition.test(scope);
-        return this;
+        return exitCondition((scope, loopCounter) -> exitCondition.test(scope));
     }
 
     @Override
     public LoopAgentServiceImpl<T> exitCondition(BiPredicate<AgenticScope, Integer> exitCondition) {
+        return exitCondition("<unknown>", exitCondition);
+    }
+
+    @Override
+    public LoopAgentServiceImpl<T> exitCondition(String exitConditionDescription, Predicate<AgenticScope> exitCondition) {
+        return exitCondition(exitConditionDescription, (scope, loopCounter) -> exitCondition.test(scope));
+    }
+
+    @Override
+    public LoopAgentServiceImpl<T> exitCondition(String exitConditionDescription, BiPredicate<AgenticScope, Integer> exitCondition) {
         this.exitCondition = exitCondition;
+        this.exitConditionDescription = exitConditionDescription;
         return this;
     }
 

@@ -380,7 +380,7 @@ public class AgenticServices {
             ChatModel chatModel,
             Consumer<DeclarativeAgentCreationContext> agentConfigurator) {
         SequenceAgent sequenceAgent = agentMethod.getAnnotation(SequenceAgent.class);
-        var builder = new SequentialAgentServiceImpl<>(agentServiceClass, agentMethod)
+        var builder = sequenceBuilder(agentServiceClass)
                 .subAgents(createSubagents(sequenceAgent.subAgents(), chatModel, agentConfigurator));
 
         buildAgentSpecs(
@@ -400,7 +400,7 @@ public class AgenticServices {
             ChatModel chatModel,
             Consumer<DeclarativeAgentCreationContext> agentConfigurator) {
         LoopAgent loopAgent = agentMethod.getAnnotation(LoopAgent.class);
-        var builder = new LoopAgentServiceImpl<>(agentServiceClass, agentMethod)
+        var builder = loopBuilder(agentServiceClass)
                 .subAgents(createSubagents(loopAgent.subAgents(), chatModel, agentConfigurator))
                 .maxIterations(loopAgent.maxIterations());
 
@@ -418,8 +418,8 @@ public class AgenticServices {
                             method.getAnnotation(ExitCondition.class).testExitAtLoopEnd());
                     return method;
                 })
-                .map(AgenticServices::loopExitConditionPredicate)
-                .ifPresent(builder::exitCondition);
+                .ifPresent(method -> builder.exitCondition(
+                        method.getAnnotation(ExitCondition.class).description(), loopExitConditionPredicate(method)));
 
         return builder.build();
     }
@@ -430,7 +430,7 @@ public class AgenticServices {
             ChatModel chatModel,
             Consumer<DeclarativeAgentCreationContext> agentConfigurator) {
         ConditionalAgent conditionalAgent = agentMethod.getAnnotation(ConditionalAgent.class);
-        var builder = new ConditionalAgentServiceImpl<>(agentServiceClass, agentMethod);
+        var builder = conditionalBuilder(agentServiceClass);
 
         buildAgentSpecs(
                 agentServiceClass,
@@ -446,9 +446,10 @@ public class AgenticServices {
                         return activationCondition != null
                                 && Arrays.asList(activationCondition.value()).contains(subagent);
                     })
-                    .map(AgenticServices::agenticScopePredicate)
-                    .ifPresent(condition ->
-                            builder.subAgent(condition, createSubagent(subagent, chatModel, agentConfigurator)));
+                    .ifPresent(method ->
+                            builder.subAgent(method.getAnnotation(ActivationCondition.class).description(),
+                                    agenticScopePredicate(method),
+                                    createSubagent(subagent, chatModel, agentConfigurator)));
         }
 
         return builder.build();
@@ -460,7 +461,7 @@ public class AgenticServices {
             ChatModel chatModel,
             Consumer<DeclarativeAgentCreationContext> agentConfigurator) {
         ParallelAgent parallelAgent = agentMethod.getAnnotation(ParallelAgent.class);
-        var builder = new ParallelAgentServiceImpl<>(agentServiceClass, agentMethod)
+        var builder = parallelBuilder(agentServiceClass)
                 .subAgents(createSubagents(parallelAgent.subAgents(), chatModel, agentConfigurator));
 
         buildAgentSpecs(
@@ -653,7 +654,7 @@ public class AgenticServices {
                         .positionalArgs();
                 return (boolean) predicateMethod.invoke(null, args);
             } catch (Exception e) {
-                throw new RuntimeException("Error invoking exit condition method: " + predicateMethod.getName(), e);
+                throw new RuntimeException("Error invoking exit predicate method: " + predicateMethod.getName(), e);
             }
         };
     }
