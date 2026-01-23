@@ -67,12 +67,18 @@ public suspend fun loadDocuments(
         matchedFiles
             .map { file ->
                 async(context) {
-                    documentParser.parseAsync(
-                        FileSystemSource(file),
-                        context
-                    )
+                    try {
+                        documentParser.parseAsync(
+                            FileSystemSource(file),
+                            context
+                        )
+                    } catch (e: Exception) {
+                        logger.warn("Failed to load '{}': {}", file, e.message)
+                        null
+                    }
                 }
             }.awaitAll()
+            .filterNotNull()
             .map { document ->
                 val metadata = document.metadata()
                 logger.info(
