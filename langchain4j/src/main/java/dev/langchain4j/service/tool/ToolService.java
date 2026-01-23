@@ -351,11 +351,9 @@ public class ToolService {
             if (lastUserMessage != null) {
                 toolServiceContext = createContext(invocationContext, lastUserMessage);
 
-                parameters = parameters.overrideWith(
-                        ChatRequestParameters.builder()
-                                .toolSpecifications(toolServiceContext.toolSpecifications())
-                                .build()
-                );
+                parameters = parameters.overrideWith(ChatRequestParameters.builder()
+                        .toolSpecifications(toolServiceContext.toolSpecifications())
+                        .build());
             }
 
             ChatRequest chatRequest = context.chatRequestTransformer.apply(
@@ -388,7 +386,7 @@ public class ToolService {
         }
         return null;
     }
-    //debug ends
+    // debug ends
 
     private void fireToolExecutedEvent(
             InvocationContext invocationContext,
