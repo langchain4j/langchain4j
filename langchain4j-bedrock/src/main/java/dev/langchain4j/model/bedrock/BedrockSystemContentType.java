@@ -8,7 +8,7 @@ package dev.langchain4j.model.bedrock;
  *
  * @see BedrockSystemContent
  * @see BedrockSystemTextContent
- * @since 1.0.0-beta2
+ * @since 1.11.0
  */
 public enum BedrockSystemContentType {
     /**

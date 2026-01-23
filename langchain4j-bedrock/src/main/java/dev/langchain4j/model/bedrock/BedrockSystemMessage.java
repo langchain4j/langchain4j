@@ -65,7 +65,7 @@ import java.util.stream.Collectors;
  * @see BedrockSystemContent
  * @see BedrockCachePointPlacement
  * @see <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-caching.html">AWS Bedrock Prompt Caching</a>
- * @since 1.0.0-beta2
+ * @since 1.11.0
  */
 public class BedrockSystemMessage implements ChatMessage {
 

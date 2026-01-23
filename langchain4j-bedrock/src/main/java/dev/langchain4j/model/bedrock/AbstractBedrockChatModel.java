@@ -101,7 +101,7 @@ abstract class AbstractBedrockChatModel {
      */
     private static final SystemContentBlock CACHE_POINT_BLOCK = SystemContentBlock.builder()
             .cachePoint(software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock.builder()
-                    .type("default")
+                    .type(software.amazon.awssdk.services.bedrockruntime.model.CachePointType.DEFAULT)
                     .build())
             .build();
 
@@ -244,7 +244,7 @@ abstract class AbstractBedrockChatModel {
                     List<ContentBlock> contentWithCachePoint = new ArrayList<>(bedrockMessage.content());
                     contentWithCachePoint.add(ContentBlock.builder()
                             .cachePoint(software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock.builder()
-                                    .type("default")
+                                    .type(software.amazon.awssdk.services.bedrockruntime.model.CachePointType.DEFAULT)
                                     .build())
                             .build());
 
@@ -429,7 +429,7 @@ abstract class AbstractBedrockChatModel {
             if (cachePointPlacement == BedrockCachePointPlacement.AFTER_TOOLS) {
                 allTools.add(Tool.builder()
                         .cachePoint(software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock.builder()
-                                .type("default")
+                                .type(software.amazon.awssdk.services.bedrockruntime.model.CachePointType.DEFAULT)
                                 .build())
                         .build());
             }

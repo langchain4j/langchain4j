@@ -30,7 +30,7 @@ import java.util.Objects;
  *
  * @see BedrockSystemMessage
  * @see <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-caching.html">AWS Bedrock Prompt Caching</a>
- * @since 1.0.0-beta2
+ * @since 1.11.0
  */
 public final class BedrockSystemTextContent implements BedrockSystemContent {
 

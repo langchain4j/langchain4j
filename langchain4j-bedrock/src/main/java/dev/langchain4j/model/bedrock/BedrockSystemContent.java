@@ -16,7 +16,7 @@ package dev.langchain4j.model.bedrock;
  *
  * @see BedrockSystemTextContent
  * @see BedrockSystemMessage
- * @since 1.0.0-beta2
+ * @since 1.11.0
  */
 public sealed interface BedrockSystemContent permits BedrockSystemTextContent {
 
