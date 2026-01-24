@@ -94,12 +94,11 @@ class PojoOutputParser<T> implements OutputParser<T> {
 
     private static String typeOf(Type type, Set<Class<?>> visited) {
         if (type instanceof ParameterizedType parameterizedType) {
-            Type[] typeArguments = parameterizedType.getActualTypeArguments();
             Type rawType = parameterizedType.getRawType();
 
-            if (rawType.equals(List.class) || rawType.equals(Set.class)) {
+            if (rawType instanceof Class<?> rawClass && (rawClass == List.class || rawClass == Set.class)) {
 
-                return format("array of %s", typeOf(typeArguments[0], visited));
+                return format("array of %s", typeOf(parameterizedType.getActualTypeArguments()[0], visited));
             }
         } else if (type instanceof Class<?> clazz) {
             if (clazz.isArray()) {
