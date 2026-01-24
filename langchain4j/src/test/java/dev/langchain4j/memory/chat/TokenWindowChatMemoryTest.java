@@ -1,5 +1,6 @@
 package dev.langchain4j.memory.chat;
 
+import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.TestUtils.aiMessageWithTokens;
@@ -815,5 +816,28 @@ class TokenWindowChatMemoryTest implements WithAssertions {
 
         // msg1 should be evicted, systemMessage should remain at the beginning
         assertThat(chatMemory.messages()).containsExactly(systemMessage, msg2, msg3);
+    }
+
+    @Test
+    void chat_memory_set_uses_reduced_store_ops() {
+
+        var store = new HitCountChatMemoryStore();
+        var chatMemory = TokenWindowChatMemory.builder()
+                .maxTokens(35, TOKEN_COUNT_ESTIMATOR)
+                .chatMemoryStore(store)
+                .build();
+
+        var counts = store.measureHitCounts(() -> {
+            chatMemory.add(userMessage("first"), aiMessage("second"), aiMessage("3rd"));
+        });
+        assertThat(counts).isEqualTo(new HitCountChatMemoryStore.HitCounts(3, 3, 0));
+
+        counts = store.measureHitCounts(chatMemory::messages);
+        assertThat(counts).isEqualTo(new HitCountChatMemoryStore.HitCounts(1, 0, 0));
+
+        counts = store.measureHitCounts(() -> {
+            chatMemory.set(userMessage("world"), aiMessage("hi"));
+        });
+        assertThat(counts).isEqualTo(new HitCountChatMemoryStore.HitCounts(0, 1, 0));
     }
 }

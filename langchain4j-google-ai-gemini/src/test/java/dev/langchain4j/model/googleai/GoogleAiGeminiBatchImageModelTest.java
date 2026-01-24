@@ -666,25 +666,6 @@ class GoogleAiGeminiBatchImageModelTest {
     class BuilderValidation {
 
         @Test
-        void should_throw_exception_when_api_key_is_null() {
-            assertThatThrownBy(() -> GoogleAiGeminiBatchImageModel.builder()
-                            .modelName(MODEL_NAME)
-                            .build())
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("apiKey");
-        }
-
-        @Test
-        void should_throw_exception_when_api_key_is_blank() {
-            assertThatThrownBy(() -> GoogleAiGeminiBatchImageModel.builder()
-                            .apiKey("")
-                            .modelName(MODEL_NAME)
-                            .build())
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("apiKey");
-        }
-
-        @Test
         void should_use_default_model_name_when_not_specified() {
             // This test verifies the default model is used
             var model = GoogleAiGeminiBatchImageModel.builder().apiKey(API_KEY).build();

@@ -48,6 +48,8 @@ import dev.langchain4j.agentic.declarative.SupervisorRequest;
 import dev.langchain4j.agentic.declarative.ToolsSupplier;
 import dev.langchain4j.agentic.observability.MonitoredExecution;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
+import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.AgenticScopeAccess;
@@ -56,6 +58,9 @@ import dev.langchain4j.agentic.scope.AgenticScopeRegistry;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
+import dev.langchain4j.agentic.workflow.ConditionalAgentInstance;
+import dev.langchain4j.agentic.workflow.LoopAgentInstance;
+import dev.langchain4j.agentic.workflow.impl.LoopPlanner;
 import dev.langchain4j.agentic.workflow.impl.SequentialPlanner;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -254,14 +259,14 @@ public class DeclarativeAgentIT {
         )
         String write(@V("story") String story);
 
-        @ExitCondition(testExitAtLoopEnd = true)
+        @ExitCondition(testExitAtLoopEnd = true, description = "score greater than 0.8")
         static boolean exit(@V("score") double score, @LoopCounter int loopCounter) {
             loopCount.set(loopCounter);
             return score >= 0.8;
         }
     }
 
-    public interface StoryCreatorWithReviewWithCounter {
+    public interface StoryCreatorWithReviewWithCounter extends AgentInstance {
 
         @SequenceAgent( outputKey = "story",
                 subAgents = { CreativeWriter.class, StyleReviewLoopAgentWithCounter.class })
@@ -273,6 +278,22 @@ public class DeclarativeAgentIT {
         loopCount = new AtomicInteger();
         StoryCreatorWithReviewWithCounter storyCreator =
                 AgenticServices.createAgenticSystem(StoryCreatorWithReviewWithCounter.class, baseModel());
+
+        assertThat(storyCreator.name()).isEqualTo("write");
+        assertThat(storyCreator.subagents()).hasSize(2);
+
+        AgentInstance creativeWriterInstance = storyCreator.subagents().get(0);
+        assertThat(creativeWriterInstance.name()).isEqualTo("generateStory");
+
+        AgentInstance loopAgent = storyCreator.subagents().get(1);
+        assertThat(loopAgent.topology()).isEqualTo(AgenticSystemTopology.LOOP);
+        assertThat(loopAgent.type()).isSameAs(StyleReviewLoopAgentWithCounter.class);
+        assertThat(loopAgent.plannerType()).isSameAs(LoopPlanner.class);
+        LoopAgentInstance loopInstance = loopAgent.as(LoopAgentInstance.class);
+        assertThat(loopInstance.subagents()).hasSize(2);
+        assertThat(loopInstance.maxIterations()).isEqualTo(5);
+        assertThat(loopInstance.testExitAtLoopEnd()).isTrue();
+        assertThat(loopInstance.exitCondition()).isEqualTo("score greater than 0.8");
 
         ResultWithAgenticScope<String> result = storyCreator.write("dragons and wizards", "comedy");
         String story = result.result();
@@ -358,7 +379,7 @@ public class DeclarativeAgentIT {
                 subAgents = { MedicalExpert.class, TechnicalExpert.class, LegalExpert.class } )
         String askExpert(@V("request") String request);
 
-        @ActivationCondition(MedicalExpert.class)
+        @ActivationCondition(value = MedicalExpert.class, description = "category is medical")
         static boolean activateMedical(@V("category") RequestCategory category) {
             return category == RequestCategory.MEDICAL;
         }
@@ -368,13 +389,13 @@ public class DeclarativeAgentIT {
             return category == RequestCategory.TECHNICAL;
         }
 
-        @ActivationCondition(LegalExpert.class)
+        @ActivationCondition(value = LegalExpert.class, description = "category is legal")
         static boolean activateLegal(AgenticScope agenticScope) {
             return agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.LEGAL;
         }
     }
 
-    public interface ExpertRouterAgent {
+    public interface ExpertRouterAgent extends AgentInstance {
 
         @SequenceAgent( outputKey = "response",
                 subAgents = { CategoryRouter.class, ExpertsAgent.class })
@@ -384,6 +405,24 @@ public class DeclarativeAgentIT {
     @Test
     void declarative_conditional_tests() {
         ExpertRouterAgent expertRouterAgent = AgenticServices.createAgenticSystem(ExpertRouterAgent.class, baseModel());
+
+        assertThat(expertRouterAgent.subagents()).hasSize(2);
+
+        AgentInstance routerAgentInstance = expertRouterAgent.subagents().get(0);
+        assertThat(routerAgentInstance.name()).isEqualTo("classify");
+
+        AgentInstance conditionalAgentInstance = expertRouterAgent.subagents().get(1);
+        assertThat(conditionalAgentInstance.name()).isEqualTo("askExpert");
+        assertThat(conditionalAgentInstance.outputType()).isEqualTo(String.class);
+        assertThat(conditionalAgentInstance.outputKey()).isEqualTo("response");
+        assertThat(conditionalAgentInstance.topology()).isEqualTo(AgenticSystemTopology.ROUTER);
+        assertThat(conditionalAgentInstance.subagents()).hasSize(3);
+
+        ConditionalAgentInstance conditionalInstance = conditionalAgentInstance.as(ConditionalAgentInstance.class);
+        assertThat(conditionalInstance.conditionalSubagents()).hasSize(3);
+        assertThat(conditionalInstance.conditionalSubagents().get(0).condition()).isEqualTo("category is medical");
+        assertThat(conditionalInstance.conditionalSubagents().get(1).condition()).isEqualTo("<unknown>");
+        assertThat(conditionalInstance.conditionalSubagents().get(2).condition()).isEqualTo("category is legal");
 
         ResultWithAgenticScope<String> result = expertRouterAgent.ask("I broke my leg what should I do");
         String response = result.result();
