@@ -9,6 +9,7 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.internal.Utils;
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.listener.EmbeddingStoreListener;
 import java.util.ArrayList;
@@ -168,6 +169,6 @@ public interface EmbeddingStore<Embedded> {
         if (this instanceof ListeningEmbeddingStore<Embedded> listeningEmbeddingStore) {
             return listeningEmbeddingStore.withAdditionalListeners(listeners);
         }
-        return new ListeningEmbeddingStore<>(this, listeners);
+        return new ListeningEmbeddingStore<>(this, Utils.copy(listeners));
     }
 }

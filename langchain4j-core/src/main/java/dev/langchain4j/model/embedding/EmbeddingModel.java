@@ -2,6 +2,7 @@ package dev.langchain4j.model.embedding;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.internal.Utils;
 import dev.langchain4j.internal.ValidationUtils;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.output.Response;
@@ -88,15 +89,13 @@ public interface EmbeddingModel {
      * @param listeners The listeners to add.
      * @return An observing {@link EmbeddingModel} that will dispatch events to the provided listeners.
      */
-    default EmbeddingModel addListeners(Iterable<EmbeddingModelListener> listeners) {
+    default EmbeddingModel addListeners(List<EmbeddingModelListener> listeners) {
         if (isNullOrEmpty(listeners)) {
             return this;
         }
-        List<EmbeddingModelListener> listenerList = new ArrayList<>();
-        listeners.forEach(listenerList::add);
         if (this instanceof ListeningEmbeddingModel listeningEmbeddingModel) {
-            return listeningEmbeddingModel.withAdditionalListeners(listenerList);
+            return listeningEmbeddingModel.withAdditionalListeners(listeners);
         }
-        return new ListeningEmbeddingModel(this, listenerList);
+        return new ListeningEmbeddingModel(this, Utils.copy(listeners));
     }
 }
