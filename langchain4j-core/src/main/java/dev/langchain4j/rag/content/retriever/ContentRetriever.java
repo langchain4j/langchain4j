@@ -40,7 +40,7 @@ public interface ContentRetriever {
     List<Content> retrieve(Query query);
 
     /**
-     * Wraps this {@link ContentRetriever} with an observing retriever that dispatches events to the provided listener.
+     * Wraps this {@link ContentRetriever} with a listening retriever that dispatches events to the provided listener.
      *
      * @param listener The listener to add.
      * @return An observing {@link ContentRetriever} that will dispatch events to the provided listener.
@@ -50,7 +50,7 @@ public interface ContentRetriever {
     }
 
     /**
-     * Wraps this {@link ContentRetriever} with an observing retriever that dispatches events to the provided listeners.
+     * Wraps this {@link ContentRetriever} with a listening retriever that dispatches events to the provided listeners.
      * <p>
      * Listeners are called in the order of iteration.
      *
@@ -61,9 +61,9 @@ public interface ContentRetriever {
         if (isNullOrEmpty(listeners)) {
             return this;
         }
-        if (this instanceof ObservingContentRetriever observingContentRetriever) {
-            return observingContentRetriever.withAdditionalListeners(listeners);
+        if (this instanceof ListeningContentRetriever listeningContentRetriever) {
+            return listeningContentRetriever.withAdditionalListeners(listeners);
         }
-        return new ObservingContentRetriever(this, List.copyOf(listeners));
+        return new ListeningContentRetriever(this, List.copyOf(listeners));
     }
 }

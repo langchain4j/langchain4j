@@ -19,12 +19,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Internal
-final class ObservingEmbeddingModel implements EmbeddingModel {
+final class ListeningEmbeddingModel implements EmbeddingModel {
 
     private final EmbeddingModel delegate;
     private final List<EmbeddingModelListener> listeners;
 
-    ObservingEmbeddingModel(EmbeddingModel delegate, List<EmbeddingModelListener> listeners) {
+    ListeningEmbeddingModel(EmbeddingModel delegate, List<EmbeddingModelListener> listeners) {
         this.delegate = ensureNotNull(delegate, "delegate");
         this.listeners = ensureNotNull(listeners, "listeners");
     }
@@ -35,7 +35,7 @@ final class ObservingEmbeddingModel implements EmbeddingModel {
         }
         List<EmbeddingModelListener> merged = new ArrayList<>(listeners);
         merged.addAll(additionalListeners);
-        return new ObservingEmbeddingModel(delegate, merged);
+        return new ListeningEmbeddingModel(delegate, merged);
     }
 
     @Override

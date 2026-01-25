@@ -19,12 +19,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Internal
-final class ObservingContentRetriever implements ContentRetriever {
+final class ListeningContentRetriever implements ContentRetriever {
 
     private final ContentRetriever delegate;
     private final List<ContentRetrieverListener> listeners;
 
-    ObservingContentRetriever(ContentRetriever delegate, List<ContentRetrieverListener> listeners) {
+    ListeningContentRetriever(ContentRetriever delegate, List<ContentRetrieverListener> listeners) {
         this.delegate = ensureNotNull(delegate, "delegate");
         this.listeners = ensureNotNull(listeners, "listeners");
     }
@@ -35,7 +35,7 @@ final class ObservingContentRetriever implements ContentRetriever {
         }
         List<ContentRetrieverListener> merged = new ArrayList<>(listeners);
         merged.addAll(additionalListeners);
-        return new ObservingContentRetriever(delegate, merged);
+        return new ListeningContentRetriever(delegate, merged);
     }
 
     @Override

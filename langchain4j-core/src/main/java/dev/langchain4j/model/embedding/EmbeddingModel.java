@@ -71,7 +71,7 @@ public interface EmbeddingModel {
     }
 
     /**
-     * Wraps this {@link EmbeddingModel} with an observing model that dispatches events to the provided listener.
+     * Wraps this {@link EmbeddingModel} with a listening model that dispatches events to the provided listener.
      *
      * @param listener The listener to add.
      * @return An observing {@link EmbeddingModel} that will dispatch events to the provided listener.
@@ -81,7 +81,7 @@ public interface EmbeddingModel {
     }
 
     /**
-     * Wraps this {@link EmbeddingModel} with an observing model that dispatches events to the provided listeners.
+     * Wraps this {@link EmbeddingModel} with a listening model that dispatches events to the provided listeners.
      * <p>
      * Listeners are called in the order of iteration.
      *
@@ -94,9 +94,9 @@ public interface EmbeddingModel {
         }
         List<EmbeddingModelListener> listenerList = new ArrayList<>();
         listeners.forEach(listenerList::add);
-        if (this instanceof ObservingEmbeddingModel observingEmbeddingModel) {
-            return observingEmbeddingModel.withAdditionalListeners(listenerList);
+        if (this instanceof ListeningEmbeddingModel listeningEmbeddingModel) {
+            return listeningEmbeddingModel.withAdditionalListeners(listenerList);
         }
-        return new ObservingEmbeddingModel(this, listenerList);
+        return new ListeningEmbeddingModel(this, listenerList);
     }
 }

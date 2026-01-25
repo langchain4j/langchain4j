@@ -19,12 +19,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Internal
-final class ObservingEmbeddingStore<Embedded> implements EmbeddingStore<Embedded> {
+final class ListeningEmbeddingStore<Embedded> implements EmbeddingStore<Embedded> {
 
     private final EmbeddingStore<Embedded> delegate;
     private final List<EmbeddingStoreListener> listeners;
 
-    ObservingEmbeddingStore(EmbeddingStore<Embedded> delegate, List<EmbeddingStoreListener> listeners) {
+    ListeningEmbeddingStore(EmbeddingStore<Embedded> delegate, List<EmbeddingStoreListener> listeners) {
         this.delegate = ensureNotNull(delegate, "delegate");
         this.listeners = ensureNotNull(listeners, "listeners");
     }
@@ -35,7 +35,7 @@ final class ObservingEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         }
         List<EmbeddingStoreListener> merged = new ArrayList<>(listeners);
         merged.addAll(additionalListeners);
-        return new ObservingEmbeddingStore<>(delegate, merged);
+        return new ListeningEmbeddingStore<>(delegate, merged);
     }
 
     @Override

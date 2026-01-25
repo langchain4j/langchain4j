@@ -142,7 +142,7 @@ public interface EmbeddingStore<Embedded> {
     EmbeddingSearchResult<Embedded> search(EmbeddingSearchRequest request);
 
     /**
-     * Wraps this {@link EmbeddingStore} with an observing store that dispatches events to the provided listener.
+     * Wraps this {@link EmbeddingStore} with a listening store that dispatches events to the provided listener.
      * <p>
      * This is a non-breaking convenience method to add observability to any {@link EmbeddingStore} implementation.
      *
@@ -154,7 +154,7 @@ public interface EmbeddingStore<Embedded> {
     }
 
     /**
-     * Wraps this {@link EmbeddingStore} with an observing store that dispatches events to the provided listeners.
+     * Wraps this {@link EmbeddingStore} with a listening store that dispatches events to the provided listeners.
      * <p>
      * Listeners are called in the order of iteration.
      *
@@ -165,9 +165,9 @@ public interface EmbeddingStore<Embedded> {
         if (isNullOrEmpty(listeners)) {
             return this;
         }
-        if (this instanceof ObservingEmbeddingStore<Embedded> observingEmbeddingStore) {
-            return observingEmbeddingStore.withAdditionalListeners(listeners);
+        if (this instanceof ListeningEmbeddingStore<Embedded> listeningEmbeddingStore) {
+            return listeningEmbeddingStore.withAdditionalListeners(listeners);
         }
-        return new ObservingEmbeddingStore<>(this, listeners);
+        return new ListeningEmbeddingStore<>(this, listeners);
     }
 }
