@@ -15,6 +15,7 @@ import dev.langchain4j.model.embedding.listener.EmbeddingModelRequestContext;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelResponseContext;
 import dev.langchain4j.model.output.Response;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -37,6 +38,90 @@ final class ListeningEmbeddingModel implements EmbeddingModel {
         List<EmbeddingModelListener> merged = new ArrayList<>(listeners);
         merged.addAll(additionalListeners);
         return new ListeningEmbeddingModel(delegate, merged);
+    }
+
+    @Override
+    public Response<Embedding> embed(String text) {
+        Map<Object, Object> attributes = new ConcurrentHashMap<>();
+        List<TextSegment> textSegmentsForContext;
+        try {
+            textSegmentsForContext = List.of(TextSegment.from(text));
+        } catch (Exception ignored) {
+            // keep behavior of delegate.embed(text) while still notifying listeners
+            textSegmentsForContext = List.of();
+        }
+
+        EmbeddingModelRequestContext requestContext = EmbeddingModelRequestContext.builder()
+                .textSegments(textSegmentsForContext)
+                .embeddingModel(this)
+                .attributes(attributes)
+                .build();
+        onRequest(requestContext, listeners);
+        try {
+            Response<Embedding> response = delegate.embed(text);
+
+            Response<List<Embedding>> responseForListeners = Response.from(
+                    Collections.singletonList(response.content()), response.tokenUsage(), response.finishReason());
+
+            onResponse(
+                    EmbeddingModelResponseContext.builder()
+                            .response(responseForListeners)
+                            .textSegments(textSegmentsForContext)
+                            .embeddingModel(this)
+                            .attributes(attributes)
+                            .build(),
+                    listeners);
+            return response;
+        } catch (Exception error) {
+            onError(
+                    EmbeddingModelErrorContext.builder()
+                            .error(error)
+                            .textSegments(textSegmentsForContext)
+                            .embeddingModel(this)
+                            .attributes(attributes)
+                            .build(),
+                    listeners);
+            throw error;
+        }
+    }
+
+    @Override
+    public Response<Embedding> embed(TextSegment textSegment) {
+        Map<Object, Object> attributes = new ConcurrentHashMap<>();
+        List<TextSegment> textSegmentsForContext = (textSegment == null) ? List.of() : List.of(textSegment);
+
+        EmbeddingModelRequestContext requestContext = EmbeddingModelRequestContext.builder()
+                .textSegments(textSegmentsForContext)
+                .embeddingModel(this)
+                .attributes(attributes)
+                .build();
+        onRequest(requestContext, listeners);
+        try {
+            Response<Embedding> response = delegate.embed(textSegment);
+
+            Response<List<Embedding>> responseForListeners = Response.from(
+                    Collections.singletonList(response.content()), response.tokenUsage(), response.finishReason());
+
+            onResponse(
+                    EmbeddingModelResponseContext.builder()
+                            .response(responseForListeners)
+                            .textSegments(textSegmentsForContext)
+                            .embeddingModel(this)
+                            .attributes(attributes)
+                            .build(),
+                    listeners);
+            return response;
+        } catch (Exception error) {
+            onError(
+                    EmbeddingModelErrorContext.builder()
+                            .error(error)
+                            .textSegments(textSegmentsForContext)
+                            .embeddingModel(this)
+                            .attributes(attributes)
+                            .build(),
+                    listeners);
+            throw error;
+        }
     }
 
     @Override
