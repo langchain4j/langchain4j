@@ -327,7 +327,7 @@ class EmbeddingStoreListenerTest {
         ArgumentCaptor<EmbeddingStoreResponseContext> responseCaptor =
                 ArgumentCaptor.forClass(EmbeddingStoreResponseContext.class);
         verify(listener).onResponse(responseCaptor.capture());
-        assertThat(responseCaptor.getValue()).isInstanceOf(EmbeddingStoreResponseContext.Void.class);
+        assertThat(responseCaptor.getValue()).isInstanceOf(EmbeddingStoreResponseContext.Remove.class);
     }
 
     @Test
@@ -526,7 +526,7 @@ class EmbeddingStoreListenerTest {
         ArgumentCaptor<EmbeddingStoreResponseContext> responseCaptor =
                 ArgumentCaptor.forClass(EmbeddingStoreResponseContext.class);
         verify(listener).onResponse(responseCaptor.capture());
-        assertThat(responseCaptor.getValue()).isInstanceOf(EmbeddingStoreResponseContext.Void.class);
+        assertThat(responseCaptor.getValue()).isInstanceOf(EmbeddingStoreResponseContext.RemoveAllIds.class);
     }
 
     @Test
@@ -547,6 +547,11 @@ class EmbeddingStoreListenerTest {
         EmbeddingStoreRequestContext.RemoveAllFilter<?> removeAllFilterRequestContext =
                 (EmbeddingStoreRequestContext.RemoveAllFilter<?>) requestCaptor.getValue();
         assertThat(removeAllFilterRequestContext.filter()).isSameAs(filter);
+
+        ArgumentCaptor<EmbeddingStoreResponseContext> responseCaptor =
+                ArgumentCaptor.forClass(EmbeddingStoreResponseContext.class);
+        verify(listener).onResponse(responseCaptor.capture());
+        assertThat(responseCaptor.getValue()).isInstanceOf(EmbeddingStoreResponseContext.RemoveAllFilter.class);
     }
 
     @Test
@@ -567,6 +572,6 @@ class EmbeddingStoreListenerTest {
         ArgumentCaptor<EmbeddingStoreResponseContext> responseCaptor =
                 ArgumentCaptor.forClass(EmbeddingStoreResponseContext.class);
         verify(listener).onResponse(responseCaptor.capture());
-        assertThat(responseCaptor.getValue()).isInstanceOf(EmbeddingStoreResponseContext.Void.class);
+        assertThat(responseCaptor.getValue()).isInstanceOf(EmbeddingStoreResponseContext.RemoveAll.class);
     }
 }
