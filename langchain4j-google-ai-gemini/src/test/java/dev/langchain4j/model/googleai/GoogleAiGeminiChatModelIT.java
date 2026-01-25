@@ -475,7 +475,7 @@ class GoogleAiGeminiChatModelIT {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-2.5-flash-image-preview")
+                .modelName("gemini-2.5-flash-image")
                 .build();
 
         // when
