@@ -21,21 +21,12 @@ import java.util.Map;
 @Experimental
 public abstract class EmbeddingStoreRequestContext<Embedded> {
 
-    private final EmbeddingStoreOperation operation;
     private final EmbeddingStore<Embedded> embeddingStore;
     private final Map<Object, Object> attributes;
 
-    protected EmbeddingStoreRequestContext(
-            EmbeddingStoreOperation operation,
-            EmbeddingStore<Embedded> embeddingStore,
-            Map<Object, Object> attributes) {
-        this.operation = ensureNotNull(operation, "operation");
+    protected EmbeddingStoreRequestContext(EmbeddingStore<Embedded> embeddingStore, Map<Object, Object> attributes) {
         this.embeddingStore = ensureNotNull(embeddingStore, "embeddingStore");
         this.attributes = ensureNotNull(attributes, "attributes");
-    }
-
-    public EmbeddingStoreOperation operation() {
-        return operation;
     }
 
     public EmbeddingStore<Embedded> embeddingStore() {
@@ -80,7 +71,7 @@ public abstract class EmbeddingStoreRequestContext<Embedded> {
                 String id,
                 Embedding embedding,
                 Embedded embedded) {
-            super(EmbeddingStoreOperation.ADD, embeddingStore, attributes);
+            super(embeddingStore, attributes);
             this.id = id;
             this.embedding = embedding;
             this.embedded = embedded;
@@ -126,7 +117,7 @@ public abstract class EmbeddingStoreRequestContext<Embedded> {
                 List<String> ids,
                 List<Embedding> embeddings,
                 List<Embedded> embeddedList) {
-            super(EmbeddingStoreOperation.ADD_ALL, embeddingStore, attributes);
+            super(embeddingStore, attributes);
             this.ids = ids;
             this.embeddings = embeddings;
             this.embeddedList = embeddedList;
@@ -168,7 +159,7 @@ public abstract class EmbeddingStoreRequestContext<Embedded> {
                 EmbeddingStore<Embedded> embeddingStore,
                 Map<Object, Object> attributes,
                 EmbeddingSearchRequest searchRequest) {
-            super(EmbeddingStoreOperation.SEARCH, embeddingStore, attributes);
+            super(embeddingStore, attributes);
             this.searchRequest = searchRequest;
         }
 
@@ -191,7 +182,7 @@ public abstract class EmbeddingStoreRequestContext<Embedded> {
         private final String id;
 
         public Remove(EmbeddingStore<Embedded> embeddingStore, Map<Object, Object> attributes, String id) {
-            super(EmbeddingStoreOperation.REMOVE, embeddingStore, attributes);
+            super(embeddingStore, attributes);
             this.id = id;
         }
 
@@ -214,7 +205,7 @@ public abstract class EmbeddingStoreRequestContext<Embedded> {
         private final List<String> ids;
 
         public RemoveAllIds(EmbeddingStore<Embedded> embeddingStore, Map<Object, Object> attributes, List<String> ids) {
-            super(EmbeddingStoreOperation.REMOVE_ALL_IDS, embeddingStore, attributes);
+            super(embeddingStore, attributes);
             this.ids = ids;
         }
 
@@ -237,7 +228,7 @@ public abstract class EmbeddingStoreRequestContext<Embedded> {
         private final Filter filter;
 
         public RemoveAllFilter(EmbeddingStore<Embedded> embeddingStore, Map<Object, Object> attributes, Filter filter) {
-            super(EmbeddingStoreOperation.REMOVE_ALL_FILTER, embeddingStore, attributes);
+            super(embeddingStore, attributes);
             this.filter = filter;
         }
 
@@ -258,7 +249,7 @@ public abstract class EmbeddingStoreRequestContext<Embedded> {
     public static final class RemoveAll<Embedded> extends EmbeddingStoreRequestContext<Embedded> {
 
         public RemoveAll(EmbeddingStore<Embedded> embeddingStore, Map<Object, Object> attributes) {
-            super(EmbeddingStoreOperation.REMOVE_ALL, embeddingStore, attributes);
+            super(embeddingStore, attributes);
         }
     }
 }

@@ -28,10 +28,6 @@ public abstract class EmbeddingStoreResponseContext<Embedded> {
         this.attributes = ensureNotNull(attributes, "attributes");
     }
 
-    public EmbeddingStoreOperation operation() {
-        return requestContext.operation();
-    }
-
     public EmbeddingStore<Embedded> embeddingStore() {
         return requestContext.embeddingStore();
     }

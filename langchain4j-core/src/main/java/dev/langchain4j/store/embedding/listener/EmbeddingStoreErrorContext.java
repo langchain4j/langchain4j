@@ -35,10 +35,6 @@ public class EmbeddingStoreErrorContext<Embedded> {
         return error;
     }
 
-    public EmbeddingStoreOperation operation() {
-        return requestContext.operation();
-    }
-
     public EmbeddingStore<Embedded> embeddingStore() {
         return requestContext.embeddingStore();
     }
