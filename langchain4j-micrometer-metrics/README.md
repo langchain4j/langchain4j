@@ -63,32 +63,37 @@ The `MicrometerChatModelListener` collects the metrics for the chat model. It us
 **Important**: You must register the `ChatModelMeterObservationHandler` with the `ObservationRegistry` **once** at application startup before creating the listener.
 
 ```java
-import dev.langchain4j.micrometer.listeners.MicrometerChatModelListener;
-import dev.langchain4j.micrometer.observation.ChatModelMeterObservationHandler;
+import listeners.dev.langchain4j.micrometer.metrics.MicrometerChatModelListener;
+import observation.dev.langchain4j.micrometer.metrics.ChatModelMeterObservationHandler;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.observation.ObservationRegistry;
+
 import java.util.List;
 
 // Get the MeterRegistry and ObservationRegistry (from Spring context or create manually)
 MeterRegistry meterRegistry = ...; // e.g., new SimpleMeterRegistry() or injected from Spring
-ObservationRegistry observationRegistry = ...; // e.g., ObservationRegistry.create() or injected from Spring
+        ObservationRegistry observationRegistry = ...; // e.g., ObservationRegistry.create() or injected from Spring
 
 // 1. Register the handler ONCE globally (typically at application startup)
-observationRegistry.observationConfig()
-    .observationHandler(new ChatModelMeterObservationHandler(meterRegistry));
+        observationRegistry.
 
-// 2. Create the listener (no need to pass MeterRegistry, it's in the handler)
-List<ChatModelListener> listeners = List.of(
-    new MicrometerChatModelListener(observationRegistry, "azure_openai")
-);
+        observationConfig()
+    .
 
-// 3. Add listeners to your ChatModel
+        observationHandler(new ChatModelMeterObservationHandler(meterRegistry));
+
+        // 2. Create the listener (no need to pass MeterRegistry, it's in the handler)
+        List<ChatModelListener> listeners = List.of(
+                new MicrometerChatModelListener(observationRegistry, "azure_openai")
+        );
+
+        // 3. Add listeners to your ChatModel
 // For example an AzureOpenAiChatModel
-AzureOpenAiChatModel chatModel = AzureOpenAiChatModel.builder()
-    // Omitted for brevity
-    .listeners(listeners)
-    .build();
+        AzureOpenAiChatModel chatModel = AzureOpenAiChatModel.builder()
+                // Omitted for brevity
+                .listeners(listeners)
+                .build();
 ```
 
 ## Viewing the metrics

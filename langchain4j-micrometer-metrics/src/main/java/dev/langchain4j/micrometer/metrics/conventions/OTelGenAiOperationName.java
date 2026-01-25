@@ -1,4 +1,4 @@
-package dev.langchain4j.micrometer.conventions;
+package dev.langchain4j.micrometer.metrics.conventions;
 
 /**
  * Metric attribute for operation type of AI operations. The values of this enum are

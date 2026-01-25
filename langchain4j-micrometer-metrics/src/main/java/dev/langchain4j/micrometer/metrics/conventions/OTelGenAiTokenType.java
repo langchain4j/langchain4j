@@ -1,4 +1,4 @@
-package dev.langchain4j.micrometer.conventions;
+package dev.langchain4j.micrometer.metrics.conventions;
 
 /**
  * Metric attribute for token type of AI operations that is counted.

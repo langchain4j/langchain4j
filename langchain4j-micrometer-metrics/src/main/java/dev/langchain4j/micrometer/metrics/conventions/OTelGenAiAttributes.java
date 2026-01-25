@@ -1,4 +1,4 @@
-package dev.langchain4j.micrometer.conventions;
+package dev.langchain4j.micrometer.metrics.conventions;
 
 public enum OTelGenAiAttributes {
     // GenAI General

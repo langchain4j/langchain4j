@@ -1,4 +1,4 @@
-package dev.langchain4j.micrometer.conventions;
+package dev.langchain4j.micrometer.metrics.conventions;
 
 /**
  * Observation metric names for generative AI client metrics

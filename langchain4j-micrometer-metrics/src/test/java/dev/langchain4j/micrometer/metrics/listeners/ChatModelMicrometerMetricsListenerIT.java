@@ -1,52 +1,44 @@
-package dev.langchain4j.micrometer.listeners;
+package dev.langchain4j.micrometer.metrics.listeners;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.HashMap;
+import java.util.List;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.micrometer.conventions.OTelGenAiAttributes;
-import dev.langchain4j.micrometer.conventions.OTelGenAiMetricName;
-import dev.langchain4j.micrometer.conventions.OTelGenAiTokenType;
+import dev.langchain4j.micrometer.metrics.conventions.OTelGenAiAttributes;
+import dev.langchain4j.micrometer.metrics.conventions.OTelGenAiMetricName;
+import dev.langchain4j.micrometer.metrics.conventions.OTelGenAiTokenType;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.azure.AzureOpenAiChatModel;
+import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import io.micrometer.common.KeyValue;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import io.micrometer.observation.tck.TestObservationRegistry;
-import io.micrometer.observation.tck.TestObservationRegistryAssert;
-import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-class MicrometerChatModelListenerIT {
+class ChatModelMicrometerMetricsListenerIT {
 
-    TestObservationRegistry observationRegistry;
-    MicrometerChatModelListener listener;
+    ChatModelMicrometerMetricsListener listener;
     MeterRegistry meterRegistry;
+    private static String AI_SYSTEM_NAME = "azure_openai";
 
     @BeforeEach
     void setUp() {
         meterRegistry = new SimpleMeterRegistry();
-        observationRegistry = TestObservationRegistry.create();
-        observationRegistry.observationConfig()
-            .observationHandler(new dev.langchain4j.micrometer.observation.ChatModelMeterObservationHandler(meterRegistry));
-        listener = new MicrometerChatModelListener(observationRegistry, "azure_openai");
+        listener = new ChatModelMicrometerMetricsListener(meterRegistry, AI_SYSTEM_NAME);
     }
 
     @Test
-    void should_observe_chat_request_and_response() {
-        doChatRequest(System.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"));
+    void should_set_systemName_on_request() {
+        ChatRequest chatRequest =
+                ChatRequest.builder().messages(UserMessage.from("Hello")).build();
 
-        TestObservationRegistryAssert.assertThat(observationRegistry)
-                .hasObservationWithNameEqualTo("gen_ai.client.operation.duration")
-                .that()
-                .hasBeenStarted()
-                .hasBeenStopped()
-                .hasLowCardinalityKeyValue(KeyValue.of(OTelGenAiAttributes.OPERATION_NAME.value(), "chat"))
-                .hasLowCardinalityKeyValue(KeyValue.of(OTelGenAiAttributes.SYSTEM.value(), "azure_openai"))
-                .hasLowCardinalityKeyValue(KeyValue.of(OTelGenAiAttributes.REQUEST_MODEL.value(), "gpt-4o"))
-                .hasLowCardinalityKeyValue(KeyValue.of(OTelGenAiAttributes.RESPONSE_MODEL.value(), "gpt-4o"))
-                .hasLowCardinalityKeyValue(KeyValue.of("outcome", "SUCCESS"));
+        ChatModelRequestContext requestContext = new ChatModelRequestContext(chatRequest, ModelProvider.AZURE_OPEN_AI, new HashMap<>());
+        listener.onRequest(requestContext);
+
+        assertThat(requestContext.attributes().get(OTelGenAiAttributes.SYSTEM)).isEqualTo(AI_SYSTEM_NAME);
     }
 
     @Test

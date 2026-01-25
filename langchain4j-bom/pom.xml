@@ -580,7 +580,7 @@
             <!-- observability -->
             <dependency>
                 <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j-micrometer</artifactId>
+                <artifactId>langchain4j-micrometer-metrics</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
