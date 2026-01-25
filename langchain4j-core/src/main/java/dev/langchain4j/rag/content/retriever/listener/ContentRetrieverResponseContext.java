@@ -36,6 +36,12 @@ public class ContentRetrieverResponseContext {
         return new Builder();
     }
 
+    /**
+     * Builder for {@link ContentRetrieverResponseContext}.
+     *
+     * @since 1.11.0
+     */
+    @Experimental
     public static class Builder {
 
         private List<Content> contents;

@@ -153,8 +153,8 @@ final class ListeningEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         onRequest(requestContext, listeners);
         try {
             delegate.remove(id);
-            EmbeddingStoreResponseContext.Void<Embedded> responseContext =
-                    new EmbeddingStoreResponseContext.Void<>(requestContext, attributes);
+            EmbeddingStoreResponseContext.Remove<Embedded> responseContext =
+                    new EmbeddingStoreResponseContext.Remove<>(requestContext, attributes);
             onResponse(responseContext, listeners);
         } catch (Exception error) {
             onError(new EmbeddingStoreErrorContext<>(error, requestContext, attributes), listeners);
@@ -171,8 +171,8 @@ final class ListeningEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         onRequest(requestContext, listeners);
         try {
             delegate.removeAll(ids);
-            EmbeddingStoreResponseContext.Void<Embedded> responseContext =
-                    new EmbeddingStoreResponseContext.Void<>(requestContext, attributes);
+            EmbeddingStoreResponseContext.RemoveAllIds<Embedded> responseContext =
+                    new EmbeddingStoreResponseContext.RemoveAllIds<>(requestContext, attributes);
             onResponse(responseContext, listeners);
         } catch (Exception error) {
             onError(new EmbeddingStoreErrorContext<>(error, requestContext, attributes), listeners);
@@ -188,8 +188,8 @@ final class ListeningEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         onRequest(requestContext, listeners);
         try {
             delegate.removeAll(filter);
-            EmbeddingStoreResponseContext.Void<Embedded> responseContext =
-                    new EmbeddingStoreResponseContext.Void<>(requestContext, attributes);
+            EmbeddingStoreResponseContext.RemoveAllFilter<Embedded> responseContext =
+                    new EmbeddingStoreResponseContext.RemoveAllFilter<>(requestContext, attributes);
             onResponse(responseContext, listeners);
         } catch (Exception error) {
             onError(new EmbeddingStoreErrorContext<>(error, requestContext, attributes), listeners);
@@ -205,8 +205,8 @@ final class ListeningEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         onRequest(requestContext, listeners);
         try {
             delegate.removeAll();
-            EmbeddingStoreResponseContext.Void<Embedded> responseContext =
-                    new EmbeddingStoreResponseContext.Void<>(requestContext, attributes);
+            EmbeddingStoreResponseContext.RemoveAll<Embedded> responseContext =
+                    new EmbeddingStoreResponseContext.RemoveAll<>(requestContext, attributes);
             onResponse(responseContext, listeners);
         } catch (Exception error) {
             onError(new EmbeddingStoreErrorContext<>(error, requestContext, attributes), listeners);

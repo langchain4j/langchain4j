@@ -37,6 +37,12 @@ public class EmbeddingModelResponseContext {
         return new Builder();
     }
 
+    /**
+     * Builder for {@link EmbeddingModelResponseContext}.
+     *
+     * @since 1.11.0
+     */
+    @Experimental
     public static class Builder {
 
         private Response<List<Embedding>> response;

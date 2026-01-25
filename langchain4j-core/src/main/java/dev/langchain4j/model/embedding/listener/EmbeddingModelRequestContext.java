@@ -33,6 +33,12 @@ public class EmbeddingModelRequestContext {
         return new Builder();
     }
 
+    /**
+     * Builder for {@link EmbeddingModelRequestContext}.
+     *
+     * @since 1.11.0
+     */
+    @Experimental
     public static class Builder {
 
         private List<TextSegment> textSegments;

@@ -53,6 +53,8 @@ public abstract class EmbeddingStoreResponseContext<Embedded> {
 
     /**
      * The {@code add(...)} response context.
+     *
+     * @since 1.11.0
      */
     @Experimental
     public static final class Add<Embedded> extends EmbeddingStoreResponseContext<Embedded> {
@@ -77,6 +79,8 @@ public abstract class EmbeddingStoreResponseContext<Embedded> {
 
     /**
      * The {@code addAll(...)} response context.
+     *
+     * @since 1.11.0
      */
     @Experimental
     public static final class AddAll<Embedded> extends EmbeddingStoreResponseContext<Embedded> {
@@ -101,6 +105,8 @@ public abstract class EmbeddingStoreResponseContext<Embedded> {
 
     /**
      * The {@code search(...)} response context.
+     *
+     * @since 1.11.0
      */
     @Experimental
     public static final class Search<Embedded> extends EmbeddingStoreResponseContext<Embedded> {
@@ -124,12 +130,56 @@ public abstract class EmbeddingStoreResponseContext<Embedded> {
     }
 
     /**
-     * A response context for operations that do not produce a response payload.
+     * The {@code remove(String)} response context.
+     *
+     * @since 1.11.0
      */
     @Experimental
-    public static final class Void<Embedded> extends EmbeddingStoreResponseContext<Embedded> {
+    public static final class Remove<Embedded> extends EmbeddingStoreResponseContext<Embedded> {
 
-        public Void(EmbeddingStoreRequestContext<Embedded> requestContext, Map<Object, Object> attributes) {
+        public Remove(EmbeddingStoreRequestContext.Remove<Embedded> requestContext, Map<Object, Object> attributes) {
+            super(requestContext, attributes);
+        }
+    }
+
+    /**
+     * The {@code removeAll(ids)} response context.
+     *
+     * @since 1.11.0
+     */
+    @Experimental
+    public static final class RemoveAllIds<Embedded> extends EmbeddingStoreResponseContext<Embedded> {
+
+        public RemoveAllIds(
+                EmbeddingStoreRequestContext.RemoveAllIds<Embedded> requestContext, Map<Object, Object> attributes) {
+            super(requestContext, attributes);
+        }
+    }
+
+    /**
+     * The {@code removeAll(Filter)} response context.
+     *
+     * @since 1.11.0
+     */
+    @Experimental
+    public static final class RemoveAllFilter<Embedded> extends EmbeddingStoreResponseContext<Embedded> {
+
+        public RemoveAllFilter(
+                EmbeddingStoreRequestContext.RemoveAllFilter<Embedded> requestContext, Map<Object, Object> attributes) {
+            super(requestContext, attributes);
+        }
+    }
+
+    /**
+     * The {@code removeAll()} response context.
+     *
+     * @since 1.11.0
+     */
+    @Experimental
+    public static final class RemoveAll<Embedded> extends EmbeddingStoreResponseContext<Embedded> {
+
+        public RemoveAll(
+                EmbeddingStoreRequestContext.RemoveAll<Embedded> requestContext, Map<Object, Object> attributes) {
             super(requestContext, attributes);
         }
     }

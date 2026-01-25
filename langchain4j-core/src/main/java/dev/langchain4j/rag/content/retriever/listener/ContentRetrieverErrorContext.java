@@ -34,6 +34,12 @@ public class ContentRetrieverErrorContext {
         return new Builder();
     }
 
+    /**
+     * Builder for {@link ContentRetrieverErrorContext}.
+     *
+     * @since 1.11.0
+     */
+    @Experimental
     public static class Builder {
 
         private Throwable error;

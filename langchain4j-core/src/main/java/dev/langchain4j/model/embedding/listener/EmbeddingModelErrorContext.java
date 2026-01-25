@@ -35,6 +35,12 @@ public class EmbeddingModelErrorContext {
         return new Builder();
     }
 
+    /**
+     * Builder for {@link EmbeddingModelErrorContext}.
+     *
+     * @since 1.11.0
+     */
+    @Experimental
     public static class Builder {
 
         private Throwable error;

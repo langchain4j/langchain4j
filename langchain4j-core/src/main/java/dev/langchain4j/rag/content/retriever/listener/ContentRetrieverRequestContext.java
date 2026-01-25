@@ -32,6 +32,12 @@ public class ContentRetrieverRequestContext {
         return new Builder();
     }
 
+    /**
+     * Builder for {@link ContentRetrieverRequestContext}.
+     *
+     * @since 1.11.0
+     */
+    @Experimental
     public static class Builder {
 
         private Query query;

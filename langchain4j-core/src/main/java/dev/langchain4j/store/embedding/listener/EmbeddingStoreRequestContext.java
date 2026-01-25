@@ -52,6 +52,8 @@ public abstract class EmbeddingStoreRequestContext<Embedded> {
 
     /**
      * The {@code add(...)} request context.
+     *
+     * @since 1.11.0
      */
     @Experimental
     public static final class Add<Embedded> extends EmbeddingStoreRequestContext<Embedded> {
@@ -108,6 +110,8 @@ public abstract class EmbeddingStoreRequestContext<Embedded> {
 
     /**
      * The {@code addAll(...)} request context.
+     *
+     * @since 1.11.0
      */
     @Experimental
     public static final class AddAll<Embedded> extends EmbeddingStoreRequestContext<Embedded> {
@@ -152,6 +156,8 @@ public abstract class EmbeddingStoreRequestContext<Embedded> {
 
     /**
      * The {@code search(...)} request context.
+     *
+     * @since 1.11.0
      */
     @Experimental
     public static final class Search<Embedded> extends EmbeddingStoreRequestContext<Embedded> {
@@ -176,6 +182,8 @@ public abstract class EmbeddingStoreRequestContext<Embedded> {
 
     /**
      * The {@code remove(String)} request context.
+     *
+     * @since 1.11.0
      */
     @Experimental
     public static final class Remove<Embedded> extends EmbeddingStoreRequestContext<Embedded> {
@@ -197,6 +205,8 @@ public abstract class EmbeddingStoreRequestContext<Embedded> {
 
     /**
      * The {@code removeAll(ids)} request context.
+     *
+     * @since 1.11.0
      */
     @Experimental
     public static final class RemoveAllIds<Embedded> extends EmbeddingStoreRequestContext<Embedded> {
@@ -218,6 +228,8 @@ public abstract class EmbeddingStoreRequestContext<Embedded> {
 
     /**
      * The {@code removeAll(Filter)} request context.
+     *
+     * @since 1.11.0
      */
     @Experimental
     public static final class RemoveAllFilter<Embedded> extends EmbeddingStoreRequestContext<Embedded> {
@@ -239,6 +251,8 @@ public abstract class EmbeddingStoreRequestContext<Embedded> {
 
     /**
      * The {@code removeAll()} request context.
+     *
+     * @since 1.11.0
      */
     @Experimental
     public static final class RemoveAll<Embedded> extends EmbeddingStoreRequestContext<Embedded> {
