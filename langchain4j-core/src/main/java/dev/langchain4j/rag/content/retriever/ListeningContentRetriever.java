@@ -1,5 +1,6 @@
 package dev.langchain4j.rag.content.retriever;
 
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.rag.content.retriever.ContentRetrieverListenerUtils.onError;
 import static dev.langchain4j.rag.content.retriever.ContentRetrieverListenerUtils.onRequest;
@@ -26,7 +27,7 @@ final class ListeningContentRetriever implements ContentRetriever {
 
     ListeningContentRetriever(ContentRetriever delegate, List<ContentRetrieverListener> listeners) {
         this.delegate = ensureNotNull(delegate, "delegate");
-        this.listeners = ensureNotNull(listeners, "listeners");
+        this.listeners = copy(listeners);
     }
 
     ContentRetriever withAdditionalListeners(Collection<ContentRetrieverListener> additionalListeners) {

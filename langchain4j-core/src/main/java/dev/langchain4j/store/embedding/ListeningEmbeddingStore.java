@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding;
 
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.store.embedding.EmbeddingStoreListenerUtils.onError;
 import static dev.langchain4j.store.embedding.EmbeddingStoreListenerUtils.onRequest;
@@ -26,7 +27,7 @@ final class ListeningEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
 
     ListeningEmbeddingStore(EmbeddingStore<Embedded> delegate, List<EmbeddingStoreListener> listeners) {
         this.delegate = ensureNotNull(delegate, "delegate");
-        this.listeners = ensureNotNull(listeners, "listeners");
+        this.listeners = copy(listeners);
     }
 
     EmbeddingStore<Embedded> withAdditionalListeners(List<EmbeddingStoreListener> additionalListeners) {

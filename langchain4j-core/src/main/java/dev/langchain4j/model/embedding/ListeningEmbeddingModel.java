@@ -1,5 +1,6 @@
 package dev.langchain4j.model.embedding;
 
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.embedding.EmbeddingModelListenerUtils.onError;
 import static dev.langchain4j.model.embedding.EmbeddingModelListenerUtils.onRequest;
@@ -26,7 +27,7 @@ final class ListeningEmbeddingModel implements EmbeddingModel {
 
     ListeningEmbeddingModel(EmbeddingModel delegate, List<EmbeddingModelListener> listeners) {
         this.delegate = ensureNotNull(delegate, "delegate");
-        this.listeners = ensureNotNull(listeners, "listeners");
+        this.listeners = copy(listeners);
     }
 
     EmbeddingModel withAdditionalListeners(List<EmbeddingModelListener> additionalListeners) {
