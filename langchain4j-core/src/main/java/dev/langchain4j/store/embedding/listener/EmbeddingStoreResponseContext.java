@@ -2,6 +2,7 @@ package dev.langchain4j.store.embedding.listener;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import java.util.List;
@@ -12,7 +13,10 @@ import java.util.Map;
  * It contains the response details, corresponding request details, and attributes.
  * The attributes can be used to pass data between methods of an {@link EmbeddingStoreListener}
  * or between multiple {@link EmbeddingStoreListener}s.
+ *
+ * @since 1.11.0
  */
+@Experimental
 public abstract class EmbeddingStoreResponseContext<Embedded> {
 
     private final EmbeddingStoreRequestContext<Embedded> requestContext;
@@ -50,6 +54,7 @@ public abstract class EmbeddingStoreResponseContext<Embedded> {
     /**
      * The {@code add(...)} response context.
      */
+    @Experimental
     public static final class Add<Embedded> extends EmbeddingStoreResponseContext<Embedded> {
 
         private final String returnedId;
@@ -73,6 +78,7 @@ public abstract class EmbeddingStoreResponseContext<Embedded> {
     /**
      * The {@code addAll(...)} response context.
      */
+    @Experimental
     public static final class AddAll<Embedded> extends EmbeddingStoreResponseContext<Embedded> {
 
         private final List<String> returnedIds;
@@ -96,6 +102,7 @@ public abstract class EmbeddingStoreResponseContext<Embedded> {
     /**
      * The {@code search(...)} response context.
      */
+    @Experimental
     public static final class Search<Embedded> extends EmbeddingStoreResponseContext<Embedded> {
 
         private final EmbeddingSearchResult<Embedded> searchResult;
@@ -119,6 +126,7 @@ public abstract class EmbeddingStoreResponseContext<Embedded> {
     /**
      * A response context for operations that do not produce a response payload.
      */
+    @Experimental
     public static final class Void<Embedded> extends EmbeddingStoreResponseContext<Embedded> {
 
         public Void(EmbeddingStoreRequestContext<Embedded> requestContext, Map<Object, Object> attributes) {

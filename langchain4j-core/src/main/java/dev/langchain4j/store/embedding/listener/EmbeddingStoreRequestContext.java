@@ -2,6 +2,7 @@ package dev.langchain4j.store.embedding.listener;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
@@ -14,7 +15,10 @@ import java.util.Map;
  * It contains operation details and attributes.
  * The attributes can be used to pass data between methods of an {@link EmbeddingStoreListener}
  * or between multiple {@link EmbeddingStoreListener}s.
+ *
+ * @since 1.11.0
  */
+@Experimental
 public abstract class EmbeddingStoreRequestContext<Embedded> {
 
     private final EmbeddingStoreOperation operation;
@@ -49,6 +53,7 @@ public abstract class EmbeddingStoreRequestContext<Embedded> {
     /**
      * The {@code add(...)} request context.
      */
+    @Experimental
     public static final class Add<Embedded> extends EmbeddingStoreRequestContext<Embedded> {
 
         private final String id;
@@ -104,6 +109,7 @@ public abstract class EmbeddingStoreRequestContext<Embedded> {
     /**
      * The {@code addAll(...)} request context.
      */
+    @Experimental
     public static final class AddAll<Embedded> extends EmbeddingStoreRequestContext<Embedded> {
 
         private final List<String> ids;
@@ -147,6 +153,7 @@ public abstract class EmbeddingStoreRequestContext<Embedded> {
     /**
      * The {@code search(...)} request context.
      */
+    @Experimental
     public static final class Search<Embedded> extends EmbeddingStoreRequestContext<Embedded> {
 
         private final EmbeddingSearchRequest searchRequest;
@@ -170,6 +177,7 @@ public abstract class EmbeddingStoreRequestContext<Embedded> {
     /**
      * The {@code remove(String)} request context.
      */
+    @Experimental
     public static final class Remove<Embedded> extends EmbeddingStoreRequestContext<Embedded> {
 
         private final String id;
@@ -190,6 +198,7 @@ public abstract class EmbeddingStoreRequestContext<Embedded> {
     /**
      * The {@code removeAll(ids)} request context.
      */
+    @Experimental
     public static final class RemoveAllIds<Embedded> extends EmbeddingStoreRequestContext<Embedded> {
 
         private final List<String> ids;
@@ -210,6 +219,7 @@ public abstract class EmbeddingStoreRequestContext<Embedded> {
     /**
      * The {@code removeAll(Filter)} request context.
      */
+    @Experimental
     public static final class RemoveAllFilter<Embedded> extends EmbeddingStoreRequestContext<Embedded> {
 
         private final Filter filter;
@@ -230,6 +240,7 @@ public abstract class EmbeddingStoreRequestContext<Embedded> {
     /**
      * The {@code removeAll()} request context.
      */
+    @Experimental
     public static final class RemoveAll<Embedded> extends EmbeddingStoreRequestContext<Embedded> {
 
         public RemoveAll(EmbeddingStore<Embedded> embeddingStore, Map<Object, Object> attributes) {

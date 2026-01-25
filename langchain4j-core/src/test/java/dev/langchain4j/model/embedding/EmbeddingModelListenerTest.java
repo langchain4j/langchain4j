@@ -213,12 +213,10 @@ class EmbeddingModelListenerTest {
         EmbeddingModel model = failingModel.addListeners(List.of(listener1, listener2));
 
         // when
-        assertThatThrownBy(() -> model.embedAll(List.of(TextSegment.from("hi")))).hasMessage("Test error");
+        assertThatThrownBy(() -> model.embedAll(List.of(TextSegment.from("hi"))))
+                .hasMessage("Test error");
 
         // then
         verify(listener2).onError(any());
     }
 }
-
-
-

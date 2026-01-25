@@ -1,10 +1,14 @@
 package dev.langchain4j.rag.content.retriever.listener;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 
 /**
  * A {@link ContentRetriever} listener that listens for requests, responses and errors.
+ *
+ * @since 1.11.0
  */
+@Experimental
 public interface ContentRetrieverListener {
 
     /**

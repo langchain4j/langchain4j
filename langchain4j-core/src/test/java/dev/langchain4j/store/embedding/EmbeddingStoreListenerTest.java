@@ -289,7 +289,8 @@ class EmbeddingStoreListenerTest {
         store.search(request);
 
         // then
-        ArgumentCaptor<EmbeddingStoreRequestContext> requestCaptor = ArgumentCaptor.forClass(EmbeddingStoreRequestContext.class);
+        ArgumentCaptor<EmbeddingStoreRequestContext> requestCaptor =
+                ArgumentCaptor.forClass(EmbeddingStoreRequestContext.class);
         verify(listener).onRequest(requestCaptor.capture());
         assertThat(requestCaptor.getValue()).isInstanceOf(EmbeddingStoreRequestContext.Search.class);
         EmbeddingStoreRequestContext.Search<?> searchRequestContext =
@@ -315,7 +316,8 @@ class EmbeddingStoreListenerTest {
         store.remove("id-123");
 
         // then
-        ArgumentCaptor<EmbeddingStoreRequestContext> requestCaptor = ArgumentCaptor.forClass(EmbeddingStoreRequestContext.class);
+        ArgumentCaptor<EmbeddingStoreRequestContext> requestCaptor =
+                ArgumentCaptor.forClass(EmbeddingStoreRequestContext.class);
         verify(listener).onRequest(requestCaptor.capture());
         assertThat(requestCaptor.getValue()).isInstanceOf(EmbeddingStoreRequestContext.Remove.class);
         EmbeddingStoreRequestContext.Remove<?> removeRequestContext =
@@ -347,7 +349,8 @@ class EmbeddingStoreListenerTest {
         assertThatThrownBy(() -> store.search(request)).hasMessage("Embedding store failed");
 
         // then
-        ArgumentCaptor<EmbeddingStoreErrorContext> errorCaptor = ArgumentCaptor.forClass(EmbeddingStoreErrorContext.class);
+        ArgumentCaptor<EmbeddingStoreErrorContext> errorCaptor =
+                ArgumentCaptor.forClass(EmbeddingStoreErrorContext.class);
         verify(listener).onError(errorCaptor.capture());
         assertThat(errorCaptor.getValue().requestContext()).isInstanceOf(EmbeddingStoreRequestContext.Search.class);
         EmbeddingStoreRequestContext.Search<?> searchRequestContext =
@@ -372,7 +375,8 @@ class EmbeddingStoreListenerTest {
                 ArgumentCaptor.forClass(EmbeddingStoreRequestContext.class);
         verify(listener).onRequest(requestCaptor.capture());
         assertThat(requestCaptor.getValue()).isInstanceOf(EmbeddingStoreRequestContext.Add.class);
-        EmbeddingStoreRequestContext.Add<?> addRequestContext = (EmbeddingStoreRequestContext.Add<?>) requestCaptor.getValue();
+        EmbeddingStoreRequestContext.Add<?> addRequestContext =
+                (EmbeddingStoreRequestContext.Add<?>) requestCaptor.getValue();
         assertThat(addRequestContext.embedding()).isSameAs(embedding);
         assertThat(addRequestContext.id()).isNull();
         assertThat(addRequestContext.embedded()).isNull();
@@ -381,7 +385,8 @@ class EmbeddingStoreListenerTest {
                 ArgumentCaptor.forClass(EmbeddingStoreResponseContext.class);
         verify(listener).onResponse(responseCaptor.capture());
         assertThat(responseCaptor.getValue()).isInstanceOf(EmbeddingStoreResponseContext.Add.class);
-        EmbeddingStoreResponseContext.Add<?> addResponseContext = (EmbeddingStoreResponseContext.Add<?>) responseCaptor.getValue();
+        EmbeddingStoreResponseContext.Add<?> addResponseContext =
+                (EmbeddingStoreResponseContext.Add<?>) responseCaptor.getValue();
         assertThat(addResponseContext.returnedId()).isEqualTo("id");
     }
 
@@ -400,7 +405,8 @@ class EmbeddingStoreListenerTest {
                 ArgumentCaptor.forClass(EmbeddingStoreRequestContext.class);
         verify(listener).onRequest(requestCaptor.capture());
         assertThat(requestCaptor.getValue()).isInstanceOf(EmbeddingStoreRequestContext.Add.class);
-        EmbeddingStoreRequestContext.Add<?> addRequestContext = (EmbeddingStoreRequestContext.Add<?>) requestCaptor.getValue();
+        EmbeddingStoreRequestContext.Add<?> addRequestContext =
+                (EmbeddingStoreRequestContext.Add<?>) requestCaptor.getValue();
         assertThat(addRequestContext.embedding()).isSameAs(embedding);
         assertThat(addRequestContext.id()).isEqualTo("id-123");
 
@@ -408,7 +414,8 @@ class EmbeddingStoreListenerTest {
                 ArgumentCaptor.forClass(EmbeddingStoreResponseContext.class);
         verify(listener).onResponse(responseCaptor.capture());
         assertThat(responseCaptor.getValue()).isInstanceOf(EmbeddingStoreResponseContext.Add.class);
-        EmbeddingStoreResponseContext.Add<?> addResponseContext = (EmbeddingStoreResponseContext.Add<?>) responseCaptor.getValue();
+        EmbeddingStoreResponseContext.Add<?> addResponseContext =
+                (EmbeddingStoreResponseContext.Add<?>) responseCaptor.getValue();
         assertThat(addResponseContext.returnedId()).isEqualTo("id-123");
     }
 
@@ -429,7 +436,8 @@ class EmbeddingStoreListenerTest {
                 ArgumentCaptor.forClass(EmbeddingStoreRequestContext.class);
         verify(listener).onRequest(requestCaptor.capture());
         assertThat(requestCaptor.getValue()).isInstanceOf(EmbeddingStoreRequestContext.Add.class);
-        EmbeddingStoreRequestContext.Add<?> addRequestContext = (EmbeddingStoreRequestContext.Add<?>) requestCaptor.getValue();
+        EmbeddingStoreRequestContext.Add<?> addRequestContext =
+                (EmbeddingStoreRequestContext.Add<?>) requestCaptor.getValue();
         assertThat(addRequestContext.embedding()).isSameAs(embedding);
         assertThat(addRequestContext.embedded()).isEqualTo("embedded");
     }

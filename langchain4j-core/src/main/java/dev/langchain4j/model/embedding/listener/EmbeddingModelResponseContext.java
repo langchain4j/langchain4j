@@ -2,6 +2,7 @@ package dev.langchain4j.model.embedding.listener;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -14,7 +15,10 @@ import java.util.Map;
  * It contains the {@link Response}, corresponding input, the {@link EmbeddingModel} and attributes.
  * The attributes can be used to pass data between methods of an {@link EmbeddingModelListener}
  * or between multiple {@link EmbeddingModelListener}s.
+ *
+ * @since 1.11.0
  */
+@Experimental
 public class EmbeddingModelResponseContext {
 
     private final Response<List<Embedding>> response;

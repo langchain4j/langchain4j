@@ -2,7 +2,7 @@ package dev.langchain4j.rag.content.retriever;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
-import dev.langchain4j.internal.Utils;
+import dev.langchain4j.Experimental;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.listener.ContentRetrieverListener;
 import dev.langchain4j.rag.query.Query;
@@ -45,7 +45,9 @@ public interface ContentRetriever {
      *
      * @param listener The listener to add.
      * @return An observing {@link ContentRetriever} that will dispatch events to the provided listener.
+     * @since 1.11.0
      */
+    @Experimental
     default ContentRetriever addListener(ContentRetrieverListener listener) {
         return addListeners(listener == null ? null : List.of(listener));
     }
@@ -57,14 +59,16 @@ public interface ContentRetriever {
      *
      * @param listeners The listeners to add.
      * @return An observing {@link ContentRetriever} that will dispatch events to the provided listeners.
+     * @since 1.11.0
      */
-    default ContentRetriever addListeners(List<ContentRetrieverListener> listeners) {
+    @Experimental
+    default ContentRetriever addListeners(Collection<ContentRetrieverListener> listeners) {
         if (isNullOrEmpty(listeners)) {
             return this;
         }
         if (this instanceof ListeningContentRetriever listeningContentRetriever) {
             return listeningContentRetriever.withAdditionalListeners(listeners);
         }
-        return new ListeningContentRetriever(this, Utils.copy(listeners));
+        return new ListeningContentRetriever(this, List.copyOf(listeners));
     }
 }

@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.util.Collections.singletonList;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -149,7 +150,9 @@ public interface EmbeddingStore<Embedded> {
      *
      * @param listener The listener to add.
      * @return An observing {@link EmbeddingStore} that will dispatch events to the provided listener.
+     * @since 1.11.0
      */
+    @Experimental
     default EmbeddingStore<Embedded> addListener(EmbeddingStoreListener listener) {
         return addListeners(listener == null ? null : List.of(listener));
     }
@@ -161,7 +164,9 @@ public interface EmbeddingStore<Embedded> {
      *
      * @param listeners The listeners to add.
      * @return An observing {@link EmbeddingStore} that will dispatch events to the provided listeners.
+     * @since 1.11.0
      */
+    @Experimental
     default EmbeddingStore<Embedded> addListeners(List<EmbeddingStoreListener> listeners) {
         if (isNullOrEmpty(listeners)) {
             return this;

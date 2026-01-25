@@ -1,10 +1,14 @@
 package dev.langchain4j.store.embedding.listener;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 
 /**
  * A {@link EmbeddingStore} listener that listens for requests, responses and errors.
+ *
+ * @since 1.11.0
  */
+@Experimental
 public interface EmbeddingStoreListener {
 
     /**

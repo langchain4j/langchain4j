@@ -2,6 +2,7 @@ package dev.langchain4j.store.embedding.listener;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import java.util.Map;
 
@@ -10,7 +11,10 @@ import java.util.Map;
  * It contains the error, corresponding request details, and attributes.
  * The attributes can be used to pass data between methods of an {@link EmbeddingStoreListener}
  * or between multiple {@link EmbeddingStoreListener}s.
+ *
+ * @since 1.11.0
  */
+@Experimental
 public class EmbeddingStoreErrorContext<Embedded> {
 
     private final Throwable error;

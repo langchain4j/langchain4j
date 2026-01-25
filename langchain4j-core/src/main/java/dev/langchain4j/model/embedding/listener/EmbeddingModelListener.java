@@ -1,10 +1,14 @@
 package dev.langchain4j.model.embedding.listener;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 
 /**
  * An {@link EmbeddingModel} listener that listens for requests, responses and errors.
+ *
+ * @since 1.11.0
  */
+@Experimental
 public interface EmbeddingModelListener {
 
     /**
@@ -34,6 +38,3 @@ public interface EmbeddingModelListener {
      */
     default void onError(EmbeddingModelErrorContext errorContext) {}
 }
-
-
-

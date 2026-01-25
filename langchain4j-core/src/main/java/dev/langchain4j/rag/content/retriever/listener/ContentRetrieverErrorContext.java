@@ -2,6 +2,7 @@ package dev.langchain4j.rag.content.retriever.listener;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
 import java.util.Map;
@@ -11,7 +12,10 @@ import java.util.Map;
  * It contains the error, corresponding {@link Query}, {@link ContentRetriever} and attributes.
  * The attributes can be used to pass data between methods of a {@link ContentRetrieverListener}
  * or between multiple {@link ContentRetrieverListener}s.
+ *
+ * @since 1.11.0
  */
+@Experimental
 public class ContentRetrieverErrorContext {
 
     private final Throwable error;
