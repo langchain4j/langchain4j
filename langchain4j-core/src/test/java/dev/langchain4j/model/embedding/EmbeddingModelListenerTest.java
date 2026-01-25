@@ -81,6 +81,60 @@ class EmbeddingModelListenerTest {
     }
 
     @Test
+    void should_observe_embed_textSegment_even_if_delegate_overrides_it() {
+        // given
+        EmbeddingModelListener listener = spy(new SuccessfulListener());
+        EmbeddingModel delegate = new TestEmbeddingModel() {
+            @Override
+            public Response<Embedding> embed(TextSegment textSegment) {
+                return Response.from(Embedding.from(List.of(9f)));
+            }
+
+            @Override
+            public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
+                return Response.from(List.of(Embedding.from(List.of(1f))));
+            }
+        };
+        EmbeddingModel model = delegate.addListener(listener);
+
+        // when
+        Response<Embedding> response = model.embed(TextSegment.from("hi"));
+
+        // then - make sure we delegated to embed(TextSegment), not embedAll(...)
+        assertThat(response.content().vector()).containsExactly(9f);
+        verify(listener).onRequest(any());
+        verify(listener).onResponse(any());
+        verifyNoMoreInteractions(listener);
+    }
+
+    @Test
+    void should_observe_embed_string_even_if_delegate_overrides_it() {
+        // given
+        EmbeddingModelListener listener = spy(new SuccessfulListener());
+        EmbeddingModel delegate = new TestEmbeddingModel() {
+            @Override
+            public Response<Embedding> embed(String text) {
+                return Response.from(Embedding.from(List.of(7f)));
+            }
+
+            @Override
+            public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
+                return Response.from(List.of(Embedding.from(List.of(1f))));
+            }
+        };
+        EmbeddingModel model = delegate.addListener(listener);
+
+        // when
+        Response<Embedding> response = model.embed("hi");
+
+        // then - make sure we delegated to embed(String), not embedAll(...)
+        assertThat(response.content().vector()).containsExactly(7f);
+        verify(listener).onRequest(any());
+        verify(listener).onResponse(any());
+        verifyNoMoreInteractions(listener);
+    }
+
+    @Test
     void should_ignore_exceptions_thrown_by_listeners() {
         // given
         EmbeddingModelListener failingListener = spy(new FailingListener());
