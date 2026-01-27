@@ -7,9 +7,9 @@ public enum OTelGenAiAttributes {
      */
     OPERATION_NAME("gen_ai.operation.name"),
     /**
-     * The model provider as identified by the client instrumentation.
+     * The Generative AI provider as identified by the client or server instrumentation.
      */
-    SYSTEM("gen_ai.system"),
+    PROVIDER_NAME("gen_ai.provider.name"),
 
     // Token
     /**

@@ -3,6 +3,7 @@ package dev.langchain4j.micrometer.metrics.conventions;
 /**
  * Observation metric names for generative AI client metrics
  * in line with the OpenTelemetry Semantic Conventions for Generative AI Metrics.
+ * v1.39.0
  */
 public enum OTelGenAiMetricName {
     /**

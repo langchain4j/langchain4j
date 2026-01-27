@@ -16,9 +16,11 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 
 /**
- * A {@link ChatModelListener} that uses Micrometer MeterRegistery to collect metrics
+ * A {@link ChatModelListener} that uses a Micrometer {@link MeterRegistry} to collect metrics
  * about chat model interactions following OpenTelemetry Semantic Conventions for Generative AI.
- * * <p>
+ * <p>
+ * This listener records token usage metrics (input and output tokens) when a chat model response is received.
+ * <p>
  * Note: The {@link ChatModelMicrometerMetricsListener}
  * must be instantiated separately (e.g., via Spring Boot auto-configuration or manual instantiation).
  */
@@ -26,22 +28,23 @@ import io.micrometer.core.instrument.MeterRegistry;
 public class ChatModelMicrometerMetricsListener implements ChatModelListener {
 
     private final MeterRegistry meterRegistry;
-    private final String aiSystemName;
+    private final String aiProviderName;
 
     /**
-     * Constructor.
-     * @param meterRegistry
-     * @param aiSystemName          AI system name should be in line with OpenTelemetry Semantic Convention
-     *                              for Generative AI Metrics (e.g., "openai", "azure_openai", "anthropic").
+     * Creates a new {@link ChatModelMicrometerMetricsListener}.
+     *
+     * @param meterRegistry the {@link MeterRegistry} to register metrics with
+     * @param aiProviderName  the AI system name, should follow OpenTelemetry Semantic Conventions
+     *                      for Generative AI Metrics (e.g., "openai", "azure_openai", "anthropic")
      */
-    public ChatModelMicrometerMetricsListener(MeterRegistry meterRegistry, String aiSystemName) {
+    public ChatModelMicrometerMetricsListener(MeterRegistry meterRegistry, String aiProviderName) {
         this.meterRegistry = meterRegistry;
-        this.aiSystemName = ensureNotBlank(aiSystemName, "aiSystemName");
+        this.aiProviderName = ensureNotBlank(aiProviderName, "aiProviderName");
     }
 
     @Override
     public void onRequest(final ChatModelRequestContext requestContext) {
-        setSystemName(requestContext);
+        setProviderName(requestContext);
     }
 
     @Override
@@ -54,12 +57,12 @@ public class ChatModelMicrometerMetricsListener implements ChatModelListener {
         // ChatModelErrorContext does not contain the ChatModelResponseContext, therefor token usage is unavailable
     }
 
-    private void setSystemName(ChatModelRequestContext requestContext) {
-        requestContext.attributes().put(OTelGenAiAttributes.SYSTEM, aiSystemName);
+    private void setProviderName(ChatModelRequestContext requestContext) {
+        requestContext.attributes().put(OTelGenAiAttributes.PROVIDER_NAME, aiProviderName);
     }
 
-    private String getSystemName(Map<Object, Object> attributes) {
-        return (String) attributes.get(OTelGenAiAttributes.SYSTEM);
+    private String getProviderName(Map<Object, Object> attributes) {
+        return (String) attributes.get(OTelGenAiAttributes.PROVIDER_NAME);
     }
 
     private void recordTokenUsageMetrics(ChatModelResponseContext responseContext) {
@@ -81,7 +84,7 @@ public class ChatModelMicrometerMetricsListener implements ChatModelListener {
 
         Counter.builder(OTelGenAiMetricName.TOKEN_USAGE.value())
                 .tag(OTelGenAiAttributes.OPERATION_NAME.value(), OTelGenAiOperationName.CHAT.value())
-                .tag(OTelGenAiAttributes.SYSTEM.value(), getSystemName(responseContext.attributes()))
+                .tag(OTelGenAiAttributes.PROVIDER_NAME.value(), getProviderName(responseContext.attributes()))
                 .tag(OTelGenAiAttributes.REQUEST_MODEL.value(),
                      responseContext.chatRequest().parameters().modelName())
                 .tag(OTelGenAiAttributes.RESPONSE_MODEL.value(),
