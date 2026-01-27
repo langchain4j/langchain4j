@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.internal.VirtualThreadUtils;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.protocol.McpInitializationNotification;
@@ -15,6 +16,9 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,6 +34,7 @@ public class StdioMcpTransport implements McpTransport {
     private static final Logger log = LoggerFactory.getLogger(StdioMcpTransport.class);
     private volatile McpOperationHandler messageHandler;
     private ProcessStderrHandler stderrHandler;
+    private ExecutorService executorService;
 
     public StdioMcpTransport(Builder builder) {
         this.command = builder.command;
@@ -55,10 +60,10 @@ public class StdioMcpTransport implements McpTransport {
         }
         jsonRpcIoHandler = new JsonRpcIoHandler(
                 process.getInputStream(), process.getOutputStream(), messageHandler::handle, logEvents, logger);
-        // FIXME: where should we obtain the thread?
-        new Thread(jsonRpcIoHandler).start();
         stderrHandler = new ProcessStderrHandler(process);
-        new Thread(stderrHandler).start();
+        executorService = createExecutorService();
+        executorService.submit(jsonRpcIoHandler);
+        executorService.submit(stderrHandler);
     }
 
     @Override
@@ -116,7 +121,26 @@ public class StdioMcpTransport implements McpTransport {
             jsonRpcIoHandler.close();
         } catch (Exception ignored) {
         }
+        if (executorService != null) {
+            executorService.shutdown();
+            try {
+                if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
+                    executorService.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                executorService.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+        }
         process.destroy();
+    }
+
+    private static ExecutorService createExecutorService() {
+        return VirtualThreadUtils.createVirtualThreadExecutor(() -> Executors.newFixedThreadPool(2, r -> {
+            Thread t = new Thread(r, "mcp-stdio-transport");
+            t.setDaemon(true);
+            return t;
+        }));
     }
 
     public static Builder builder() {
