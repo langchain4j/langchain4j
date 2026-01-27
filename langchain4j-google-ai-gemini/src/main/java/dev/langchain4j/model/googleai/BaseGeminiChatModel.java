@@ -152,7 +152,10 @@ class BaseGeminiChatModel {
                         .build())
                 .safetySettings(this.safetySettings)
                 .tools(fromToolSepcsToGTool(
-                        chatRequest.toolSpecifications(), this.allowCodeExecution, this.allowGoogleSearch, this.allowUrlContext))
+                        chatRequest.toolSpecifications(),
+                        this.allowCodeExecution,
+                        this.allowGoogleSearch,
+                        this.allowUrlContext))
                 .toolConfig(toToolConfig(parameters.toolChoice(), this.functionCallingConfig))
                 .build();
     }

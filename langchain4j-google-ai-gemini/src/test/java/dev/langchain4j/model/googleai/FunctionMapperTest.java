@@ -293,7 +293,6 @@ class FunctionMapperTest {
         assertThat(geminiTool.googleSearch()).isNotNull();
     }
 
-
     private static String withoutNullValues(String toString) {
         return toString.replaceAll("(, )?(?<=(, |\\())[^\\s(]+?=null(?:, )?", " ")
                 .replaceFirst(", \\)$", ")");

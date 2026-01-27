@@ -9,8 +9,8 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiFunctionCall;
 import dev.langchain4j.model.googleai.GeminiGenerateContentRequest.GeminiTool;
 import dev.langchain4j.model.googleai.GeminiGenerateContentRequest.GeminiTool.GeminiCodeExecution;
-import dev.langchain4j.model.googleai.GeminiGenerateContentRequest.GeminiTool.GeminiUrlContext;
 import dev.langchain4j.model.googleai.GeminiGenerateContentRequest.GeminiTool.GeminiGoogleSearchRetrieval;
+import dev.langchain4j.model.googleai.GeminiGenerateContentRequest.GeminiTool.GeminiUrlContext;
 import java.util.List;
 import java.util.Objects;
 
@@ -21,7 +21,7 @@ class FunctionMapper {
             boolean allowGoogleSearch,
             boolean allowUrlContext) {
         if (isNullOrEmpty(specifications)) {
-            if (allowCodeExecution || allowUrlContext || allowGoogleSearch) {
+            if (allowCodeExecution || allowGoogleSearch || allowUrlContext) {
                 // if there's no tool specification, but there's Python code execution or Google Search retrieval
                 // or URL context
                 return new GeminiTool(
