@@ -64,7 +64,7 @@ class FunctionMapperTest {
         assertThat(toolSpecification.description()).isEqualTo("Get the distance between the user and the ISS.");
 
         // when
-        GeminiTool geminiTool = FunctionMapper.fromToolSepcsToGTool(toolSpecifications, false);
+        GeminiTool geminiTool = FunctionMapper.fromToolSepcsToGTool(toolSpecifications, false, false);
         System.out.println("\ngeminiTool = " + withoutNullValues(geminiTool.toString()));
 
         // then
@@ -171,7 +171,7 @@ class FunctionMapperTest {
         System.out.println("\ntoolSpecifications = " + toolSpecifications);
 
         // when
-        GeminiTool geminiTool = FunctionMapper.fromToolSepcsToGTool(toolSpecifications, false);
+        GeminiTool geminiTool = FunctionMapper.fromToolSepcsToGTool(toolSpecifications, false, false);
         System.out.println("\ngeminiTool = " + withoutNullValues(geminiTool.toString()));
 
         // then
@@ -240,7 +240,7 @@ class FunctionMapperTest {
         System.out.println("\nspec = " + spec);
 
         // when
-        GeminiTool geminiTool = FunctionMapper.fromToolSepcsToGTool(Arrays.asList(spec), false);
+        GeminiTool geminiTool = FunctionMapper.fromToolSepcsToGTool(Arrays.asList(spec), false, false);
         System.out.println("\ngeminiTool = " + withoutNullValues(geminiTool.toString()));
 
         // then
@@ -261,6 +261,21 @@ class FunctionMapperTest {
         assertThat(arrayParameter.getItems().getType()).isEqualTo(GeminiType.STRING);
         assertThat(arrayParameter.getItems().getItems()).isNull();
         assertThat(arrayParameter.getItems().getProperties()).isNull();
+    }
+
+    @Test
+    void should_include_url_context_tool() {
+        // given
+        boolean allowUrlContext = true;
+
+        // when
+        GeminiTool geminiTool = FunctionMapper.fromToolSepcsToGTool(null, false, allowUrlContext);
+
+        // then
+        assertThat(geminiTool).isNotNull();
+        assertThat(geminiTool.functionDeclarations()).isNull();
+        assertThat(geminiTool.codeExecution()).isNull();
+        assertThat(geminiTool.urlContext()).isNotNull();
     }
 
     private static String withoutNullValues(String toString) {

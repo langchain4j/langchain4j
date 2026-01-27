@@ -1230,7 +1230,7 @@ class GoogleAiGeminiBatchChatModelTest {
     private static GeminiGenerateContentResponse toGeminiResponse(ChatResponse chatResponse) {
         var part = GeminiPart.builder().text(chatResponse.aiMessage().text()).build();
         var content = new GeminiContent(List.of(part), "model");
-        var candidate = new GeminiCandidate(content, GeminiFinishReason.STOP);
+        var candidate = new GeminiCandidate(content, GeminiFinishReason.STOP, null);
         var usageMetadata = GeminiUsageMetadata.builder()
                 .promptTokenCount(chatResponse.metadata().tokenUsage().inputTokenCount())
                 .candidatesTokenCount(chatResponse.metadata().tokenUsage().outputTokenCount())

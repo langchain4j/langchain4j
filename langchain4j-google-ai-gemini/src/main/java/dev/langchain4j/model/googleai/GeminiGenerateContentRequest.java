@@ -76,9 +76,15 @@ record GeminiGenerateContentRequest(
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record GeminiTool(List<GeminiFunctionDeclaration> functionDeclarations, GeminiCodeExecution codeExecution) {
+    record GeminiTool(
+            List<GeminiFunctionDeclaration> functionDeclarations,
+            GeminiCodeExecution codeExecution,
+            GeminiUrlContext urlContext) {
         @JsonIgnoreProperties(ignoreUnknown = true)
         record GeminiCodeExecution() {}
+
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        record GeminiUrlContext() {}
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)

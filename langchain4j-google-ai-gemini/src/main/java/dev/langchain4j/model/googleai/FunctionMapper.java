@@ -9,17 +9,22 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiFunctionCall;
 import dev.langchain4j.model.googleai.GeminiGenerateContentRequest.GeminiTool;
 import dev.langchain4j.model.googleai.GeminiGenerateContentRequest.GeminiTool.GeminiCodeExecution;
+import dev.langchain4j.model.googleai.GeminiGenerateContentRequest.GeminiTool.GeminiUrlContext;
 import java.util.List;
 import java.util.Objects;
 
 class FunctionMapper {
-    static GeminiTool fromToolSepcsToGTool(List<ToolSpecification> specifications, boolean allowCodeExecution) {
+    static GeminiTool fromToolSepcsToGTool(
+            List<ToolSpecification> specifications, boolean allowCodeExecution, boolean allowUrlContext) {
         if (isNullOrEmpty(specifications)) {
-            if (allowCodeExecution) {
-                // if there's no tool specification, but there's Python code execution
-                return new GeminiTool(null, new GeminiCodeExecution());
+            if (allowCodeExecution || allowUrlContext) {
+                // if there's no tool specification, but there's Python code execution or URL context
+                return new GeminiTool(
+                        null,
+                        allowCodeExecution ? new GeminiCodeExecution() : null,
+                        allowUrlContext ? new GeminiUrlContext() : null);
             } else {
-                // if there's neither tool specification nor Python code execution
+                // if there's neither tool specification nor Python code execution nor URL context
                 return null;
             }
         }
@@ -44,7 +49,8 @@ class FunctionMapper {
 
         return new GeminiTool(
                 functionDeclarations.isEmpty() ? null : functionDeclarations,
-                allowCodeExecution ? new GeminiCodeExecution() : null);
+                allowCodeExecution ? new GeminiCodeExecution() : null,
+                allowUrlContext ? new GeminiUrlContext() : null);
     }
 
     static List<ToolExecutionRequest> toToolExecutionRequests(List<GeminiFunctionCall> functionCalls) {
