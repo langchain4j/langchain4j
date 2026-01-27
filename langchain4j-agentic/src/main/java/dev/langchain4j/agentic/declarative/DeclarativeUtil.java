@@ -24,15 +24,15 @@ public class DeclarativeUtil {
 
     private DeclarativeUtil() { }
 
-    public static void configureAgent(Class<?> agentType, AgentBuilder<?> agentBuilder) {
+    public static void configureAgent(Class<?> agentType, AgentBuilder<?, ?> agentBuilder) {
         configureAgent(agentType, null, true, agentBuilder, ctx -> { });
     }
 
-    public static void configureAgent(Class<?> agentType, ChatModel chatModel, AgentBuilder<?> agentBuilder, Consumer<AgenticServices.DeclarativeAgentCreationContext> agentConfigurator) {
+    public static void configureAgent(Class<?> agentType, ChatModel chatModel, AgentBuilder<?, ?> agentBuilder, Consumer<AgenticServices.DeclarativeAgentCreationContext> agentConfigurator) {
         configureAgent(agentType, chatModel, false, agentBuilder, agentConfigurator);
     }
 
-    private static void configureAgent(Class<?> agentType, ChatModel chatModel, boolean allowNullChatModel, AgentBuilder<?> agentBuilder, Consumer<AgenticServices.DeclarativeAgentCreationContext> agentConfigurator) {
+    private static void configureAgent(Class<?> agentType, ChatModel chatModel, boolean allowNullChatModel, AgentBuilder<?, ?> agentBuilder, Consumer<AgenticServices.DeclarativeAgentCreationContext> agentConfigurator) {
         getAnnotatedMethodOnClass(agentType, ToolsSupplier.class)
                 .ifPresent(method -> {
                     checkArguments(method);
