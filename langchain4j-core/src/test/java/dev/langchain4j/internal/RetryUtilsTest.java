@@ -131,4 +131,22 @@ class RetryUtilsTest {
         verify(mockAction, times(1)).call();
         verifyNoMoreInteractions(mockAction);
     }
+
+    @Test
+    void should_not_retry_after_interruption() throws Exception {
+        @SuppressWarnings("unchecked")
+        Callable<String> mockAction = mock(Callable.class);
+        when(mockAction.call()).thenAnswer(invocation -> {
+            Thread.currentThread().interrupt();
+            throw new InterruptedException("Simulated interruption");
+        });
+
+        RetryUtils.RetryPolicy policy =
+                RetryUtils.retryPolicyBuilder().delayMillis(100).build();
+
+        assertThatThrownBy(() -> policy.withRetry(mockAction, 3)).isInstanceOf(RuntimeException.class);
+        verify(mockAction, times(1)).call();
+        verifyNoMoreInteractions(mockAction);
+        assertThat(Thread.interrupted()).isTrue();
+    }
 }
