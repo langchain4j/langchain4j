@@ -305,7 +305,7 @@ public class ToolService {
                 ToolExecutionRequest request = entry.getKey();
                 ToolExecutionResult result = entry.getValue();
                 ToolExecutionResultMessage resultMessage =
-                        ToolExecutionResultMessage.from(request, result.resultText());
+                        ToolExecutionResultMessage.from(request, result.resultText(), result.isError());
 
                 ToolExecution toolExecution =
                         ToolExecution.builder().request(request).result(result).build();

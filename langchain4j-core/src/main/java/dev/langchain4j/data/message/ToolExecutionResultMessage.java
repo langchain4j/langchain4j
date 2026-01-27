@@ -16,6 +16,7 @@ public class ToolExecutionResultMessage implements ChatMessage {
     private final String id;
     private final String toolName;
     private final String text;
+    private final boolean isError;
 
     /**
      * Creates a {@link ToolExecutionResultMessage}.
@@ -24,9 +25,21 @@ public class ToolExecutionResultMessage implements ChatMessage {
      * @param text the result of the tool execution.
      */
     public ToolExecutionResultMessage(String id, String toolName, String text) {
+        this(id, toolName, text, false);
+    }
+
+    /**
+     * Creates a {@link ToolExecutionResultMessage}.
+     * @param id the id of the tool.
+     * @param toolName the name of the tool.
+     * @param text the result of the tool execution.
+     * @param isError whether the tool execution resulted in an error.
+     */
+    public ToolExecutionResultMessage(String id, String toolName, String text, boolean isError) {
         this.id = id;
         this.toolName = toolName;
         this.text = ensureNotNull(text, "text");
+        this.isError = isError;
     }
 
     /**
@@ -53,6 +66,14 @@ public class ToolExecutionResultMessage implements ChatMessage {
         return text;
     }
 
+    /**
+     * Returns whether the tool execution resulted in an error.
+     * @return true if the tool execution resulted in an error, false otherwise.
+     */
+    public boolean isError() {
+        return isError;
+    }
+
     @Override
     public ChatMessageType type() {
         return TOOL_EXECUTION_RESULT;
@@ -65,12 +86,13 @@ public class ToolExecutionResultMessage implements ChatMessage {
         ToolExecutionResultMessage that = (ToolExecutionResultMessage) o;
         return Objects.equals(this.id, that.id)
                 && Objects.equals(this.toolName, that.toolName)
-                && Objects.equals(this.text, that.text);
+                && Objects.equals(this.text, that.text)
+                && this.isError == that.isError;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, toolName, text);
+        return Objects.hash(id, toolName, text, isError);
     }
 
     @Override
@@ -78,7 +100,8 @@ public class ToolExecutionResultMessage implements ChatMessage {
         return "ToolExecutionResultMessage {" + " id = "
                 + quoted(id) + " toolName = "
                 + quoted(toolName) + " text = "
-                + quoted(text) + " }";
+                + quoted(text) + " isError = "
+                + isError + " }";
     }
 
     /**
@@ -93,6 +116,18 @@ public class ToolExecutionResultMessage implements ChatMessage {
 
     /**
      * Creates a {@link ToolExecutionResultMessage} from a {@link ToolExecutionRequest} and the result of the tool execution.
+     * @param request the request.
+     * @param toolExecutionResult the result of the tool execution.
+     * @param isError whether the tool execution resulted in an error.
+     * @return the {@link ToolExecutionResultMessage}.
+     */
+    public static ToolExecutionResultMessage from(
+            ToolExecutionRequest request, String toolExecutionResult, boolean isError) {
+        return new ToolExecutionResultMessage(request.id(), request.name(), toolExecutionResult, isError);
+    }
+
+    /**
+     * Creates a {@link ToolExecutionResultMessage} from a {@link ToolExecutionRequest} and the result of the tool execution.
      * @param id the id of the tool.
      * @param toolName the name of the tool.
      * @param toolExecutionResult the result of the tool execution.
@@ -100,6 +135,19 @@ public class ToolExecutionResultMessage implements ChatMessage {
      */
     public static ToolExecutionResultMessage from(String id, String toolName, String toolExecutionResult) {
         return new ToolExecutionResultMessage(id, toolName, toolExecutionResult);
+    }
+
+    /**
+     * Creates a {@link ToolExecutionResultMessage} from a {@link ToolExecutionRequest} and the result of the tool execution.
+     * @param id the id of the tool.
+     * @param toolName the name of the tool.
+     * @param toolExecutionResult the result of the tool execution.
+     * @param isError whether the tool execution resulted in an error.
+     * @return the {@link ToolExecutionResultMessage}.
+     */
+    public static ToolExecutionResultMessage from(
+            String id, String toolName, String toolExecutionResult, boolean isError) {
+        return new ToolExecutionResultMessage(id, toolName, toolExecutionResult, isError);
     }
 
     /**
