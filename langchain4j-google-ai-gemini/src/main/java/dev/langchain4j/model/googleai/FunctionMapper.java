@@ -18,17 +18,17 @@ class FunctionMapper {
     static GeminiTool fromToolSepcsToGTool(
             List<ToolSpecification> specifications,
             boolean allowCodeExecution,
-            boolean allowUrlContext,
-            boolean allowGoogleSearch) {
+            boolean allowGoogleSearch,
+            boolean allowUrlContext) {
         if (isNullOrEmpty(specifications)) {
             if (allowCodeExecution || allowUrlContext || allowGoogleSearch) {
-                // if there's no tool specification, but there's Python code execution or URL context or Google Search
-                // retrieval
+                // if there's no tool specification, but there's Python code execution or Google Search retrieval
+                // or URL context
                 return new GeminiTool(
                         null,
                         allowCodeExecution ? new GeminiCodeExecution() : null,
-                        allowUrlContext ? new GeminiUrlContext() : null,
-                        allowGoogleSearch ? new GeminiGoogleSearchRetrieval() : null);
+                        allowGoogleSearch ? new GeminiGoogleSearchRetrieval() : null,
+                        allowUrlContext ? new GeminiUrlContext() : null);
             } else {
                 // if there's neither tool specification nor Python code execution nor URL context nor Google Search
                 // retrieval
@@ -57,8 +57,8 @@ class FunctionMapper {
         return new GeminiTool(
                 functionDeclarations.isEmpty() ? null : functionDeclarations,
                 allowCodeExecution ? new GeminiCodeExecution() : null,
-                allowUrlContext ? new GeminiUrlContext() : null,
-                allowGoogleSearch ? new GeminiGoogleSearchRetrieval() : null);
+                allowGoogleSearch ? new GeminiGoogleSearchRetrieval() : null,
+                allowUrlContext ? new GeminiUrlContext() : null);
     }
 
     static List<ToolExecutionRequest> toToolExecutionRequests(List<GeminiFunctionCall> functionCalls) {

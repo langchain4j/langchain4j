@@ -269,7 +269,7 @@ class FunctionMapperTest {
         boolean allowUrlContext = true;
 
         // when
-        GeminiTool geminiTool = FunctionMapper.fromToolSepcsToGTool(null, false, allowUrlContext, false);
+        GeminiTool geminiTool = FunctionMapper.fromToolSepcsToGTool(null, false, false, allowUrlContext);
 
         // then
         assertThat(geminiTool).isNotNull();
@@ -284,7 +284,7 @@ class FunctionMapperTest {
         boolean allowGoogleSearch = true;
 
         // when
-        GeminiTool geminiTool = FunctionMapper.fromToolSepcsToGTool(null, false, false, allowGoogleSearch);
+        GeminiTool geminiTool = FunctionMapper.fromToolSepcsToGTool(null, false, allowGoogleSearch, false);
 
         // then
         assertThat(geminiTool).isNotNull();

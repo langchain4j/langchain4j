@@ -81,8 +81,8 @@ record GeminiGenerateContentRequest(
             List<GeminiFunctionDeclaration> functionDeclarations,
             GeminiCodeExecution codeExecution,
 
-            GeminiUrlContext urlContext,
-            @JsonProperty("google_search") GeminiGoogleSearchRetrieval googleSearch) {
+            @JsonProperty("google_search") GeminiGoogleSearchRetrieval googleSearch,
+            GeminiUrlContext urlContext) {
 
         @JsonIgnoreProperties(ignoreUnknown = true)
         record GeminiCodeExecution() {}
