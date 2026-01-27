@@ -69,9 +69,9 @@ import java.util.Set;
 @Internal
 public class AnthropicMapper {
 
-    public static final String THINKING_SIGNATURE_KEY = "thinking_signature"; 
-    public static final String REDACTED_THINKING_KEY = "redacted_thinking"; 
-    public static final String SERVER_TOOL_RESULTS_KEY = "server_tool_results"; 
+    public static final String THINKING_SIGNATURE_KEY = "thinking_signature";
+    public static final String REDACTED_THINKING_KEY = "redacted_thinking";
+    public static final String SERVER_TOOL_RESULTS_KEY = "server_tool_results";
     public static final String CACHE_CONTROL = "cache_control";
 
     public static List<AnthropicMessage> toAnthropicMessages(List<ChatMessage> messages) {
@@ -114,11 +114,11 @@ public class AnthropicMapper {
     }
 
     private static AnthropicToolResultContent toAnthropicToolResultContent(ToolExecutionResultMessage message) {
-        return new AnthropicToolResultContent(message.id(), message.text(), null); 
+        return new AnthropicToolResultContent(message.id(), message.text(), null);
     }
 
     private static List<AnthropicMessageContent> toAnthropicMessageContents(UserMessage message) {
-        boolean shouldCache = message.attributes() != null 
+        boolean shouldCache = message.attributes() != null
                 && "ephemeral".equals(message.attributes().get(CACHE_CONTROL));
 
         List<dev.langchain4j.data.message.Content> contents = message.contents();
@@ -132,10 +132,8 @@ public class AnthropicMapper {
             if (content instanceof TextContent) {
                 TextContent textContent = (TextContent) content;
                 if (applyCache) {
-                    anthropicContents.add(new AnthropicTextContent(
-                        textContent.text(), 
-                        AnthropicCacheType.EPHEMERAL.cacheControl()
-                    ));
+                    anthropicContents.add(
+                            new AnthropicTextContent(textContent.text(), AnthropicCacheType.EPHEMERAL.cacheControl()));
                 } else {
                     anthropicContents.add(new AnthropicTextContent(textContent.text()));
                 }
@@ -143,7 +141,8 @@ public class AnthropicMapper {
                 ImageContent imageContent = (ImageContent) content;
                 Image image = imageContent.image();
                 if (image.url() != null) {
-                    anthropicContents.add(AnthropicImageContent.fromUrl(image.url().toString()));
+                    anthropicContents.add(
+                            AnthropicImageContent.fromUrl(image.url().toString()));
                 } else {
                     anthropicContents.add(AnthropicImageContent.fromBase64(
                             ensureNotBlank(image.mimeType(), "mimeType"),
@@ -153,7 +152,8 @@ public class AnthropicMapper {
                 PdfFileContent pdfFileContent = (PdfFileContent) content;
                 PdfFile pdfFile = pdfFileContent.pdfFile();
                 if (pdfFile.url() != null) {
-                    anthropicContents.add(AnthropicPdfContent.fromUrl(pdfFile.url().toString()));
+                    anthropicContents.add(
+                            AnthropicPdfContent.fromUrl(pdfFile.url().toString()));
                 } else {
                     anthropicContents.add(AnthropicPdfContent.fromBase64(
                             pdfFile.mimeType(), ensureNotBlank(pdfFile.base64Data(), "base64Data")));

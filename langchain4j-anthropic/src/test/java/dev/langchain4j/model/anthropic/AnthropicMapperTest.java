@@ -275,19 +275,16 @@ class AnthropicMapperTest {
         // then
         // FIXED: Replaced Text Block with concatenated strings
         assertThat(new ObjectMapper().writeValueAsString(map))
-                .isEqualToIgnoringWhitespace(
-                        "{\n" +
-                        "  \"type\": \"object\",\n" +
-                        "  \"properties\": {\n" +
-                        "    \"name\": {\"type\": \"string\"},\n" +
-                        "    \"email\": {\"type\": \"string\"},\n" +
-                        "    \"plan_interest\": {\"type\": \"string\"},\n" +
-                        "    \"demo_requested\": {\"type\": \"boolean\"}\n" +
-                        "  },\n" +
-                        "  \"required\": [\"name\", \"email\", \"plan_interest\", \"demo_requested\"],\n" +
-                        "  \"additionalProperties\": false\n" +
-                        "}"
-                );
+                .isEqualToIgnoringWhitespace("{\n" + "  \"type\": \"object\",\n"
+                        + "  \"properties\": {\n"
+                        + "    \"name\": {\"type\": \"string\"},\n"
+                        + "    \"email\": {\"type\": \"string\"},\n"
+                        + "    \"plan_interest\": {\"type\": \"string\"},\n"
+                        + "    \"demo_requested\": {\"type\": \"boolean\"}\n"
+                        + "  },\n"
+                        + "  \"required\": [\"name\", \"email\", \"plan_interest\", \"demo_requested\"],\n"
+                        + "  \"additionalProperties\": false\n"
+                        + "}");
     }
 
     @Test
@@ -308,22 +305,19 @@ class AnthropicMapperTest {
         // then
         // FIXED: Replaced Text Block with concatenated strings
         assertThat(new ObjectMapper().writeValueAsString(map))
-                .isEqualToIgnoringWhitespace(
-                        "{\n" +
-                        "  \"type\": \"object\",\n" +
-                        "  \"properties\": {\n" +
-                        "    \"author\": { \"type\": \"string\" },\n" +
-                        "    \"title\": { \"type\": \"string\" },\n" +
-                        "    \"style\": {\n" +
-                        "      \"type\": \"string\",\n" +
-                        "      \"enum\": [\"classical\", \"modern\"]\n" +
-                        "    },\n" +
-                        "    \"publicationYear\": { \"type\": \"integer\" }\n" +
-                        "  },\n" +
-                        "  \"required\": [\"author\", \"title\"],\n" +
-                        "  \"additionalProperties\": false\n" +
-                        "}"
-                );
+                .isEqualToIgnoringWhitespace("{\n" + "  \"type\": \"object\",\n"
+                        + "  \"properties\": {\n"
+                        + "    \"author\": { \"type\": \"string\" },\n"
+                        + "    \"title\": { \"type\": \"string\" },\n"
+                        + "    \"style\": {\n"
+                        + "      \"type\": \"string\",\n"
+                        + "      \"enum\": [\"classical\", \"modern\"]\n"
+                        + "    },\n"
+                        + "    \"publicationYear\": { \"type\": \"integer\" }\n"
+                        + "  },\n"
+                        + "  \"required\": [\"author\", \"title\"],\n"
+                        + "  \"additionalProperties\": false\n"
+                        + "}");
     }
 
     static Stream<Arguments> test_toAnthropicTool() {
@@ -422,28 +416,29 @@ class AnthropicMapperTest {
         // Then
         assertThat(anthropicMessages).hasSize(1);
         AnthropicMessage message = anthropicMessages.get(0);
-        
+
         assertThat(message.content).hasSize(1);
-        
+
         // 1. Get the content as the generic interface
         AnthropicMessageContent content = message.content.get(0);
-        
+
         // 2. Verify it is a TextContent
         assertThat(content).isInstanceOf(AnthropicTextContent.class);
-        
+
         // 3. Cast it safely
         AnthropicTextContent textContent = (AnthropicTextContent) content;
-        
+
         // 4. Verify the text
         assertThat(textContent.text).isEqualTo("Hello cached world");
-        
-        // 5. Verify the Cache Control 
+
+        // 5. Verify the Cache Control
         // (Instead of checking private fields, we compare against the expected object)
         assertThat(textContent.cacheControl).isNotNull();
         assertThat(textContent.cacheControl)
-        .extracting("type") // <--- This is the magic fix!
-        .isEqualTo("ephemeral");
+                .extracting("type") // <--- This is the magic fix!
+                .isEqualTo("ephemeral");
     }
+
     @SafeVarargs
     private static <K, V> Map<K, V> mapOf(Map.Entry<K, V>... entries) {
         return Stream.of(entries).collect(toMap(Map.Entry::getKey, Map.Entry::getValue));
