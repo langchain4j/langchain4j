@@ -33,6 +33,7 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicImageContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicMessage;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicMessageContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicPdfContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTool;
@@ -272,21 +273,21 @@ class AnthropicMapperTest {
         Map<String, Object> map = toAnthropicSchema(jsonSchemaElement);
 
         // then
+        // FIXED: Replaced Text Block with concatenated strings
         assertThat(new ObjectMapper().writeValueAsString(map))
                 .isEqualToIgnoringWhitespace(
-                        """
-                        {
-                          "type": "object",
-                          "properties": {
-                              "name": {"type": "string"},
-                              "email": {"type": "string"},
-                              "plan_interest": {"type": "string"},
-                              "demo_requested": {"type": "boolean"}
-                          },
-                          "required": ["name", "email", "plan_interest", "demo_requested"],
-                          "additionalProperties": false
-                        }
-                       """);
+                        "{\n" +
+                        "  \"type\": \"object\",\n" +
+                        "  \"properties\": {\n" +
+                        "    \"name\": {\"type\": \"string\"},\n" +
+                        "    \"email\": {\"type\": \"string\"},\n" +
+                        "    \"plan_interest\": {\"type\": \"string\"},\n" +
+                        "    \"demo_requested\": {\"type\": \"boolean\"}\n" +
+                        "  },\n" +
+                        "  \"required\": [\"name\", \"email\", \"plan_interest\", \"demo_requested\"],\n" +
+                        "  \"additionalProperties\": false\n" +
+                        "}"
+                );
     }
 
     @Test
@@ -305,24 +306,24 @@ class AnthropicMapperTest {
         Map<String, Object> map = toAnthropicSchema(bookRecord);
 
         // then
+        // FIXED: Replaced Text Block with concatenated strings
         assertThat(new ObjectMapper().writeValueAsString(map))
                 .isEqualToIgnoringWhitespace(
-                        """
-                        {
-                          "type": "object",
-                          "properties": {
-                              "author": { "type": "string" },
-                              "title": { "type": "string" },
-                              "style": {
-                                "type": "string",
-                                "enum": ["classical", "modern"]
-                              },
-                              "publicationYear": { "type": "integer" }
-                          },
-                          "required": ["author", "title"],
-                          "additionalProperties": false
-                        }
-                       """);
+                        "{\n" +
+                        "  \"type\": \"object\",\n" +
+                        "  \"properties\": {\n" +
+                        "    \"author\": { \"type\": \"string\" },\n" +
+                        "    \"title\": { \"type\": \"string\" },\n" +
+                        "    \"style\": {\n" +
+                        "      \"type\": \"string\",\n" +
+                        "      \"enum\": [\"classical\", \"modern\"]\n" +
+                        "    },\n" +
+                        "    \"publicationYear\": { \"type\": \"integer\" }\n" +
+                        "  },\n" +
+                        "  \"required\": [\"author\", \"title\"],\n" +
+                        "  \"additionalProperties\": false\n" +
+                        "}"
+                );
     }
 
     static Stream<Arguments> test_toAnthropicTool() {
@@ -409,6 +410,40 @@ class AnthropicMapperTest {
         assertThat(aiMessage.attributes()).doesNotContainKey(SERVER_TOOL_RESULTS_KEY);
     }
 
+    @Test
+    void should_map_user_message_with_cache_control_metadata() {
+        // Given
+        UserMessage userMessage = UserMessage.from("Hello cached world");
+        userMessage.attributes().put("cache_control", "ephemeral");
+
+        // When
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(userMessage));
+
+        // Then
+        assertThat(anthropicMessages).hasSize(1);
+        AnthropicMessage message = anthropicMessages.get(0);
+        
+        assertThat(message.content).hasSize(1);
+        
+        // 1. Get the content as the generic interface
+        AnthropicMessageContent content = message.content.get(0);
+        
+        // 2. Verify it is a TextContent
+        assertThat(content).isInstanceOf(AnthropicTextContent.class);
+        
+        // 3. Cast it safely
+        AnthropicTextContent textContent = (AnthropicTextContent) content;
+        
+        // 4. Verify the text
+        assertThat(textContent.text).isEqualTo("Hello cached world");
+        
+        // 5. Verify the Cache Control 
+        // (Instead of checking private fields, we compare against the expected object)
+        assertThat(textContent.cacheControl).isNotNull();
+        assertThat(textContent.cacheControl)
+        .extracting("type") // <--- This is the magic fix!
+        .isEqualTo("ephemeral");
+    }
     @SafeVarargs
     private static <K, V> Map<K, V> mapOf(Map.Entry<K, V>... entries) {
         return Stream.of(entries).collect(toMap(Map.Entry::getKey, Map.Entry::getValue));
