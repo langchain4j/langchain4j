@@ -115,7 +115,7 @@ public class AnthropicMapper {
     }
 
     private static AnthropicToolResultContent toAnthropicToolResultContent(ToolExecutionResultMessage message) {
-        return new AnthropicToolResultContent(message.id(), message.text(), null); // TODO propagate isError
+        return new AnthropicToolResultContent(message.id(), message.text(), message.isError() ? true : null);
     }
 
     private static List<AnthropicMessageContent> toAnthropicMessageContents(UserMessage message) {

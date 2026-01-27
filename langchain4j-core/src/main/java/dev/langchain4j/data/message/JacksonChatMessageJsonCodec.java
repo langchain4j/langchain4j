@@ -133,13 +133,17 @@ public class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec {
     private abstract static class ToolExecutionRequestMixin {}
 
     @JsonInclude(NON_NULL)
-    private static class ToolExecutionResultMessageMixin {
+    private abstract static class ToolExecutionResultMessageMixin {
 
         @JsonCreator
         public ToolExecutionResultMessageMixin(
                 @JsonProperty("id") String id,
                 @JsonProperty("toolName") String toolName,
-                @JsonProperty("text") String text) {}
+                @JsonProperty("text") String text,
+                @JsonProperty("isError") boolean isError) {}
+
+        @JsonProperty("isError")
+        abstract boolean isError();
     }
 
     @JsonInclude(NON_NULL)

@@ -8,11 +8,11 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -95,7 +95,10 @@ class ChatMessageSerializerTest {
                         "{\"text\":\"test-text\",\"thinking\":\"test-thinking\",\"toolExecutionRequests\":[{\"name\":\"weather\",\"arguments\":\"{\\\"city\\\": \\\"Munich\\\"}\"}],\"attributes\":{\"name\":\"Klaus\",\"age\":42,\"extra\":[\"one\",\"two\"]},\"type\":\"AI\"}"),
                 Arguments.of(
                         ToolExecutionResultMessage.from("12345", "weather", "sunny"),
-                        "{\"id\":\"12345\",\"toolName\":\"weather\",\"text\":\"sunny\",\"type\":\"TOOL_EXECUTION_RESULT\"}"),
+                        "{\"id\":\"12345\",\"toolName\":\"weather\",\"text\":\"sunny\",\"isError\":false,\"type\":\"TOOL_EXECUTION_RESULT\"}"),
+                Arguments.of(
+                        ToolExecutionResultMessage.from("12345", "weather", "error occurred", true),
+                        "{\"id\":\"12345\",\"toolName\":\"weather\",\"text\":\"error occurred\",\"isError\":true,\"type\":\"TOOL_EXECUTION_RESULT\"}"),
                 Arguments.of(
                         CustomMessage.from(new LinkedHashMap<>() {
                             {
@@ -137,7 +140,8 @@ class ChatMessageSerializerTest {
     @Test
     void should_deserialize_UserMessage_without_attributes() {
 
-        UserMessage deserialized = (UserMessage) messageFromJson("{\"contents\":[{\"text\":\"hello\",\"type\":\"TEXT\"}],\"type\":\"USER\"}");
+        UserMessage deserialized = (UserMessage)
+                messageFromJson("{\"contents\":[{\"text\":\"hello\",\"type\":\"TEXT\"}],\"type\":\"USER\"}");
 
         assertThat(deserialized.name()).isNull();
         assertThat(deserialized.contents()).containsExactly(TextContent.from("hello"));
