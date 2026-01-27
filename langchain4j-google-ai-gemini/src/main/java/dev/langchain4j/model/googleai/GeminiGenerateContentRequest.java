@@ -1,6 +1,7 @@
 package dev.langchain4j.model.googleai;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -79,12 +80,18 @@ record GeminiGenerateContentRequest(
     record GeminiTool(
             List<GeminiFunctionDeclaration> functionDeclarations,
             GeminiCodeExecution codeExecution,
-            GeminiUrlContext urlContext) {
+
+            GeminiUrlContext urlContext,
+            @JsonProperty("google_search") GeminiGoogleSearchRetrieval googleSearch) {
+
         @JsonIgnoreProperties(ignoreUnknown = true)
         record GeminiCodeExecution() {}
 
         @JsonIgnoreProperties(ignoreUnknown = true)
         record GeminiUrlContext() {}
+
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        record GeminiGoogleSearchRetrieval() {}
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)

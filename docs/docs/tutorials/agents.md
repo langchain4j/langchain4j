@@ -157,7 +157,26 @@ public interface UntypedAgent {
 
 The values in that input map are copied into the `AgenticScope` shared variables, so that they can be accessed by the subagents. The output of the `novelCreator` agent is also taken from the `AgenticScope` shared variable named "story", which has been formerly rewritten by all other agents during the novel creation and editing workflow execution.
 
-Optionally, the workflow agent can also be provided with typed interface, so that it can be invoked with a strongly typed input and output. In this case, the `UntypedAgent` interface can be replaced with a more specific one, like:
+Note that also single agents can be defined as `UntypedAgent` instances, without the need of providing a typed interface. For example, the `CreativeWriter` agent could have been defined as follows:
+
+```java
+UntypedAgent creativeWriter = AgenticServices.agentBuilder()
+        .chatModel(BASE_MODEL)
+        .description("Generate a story based on the given topic")
+        .userMessage("""
+                You are a creative writer.
+                Generate a draft of a story no more than
+                3 sentences long around the given topic.
+                Return only the story and nothing else.
+                The topic is {{topic}}.
+                """)
+        .inputKey(String.class, "topic")
+        .returnType(String.class) // String is the default return type for untyped agents
+        .outputKey("story")
+        .build();
+```
+
+On the other side, even the workflow agent can optionally be provided with a typed interface, so that it can be invoked with a strongly typed input and output. In this case, the `UntypedAgent` interface can be replaced with a more specific one, like:
 
 ```java
 public interface NovelCreator {

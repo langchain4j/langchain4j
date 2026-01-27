@@ -64,7 +64,7 @@ class FunctionMapperTest {
         assertThat(toolSpecification.description()).isEqualTo("Get the distance between the user and the ISS.");
 
         // when
-        GeminiTool geminiTool = FunctionMapper.fromToolSepcsToGTool(toolSpecifications, false, false);
+        GeminiTool geminiTool = FunctionMapper.fromToolSepcsToGTool(toolSpecifications, false, false, false);
         System.out.println("\ngeminiTool = " + withoutNullValues(geminiTool.toString()));
 
         // then
@@ -171,7 +171,7 @@ class FunctionMapperTest {
         System.out.println("\ntoolSpecifications = " + toolSpecifications);
 
         // when
-        GeminiTool geminiTool = FunctionMapper.fromToolSepcsToGTool(toolSpecifications, false, false);
+        GeminiTool geminiTool = FunctionMapper.fromToolSepcsToGTool(toolSpecifications, false, false, false);
         System.out.println("\ngeminiTool = " + withoutNullValues(geminiTool.toString()));
 
         // then
@@ -240,7 +240,7 @@ class FunctionMapperTest {
         System.out.println("\nspec = " + spec);
 
         // when
-        GeminiTool geminiTool = FunctionMapper.fromToolSepcsToGTool(Arrays.asList(spec), false, false);
+        GeminiTool geminiTool = FunctionMapper.fromToolSepcsToGTool(Arrays.asList(spec), false, false, false);
         System.out.println("\ngeminiTool = " + withoutNullValues(geminiTool.toString()));
 
         // then
@@ -269,7 +269,7 @@ class FunctionMapperTest {
         boolean allowUrlContext = true;
 
         // when
-        GeminiTool geminiTool = FunctionMapper.fromToolSepcsToGTool(null, false, allowUrlContext);
+        GeminiTool geminiTool = FunctionMapper.fromToolSepcsToGTool(null, false, allowUrlContext, false);
 
         // then
         assertThat(geminiTool).isNotNull();
@@ -277,6 +277,22 @@ class FunctionMapperTest {
         assertThat(geminiTool.codeExecution()).isNull();
         assertThat(geminiTool.urlContext()).isNotNull();
     }
+
+    @Test
+    void should_include_google_search_retrieval() {
+        // given
+        boolean allowGoogleSearch = true;
+
+        // when
+        GeminiTool geminiTool = FunctionMapper.fromToolSepcsToGTool(null, false, false, allowGoogleSearch);
+
+        // then
+        assertThat(geminiTool).isNotNull();
+        assertThat(geminiTool.functionDeclarations()).isNull();
+        assertThat(geminiTool.codeExecution()).isNull();
+        assertThat(geminiTool.googleSearch()).isNotNull();
+    }
+
 
     private static String withoutNullValues(String toString) {
         return toString.replaceAll("(, )?(?<=(, |\\())[^\\s(]+?=null(?:, )?", " ")
