@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 import dev.langchain4j.model.openai.internal.shared.StreamOptions;
 
 import java.util.ArrayList;
@@ -216,12 +217,14 @@ public final class ChatCompletionRequest {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
         return another instanceof ChatCompletionRequest
                 && equalTo((ChatCompletionRequest) another);
     }
 
+    @JacocoIgnoreCoverageGenerated
     private boolean equalTo(ChatCompletionRequest another) {
         return Objects.equals(model, another.model)
                 && Objects.equals(messages, another.messages)
@@ -252,6 +255,7 @@ public final class ChatCompletionRequest {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         int h = 5381;
         h += (h << 5) + Objects.hashCode(model);
@@ -284,6 +288,7 @@ public final class ChatCompletionRequest {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public String toString() {
         return "ChatCompletionRequest{"
                 + "model=" + model

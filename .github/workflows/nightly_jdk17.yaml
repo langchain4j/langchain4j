@@ -161,3 +161,10 @@ jobs:
         with:
           name: jacoco-${{ strategy.job-index }}
           path: '**/target/site/jacoco/**'
+
+      - name: Upload JaCoCo Execution Data
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-exec-${{ strategy.job-index }}
+          path: '**/target/jacoco.exec'
