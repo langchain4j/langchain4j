@@ -53,7 +53,6 @@ public class AiServiceContext {
     public Function<Object, Optional<String>> userMessageProvider = DEFAULT_USER_MESSAGE_PROVIDER;
     public Function<Object, Optional<String>> systemMessageProvider = DEFAULT_SYSTEM_MESSAGE_PROVIDER;
 
-
     public BiFunction<ChatRequest, Object, ChatRequest> chatRequestTransformer = (req, memId) -> req;
 
     protected AiServiceContext(Class<?> aiServiceClass) {
