@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Base64;
+import java.util.Map;
 
 import static dev.langchain4j.agentic.Models.baseModel;
 import static dev.langchain4j.agentic.Models.imageGenerationModel;
@@ -116,6 +117,13 @@ public class MultimodalAgentsIT {
 
         @UserMessage("A high-resolution, studio-lit product photograph of {{requiredImage}}")
         @Agent
+        Image generateImageOf(@V("requiredImage") String requiredImage);
+    }
+
+    public interface ImageContentGenerator {
+
+        @UserMessage("A high-resolution, studio-lit product photograph of {{requiredImage}}")
+        @Agent
         ImageContent generateImageOf(@V("requiredImage") String requiredImage);
     }
 
@@ -143,8 +151,53 @@ public class MultimodalAgentsIT {
 
         ImageGenerator imageGenerator = AgenticServices.agentBuilder(ImageGenerator.class)
                 .chatModel(imageGenerationModel(gemini))
-                .outputKey("generatedImage")
+                .outputKey("image")
                 .build();
+
+        UntypedAgent imageExpert = AgenticServices.sequenceBuilder()
+                .subAgents(sceneDescriptorGenerator, imageGenerator)
+                .outputKey("image")
+                .build();
+
+        Image image = (Image) imageExpert.invoke(Map.of("sceneContent", "pack of wolves"));
+
+        assertThat(image).isNotNull();
+        assertThat(image.base64Data()).isNotEmpty();
+        assertThat(image.mimeType()).startsWith("image/");
+
+        writeToDisk(image, "/tmp/output");
+    }
+
+    @Test
+    void image_manipulation_sequence_test() {
+        check_image_manipulation_sequence(true);
+    }
+
+    @Test
+    void image_content_manipulation_sequence_test() {
+        check_image_manipulation_sequence(false);
+    }
+
+    void check_image_manipulation_sequence(boolean generateImage) {
+        var gemini = Models.MODEL_PROVIDER.GEMINI;
+
+        SceneDescriptorGenerator sceneDescriptorGenerator = AgenticServices.agentBuilder(SceneDescriptorGenerator.class)
+                .chatModel(baseModel(gemini))
+                .outputKey("requiredImage")
+                .build();
+
+        Object imageGenerator;
+        if (generateImage) {
+            imageGenerator = AgenticServices.agentBuilder(ImageGenerator.class)
+                    .chatModel(imageGenerationModel(gemini))
+                    .outputKey("generatedImage")
+                    .build();
+        } else {
+            imageGenerator = AgenticServices.agentBuilder(ImageContentGenerator.class)
+                    .chatModel(imageGenerationModel(gemini))
+                    .outputKey("generatedImage")
+                    .build();
+        }
 
         ImageStyler imageStyler = AgenticServices.agentBuilder(ImageStyler.class)
                 .chatModel(imageGenerationModel(gemini))

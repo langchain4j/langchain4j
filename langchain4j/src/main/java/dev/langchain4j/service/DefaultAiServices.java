@@ -10,11 +10,13 @@ import static dev.langchain4j.service.AiServiceParamsUtil.findArgumentOfType;
 import static dev.langchain4j.service.AiServiceValidation.validateParameters;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.service.TypeUtils.getRawClass;
+import static dev.langchain4j.service.TypeUtils.isImageType;
 import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterClass;
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
@@ -218,9 +220,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                         // TODO should it be called when returnType==String?
                         boolean supportsJsonSchema = supportsJsonSchema();
                         Optional<JsonSchema> jsonSchema = Optional.empty();
-                        boolean isInternalData = internalData(returnType);
+                        boolean isImage = isImage(returnType);
 
-                        if (!isInternalData) {
+                        if (!isImage) {
                             if (supportsJsonSchema && !streaming) {
                                 jsonSchema = serviceOutputParser.jsonSchema(returnType);
                             }
@@ -357,8 +359,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 commonGuardrailParam);
 
                         if (response != null) {
-                            if (isInternalData && response instanceof ChatResponse cResponse) {
-                                return fireEventAndReturn(invocationContext, parseInternalData(cResponse, returnType));
+                            if (isImage && response instanceof ChatResponse cResponse) {
+                                return fireEventAndReturn(invocationContext, parseImage(cResponse, returnType));
                             }
 
                             if (typeHasRawClass(returnType, response.getClass())) {
@@ -392,23 +394,27 @@ class DefaultAiServices<T> extends AiServices<T> {
                         return result;
                     }
 
-                    private static boolean internalData(Type returnType) {
+                    private static boolean isImage(Type returnType) {
                         Class<?> rawReturnType = getRawClass(returnType);
-                        if (ImageContent.class.isAssignableFrom(rawReturnType)) {
+                        if (isImageType(rawReturnType)) {
                             return true;
                         }
                         if (Collection.class.isAssignableFrom(rawReturnType)) {
                             Class<?> genericParam = resolveFirstGenericParameterClass(returnType);
-                            return genericParam != null && ImageContent.class.isAssignableFrom(genericParam);
+                            return genericParam != null && isImageType(genericParam);
                         }
                         return false;
                     }
 
-                    private static Object parseInternalData(ChatResponse response, Type returnType) {
+                    private static Object parseImage(ChatResponse response, Type returnType) {
                         Class<?> rawReturnType = getRawClass(returnType);
-                        if (ImageContent.class.isAssignableFrom(rawReturnType)) {
+                        if (isImage(rawReturnType)) {
                             if (rawReturnType == ImageContent.class) {
                                 List<ImageContent> images = ImageContent.from(response.aiMessage());
+                                return images.isEmpty() ? null : images.get(0);
+                            }
+                            if (rawReturnType == Image.class) {
+                                List<Image> images = response.aiMessage().images();
                                 return images.isEmpty() ? null : images.get(0);
                             }
                         }
@@ -416,6 +422,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                             Class<?> genericParam = resolveFirstGenericParameterClass(returnType);
                             if (genericParam == ImageContent.class) {
                                 return ImageContent.from(response.aiMessage());
+                            }
+                            if (genericParam == Image.class) {
+                                return response.aiMessage().images();
                             }
                         }
                         throw new UnsupportedOperationException("Unsupported return type " + rawReturnType);

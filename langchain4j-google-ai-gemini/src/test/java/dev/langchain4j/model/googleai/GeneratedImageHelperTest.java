@@ -32,8 +32,8 @@ class GeneratedImageHelperTest {
                 .build();
 
         // when
-        List<Image> generatedImages = message.images();
-        boolean hasImages = !generatedImages.isEmpty();
+        List<Image> generatedImages = GeneratedImageHelper.getGeneratedImages(message);
+        boolean hasImages = GeneratedImageHelper.hasGeneratedImages(message);
 
         // then
         assertThat(hasImages).isTrue();
@@ -50,8 +50,19 @@ class GeneratedImageHelperTest {
         AiMessage message = AiMessage.builder().text("Just text, no images").build();
 
         // when
-        List<Image> generatedImages = message.images();
-        boolean hasImages = !generatedImages.isEmpty();
+        List<Image> generatedImages = GeneratedImageHelper.getGeneratedImages(message);
+        boolean hasImages = GeneratedImageHelper.hasGeneratedImages(message);
+
+        // then
+        assertThat(hasImages).isFalse();
+        assertThat(generatedImages).isEmpty();
+    }
+
+    @Test
+    void should_handle_null_message() {
+        // when
+        List<Image> generatedImages = GeneratedImageHelper.getGeneratedImages(null);
+        boolean hasImages = GeneratedImageHelper.hasGeneratedImages(null);
 
         // then
         assertThat(hasImages).isFalse();
