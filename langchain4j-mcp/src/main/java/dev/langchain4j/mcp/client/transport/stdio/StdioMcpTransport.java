@@ -37,6 +37,7 @@ public class StdioMcpTransport implements McpTransport {
     private volatile McpOperationHandler messageHandler;
     private ProcessStderrHandler stderrHandler;
     private ExecutorService executorService;
+    private boolean shouldShutdownExecutorService;
 
     public StdioMcpTransport(Builder builder) {
         this.command = builder.command;
@@ -63,7 +64,9 @@ public class StdioMcpTransport implements McpTransport {
         jsonRpcIoHandler = new JsonRpcIoHandler(
                 process.getInputStream(), process.getOutputStream(), messageHandler::handle, logEvents, logger);
         stderrHandler = new ProcessStderrHandler(process);
-        executorService = createExecutorService();
+        ExecutorServiceInfo executorInfo = createExecutorService();
+        executorService = executorInfo.executorService;
+        shouldShutdownExecutorService = executorInfo.shouldShutdown;
         executorService.submit(jsonRpcIoHandler);
         executorService.submit(stderrHandler);
     }
@@ -123,7 +126,7 @@ public class StdioMcpTransport implements McpTransport {
             jsonRpcIoHandler.close();
         } catch (Exception ignored) {
         }
-        if (executorService != null) {
+        if (executorService != null && shouldShutdownExecutorService) {
             executorService.shutdown();
             try {
                 if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
@@ -137,7 +140,7 @@ public class StdioMcpTransport implements McpTransport {
         process.destroy();
     }
 
-    private static ExecutorService createExecutorService() {
+    private static ExecutorServiceInfo createExecutorService() {
         // First, try to load a custom ExecutorService via SPI
         // This allows frameworks like Quarkus to provide their own managed executor
         ServiceLoader<McpExecutorServiceSupplier> loader = ServiceLoader.load(McpExecutorServiceSupplier.class);
@@ -147,16 +150,30 @@ public class StdioMcpTransport implements McpTransport {
                 log.debug(
                         "Using custom ExecutorService from SPI: {}",
                         supplier.getClass().getName());
-                return executorService;
+                // Don't shutdown SPI-provided executors - they are managed by the framework
+                return new ExecutorServiceInfo(executorService, false);
             }
         }
         // Fall back to virtual threads (Java 21+) or fixed thread pool
         log.debug("No custom ExecutorService found via SPI, using default");
-        return VirtualThreadUtils.createVirtualThreadExecutor(() -> Executors.newFixedThreadPool(2, r -> {
-            Thread t = new Thread(r, "mcp-stdio-transport");
-            t.setDaemon(true);
-            return t;
-        }));
+        ExecutorService defaultExecutor =
+                VirtualThreadUtils.createVirtualThreadExecutor(() -> Executors.newFixedThreadPool(2, r -> {
+                    Thread t = new Thread(r, "mcp-stdio-transport");
+                    t.setDaemon(true);
+                    return t;
+                }));
+        // We created this executor, so we should shut it down
+        return new ExecutorServiceInfo(defaultExecutor, true);
+    }
+
+    private static class ExecutorServiceInfo {
+        final ExecutorService executorService;
+        final boolean shouldShutdown;
+
+        ExecutorServiceInfo(ExecutorService executorService, boolean shouldShutdown) {
+            this.executorService = executorService;
+            this.shouldShutdown = shouldShutdown;
+        }
     }
 
     public static Builder builder() {
