@@ -273,18 +273,21 @@ class AnthropicMapperTest {
         Map<String, Object> map = toAnthropicSchema(jsonSchemaElement);
 
         // then
-        // FIXED: Replaced Text Block with concatenated strings
         assertThat(new ObjectMapper().writeValueAsString(map))
-                .isEqualToIgnoringWhitespace("{\n" + "  \"type\": \"object\",\n"
-                        + "  \"properties\": {\n"
-                        + "    \"name\": {\"type\": \"string\"},\n"
-                        + "    \"email\": {\"type\": \"string\"},\n"
-                        + "    \"plan_interest\": {\"type\": \"string\"},\n"
-                        + "    \"demo_requested\": {\"type\": \"boolean\"}\n"
-                        + "  },\n"
-                        + "  \"required\": [\"name\", \"email\", \"plan_interest\", \"demo_requested\"],\n"
-                        + "  \"additionalProperties\": false\n"
-                        + "}");
+                .isEqualToIgnoringWhitespace(
+                        """
+                        {
+                          "type": "object",
+                          "properties": {
+                              "name": {"type": "string"},
+                              "email": {"type": "string"},
+                              "plan_interest": {"type": "string"},
+                              "demo_requested": {"type": "boolean"}
+                          },
+                          "required": ["name", "email", "plan_interest", "demo_requested"],
+                          "additionalProperties": false
+                        }
+                       """);
     }
 
     @Test
@@ -303,21 +306,24 @@ class AnthropicMapperTest {
         Map<String, Object> map = toAnthropicSchema(bookRecord);
 
         // then
-        // FIXED: Replaced Text Block with concatenated strings
         assertThat(new ObjectMapper().writeValueAsString(map))
-                .isEqualToIgnoringWhitespace("{\n" + "  \"type\": \"object\",\n"
-                        + "  \"properties\": {\n"
-                        + "    \"author\": { \"type\": \"string\" },\n"
-                        + "    \"title\": { \"type\": \"string\" },\n"
-                        + "    \"style\": {\n"
-                        + "      \"type\": \"string\",\n"
-                        + "      \"enum\": [\"classical\", \"modern\"]\n"
-                        + "    },\n"
-                        + "    \"publicationYear\": { \"type\": \"integer\" }\n"
-                        + "  },\n"
-                        + "  \"required\": [\"author\", \"title\"],\n"
-                        + "  \"additionalProperties\": false\n"
-                        + "}");
+                .isEqualToIgnoringWhitespace(
+                        """
+                        {
+                          "type": "object",
+                          "properties": {
+                              "author": { "type": "string" },
+                              "title": { "type": "string" },
+                              "style": {
+                                "type": "string",
+                                "enum": ["classical", "modern"]
+                              },
+                              "publicationYear": { "type": "integer" }
+                          },
+                          "required": ["author", "title"],
+                          "additionalProperties": false
+                        }
+                       """);
     }
 
     static Stream<Arguments> test_toAnthropicTool() {
@@ -432,11 +438,8 @@ class AnthropicMapperTest {
         assertThat(textContent.text).isEqualTo("Hello cached world");
 
         // 5. Verify the Cache Control
-        // (Instead of checking private fields, we compare against the expected object)
         assertThat(textContent.cacheControl).isNotNull();
-        assertThat(textContent.cacheControl)
-                .extracting("type") // <--- This is the magic fix!
-                .isEqualTo("ephemeral");
+        assertThat(textContent.cacheControl).extracting("type").isEqualTo("ephemeral");
     }
 
     @SafeVarargs
