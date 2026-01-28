@@ -2,6 +2,7 @@ package dev.langchain4j.model.googleai;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import dev.langchain4j.model.googleai.BatchRequestResponse.Operation.Status;
 import java.util.List;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
@@ -22,7 +23,8 @@ public final class BatchRequestResponse {
     /**
      * Represents a successful batch operation.
      */
-    public record BatchSuccess<T>(BatchName batchName, List<T> responses) implements BatchResponse<T> {}
+    public record BatchSuccess<T>(BatchName batchName, List<T> responses, @Nullable List<Operation.Status> errors)
+            implements BatchResponse<T> {}
 
     /**
      * Represents an error that occurred during a batch operation.
@@ -139,12 +141,13 @@ public final class BatchRequestResponse {
         record InlinedResponses<RESP>(List<InlinedResponseWrapper<RESP>> inlinedResponses) {}
 
         /**
-         * Wrapper for an individual response.
+         * Wrapper for an individual (successful) response OR error.
          *
-         * @param response The actual Gemini response.
+         * @param response A successful Gemini response.
+         * @param error An error including message and code
          */
         @JsonIgnoreProperties(ignoreUnknown = true)
-        record InlinedResponseWrapper<RESP>(RESP response) {}
+        record InlinedResponseWrapper<RESP>(@Nullable RESP response, @Nullable Status error) {}
     }
 
     /**
@@ -164,14 +167,14 @@ public final class BatchRequestResponse {
          * @param details A list of messages that carry the error details.
          */
         @JsonIgnoreProperties(ignoreUnknown = true)
-        public record Status(int code, String message, List<Map<String, Object>> details) {}
+        public record Status(int code, String message, @Nullable List<Map<String, Object>> details) {}
     }
 
     /**
      * Represents a response containing a list of operations and a token for pagination.
      *
-     * @param <RESP> the type of the response for each operation
-     * @param operations a list of operations to be performed
+     * @param <RESP>        the type of the response for each operation
+     * @param operations    a list of operations to be performed
      * @param nextPageToken a token for retrieving the next page of operations, if available; null if there are no more pages
      */
     record ListOperationsResponse<RESP>(@Nullable List<Operation<RESP>> operations, @Nullable String nextPageToken) {}
@@ -179,8 +182,8 @@ public final class BatchRequestResponse {
     /**
      * Represents a batch request for a file operation.
      *
-     * @param <REQ> the type of the request payload
-     * @param key a unique identifier for the request
+     * @param <REQ>   the type of the request payload
+     * @param key     a unique identifier for the request
      * @param request the actual request payload containing the details of the operation
      */
     public record BatchFileRequest<REQ>(String key, REQ request) {}
