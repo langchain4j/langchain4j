@@ -347,7 +347,7 @@ public class ToolService {
                 messages = chatMemory.messages();
             }
 
-            UserMessage lastUserMessage = extractLastUserMessage(messages);
+            UserMessage lastUserMessage = UserMessage.findLast(messages).orElse(null);
             if (lastUserMessage != null) {
                 toolServiceContext = createContext(invocationContext, lastUserMessage);
 
@@ -377,16 +377,6 @@ public class ToolService {
                 .aggregateTokenUsage(aggregateTokenUsage)
                 .build();
     }
-
-    private UserMessage extractLastUserMessage(List<ChatMessage> messages) {
-        for (int i = messages.size() - 1; i >= 0; i--) {
-            if (messages.get(i) instanceof UserMessage) {
-                return (UserMessage) messages.get(i);
-            }
-        }
-        return null;
-    }
-    // debug ends
 
     private void fireToolExecutedEvent(
             InvocationContext invocationContext,

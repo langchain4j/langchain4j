@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.memory.ChatMemory;
 
@@ -382,5 +383,20 @@ public class UserMessage implements ChatMessage {
      */
     public static UserMessage userMessage(String name, List<Content> contents) {
         return from(name, contents);
+    }
+
+    /**
+     * Finds the last {@link UserMessage} in the given list of messages.
+     *
+     * @param messages the list of chat messages
+     * @return an {@link Optional} containing the last {@link UserMessage},
+     *         or an empty {@link Optional} if not found
+     * @since 1.11.0
+     */
+    public static Optional<UserMessage> findLast(List<ChatMessage> messages) {
+        return messages.stream()
+                .filter(message -> message instanceof UserMessage)
+                .map(message -> (UserMessage) message)
+                .reduce((first, second) -> second);
     }
 }
