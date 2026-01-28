@@ -1,12 +1,12 @@
 package dev.langchain4j.mcp.client.transport.stdio;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.langchain4j.internal.VirtualThreadUtils;
-import dev.langchain4j.mcp.client.transport.McpExecutorServiceSupplier;
+import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.protocol.McpInitializationNotification;
@@ -16,10 +16,8 @@ import dev.langchain4j.mcp.transport.stdio.JsonRpcIoHandler;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import java.util.ServiceLoader;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,6 +42,9 @@ public class StdioMcpTransport implements McpTransport {
         this.environment = builder.environment;
         this.logEvents = builder.logEvents;
         this.logger = builder.logger;
+        this.executorService =
+                getOrDefault(builder.executorService, DefaultExecutorProvider::getDefaultExecutorService);
+        this.shouldShutdownExecutorService = builder.executorService == null;
     }
 
     @Override
@@ -64,9 +65,6 @@ public class StdioMcpTransport implements McpTransport {
         jsonRpcIoHandler = new JsonRpcIoHandler(
                 process.getInputStream(), process.getOutputStream(), messageHandler::handle, logEvents, logger);
         stderrHandler = new ProcessStderrHandler(process);
-        ExecutorServiceInfo executorInfo = createExecutorService();
-        executorService = executorInfo.executorService;
-        shouldShutdownExecutorService = executorInfo.shouldShutdown;
         executorService.submit(jsonRpcIoHandler);
         executorService.submit(stderrHandler);
     }
@@ -140,42 +138,6 @@ public class StdioMcpTransport implements McpTransport {
         process.destroy();
     }
 
-    private static ExecutorServiceInfo createExecutorService() {
-        // First, try to load a custom ExecutorService via SPI
-        // This allows frameworks like Quarkus to provide their own managed executor
-        ServiceLoader<McpExecutorServiceSupplier> loader = ServiceLoader.load(McpExecutorServiceSupplier.class);
-        for (McpExecutorServiceSupplier supplier : loader) {
-            ExecutorService executorService = supplier.get();
-            if (executorService != null) {
-                log.debug(
-                        "Using custom ExecutorService from SPI: {}",
-                        supplier.getClass().getName());
-                // Don't shutdown SPI-provided executors - they are managed by the framework
-                return new ExecutorServiceInfo(executorService, false);
-            }
-        }
-        // Fall back to virtual threads (Java 21+) or fixed thread pool
-        log.debug("No custom ExecutorService found via SPI, using default");
-        ExecutorService defaultExecutor =
-                VirtualThreadUtils.createVirtualThreadExecutor(() -> Executors.newFixedThreadPool(2, r -> {
-                    Thread t = new Thread(r, "mcp-stdio-transport");
-                    t.setDaemon(true);
-                    return t;
-                }));
-        // We created this executor, so we should shut it down
-        return new ExecutorServiceInfo(defaultExecutor, true);
-    }
-
-    private static class ExecutorServiceInfo {
-        final ExecutorService executorService;
-        final boolean shouldShutdown;
-
-        ExecutorServiceInfo(ExecutorService executorService, boolean shouldShutdown) {
-            this.executorService = executorService;
-            this.shouldShutdown = shouldShutdown;
-        }
-    }
-
     public static Builder builder() {
         return new Builder();
     }
@@ -207,6 +169,7 @@ public class StdioMcpTransport implements McpTransport {
         private Map<String, String> environment;
         private boolean logEvents;
         private Logger logger;
+        private ExecutorService executorService;
 
         public Builder command(List<String> command) {
             this.command = command;
@@ -220,6 +183,21 @@ public class StdioMcpTransport implements McpTransport {
 
         public Builder logEvents(boolean logEvents) {
             this.logEvents = logEvents;
+            return this;
+        }
+
+        /**
+         * Sets the {@link ExecutorService} to use for background I/O operations.
+         * If not provided, will use {@link DefaultExecutorProvider#getDefaultExecutorService()}.
+         * <p>
+         * Frameworks like Quarkus should provide their managed executor here.
+         * If an executor is provided, it will not be shut down when the transport is closed.
+         *
+         * @param executorService the executor service to use
+         * @return {@code this}
+         */
+        public Builder executorService(ExecutorService executorService) {
+            this.executorService = executorService;
             return this;
         }
 
