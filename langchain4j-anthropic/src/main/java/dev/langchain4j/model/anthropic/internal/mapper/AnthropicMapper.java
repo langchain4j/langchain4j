@@ -69,11 +69,13 @@ import java.util.Set;
 @Internal
 public class AnthropicMapper {
 
-    public static final String THINKING_SIGNATURE_KEY = "thinking_signature";
-    public static final String REDACTED_THINKING_KEY = "redacted_thinking";
-    public static final String SERVER_TOOL_RESULTS_KEY = "server_tool_results";
-    public static final String CACHE_CONTROL = "cache_control";
-
+    public static final String THINKING_SIGNATURE_KEY =
+            "thinking_signature"; // do not change, will break backward compatibility!
+    public static final String REDACTED_THINKING_KEY =
+            "redacted_thinking"; // do not change, will break backward compatibility!
+    public static final String SERVER_TOOL_RESULTS_KEY =
+            "server_tool_results"; // do not change, will break backward compatibility!
+            public static final String CACHE_CONTROL = "cache_control";
     public static List<AnthropicMessage> toAnthropicMessages(List<ChatMessage> messages) {
         return toAnthropicMessages(messages, false);
     }
@@ -88,7 +90,7 @@ public class AnthropicMapper {
             if (message instanceof ToolExecutionResultMessage) {
                 toolContents.add(toAnthropicToolResultContent((ToolExecutionResultMessage) message));
             } else if (message instanceof SystemMessage) {
-                // ignore
+                // ignore, it is handled in the "toAnthropicSystemPrompt" method
             } else {
                 if (!toolContents.isEmpty()) {
                     anthropicMessages.add(new AnthropicMessage(USER, toolContents));
@@ -98,8 +100,7 @@ public class AnthropicMapper {
                 if (message instanceof UserMessage) {
                     List<AnthropicMessageContent> contents = toAnthropicMessageContents((UserMessage) message);
                     anthropicMessages.add(new AnthropicMessage(USER, contents));
-                } else if (message instanceof AiMessage) {
-                    AiMessage aiMessage = (AiMessage) message;
+                } else if (message instanceof AiMessage aiMessage) {
                     List<AnthropicMessageContent> contents = toAnthropicMessageContents(aiMessage, sendThinking);
                     anthropicMessages.add(new AnthropicMessage(ASSISTANT, contents));
                 }
@@ -114,46 +115,46 @@ public class AnthropicMapper {
     }
 
     private static AnthropicToolResultContent toAnthropicToolResultContent(ToolExecutionResultMessage message) {
-        return new AnthropicToolResultContent(message.id(), message.text(), null);
+        return new AnthropicToolResultContent(message.id(), message.text(), null); // TODO propagate isError
     }
-
     private static List<AnthropicMessageContent> toAnthropicMessageContents(UserMessage message) {
-        boolean shouldCache = message.attributes() != null
+        // 1. Check if the user asked for caching
+        boolean shouldCache = message.attributes() != null 
                 && "ephemeral".equals(message.attributes().get(CACHE_CONTROL));
 
         List<dev.langchain4j.data.message.Content> contents = message.contents();
         List<AnthropicMessageContent> anthropicContents = new ArrayList<>();
 
+        // 2. Iterate with an index so we can identify the LAST item
         for (int i = 0; i < contents.size(); i++) {
             dev.langchain4j.data.message.Content content = contents.get(i);
+            
             boolean isLastItem = (i == contents.size() - 1);
             boolean applyCache = shouldCache && isLastItem;
 
-            if (content instanceof TextContent) {
-                TextContent textContent = (TextContent) content;
+            // 3. Convert content (Using the modern syntax the maintainer wants)
+            if (content instanceof TextContent textContent) {
                 if (applyCache) {
-                    anthropicContents.add(
-                            new AnthropicTextContent(textContent.text(), AnthropicCacheType.EPHEMERAL.cacheControl()));
+                    anthropicContents.add(new AnthropicTextContent(
+                        textContent.text(), 
+                        AnthropicCacheType.EPHEMERAL.cacheControl()
+                    ));
                 } else {
                     anthropicContents.add(new AnthropicTextContent(textContent.text()));
                 }
-            } else if (content instanceof ImageContent) {
-                ImageContent imageContent = (ImageContent) content;
+            } else if (content instanceof ImageContent imageContent) {
                 Image image = imageContent.image();
                 if (image.url() != null) {
-                    anthropicContents.add(
-                            AnthropicImageContent.fromUrl(image.url().toString()));
+                    anthropicContents.add(AnthropicImageContent.fromUrl(image.url().toString()));
                 } else {
                     anthropicContents.add(AnthropicImageContent.fromBase64(
                             ensureNotBlank(image.mimeType(), "mimeType"),
                             ensureNotBlank(image.base64Data(), "base64Data")));
                 }
-            } else if (content instanceof PdfFileContent) {
-                PdfFileContent pdfFileContent = (PdfFileContent) content;
+            } else if (content instanceof PdfFileContent pdfFileContent) {
                 PdfFile pdfFile = pdfFileContent.pdfFile();
                 if (pdfFile.url() != null) {
-                    anthropicContents.add(
-                            AnthropicPdfContent.fromUrl(pdfFile.url().toString()));
+                    anthropicContents.add(AnthropicPdfContent.fromUrl(pdfFile.url().toString()));
                 } else {
                     anthropicContents.add(AnthropicPdfContent.fromBase64(
                             pdfFile.mimeType(), ensureNotBlank(pdfFile.base64Data(), "base64Data")));
@@ -203,6 +204,7 @@ public class AnthropicMapper {
         if (isNullOrBlank(arguments)) {
             return Map.of();
         }
+
         return fromJson(arguments, Map.class);
     }
 
@@ -318,18 +320,12 @@ public class AnthropicMapper {
         if (anthropicStopReason == null) {
             return null;
         }
-        // FIXED: Classic Switch Statement
-        switch (anthropicStopReason) {
-            case "end_turn":
-            case "stop_sequence":
-                return STOP;
-            case "max_tokens":
-                return LENGTH;
-            case "tool_use":
-                return TOOL_EXECUTION;
-            default:
-                return OTHER;
-        }
+        return switch (anthropicStopReason) {
+            case "end_turn", "stop_sequence" -> STOP;
+            case "max_tokens" -> LENGTH;
+            case "tool_use" -> TOOL_EXECUTION;
+            default -> OTHER;
+        };
     }
 
     public static AnthropicToolChoice toAnthropicToolChoice(
@@ -338,21 +334,12 @@ public class AnthropicMapper {
             return null;
         }
 
-        // FIXED: Classic Switch Statement
-        AnthropicToolChoiceType toolChoiceType;
-        switch (toolChoice) {
-            case AUTO:
-                toolChoiceType = AnthropicToolChoiceType.AUTO;
-                break;
-            case REQUIRED:
-                toolChoiceType = AnthropicToolChoiceType.ANY;
-                break;
-            case NONE:
-                toolChoiceType = AnthropicToolChoiceType.NONE;
-                break;
-            default:
-                throw new IllegalArgumentException("Unknown tool choice: " + toolChoice);
-        }
+        AnthropicToolChoiceType toolChoiceType =
+                switch (toolChoice) {
+                    case AUTO -> AnthropicToolChoiceType.AUTO;
+                    case REQUIRED -> AnthropicToolChoiceType.ANY;
+                    case NONE -> AnthropicToolChoiceType.NONE;
+                };
 
         if (toolChoiceName != null) {
             return AnthropicToolChoice.from(toolChoiceName, disableParallelToolUse);
@@ -398,6 +385,7 @@ public class AnthropicMapper {
             Boolean strictTools) {
         JsonObjectSchema parameters = toolSpecification.parameters();
 
+        // prevent NPE during unboxing
         boolean strict = Boolean.TRUE.equals(strictTools);
 
         AnthropicTool.Builder toolBuilder = AnthropicTool.builder()
@@ -447,8 +435,7 @@ public class AnthropicMapper {
     }
 
     public static Map<String, Object> toAnthropicSchema(JsonSchemaElement schemaElement) {
-        if (schemaElement instanceof JsonObjectSchema) {
-            JsonObjectSchema objectSchema = (JsonObjectSchema) schemaElement;
+        if (schemaElement instanceof JsonObjectSchema objectSchema) {
             Map<String, Object> map = new LinkedHashMap<>();
 
             map.put("type", "object");
@@ -465,6 +452,8 @@ public class AnthropicMapper {
                 map.put("required", objectSchema.required());
             }
 
+            // All Anthropic object schemas require setting additionalProperties=false
+            // https://platform.claude.com/docs/en/build-with-claude/structured-outputs#json-schema-limitations
             map.put("additionalProperties", false);
 
             if (!objectSchema.definitions().isEmpty()) {
@@ -473,8 +462,7 @@ public class AnthropicMapper {
 
             return map;
         }
-        if (schemaElement instanceof JsonArraySchema) {
-            JsonArraySchema arraySchema = (JsonArraySchema) schemaElement;
+        if (schemaElement instanceof JsonArraySchema arraySchema) {
             Map<String, Object> map = new LinkedHashMap<>();
 
             map.put("type", "array");
@@ -492,6 +480,8 @@ public class AnthropicMapper {
             return map;
         }
 
+        // Run with strict=false to avoid unsupported features, like union types in enum schemas
+        // https://platform.claude.com/docs/en/build-with-claude/structured-outputs#json-schema-limitations
         return toMap(schemaElement);
     }
 
