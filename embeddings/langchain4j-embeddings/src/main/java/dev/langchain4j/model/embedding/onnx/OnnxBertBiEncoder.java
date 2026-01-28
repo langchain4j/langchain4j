@@ -256,6 +256,14 @@ public class OnnxBertBiEncoder {
     }
 
     private byte[] loadModel(InputStream modelInputStream) {
+        if (modelInputStream == null) {
+            throw new IllegalStateException(
+                    "Embedding model file is not available. " +
+                            "This usually happens when running LangChain4j tests from sources. " +
+                            "If you are developing LangChain4j locally, run 'mvn generate-resources' " +
+                            "from the project root to download the required model files."
+            );
+        }
         try (InputStream inputStream = modelInputStream;
                 ByteArrayOutputStream buffer = new ByteArrayOutputStream()) {
             int nRead;

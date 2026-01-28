@@ -252,9 +252,13 @@ public class AgentUtil {
     }
 
     public static Method validateAgentClass(Class<?> agentServiceClass, boolean failOnMissingAnnotation) {
+        return validateAgentClass(agentServiceClass, failOnMissingAnnotation, null);
+    }
+
+    public static Method validateAgentClass(Class<?> agentServiceClass, boolean failOnMissingAnnotation, Class<? extends Annotation> patternAnnotation) {
         Method agentMethod = null;
         for (Method method : agentServiceClass.getMethods()) {
-            if (method.isAnnotationPresent(Agent.class)) {
+            if (method.isAnnotationPresent(Agent.class) || (patternAnnotation != null && method.isAnnotationPresent(patternAnnotation))) {
                 if (agentMethod != null) {
                     throw new IllegalArgumentException(
                             "Multiple agent methods found in class: " + agentServiceClass.getName());

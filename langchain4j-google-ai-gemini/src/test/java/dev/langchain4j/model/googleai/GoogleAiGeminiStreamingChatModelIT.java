@@ -468,11 +468,12 @@ class GoogleAiGeminiStreamingChatModelIT {
         assertThat(error).isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class);
     }
 
+    @Test
     void should_generate_image_streaming() {
         // given
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-2.5-flash-image-preview")
+                .modelName("gemini-2.5-flash-image")
                 .timeout(Duration.ofMinutes(1))
                 .build();
 

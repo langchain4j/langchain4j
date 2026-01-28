@@ -39,6 +39,8 @@ class BaseGeminiChatModel {
     protected final GeminiService geminiService;
     protected final GeminiFunctionCallingConfig functionCallingConfig;
     protected final boolean allowCodeExecution;
+    protected final boolean allowGoogleSearch;
+    protected final boolean allowUrlContext;
     protected final boolean includeCodeExecutionOutput;
     protected final List<GeminiSafetySetting> safetySettings;
     protected final List<ChatModelListener> listeners;
@@ -58,6 +60,8 @@ class BaseGeminiChatModel {
 
         this.functionCallingConfig = builder.functionCallingConfig;
         this.allowCodeExecution = getOrDefault(builder.allowCodeExecution, false);
+        this.allowGoogleSearch = getOrDefault(builder.allowGoogleSearch, false);
+        this.allowUrlContext = getOrDefault(builder.allowUrlContext, false);
         this.includeCodeExecutionOutput = getOrDefault(builder.includeCodeExecutionOutput, false);
         this.safetySettings = copyIfNotNull(builder.safetySettings);
         this.listeners = copy(builder.listeners);
@@ -147,7 +151,11 @@ class BaseGeminiChatModel {
                         .mediaResolution(this.mediaResolution)
                         .build())
                 .safetySettings(this.safetySettings)
-                .tools(fromToolSepcsToGTool(chatRequest.toolSpecifications(), this.allowCodeExecution))
+                .tools(fromToolSepcsToGTool(
+                        chatRequest.toolSpecifications(),
+                        this.allowCodeExecution,
+                        this.allowGoogleSearch,
+                        this.allowUrlContext))
                 .toolConfig(toToolConfig(parameters.toolChoice(), this.functionCallingConfig))
                 .build();
     }
@@ -261,6 +269,8 @@ class BaseGeminiChatModel {
         protected List<String> stopSequences;
         protected GeminiFunctionCallingConfig functionCallingConfig;
         protected Boolean allowCodeExecution;
+        protected Boolean allowGoogleSearch;
+        protected Boolean allowUrlContext;
         protected Boolean includeCodeExecutionOutput;
         protected Boolean logRequestsAndResponses;
         protected Boolean logRequests;
@@ -496,6 +506,22 @@ class BaseGeminiChatModel {
          */
         public B allowCodeExecution(Boolean allowCodeExecution) {
             this.allowCodeExecution = allowCodeExecution;
+            return builder();
+        }
+
+        /**
+         * Enabled <a href="https://ai.google.dev/gemini-api/docs/google-search">Google Search tool</a> in Gemini.
+         */
+        public B allowGoogleSearch(Boolean allowGoogleSearch) {
+            this.allowGoogleSearch = allowGoogleSearch;
+            return builder();
+        }
+
+        /**
+         * Enabled <a href="https://ai.google.dev/gemini-api/docs/url-context">Url Context tool</a> in Gemini.
+         */
+        public B allowUrlContext(Boolean allowUrlContext) {
+            this.allowUrlContext = allowUrlContext;
             return builder();
         }
 
