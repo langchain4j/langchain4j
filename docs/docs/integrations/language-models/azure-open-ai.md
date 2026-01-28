@@ -118,6 +118,42 @@ class ChatModelController {
 }
 ```
 
+## Responses API (Reasoning Summaries)
+
+Azure OpenAI reasoning summaries are available via the **Responses API**. These summaries are returned as a
+*reasoning output item*; if the service does not emit that item, {@code AiMessage.thinking()} will be {@code null}.
+This behavior is service-dependent and can vary by prompt.
+
+### Plain Java
+
+```java
+import com.azure.ai.openai.responses.models.ResponsesReasoningConfigurationEffort;
+import dev.langchain4j.model.azure.AzureOpenAiResponsesChatModel;
+
+ChatModel model = AzureOpenAiResponsesChatModel.builder()
+        .endpoint(System.getenv("AZURE_OPENAI_URL"))
+        .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+        .deploymentName("gpt-5.2-chat")
+        .reasoningSummary("auto") // or "detailed"
+        .reasoningEffort(ResponsesReasoningConfigurationEffort.MEDIUM)
+        .build();
+```
+
+### Streaming
+
+```java
+import com.azure.ai.openai.responses.models.ResponsesReasoningConfigurationEffort;
+import dev.langchain4j.model.azure.AzureOpenAiResponsesStreamingChatModel;
+
+StreamingChatModel model = AzureOpenAiResponsesStreamingChatModel.builder()
+        .endpoint(System.getenv("AZURE_OPENAI_URL"))
+        .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+        .deploymentName("gpt-5.2-chat")
+        .reasoningSummary("auto")
+        .reasoningEffort(ResponsesReasoningConfigurationEffort.MEDIUM)
+        .build();
+```
+
 ## Creating `AzureOpenAiChatModel` with Azure Credentials
 
 API key can have a few security issues (can be committed, can be passed around, etc.).

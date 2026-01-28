@@ -22,6 +22,10 @@ public class AzureModelBuilders {
         return System.getenv("AZURE_OPENAI_ENDPOINT");
     }
 
+    public static String getAzureOpenaiResponsesDeploymentName() {
+        return System.getenv("AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME");
+    }
+
     public static AzureOpenAiChatModel.Builder chatModelBuilder() {
         return AzureOpenAiChatModel.builder()
                 .endpoint(getAzureOpenaiEndpoint())
@@ -35,6 +39,26 @@ public class AzureModelBuilders {
     public static AzureOpenAiStreamingChatModel.Builder streamingChatModelBuilder() {
 
         return AzureOpenAiStreamingChatModel.builder()
+                .endpoint(getAzureOpenaiEndpoint())
+                .apiKey(getAzureOpenaiKey())
+                .deploymentName(DEFAULT_CHAT_MODEL)
+                .temperature(DEFAULT_TEMPERATURE)
+                .maxTokens(DEFAULT_MAX_TOKENS)
+                .logRequestsAndResponses(true);
+    }
+
+    public static AzureOpenAiResponsesChatModel.Builder responsesChatModelBuilder() {
+        return AzureOpenAiResponsesChatModel.builder()
+                .endpoint(getAzureOpenaiEndpoint())
+                .apiKey(getAzureOpenaiKey())
+                .deploymentName(DEFAULT_CHAT_MODEL)
+                .temperature(DEFAULT_TEMPERATURE)
+                .maxTokens(DEFAULT_MAX_TOKENS)
+                .logRequestsAndResponses(true);
+    }
+
+    public static AzureOpenAiResponsesStreamingChatModel.Builder responsesStreamingChatModelBuilder() {
+        return AzureOpenAiResponsesStreamingChatModel.builder()
                 .endpoint(getAzureOpenaiEndpoint())
                 .apiKey(getAzureOpenaiKey())
                 .deploymentName(DEFAULT_CHAT_MODEL)
