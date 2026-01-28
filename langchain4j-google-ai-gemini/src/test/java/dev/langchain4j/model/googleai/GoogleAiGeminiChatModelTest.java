@@ -185,7 +185,8 @@ class GoogleAiGeminiChatModelTest {
                                     .text("Response with tokens")
                                     .build()),
                             "model"),
-                    GeminiFinishReason.STOP);
+                    GeminiFinishReason.STOP,
+                    null);
 
             var geminiResponse = new GeminiGenerateContentResponse(
                     "token-response-id", "gemini-pro-v1", List.of(candidate), usageMetadata);
@@ -220,7 +221,8 @@ class GoogleAiGeminiChatModelTest {
                                     .text("Partial response")
                                     .build()),
                             "mode"),
-                    GeminiFinishReason.MAX_TOKENS);
+                    GeminiFinishReason.MAX_TOKENS,
+                    null);
 
             var geminiResponse = new GeminiGenerateContentResponse(
                     "finish-reason-id", "gemini-pro-v1", List.of(candidate), createUsageMetadata(10, 20, 30));
@@ -311,7 +313,8 @@ class GoogleAiGeminiChatModelTest {
         var candidate = new GeminiCandidate(
                 new GeminiContent(
                         List.of(GeminiContent.GeminiPart.builder().text(text).build()), "model"),
-                GeminiFinishReason.STOP);
+                GeminiFinishReason.STOP,
+                null);
 
         return new GeminiGenerateContentResponse(
                 "response-id-123", "gemini-pro-v1", List.of(candidate), createUsageMetadata(10, 20, 30));
