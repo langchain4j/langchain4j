@@ -6,6 +6,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.internal.VirtualThreadUtils;
+import dev.langchain4j.mcp.client.transport.McpExecutorServiceSupplier;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.protocol.McpInitializationNotification;
@@ -15,6 +16,7 @@ import dev.langchain4j.mcp.transport.stdio.JsonRpcIoHandler;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -136,6 +138,20 @@ public class StdioMcpTransport implements McpTransport {
     }
 
     private static ExecutorService createExecutorService() {
+        // First, try to load a custom ExecutorService via SPI
+        // This allows frameworks like Quarkus to provide their own managed executor
+        ServiceLoader<McpExecutorServiceSupplier> loader = ServiceLoader.load(McpExecutorServiceSupplier.class);
+        for (McpExecutorServiceSupplier supplier : loader) {
+            ExecutorService executorService = supplier.get();
+            if (executorService != null) {
+                log.debug(
+                        "Using custom ExecutorService from SPI: {}",
+                        supplier.getClass().getName());
+                return executorService;
+            }
+        }
+        // Fall back to virtual threads (Java 21+) or fixed thread pool
+        log.debug("No custom ExecutorService found via SPI, using default");
         return VirtualThreadUtils.createVirtualThreadExecutor(() -> Executors.newFixedThreadPool(2, r -> {
             Thread t = new Thread(r, "mcp-stdio-transport");
             t.setDaemon(true);
