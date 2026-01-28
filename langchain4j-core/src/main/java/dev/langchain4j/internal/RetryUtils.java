@@ -169,7 +169,7 @@ public final class RetryUtils {
                 Thread.sleep(jitterDelayMillis(retry));
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                throw new RuntimeException("Interrupted during sleep", e);
+                throw new RuntimeException("Interrupted while sleep", e);
             }
         }
 
