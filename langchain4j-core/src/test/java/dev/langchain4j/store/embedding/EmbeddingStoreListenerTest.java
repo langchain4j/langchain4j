@@ -461,8 +461,8 @@ class EmbeddingStoreListenerTest {
         assertThat(requestCaptor.getValue()).isInstanceOf(EmbeddingStoreRequestContext.AddAll.class);
         EmbeddingStoreRequestContext.AddAll<?> addAllRequestContext =
                 (EmbeddingStoreRequestContext.AddAll<?>) requestCaptor.getValue();
-        assertThat(addAllRequestContext.embeddings()).isSameAs(embeddings);
-        assertThat(addAllRequestContext.ids()).isNull();
+        assertThat(addAllRequestContext.embeddings()).isEqualTo(embeddings);
+        assertThat(addAllRequestContext.ids()).isEmpty();
 
         ArgumentCaptor<EmbeddingStoreResponseContext> responseCaptor =
                 ArgumentCaptor.forClass(EmbeddingStoreResponseContext.class);
@@ -492,9 +492,9 @@ class EmbeddingStoreListenerTest {
         assertThat(requestCaptor.getValue()).isInstanceOf(EmbeddingStoreRequestContext.AddAll.class);
         EmbeddingStoreRequestContext.AddAll<?> addAllRequestContext =
                 (EmbeddingStoreRequestContext.AddAll<?>) requestCaptor.getValue();
-        assertThat(addAllRequestContext.ids()).isSameAs(ids);
-        assertThat(addAllRequestContext.embeddings()).isSameAs(embeddings);
-        assertThat(addAllRequestContext.embeddedList()).isSameAs(embedded);
+        assertThat(addAllRequestContext.ids()).isEqualTo(ids);
+        assertThat(addAllRequestContext.embeddings()).isEqualTo(embeddings);
+        assertThat(addAllRequestContext.embeddedList()).isEqualTo(embedded);
 
         ArgumentCaptor<EmbeddingStoreResponseContext> responseCaptor =
                 ArgumentCaptor.forClass(EmbeddingStoreResponseContext.class);
@@ -502,7 +502,7 @@ class EmbeddingStoreListenerTest {
         assertThat(responseCaptor.getValue()).isInstanceOf(EmbeddingStoreResponseContext.AddAll.class);
         EmbeddingStoreResponseContext.AddAll<?> addAllResponseContext =
                 (EmbeddingStoreResponseContext.AddAll<?>) responseCaptor.getValue();
-        assertThat(addAllResponseContext.returnedIds()).isSameAs(ids);
+        assertThat(addAllResponseContext.returnedIds()).isEqualTo(ids);
     }
 
     @Test

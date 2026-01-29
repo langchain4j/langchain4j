@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.listener;
 
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
@@ -88,7 +89,7 @@ public abstract class EmbeddingStoreResponseContext<Embedded> {
                 Map<Object, Object> attributes,
                 List<String> returnedIds) {
             super(requestContext, attributes);
-            this.returnedIds = returnedIds;
+            this.returnedIds = copy(returnedIds);
         }
 
         /**

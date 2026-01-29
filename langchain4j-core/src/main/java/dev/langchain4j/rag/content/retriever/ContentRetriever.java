@@ -6,6 +6,8 @@ import dev.langchain4j.Experimental;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.listener.ContentRetrieverListener;
 import dev.langchain4j.rag.query.Query;
+
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -69,6 +71,10 @@ public interface ContentRetriever {
         if (this instanceof ListeningContentRetriever listeningContentRetriever) {
             return listeningContentRetriever.withAdditionalListeners(listeners);
         }
-        return new ListeningContentRetriever(this, List.copyOf(listeners));
+        if (listeners instanceof List<ContentRetrieverListener> listenersList) {
+            return new ListeningContentRetriever(this, listenersList);
+        } else {
+            return new ListeningContentRetriever(this, new ArrayList<>(listeners));
+        }
     }
 }

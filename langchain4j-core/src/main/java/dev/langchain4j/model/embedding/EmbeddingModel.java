@@ -6,7 +6,6 @@ import static java.util.Collections.singletonList;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.internal.Utils;
 import dev.langchain4j.internal.ValidationUtils;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.output.Response;
@@ -102,6 +101,6 @@ public interface EmbeddingModel {
         if (this instanceof ListeningEmbeddingModel listeningEmbeddingModel) {
             return listeningEmbeddingModel.withAdditionalListeners(listeners);
         }
-        return new ListeningEmbeddingModel(this, Utils.copy(listeners));
+        return new ListeningEmbeddingModel(this, listeners);
     }
 }

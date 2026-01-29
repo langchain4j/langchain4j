@@ -1,5 +1,6 @@
 package dev.langchain4j.model.embedding.listener;
 
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
@@ -28,7 +29,7 @@ public class EmbeddingModelResponseContext {
 
     public EmbeddingModelResponseContext(Builder builder) {
         this.response = ensureNotNull(builder.response, "response");
-        this.textSegments = ensureNotNull(builder.textSegments, "textSegments");
+        this.textSegments = copy(ensureNotNull(builder.textSegments, "textSegments"));
         this.embeddingModel = ensureNotNull(builder.embeddingModel, "embeddingModel");
         this.attributes = ensureNotNull(builder.attributes, "attributes");
     }

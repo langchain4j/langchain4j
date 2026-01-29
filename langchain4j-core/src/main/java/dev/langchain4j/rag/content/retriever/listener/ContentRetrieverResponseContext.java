@@ -1,5 +1,6 @@
 package dev.langchain4j.rag.content.retriever.listener;
 
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
@@ -26,7 +27,7 @@ public class ContentRetrieverResponseContext {
     private final Map<Object, Object> attributes;
 
     public ContentRetrieverResponseContext(Builder builder) {
-        this.contents = ensureNotNull(builder.contents, "contents");
+        this.contents = copy(ensureNotNull(builder.contents, "contents"));
         this.query = ensureNotNull(builder.query, "query");
         this.contentRetriever = ensureNotNull(builder.contentRetriever, "contentRetriever");
         this.attributes = ensureNotNull(builder.attributes, "attributes");

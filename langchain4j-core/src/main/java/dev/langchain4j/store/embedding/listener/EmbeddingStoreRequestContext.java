@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.listener;
 
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
@@ -118,9 +119,9 @@ public abstract class EmbeddingStoreRequestContext<Embedded> {
                 List<Embedding> embeddings,
                 List<Embedded> embeddedList) {
             super(embeddingStore, attributes);
-            this.ids = ids;
-            this.embeddings = embeddings;
-            this.embeddedList = embeddedList;
+            this.ids = copy(ids);
+            this.embeddings = copy(embeddings);
+            this.embeddedList = copy(embeddedList);
         }
 
         /**
@@ -206,7 +207,7 @@ public abstract class EmbeddingStoreRequestContext<Embedded> {
 
         public RemoveAllIds(EmbeddingStore<Embedded> embeddingStore, Map<Object, Object> attributes, List<String> ids) {
             super(embeddingStore, attributes);
-            this.ids = ids;
+            this.ids = copy(ids);
         }
 
         /**
