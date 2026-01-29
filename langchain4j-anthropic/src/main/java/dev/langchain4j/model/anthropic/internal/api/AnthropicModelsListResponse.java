@@ -11,10 +11,5 @@ import java.util.List;
 @JsonInclude(NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonNaming(SnakeCaseStrategy.class)
-public class AnthropicModelsListResponse {
-
-    public List<AnthropicModelInfo> data;
-    public String firstId;
-    public String lastId;
-    public Boolean hasMore;
-}
+public record AnthropicModelsListResponse(
+        List<AnthropicModelInfo> data, String firstId, String lastId, Boolean hasMore) {}
