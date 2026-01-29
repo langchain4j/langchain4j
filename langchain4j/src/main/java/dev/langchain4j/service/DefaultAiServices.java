@@ -9,12 +9,17 @@ import static dev.langchain4j.service.AiServiceParamsUtil.chatRequestParameters;
 import static dev.langchain4j.service.AiServiceParamsUtil.findArgumentOfType;
 import static dev.langchain4j.service.AiServiceValidation.validateParameters;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
+import static dev.langchain4j.service.TypeUtils.getRawClass;
+import static dev.langchain4j.service.TypeUtils.isImageType;
+import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterClass;
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
@@ -211,13 +216,16 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         // TODO should it be called when returnType==String?
                         boolean supportsJsonSchema = supportsJsonSchema();
-
                         Optional<JsonSchema> jsonSchema = Optional.empty();
-                        if (supportsJsonSchema && !streaming) {
-                            jsonSchema = serviceOutputParser.jsonSchema(returnType);
-                        }
-                        if ((!supportsJsonSchema || jsonSchema.isEmpty()) && !streaming) {
-                            userMessage = appendOutputFormatInstructions(returnType, userMessage);
+                        boolean isImage = isImage(returnType);
+
+                        if (!isImage) {
+                            if (supportsJsonSchema && !streaming) {
+                                jsonSchema = serviceOutputParser.jsonSchema(returnType);
+                            }
+                            if ((!supportsJsonSchema || jsonSchema.isEmpty()) && !streaming) {
+                                userMessage = appendOutputFormatInstructions(returnType, userMessage);
+                            }
                         }
 
                         Optional<List<Content>> maybeContents = findContents(method, args);
@@ -336,12 +344,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .finalResponse(toolServiceResult.finalResponse())
                                     .build();
 
-                            context.eventListenerRegistrar.fireEvent(AiServiceCompletedEvent.builder()
-                                    .invocationContext(invocationContext)
-                                    .result(result)
-                                    .build());
-
-                            return result;
+                            return fireEventAndReturn(invocationContext, result);
                         }
 
                         ChatResponse aggregateResponse = toolServiceResult.aggregateResponse();
@@ -353,13 +356,14 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 chatExecutor,
                                 commonGuardrailParam);
 
-                        if ((response != null) && typeHasRawClass(returnType, response.getClass())) {
-                            context.eventListenerRegistrar.fireEvent(AiServiceCompletedEvent.builder()
-                                    .invocationContext(invocationContext)
-                                    .result(response)
-                                    .build());
+                        if (response != null) {
+                            if (isImage && response instanceof ChatResponse cResponse) {
+                                return fireEventAndReturn(invocationContext, parseImage(cResponse, returnType));
+                            }
 
-                            return response;
+                            if (typeHasRawClass(returnType, response.getClass())) {
+                                return fireEventAndReturn(invocationContext, response);
+                            }
                         }
 
                         var parsedResponse = serviceOutputParser.parse((ChatResponse) response, returnType);
@@ -377,12 +381,51 @@ class DefaultAiServices<T> extends AiServices<T> {
                                         .build()
                                 : parsedResponse;
 
+                        return fireEventAndReturn(invocationContext, actualResponse);
+                    }
+
+                    private Object fireEventAndReturn(InvocationContext invocationContext, Object result) {
                         context.eventListenerRegistrar.fireEvent(AiServiceCompletedEvent.builder()
                                 .invocationContext(invocationContext)
-                                .result(actualResponse)
+                                .result(result)
                                 .build());
+                        return result;
+                    }
 
-                        return actualResponse;
+                    private static boolean isImage(Type returnType) {
+                        Class<?> rawReturnType = getRawClass(returnType);
+                        if (isImageType(rawReturnType)) {
+                            return true;
+                        }
+                        if (Collection.class.isAssignableFrom(rawReturnType)) {
+                            Class<?> genericParam = resolveFirstGenericParameterClass(returnType);
+                            return genericParam != null && isImageType(genericParam);
+                        }
+                        return false;
+                    }
+
+                    private static Object parseImage(ChatResponse response, Type returnType) {
+                        Class<?> rawReturnType = getRawClass(returnType);
+                        if (isImage(rawReturnType)) {
+                            if (rawReturnType == ImageContent.class) {
+                                List<ImageContent> images = ImageContent.from(response.aiMessage());
+                                return images.isEmpty() ? null : images.get(0);
+                            }
+                            if (rawReturnType == Image.class) {
+                                List<Image> images = response.aiMessage().images();
+                                return images.isEmpty() ? null : images.get(0);
+                            }
+                        }
+                        if (Collection.class.isAssignableFrom(rawReturnType)) {
+                            Class<?> genericParam = resolveFirstGenericParameterClass(returnType);
+                            if (genericParam == ImageContent.class) {
+                                return ImageContent.from(response.aiMessage());
+                            }
+                            if (genericParam == Image.class) {
+                                return response.aiMessage().images();
+                            }
+                        }
+                        throw new UnsupportedOperationException("Unsupported return type " + rawReturnType);
                     }
 
                     private boolean canAdaptTokenStreamTo(Type returnType) {
