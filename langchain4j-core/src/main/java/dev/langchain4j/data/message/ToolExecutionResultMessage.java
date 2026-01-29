@@ -17,7 +17,7 @@ public class ToolExecutionResultMessage implements ChatMessage {
     private final String id;
     private final String toolName;
     private final String text;
-    private final boolean isError;
+    private final Boolean isError;
 
     /**
      * Creates a {@link ToolExecutionResultMessage} from a builder.
@@ -39,7 +39,7 @@ public class ToolExecutionResultMessage implements ChatMessage {
         this.id = id;
         this.toolName = toolName;
         this.text = ensureNotNull(text, "text");
-        this.isError = false;
+        this.isError = null;
     }
 
     /**
@@ -68,9 +68,9 @@ public class ToolExecutionResultMessage implements ChatMessage {
 
     /**
      * Returns whether the tool execution resulted in an error.
-     * @return true if the tool execution resulted in an error, false otherwise.
+     * @return true if the tool execution resulted in an error, false if it did not, null if unknown.
      */
-    public boolean isError() {
+    public Boolean isError() {
         return isError;
     }
 
@@ -87,7 +87,7 @@ public class ToolExecutionResultMessage implements ChatMessage {
         return Objects.equals(this.id, that.id)
                 && Objects.equals(this.toolName, that.toolName)
                 && Objects.equals(this.text, that.text)
-                && this.isError == that.isError;
+                && Objects.equals(this.isError, that.isError);
     }
 
     @Override
@@ -117,7 +117,7 @@ public class ToolExecutionResultMessage implements ChatMessage {
         private String id;
         private String toolName;
         private String text;
-        private boolean isError;
+        private Boolean isError;
 
         /**
          * Sets the id of the tool.
@@ -158,7 +158,7 @@ public class ToolExecutionResultMessage implements ChatMessage {
          * @return the builder.
          */
         @JsonProperty("isError")
-        public Builder isError(boolean isError) {
+        public Builder isError(Boolean isError) {
             this.isError = isError;
             return this;
         }

@@ -11,12 +11,12 @@ class ToolExecutionResultMessageTest implements WithAssertions {
         assertThat(tm.id()).isEqualTo("id");
         assertThat(tm.toolName()).isEqualTo("toolName");
         assertThat(tm.text()).isEqualTo("text");
-        assertThat(tm.isError()).isFalse();
+        assertThat(tm.isError()).isNull();
         assertThat(tm.type()).isEqualTo(ChatMessageType.TOOL_EXECUTION_RESULT);
 
         assertThat(tm)
                 .hasToString(
-                        "ToolExecutionResultMessage { id = \"id\" toolName = \"toolName\" text = \"text\" isError = false }");
+                        "ToolExecutionResultMessage { id = \"id\" toolName = \"toolName\" text = \"text\" isError = null }");
     }
 
     @Test

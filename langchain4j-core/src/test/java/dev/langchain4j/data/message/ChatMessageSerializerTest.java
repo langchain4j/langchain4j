@@ -95,7 +95,7 @@ class ChatMessageSerializerTest {
                         "{\"text\":\"test-text\",\"thinking\":\"test-thinking\",\"toolExecutionRequests\":[{\"name\":\"weather\",\"arguments\":\"{\\\"city\\\": \\\"Munich\\\"}\"}],\"attributes\":{\"name\":\"Klaus\",\"age\":42,\"extra\":[\"one\",\"two\"]},\"type\":\"AI\"}"),
                 Arguments.of(
                         ToolExecutionResultMessage.from("12345", "weather", "sunny"),
-                        "{\"id\":\"12345\",\"toolName\":\"weather\",\"text\":\"sunny\",\"isError\":false,\"type\":\"TOOL_EXECUTION_RESULT\"}"),
+                        "{\"id\":\"12345\",\"toolName\":\"weather\",\"text\":\"sunny\",\"type\":\"TOOL_EXECUTION_RESULT\"}"),
                 Arguments.of(
                         ToolExecutionResultMessage.builder()
                                 .id("12345")
@@ -176,6 +176,6 @@ class ChatMessageSerializerTest {
         assertThat(deserialized.id()).isEqualTo("12345");
         assertThat(deserialized.toolName()).isEqualTo("weather");
         assertThat(deserialized.text()).isEqualTo("sunny");
-        assertThat(deserialized.isError()).isFalse();
+        assertThat(deserialized.isError()).isNull();
     }
 }

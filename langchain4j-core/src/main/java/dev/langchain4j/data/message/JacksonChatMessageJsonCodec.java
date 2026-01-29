@@ -137,7 +137,7 @@ public class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec {
     private abstract static class ToolExecutionResultMessageMixin {
 
         @JsonProperty("isError")
-        abstract boolean isError();
+        abstract Boolean isError();
     }
 
     @JsonInclude(NON_NULL)
