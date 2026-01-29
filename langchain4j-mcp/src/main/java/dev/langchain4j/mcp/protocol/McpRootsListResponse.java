@@ -8,13 +8,13 @@ import java.util.List;
 import java.util.Map;
 
 @Internal
-public class McpRootsListResponse extends McpJsonRpcMessage {
+public class McpRootsListResponse extends McpClientMessage {
 
     @JsonInclude(JsonInclude.Include.ALWAYS)
     private final Map<String, Object> result = new HashMap<>();
 
     public McpRootsListResponse(Long id, List<McpRoot> roots) {
-        super(id);
+        super(id, null);
         result.put("roots", roots);
     }
 

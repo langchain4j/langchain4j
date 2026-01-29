@@ -149,7 +149,7 @@ public class DefaultMcpClientTest {
                 new DefaultMcpClient.Builder().transport(transport).build();
         final ObjectNode toolsJsonResult = getToolResultJson(
                 new ToolDefinition("testTool", "A test tool", new ToolArg("argument1", "string", "An argument")));
-        when(transport.executeOperationWithResponse(any()))
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
                 .thenReturn(CompletableFuture.completedFuture(toolsJsonResult));
 
         // when
@@ -171,7 +171,7 @@ public class DefaultMcpClientTest {
                 new DefaultMcpClient.Builder().transport(transport).build();
         final ObjectNode toolsJsonResult = getToolResultJson(
                 new ToolDefinition("testTool", "A test tool", new ToolArg("argument1", "string", "An argument")));
-        when(transport.executeOperationWithResponse(any()))
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
                 .thenReturn(CompletableFuture.completedFuture(toolsJsonResult));
 
         // when: asking for tools twice
@@ -183,7 +183,7 @@ public class DefaultMcpClientTest {
         // and: also do a sanity check
         assertThat(tools1).isNotNull().isNotEmpty();
         // and: the transport operation was executed only once
-        verify(transport, times(1)).executeOperationWithResponse(any());
+        verify(transport, times(1)).executeOperationWithResponse(any(McpCallContext.class));
     }
 
     @Test
@@ -194,7 +194,7 @@ public class DefaultMcpClientTest {
                 new DefaultMcpClient.Builder().transport(transport).build();
         final ObjectNode toolsJsonResult = getToolResultJson(
                 new ToolDefinition("testTool", "A test tool", new ToolArg("argument1", "string", "An argument")));
-        when(transport.executeOperationWithResponse(any()))
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
                 .thenReturn(CompletableFuture.completedFuture(toolsJsonResult));
 
         // and: the tools are cached
@@ -204,7 +204,7 @@ public class DefaultMcpClientTest {
                 "testToolAnother",
                 "Another test tool",
                 new ToolArg("argumentAnother1", "integer", "Another argument")));
-        when(transport.executeOperationWithResponse(any()))
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
                 .thenReturn(CompletableFuture.completedFuture(newToolsJsonResult));
 
         // when
@@ -219,7 +219,7 @@ public class DefaultMcpClientTest {
         assertThat(tools.get(0).name()).isEqualTo("testTool");
         assertThat(toolsAfterEviction.get(0).name()).isEqualTo("testToolAnother");
         // and: the transport operation was executed once more after the eviction
-        verify(transport, times(2)).executeOperationWithResponse(any());
+        verify(transport, times(2)).executeOperationWithResponse(any(McpCallContext.class));
     }
 
     @Test
@@ -232,7 +232,7 @@ public class DefaultMcpClientTest {
                 .build();
         final ObjectNode toolsJsonResult = getToolResultJson(
                 new ToolDefinition("testTool", "A test tool", new ToolArg("argument1", "string", "An argument")));
-        when(transport.executeOperationWithResponse(any()))
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
                 .thenReturn(CompletableFuture.completedFuture(toolsJsonResult));
 
         // and: an initial tool list is retrieved
@@ -242,7 +242,7 @@ public class DefaultMcpClientTest {
                 "testToolAnother",
                 "Another test tool",
                 new ToolArg("argumentAnother1", "integer", "Another argument")));
-        when(transport.executeOperationWithResponse(any()))
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
                 .thenReturn(CompletableFuture.completedFuture(newToolsJsonResult));
 
         // when
@@ -256,7 +256,7 @@ public class DefaultMcpClientTest {
         assertThat(initialTools.get(0).name()).isEqualTo("testTool");
         assertThat(subsequentTools.get(0).name()).isEqualTo("testToolAnother");
         // and: the transport operation was executed as many times as tools were retrieved
-        verify(transport, times(2)).executeOperationWithResponse(any());
+        verify(transport, times(2)).executeOperationWithResponse(any(McpCallContext.class));
     }
 
     private static McpTransport getMinimalMcpTransportMock() {
