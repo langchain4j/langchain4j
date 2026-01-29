@@ -7,7 +7,7 @@ import java.nio.file.Path;
 import java.util.Objects;
 
 import static dev.langchain4j.data.message.ContentType.AUDIO;
-import static dev.langchain4j.data.message.ContentUtil.extractBase64Content;
+import static dev.langchain4j.internal.ContentUtil.extractBase64Content;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 

@@ -1,4 +1,4 @@
-package dev.langchain4j.data.message;
+package dev.langchain4j.internal;
 
 import java.io.IOException;
 import java.nio.file.Files;
