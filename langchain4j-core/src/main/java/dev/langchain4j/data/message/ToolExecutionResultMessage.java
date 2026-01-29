@@ -4,6 +4,7 @@ import static dev.langchain4j.data.message.ChatMessageType.TOOL_EXECUTION_RESULT
 import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import java.util.Objects;
 
@@ -19,13 +20,13 @@ public class ToolExecutionResultMessage implements ChatMessage {
     private final boolean isError;
 
     /**
-     * Creates a {@link ToolExecutionResultMessage}.
-     * @param id the id of the tool.
-     * @param toolName the name of the tool.
-     * @param text the result of the tool execution.
+     * Creates a {@link ToolExecutionResultMessage} from a builder.
      */
-    public ToolExecutionResultMessage(String id, String toolName, String text) {
-        this(id, toolName, text, false);
+    public ToolExecutionResultMessage(Builder builder) {
+        this.id = builder.id;
+        this.toolName = builder.toolName;
+        this.text = ensureNotNull(builder.text, "text");
+        this.isError = builder.isError;
     }
 
     /**
@@ -33,13 +34,12 @@ public class ToolExecutionResultMessage implements ChatMessage {
      * @param id the id of the tool.
      * @param toolName the name of the tool.
      * @param text the result of the tool execution.
-     * @param isError whether the tool execution resulted in an error.
      */
-    public ToolExecutionResultMessage(String id, String toolName, String text, boolean isError) {
+    public ToolExecutionResultMessage(String id, String toolName, String text) {
         this.id = id;
         this.toolName = toolName;
         this.text = ensureNotNull(text, "text");
-        this.isError = isError;
+        this.isError = false;
     }
 
     /**
@@ -105,6 +105,74 @@ public class ToolExecutionResultMessage implements ChatMessage {
     }
 
     /**
+     * Creates a builder for {@link ToolExecutionResultMessage}.
+     * @return the builder.
+     */
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+
+        private String id;
+        private String toolName;
+        private String text;
+        private boolean isError;
+
+        /**
+         * Sets the id of the tool.
+         * @param id the id of the tool.
+         * @return the builder.
+         */
+        @JsonProperty("id")
+        public Builder id(String id) {
+            this.id = id;
+            return this;
+        }
+
+        /**
+         * Sets the name of the tool.
+         * @param toolName the name of the tool.
+         * @return the builder.
+         */
+        @JsonProperty("toolName")
+        public Builder toolName(String toolName) {
+            this.toolName = toolName;
+            return this;
+        }
+
+        /**
+         * Sets the result text of the tool execution.
+         * @param text the result of the tool execution.
+         * @return the builder.
+         */
+        @JsonProperty("text")
+        public Builder text(String text) {
+            this.text = text;
+            return this;
+        }
+
+        /**
+         * Sets whether the tool execution resulted in an error.
+         * @param isError whether the tool execution resulted in an error.
+         * @return the builder.
+         */
+        @JsonProperty("isError")
+        public Builder isError(boolean isError) {
+            this.isError = isError;
+            return this;
+        }
+
+        /**
+         * Builds the {@link ToolExecutionResultMessage}.
+         * @return the {@link ToolExecutionResultMessage}.
+         */
+        public ToolExecutionResultMessage build() {
+            return new ToolExecutionResultMessage(this);
+        }
+    }
+
+    /**
      * Creates a {@link ToolExecutionResultMessage} from a {@link ToolExecutionRequest} and the result of the tool execution.
      * @param request the request.
      * @param toolExecutionResult the result of the tool execution.
@@ -116,18 +184,6 @@ public class ToolExecutionResultMessage implements ChatMessage {
 
     /**
      * Creates a {@link ToolExecutionResultMessage} from a {@link ToolExecutionRequest} and the result of the tool execution.
-     * @param request the request.
-     * @param toolExecutionResult the result of the tool execution.
-     * @param isError whether the tool execution resulted in an error.
-     * @return the {@link ToolExecutionResultMessage}.
-     */
-    public static ToolExecutionResultMessage from(
-            ToolExecutionRequest request, String toolExecutionResult, boolean isError) {
-        return new ToolExecutionResultMessage(request.id(), request.name(), toolExecutionResult, isError);
-    }
-
-    /**
-     * Creates a {@link ToolExecutionResultMessage} from a {@link ToolExecutionRequest} and the result of the tool execution.
      * @param id the id of the tool.
      * @param toolName the name of the tool.
      * @param toolExecutionResult the result of the tool execution.
@@ -135,19 +191,6 @@ public class ToolExecutionResultMessage implements ChatMessage {
      */
     public static ToolExecutionResultMessage from(String id, String toolName, String toolExecutionResult) {
         return new ToolExecutionResultMessage(id, toolName, toolExecutionResult);
-    }
-
-    /**
-     * Creates a {@link ToolExecutionResultMessage} from a {@link ToolExecutionRequest} and the result of the tool execution.
-     * @param id the id of the tool.
-     * @param toolName the name of the tool.
-     * @param toolExecutionResult the result of the tool execution.
-     * @param isError whether the tool execution resulted in an error.
-     * @return the {@link ToolExecutionResultMessage}.
-     */
-    public static ToolExecutionResultMessage from(
-            String id, String toolName, String toolExecutionResult, boolean isError) {
-        return new ToolExecutionResultMessage(id, toolName, toolExecutionResult, isError);
     }
 
     /**

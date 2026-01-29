@@ -97,7 +97,12 @@ class ChatMessageSerializerTest {
                         ToolExecutionResultMessage.from("12345", "weather", "sunny"),
                         "{\"id\":\"12345\",\"toolName\":\"weather\",\"text\":\"sunny\",\"isError\":false,\"type\":\"TOOL_EXECUTION_RESULT\"}"),
                 Arguments.of(
-                        ToolExecutionResultMessage.from("12345", "weather", "error occurred", true),
+                        ToolExecutionResultMessage.builder()
+                                .id("12345")
+                                .toolName("weather")
+                                .text("error occurred")
+                                .isError(true)
+                                .build(),
                         "{\"id\":\"12345\",\"toolName\":\"weather\",\"text\":\"error occurred\",\"isError\":true,\"type\":\"TOOL_EXECUTION_RESULT\"}"),
                 Arguments.of(
                         CustomMessage.from(new LinkedHashMap<>() {
@@ -160,5 +165,17 @@ class ChatMessageSerializerTest {
         assertThat(deserialized.thinking()).isNull();
         assertThat(deserialized.toolExecutionRequests()).isEmpty();
         assertThat(deserialized.attributes()).isEmpty();
+    }
+
+    @Test
+    void should_deserialize_ToolExecutionResultMessage_without_isError() {
+
+        ToolExecutionResultMessage deserialized = (ToolExecutionResultMessage) messageFromJson(
+                "{\"id\":\"12345\",\"toolName\":\"weather\",\"text\":\"sunny\",\"type\":\"TOOL_EXECUTION_RESULT\"}");
+
+        assertThat(deserialized.id()).isEqualTo("12345");
+        assertThat(deserialized.toolName()).isEqualTo("weather");
+        assertThat(deserialized.text()).isEqualTo("sunny");
+        assertThat(deserialized.isError()).isFalse();
     }
 }

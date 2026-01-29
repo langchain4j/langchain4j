@@ -21,7 +21,12 @@ class ToolExecutionResultMessageTest implements WithAssertions {
 
     @Test
     void methods_with_isError() {
-        ToolExecutionResultMessage tm = new ToolExecutionResultMessage("id", "toolName", "error message", true);
+        ToolExecutionResultMessage tm = ToolExecutionResultMessage.builder()
+                .id("id")
+                .toolName("toolName")
+                .text("error message")
+                .isError(true)
+                .build();
         assertThat(tm.id()).isEqualTo("id");
         assertThat(tm.toolName()).isEqualTo("toolName");
         assertThat(tm.text()).isEqualTo("error message");
@@ -50,7 +55,12 @@ class ToolExecutionResultMessageTest implements WithAssertions {
                 .isNotEqualTo(ToolExecutionResultMessage.from("changed", "toolName", "text"))
                 .isNotEqualTo(ToolExecutionResultMessage.from("id", "changed", "text"))
                 .isNotEqualTo(ToolExecutionResultMessage.from("id", "toolName", "changed"))
-                .isNotEqualTo(ToolExecutionResultMessage.from("id", "toolName", "text", true))
+                .isNotEqualTo(ToolExecutionResultMessage.builder()
+                        .id("id")
+                        .toolName("toolName")
+                        .text("text")
+                        .isError(true)
+                        .build())
                 .isNotEqualTo(t3)
                 .doesNotHaveSameHashCodeAs(t3);
 
@@ -69,7 +79,12 @@ class ToolExecutionResultMessageTest implements WithAssertions {
                 .isEqualTo(ToolExecutionResultMessage.from("id", "toolName", "text"))
                 .isEqualTo(ToolExecutionResultMessage.from(request, "text"))
                 .isEqualTo(ToolExecutionResultMessage.toolExecutionResultMessage("id", "toolName", "text"))
-                .isEqualTo(ToolExecutionResultMessage.toolExecutionResultMessage(request, "text"));
+                .isEqualTo(ToolExecutionResultMessage.toolExecutionResultMessage(request, "text"))
+                .isEqualTo(ToolExecutionResultMessage.builder()
+                        .id("id")
+                        .toolName("toolName")
+                        .text("text")
+                        .build());
     }
 
     @Test
