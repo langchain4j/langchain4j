@@ -3,7 +3,6 @@ package dev.langchain4j.data.message;
 import dev.langchain4j.data.image.Image;
 
 import java.net.URI;
-import java.util.List;
 import java.util.Objects;
 
 import static dev.langchain4j.data.message.ContentType.IMAGE;
@@ -265,9 +264,5 @@ public class ImageContent implements Content {
      */
     public static ImageContent from(Image image, DetailLevel detailLevel) {
         return new ImageContent(image, detailLevel);
-    }
-
-    public static List<ImageContent> from(AiMessage aiMessage) {
-        return aiMessage.images().stream().map(ImageContent::from).toList();
     }
 }
