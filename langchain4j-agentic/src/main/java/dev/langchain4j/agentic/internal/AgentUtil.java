@@ -241,7 +241,7 @@ public class AgentUtil {
         if (value instanceof Image image && type == ImageContent.class) {
             return ImageContent.from(image);
         }
-        if (value instanceof ImageContent imageContent && type == ImageContent.class) {
+        if (value instanceof ImageContent imageContent && type == Image.class) {
             return imageContent.image();
         }
         return value;
