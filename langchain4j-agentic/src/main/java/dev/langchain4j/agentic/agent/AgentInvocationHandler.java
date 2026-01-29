@@ -23,7 +23,7 @@ import static dev.langchain4j.agentic.observability.ComposedAgentListener.compos
 public class AgentInvocationHandler implements InvocationHandler, InternalAgent {
 
     private final AiServiceContext context;
-    private final AgentBuilder<?> builder;
+    private final AgentBuilder<?, ?> builder;
     private final Object agent;
     private final UserMessageRecorder messageRecorder;
     private final boolean agenticScopeDependent;
@@ -33,7 +33,7 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
     AgentInvocationHandler(
             AiServiceContext context,
             Object agent,
-            AgentBuilder<?> builder,
+            AgentBuilder<?, ?> builder,
             UserMessageRecorder messageRecorder,
             boolean agenticScopeDependent) {
         this.context = context;
