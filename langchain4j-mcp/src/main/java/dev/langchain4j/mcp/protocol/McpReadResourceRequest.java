@@ -7,16 +7,13 @@ import java.util.Map;
 import java.util.Objects;
 
 @Internal
-public class McpReadResourceRequest extends McpJsonRpcMessage {
-
-    @JsonInclude
-    public final McpClientMethod method = McpClientMethod.RESOURCES_READ;
+public class McpReadResourceRequest extends McpClientMessage {
 
     @JsonInclude
     private Map<String, Object> params;
 
     public McpReadResourceRequest(Long id, String uri) {
-        super(id);
+        super(id, McpClientMethod.RESOURCES_READ);
         this.params = new HashMap<>();
         Objects.requireNonNull(uri);
         this.params.put("uri", uri);

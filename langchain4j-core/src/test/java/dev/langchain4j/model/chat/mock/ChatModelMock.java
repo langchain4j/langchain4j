@@ -118,6 +118,10 @@ public class ChatModelMock implements ChatModel {
         return new ChatModelMock(ignored -> queue.poll());
     }
 
+    public static ChatModelMock thatResponds(Function<ChatRequest, AiMessage> aiMessageGenerator) {
+        return new ChatModelMock(aiMessageGenerator);
+    }
+
     public static ChatModelMock thatAlwaysThrowsException() {
         return thatAlwaysThrowsExceptionWithMessage("Something went wrong, but this is an expected exception");
     }

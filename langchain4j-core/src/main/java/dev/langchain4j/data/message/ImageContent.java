@@ -3,9 +3,11 @@ package dev.langchain4j.data.message;
 import dev.langchain4j.data.image.Image;
 
 import java.net.URI;
+import java.nio.file.Path;
 import java.util.Objects;
 
 import static dev.langchain4j.data.message.ContentType.IMAGE;
+import static dev.langchain4j.internal.ContentUtil.extractBase64Content;
 import static dev.langchain4j.data.message.ImageContent.DetailLevel.LOW;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -241,6 +243,29 @@ public class ImageContent implements Content {
      */
     public static ImageContent from(String base64Data, String mimeType, DetailLevel detailLevel) {
         return new ImageContent(base64Data, mimeType, detailLevel);
+    }
+
+    /**
+     * Create a new {@link ImageContent} from the file at the given path and mime type.
+     *
+     * @param imageFilePath the path to the image file.
+     * @param mimeType the mime type of the image.
+     * @return the new {@link ImageContent}.
+     */
+    public static ImageContent from(Path imageFilePath, String mimeType) {
+        return from(extractBase64Content(imageFilePath), mimeType);
+    }
+
+    /**
+     * Create a new {@link ImageContent} from the file at the given path and mime type.
+     *
+     * @param imageFilePath the path to the image file.
+     * @param mimeType the mime type of the image.
+     * @param detailLevel the detail level of the image.
+     * @return the new {@link ImageContent}.
+     */
+    public static ImageContent from(Path imageFilePath, String mimeType, DetailLevel detailLevel) {
+        return from(extractBase64Content(imageFilePath), mimeType, detailLevel);
     }
 
     /**
