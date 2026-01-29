@@ -3,6 +3,8 @@ package dev.langchain4j.agentic;
 import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.PdfFileContent;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
@@ -21,13 +23,13 @@ import static dev.langchain4j.agentic.Models.plannerModel;
 import static dev.langchain4j.agentic.Models.visionModel;
 import static org.assertj.core.api.Assertions.assertThat;
 
-
 @EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 public class MultimodalAgentsIT {
 
-    private static Image imageOf3LLamas = Image.builder()
-            .url("https://as1.ftcdn.net/jpg/17/31/32/26/1000_F_1731322642_GQDXVbTdzxOA1zr6Tw9QXhbmubumfoP3.webp")
-            .build();
+    private static final ChatModel IMAGE_GENERATION_MODEL = imageGenerationModel(Models.MODEL_PROVIDER.GEMINI);
+
+    private static final Path THREE_LLAMAS_IMAGE_PATH = Path.of("src", "test", "resources", "3llamas.png");
+    private static final Path BLACK_HOLES_PAPER_PDF_PATH = Path.of("src", "test", "resources", "Black holes paper.pdf");
 
     public interface AnimalsIdentifier {
 
@@ -80,7 +82,7 @@ public class MultimodalAgentsIT {
                 .output(scope -> scope.readState("animalCount") + " " + scope.readState("animalType"))
                 .build();
 
-        String response = animalsExpert.analyzeAnimals(ImageContent.from(imageOf3LLamas));
+        String response = animalsExpert.analyzeAnimals(ImageContent.from(THREE_LLAMAS_IMAGE_PATH, "image/png"));
         assertThat(response).contains("3").containsAnyOf("llamas", "alpacas", "Llamas", "Alpacas");
     }
 
@@ -102,7 +104,8 @@ public class MultimodalAgentsIT {
                 .responseStrategy(SupervisorResponseStrategy.SUMMARY)
                 .build();
 
-        String response = animalsExpert.analyzeAnimals("Which type of animals and how many of them are present in the given image?", ImageContent.from(imageOf3LLamas));
+        String response = animalsExpert.analyzeAnimals("Which type of animals and how many of them are present in the given image?",
+                ImageContent.from(THREE_LLAMAS_IMAGE_PATH, "image/png"));
         assertThat(response).contains("3").containsAnyOf("llamas", "alpacas", "Llamas", "Alpacas");
     }
 
@@ -142,15 +145,13 @@ public class MultimodalAgentsIT {
 
     @Test
     void image_generation_sequence_test() {
-        var gemini = Models.MODEL_PROVIDER.GEMINI;
-
         SceneDescriptorGenerator sceneDescriptorGenerator = AgenticServices.agentBuilder(SceneDescriptorGenerator.class)
-                .chatModel(baseModel(gemini))
+                .chatModel(baseModel())
                 .outputKey("requiredImage")
                 .build();
 
         ImageGenerator imageGenerator = AgenticServices.agentBuilder(ImageGenerator.class)
-                .chatModel(imageGenerationModel(gemini))
+                .chatModel(IMAGE_GENERATION_MODEL)
                 .outputKey("image")
                 .build();
 
@@ -165,7 +166,7 @@ public class MultimodalAgentsIT {
         assertThat(image.base64Data()).isNotEmpty();
         assertThat(image.mimeType()).startsWith("image/");
 
-        writeToDisk(image, "/tmp/output");
+//        writeToDisk(image, "/tmp/output");
     }
 
     @Test
@@ -179,28 +180,26 @@ public class MultimodalAgentsIT {
     }
 
     void check_image_manipulation_sequence(boolean generateImage) {
-        var gemini = Models.MODEL_PROVIDER.GEMINI;
-
         SceneDescriptorGenerator sceneDescriptorGenerator = AgenticServices.agentBuilder(SceneDescriptorGenerator.class)
-                .chatModel(baseModel(gemini))
+                .chatModel(baseModel())
                 .outputKey("requiredImage")
                 .build();
 
         Object imageGenerator;
         if (generateImage) {
             imageGenerator = AgenticServices.agentBuilder(ImageGenerator.class)
-                    .chatModel(imageGenerationModel(gemini))
+                    .chatModel(IMAGE_GENERATION_MODEL)
                     .outputKey("generatedImage")
                     .build();
         } else {
             imageGenerator = AgenticServices.agentBuilder(ImageContentGenerator.class)
-                    .chatModel(imageGenerationModel(gemini))
+                    .chatModel(IMAGE_GENERATION_MODEL)
                     .outputKey("generatedImage")
                     .build();
         }
 
         ImageStyler imageStyler = AgenticServices.agentBuilder(ImageStyler.class)
-                .chatModel(imageGenerationModel(gemini))
+                .chatModel(IMAGE_GENERATION_MODEL)
                 .outputKey("editedImage")
                 .build();
 
@@ -214,7 +213,7 @@ public class MultimodalAgentsIT {
         assertThat(image.image().base64Data()).isNotEmpty();
         assertThat(image.image().mimeType()).startsWith("image/");
 
-        writeToDisk(image.image(), "/tmp/output");
+//        writeToDisk(image.image(), "/tmp/output");
     }
 
     private static void writeToDisk(Image image, String destination) {
@@ -233,5 +232,46 @@ public class MultimodalAgentsIT {
                 throw new RuntimeException(e);
             }
         }
+    }
+
+    public interface PdfSummarizer {
+
+        @SystemMessage("You are an expert in summarizing PDF documents.")
+        @UserMessage("Provide a summary of the given PDF document.")
+        @Agent("Provide a summary of the given PDF document.")
+        String identify(@UserMessage @V("paper") PdfFileContent paper);
+    }
+
+    public interface InfographicGenerator {
+
+        @UserMessage("A visual infographic summarizing the information of the following text: {{textSummary}}")
+        @Agent("Generate an infographic of the given text summary")
+        Image generateImageOf(@V("textSummary") String textSummary);
+    }
+
+    @Test
+    void pdf_ingestion_test() {
+        PdfSummarizer pdfSummarizer = AgenticServices.agentBuilder(PdfSummarizer.class)
+                .chatModel(baseModel())
+                .outputKey("textSummary")
+                .build();
+
+        InfographicGenerator infographicGenerator = AgenticServices.agentBuilder(InfographicGenerator.class)
+                .chatModel(IMAGE_GENERATION_MODEL)
+                .outputKey("infographic")
+                .build();
+
+        UntypedAgent imageExpert = AgenticServices.sequenceBuilder()
+                .subAgents(pdfSummarizer, infographicGenerator)
+                .outputKey("infographic")
+                .build();
+
+        Image image = (Image) imageExpert.invoke(Map.of("paper", PdfFileContent.from(BLACK_HOLES_PAPER_PDF_PATH)));
+
+        assertThat(image).isNotNull();
+        assertThat(image.base64Data()).isNotEmpty();
+        assertThat(image.mimeType()).startsWith("image/");
+
+//        writeToDisk(image, "/tmp/output");
     }
 }
