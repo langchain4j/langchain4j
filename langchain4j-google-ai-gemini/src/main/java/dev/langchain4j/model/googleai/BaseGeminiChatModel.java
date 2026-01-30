@@ -22,7 +22,6 @@ import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.googleai.GeminiGenerateContentRequest.GeminiToolConfig;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUsageMetadata;
@@ -40,6 +39,8 @@ class BaseGeminiChatModel {
     protected final GeminiFunctionCallingConfig functionCallingConfig;
     protected final boolean allowCodeExecution;
     protected final boolean allowGoogleSearch;
+    protected final boolean allowGoogleMaps;
+    protected final boolean retrieveGoogleMapsWidgetToken;
     protected final boolean allowUrlContext;
     protected final boolean includeCodeExecutionOutput;
     protected final List<GeminiSafetySetting> safetySettings;
@@ -61,6 +62,8 @@ class BaseGeminiChatModel {
         this.functionCallingConfig = builder.functionCallingConfig;
         this.allowCodeExecution = getOrDefault(builder.allowCodeExecution, false);
         this.allowGoogleSearch = getOrDefault(builder.allowGoogleSearch, false);
+        this.allowGoogleMaps = getOrDefault(builder.allowGoogleMaps, false);
+        this.retrieveGoogleMapsWidgetToken = getOrDefault(builder.retrieveGoogleMapsWidgetToken, false);
         this.allowUrlContext = getOrDefault(builder.allowUrlContext, false);
         this.includeCodeExecutionOutput = getOrDefault(builder.includeCodeExecutionOutput, false);
         this.safetySettings = copyIfNotNull(builder.safetySettings);
@@ -155,7 +158,9 @@ class BaseGeminiChatModel {
                         chatRequest.toolSpecifications(),
                         this.allowCodeExecution,
                         this.allowGoogleSearch,
-                        this.allowUrlContext))
+                        this.allowUrlContext,
+                        this.allowGoogleMaps,
+                        this.retrieveGoogleMapsWidgetToken))
                 .toolConfig(toToolConfig(parameters.toolChoice(), this.functionCallingConfig))
                 .build();
     }
@@ -225,11 +230,12 @@ class BaseGeminiChatModel {
 
         return ChatResponse.builder()
                 .aiMessage(aiMessage)
-                .metadata(ChatResponseMetadata.builder()
+                .metadata(GoogleAiGeminiChatResponseMetadata.builder()
                         .id(geminiResponse.responseId())
                         .modelName(geminiResponse.modelVersion())
                         .tokenUsage(createTokenUsage(geminiResponse.usageMetadata()))
                         .finishReason(finishReason)
+                        .groundingMetadata(geminiResponse.groundingMetadata())
                         .build())
                 .build();
     }
@@ -270,6 +276,8 @@ class BaseGeminiChatModel {
         protected GeminiFunctionCallingConfig functionCallingConfig;
         protected Boolean allowCodeExecution;
         protected Boolean allowGoogleSearch;
+        protected Boolean allowGoogleMaps;
+        protected Boolean retrieveGoogleMapsWidgetToken;
         protected Boolean allowUrlContext;
         protected Boolean includeCodeExecutionOutput;
         protected Boolean logRequestsAndResponses;
@@ -514,6 +522,22 @@ class BaseGeminiChatModel {
          */
         public B allowGoogleSearch(Boolean allowGoogleSearch) {
             this.allowGoogleSearch = allowGoogleSearch;
+            return builder();
+        }
+
+        /**
+         * Enables <a href="https://ai.google.dev/gemini-api/docs/maps-grounding">Google Maps tool</a> in Gemini.
+         */
+        public B allowGoogleMaps(Boolean allowGoogleMaps) {
+            this.allowGoogleMaps = allowGoogleMaps;
+            return builder();
+        }
+
+        /**
+         * Retrieve the Google Maps widget <a href="https://ai.google.dev/gemini-api/docs/maps-grounding#display_the_google_maps_contextual_widget">context token</a> in the response for use with the Google Maps JS API.
+         */
+        public B retrieveGoogleMapsWidgetToken(Boolean retrieveGoogleMapsWidgetToken) {
+            this.retrieveGoogleMapsWidgetToken = retrieveGoogleMapsWidgetToken;
             return builder();
         }
 

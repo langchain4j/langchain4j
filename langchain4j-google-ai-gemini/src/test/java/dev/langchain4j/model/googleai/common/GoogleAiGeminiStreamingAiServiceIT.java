@@ -1,6 +1,8 @@
 package dev.langchain4j.model.googleai.common;
 
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.googleai.GoogleAiGeminiChatResponseMetadata;
 import dev.langchain4j.model.googleai.GoogleAiGeminiStreamingChatModel;
 import dev.langchain4j.service.common.AbstractStreamingAiServiceIT;
 import java.util.List;
@@ -17,5 +19,10 @@ class GoogleAiGeminiStreamingAiServiceIT extends AbstractStreamingAiServiceIT {
                 .logRequests(true)
                 .logResponses(true)
                 .build());
+    }
+
+    @Override
+    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(StreamingChatModel model) {
+        return GoogleAiGeminiChatResponseMetadata.class;
     }
 }

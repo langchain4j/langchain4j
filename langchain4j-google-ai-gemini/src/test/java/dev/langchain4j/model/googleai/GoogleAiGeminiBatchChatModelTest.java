@@ -22,7 +22,6 @@ import dev.langchain4j.http.client.MockHttpClientBuilder;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateFileRequest;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateRequest;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateResponse;
@@ -1393,7 +1392,7 @@ class GoogleAiGeminiBatchChatModelTest {
     private static ChatResponse createChatResponse(String content) {
         return ChatResponse.builder()
                 .aiMessage(AiMessage.from(content))
-                .metadata(ChatResponseMetadata.builder()
+                .metadata(GoogleAiGeminiChatResponseMetadata.builder()
                         .id("response-id-" + content.hashCode())
                         .modelName(MODEL_NAME)
                         .tokenUsage(new TokenUsage(10, 5, 15))
@@ -1413,7 +1412,7 @@ class GoogleAiGeminiBatchChatModelTest {
                 .build();
 
         return new GeminiGenerateContentResponse(
-                chatResponse.id(), chatResponse.metadata().modelName(), List.of(candidate), usageMetadata);
+                chatResponse.id(), chatResponse.metadata().modelName(), List.of(candidate), usageMetadata, null);
     }
 
     private GoogleAiGeminiBatchChatModel createSubject() {

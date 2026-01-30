@@ -189,7 +189,7 @@ class GoogleAiGeminiChatModelTest {
                     null);
 
             var geminiResponse = new GeminiGenerateContentResponse(
-                    "token-response-id", "gemini-pro-v1", List.of(candidate), usageMetadata);
+                    "token-response-id", "gemini-pro-v1", List.of(candidate), usageMetadata, null);
 
             when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
                     .thenReturn(geminiResponse);
@@ -225,7 +225,7 @@ class GoogleAiGeminiChatModelTest {
                     null);
 
             var geminiResponse = new GeminiGenerateContentResponse(
-                    "finish-reason-id", "gemini-pro-v1", List.of(candidate), createUsageMetadata(10, 20, 30));
+                    "finish-reason-id", "gemini-pro-v1", List.of(candidate), createUsageMetadata(10, 20, 30), null);
 
             when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
                     .thenReturn(geminiResponse);
@@ -317,7 +317,7 @@ class GoogleAiGeminiChatModelTest {
                 null);
 
         return new GeminiGenerateContentResponse(
-                "response-id-123", "gemini-pro-v1", List.of(candidate), createUsageMetadata(10, 20, 30));
+                "response-id-123", "gemini-pro-v1", List.of(candidate), createUsageMetadata(10, 20, 30), null);
     }
 
     private static GeminiUsageMetadata createUsageMetadata(int promptTokens, int candidateTokens, int totalTokens) {
