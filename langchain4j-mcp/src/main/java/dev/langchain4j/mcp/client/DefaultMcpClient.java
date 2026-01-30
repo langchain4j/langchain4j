@@ -361,6 +361,11 @@ public class DefaultMcpClient implements McpClient {
         } catch (InterruptedException e) {
             Thread.interrupted();
             throw new RuntimeException(e);
+        } catch (McpException e) {
+            if (listener != null) {
+                listener.onResourceGetError(context, e);
+            }
+            throw e;
         } finally {
             pendingOperations.remove(operationId);
         }
@@ -405,6 +410,11 @@ public class DefaultMcpClient implements McpClient {
         } catch (InterruptedException e) {
             Thread.interrupted();
             throw new RuntimeException(e);
+        } catch (McpException e) {
+            if (listener != null) {
+                listener.onPromptGetError(context, e);
+            }
+            throw e;
         } finally {
             pendingOperations.remove(operationId);
         }

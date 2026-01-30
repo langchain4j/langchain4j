@@ -145,6 +145,23 @@ public class McpClientListenerIT {
     }
 
     @Test
+    public void resourceGetError() {
+        try {
+            mcpClient.readResource("file:///test-resource-failing");
+            Assertions.fail("Should have thrown an exception");
+        } catch (Exception e) {
+            // check that the beforeResourceGet callback was invoked
+            assertThat(testListener.resourceContext).isNotNull();
+            assertThat(testListener.resourceContext.message().method).isEqualTo(McpClientMethod.RESOURCES_READ);
+            assertThat(testListener.resourceContext.message().getId()).isNotNull();
+
+            // check that the onResourceGetError callback was invoked
+            assertThat(testListener.resourceResult).isNull();
+            assertThat(testListener.resourceError).isNotNull();
+        }
+    }
+
+    @Test
     public void promptGet() {
         McpGetPromptResult result = mcpClient.getPrompt("testPrompt", Map.of());
         assertThat(result).isNotNull();
@@ -157,6 +174,23 @@ public class McpClientListenerIT {
         // check that the afterPromptGet callback was invoked
         assertThat(testListener.promptResult).isNotNull();
         assertThat(testListener.promptResultContext).isSameAs(testListener.prompt);
+    }
+
+    @Test
+    public void promptGetError() {
+        try {
+            mcpClient.getPrompt("testPromptFailing", Map.of());
+            Assertions.fail("Should have thrown an exception");
+        } catch (Exception e) {
+            // check that the beforePromptGet callback was invoked
+            assertThat(testListener.prompt).isNotNull();
+            assertThat(testListener.prompt.message().method).isEqualTo(McpClientMethod.PROMPTS_GET);
+            assertThat(testListener.prompt.message().getId()).isNotNull();
+
+            // check that the onPromptGetError callback was invoked
+            assertThat(testListener.promptResult).isNull();
+            assertThat(testListener.promptError).isNotNull();
+        }
     }
 
     static class TestListener implements McpClientListener {

@@ -48,9 +48,19 @@ public class listener_mcp_server {
         return TextResourceContents.create("file:///test-resource", "Test resource content");
     }
 
-    @Prompt(description = "Test prompt for listener")
+    @Resource(uri = "file:///test-resource-failing", mimeType = "text/plain")
+    TextResourceContents testResourceFailing() {
+        throw new RuntimeException("Can't read this resource!");
+    }
+
+    @Prompt
     public PromptMessage testPrompt() {
         return PromptMessage.withUserRole(new TextContent("Test prompt message"));
+    }
+
+    @Prompt
+    public PromptMessage testPromptFailing() {
+        throw new RuntimeException("Can't read this prompt!");
     }
 
 }
