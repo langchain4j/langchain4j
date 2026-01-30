@@ -15,7 +15,7 @@ public abstract class MistralAiClient {
     public abstract MistralAiChatCompletionResponse chatCompletion(MistralAiChatCompletionRequest request);
 
     public abstract void streamingChatCompletion(
-            MistralAiChatCompletionRequest request, StreamingChatResponseHandler handler);
+            MistralAiChatCompletionRequest request, StreamingChatResponseHandler handler, boolean returnThinking);
 
     public abstract MistralAiEmbeddingResponse embedding(MistralAiEmbeddingRequest request);
 

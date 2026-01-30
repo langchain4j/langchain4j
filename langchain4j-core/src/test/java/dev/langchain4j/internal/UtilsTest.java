@@ -25,6 +25,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -112,7 +113,7 @@ class UtilsTest {
 
     @Test
     void string_is_not_null_or_empty() {
-        assertThat(Utils.isNotNullOrEmpty(null)).isFalse();
+        assertThat(Utils.isNotNullOrEmpty((String) null)).isFalse();
         assertThat(Utils.isNotNullOrEmpty("")).isFalse();
         assertThat(Utils.isNotNullOrEmpty(" ")).isTrue();
         assertThat(Utils.isNotNullOrEmpty("\n")).isTrue();
@@ -137,6 +138,14 @@ class UtilsTest {
         assertThat(Utils.isNullOrEmpty((Collection<?>) null)).isTrue();
         assertThat(Utils.isNullOrEmpty(emptyList())).isTrue();
         assertThat(Utils.isNullOrEmpty(Collections.singletonList("abc"))).isFalse();
+    }
+
+    @Test
+    void collection_is_not_null_or_empty() {
+        assertThat(Utils.isNotNullOrEmpty((Collection<?>) null)).isFalse();
+        assertThat(Utils.isNotNullOrEmpty(emptyList())).isFalse();
+        assertThat(Utils.isNotNullOrEmpty(new ArrayList<>())).isFalse();
+        assertThat(Utils.isNotNullOrEmpty(Collections.singletonList("abc"))).isTrue();
     }
 
     @Test

@@ -8,44 +8,41 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import java.util.List;
 import java.util.Objects;
 
 @JsonInclude(NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonNaming(SnakeCaseStrategy.class)
-public class MistralAiTextContent extends MistralAiMessageContent {
+public class MistralAiThinkingContent extends MistralAiMessageContent {
 
-    public String text;
+    private final List<MistralAiTextContent> thinking;
 
     @JsonCreator
-    public MistralAiTextContent(@JsonProperty("text") String text) {
-        super("text");
-        this.text = text;
+    public MistralAiThinkingContent(@JsonProperty("thinking") List<MistralAiTextContent> thinking) {
+        super("thinking");
+        this.thinking = thinking;
     }
 
-    public String asText() {
-        return text;
-    }
-
-    public String getText() {
-        return text;
+    public List<MistralAiTextContent> getThinking() {
+        return thinking;
     }
 
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
         if (!super.equals(o)) return false;
-        MistralAiTextContent that = (MistralAiTextContent) o;
-        return Objects.equals(text, that.text);
+        MistralAiThinkingContent that = (MistralAiThinkingContent) o;
+        return Objects.equals(thinking, that.thinking);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), text);
+        return Objects.hash(super.hashCode(), thinking);
     }
 
     @Override
     public String toString() {
-        return "MistralAiTextContent{" + "text='" + text + '\'' + ", type='" + type + '\'' + '}';
+        return "MistralAiThinkingContent{" + "thinking=" + thinking + ", type='" + type + '\'' + '}';
     }
 }
