@@ -9,6 +9,7 @@ import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.TokenCountEstimator;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -221,18 +222,10 @@ public abstract class HierarchicalDocumentSplitter implements DocumentSplitter {
      * @return The estimated number of tokens.
      */
     int estimateSize(String text) {
-        if (text == null) {
-            return 0;
-        }
-
-        if (tokenCountEstimator != null) {
-            if (text.isBlank()) {
-                return text.length();
-            }
+        if (tokenCountEstimator != null && !Utils.isNullOrBlank(text)) {
             return tokenCountEstimator.estimateTokenCountInText(text);
-        } else {
-            return text.length();
         }
+        return text == null ? 0 : text.length();
     }
 
     /**
