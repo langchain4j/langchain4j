@@ -1393,7 +1393,7 @@ class GoogleAiGeminiBatchChatModelTest {
     private static ChatResponse createChatResponse(String content) {
         return ChatResponse.builder()
                 .aiMessage(AiMessage.from(content))
-                .metadata(ChatResponseMetadata.builder()
+                .metadata(GeminiChatResponseMetadata.builder()
                         .id("response-id-" + content.hashCode())
                         .modelName(MODEL_NAME)
                         .tokenUsage(new TokenUsage(10, 5, 15))
