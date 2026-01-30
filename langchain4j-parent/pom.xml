@@ -54,9 +54,6 @@
         <awaitility.version>4.2.2</awaitility.version>
         <aws.java.sdk.version>2.33.5</aws.java.sdk.version>
         <azure-sdk.version>1.3.3</azure-sdk.version>
-        <github-api.version>1.329</github-api.version>
-        <httpclient5.version>5.2.1</httpclient5.version>
-        <infinispan.version>16.0.3</infinispan.version>
         <jackson.version>2.20.1</jackson.version>
         <jspecify.version>1.0.0</jspecify.version>
         <jtokkit.version>1.1.0</jtokkit.version>
