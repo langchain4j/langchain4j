@@ -157,7 +157,26 @@ public interface UntypedAgent {
 
 The values in that input map are copied into the `AgenticScope` shared variables, so that they can be accessed by the subagents. The output of the `novelCreator` agent is also taken from the `AgenticScope` shared variable named "story", which has been formerly rewritten by all other agents during the novel creation and editing workflow execution.
 
-Optionally, the workflow agent can also be provided with typed interface, so that it can be invoked with a strongly typed input and output. In this case, the `UntypedAgent` interface can be replaced with a more specific one, like:
+Note that also single agents can be defined as `UntypedAgent` instances, without the need of providing a typed interface. For example, the `CreativeWriter` agent could have been defined as follows:
+
+```java
+UntypedAgent creativeWriter = AgenticServices.agentBuilder()
+        .chatModel(BASE_MODEL)
+        .description("Generate a story based on the given topic")
+        .userMessage("""
+                You are a creative writer.
+                Generate a draft of a story no more than
+                3 sentences long around the given topic.
+                Return only the story and nothing else.
+                The topic is {{topic}}.
+                """)
+        .inputKey(String.class, "topic")
+        .returnType(String.class) // String is the default return type for untyped agents
+        .outputKey("story")
+        .build();
+```
+
+On the other side, even the workflow agent can optionally be provided with a typed interface, so that it can be invoked with a strongly typed input and output. In this case, the `UntypedAgent` interface can be replaced with a more specific one, like:
 
 ```java
 public interface NovelCreator {
@@ -480,6 +499,79 @@ EveningPlannerAgent eveningPlannerAgent = AgenticServices
 List<EveningPlan> plans = eveningPlannerAgent.plan("romantic");
 ```
 
+## Streaming agents
+
+In order to support streaming, it is also possible to create an agent that returns a `TokenStream` 
+
+```java
+public interface StreamingCreativeWriter {
+
+    @UserMessage("""
+            You are a creative writer.
+            Generate a draft of a story no more than
+            3 sentences long around the given topic.
+            Return only the story and nothing else.
+            The topic is {{topic}}.
+            """)
+    @Agent("Generates a story based on the given topic")
+    TokenStream generateStory(@V("topic") String topic);
+}
+```
+
+and then configure it to use a `StreamingChatModel`, so that the result can be consumed as it is being generated, instead of waiting for the completion of the agent invocation.
+
+```java
+StreamingCreativeWriter creativeWriter = AgenticServices.agentBuilder(StreamingCreativeWriter.class)
+        .streamingChatModel(streamingBaseModel())
+        .outputKey("story")
+        .build();
+
+TokenStream tokenStream = creativeWriter.generateStory("dragons and wizards");
+```
+
+When used inside an agentic system, a streaming agent can propagate its streaming response to the whole system only if it is the last agent to be invoked. In all other cases it behaves like an asynchronous agent, so that the subsequent agents would need to wait for the completion of its streaming response to get and use its result.
+
+For example, the following `StreamingReviewedWriter` agent 
+
+```java
+public interface StreamingReviewedWriter {
+    @Agent
+    TokenStream writeStory(@V("topic") String topic, @V("audience") String audience, @V("style") String style);
+}
+```
+
+is implemented with a sequence of 3 streaming agents
+
+```java
+StreamingCreativeWriter creativeWriter = AgenticServices.agentBuilder(StreamingCreativeWriter.class)
+        .streamingChatModel(streamingBaseModel())
+        .outputKey("story")
+        .build();
+
+StreamingAudienceEditor audienceEditor = AgenticServices.agentBuilder(StreamingAudienceEditor.class)
+        .streamingChatModel(streamingBaseModel())
+        .outputKey("story")
+        .build();
+
+StreamingStyleEditor styleEditor = AgenticServices.agentBuilder(StreamingStyleEditor.class)
+        .streamingChatModel(streamingBaseModel())
+        .outputKey("story")
+        .build();
+
+StreamingReviewedWriter novelCreator = AgenticServices.sequenceBuilder(StreamingReviewedWriter.class)
+        .subAgents(creativeWriter, audienceEditor, styleEditor)
+        .outputKey("story")
+        .build();
+```
+
+When this `novelCreator` agent is invoked
+
+```java
+TokenStream tokenStream = novelCreator.writeStory("dragons and wizards", "young adults", "fantasy");
+```
+
+the streaming responses of the first two agents are internally fully consumed before the invocation of the subsequent agents can start, and only the streaming response of the last `StyleEditor` agent is propagated as the streaming response of the whole `novelCreator` agent.
+
 ## Error handling
 
 In a complex agentic system, many things can go wrong, such as an agent failing to produce a result, an external tool not being available, or an unexpected error occurring during the execution of an agent.
@@ -550,6 +642,9 @@ public interface AgentListener {
 
     default void afterAgenticScopeCreated(AgenticScope agenticScope) { }
     default void beforeAgenticScopeDestroyed(AgenticScope agenticScope) { }
+
+    default void beforeToolExecution(BeforeToolExecution beforeToolExecution) { }
+    default void afterToolExecution(ToolExecution toolExecution) { }
 
     default boolean inheritedBySubagents() {
         return false;
@@ -737,6 +832,7 @@ In a very similar way, annotating other `static` methods in the agent interface,
 | Annotation Name               | Description                                                                                                                                                   |
 |-------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `@ChatModelSupplier`          | Returns the `ChatModel` to be used by this agent.                                                                                                             |
+| `@StreamingChatModelSupplier` | Returns the `StreamingChatModel` to be used by this agent.                                                                                                             |
 | `@ChatMemorySupplier`         | Returns the `ChatMemory` to be used by this agent.                                                                                                            |
 | `@ChatMemoryProviderSupplier` | Returns the `ChatMemoryProvider` to be used by this agent.<br/>This method requires as argument an `Object` to be used as the memoryId of the created memory. |
 | `@ContentRetrieverSupplier`   | Returns the `ContentRetriever` to be used by this agent.                                                                                                      |

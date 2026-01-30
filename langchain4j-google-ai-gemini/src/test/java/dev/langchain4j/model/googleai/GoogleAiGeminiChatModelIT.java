@@ -8,7 +8,6 @@ import static dev.langchain4j.model.googleai.GeminiGenerateContentResponse.Gemin
 import static dev.langchain4j.model.googleai.GeminiHarmBlockThreshold.BLOCK_LOW_AND_ABOVE;
 import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HARASSMENT;
 import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HATE_SPEECH;
-import static dev.langchain4j.model.googleai.GeneratedImageHelper.hasGeneratedImages;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -21,6 +20,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ChatMessage;
@@ -43,8 +43,14 @@ import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.V;
 import dev.langchain4j.service.output.JsonSchemas;
+import java.awt.*;
+import java.io.IOException;
 import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.OffsetTime;
@@ -475,7 +481,7 @@ class GoogleAiGeminiChatModelIT {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-2.5-flash-image-preview")
+                .modelName("gemini-2.5-flash-image")
                 .build();
 
         // when
@@ -489,17 +495,36 @@ class GoogleAiGeminiChatModelIT {
         AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage).isNotNull();
 
-        if (hasGeneratedImages(aiMessage)) {
-            List<dev.langchain4j.data.image.Image> generatedImages = GeneratedImageHelper.getGeneratedImages(aiMessage);
-            assertThat(generatedImages).isNotEmpty();
-
+        List<dev.langchain4j.data.image.Image> generatedImages = aiMessage.images();
+        if (!generatedImages.isEmpty()) {
             for (dev.langchain4j.data.image.Image image : generatedImages) {
                 assertThat(image.base64Data()).isNotEmpty();
                 assertThat(image.mimeType()).startsWith("image/");
             }
         }
 
-        assertThat(aiMessage.text() != null || hasGeneratedImages(aiMessage)).isTrue();
+        assertThat(aiMessage.text() != null || !aiMessage.images().isEmpty()).isTrue();
+    }
+
+    public interface ImageGenerator {
+
+        @dev.langchain4j.service.UserMessage("A high-resolution, studio-lit product photograph of {{requiredImage}}")
+        ImageContent generateImageOf(@V("requiredImage") String requiredImage);
+    }
+
+    @Test
+    void ai_service_should_generate_image() {
+        ImageGenerator imageGenerator = AiServices.builder(ImageGenerator.class)
+                .chatModel(GoogleAiGeminiChatModel.builder()
+                        .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                        .modelName("gemini-2.5-flash-image")
+                        .build())
+                .build();
+
+        ImageContent image = imageGenerator.generateImageOf("a minimalist ceramic coffee mug in matte black");
+        assertThat(image).isNotNull();
+        assertThat(image.image().base64Data()).isNotEmpty();
+        assertThat(image.image().mimeType()).startsWith("image/");
     }
 
     @JsonTypeInfo(use = JsonTypeInfo.Id.DEDUCTION)
@@ -685,5 +710,145 @@ class GoogleAiGeminiChatModelIT {
 
         Map<String, Object> address = (Map<String, Object>) result.get("address");
         assertThat(address.keySet()).contains("city", "streetName", "streetNumber");
+    }
+
+    @Test
+    void should_process_image_with_media_resolution_low() {
+        // given
+        GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .modelName("gemini-2.5-flash-lite")
+                .mediaResolution(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_LOW)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        byte[] imageBytes = readBytes(CAT_IMAGE_URL);
+        String base64Data = Base64.getEncoder().encodeToString(imageBytes);
+
+        UserMessage userMessage = UserMessage.from(
+                ImageContent.from(base64Data, "image/png"),
+                TextContent.from("What animal is shown in this image? Reply with just the animal name."));
+
+        // when
+        ChatResponse response = gemini.chat(userMessage);
+
+        // then
+        assertThat(response).isNotNull();
+        assertThat(response.aiMessage()).isNotNull();
+        assertThat(response.aiMessage().text()).isNotNull();
+        assertThat(response.aiMessage().text().toLowerCase()).containsAnyOf("cat", "kitten", "feline");
+    }
+
+    @Test
+    void should_process_image_with_media_resolution_high() {
+        // given
+        GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .modelName("gemini-2.5-flash-lite")
+                .mediaResolution(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_HIGH)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        byte[] imageBytes = readBytes(CAT_IMAGE_URL);
+        String base64Data = Base64.getEncoder().encodeToString(imageBytes);
+
+        UserMessage userMessage = UserMessage.from(
+                ImageContent.from(base64Data, "image/png"),
+                TextContent.from("What animal is shown in this image? Reply with just the animal name."));
+
+        // when
+        ChatResponse response = gemini.chat(userMessage);
+
+        // then
+        assertThat(response).isNotNull();
+        assertThat(response.aiMessage()).isNotNull();
+        assertThat(response.aiMessage().text()).isNotNull();
+        assertThat(response.aiMessage().text().toLowerCase()).containsAnyOf("cat", "kitten", "feline");
+    }
+
+    @Test
+    void should_process_image_with_media_resolution_medium() {
+        // given
+        GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .modelName("gemini-2.5-flash-lite")
+                .mediaResolution(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_MEDIUM)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        byte[] imageBytes = readBytes(CAT_IMAGE_URL);
+        String base64Data = Base64.getEncoder().encodeToString(imageBytes);
+
+        UserMessage userMessage = UserMessage.from(
+                ImageContent.from(base64Data, "image/png"),
+                TextContent.from("What animal is shown in this image? Reply with just the animal name."));
+
+        // when
+        ChatResponse response = gemini.chat(userMessage);
+
+        // then
+        assertThat(response).isNotNull();
+        assertThat(response.aiMessage()).isNotNull();
+        assertThat(response.aiMessage().text()).isNotNull();
+        assertThat(response.aiMessage().text().toLowerCase()).containsAnyOf("cat", "kitten", "feline");
+    }
+
+    @Test
+    void should_process_image_with_media_resolution_unspecified() {
+        // given
+        GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .modelName("gemini-2.5-flash-lite")
+                .mediaResolution(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_UNSPECIFIED)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        byte[] imageBytes = readBytes(CAT_IMAGE_URL);
+        String base64Data = Base64.getEncoder().encodeToString(imageBytes);
+
+        UserMessage userMessage = UserMessage.from(
+                ImageContent.from(base64Data, "image/png"),
+                TextContent.from("What animal is shown in this image? Reply with just the animal name."));
+
+        // when
+        ChatResponse response = gemini.chat(userMessage);
+
+        // then
+        assertThat(response).isNotNull();
+        assertThat(response.aiMessage()).isNotNull();
+        assertThat(response.aiMessage().text()).isNotNull();
+        assertThat(response.aiMessage().text().toLowerCase()).containsAnyOf("cat", "kitten", "feline");
+    }
+
+    @Test
+    void should_process_video_with_media_resolution_low() {
+        // given
+        GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .modelName("gemini-2.5-flash-lite")
+                .mediaResolution(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_LOW)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        URI videoUri = Paths.get("src/test/resources/example-video.mp4").toUri();
+        String base64Data = new String(Base64.getEncoder().encode(readBytes(videoUri.toString())));
+
+        UserMessage userMessage = UserMessage.from(
+                VideoContent.from(base64Data, "video/mp4"),
+                TextContent.from("What do you see in this video? Reply with a short description."));
+
+        // when
+        ChatResponse response = gemini.chat(userMessage);
+
+        // then
+        assertThat(response).isNotNull();
+        assertThat(response.aiMessage()).isNotNull();
+        assertThat(response.aiMessage().text()).isNotNull();
+        assertThat(response.aiMessage().text()).containsIgnoringCase("example");
     }
 }

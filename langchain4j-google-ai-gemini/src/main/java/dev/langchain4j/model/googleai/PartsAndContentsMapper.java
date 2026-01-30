@@ -1,5 +1,6 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.data.message.AiMessage.GENERATED_IMAGES_KEY;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
@@ -42,15 +43,14 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 final class PartsAndContentsMapper {
+
     private PartsAndContentsMapper() {}
 
     static final String THINKING_SIGNATURE_KEY =
             "thinking_signature"; // do not change, will break backward compatibility!
-    static final String GENERATED_IMAGES_KEY =
-            "generated_images"; // key for storing generated images in AiMessage attributes
 
     private static final CustomMimeTypesFileTypeDetector mimeTypeDetector = new CustomMimeTypesFileTypeDetector();
-    
+
     // Pattern to parse data URIs: data:[<mediatype>][;base64],<data>
     private static final Pattern DATA_URI_PATTERN = Pattern.compile("^data:([^;,]+)(?:;[^,]*)?,(.*)$");
 
@@ -333,7 +333,7 @@ final class PartsAndContentsMapper {
 
     /**
      * Parses a data URI and returns a GeminiBlob with the extracted MIME type and base64 data.
-     * 
+     *
      * @param uri the data URI to parse (e.g., "data:image/png;base64,iVBORw0KG...")
      * @return a GeminiBlob containing the MIME type and base64 data
      * @throws IllegalArgumentException if the URI is not a valid data URI
@@ -341,13 +341,13 @@ final class PartsAndContentsMapper {
     private static GeminiBlob parseDataUri(URI uri) {
         String urlString = uri.toString();
         Matcher matcher = DATA_URI_PATTERN.matcher(urlString);
-        
+
         if (matcher.matches()) {
             String mimeType = matcher.group(1);
             String base64Data = matcher.group(2);
             return new GeminiBlob(mimeType, base64Data);
         }
-        
+
         throw new IllegalArgumentException("Invalid data URI format: " + urlString);
     }
 

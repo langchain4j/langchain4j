@@ -313,7 +313,7 @@ String chat(@V("answerInstructions") String answerInstructions, @V("country") St
 
 ## Multimodality
 
-Additionally to the text content,
+Additionally to, or instead of, text content,
 AI Service method can accept one or multiple `Content` or `List<Content>` arguments:
 
 ```java
@@ -326,6 +326,18 @@ String chat(@UserMessage String userMessage, @UserMessage ImageContent image, @U
 String chat(@UserMessage String userMessage, @UserMessage List<Content> contents);
 
 String chat(@UserMessage String userMessage, @UserMessage List<ImageContent> images);
+
+String chat(Content content);
+
+String chat(AudioContent content);
+
+String chat(List<Content> contents);
+
+String chat(List<AudioContent> contents);
+
+String chat(@UserMessage Content content1, @UserMessage Content content2);
+
+String chat(@UserMessage AudioContent audio, @UserMessage ImageContent image);
 ```
 
 AI Service will put all contents into the final `UserMessage` in the order of parameter declaration.
@@ -613,9 +625,11 @@ tokenStream
     .onPartialThinking((PartialThinking partialThinking) -> System.out.println(partialThinking))
     .onRetrieved((List<Content> contents) -> System.out.println(contents))
     .onIntermediateResponse((ChatResponse intermediateResponse) -> System.out.println(intermediateResponse))
-     // This will be invoked right before a tool is executed. BeforeToolExecution contains ToolExecutionRequest (e.g. tool name, tool arguments, etc.)  
+     // This will be invoked every time a new partial tool call (usually containing a single token of the tool's arguments) is available.
+    .onPartialToolCall((PartialToolCall partialToolCall) -> System.out.println(partialToolCall))
+     // This will be invoked right before a tool is executed. BeforeToolExecution contains ToolExecutionRequest (e.g. tool name, tool arguments, etc.)
     .beforeToolExecution((BeforeToolExecution beforeToolExecution) -> System.out.println(beforeToolExecution))
-     // This will be invoked right after a tool is executed. ToolExecution contains ToolExecutionRequest and tool execution result. 
+     // This will be invoked right after a tool is executed. ToolExecution contains ToolExecutionRequest and tool execution result.
     .onToolExecuted((ToolExecution toolExecution) -> System.out.println(toolExecution))
     .onCompleteResponse((ChatResponse response) -> futureResponse.complete(response))
     .onError((Throwable error) -> futureResponse.completeExceptionally(error))
@@ -796,6 +810,78 @@ Assistant assistant = AiServices.builder(Assistant.class)
     .retrievalAugmentor(retrievalAugmentor)
     .build();
 ```
+
+### RAG as a Tool 
+
+By default, content retrieval is executed for every user query.
+Alternatively, retrieval can be treated as a tool-like capability that is invoked only when the model determines that additional context is required.
+With this approach, retrieval remains part of the RAG pipeline but is executed conditionally, avoiding unnecessary searches for simple queries.
+
+To implement this, you can encapsulate a `ContentRetriever` within a `@Tool` and register it with AiServices. This allows the LLM to autonomously decide whether to trigger retrieval based on the tool's description.
+
+#### 1. Define the Retrieval Tool
+
+Create a class that wraps your `ContentRetriever`.  
+The `@Tool` description is crucial, as it informs the LLM when to invoke the search.
+
+```java
+import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.rag.content.retriever.ContentRetriever;
+import dev.langchain4j.rag.query.Query;
+
+import java.util.stream.Collectors;
+
+static class SearchTool {
+
+    private final ContentRetriever contentRetriever;
+
+    SearchTool(ContentRetriever contentRetriever) {
+        this.contentRetriever = contentRetriever;
+    }
+
+    @Tool("Search for technical information about LangChain4j and RAG configurations")
+    public String search(String query) {
+        // This logic is only executed when the LLM determines retrieval is necessary
+        return contentRetriever.retrieve(new Query(query)).stream()
+                .map(content -> content.textSegment().text())
+                .collect(Collectors.joining("\n\n"));
+    }
+}
+```
+
+#### 2. Register the Tool with AiServices
+
+Instead of using a global RetrievalAugmentor, register the retrieval logic as a tool.
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatLanguageModel(model)
+        .tools(new SearchTool(contentRetriever))
+        .build();
+```
+
+#### 3. Expected Behavior
+
+The LLM evaluates the user's intent against the tool's description to decide whether to perform a search.
+
+**Scenario A — General conversation**
+
+- **Input:**  
+  `Hello, how are you today?`
+
+- **Behavior:**  
+  The LLM responds directly from its internal knowledge without invoking the tool.
+
+
+**Scenario B — Technical question**
+
+- **Input:**  
+  `How do I configure a ContentRetriever?`
+
+- **Behavior:**  
+  The LLM identifies the technical intent, invokes `search()`, and generates a response based on the retrieved documentation.
+
+This approach allows retrieval to function as an **on-demand capability**, similar to a tool, rather than a mandatory step for every query.
 
 More details about RAG can be found [here](/tutorials/rag).
 

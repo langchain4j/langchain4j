@@ -12,6 +12,10 @@
     <artifactId>langchain4j-document-loader-github</artifactId>
     <name>LangChain4j :: Document Loader :: GitHub</name>
 
+    <properties>
+        <github-api.version>1.329</github-api.version>
+    </properties>
+
     <dependencies>
 
         <dependency>

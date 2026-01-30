@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 
 import java.util.Objects;
 
@@ -27,17 +28,20 @@ public final class PromptTokensDetails {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
         return another instanceof PromptTokensDetails
                 && equalTo((PromptTokensDetails) another);
     }
 
+    @JacocoIgnoreCoverageGenerated
     private boolean equalTo(PromptTokensDetails another) {
         return Objects.equals(cachedTokens, another.cachedTokens);
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         int h = 5381;
         h += (h << 5) + Objects.hashCode(cachedTokens);
@@ -45,6 +49,7 @@ public final class PromptTokensDetails {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public String toString() {
         return "PromptTokensDetails{"
                 + "cachedTokens=" + cachedTokens

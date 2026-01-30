@@ -16,6 +16,10 @@
         Playwright is built to enable cross-browser web automation that is ever-green, capable, reliable and fast.
         https://playwright.dev/</description>
 
+    <properties>
+        <playwright.version>1.57.0</playwright.version>
+    </properties>
+
     <dependencies>
 
         <dependency>
