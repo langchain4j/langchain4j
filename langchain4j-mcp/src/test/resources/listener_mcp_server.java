@@ -1,0 +1,51 @@
+///usr/bin/env jbang "$0" "$@" ; exit $?
+//DEPS io.quarkus:quarkus-bom:${quarkus.version:3.27.0}@pom
+//DEPS io.quarkiverse.mcp:quarkus-mcp-server-stdio:1.8.1
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+import io.quarkiverse.mcp.server.Cancellation;
+import io.quarkiverse.mcp.server.ImageContent;
+import io.quarkiverse.mcp.server.Prompt;
+import io.quarkiverse.mcp.server.PromptMessage;
+import io.quarkiverse.mcp.server.Resource;
+import io.quarkiverse.mcp.server.TextContent;
+import io.quarkiverse.mcp.server.TextResourceContents;
+import io.quarkiverse.mcp.server.Tool;
+import io.quarkiverse.mcp.server.ToolArg;
+import io.quarkiverse.mcp.server.ToolResponse;
+import jakarta.inject.Inject;
+
+public class listener_mcp_server {
+
+
+    @Tool
+    public String nothing() {
+        return "OK";
+    }
+
+    @Tool
+    public ToolResponse withError() {
+        return ToolResponse.error("Something went wrong");
+    }
+
+    @Tool
+    public String longOperation() throws Exception {
+        TimeUnit.SECONDS.sleep(5);
+        return "FINISHED";
+    }
+
+    @Resource(uri = "file:///test-resource", description = "Test resource for listener", mimeType = "text/plain")
+    public TextResourceContents testResource() {
+        return TextResourceContents.create("file:///test-resource", "Test resource content");
+    }
+
+    @Prompt(description = "Test prompt for listener")
+    public PromptMessage testPrompt() {
+        return PromptMessage.withUserRole(new TextContent("Test prompt message"));
+    }
+
+}

@@ -803,8 +803,18 @@ switch (response) {
     }
     case BatchSuccess success -> {
         System.out.println("Batch completed successfully!");
+        
+        // Process successful responses
         for (ChatResponse chatResponse : success.responses()) {
             System.out.println(chatResponse.aiMessage().text());
+        }
+        
+        // Check for individual request errors within the batch
+        if (!success.errors().isEmpty()) {
+            System.out.println("Some requests failed:");
+            for (var error : success.errors()) {
+                System.err.println("Error code: " + error.code() + ", message: " + error.message());
+            }
         }
     }
     case BatchError error -> {
@@ -814,6 +824,12 @@ switch (response) {
     }
 }
 ```
+
+**Note:** A `BatchSuccess` response indicates the batch job completed, but individual requests within the batch may have 
+failed. The `success.errors()` list contains any individual request failures (e.g., timeouts, rate limits), 
+while `success.responses()` contains the successful responses. Always check both lists to handle partial failures 
+gracefully.
+
 
 ### Polling for Results
 
@@ -842,8 +858,17 @@ do {
 
 // Process final result
 if (result instanceof BatchSuccess success) {
+    System.out.println("Successful responses: " + success.responses().size());
     for (ChatResponse chatResponse : success.responses()) {
         System.out.println(chatResponse.aiMessage().text());
+    }
+    
+    // Handle any individual request failures
+    if (!success.errors().isEmpty()) {
+        System.out.println("Failed requests: " + success.errors().size());
+        for (var error : success.errors()) {
+            System.err.println("Error: " + error.code() + " - " + error.message());
+        }
     }
 } else if (result instanceof BatchError error) {
     System.err.println("Batch failed: " + error.message());
@@ -981,6 +1006,7 @@ GoogleAiBatchChatModel batchModel = GoogleAiBatchChatModel.builder()
 - **Turnaround**: 24-hour SLO, though completion is often much quicker
 - **Use Cases**: Best for large-scale, non-urgent tasks like data pre-processing or evaluations
 
+
 ### Example: Complete Workflow
 
 ```java
@@ -1035,10 +1061,18 @@ if (finalResult instanceof BatchSuccess success) {
         ChatResponse chatResponse = success.responses().get(i);
         System.out.println("Story #" + i + ": " + chatResponse.aiMessage().text());
     }
+    
+    // Report any failures
+    if (!success.errors().isEmpty()) {
+        System.err.println(success.errors().size() + " requests failed:");
+        for (var error : success.errors()) {
+            System.err.println("  - Code " + error.code() + ": " + error.message());
+        }
+    }
 } else if (finalResult instanceof BatchError error) {
     System.err.println("Batch failed: " + error.message());
 }
-``` 
+```
 
 ## Learn more
 

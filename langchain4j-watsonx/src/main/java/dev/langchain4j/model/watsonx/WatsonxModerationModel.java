@@ -61,6 +61,7 @@ public class WatsonxModerationModel implements ModerationModel {
                 .logRequests(builder.logRequests)
                 .logResponses(builder.logResponses)
                 .httpClient(builder.httpClient)
+                .verifySsl(builder.verifySsl)
                 .build();
     }
 

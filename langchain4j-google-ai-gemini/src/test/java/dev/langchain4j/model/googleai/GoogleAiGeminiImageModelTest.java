@@ -85,7 +85,7 @@ class GoogleAiGeminiImageModelTest {
         @Test
         void shouldThrowExceptionWhenNoContentInCandidate() {
             // Given
-            var candidate = new GeminiCandidate(null, GeminiFinishReason.STOP);
+            var candidate = new GeminiCandidate(null, GeminiFinishReason.STOP, null);
             var responseWithNullContent =
                     new GeminiGenerateContentResponse("response-id", "gemini-pro-v1", List.of(candidate), null);
             when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
@@ -113,7 +113,8 @@ class GoogleAiGeminiImageModelTest {
                                     .text("Just text, no image")
                                     .build()),
                             "model"),
-                    GeminiFinishReason.STOP);
+                    GeminiFinishReason.STOP,
+                    null);
             var textOnlyResponse =
                     new GeminiGenerateContentResponse("response-id", "gemini-pro-v1", List.of(textOnlyCandidate), null);
             when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
@@ -468,7 +469,8 @@ class GoogleAiGeminiImageModelTest {
                                 .inlineData(new GeminiBlob(mimeType, base64Data))
                                 .build()),
                         "model"),
-                GeminiFinishReason.STOP);
+                GeminiFinishReason.STOP,
+                null);
 
         return new GeminiGenerateContentResponse("response-id-123", "gemini-pro", List.of(candidate), null);
     }

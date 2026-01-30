@@ -60,7 +60,7 @@ class ToolExecutionHelper {
     /**
      * Converts any JsonNode into a recursive Map using basic Java types
      */
-    private static Object toObject(JsonNode content) {
+    static Object toObject(JsonNode content) {
         return switch (content.getNodeType()) {
             case BOOLEAN -> content.asBoolean();
             case NUMBER ->
