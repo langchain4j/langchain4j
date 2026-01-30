@@ -8,13 +8,14 @@ import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static java.util.Arrays.asList;
 
+import dev.langchain4j.Experimental;
+import dev.langchain4j.memory.ChatMemory;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import dev.langchain4j.Experimental;
-import dev.langchain4j.memory.ChatMemory;
+import java.util.Optional;
 
 /**
  * Represents a message from a user, typically an end user of the application.
@@ -187,10 +188,7 @@ public class UserMessage implements ChatMessage {
     }
 
     public Builder toBuilder() {
-        return builder()
-                .name(name)
-                .contents(mutableCopy(contents))
-                .attributes(attributes);
+        return builder().name(name).contents(mutableCopy(contents)).attributes(attributes);
     }
 
     @Override
@@ -210,11 +208,10 @@ public class UserMessage implements ChatMessage {
 
     @Override
     public String toString() {
-        return "UserMessage {" +
-                " name = " + quoted(name) +
-                ", contents = " + contents +
-                ", attributes = " + attributes +
-                " }";
+        return "UserMessage {" + " name = "
+                + quoted(name) + ", contents = "
+                + contents + ", attributes = "
+                + attributes + " }";
     }
 
     public static Builder builder() {
@@ -382,5 +379,20 @@ public class UserMessage implements ChatMessage {
      */
     public static UserMessage userMessage(String name, List<Content> contents) {
         return from(name, contents);
+    }
+
+    /**
+     * Finds the last {@link UserMessage} in the given list of messages.
+     *
+     * @param messages the list of chat messages
+     * @return an {@link Optional} containing the last {@link UserMessage},
+     *         or an empty {@link Optional} if not found
+     * @since 1.11.0
+     */
+    public static Optional<UserMessage> findLast(List<ChatMessage> messages) {
+        return messages.stream()
+                .filter(message -> message instanceof UserMessage)
+                .map(message -> (UserMessage) message)
+                .reduce((first, second) -> second);
     }
 }

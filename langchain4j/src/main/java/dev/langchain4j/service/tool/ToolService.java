@@ -347,6 +347,15 @@ public class ToolService {
                 messages = chatMemory.messages();
             }
 
+            UserMessage lastUserMessage = UserMessage.findLast(messages).orElse(null);
+            if (lastUserMessage != null) {
+                toolServiceContext = createContext(invocationContext, lastUserMessage);
+
+                parameters = parameters.overrideWith(ChatRequestParameters.builder()
+                        .toolSpecifications(toolServiceContext.toolSpecifications())
+                        .build());
+            }
+
             ChatRequest chatRequest = context.chatRequestTransformer.apply(
                     ChatRequest.builder()
                             .messages(messages)
