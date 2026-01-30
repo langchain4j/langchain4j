@@ -6,11 +6,11 @@ import java.util.Objects;
 /**
  * Gemini-specific metadata for {@link dev.langchain4j.model.chat.response.ChatResponse}.
  */
-public class GeminiChatResponseMetadata extends ChatResponseMetadata {
+public class GoogleAiGeminiChatResponseMetadata extends ChatResponseMetadata {
 
     private final GroundingMetadata groundingMetadata;
 
-    private GeminiChatResponseMetadata(Builder builder) {
+    private GoogleAiGeminiChatResponseMetadata(Builder builder) {
         super(builder);
         this.groundingMetadata = builder.groundingMetadata;
     }
@@ -27,9 +27,8 @@ public class GeminiChatResponseMetadata extends ChatResponseMetadata {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (!(o instanceof GoogleAiGeminiChatResponseMetadata that)) return false;
         if (!super.equals(o)) return false;
-        GeminiChatResponseMetadata that = (GeminiChatResponseMetadata) o;
         return Objects.equals(groundingMetadata, that.groundingMetadata);
     }
 
@@ -40,7 +39,7 @@ public class GeminiChatResponseMetadata extends ChatResponseMetadata {
 
     @Override
     public String toString() {
-        return "GeminiChatResponseMetadata{" + "id='"
+        return "GoogleAiGeminiChatResponseMetadata{" + "id='"
                 + id() + '\'' + ", modelName='"
                 + modelName() + '\'' + ", tokenUsage="
                 + tokenUsage() + ", finishReason="
@@ -62,8 +61,8 @@ public class GeminiChatResponseMetadata extends ChatResponseMetadata {
         }
 
         @Override
-        public GeminiChatResponseMetadata build() {
-            return new GeminiChatResponseMetadata(this);
+        public GoogleAiGeminiChatResponseMetadata build() {
+            return new GoogleAiGeminiChatResponseMetadata(this);
         }
     }
 }

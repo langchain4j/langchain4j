@@ -22,7 +22,7 @@ class FunctionMapper {
             boolean allowGoogleSearch,
             boolean allowUrlContext,
             boolean allowGoogleMaps,
-            boolean allowGoogleMapsWidget) {
+            boolean retrieveGoogleMapsWidgetToken) {
         if (isNullOrEmpty(specifications)) {
             if (allowCodeExecution || allowGoogleSearch || allowUrlContext || allowGoogleMaps) {
                 // if there's no tool specification, but there's Python code execution or Google Search retrieval
@@ -32,7 +32,7 @@ class FunctionMapper {
                         allowCodeExecution ? new GeminiCodeExecution() : null,
                         allowGoogleSearch ? new GeminiGoogleSearchRetrieval() : null,
                         allowUrlContext ? new GeminiUrlContext() : null,
-                        allowGoogleMaps ? new GeminiGoogleMaps(allowGoogleMapsWidget) : null);
+                        allowGoogleMaps ? new GeminiGoogleMaps(retrieveGoogleMapsWidgetToken) : null);
             } else {
                 // if there's neither tool specification nor Python code execution nor URL context nor Google Search
                 // retrieval
@@ -63,7 +63,7 @@ class FunctionMapper {
                 allowCodeExecution ? new GeminiCodeExecution() : null,
                 allowGoogleSearch ? new GeminiGoogleSearchRetrieval() : null,
                 allowUrlContext ? new GeminiUrlContext() : null,
-                allowGoogleMaps ? new GeminiGoogleMaps(allowGoogleMapsWidget) : null);
+                allowGoogleMaps ? new GeminiGoogleMaps(retrieveGoogleMapsWidgetToken) : null);
     }
 
     static List<ToolExecutionRequest> toToolExecutionRequests(List<GeminiFunctionCall> functionCalls) {

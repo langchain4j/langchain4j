@@ -40,7 +40,7 @@ class BaseGeminiChatModel {
     protected final boolean allowCodeExecution;
     protected final boolean allowGoogleSearch;
     protected final boolean allowGoogleMaps;
-    protected final boolean allowGoogleMapsWidget;
+    protected final boolean retrieveGoogleMapsWidgetToken;
     protected final boolean allowUrlContext;
     protected final boolean includeCodeExecutionOutput;
     protected final List<GeminiSafetySetting> safetySettings;
@@ -63,7 +63,7 @@ class BaseGeminiChatModel {
         this.allowCodeExecution = getOrDefault(builder.allowCodeExecution, false);
         this.allowGoogleSearch = getOrDefault(builder.allowGoogleSearch, false);
         this.allowGoogleMaps = getOrDefault(builder.allowGoogleMaps, false);
-        this.allowGoogleMapsWidget = getOrDefault(builder.allowGoogleMapsWidget, false);
+        this.retrieveGoogleMapsWidgetToken = getOrDefault(builder.retrieveGoogleMapsWidgetToken, false);
         this.allowUrlContext = getOrDefault(builder.allowUrlContext, false);
         this.includeCodeExecutionOutput = getOrDefault(builder.includeCodeExecutionOutput, false);
         this.safetySettings = copyIfNotNull(builder.safetySettings);
@@ -160,7 +160,7 @@ class BaseGeminiChatModel {
                         this.allowGoogleSearch,
                         this.allowUrlContext,
                         this.allowGoogleMaps,
-                        this.allowGoogleMapsWidget))
+                        this.retrieveGoogleMapsWidgetToken))
                 .toolConfig(toToolConfig(parameters.toolChoice(), this.functionCallingConfig))
                 .build();
     }
@@ -230,7 +230,7 @@ class BaseGeminiChatModel {
 
         return ChatResponse.builder()
                 .aiMessage(aiMessage)
-                .metadata(GeminiChatResponseMetadata.builder()
+                .metadata(GoogleAiGeminiChatResponseMetadata.builder()
                         .id(geminiResponse.responseId())
                         .modelName(geminiResponse.modelVersion())
                         .tokenUsage(createTokenUsage(geminiResponse.usageMetadata()))
@@ -277,7 +277,7 @@ class BaseGeminiChatModel {
         protected Boolean allowCodeExecution;
         protected Boolean allowGoogleSearch;
         protected Boolean allowGoogleMaps;
-        protected Boolean allowGoogleMapsWidget;
+        protected Boolean retrieveGoogleMapsWidgetToken;
         protected Boolean allowUrlContext;
         protected Boolean includeCodeExecutionOutput;
         protected Boolean logRequestsAndResponses;
@@ -526,7 +526,7 @@ class BaseGeminiChatModel {
         }
 
         /**
-         * Enabled <a href="https://ai.google.dev/gemini-api/docs/maps-grounding">Google Maps tool</a> in Gemini.
+         * Enables <a href="https://ai.google.dev/gemini-api/docs/maps-grounding">Google Maps tool</a> in Gemini.
          */
         public B allowGoogleMaps(Boolean allowGoogleMaps) {
             this.allowGoogleMaps = allowGoogleMaps;
@@ -534,10 +534,10 @@ class BaseGeminiChatModel {
         }
 
         /**
-         * Enables the Google Maps widget in the response.
+         * Retrieve the Google Maps widget <a href="https://ai.google.dev/gemini-api/docs/maps-grounding#display_the_google_maps_contextual_widget">context token</a> in the response for use with the Google Maps JS API.
          */
-        public B allowGoogleMapsWidget(Boolean allowGoogleMapsWidget) {
-            this.allowGoogleMapsWidget = allowGoogleMapsWidget;
+        public B retrieveGoogleMapsWidgetToken(Boolean retrieveGoogleMapsWidgetToken) {
+            this.retrieveGoogleMapsWidgetToken = retrieveGoogleMapsWidgetToken;
             return builder();
         }
 

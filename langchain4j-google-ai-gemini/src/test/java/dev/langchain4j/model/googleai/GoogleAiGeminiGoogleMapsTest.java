@@ -45,20 +45,20 @@ class GoogleAiGeminiGoogleMapsTest {
                     .build();
 
             assertThat(model.allowGoogleMaps).isFalse();
-            assertThat(model.allowGoogleMapsWidget).isFalse();
+            assertThat(model.retrieveGoogleMapsWidgetToken).isFalse();
         }
 
         @Test
-        void shouldSetAllowGoogleMapsAndWidget() {
+        void shouldSetAllowGoogleMapsAndRetrieveWidgetToken() {
             var model = GoogleAiGeminiChatModel.builder()
                     .apiKey("test-key")
                     .modelName(TEST_MODEL_NAME)
                     .allowGoogleMaps(true)
-                    .allowGoogleMapsWidget(true)
+                    .retrieveGoogleMapsWidgetToken(true)
                     .build();
 
             assertThat(model.allowGoogleMaps).isTrue();
-            assertThat(model.allowGoogleMapsWidget).isTrue();
+            assertThat(model.retrieveGoogleMapsWidgetToken).isTrue();
         }
     }
 
@@ -97,7 +97,7 @@ class GoogleAiGeminiGoogleMapsTest {
                     .apiKey("test-key")
                     .modelName(TEST_MODEL_NAME)
                     .allowGoogleMaps(true)
-                    .allowGoogleMapsWidget(false)
+                    .retrieveGoogleMapsWidgetToken(false)
                     .build(mockGeminiService);
 
             var chatRequest = ChatRequest.builder()
@@ -120,13 +120,13 @@ class GoogleAiGeminiGoogleMapsTest {
         }
 
         @Test
-        void shouldIncludeGoogleMapsToolWithWidgetWhenEnabled() {
+        void shouldIncludeGoogleMapsToolWithWidgetTokenWhenEnabled() {
             // Given
             var model = GoogleAiGeminiChatModel.builder()
                     .apiKey("test-key")
                     .modelName(TEST_MODEL_NAME)
                     .allowGoogleMaps(true)
-                    .allowGoogleMapsWidget(true)
+                    .retrieveGoogleMapsWidgetToken(true)
                     .build(mockGeminiService);
 
             var chatRequest = ChatRequest.builder()
@@ -214,8 +214,8 @@ class GoogleAiGeminiGoogleMapsTest {
             assertThat(chatResponse).isNotNull();
             assertThat(chatResponse.aiMessage().text()).isEqualTo("Found a nice coffee shop.");
 
-            assertThat(chatResponse.metadata()).isInstanceOf(GeminiChatResponseMetadata.class);
-            GeminiChatResponseMetadata metadata = (GeminiChatResponseMetadata) chatResponse.metadata();
+            assertThat(chatResponse.metadata()).isInstanceOf(GoogleAiGeminiChatResponseMetadata.class);
+            GoogleAiGeminiChatResponseMetadata metadata = (GoogleAiGeminiChatResponseMetadata) chatResponse.metadata();
             assertThat(metadata.groundingMetadata()).isNotNull();
             assertThat(metadata.groundingMetadata().groundingChunks()).hasSize(1);
             assertThat(metadata.groundingMetadata()
