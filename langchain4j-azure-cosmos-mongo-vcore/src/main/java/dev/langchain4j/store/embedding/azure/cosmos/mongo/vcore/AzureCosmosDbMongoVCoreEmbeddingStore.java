@@ -27,6 +27,8 @@ import org.bson.conversions.Bson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -326,9 +328,29 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         }
     }
 
-    private boolean isCollectionExist(MongoDatabase database, String collectionName) {
-        return StreamSupport.stream(database.listCollectionNames().spliterator(), false)
+    @SuppressWarnings("unchecked")
+    static Iterable<String> listCollectionNames(MongoDatabase database) {
+        try {
+            Method m = MongoDatabase.class.getMethod("listCollectionNames");
+            Object result = m.invoke(database);
+            if (result instanceof Iterable) {
+                return (Iterable<String>) result;
+            }
+            throw new IllegalStateException("MongoDatabase.listCollectionNames() returned non-Iterable: " + result);
+        } catch (NoSuchMethodException e) {
+            throw new IllegalStateException("MongoDatabase.listCollectionNames() not found", e);
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            throw new RuntimeException("Failed to invoke MongoDatabase.listCollectionNames()", e);
+        }
+    }
+
+    static boolean collectionExists(MongoDatabase database, String collectionName) {
+        return StreamSupport.stream(listCollectionNames(database).spliterator(), false)
                 .anyMatch(collectionName::equals);
+    }
+
+    private boolean isCollectionExist(MongoDatabase database, String collectionName) {
+        return collectionExists(database, collectionName);
     }
 
     private void createCollection(MongoDatabase database, String collectionName, CreateCollectionOptions createCollectionOptions) {
