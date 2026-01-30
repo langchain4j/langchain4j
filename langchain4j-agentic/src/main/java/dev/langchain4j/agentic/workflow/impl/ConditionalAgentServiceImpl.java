@@ -33,7 +33,7 @@ public class ConditionalAgentServiceImpl<T> extends AbstractServiceBuilder<T, Co
     }
 
     public static <T> ConditionalAgentServiceImpl<T> builder(Class<T> agentServiceClass) {
-        return new ConditionalAgentServiceImpl<>(agentServiceClass, validateAgentClass(agentServiceClass, false));
+        return new ConditionalAgentServiceImpl<>(agentServiceClass, validateAgentClass(agentServiceClass, false, dev.langchain4j.agentic.declarative.ConditionalAgent.class));
     }
 
     @Override

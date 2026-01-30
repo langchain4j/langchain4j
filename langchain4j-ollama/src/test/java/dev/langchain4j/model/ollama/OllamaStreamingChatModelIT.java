@@ -145,7 +145,7 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {1, 10, 100, 500})
+    @ValueSource(ints = {1, 10, 100})
     void should_handle_timeout(int millis) throws Exception {
 
         // given

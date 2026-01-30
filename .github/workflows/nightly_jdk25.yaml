@@ -150,3 +150,17 @@ jobs:
         with:
           report_paths: '**/target/*-reports/TEST-*.xml'
           annotate_only: true
+
+      - name: Upload JaCoCo Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-${{ strategy.job-index }}
+          path: '**/target/site/jacoco/**'
+
+      - name: Upload JaCoCo Execution Data
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-exec-${{ strategy.job-index }}
+          path: '**/target/jacoco.exec'

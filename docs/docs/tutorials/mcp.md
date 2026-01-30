@@ -265,6 +265,18 @@ McpClient mcpClient = new DefaultMcpClient.Builder()
     .build();
 ```
 
+## MCP listeners
+
+The MCP client supports listeners that can listen to events happening
+during the lifetime of the client. The interface
+`dev.langchain4j.mcp.client.McpClientListener` serves as the base
+for listener implementations. The listener will
+be invoked before and after every tool call, prompt rendering
+and resource access. The respective `McpCallContext` is injected when calling
+the listeners. This object contains the actual MCP message being sent to the
+server and an instance of `InvocationContext` when applicable (only when this
+call happens as part of an AI service invocation).
+
 ## Resources
 
 There are two ways how to work with resources. Either the application can call the MCP client's

@@ -5,13 +5,21 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
+import dev.langchain4j.model.chat.request.json.JsonArraySchema;
+import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
+import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
+import dev.langchain4j.model.chat.request.json.JsonNullSchema;
+import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonRawSchema;
+import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.output.structured.Description;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.LinkedHashMap;
@@ -323,5 +331,160 @@ class JsonSchemaElementUtilsTest {
         assertThat(schema).isEqualTo(JsonEnumSchema.builder()
                 .enumValues("A", "B", "C")
                 .build());
+    }
+
+    @Test
+    void shouldConvertJsonStringSchemaToMap() {
+        JsonStringSchema schema = JsonStringSchema.builder()
+                .description("string description")
+                .build();
+
+        Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
+
+        assertThat(map)
+                .containsEntry("type", "string")
+                .containsEntry("description", "string description");
+    }
+
+    @Test
+    void shouldConvertJsonIntegerSchemaToMap() {
+        JsonIntegerSchema schema = JsonIntegerSchema.builder()
+                .description("integer description")
+                .build();
+
+        Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
+
+        assertThat(map)
+                .containsEntry("type", "integer")
+                .containsEntry("description", "integer description");
+    }
+
+    @Test
+    void shouldConvertJsonNumberSchemaToMap() {
+        JsonNumberSchema schema = JsonNumberSchema.builder()
+                .description("number description")
+                .build();
+
+        Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
+
+        assertThat(map)
+                .containsEntry("type", "number")
+                .containsEntry("description", "number description");
+    }
+
+    @Test
+    void shouldConvertJsonBooleanSchemaToMap() {
+        JsonBooleanSchema schema = JsonBooleanSchema.builder()
+                .description("boolean description")
+                .build();
+
+        Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
+
+        assertThat(map)
+                .containsEntry("type", "boolean")
+                .containsEntry("description", "boolean description");
+    }
+
+    @Test
+    void shouldConvertJsonEnumSchemaToMap() {
+        JsonEnumSchema schema = JsonEnumSchema.builder()
+                .enumValues(Arrays.asList("A", "B", "C"))
+                .description("enum description")
+                .build();
+
+        Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
+
+        assertThat(map)
+                .containsEntry("type", "string")
+                .containsEntry("description", "enum description")
+                .containsEntry("enum", Arrays.asList("A", "B", "C"));
+    }
+
+    @Test
+    void shouldConvertJsonArraySchemaToMap() {
+        JsonArraySchema schema = JsonArraySchema.builder()
+                .items(JsonSchemaElementUtils.jsonSchemaElementFrom(String.class))
+                .description("array description")
+                .build();
+
+        Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
+
+        assertThat(map)
+                .containsEntry("type", "array")
+                .containsEntry("description", "array description")
+                .containsKey("items");
+
+        assertThat((Map<String, Object>) map.get("items")).containsEntry("type", "string");
+    }
+
+    @Test
+    void shouldConvertJsonObjectSchemaToMap() {
+        class Sample {
+            String name;
+            int age;
+        }
+
+        JsonObjectSchema schema = (JsonObjectSchema) JsonSchemaElementUtils.jsonSchemaElementFrom(Sample.class);
+
+        Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
+
+        assertThat(map).containsEntry("type", "object");
+        assertThat(map).containsKey("properties");
+
+        Map<String, Map<String, Object>> properties = (Map<String, Map<String, Object>>) map.get("properties");
+        assertThat(properties).containsKeys("name", "age");
+        assertThat(properties.get("name")).containsEntry("type", "string");
+        assertThat(properties.get("age")).containsEntry("type", "integer");
+    }
+
+    @Test
+    void shouldConvertJsonReferenceSchemaToMap() {
+        JsonReferenceSchema schema = JsonReferenceSchema.builder()
+                .reference("my-ref")
+                .build();
+
+        Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
+
+        assertThat(map).containsEntry("$ref", "#/$defs/my-ref");
+    }
+
+    @Test
+    void shouldConvertJsonAnyOfSchemaToMap() {
+        JsonAnyOfSchema schema = JsonAnyOfSchema.builder()
+                .anyOf(Arrays.asList(
+                        JsonSchemaElementUtils.jsonSchemaElementFrom(String.class),
+                        JsonSchemaElementUtils.jsonSchemaElementFrom(Integer.class)
+                ))
+                .description("anyOf description")
+                .build();
+
+        Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
+
+        assertThat(map).containsEntry("description", "anyOf description");
+        assertThat(map).containsKey("anyOf");
+
+        List<Map<String, Object>> anyOf = (List<Map<String, Object>>) map.get("anyOf");
+        assertThat(anyOf).hasSize(2);
+        assertThat(anyOf.get(0)).containsEntry("type", "string");
+        assertThat(anyOf.get(1)).containsEntry("type", "integer");
+    }
+
+    @Test
+    void shouldConvertJsonNullSchemaToMap() {
+        JsonNullSchema schema = new JsonNullSchema();
+
+        Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
+
+        assertThat(map).containsEntry("type", "null");
+    }
+
+    @Test
+    void shouldConvertJsonRawSchemaToMap() {
+        Map<String, Object> rawMap = Map.of("foo", "bar");
+        JsonRawSchema schema = JsonRawSchema.builder().schema(Json.toJson(rawMap)).build();
+
+        Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
+
+        assertThat(map).containsEntry("foo", "bar");
     }
 }
