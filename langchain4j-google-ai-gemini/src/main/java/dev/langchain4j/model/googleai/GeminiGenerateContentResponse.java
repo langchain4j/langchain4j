@@ -5,7 +5,11 @@ import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 record GeminiGenerateContentResponse(
-        String responseId, String modelVersion, List<GeminiCandidate> candidates, GeminiUsageMetadata usageMetadata) {
+        String responseId,
+        String modelVersion,
+        List<GeminiCandidate> candidates,
+        GeminiUsageMetadata usageMetadata,
+        GroundingMetadata groundingMetadata) {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     record GeminiCandidate(

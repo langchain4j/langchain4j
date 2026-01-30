@@ -136,7 +136,7 @@ class GoogleAiGeminiUrlContextTest {
                     urlContextMetadata);
 
             var usageMetadata = new GeminiGenerateContentResponse.GeminiUsageMetadata(0, 0, 0);
-            var response = new GeminiGenerateContentResponse("id", "model", List.of(candidate), usageMetadata);
+            var response = new GeminiGenerateContentResponse("id", "model", List.of(candidate), usageMetadata, null);
 
             when(mockGeminiService.generateContent(any(), any())).thenReturn(response);
 
@@ -156,6 +156,6 @@ class GoogleAiGeminiUrlContextTest {
                 GeminiFinishReason.STOP,
                 null);
         var usageMetadata = new GeminiGenerateContentResponse.GeminiUsageMetadata(0, 0, 0);
-        return new GeminiGenerateContentResponse("id", "model", List.of(candidate), usageMetadata);
+        return new GeminiGenerateContentResponse("id", "model", List.of(candidate), usageMetadata, null);
     }
 }

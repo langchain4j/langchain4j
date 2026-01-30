@@ -1001,7 +1001,7 @@ class GoogleAiGeminiBatchImageModelTest {
         var content = new GeminiContent(List.of(part), "model");
         var candidate = new GeminiCandidate(content, GeminiFinishReason.STOP, null);
 
-        return new GeminiGenerateContentResponse("response-id", MODEL_NAME, List.of(candidate), null);
+        return new GeminiGenerateContentResponse("response-id", MODEL_NAME, List.of(candidate), null, null);
     }
 
     private static Operation<GeminiGenerateContentResponse> createSuccessOperation(

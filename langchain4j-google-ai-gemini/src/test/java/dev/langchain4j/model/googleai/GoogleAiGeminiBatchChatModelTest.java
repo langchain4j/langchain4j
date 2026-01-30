@@ -1413,7 +1413,7 @@ class GoogleAiGeminiBatchChatModelTest {
                 .build();
 
         return new GeminiGenerateContentResponse(
-                chatResponse.id(), chatResponse.metadata().modelName(), List.of(candidate), usageMetadata);
+                chatResponse.id(), chatResponse.metadata().modelName(), List.of(candidate), usageMetadata, null);
     }
 
     private GoogleAiGeminiBatchChatModel createSubject() {
