@@ -462,8 +462,10 @@ class AnthropicMapperTest {
         // Second (last) item SHOULD have cache control
         AnthropicTextContent second = (AnthropicTextContent) message.content.get(1);
         assertThat(second.text).isEqualTo("Second item");
+
+        // FIX: Use extracting("type") to access the internal class field safely
         assertThat(second.cacheControl).isNotNull();
-        assertThat(second.cacheControl.type).isEqualTo("ephemeral");
+        assertThat(second.cacheControl).extracting("type").isEqualTo("ephemeral");
     }
 
     @SafeVarargs
