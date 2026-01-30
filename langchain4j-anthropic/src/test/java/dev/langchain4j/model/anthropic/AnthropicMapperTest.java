@@ -425,21 +425,42 @@ class AnthropicMapperTest {
 
         assertThat(message.content).hasSize(1);
 
-        // 1. Get the content as the generic interface
         AnthropicMessageContent content = message.content.get(0);
 
-        // 2. Verify it is a TextContent
         assertThat(content).isInstanceOf(AnthropicTextContent.class);
 
-        // 3. Cast it safely
         AnthropicTextContent textContent = (AnthropicTextContent) content;
 
-        // 4. Verify the text
         assertThat(textContent.text).isEqualTo("Hello cached world");
 
-        // 5. Verify the Cache Control
         assertThat(textContent.cacheControl).isNotNull();
         assertThat(textContent.cacheControl).extracting("type").isEqualTo("ephemeral");
+    }
+
+    @Test
+    void should_only_apply_cache_control_to_last_item_when_multiple_items_present() {
+        // Given
+        UserMessage userMessage = UserMessage.from(TextContent.from("First item"), TextContent.from("Second item"));
+        userMessage.attributes().put("cache_control", "ephemeral");
+
+        // When
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(userMessage));
+
+        // Then
+        assertThat(anthropicMessages).hasSize(1);
+        AnthropicMessage message = anthropicMessages.get(0);
+        assertThat(message.content).hasSize(2);
+
+        // First item should NOT have cache control
+        AnthropicTextContent first = (AnthropicTextContent) message.content.get(0);
+        assertThat(first.text).isEqualTo("First item");
+        assertThat(first.cacheControl).isNull();
+
+        // Second (last) item SHOULD have cache control
+        AnthropicTextContent second = (AnthropicTextContent) message.content.get(1);
+        assertThat(second.text).isEqualTo("Second item");
+        assertThat(second.cacheControl).isNotNull();
+        assertThat(second.cacheControl.type).isEqualTo("ephemeral");
     }
 
     @SafeVarargs

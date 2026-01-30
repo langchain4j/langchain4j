@@ -120,21 +120,21 @@ public class AnthropicMapper {
     }
 
     private static List<AnthropicMessageContent> toAnthropicMessageContents(UserMessage message) {
-        // 1. Check if the user asked for caching
         boolean shouldCache = message.attributes() != null
                 && "ephemeral".equals(message.attributes().get(CACHE_CONTROL));
 
         List<dev.langchain4j.data.message.Content> contents = message.contents();
         List<AnthropicMessageContent> anthropicContents = new ArrayList<>();
 
-        // 2. Iterate with an index so we can identify the LAST item
         for (int i = 0; i < contents.size(); i++) {
             dev.langchain4j.data.message.Content content = contents.get(i);
+            // Anthropic Prompt Caching is prefix-based. When a user marks a UserMessage for caching,
+            // we apply the cache_control to the last content item to ensure the cache checkpoint
+            // includes the entire message content up to that point.
 
             boolean isLastItem = (i == contents.size() - 1);
             boolean applyCache = shouldCache && isLastItem;
 
-            // 3. Convert content (Using the modern syntax the maintainer wants)
             if (content instanceof TextContent textContent) {
                 if (applyCache) {
                     anthropicContents.add(
