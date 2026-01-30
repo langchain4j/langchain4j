@@ -25,7 +25,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-public class McpClientListenerTest {
+public class McpClientListenerIT {
 
     static McpClient mcpClient;
     static TestListener testListener;
@@ -76,8 +76,28 @@ public class McpClientListenerTest {
     @Test
     public void toolCallWithApplicationLevelError() {
         try {
+            ToolExecutionResult result = mcpClient.executeTool(ToolExecutionRequest.builder()
+                    .name("withApplicationLevelError")
+                    .build());
+            Assertions.fail("Should have thrown an exception");
+        } catch (Exception e) {
+            assertThat(testListener.toolContext).isNotNull();
+            assertThat(testListener.toolContext.message().method).isEqualTo(McpClientMethod.TOOLS_CALL);
+            assertThat(testListener.toolContext.message().getId()).isNotNull();
+            assertThat(testListener.toolResultContext).isNotNull();
+            assertThat(testListener.toolResultContext).isSameAs(testListener.toolContext);
+            assertThat(testListener.toolResult).isNotNull();
+            assertThat(testListener.toolResult.isError()).isTrue();
+            assertThat(testListener.toolResult.resultText()).isEqualTo("Application-level error");
+            assertThat(testListener.toolError).isNull();
+        }
+    }
+
+    @Test
+    public void toolCallWithProtocolError() {
+        try {
             ToolExecutionResult result = mcpClient.executeTool(
-                    ToolExecutionRequest.builder().name("withError").build());
+                    ToolExecutionRequest.builder().name("withProtocolError").build());
             Assertions.fail("Should have thrown an exception");
         } catch (Exception e) {
             assertThat(testListener.toolContext).isNotNull();
@@ -125,6 +145,23 @@ public class McpClientListenerTest {
     }
 
     @Test
+    public void resourceGetError() {
+        try {
+            mcpClient.readResource("file:///test-resource-failing");
+            Assertions.fail("Should have thrown an exception");
+        } catch (Exception e) {
+            // check that the beforeResourceGet callback was invoked
+            assertThat(testListener.resourceContext).isNotNull();
+            assertThat(testListener.resourceContext.message().method).isEqualTo(McpClientMethod.RESOURCES_READ);
+            assertThat(testListener.resourceContext.message().getId()).isNotNull();
+
+            // check that the onResourceGetError callback was invoked
+            assertThat(testListener.resourceResult).isNull();
+            assertThat(testListener.resourceError).isNotNull();
+        }
+    }
+
+    @Test
     public void promptGet() {
         McpGetPromptResult result = mcpClient.getPrompt("testPrompt", Map.of());
         assertThat(result).isNotNull();
@@ -137,6 +174,23 @@ public class McpClientListenerTest {
         // check that the afterPromptGet callback was invoked
         assertThat(testListener.promptResult).isNotNull();
         assertThat(testListener.promptResultContext).isSameAs(testListener.prompt);
+    }
+
+    @Test
+    public void promptGetError() {
+        try {
+            mcpClient.getPrompt("testPromptFailing", Map.of());
+            Assertions.fail("Should have thrown an exception");
+        } catch (Exception e) {
+            // check that the beforePromptGet callback was invoked
+            assertThat(testListener.prompt).isNotNull();
+            assertThat(testListener.prompt.message().method).isEqualTo(McpClientMethod.PROMPTS_GET);
+            assertThat(testListener.prompt.message().getId()).isNotNull();
+
+            // check that the onPromptGetError callback was invoked
+            assertThat(testListener.promptResult).isNull();
+            assertThat(testListener.promptError).isNotNull();
+        }
     }
 
     static class TestListener implements McpClientListener {
