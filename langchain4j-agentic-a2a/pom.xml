@@ -20,7 +20,7 @@
     </developers>
 
     <properties>
-        <a2a-java-sdk-version>0.3.2.Final</a2a-java-sdk-version>
+        <a2a-java-sdk-version>0.3.3.Final</a2a-java-sdk-version>
     </properties>
 
     <dependencies>
