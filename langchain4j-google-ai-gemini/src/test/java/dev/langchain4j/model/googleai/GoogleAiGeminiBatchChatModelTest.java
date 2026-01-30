@@ -22,7 +22,6 @@ import dev.langchain4j.http.client.MockHttpClientBuilder;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateFileRequest;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateRequest;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateResponse;
