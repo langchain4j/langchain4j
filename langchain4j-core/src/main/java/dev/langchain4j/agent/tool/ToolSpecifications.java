@@ -172,7 +172,21 @@ public class ToolSpecifications {
             Parameter parameter, Map<Class<?>, VisitedClassMetadata> visited) {
         P annotation = parameter.getAnnotation(P.class);
         String description = annotation == null ? null : annotation.value();
-        return JsonSchemaElementUtils.jsonSchemaElementFrom(
-                parameter.getType(), parameter.getParameterizedType(), description, true, visited);
+
+        Type type = parameter.getParameterizedType();
+        Class<?> clazz = parameter.getType();
+
+        if (clazz == Optional.class && type instanceof ParameterizedType parameterizedType) {
+            // Use the variable 'parameterizedType' directly without casting
+            type = parameterizedType.getActualTypeArguments()[0];
+
+            if (type instanceof Class) {
+                clazz = (Class<?>) type;
+            } else if (type instanceof ParameterizedType parameterizedType1) {
+                clazz = (Class<?>) parameterizedType1.getRawType();
+            }
+        }
+
+        return JsonSchemaElementUtils.jsonSchemaElementFrom(clazz, type, description, true, visited);
     }
 }
