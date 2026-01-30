@@ -8,6 +8,7 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -24,6 +25,7 @@ import static dev.langchain4j.agentic.Models.visionModel;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
+@Disabled("Flaky tests, sometimes authentication on the Gemini test fails, especially on CI")
 public class MultimodalAgentsIT {
 
     private static final ChatModel IMAGE_GENERATION_MODEL = imageGenerationModel(Models.MODEL_PROVIDER.GEMINI);
