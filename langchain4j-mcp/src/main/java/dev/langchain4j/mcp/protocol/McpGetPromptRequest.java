@@ -6,16 +6,13 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Internal
-public class McpGetPromptRequest extends McpJsonRpcMessage {
-
-    @JsonInclude
-    public final McpClientMethod method = McpClientMethod.PROMPTS_GET;
+public class McpGetPromptRequest extends McpClientMessage {
 
     @JsonInclude
     private Map<String, Object> params;
 
     public McpGetPromptRequest(Long id, String promptName, Map<String, Object> arguments) {
-        super(id);
+        super(id, McpClientMethod.PROMPTS_GET);
         this.params = new HashMap<>();
         this.params.put("name", promptName);
         this.params.put("arguments", arguments);

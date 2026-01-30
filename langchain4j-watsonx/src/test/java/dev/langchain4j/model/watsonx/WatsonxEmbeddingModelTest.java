@@ -3,6 +3,7 @@ package dev.langchain4j.model.watsonx;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -59,6 +60,7 @@ public class WatsonxEmbeddingModelTest {
         when(mockEmbeddingServiceBuilder.authenticator(any())).thenReturn(mockEmbeddingServiceBuilder);
         when(mockEmbeddingServiceBuilder.apiKey(any())).thenReturn(mockEmbeddingServiceBuilder);
         when(mockEmbeddingServiceBuilder.httpClient(any())).thenReturn(mockEmbeddingServiceBuilder);
+        when(mockEmbeddingServiceBuilder.verifySsl(anyBoolean())).thenReturn(mockEmbeddingServiceBuilder);
         when(mockEmbeddingServiceBuilder.build()).thenReturn(mockEmbeddingService);
     }
 
@@ -81,7 +83,7 @@ public class WatsonxEmbeddingModelTest {
                 .thenReturn(mockHttpResponse);
 
         try (MockedStatic<HttpClientProvider> httpClientProvider = mockStatic(HttpClientProvider.class)) {
-            httpClientProvider.when(HttpClientProvider::httpClient).thenReturn(mockHttpClient);
+            httpClientProvider.when(() -> HttpClientProvider.httpClient(true)).thenReturn(mockHttpClient);
 
             var embeddingModel = WatsonxEmbeddingModel.builder()
                     .baseUrl(CloudRegion.FRANKFURT)
@@ -103,7 +105,6 @@ public class WatsonxEmbeddingModelTest {
             assertEquals("model-name", embeddingRequest.modelId());
             assertEquals("project-id", embeddingRequest.projectId());
             assertEquals("space-id", embeddingRequest.spaceId());
-            // 6. Test builder secondario
             assertDoesNotThrow(() -> WatsonxEmbeddingModel.builder()
                     .baseUrl("https://test.com")
                     .modelName("model-name")

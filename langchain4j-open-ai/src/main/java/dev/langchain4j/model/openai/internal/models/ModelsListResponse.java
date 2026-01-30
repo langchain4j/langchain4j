@@ -5,6 +5,8 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
+
 import java.util.List;
 import java.util.Objects;
 
@@ -42,6 +44,7 @@ public class ModelsListResponse {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof ModelsListResponse)) return false;
@@ -50,11 +53,13 @@ public class ModelsListResponse {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         return Objects.hash(object, data);
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public String toString() {
         return "ModelsListResponse{" + "object='" + object + '\'' + ", data=" + data + '}';
     }

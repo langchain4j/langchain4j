@@ -7,11 +7,12 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.internal.DefaultExecutorProvider;
+import dev.langchain4j.mcp.client.McpCallContext;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
+import dev.langchain4j.mcp.protocol.McpClientMessage;
 import dev.langchain4j.mcp.protocol.McpInitializationNotification;
 import dev.langchain4j.mcp.protocol.McpInitializeRequest;
-import dev.langchain4j.mcp.protocol.McpJsonRpcMessage;
 import dev.langchain4j.mcp.transport.stdio.JsonRpcIoHandler;
 import java.io.IOException;
 import java.util.List;
@@ -83,19 +84,29 @@ public class StdioMcpTransport implements McpTransport {
     }
 
     @Override
-    public CompletableFuture<JsonNode> executeOperationWithResponse(McpJsonRpcMessage operation) {
+    public CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage operation) {
+        return executeOperationWithResponse(new McpCallContext(null, operation));
+    }
+
+    @Override
+    public CompletableFuture<JsonNode> executeOperationWithResponse(McpCallContext context) {
         try {
-            String requestString = OBJECT_MAPPER.writeValueAsString(operation);
-            return execute(requestString, operation.getId());
+            String requestString = OBJECT_MAPPER.writeValueAsString(context.message());
+            return execute(requestString, context.message().getId());
         } catch (JsonProcessingException e) {
             return CompletableFuture.failedFuture(e);
         }
     }
 
     @Override
-    public void executeOperationWithoutResponse(McpJsonRpcMessage operation) {
+    public void executeOperationWithoutResponse(McpClientMessage operation) {
+        executeOperationWithoutResponse(new McpCallContext(null, operation));
+    }
+
+    @Override
+    public void executeOperationWithoutResponse(McpCallContext context) {
         try {
-            String requestString = OBJECT_MAPPER.writeValueAsString(operation);
+            String requestString = OBJECT_MAPPER.writeValueAsString(context.message());
             execute(requestString, null);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
