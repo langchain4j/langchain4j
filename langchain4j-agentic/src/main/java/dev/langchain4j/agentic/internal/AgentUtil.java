@@ -2,6 +2,7 @@ package dev.langchain4j.agentic.internal;
 
 import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.service.TypeUtils.isImageType;
 
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
@@ -15,6 +16,8 @@ import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.AgenticScopeAccess;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
+import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.TokenStream;
 import java.lang.annotation.Annotation;
@@ -235,6 +238,12 @@ public class AgentUtil {
                 default -> value;
             };
         }
+        if (value instanceof Image image && type == ImageContent.class) {
+            return ImageContent.from(image);
+        }
+        if (value instanceof ImageContent imageContent && type == Image.class) {
+            return imageContent.image();
+        }
         return value;
     }
 
@@ -301,6 +310,8 @@ public class AgentUtil {
                 // do nothing, keep the existing type
             } else if (keyClass.isAssignableFrom(existingType)) {
                 dataTypes.put(name, keyClass);
+            } else if (isImageType(keyClass) && isImageType(existingType)) {
+                // do nothing
             } else {
                 throw new AgenticSystemConfigurationException(
                         "Conflicting types for key '" + name + "': " +

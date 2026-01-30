@@ -65,7 +65,8 @@ class GoogleAiGeminiImageModelTest {
         @Test
         void shouldThrowExceptionWhenNoCandidatesInResponse() {
             // Given
-            var emptyResponse = new GeminiGenerateContentResponse("response-id", "gemini-pro-v1", List.of(), null);
+            var emptyResponse =
+                    new GeminiGenerateContentResponse("response-id", "gemini-pro-v1", List.of(), null, null);
             when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
                     .thenReturn(emptyResponse);
 
@@ -85,9 +86,9 @@ class GoogleAiGeminiImageModelTest {
         @Test
         void shouldThrowExceptionWhenNoContentInCandidate() {
             // Given
-            var candidate = new GeminiCandidate(null, GeminiFinishReason.STOP);
+            var candidate = new GeminiCandidate(null, GeminiFinishReason.STOP, null);
             var responseWithNullContent =
-                    new GeminiGenerateContentResponse("response-id", "gemini-pro-v1", List.of(candidate), null);
+                    new GeminiGenerateContentResponse("response-id", "gemini-pro-v1", List.of(candidate), null, null);
             when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
                     .thenReturn(responseWithNullContent);
 
@@ -113,9 +114,10 @@ class GoogleAiGeminiImageModelTest {
                                     .text("Just text, no image")
                                     .build()),
                             "model"),
-                    GeminiFinishReason.STOP);
-            var textOnlyResponse =
-                    new GeminiGenerateContentResponse("response-id", "gemini-pro-v1", List.of(textOnlyCandidate), null);
+                    GeminiFinishReason.STOP,
+                    null);
+            var textOnlyResponse = new GeminiGenerateContentResponse(
+                    "response-id", "gemini-pro-v1", List.of(textOnlyCandidate), null, null);
             when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
                     .thenReturn(textOnlyResponse);
 
@@ -468,9 +470,10 @@ class GoogleAiGeminiImageModelTest {
                                 .inlineData(new GeminiBlob(mimeType, base64Data))
                                 .build()),
                         "model"),
-                GeminiFinishReason.STOP);
+                GeminiFinishReason.STOP,
+                null);
 
-        return new GeminiGenerateContentResponse("response-id-123", "gemini-pro", List.of(candidate), null);
+        return new GeminiGenerateContentResponse("response-id-123", "gemini-pro", List.of(candidate), null, null);
     }
 
     /**
