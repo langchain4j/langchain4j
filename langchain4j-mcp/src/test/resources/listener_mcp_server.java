@@ -28,8 +28,13 @@ public class listener_mcp_server {
     }
 
     @Tool
-    public ToolResponse withError() {
-        return ToolResponse.error("Something went wrong");
+    public ToolResponse withApplicationLevelError() {
+        return ToolResponse.error("Application-level error");
+    }
+
+    @Tool
+    public ToolResponse withProtocolError() {
+        throw new RuntimeException("Protocol error");
     }
 
     @Tool

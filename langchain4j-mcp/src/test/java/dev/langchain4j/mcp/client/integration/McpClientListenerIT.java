@@ -25,7 +25,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-public class McpClientListenerTest {
+public class McpClientListenerIT {
 
     static McpClient mcpClient;
     static TestListener testListener;
@@ -76,8 +76,28 @@ public class McpClientListenerTest {
     @Test
     public void toolCallWithApplicationLevelError() {
         try {
+            ToolExecutionResult result = mcpClient.executeTool(ToolExecutionRequest.builder()
+                    .name("withApplicationLevelError")
+                    .build());
+            Assertions.fail("Should have thrown an exception");
+        } catch (Exception e) {
+            assertThat(testListener.toolContext).isNotNull();
+            assertThat(testListener.toolContext.message().method).isEqualTo(McpClientMethod.TOOLS_CALL);
+            assertThat(testListener.toolContext.message().getId()).isNotNull();
+            assertThat(testListener.toolResultContext).isNotNull();
+            assertThat(testListener.toolResultContext).isSameAs(testListener.toolContext);
+            assertThat(testListener.toolResult).isNotNull();
+            assertThat(testListener.toolResult.isError()).isTrue();
+            assertThat(testListener.toolResult.resultText()).isEqualTo("Application-level error");
+            assertThat(testListener.toolError).isNull();
+        }
+    }
+
+    @Test
+    public void toolCallWithProtocolError() {
+        try {
             ToolExecutionResult result = mcpClient.executeTool(
-                    ToolExecutionRequest.builder().name("withError").build());
+                    ToolExecutionRequest.builder().name("withProtocolError").build());
             Assertions.fail("Should have thrown an exception");
         } catch (Exception e) {
             assertThat(testListener.toolContext).isNotNull();

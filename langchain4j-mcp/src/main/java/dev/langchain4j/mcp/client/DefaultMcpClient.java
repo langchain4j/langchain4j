@@ -275,7 +275,7 @@ public class DefaultMcpClient implements McpClient {
                 listener.onExecuteToolError(context, timeout);
             }
             transport.executeOperationWithoutResponse(new McpCancellationNotification(operationId, "Timeout"));
-            return ToolExecutionHelper.extractResult(RESULT_TIMEOUT);
+            return ToolExecutionHelper.extractResult(RESULT_TIMEOUT, false);
         } catch (ExecutionException e) {
             if (listener != null) {
                 listener.onExecuteToolError(context, e);
@@ -288,16 +288,26 @@ public class DefaultMcpClient implements McpClient {
             pendingOperations.remove(operationId);
         }
         try {
-            ToolExecutionResult toolResult = ToolExecutionHelper.extractResult(result);
+            ToolExecutionResult toolResult = ToolExecutionHelper.extractResult(result, false);
             if (listener != null) {
                 listener.afterExecuteTool(
                         context, toolResult, (Map<String, Object>) ToolExecutionHelper.toObject(result));
             }
             return toolResult;
         } catch (ToolExecutionException e) {
-            // application-level error
-            if (listener != null) {
-                listener.onExecuteToolError(context, e);
+            if (e.errorCode() != null) {
+                // protocol error
+                if (listener != null) {
+                    listener.onExecuteToolError(context, e);
+                }
+            } else {
+                // application-level error (called "Tool Execution Error" in MCP spec)
+                // -> we notify the listener with afterExecuteTool
+                if (listener != null) {
+                    listener.afterExecuteTool(
+                            context, ToolExecutionHelper.extractResult(result, true), (Map<String, Object>)
+                                    ToolExecutionHelper.toObject(result));
+                }
             }
             throw e;
         }
