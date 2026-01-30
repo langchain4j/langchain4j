@@ -367,17 +367,19 @@ class AnthropicMapperTest {
     @Test
     void should_extract_server_tool_results_when_enabled() {
         // given
-        AnthropicContent textContent = new AnthropicContent();
-        textContent.type = "text";
-        textContent.text = "Here are the search results";
+        AnthropicContent textContent = AnthropicContent.builder()
+                .type("text")
+                .text("Here are the search results")
+                .build();
 
-        AnthropicContent webSearchResult = new AnthropicContent();
-        webSearchResult.type = "web_search_tool_result";
-        webSearchResult.toolUseId = "srvtoolu_123";
-        webSearchResult.content = List.of(Map.of(
-                "type", "web_search_result",
-                "url", "https://example.com",
-                "title", "Example"));
+        AnthropicContent webSearchResult = AnthropicContent.builder()
+                .type("web_search_tool_result")
+                .toolUseId("srvtoolu_123")
+                .content(List.of(Map.of(
+                        "type", "web_search_result",
+                        "url", "https://example.com",
+                        "title", "Example")))
+                .build();
 
         List<AnthropicContent> contents = List.of(textContent, webSearchResult);
 
@@ -397,10 +399,11 @@ class AnthropicMapperTest {
     @Test
     void should_not_extract_server_tool_results_when_disabled() {
         // given
-        AnthropicContent webSearchResult = new AnthropicContent();
-        webSearchResult.type = "web_search_tool_result";
-        webSearchResult.toolUseId = "srvtoolu_123";
-        webSearchResult.content = List.of(Map.of("url", "https://example.com"));
+        AnthropicContent webSearchResult = AnthropicContent.builder()
+                .type("web_search_tool_result")
+                .toolUseId("srvtoolu_123")
+                .content(List.of(Map.of("url", "https://example.com")))
+                .build();
 
         // when
         AiMessage aiMessage = toAiMessage(List.of(webSearchResult), false, false);
