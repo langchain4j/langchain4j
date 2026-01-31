@@ -26,6 +26,7 @@ import dev.langchain4j.model.chat.response.PartialThinkingContext;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCallContext;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
@@ -93,6 +94,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     private final List<String> responseBuffer = new ArrayList<>();
     private final boolean hasOutputGuardrails;
+    private final Future<Moderation> moderationFuture;
 
     private int sequentialToolsInvocationsLeft;
 
@@ -123,12 +125,14 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             ToolExecutionErrorHandler toolExecutionErrorHandler,
             Executor toolExecutor,
             GuardrailRequestParams commonGuardrailParams,
-            Object methodKey) {
+            Object methodKey,
+            Future<Moderation> moderationFuture) {
         this.chatRequest = ensureNotNull(chatRequest, "chatRequest");
         this.chatExecutor = ensureNotNull(chatExecutor, "chatExecutor");
         this.context = ensureNotNull(context, "context");
         this.invocationContext = ensureNotNull(invocationContext, "invocationContext");
         this.methodKey = methodKey;
+        this.moderationFuture = moderationFuture;
 
         this.partialResponseHandler = partialResponseHandler;
         this.partialResponseWithContextHandler = partialResponseWithContextHandler;
@@ -366,12 +370,21 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     toolExecutionErrorHandler,
                     toolExecutor,
                     commonGuardrailParams,
-                    methodKey);
+                    methodKey,
+                    moderationFuture);
 
             fireRequestIssuedEvent(nextChatRequest);
             context.streamingChatModel.chat(nextChatRequest, handler);
         } else {
             ChatResponse finalChatResponse = finalResponse(chatResponse, aiMessage);
+
+            // Verify moderation before completing the response
+            try {
+                AiServices.verifyModerationIfNeeded(moderationFuture);
+            } catch (ModerationException e) {
+                onError(e);
+                return;
+            }
 
             if (completeResponseHandler != null) {
                 // Invoke output guardrails
