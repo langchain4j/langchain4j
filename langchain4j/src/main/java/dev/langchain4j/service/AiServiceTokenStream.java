@@ -21,6 +21,7 @@ import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialThinkingContext;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCallContext;
+import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
 import dev.langchain4j.rag.content.Content;
@@ -32,6 +33,7 @@ import dev.langchain4j.service.tool.ToolExecutor;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
+import java.util.concurrent.Future;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -51,6 +53,7 @@ public class AiServiceTokenStream implements TokenStream {
     private final InvocationContext invocationContext;
     private final GuardrailRequestParams commonGuardrailParams;
     private final Object methodKey;
+    private final Future<Moderation> moderationFuture;
 
     private Consumer<String> partialResponseHandler;
     private BiConsumer<PartialResponse, PartialResponseContext> partialResponseWithContextHandler;
@@ -98,6 +101,7 @@ public class AiServiceTokenStream implements TokenStream {
         this.invocationContext = parameters.invocationContext();
         this.commonGuardrailParams = parameters.commonGuardrailParams();
         this.methodKey = parameters.methodKey();
+        this.moderationFuture = parameters.moderationFuture();
     }
 
     @Override
@@ -234,7 +238,8 @@ public class AiServiceTokenStream implements TokenStream {
                 toolExecutionErrorHandler,
                 toolExecutor,
                 commonGuardrailParams,
-                methodKey);
+                methodKey,
+                moderationFuture);
 
         if (contentsHandler != null && retrievedContents != null) {
             contentsHandler.accept(retrievedContents);

@@ -5,6 +5,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
@@ -12,6 +13,7 @@ import dev.langchain4j.service.tool.ToolExecutor;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
+import java.util.concurrent.Future;
 
 /**
  * Parameters for creating an {@link AiServiceTokenStream}.
@@ -30,6 +32,7 @@ public class AiServiceTokenStreamParameters {
     private final InvocationContext invocationContext;
     private final GuardrailRequestParams commonGuardrailParams;
     private final Object methodKey;
+    private final Future<Moderation> moderationFuture;
 
     protected AiServiceTokenStreamParameters(Builder builder) {
         this.messages = builder.messages;
@@ -43,6 +46,7 @@ public class AiServiceTokenStreamParameters {
         this.invocationContext = builder.invocationContext;
         this.commonGuardrailParams = builder.commonGuardrailParams;
         this.methodKey = builder.methodKey;
+        this.moderationFuture = builder.moderationFuture;
     }
 
     /**
@@ -129,6 +133,17 @@ public class AiServiceTokenStreamParameters {
     }
 
     /**
+     * Retrieves the moderation future for verifying content moderation.
+     * This future is created when the @Moderate annotation is present on the AI service method.
+     *
+     * @return the Future containing the Moderation result, or null if moderation is not enabled
+     * @since 1.12.0
+     */
+    public Future<Moderation> moderationFuture() {
+        return moderationFuture;
+    }
+
+    /**
      * Creates a new builder for {@link AiServiceTokenStreamParameters}.
      *
      * @return a new builder
@@ -153,6 +168,7 @@ public class AiServiceTokenStreamParameters {
         private InvocationContext invocationContext;
         private GuardrailRequestParams commonGuardrailParams;
         private Object methodKey;
+        private Future<Moderation> moderationFuture;
 
         protected Builder() {}
 
@@ -261,6 +277,18 @@ public class AiServiceTokenStreamParameters {
          */
         public Builder methodKey(Object methodKey) {
             this.methodKey = methodKey;
+            return this;
+        }
+
+        /**
+         * Sets the moderation future for verifying content moderation.
+         *
+         * @param moderationFuture the Future containing the Moderation result
+         * @return this builder
+         * @since 1.12.0
+         */
+        public Builder moderationFuture(Future<Moderation> moderationFuture) {
+            this.moderationFuture = moderationFuture;
             return this;
         }
 
