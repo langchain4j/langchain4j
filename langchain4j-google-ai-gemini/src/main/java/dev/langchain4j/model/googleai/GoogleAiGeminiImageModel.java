@@ -219,12 +219,7 @@ public class GoogleAiGeminiImageModel implements ImageModel {
     private GeminiGenerateContentRequest createGenerateRequest(String prompt) {
         var content = new GeminiContent(List.of(GeminiPart.ofText(prompt)), GeminiRole.USER.toString());
 
-        return GeminiGenerateContentRequest.builder()
-                .contents(List.of(content))
-                .generationConfig(createGenerationConfig())
-                .safetySettings(safetySettings)
-                .tools(tools)
-                .build();
+        return createGenerateContentRequest(content);
     }
 
     private GeminiGenerateContentRequest createEditRequest(String prompt, Image image, Image mask) {
@@ -243,6 +238,10 @@ public class GoogleAiGeminiImageModel implements ImageModel {
 
         var content = new GeminiContent(parts, GeminiRole.USER.toString());
 
+        return createGenerateContentRequest(content);
+    }
+
+    private GeminiGenerateContentRequest createGenerateContentRequest(GeminiContent content) {
         return GeminiGenerateContentRequest.builder()
                 .contents(List.of(content))
                 .generationConfig(createGenerationConfig())
