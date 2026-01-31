@@ -562,7 +562,7 @@ class DefaultAiServices<T> extends AiServices<T> {
             List<Content> contents = new ArrayList<>();
 
             for (Object arg : args) {
-                if (arg instanceof dev.langchain4j.data.message.UserMessage userMessage) {
+                if (arg instanceof UserMessage userMessage) {
                     return userMessage;
                 } else if (arg instanceof Content content) {
                     contents.add(content);
@@ -634,9 +634,7 @@ class DefaultAiServices<T> extends AiServices<T> {
         }
 
         if (parameters.length == 1 && !hasAnyValidAnnotation(parameters[0])) {
-            return args[0] instanceof Content
-                    || isListOfContents(args[0])
-                    || args[0] instanceof dev.langchain4j.data.message.UserMessage;
+            return args[0] instanceof Content || isListOfContents(args[0]) || args[0] instanceof UserMessage;
         }
         return false;
     }
@@ -670,9 +668,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
     private static Optional<String> findUserMessageTemplateFromTheOnlyArgument(Parameter[] parameters, Object[] args) {
         if (parameters != null && parameters.length == 1 && !hasAnyValidAnnotation(parameters[0])) {
-            if (args[0] instanceof Content
-                    || isListOfContents(args[0])
-                    || args[0] instanceof dev.langchain4j.data.message.UserMessage) {
+            if (args[0] instanceof Content || isListOfContents(args[0]) || args[0] instanceof UserMessage) {
                 return Optional.empty();
             }
             return Optional.of(InternalReflectionVariableResolver.asString(args[0]));
