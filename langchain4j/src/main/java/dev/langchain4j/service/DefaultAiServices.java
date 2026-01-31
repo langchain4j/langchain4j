@@ -47,6 +47,7 @@ import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
 import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.query.Metadata;
+import dev.langchain4j.reasoning.ReasoningAugmentationResult;
 import dev.langchain4j.service.guardrail.GuardrailService;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import dev.langchain4j.service.memory.ChatMemoryService;
@@ -184,6 +185,16 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         UserMessage userMessageForAugmentation = originalUserMessage;
 
+                        // Apply reasoning augmentation first (HOW to approach the task)
+                        ReasoningAugmentationResult reasoningResult = null;
+                        if (context.reasoningAugmentor != null) {
+                            reasoningResult = context.reasoningAugmentor.augment(userMessageForAugmentation);
+                            if (reasoningResult.wasAugmented()) {
+                                userMessageForAugmentation = (UserMessage) reasoningResult.augmentedMessage();
+                            }
+                        }
+
+                        // Then apply RAG augmentation (WHAT information to use)
                         AugmentationResult augmentationResult = null;
                         if (context.retrievalAugmentor != null) {
                             List<ChatMessage> chatMemoryMessages = chatMemory != null ? chatMemory.messages() : null;
