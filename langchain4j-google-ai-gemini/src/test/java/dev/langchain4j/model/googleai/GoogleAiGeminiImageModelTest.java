@@ -321,6 +321,7 @@ class GoogleAiGeminiImageModelTest {
                     .modelName(TEST_MODEL_NAME)
                     .aspectRatio("16:9")
                     .imageSize("2K")
+                    .useGoogleSearchGrounding(true)
                     .build();
 
             setGeminiService(subject, mockGeminiService);
@@ -337,7 +338,7 @@ class GoogleAiGeminiImageModelTest {
             assertThat(request.generationConfig().responseModalities()).containsExactly(GeminiResponseModality.IMAGE);
             assertThat(request.generationConfig().imageConfig()).isNotNull();
             assertThat(request.generationConfig().imageConfig().aspectRatio()).isEqualTo("16:9");
-            assertThat(request.generationConfig().imageConfig().imageSize()).isEqualTo("2K");
+            assertThat(request.tools().googleSearch()).isNotNull();
         }
 
         @Test
