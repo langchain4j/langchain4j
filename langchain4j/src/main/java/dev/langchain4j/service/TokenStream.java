@@ -19,33 +19,33 @@ import java.util.function.Consumer;
 
 /**
  * Represents a token stream from the model to which you can subscribe and receive updates
- * when a new partial responses (usually a single token) is available,
+ * when a new partial response (usually a single token) is available,
  *  when the model finishes streaming, or when an error occurs during streaming.
  * It is intended to be used as a return type in AI Service.
  */
 public interface TokenStream {
 
     /**
-     * The provided consumer will be invoked every time a new partial textual responses (usually a single token)
+     * The provided consumer will be invoked every time a new partial textual response (usually a single token)
      * from a language model is available.
      * <p>
      * Either this or the {@link #onPartialResponseWithContext(BiConsumer)} callback can be used
      * if you want to consume tokens as soon as they become available.
      *
-     * @param partialResponseHandler lambda that will be invoked when a model generates a new partial textual responses
+     * @param partialResponseHandler lambda that will be invoked when a model generates a new partial textual response
      * @return token stream instance used to configure or start stream processing
      * @see #onPartialResponseWithContext(BiConsumer)
      */
     TokenStream onPartialResponse(Consumer<String> partialResponseHandler);
 
     /**
-     * The provided consumer will be invoked every time a new partial textual responses (usually a single token)
+     * The provided consumer will be invoked every time a new partial textual response (usually a single token)
      * from a language model is available.
      * <p>
      * Either this or the {@link #onPartialResponse(Consumer)} callback can be used
      * if you want to consume tokens as soon as they become available.
      *
-     * @param handler lambda that will be invoked when a model generates a new partial textual responses
+     * @param handler lambda that will be invoked when a model generates a new partial textual response
      * @return token stream instance used to configure or start stream processing
      * @see #onPartialResponse(Consumer)
      * @since 1.8.0
@@ -134,8 +134,8 @@ public interface TokenStream {
     TokenStream onRetrieved(Consumer<List<Content>> contentHandler);
 
     /**
-     * The provided consumer will be invoked when a language model finishes streaming the <i>intermediate</i> chat responses,
-     * as opposed to the final responses (see {@link #onCompleteResponse(Consumer)}).
+     * The provided consumer will be invoked when a language model finishes streaming the <i>intermediate</i> chat response,
+     * as opposed to the final response (see {@link #onCompleteResponse(Consumer)}).
      * Intermediate chat responses contain {@link ToolExecutionRequest}s, AI service will execute them
      * after returning from this consumer.
      *
@@ -171,8 +171,8 @@ public interface TokenStream {
     TokenStream onToolExecuted(Consumer<ToolExecution> toolExecuteHandler);
 
     /**
-     * The provided consumer will be invoked when a language model finishes streaming the <i>final</i> chat responses,
-     * as opposed to the intermediate responses (see {@link #onIntermediateResponse(Consumer)}).
+     * The provided consumer will be invoked when a language model finishes streaming the <i>final</i> chat response,
+     * as opposed to the intermediate response (see {@link #onIntermediateResponse(Consumer)}).
      * <p>
      * Please note that {@link ChatResponse#tokenUsage()} contains aggregate token usage across all calls to the LLM.
      * It is a sum of {@link ChatResponse#tokenUsage()}s of all intermediate responses
@@ -202,7 +202,7 @@ public interface TokenStream {
     /**
      * Completes the current token stream building and starts processing.
      * <p>
-     * Will send a request to LLM and start responses streaming.
+     * Will send a request to LLM and start response streaming.
      */
     void start();
 }

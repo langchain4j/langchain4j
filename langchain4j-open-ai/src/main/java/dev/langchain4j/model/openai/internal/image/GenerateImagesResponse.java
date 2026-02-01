@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Represents the responses from the OpenAI DALL·E API when generating images.
+ * Represents the response from the OpenAI DALL·E API when generating images.
  * Find description of parameters <a href="https://platform.openai.com/docs/api-reference/images/object">here</a>.
  */
 @JsonDeserialize(builder = GenerateImagesResponse.Builder.class)

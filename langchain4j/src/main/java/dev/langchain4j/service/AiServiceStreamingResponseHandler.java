@@ -53,7 +53,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Handles responses from a language model for AI Service that is streamed token-by-token. Handles both regular (text)
+ * Handles response from a language model for AI Service that is streamed token-by-token. Handles both regular (text)
  * responses and responses with the request to execute one or multiple tools.
  */
 @Internal
@@ -159,7 +159,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     @Override
     public void onPartialResponse(String partialResponse) {
-        // If we're using output guardrails, then buffer the partial responses until the guardrails have completed
+        // If we're using output guardrails, then buffer the partial response until the guardrails have completed
         if (hasOutputGuardrails) {
             responseBuffer.add(partialResponse);
         } else if (partialResponseHandler != null) {
@@ -172,7 +172,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     @Override
     public void onPartialResponse(PartialResponse partialResponse, PartialResponseContext context) {
-        // If we're using output guardrails, then buffer the partial responses until the guardrails have completed
+        // If we're using output guardrails, then buffer the partial response until the guardrails have completed
         if (hasOutputGuardrails) {
             responseBuffer.add(partialResponse.text());
         } else if (partialResponseHandler != null) {

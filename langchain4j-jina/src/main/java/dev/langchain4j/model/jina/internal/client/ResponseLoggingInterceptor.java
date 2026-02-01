@@ -43,8 +43,8 @@ class ResponseLoggingInterceptor implements Interceptor {
         try {
             return response.peekBody(Long.MAX_VALUE).string();
         } catch (IOException e) {
-            log.warn("Failed to log responses", e);
-            return "[failed to log responses]";
+            log.warn("Failed to log response", e);
+            return "[failed to log response]";
         }
     }
 }

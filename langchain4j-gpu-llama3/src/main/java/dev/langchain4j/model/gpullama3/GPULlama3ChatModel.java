@@ -26,7 +26,7 @@ import java.nio.file.Path;
  *     .onGPU(true)
  *     .build();
  *
- * ChatResponse responses = model.chat(chatRequest);
+ * ChatResponse response = model.chat(chatRequest);
  * }</pre>
  */
 public class GPULlama3ChatModel extends GPULlama3BaseModel implements ChatModel {
@@ -56,10 +56,10 @@ public class GPULlama3ChatModel extends GPULlama3BaseModel implements ChatModel 
         ChatRequestValidationUtils.validate(parameters.responseFormat());
 
         try {
-            // Generate a raw responses from the model
+            // Generate a raw response from the model
             String rawResponse = modelResponse(chatRequest, null);
 
-            // Parse thinking and actual responses using the GPULlama3ResponseParser
+            // Parse thinking and actual response using the GPULlama3ResponseParser
             GPULlama3ResponseParser.ParsedResponse parsed = GPULlama3ResponseParser.parseResponse(rawResponse);
 
             return ChatResponse.builder()
@@ -69,7 +69,7 @@ public class GPULlama3ChatModel extends GPULlama3BaseModel implements ChatModel 
                             .build())
                     .build();
         } catch (Exception e) {
-            throw new RuntimeException("Failed to generate responses from GPULlama3", e);
+            throw new RuntimeException("Failed to generate response from GPULlama3", e);
         }
     }
 

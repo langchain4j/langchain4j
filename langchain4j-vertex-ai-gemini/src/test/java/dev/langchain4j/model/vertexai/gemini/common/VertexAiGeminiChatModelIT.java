@@ -53,7 +53,7 @@ class VertexAiGeminiChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
-        return false; // Gemini does not support tools and responses format simultaneously
+        return false; // Gemini does not support tools and response format simultaneously
     }
     
     @Override

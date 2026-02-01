@@ -69,7 +69,7 @@ public class WatsonxStreamingChatModelThinkingIT {
         assertThat(aiMessage.thinking()).isNotBlank();
         assertThat(aiMessage.thinking()).doesNotContain("<think>", "</think>");
         assertThat(aiMessage.text()).isNotBlank();
-        assertThat(aiMessage.text()).doesNotContain("<responses>", "</responses>");
+        assertThat(aiMessage.text()).doesNotContain("<response>", "</response>");
         assertThat(thinking).isNotBlank();
         assertEquals(thinking, aiMessage.thinking());
     }
@@ -162,7 +162,7 @@ public class WatsonxStreamingChatModelThinkingIT {
                 .apiKey(API_KEY)
                 .projectId(PROJECT_ID)
                 .modelName("ibm/granite-3-3-8b-instruct")
-                .thinking(ExtractionTags.of("think", "responses"))
+                .thinking(ExtractionTags.of("think", "response"))
                 .maxOutputTokens(0)
                 .timeout(Duration.ofSeconds(30));
     }

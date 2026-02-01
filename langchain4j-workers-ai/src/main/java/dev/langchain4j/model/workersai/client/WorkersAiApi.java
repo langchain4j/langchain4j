@@ -21,7 +21,7 @@ public interface WorkersAiApi {
      * @param modelId
      *      model id.
      * @return
-     *      responses.
+     *      response.
      */
     @POST("client/v4/accounts/{accountIdentifier}/ai/run/{modelName}")
     Call<WorkersAiChatCompletionResponse> generateChat(@Body WorkersAiChatCompletionRequest apiRequest,
@@ -38,7 +38,7 @@ public interface WorkersAiApi {
      * @param modelName
      *      model name.
      * @return
-     *      responses.
+     *      response.
      */
     @POST("client/v4/accounts/{accountIdentifier}/ai/run/{modelName}")
     Call<WorkersAiTextCompletionResponse> generateText(@Body WorkersAiTextCompletionRequest apiRequest,
@@ -55,7 +55,7 @@ public interface WorkersAiApi {
      * @param modelName
      *      model name.
      * @return
-     *      responses.
+     *      response.
      */
     @POST("client/v4/accounts/{accountIdentifier}/ai/run/{modelName}")
     Call<ResponseBody> generateImage(@Body WorkersAiImageGenerationRequest apiRequest,
@@ -72,7 +72,7 @@ public interface WorkersAiApi {
      * @param modelName
      *      model name.
      * @return
-     *      responses.
+     *      response.
      */
     @POST("client/v4/accounts/{accountIdentifier}/ai/run/{modelName}")
     Call<WorkersAiEmbeddingResponse>  embed(@Body WorkersAiEmbeddingRequest apiRequest,

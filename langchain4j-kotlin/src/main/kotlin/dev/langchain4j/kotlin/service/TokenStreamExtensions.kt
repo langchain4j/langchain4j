@@ -26,7 +26,7 @@ public const val DEFAULT_BUFFER_CAPACITY: Int = 32768
  *    Defaults to [DEFAULT_BUFFER_CAPACITY] if not specified.
  *    Use value [kotlinx.coroutines.channels.Channel.UNLIMITED]
  *    if you are feeling optimistic about [java.lang.OutOfMemoryError]s.
- * @return A [Flow] emitting strings, where each string represents a partial responses
+ * @return A [Flow] emitting strings, where each string represents a partial response
  *    from the associated language model.
  */
 @JvmOverloads
@@ -54,10 +54,10 @@ public fun TokenStream.asFlow(
 
 /**
  * Converts a `TokenStream` into a `Flow` of `StreamingChatModelReply` instances, where each
- * emitted item represents a partial or complete responses received during streaming.
+ * emitted item represents a partial or complete response received during streaming.
  *
  * This function utilizes a coroutine-based flow to provide real-time updates of the
- * streaming responses. The flow handles partial responses, the final complete responses, and
+ * streaming response. The flow handles partial responses, the final complete response, and
  * errors that may occur during the streaming process. Responses are buffered with the specified
  * capacity.
  *

@@ -359,7 +359,7 @@ public class AnthropicChatModel implements ChatModel {
         /**
          * Controls whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}.
          * Please note that this does not enable thinking/reasoning for the LLM;
-         * it only controls whether to parse the {@code thinking} field from the API responses
+         * it only controls whether to parse the {@code thinking} field from the API response
          * and return it inside the {@link AiMessage}.
          * <p>
          * Disabled by default.

@@ -111,7 +111,7 @@ class AnthropicUserIdIT {
                 .id("test-id")
                 .type("message")
                 .role("assistant")
-                .content(Collections.singletonList(createTextContent("Hello responses")))
+                .content(Collections.singletonList(createTextContent("Hello response")))
                 .model(CLAUDE_3_5_HAIKU_20241022.toString())
                 .stopReason("end_turn")
                 .stopSequence(null)

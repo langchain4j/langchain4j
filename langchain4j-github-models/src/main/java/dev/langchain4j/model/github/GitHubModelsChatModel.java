@@ -326,7 +326,7 @@ public class GitHubModelsChatModel implements ChatModel {
 
             return response;
         } catch (HttpResponseException httpResponseException) {
-            logger.info("Error generating responses, {}", httpResponseException.getValue());
+            logger.info("Error generating response, {}", httpResponseException.getValue());
 
             ChatModelErrorContext errorContext = new ChatModelErrorContext(
                     httpResponseException,

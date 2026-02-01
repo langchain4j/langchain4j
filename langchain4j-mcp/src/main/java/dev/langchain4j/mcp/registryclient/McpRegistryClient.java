@@ -44,7 +44,7 @@ public interface McpRegistryClient {
 
     /**
      * Sends a ping message to the MCP registry. If the ping is successful,
-     * the 'pong' field in the responses object will contain 'true'.
+     * the 'pong' field in the response object will contain 'true'.
      */
     McpRegistryPong ping();
 }

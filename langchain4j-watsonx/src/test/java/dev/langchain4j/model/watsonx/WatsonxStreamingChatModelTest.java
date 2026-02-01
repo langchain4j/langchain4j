@@ -195,11 +195,11 @@ public class WatsonxStreamingChatModelTest {
     @Test
     void shouldExtractThinkingWhenConfiguredInModelBuilder() throws Exception {
 
-        var extractionTags = ExtractionTags.of("think", "responses");
+        var extractionTags = ExtractionTags.of("think", "response");
 
         var resultMessage = new ResultMessage(
                 AssistantMessage.ROLE,
-                "<think>I'm thinking</think><responses>This is the responses</responses>",
+                "<think>I'm thinking</think><response>This is the response</response>",
                 "I'm thinking",
                 null,
                 null);
@@ -214,7 +214,7 @@ public class WatsonxStreamingChatModelTest {
                     ChatHandler handler = invocation.getArgument(1);
                     handler.onPartialThinking("I'm thinking", null);
                     handler.onPartialResponse("This is", null);
-                    handler.onPartialResponse("the responses", null);
+                    handler.onPartialResponse("the response", null);
                     handler.onCompleteResponse(cr);
                     return CompletableFuture.completedFuture(null);
                 })
@@ -238,14 +238,14 @@ public class WatsonxStreamingChatModelTest {
             StreamingChatResponseHandler streamingHandler = new StreamingChatResponseHandler() {
                 @Override
                 public void onPartialResponse(String partialResponse) {
-                    assertTrue(partialResponse.equals("This is") || partialResponse.equals("the responses"));
+                    assertTrue(partialResponse.equals("This is") || partialResponse.equals("the response"));
                 }
 
                 @Override
                 public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse completeResponse) {
                     assertEquals("I'm thinking", completeResponse.aiMessage().thinking());
                     assertEquals(
-                            "This is the responses", completeResponse.aiMessage().text());
+                            "This is the response", completeResponse.aiMessage().text());
                     latch.countDown();
                 }
 
@@ -278,10 +278,10 @@ public class WatsonxStreamingChatModelTest {
     @Test
     void shouldExtractThinkingWhenConfiguredInRequestParameters() throws Exception {
 
-        var extractionTags = ExtractionTags.of("think", "responses");
+        var extractionTags = ExtractionTags.of("think", "response");
         var resultMessage = new ResultMessage(
                 AssistantMessage.ROLE,
-                "<think>I'm thinking</think><responses>This is the responses</responses>",
+                "<think>I'm thinking</think><response>This is the response</response>",
                 "I'm thinking",
                 null,
                 null);
@@ -297,7 +297,7 @@ public class WatsonxStreamingChatModelTest {
                     ChatHandler handler = invocation.getArgument(1);
                     handler.onPartialThinking("I'm thinking", null);
                     handler.onPartialResponse("This is", null);
-                    handler.onPartialResponse("the responses", null);
+                    handler.onPartialResponse("the response", null);
                     handler.onCompleteResponse(cr);
                     return CompletableFuture.completedFuture(null);
                 })
@@ -316,7 +316,7 @@ public class WatsonxStreamingChatModelTest {
             ChatRequest chatRequest = ChatRequest.builder()
                     .messages(UserMessage.from("Hello"))
                     .parameters(WatsonxChatRequestParameters.builder()
-                            .thinking(ExtractionTags.of("think", "responses"))
+                            .thinking(ExtractionTags.of("think", "response"))
                             .build())
                     .build();
 
@@ -324,14 +324,14 @@ public class WatsonxStreamingChatModelTest {
             StreamingChatResponseHandler streamingHandler = new StreamingChatResponseHandler() {
                 @Override
                 public void onPartialResponse(String partialResponse) {
-                    assertTrue(partialResponse.equals("This is") || partialResponse.equals("the responses"));
+                    assertTrue(partialResponse.equals("This is") || partialResponse.equals("the response"));
                 }
 
                 @Override
                 public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse completeResponse) {
                     assertEquals("I'm thinking", completeResponse.aiMessage().thinking());
                     assertEquals(
-                            "This is the responses", completeResponse.aiMessage().text());
+                            "This is the response", completeResponse.aiMessage().text());
                     latch.countDown();
                 }
 

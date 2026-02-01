@@ -152,7 +152,7 @@ public class HttpMcpTransport implements McpTransport {
                     if (!isExpectedStatusCode(statusCode)) {
                         future.completeExceptionally(new RuntimeException("Unexpected status code: " + statusCode));
                     }
-                    // For messages with null ID, we don't wait for a responses in the SSE channel
+                    // For messages with null ID, we don't wait for a response in the SSE channel
                     if (id == null) {
                         future.complete(null);
                     }

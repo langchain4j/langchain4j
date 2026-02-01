@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 
 /**
  * Represents a Mistral AI Chat Model with a chat completion interface, such as mistral-tiny and mistral-small.
- * The model's responses is streamed token by token and should be handled with {@link StreamingResponseHandler}.
+ * The model's response is streamed token by token and should be handled with {@link StreamingResponseHandler}.
  * You can find description of parameters <a href="https://docs.mistral.ai/api/#operation/createChatCompletion">here</a>.
  */
 public class MistralAiStreamingChatModel implements StreamingChatModel {
@@ -203,7 +203,7 @@ public class MistralAiStreamingChatModel implements StreamingChatModel {
         }
 
         /**
-         * @param maxTokens the maximum number of new tokens to generate in a chat responses
+         * @param maxTokens the maximum number of new tokens to generate in a chat response
          * @return {@code this}.
          */
         public MistralAiStreamingChatModelBuilder maxTokens(Integer maxTokens) {

@@ -114,7 +114,7 @@ class AnthropicChatModelErrorsTest {
 
         final var question = "Simulate timeout " + System.currentTimeMillis();
         MOCK.messages(req -> req.userMessageContains(question)).respondsError(res -> {
-            // don't really care about the responses, just simulate a timeout
+            // don't really care about the response, just simulate a timeout
             res.delayMillis(TIMEOUT.plusMillis(250).toMillis());
             res.setHttpStatus(HttpStatusCode.Companion.getNoContent());
             res.setBody("");

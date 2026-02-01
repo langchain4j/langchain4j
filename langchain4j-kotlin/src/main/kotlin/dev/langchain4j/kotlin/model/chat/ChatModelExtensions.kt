@@ -17,14 +17,14 @@ import kotlin.coroutines.CoroutineContext
  *
  * Example usage:
  * ```kotlin
- * val responses = model.chatAsync(ChatRequest(messages))
+ * val response = model.chatAsync(ChatRequest(messages))
  * val response2 = model.chatAsync(request = chatRequest, coroutineContext = Dispatchers.IO)
  * ```
  *
  * @param request The chat request containing messages and optional parameters
  *    for the model.
  * @param coroutineContext processes a chat request in provided [CoroutineContext]
- * @return [ChatResponse] containing the model's responses and any additional
+ * @return [ChatResponse] containing the model's response and any additional
  *    metadata.
  * @throws Exception if the chat request fails or is interrupted.
  * @see dev.langchain4j.model.chat.ChatModel.chat(ChatRequest)
@@ -48,7 +48,7 @@ public suspend fun dev.langchain4j.model.chat.ChatModel.chatAsync(
  *
  * Example usage:
  * ```kotlin
- * val responses = model.chat(
+ * val response = model.chat(
  *     ChatRequest.builder()
  *         .messages(listOf(UserMessage("Hello")))
  *         .temperature(0.7)
@@ -59,7 +59,7 @@ public suspend fun dev.langchain4j.model.chat.ChatModel.chatAsync(
  * @param requestBuilder The builder instance configured with desired chat
  *    request parameters.
  * @param coroutineContext processes a chat request in provided [CoroutineContext]
- * @return [ChatResponse] containing the model's responses and any additional
+ * @return [ChatResponse] containing the model's response and any additional
  *    metadata.
  * @throws Exception if the chat request fails, is interrupted, or the builder
  *    produces an invalid configuration.
@@ -95,7 +95,7 @@ public suspend fun dev.langchain4j.model.chat.ChatModel.chat(
  * @param block A lambda with receiver on [ChatRequestBuilder] used to
  *    configure the messages and parameters for the chat request.
  * @param coroutineContext processes a chat request in provided [CoroutineContext]
- * @return A [ChatResponse] containing the responses from the model and any
+ * @return A [ChatResponse] containing the response from the model and any
  *    associated metadata.
  * @throws Exception if the chat request fails or encounters an error during execution.
  * @author Konstantin Pavlov

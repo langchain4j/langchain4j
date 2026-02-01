@@ -399,7 +399,7 @@ class InternalGitHubModelHelper {
                     }
                 }
             } catch (ClassCastException classCastException) {
-                logger.error("Error parsing error responses from Azure OpenAI", classCastException);
+                logger.error("Error parsing error response from Azure OpenAI", classCastException);
             }
         }
         return exceptionFinishReason;

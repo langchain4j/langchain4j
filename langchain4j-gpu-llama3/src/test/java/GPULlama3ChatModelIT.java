@@ -94,19 +94,19 @@ class GPULlama3ChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    @Disabled("GPU Llama3 does not support JSON responses format")
+    @Disabled("GPU Llama3 does not support JSON response format")
     protected void should_respect_JSON_response_format(ChatModel model) {
         // Test disabled - GPU Llama3 doesn't support structured outputs
     }
 
     @Override
-    @Disabled("GPU Llama3 does not support JSON responses format with schema")
+    @Disabled("GPU Llama3 does not support JSON response format with schema")
     protected void should_respect_JSON_response_format_with_schema(ChatModel model) {
         // Test disabled - GPU Llama3 doesn't support structured outputs
     }
 
     @Override
-    @Disabled("GPU Llama3 does not support JSON responses format with schema")
+    @Disabled("GPU Llama3 does not support JSON response format with schema")
     protected void should_respect_JsonRawSchema_responseFormat(ChatModel model) {
         // Test disabled - GPU Llama3 doesn't support structured outputs
     }
@@ -206,12 +206,12 @@ class GPULlama3ChatModelIT extends AbstractChatModelIT {
     // Override assertion methods for GPU Llama3 specifics
     @Override
     protected boolean assertResponseId() {
-        return false; // GPU Llama3 might not return responses IDs
+        return false; // GPU Llama3 might not return response IDs
     }
 
     @Override
     protected boolean assertResponseModel() {
-        return false; // GPU Llama3 might not return model name in responses
+        return false; // GPU Llama3 might not return model name in response
     }
 
     @Override
@@ -262,13 +262,13 @@ class GPULlama3ChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    @Disabled("GPU Llama3 does not support JSON responses format")
+    @Disabled("GPU Llama3 does not support JSON response format")
     protected void should_fail_if_JSON_response_format_is_not_supported(ChatModel model) {
         // This test expects the feature to be supported but fail - GPU Llama3 doesn't support it at all
     }
 
     @Override
-    @Disabled("GPU Llama3 does not support JSON responses format with schema")
+    @Disabled("GPU Llama3 does not support JSON response format with schema")
     protected void should_fail_if_JSON_response_format_with_schema_is_not_supported(ChatModel model) {
         // This test expects the feature to be supported but fail - GPU Llama3 doesn't support it at all
     }

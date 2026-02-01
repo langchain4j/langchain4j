@@ -22,9 +22,9 @@ class GoogleSearchApiHttpResponseLoggingInterceptor implements HttpResponseInter
         try {
             httpResponse.getRequest().setParser(new GsonFactory().createJsonObjectParser());
             LOGGER.debug("Response:\n- status code: {}\n- headers: {}",
-                    httpResponse.getStatusCode(), getHeaders(httpResponse.getHeaders())); // responses body can't be got twice by google token constraints, it'll be logged in GoogleCustomSearchApiClient
+                    httpResponse.getStatusCode(), getHeaders(httpResponse.getHeaders())); // response body can't be got twice by google token constraints, it'll be logged in GoogleCustomSearchApiClient
         } catch (Exception e) {
-            LOGGER.warn("Error while logging responses: {}", e.getMessage());
+            LOGGER.warn("Error while logging response: {}", e.getMessage());
         }
     }
 

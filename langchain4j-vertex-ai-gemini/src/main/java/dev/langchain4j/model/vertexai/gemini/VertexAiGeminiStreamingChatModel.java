@@ -511,7 +511,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
                 });
 
                 if (this.logResponses && logger.isDebugEnabled()) {
-                    logger.debug("GEMINI ({}) responses: {}", modelName, fullResponse);
+                    logger.debug("GEMINI ({}) response: {}", modelName, fullResponse);
                 }
             } catch (Exception exception) {
                 listeners.forEach((listener) -> {

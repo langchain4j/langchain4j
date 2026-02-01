@@ -95,9 +95,9 @@ public class VertexAiAnthropicChatModel implements ChatModel, Closeable {
         List<ChatMessage> messages = chatRequest.messages();
         List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
 
-        // Validate that JSON responses format with schema is not used (not yet supported)
+        // Validate that JSON response format with schema is not used (not yet supported)
         if (parameters.responseFormat() != null && parameters.responseFormat().jsonSchema() != null) {
-            throw new UnsupportedFeatureException("JSON responses format is not supported yet");
+            throw new UnsupportedFeatureException("JSON response format is not supported yet");
         }
 
         try {
@@ -133,12 +133,12 @@ public class VertexAiAnthropicChatModel implements ChatModel, Closeable {
             AnthropicResponse anthropicResponse = client.generateContent(anthropicRequest, requestModelName);
 
             if (logResponses) {
-                logger.debug("Anthropic responses: {}", anthropicResponse);
+                logger.debug("Anthropic response: {}", anthropicResponse);
             }
 
             return AnthropicResponseMapper.toChatResponse(anthropicResponse);
         } catch (IOException e) {
-            throw new RuntimeException("Failed to generate responses", e);
+            throw new RuntimeException("Failed to generate response", e);
         }
     }
 

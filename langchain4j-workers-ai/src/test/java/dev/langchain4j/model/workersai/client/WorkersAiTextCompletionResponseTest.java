@@ -12,7 +12,7 @@ class WorkersAiTextCompletionResponseTest {
     @Test
     void should_deserialize_response_with_usage_and_finish_reason() throws Exception {
         String json = "{\n" + "  \"result\": {\n"
-                + "    \"responses\": \"Hello World\",\n"
+                + "    \"response\": \"Hello World\",\n"
                 + "    \"usage\": {\n"
                 + "      \"prompt_tokens\": 10,\n"
                 + "      \"completion_tokens\": 20,\n"
@@ -44,7 +44,7 @@ class WorkersAiTextCompletionResponseTest {
     @Test
     void should_ignore_unknown_fields_in_future() throws Exception {
         String json = "{\n" + "  \"result\": {\n"
-                + "    \"responses\": \"Hello\",\n"
+                + "    \"response\": \"Hello\",\n"
                 + "    \"meta_info\": \"some new field\"\n"
                 + "  },\n"
                 + "  \"success\": true\n"

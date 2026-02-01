@@ -64,7 +64,7 @@ public class MistralAiFimModel implements LanguageModel {
      *
      * @param prompt the starting point of the text/code
      * @param suffix Optional text/code that adds more context for the model. When given a prompt and a suffix the model will fill what is between them.
-     * @return a responses containing the generated text/code
+     * @return a response containing the generated text/code
      */
     public Response<String> generate(String prompt, String suffix) {
         return completion(prompt, suffix);
@@ -74,7 +74,7 @@ public class MistralAiFimModel implements LanguageModel {
      * Generates a completion for the given prompt.
      *
      * @param prompt the starting point of the text/code
-     * @return a responses containing the generated text/code
+     * @return a response containing the generated text/code
      */
     @Override
     public Response<String> generate(String prompt) {
@@ -188,7 +188,7 @@ public class MistralAiFimModel implements LanguageModel {
         }
 
         /**
-         * @param maxTokens the maximum number of tokens to generate in a responses
+         * @param maxTokens the maximum number of tokens to generate in a response
          * @return builder
          */
         public Builder maxTokens(Integer maxTokens) {
@@ -197,7 +197,7 @@ public class MistralAiFimModel implements LanguageModel {
         }
 
         /**
-         * @param minTokens the minimum number of tokens to generate in a responses
+         * @param minTokens the minimum number of tokens to generate in a response
          * @return builder
          */
         public Builder minTokens(Integer minTokens) {

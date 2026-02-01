@@ -29,7 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SearchApiWebSearchToolIT extends WebSearchToolIT {
 
     public static final String GOOGLE_ENGINE = "google";
-    private static final String SYSTEM_MSG = "You are a web search support agent. If there is any event that has not happened yet, you MUST use a web search tool to look up the information on the web. Include the source link in your final responses. Do not say that you have not the capability to browse the web in real time";
+    private static final String SYSTEM_MSG = "You are a web search support agent. If there is any event that has not happened yet, you MUST use a web search tool to look up the information on the web. Include the source link in your final response. Do not say that you have not the capability to browse the web in real time";
 
     WebSearchEngine searchApiEngine = SearchApiWebSearchEngine.withApiKey(System.getenv("SEARCHAPI_API_KEY"));
 

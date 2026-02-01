@@ -30,7 +30,7 @@ public enum MistralAiResponseFormatType {
     }
 
     /**
-     * Returns the string representation in lowercase of the responses format type.
+     * Returns the string representation in lowercase of the response format type.
      */
     @Override
     public String toString() {

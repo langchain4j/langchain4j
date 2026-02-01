@@ -392,9 +392,9 @@ public class WorkflowAgentsIT {
                 .subAgents(
                         humanInTheLoop, // asks user for the audience in a non-blocking way
                         creativeWriter, // doesn't need the audience so it can generate the story without waiting for
-                        // the human-in-the-loop responses
+                        // the human-in-the-loop response
                         AgenticServices.agentAction(
-                                barrier::await), // unblock the human-in-the-loop making its responses available
+                                barrier::await), // unblock the human-in-the-loop making its response available
                         audienceEditor, // use the audience provided by the human-in-the-loop
                         AgenticServices.agentAction(agenticScope -> audience.set(agenticScope.readState(
                                 "audience", "")))) // read the audience state, just for test purposes
@@ -724,15 +724,15 @@ public class WorkflowAgentsIT {
 
         MedicalExpert medicalExpert = spy(AgenticServices.agentBuilder(MedicalExpert.class)
                 .chatModel(baseModel())
-                .outputKey("responses")
+                .outputKey("response")
                 .build());
         LegalExpert legalExpert = spy(AgenticServices.agentBuilder(LegalExpert.class)
                 .chatModel(baseModel())
-                .outputKey("responses")
+                .outputKey("response")
                 .build());
         TechnicalExpert technicalExpert = spy(AgenticServices.agentBuilder(TechnicalExpert.class)
                 .chatModel(baseModel())
-                .outputKey("responses")
+                .outputKey("response")
                 .build());
 
         UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
@@ -752,12 +752,12 @@ public class WorkflowAgentsIT {
 
         var agentInstance = AgenticServices.sequenceBuilder(ExpertRouterAgentInstance.class)
                 .subAgents(routerAgent, expertsAgent)
-                .outputKey("responses")
+                .outputKey("response")
                 .build();
 
         assertThat(agentInstance.name()).isEqualTo("ask");
         assertThat(agentInstance.outputType()).isEqualTo(String.class);
-        assertThat(agentInstance.outputKey()).isEqualTo("responses");
+        assertThat(agentInstance.outputKey()).isEqualTo("response");
         assertThat(agentInstance.topology()).isEqualTo(AgenticSystemTopology.SEQUENCE);
         assertThat(agentInstance.arguments()).hasSize(1);
         assertThat(agentInstance.arguments().get(0).name()).isEqualTo("request");
@@ -804,7 +804,7 @@ public class WorkflowAgentsIT {
         assertThat(expertAgentInstance.name()).isEqualTo(name);
         assertThat(expertAgentInstance.agentId()).isEqualTo(name + "$" + index + "$1");
         assertThat(expertAgentInstance.outputType()).isEqualTo(String.class);
-        assertThat(expertAgentInstance.outputKey()).isEqualTo("responses");
+        assertThat(expertAgentInstance.outputKey()).isEqualTo("response");
         assertThat(expertAgentInstance.topology()).isEqualTo(AgenticSystemTopology.AI_AGENT);
         assertThat(expertAgentInstance.arguments()).hasSize(1);
         assertThat(expertAgentInstance.arguments().get(0).name()).isEqualTo("request");
@@ -822,11 +822,11 @@ public class WorkflowAgentsIT {
 
         LegalExpert legalExpert = spy(AgenticServices.agentBuilder(LegalExpert.class)
                 .chatModel(baseModel())
-                .outputKey("responses")
+                .outputKey("response")
                 .build());
         TechnicalExpert technicalExpert = spy(AgenticServices.agentBuilder(TechnicalExpert.class)
                 .chatModel(baseModel())
-                .outputKey("responses")
+                .outputKey("response")
                 .build());
 
         UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
@@ -842,7 +842,7 @@ public class WorkflowAgentsIT {
 
         var agentInstance = AgenticServices.sequenceBuilder(ExpertRouterAgentInstance.class)
                 .subAgents(routerAgent, expertsAgent)
-                .outputKey("responses")
+                .outputKey("response")
                 .build();
 
         assertThat(agentInstance.ask("I broke my leg what should I do")).isNull();
@@ -857,11 +857,11 @@ public class WorkflowAgentsIT {
 
         MedicalExpert medicalExpert = spy(AgenticServices.agentBuilder(MedicalExpert.class)
                 .chatModel(baseModel())
-                .outputKey("responses")
+                .outputKey("response")
                 .build());
         LegalExpert legalExpert = spy(AgenticServices.agentBuilder(LegalExpert.class)
                 .chatModel(baseModel())
-                .outputKey("responses")
+                .outputKey("response")
                 .build());
         TechnicalExpert technicalExpert = spy(AgenticServices.agentBuilder(TechnicalExpert.class)
                 .chatModel(baseModel())
@@ -886,7 +886,7 @@ public class WorkflowAgentsIT {
         assertThat(assertThrows(AgenticSystemConfigurationException.class, () ->
                 AgenticServices.sequenceBuilder(ExpertRouterAgent.class)
                     .subAgents(routerAgent, expertsAgent)
-                    .outputKey("responses")
+                    .outputKey("response")
                     .build()))
             .hasMessageContaining("category");
     }
@@ -903,18 +903,18 @@ public class WorkflowAgentsIT {
         MedicalExpertWithMemory medicalExpert = AgenticServices.agentBuilder(MedicalExpertWithMemory.class)
                 .chatModel(baseModel())
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
-                .outputKey("responses")
+                .outputKey("response")
                 .build();
         TechnicalExpertWithMemory technicalExpert = AgenticServices.agentBuilder(TechnicalExpertWithMemory.class)
                 .chatModel(baseModel())
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
-                .outputKey("responses")
+                .outputKey("response")
                 .build();
         LegalExpertWithMemory legalExpert = AgenticServices.agentBuilder(LegalExpertWithMemory.class)
                 .chatModel(baseModel())
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
                 .summarizedContext("medical", "technical")
-                .outputKey("responses")
+                .outputKey("response")
                 .build();
 
         UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
@@ -928,7 +928,7 @@ public class WorkflowAgentsIT {
                         ExpertRouterAgentWithMemory.class)
                 .subAgents(routerAgent, expertsAgent)
                 .listener(monitor)
-                .outputKey("responses")
+                .outputKey("response")
                 .build();
 
         JsonInMemoryAgenticScopeStore store = new JsonInMemoryAgenticScopeStore();

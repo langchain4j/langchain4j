@@ -421,7 +421,7 @@ abstract class AbstractBedrockChatModel {
                 }
             } else {
                 throw new IllegalArgumentException(
-                        "Unsupported content in LLM responses. Content type: " + cBlock.type());
+                        "Unsupported content in LLM response. Content type: " + cBlock.type());
             }
         }
 
@@ -735,7 +735,7 @@ abstract class AbstractBedrockChatModel {
         }
         if (nonNull(parameters.responseFormat())
                 && parameters.responseFormat().type().equals(ResponseFormatType.JSON)) {
-            throw new UnsupportedFeatureException(String.format(errorTemplate, "JSON responses format"));
+            throw new UnsupportedFeatureException(String.format(errorTemplate, "JSON response format"));
         }
     }
 
@@ -791,7 +791,7 @@ abstract class AbstractBedrockChatModel {
          * Controls whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}
          * and whether to invoke the {@link StreamingChatResponseHandler#onPartialThinking(PartialThinking)} callback.
          * Please note that this does not enable thinking/reasoning for the LLM;
-         * it only controls whether to parse the {@code REASONING_CONTENT} block from the API responses
+         * it only controls whether to parse the {@code REASONING_CONTENT} block from the API response
          * and return it inside the {@link AiMessage}.
          * To enable thinking, set {@link BedrockChatRequestParameters.Builder#enableReasoning(Integer)}
          * via {@link #defaultRequestParameters(ChatRequestParameters)}.

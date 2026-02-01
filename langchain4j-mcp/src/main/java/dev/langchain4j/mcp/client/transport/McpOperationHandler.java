@@ -16,7 +16,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Handles incoming messages from the MCP server. Transport implementations
  * should call the "handle" method on each received message. A transport also has
- * to call "startOperation" when before starting an operation that requires a responses
+ * to call "startOperation" when before starting an operation that requires a response
  * to register its ID in the map of pending operations.
  */
 public class McpOperationHandler {
@@ -50,7 +50,7 @@ public class McpOperationHandler {
                 if (op != null) {
                     op.complete(message);
                 } else {
-                    log.warn("Received responses for unknown message id: {}", messageId);
+                    log.warn("Received response for unknown message id: {}", messageId);
                 }
             } else {
                 // this is a server-initiated operation, the pendingOperations map is not relevant
@@ -64,7 +64,7 @@ public class McpOperationHandler {
                         return;
                     }
                 }
-                log.warn("Received responses for unknown message id: {}", messageId);
+                log.warn("Received response for unknown message id: {}", messageId);
             }
         } else if (message.has("method")) {
             String method = message.get("method").asText();

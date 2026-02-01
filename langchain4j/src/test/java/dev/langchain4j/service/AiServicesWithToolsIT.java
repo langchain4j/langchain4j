@@ -1369,7 +1369,7 @@ class AiServicesWithToolsIT {
         assertThat(messages).hasSize(4);
         assertThat(messages.get(0)).isInstanceOf(UserMessage.class); // user prompt
         assertThat(messages.get(1)).isInstanceOf(AiMessage.class); // ai message to invoke the tool
-        assertThat(messages.get(2)).isInstanceOf(ToolExecutionResultMessage.class); // tool responses
+        assertThat(messages.get(2)).isInstanceOf(ToolExecutionResultMessage.class); // tool response
         assertThat(messages.get(3)).isInstanceOf(AiMessage.class); // final ai message
     }
 

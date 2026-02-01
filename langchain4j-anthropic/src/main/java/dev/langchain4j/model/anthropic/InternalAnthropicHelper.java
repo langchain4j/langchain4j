@@ -39,7 +39,7 @@ class InternalAnthropicHelper {
         }
         if (parameters.responseFormat() != null && parameters.responseFormat().type() == JSON
                 && parameters.responseFormat().jsonSchema() == null) {
-            unsupportedFeatures.add("Schemaless JSON responses format");
+            unsupportedFeatures.add("Schemaless JSON response format");
         }
 
         if (!unsupportedFeatures.isEmpty()) {

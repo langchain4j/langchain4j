@@ -143,7 +143,7 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
             if (argType != null) {
                 Object existingValue = agenticScope.readState(key);
                 if (argType.isAssignableFrom(existingValue.getClass()) && !(value.getClass().isAssignableFrom(argType))) {
-                    // avoid overwriting a structured state with an unstructured argument generated from supervisor's LLM responses
+                    // avoid overwriting a structured state with an unstructured argument generated from supervisor's LLM response
                     return false;
                 }
             }
@@ -167,10 +167,10 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         if (output != null) {
             return output.apply(agenticScope);
         }
-        if (done == null || done.getArguments() == null || done.getArguments().get("responses") == null) {
+        if (done == null || done.getArguments() == null || done.getArguments().get("response") == null) {
             return lastResponse;
         }
-        String doneResponse = done.getArguments().get("responses").toString();
+        String doneResponse = done.getArguments().get("response").toString();
 
         return switch (responseStrategy) {
             case LAST -> lastResponse;

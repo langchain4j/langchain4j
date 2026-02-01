@@ -568,7 +568,7 @@ class OutputGuardrailChainTests extends BaseGuardrailTests {
             String request = getLastMessage(chatRequest);
             String response = responses.get(request);
             if (response == null) {
-                throw new IllegalArgumentException("No responses found for request: " + request);
+                throw new IllegalArgumentException("No response found for request: " + request);
             }
             return ChatResponse.builder()
                     .aiMessage(AiMessage.from(response))

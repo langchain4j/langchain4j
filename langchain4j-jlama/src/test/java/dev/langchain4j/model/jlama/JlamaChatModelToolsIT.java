@@ -51,7 +51,7 @@ class JlamaChatModelToolsIT {
     @Test
     void should_execute_a_tool_then_answer() {
         // given
-        SystemMessage systemMessage = SystemMessage.systemMessage("You are a helpful assistant with tool calling capabilities. When you receive a tool call responses, use the output to format an answer to the original question.");
+        SystemMessage systemMessage = SystemMessage.systemMessage("You are a helpful assistant with tool calling capabilities. When you receive a tool call response, use the output to format an answer to the original question.");
         UserMessage userMessage = userMessage("What is the temp in Paris right now?");
 
         ChatRequest request = ChatRequest.builder()

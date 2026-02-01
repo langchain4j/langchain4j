@@ -168,7 +168,7 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
      * @param destinationFile
      *      local file
      * @return
-     *      responses with the destination file
+     *      response with the destination file
      */
     public Response<File> generate(String prompt, String destinationFile) {
         ensureNotBlank(prompt, "Prompt");

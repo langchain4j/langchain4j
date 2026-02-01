@@ -7,9 +7,9 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
  * Utility class for parsing GPULlama3 model responses that contain thinking content.
  * <p>
  * GPULlama3 models can generate responses with embedded thinking content in the format:
- * &lt;think&gt;thinking content...&lt;/think&gt;actual responses content
+ * &lt;think&gt;thinking content...&lt;/think&gt;actual response content
  * <p>
- * This parser separates the thinking content from the actual responses content for both
+ * This parser separates the thinking content from the actual response content for both
  * complete responses and streaming responses, while preserving the thinking tags.
  */
 public class GPULlama3ResponseParser {
@@ -22,7 +22,7 @@ public class GPULlama3ResponseParser {
     }
 
     /**
-     * Represents the parsed components of a GPULlama3 model responses.
+     * Represents the parsed components of a GPULlama3 model response.
      */
     public static class ParsedResponse {
         private final String thinkingContent;
@@ -32,7 +32,7 @@ public class GPULlama3ResponseParser {
          * Creates a new ParsedResponse.
          *
          * @param thinkingContent the thinking content including tags, or null if none
-         * @param actualResponse the cleaned responses content
+         * @param actualResponse the cleaned response content
          */
         public ParsedResponse(String thinkingContent, String actualResponse) {
             this.thinkingContent = thinkingContent;
@@ -49,16 +49,16 @@ public class GPULlama3ResponseParser {
         }
 
         /**
-         * Returns the actual responses content with thinking tags removed.
+         * Returns the actual response content with thinking tags removed.
          *
-         * @return the cleaned responses content
+         * @return the cleaned response content
          */
         public String getActualResponse() {
             return actualResponse;
         }
 
         /**
-         * Returns true if the responses contained thinking content.
+         * Returns true if the response contained thinking content.
          *
          * @return true if thinking content was found, false otherwise
          */
@@ -68,16 +68,16 @@ public class GPULlama3ResponseParser {
     }
 
     /**
-     * Parses a raw GPULlama3 responses to separate thinking content from actual responses.
+     * Parses a raw GPULlama3 response to separate thinking content from actual response.
      * Preserves the thinking tags in the thinking content.
      *
-     * @param rawResponse the raw responses from the model
-     * @return ParsedResponse containing separated thinking and responses content
+     * @param rawResponse the raw response from the model
+     * @return ParsedResponse containing separated thinking and response content
      * @throws IllegalArgumentException if rawResponse is null
      */
     public static ParsedResponse parseResponse(String rawResponse) {
         if (rawResponse == null) {
-            throw new IllegalArgumentException("Raw responses cannot be null");
+            throw new IllegalArgumentException("Raw response cannot be null");
         }
 
         String thinking = null;
@@ -91,7 +91,7 @@ public class GPULlama3ResponseParser {
             // Extract thinking content INCLUDING the tags
             thinking = rawResponse.substring(thinkStart, thinkEnd + 8).trim(); // Include </think>
 
-            // Remove the entire thinking block from responses
+            // Remove the entire thinking block from response
             String beforeThink = rawResponse.substring(0, thinkStart);
             String afterThink = rawResponse.substring(thinkEnd + 8); // Skip </think>
             actualResponse = (beforeThink + afterThink).trim();
@@ -104,10 +104,10 @@ public class GPULlama3ResponseParser {
     }
 
     /**
-     * Convenience method to extract only the thinking content from a responses.
+     * Convenience method to extract only the thinking content from a response.
      * Returns thinking content with tags preserved.
      *
-     * @param rawResponse the raw responses from the model
+     * @param rawResponse the raw response from the model
      * @return the thinking content with tags, or null if none found
      */
     public static String extractThinking(String rawResponse) {
@@ -115,10 +115,10 @@ public class GPULlama3ResponseParser {
     }
 
     /**
-     * Convenience method to extract only the cleaned responses content.
+     * Convenience method to extract only the cleaned response content.
      *
-     * @param rawResponse the raw responses from the model
-     * @return the responses content with thinking tags removed
+     * @param rawResponse the raw response from the model
+     * @return the response content with thinking tags removed
      */
     public static String extractResponse(String rawResponse) {
         return parseResponse(rawResponse).getActualResponse();
@@ -127,7 +127,7 @@ public class GPULlama3ResponseParser {
     /**
      * Creates a new streaming parser for real-time thinking content separation.
      *
-     * @param handler the streaming responses handler
+     * @param handler the streaming response handler
      * @param model the GPULlama3 model instance for token decoding
      * @return a new StreamingThinkingParser instance
      */
@@ -153,7 +153,7 @@ public class GPULlama3ResponseParser {
         /**
          * Creates a new streaming parser.
          *
-         * @param handler the streaming responses handler
+         * @param handler the streaming response handler
          * @param model the GPULlama3 model instance for token decoding
          */
         public StreamingParser(StreamingChatResponseHandler handler, org.beehive.gpullama3.model.Model model) {

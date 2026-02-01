@@ -149,7 +149,7 @@ public class SupervisorAgentIT {
 
         UntypedAgent askToExpertSequence = AgenticServices.sequenceBuilder()
                 .subAgents(askToExpert)
-                .outputKey("responses")
+                .outputKey("response")
                 .build();
 
         System.out.println(askToExpertSequence.invoke(Map.of("request", "I broke my leg what should I do")));

@@ -7,8 +7,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
 /**
- * Marks a method as a supplier of responses for human-in-the-loop agent.
- * The annotated method must be static, with no arguments, and return a String responses.
+ * Marks a method as a supplier of response for human-in-the-loop agent.
+ * The annotated method must be static, with no arguments, and return a String response.
  * <p>
  * Example:
  * <pre>
@@ -21,7 +21,7 @@ import java.lang.annotation.Target;
  *         }
  *
  *         @HumanInTheLoopResponseSupplier
- *         static String responses() {
+ *         static String response() {
  *             return System.console().readLine();
  *         }
  *     }

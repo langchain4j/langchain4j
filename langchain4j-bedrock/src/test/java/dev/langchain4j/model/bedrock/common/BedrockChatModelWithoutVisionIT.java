@@ -111,7 +111,7 @@ class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
     // OVERRIDED TESTS
 
     // Nova models include support StopSequence but have an incoherent behavior, it includes the stopSequence in the
-    // responses
+    // response
     // TODO Titan express error : "Malformed input request: 3 schema violations found"
     @Override
     @ParameterizedTest

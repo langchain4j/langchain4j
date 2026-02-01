@@ -227,7 +227,7 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected boolean assertResponseId() {
-        return false; // Ollama does not return responses ID
+        return false; // Ollama does not return response ID
     }
 
     @Override

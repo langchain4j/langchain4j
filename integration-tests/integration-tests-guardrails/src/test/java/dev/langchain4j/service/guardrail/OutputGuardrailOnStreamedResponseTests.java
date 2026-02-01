@@ -129,7 +129,7 @@ class OutputGuardrailOnStreamedResponseTests extends BaseGuardrailTests {
         @Override
         public OutputGuardrailResult validate(AiMessage responseFromLLM) {
             spy.incrementAndGet();
-            if (responseFromLLM.text().length() > 3) { // Accumulated responses.
+            if (responseFromLLM.text().length() > 3) { // Accumulated response.
                 return failure("KO", new ValidationException("KO"));
             } else { // Chunk, do not fail on the first chunk
                 if (responseFromLLM.text().contains("Hi!")) {

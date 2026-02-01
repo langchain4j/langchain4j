@@ -44,7 +44,7 @@ import org.slf4j.Logger;
 
 /**
  * Represents an Anthropic language model with a Messages (chat) API.
- * The model's responses is streamed token by token and should be handled with {@link StreamingResponseHandler}.
+ * The model's response is streamed token by token and should be handled with {@link StreamingResponseHandler}.
  * <br>
  * More details are available <a href="https://docs.anthropic.com/claude/reference/messages_post">here</a>
  * and <a href="https://docs.anthropic.com/claude/reference/messages-streaming">here</a>.
@@ -274,7 +274,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
          * Controls whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}
          * and whether to invoke the {@link StreamingChatResponseHandler#onPartialThinking(PartialThinking)} callback.
          * Please note that this does not enable thinking/reasoning for the LLM;
-         * it only controls whether to parse the {@code thinking} field from the API responses
+         * it only controls whether to parse the {@code thinking} field from the API response
          * and return it inside the {@link AiMessage}.
          * <p>
          * Disabled by default.

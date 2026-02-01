@@ -155,7 +155,7 @@ public class JdkHttpClient implements HttpClient {
                 BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
             return reader.lines().collect(joining(System.lineSeparator()));
         } catch (IOException e) {
-            return "Cannot read error responses body: " + e.getMessage();
+            return "Cannot read error response body: " + e.getMessage();
         }
     }
 }

@@ -299,7 +299,7 @@ public class VertexAiImageModel implements ImageModel {
                     withRetryMappingExceptions(() -> client.predict(this.endpointName, instances, parameters), this.maxRetries);
 
                 if (this.logResponses && logger.isDebugEnabled()) {
-                    logger.debug("IMAGEN ({}) responses: {}", modelName, predictResponse);
+                    logger.debug("IMAGEN ({}) response: {}", modelName, predictResponse);
                 }
 
                 List<Image> allImages = predictResponse.getPredictionsList().stream()

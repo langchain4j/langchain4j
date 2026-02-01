@@ -89,7 +89,7 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected boolean supportsJsonResponseFormat() {
-        // Anthropic does not support JSON responses format without schemas yet
+        // Anthropic does not support JSON response format without schemas yet
         return false;
     }
 

@@ -36,7 +36,7 @@ class InternalAnthropicHelperTest {
 
         // Then
         assertEquals(
-                "Schemaless JSON responses format is not supported by Anthropic",
+                "Schemaless JSON response format is not supported by Anthropic",
                 exception.getMessage());
     }
 

@@ -14,7 +14,7 @@ class SearchApiWebSearchResponse {
     private List<OrganicResult> organicResults;
 
     /**
-     * Always present in a successful responses
+     * Always present in a successful response
      */
     private Map<String, Object> searchParameters;
 

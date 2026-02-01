@@ -18,7 +18,7 @@ import java.util.List;
 /**
  * Represents a Mistral AI FIM Completion Model with a language completion interface, users can define the starting point of the text/code using a prompt, and the ending point of the text/code using an optional suffix and an optional stop.
  * <p>
- * The model's responses is streamed token by token and should be handled with {@link StreamingResponseHandler}.
+ * The model's response is streamed token by token and should be handled with {@link StreamingResponseHandler}.
  * <p>
  * You can find description of parameters <a href="https://docs.mistral.ai/api/#operation/createFIMCompletion">here</a>.
  */
@@ -57,7 +57,7 @@ public class MistralAiStreamingFimModel implements StreamingLanguageModel {
      *
      * @param prompt  the prompt to generate a completion for
      * @param suffix  Optional text/code that adds more context for the model. When given a prompt and a suffix the model will fill what is between them.
-     * @param handler the handler to process the completion responses
+     * @param handler the handler to process the completion response
      */
     public void generate(String prompt, String suffix, StreamingResponseHandler<String> handler) {
         completion(prompt, suffix, handler);
@@ -67,7 +67,7 @@ public class MistralAiStreamingFimModel implements StreamingLanguageModel {
      * Generates a completion for the given prompt.
      *
      * @param prompt  the prompt to generate a completion for
-     * @param handler the handler to process the completion responses
+     * @param handler the handler to process the completion response
      */
     @Override
     public void generate(String prompt, StreamingResponseHandler<String> handler) {
@@ -175,7 +175,7 @@ public class MistralAiStreamingFimModel implements StreamingLanguageModel {
         }
 
         /**
-         * @param maxTokens the maximum number of tokens to generate in a responses
+         * @param maxTokens the maximum number of tokens to generate in a response
          * @return builder
          */
         public Builder maxTokens(Integer maxTokens) {
@@ -184,7 +184,7 @@ public class MistralAiStreamingFimModel implements StreamingLanguageModel {
         }
 
         /**
-         * @param minTokens the minimum number of tokens to generate in a responses
+         * @param minTokens the minimum number of tokens to generate in a response
          * @return builder
          */
         public Builder minTokens(Integer minTokens) {

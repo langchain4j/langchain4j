@@ -85,7 +85,7 @@ public @interface SupervisorAgent {
     SupervisorContextStrategy contextStrategy() default SupervisorContextStrategy.CHAT_MEMORY;
 
     /**
-     * Strategy to decide which responses the supervisor agent should return.
+     * Strategy to decide which response the supervisor agent should return.
      */
     SupervisorResponseStrategy responseStrategy() default SupervisorResponseStrategy.LAST;
 }

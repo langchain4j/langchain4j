@@ -131,7 +131,7 @@ public class WorkersAiLanguageModel extends AbstractWorkersAIModel implements La
                     .execute();
             processErrors(retrofitResponse.body(), retrofitResponse.errorBody());
             if (retrofitResponse.body() == null) {
-                throw new RuntimeException("Empty responses");
+                throw new RuntimeException("Empty response");
             }
             return new Response<>(retrofitResponse.body().getResult().getResponse());
         } catch (IOException e) {

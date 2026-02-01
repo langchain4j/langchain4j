@@ -17,8 +17,8 @@ class ToolExecutionHelper {
     private static final int ERROR_CODE_INVALID_PARAMETERS = -32602;
 
     /**
-     * Extracts a responses from a CallToolResult message. This may be an error responses.
-     * If the responses contains both 'content' and 'structuredContent' elements, the
+     * Extracts a response from a CallToolResult message. This may be an error response.
+     * If the response contains both 'content' and 'structuredContent' elements, the
      * structured content is given precedence.
      */
     static ToolExecutionResult extractResult(JsonNode result, boolean ignoreApplicationLevelErrors) {

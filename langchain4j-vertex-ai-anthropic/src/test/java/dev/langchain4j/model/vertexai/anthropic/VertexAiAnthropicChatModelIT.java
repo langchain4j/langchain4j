@@ -72,19 +72,19 @@ class VertexAiAnthropicChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected boolean supportsJsonResponseFormat() {
-        // Vertex AI Anthropic supports JSON responses format through prompt engineering
+        // Vertex AI Anthropic supports JSON response format through prompt engineering
         return true; // TODO
     }
 
     @Override
     protected boolean supportsJsonResponseFormatWithSchema() {
-        // Vertex AI Anthropic does not support responses format yet
+        // Vertex AI Anthropic does not support response format yet
         return false;
     }
 
     @Override
     protected boolean supportsJsonResponseFormatWithRawSchema() {
-        // Vertex AI Anthropic does not support responses format yet
+        // Vertex AI Anthropic does not support response format yet
         return false;
     }
 

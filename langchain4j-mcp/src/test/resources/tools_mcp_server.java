@@ -77,7 +77,7 @@ public class tools_mcp_server {
         throw new RuntimeException("business error");
     }
     
-    @Tool(description = "Returns a responses as an error")
+    @Tool(description = "Returns a response as an error")
     public ToolResponse errorResponse() throws Exception {
         List<TextContent> lst = new ArrayList<>();
         lst.add(new TextContent("This is an actual error"));

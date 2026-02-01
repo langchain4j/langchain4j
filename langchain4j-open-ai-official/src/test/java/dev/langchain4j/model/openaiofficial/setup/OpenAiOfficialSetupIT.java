@@ -224,7 +224,7 @@ public class OpenAiOfficialSetupIT {
         // If the bug exists, this will fail with a 404 error due to duplicate api-version parameters
         AiMessage aiMessage = model.chat(userMessage).aiMessage();
 
-        // Verify we got a valid responses
+        // Verify we got a valid response
         assertThat(aiMessage).isNotNull();
         assertThat(aiMessage.text()).isNotBlank();
     }
@@ -247,7 +247,7 @@ public class OpenAiOfficialSetupIT {
         // Then: The request should succeed without 404 errors
         AiMessage aiMessage = model.chat(userMessage).aiMessage();
 
-        // Verify we got a valid responses
+        // Verify we got a valid response
         assertThat(aiMessage).isNotNull();
         assertThat(aiMessage.text()).isNotBlank();
     }
@@ -270,7 +270,7 @@ public class OpenAiOfficialSetupIT {
         // Then: The request should succeed without 404 errors
         AiMessage aiMessage = model.chat(userMessage).aiMessage();
 
-        // Verify we got a valid responses
+        // Verify we got a valid response
         assertThat(aiMessage).isNotNull();
         assertThat(aiMessage.text()).isNotBlank();
     }

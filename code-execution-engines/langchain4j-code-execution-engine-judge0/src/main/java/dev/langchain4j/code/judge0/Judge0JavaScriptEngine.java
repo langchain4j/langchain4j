@@ -166,7 +166,7 @@ class Judge0JavaScriptEngine implements CodeExecutionEngine {
     /**
      * Handles error responses from the Judge0 API.
      *
-     * @param response The error responses
+     * @param response The error response
      * @return An appropriate error message
      */
     private String handleErrorResponse(Response response) {
@@ -185,9 +185,9 @@ class Judge0JavaScriptEngine implements CodeExecutionEngine {
     }
 
     /**
-     * Processes the responses body from a successful request.
+     * Processes the response body from a successful request.
      *
-     * @param responseBody The responses body as a string
+     * @param responseBody The response body as a string
      * @return The processed result or an error message
      */
     private String processResponseBody(String responseBody) {

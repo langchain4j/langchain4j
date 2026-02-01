@@ -491,7 +491,7 @@ public abstract class AiServices<T> {
      *             <li>When the LLM calls multiple tools, they are executed concurrently in separate threads
      *                 using the {@link Executor}.
      *                 Each tool is executed as soon as {@link StreamingChatResponseHandler#onCompleteToolCall(CompleteToolCall)}
-     *                 is called, without waiting for other tools or for the responses streaming to complete.</li>
+     *                 is called, without waiting for other tools or for the response streaming to complete.</li>
      *             <li>When the LLM calls a single tool, it is executed in a separate thread using the {@link Executor}.
      *                 We cannot execute it in the same thread because, at that point,
      *                 we do not yet know how many tools the LLM will call.</li>
@@ -529,7 +529,7 @@ public abstract class AiServices<T> {
      *
      * <p>
      * NOTE: This value does not represent the total number of tool calls.
-     * Each LLM responses that contains one or more tool calls counts as a single invocation
+     * Each LLM response that contains one or more tool calls counts as a single invocation
      * and reduces this limit by one.
      *
      * <p>
@@ -573,7 +573,7 @@ public abstract class AiServices<T> {
      * Configures the strategy to be used when the LLM hallucinates a tool name (i.e., attempts to call a nonexistent tool).
      *
      * @param hallucinatedToolNameStrategy A Function from {@link ToolExecutionRequest} to {@link ToolExecutionResultMessage} defining
-     *                                     the responses provided to the LLM when it hallucinates a tool name.
+     *                                     the response provided to the LLM when it hallucinates a tool name.
      * @return builder
      * @see #toolArgumentsErrorHandler(ToolArgumentsErrorHandler)
      * @see #toolExecutionErrorHandler(ToolExecutionErrorHandler)
@@ -907,7 +907,7 @@ public abstract class AiServices<T> {
      * </p>
      * <p>
      *     When several {@link OutputGuardrail}s are applied, if any guardrail forces a retry or reprompt, then all of the
-     *     guardrails will be re-applied to the new responses.
+     *     guardrails will be re-applied to the new response.
      * </p>
      *
      * @param guardrailClasses a list of {@link OutputGuardrail} classes. These classes
@@ -943,7 +943,7 @@ public abstract class AiServices<T> {
      * </p>
      * <p>
      *     When several {@link OutputGuardrail}s are applied, if any guardrail forces a retry or reprompt, then all of the
-     *     guardrails will be re-applied to the new responses.
+     *     guardrails will be re-applied to the new response.
      * </p>
      *
      * @param guardrailClasses A list of {@link OutputGuardrail} classes.
@@ -980,7 +980,7 @@ public abstract class AiServices<T> {
      * </p>
      * <p>
      *     When several {@link OutputGuardrail}s are applied, if any guardrail forces a retry or reprompt, then all of the
-     *     guardrails will be re-applied to the new responses.
+     *     guardrails will be re-applied to the new response.
      * </p>
      *
      * @param guardrails a list of output guardrails to be applied; can be {@code null}
@@ -1014,7 +1014,7 @@ public abstract class AiServices<T> {
      * </p>
      * <p>
      *     When several {@link OutputGuardrail}s are applied, if any guardrail forces a retry or reprompt, then all of the
-     *     guardrails will be re-applied to the new responses.
+     *     guardrails will be re-applied to the new response.
      * </p>
      *
      * @param guardrails an array of output guardrails to be applied; can be {@code null}

@@ -224,7 +224,7 @@ public class SessionsREPLTool implements CodeExecutionEngine {
         try {
             return OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(contentMap);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to serialize responses.", e);
+            throw new RuntimeException("Failed to serialize response.", e);
         }
     }
 
@@ -423,7 +423,7 @@ public class SessionsREPLTool implements CodeExecutionEngine {
                     return "File not found: " + remoteFilePath;
                 }
 
-                // Convert responses body to Base64
+                // Convert response body to Base64
                 byte[] fileBytes = response.body().getBytes(StandardCharsets.UTF_8);
                 return Base64.getEncoder().encodeToString(fileBytes);
 
@@ -463,7 +463,7 @@ public class SessionsREPLTool implements CodeExecutionEngine {
             try {
                 SuccessfulHttpResponse response = langchainHttpClient.execute(request);
 
-                // Parse the responses body as JSON using Jackson
+                // Parse the response body as JSON using Jackson
                 JsonNode json = OBJECT_MAPPER.readTree(response.body());
 
                 // Create a StringBuilder to store the filenames

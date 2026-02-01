@@ -52,7 +52,7 @@ import org.slf4j.Logger;
 
 /**
  * Represents an OpenAI language model with a chat completion interface, such as gpt-4o-mini and o3.
- * The model's responses is streamed token by token and should be handled with {@link StreamingResponseHandler}.
+ * The model's response is streamed token by token and should be handled with {@link StreamingResponseHandler}.
  * You can find description of parameters <a href="https://platform.openai.com/docs/api-reference/chat/create">here</a>.
  */
 public class OpenAiStreamingChatModel implements StreamingChatModel {
@@ -447,7 +447,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
          * Controls whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}
          * and whether to invoke the {@link StreamingChatResponseHandler#onPartialThinking(PartialThinking)} callback.
          * Please note that this does not enable thinking/reasoning for the LLM;
-         * it only controls whether to parse the {@code reasoning_content} field from the API responses
+         * it only controls whether to parse the {@code reasoning_content} field from the API response
          * and return it inside the {@link AiMessage}.
          * <p>
          * Disabled by default.

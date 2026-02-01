@@ -41,7 +41,7 @@ class GoogleCustomWebSearchToolIT extends WebSearchToolIT {
                 "If there is any event that has not happened yet",
                 "You MUST create a web search request with with user query and",
                 "use the web search tool to search the web for organic web results.",
-                "Include the source link in your final responses."
+                "Include the source link in your final response."
         })
         String answer(String userMessage);
     }
@@ -60,7 +60,7 @@ class GoogleCustomWebSearchToolIT extends WebSearchToolIT {
         List<ToolSpecification> tools = ToolSpecifications.toolSpecificationsFrom(webSearchTool);
         String query = "What are the release dates for the movies coming out last week of May 2024?";
         List<ChatMessage> messages = new ArrayList<>();
-        SystemMessage systemMessage = SystemMessage.from("You are a web search support agent. If there is any event that has not happened yet, you MUST use a web search tool to look up the information on the web. Include the source link in your final responses. Do not say that you have not the capability to browse the web in real time");
+        SystemMessage systemMessage = SystemMessage.from("You are a web search support agent. If there is any event that has not happened yet, you MUST use a web search tool to look up the information on the web. Include the source link in your final response. Do not say that you have not the capability to browse the web in real time");
         messages.add(systemMessage);
         UserMessage userMessage = UserMessage.from(query);
         messages.add(userMessage);
@@ -113,7 +113,7 @@ class GoogleCustomWebSearchToolIT extends WebSearchToolIT {
         List<ToolSpecification> tools = ToolSpecifications.toolSpecificationsFrom(webSearchTool);
         String query = "My family is coming to visit me in Madrid next week, list the best tourist activities suitable for the whole family";
         List<ChatMessage> messages = new ArrayList<>();
-        SystemMessage systemMessage = SystemMessage.from("You are a web search support agent. If there is any event that has not happened yet, you MUST use a web search tool to look up the information on the web. Include the source link in your final responses and the image urls. Do not say that you have not the capability to browse the web in real time");
+        SystemMessage systemMessage = SystemMessage.from("You are a web search support agent. If there is any event that has not happened yet, you MUST use a web search tool to look up the information on the web. Include the source link in your final response and the image urls. Do not say that you have not the capability to browse the web in real time");
         messages.add(systemMessage);
         UserMessage userMessage = UserMessage.from(query);
         messages.add(userMessage);

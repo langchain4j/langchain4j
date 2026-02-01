@@ -81,7 +81,7 @@ public class AzureOpenAiAudioTranscriptionModel implements AudioTranscriptionMod
      *
      * @param client The Azure OpenAI client
      * @param deploymentName The deployment name of the audio model
-     * @param responseFormat The responses format (can be null for default JSON format)
+     * @param responseFormat The response format (can be null for default JSON format)
      */
     public AzureOpenAiAudioTranscriptionModel(
             OpenAIClient client, String deploymentName, AudioTranscriptionFormat responseFormat) {
@@ -328,9 +328,9 @@ public class AzureOpenAiAudioTranscriptionModel implements AudioTranscriptionMod
         }
 
         /**
-         * Sets the responses format for the transcription.
+         * Sets the response format for the transcription.
          *
-         * @param format The responses format
+         * @param format The response format
          * @return builder
          */
         public Builder responseFormat(AudioTranscriptionFormat format) {

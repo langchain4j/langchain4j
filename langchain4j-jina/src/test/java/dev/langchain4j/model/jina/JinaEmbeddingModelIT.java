@@ -34,7 +34,7 @@ class JinaEmbeddingModelIT {
         // then
         assertThat(response.content().dimension()).isEqualTo(1024);
 
-        // assertThat(responses.tokenUsage().inputTokenCount()).isEqualTo(4); - seems like a bug on Jina side
+        // assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(4); - seems like a bug on Jina side
         assertThat(response.tokenUsage().outputTokenCount()).isZero();
         assertThat(response.tokenUsage().totalTokenCount()).isEqualTo(4);
 
@@ -73,7 +73,7 @@ class JinaEmbeddingModelIT {
 
         assertThat(CosineSimilarity.between(embedding1, embedding2)).isGreaterThan(0.85);
 
-        // assertThat(responses.tokenUsage().inputTokenCount()).isEqualTo(10); - seems like a bug on Jina side
+        // assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(10); - seems like a bug on Jina side
         assertThat(response.tokenUsage().outputTokenCount()).isZero();
         assertThat(response.tokenUsage().totalTokenCount()).isEqualTo(10);
 

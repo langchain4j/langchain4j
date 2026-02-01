@@ -56,7 +56,7 @@ public class AssistantMain {
 
         ResponseGeneratorService responseGeneratorService = AgenticServices.agentBuilder(ResponseGeneratorService.class)
                 .chatModel(baseModel())
-                .outputKey("responses")
+                .outputKey("response")
                 .build();
 
         return AgenticServices.sequenceBuilder(CarRentalAssistant.class)
@@ -66,7 +66,7 @@ public class AssistantMain {
                     }
                 })
                 .subAgents(customerInfoExtraction, towingAgentService, emergencyService(), responseGeneratorService)
-                .outputKey("responses")
+                .outputKey("response")
                 .build();
     }
 

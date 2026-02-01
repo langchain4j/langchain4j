@@ -48,7 +48,7 @@ class FunctionCallHelper {
      * The index is the position of the FunctionCall in the list of FunctionCalls returned by the Gemini API. Based on
      * the Gemini API doc, to send the results back, include the responses in the same order as they were requested.
      * So the index can be used as the id of the ToolExecutionRequest. The id is unique for each ToolExecutionRequest
-     * in the responses of the model.
+     * in the response of the model.
      * @param index the index of the FunctionCall in the list of FunctionCalls returned by the Gemini API
      * @param functionCall the FunctionCall to convert
      * @see <a href="https://ai.google.dev/gemini-api/docs/function-calling?example=meeting#parallel_function_calling">

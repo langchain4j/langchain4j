@@ -203,7 +203,7 @@ public class DefaultAgenticScope implements AgenticScope {
         	if (agentMessages.get(i) instanceof UserMessage userMessage) {
         		// Only add to the agenticScope's context the last UserMessage ...
         		context.add(new AgentMessage(agentInvocation.agentName(), agentInvocation.agentId(), userMessage));
-        		// ... and last AiMessage responses, all other messages are local to the invoked agent internals
+        		// ... and last AiMessage response, all other messages are local to the invoked agent internals
         		context.add(new AgentMessage(agentInvocation.agentName(), agentInvocation.agentId(), aiMessage));
                 return;
         	}

@@ -9,7 +9,7 @@ class JlamaExceptionMapper extends ExceptionMapper.DefaultExceptionMapper {
 
     static final JlamaExceptionMapper INSTANCE = new JlamaExceptionMapper();
 
-    private static final String JLAMA_IOEXCEPTION_START_MESSAGE = "HTTP responses code: ";
+    private static final String JLAMA_IOEXCEPTION_START_MESSAGE = "HTTP response code: ";
 
     private JlamaExceptionMapper() { }
 

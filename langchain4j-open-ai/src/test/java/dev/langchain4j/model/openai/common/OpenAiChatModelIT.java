@@ -281,7 +281,7 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
         String serviceTier = "default";
 
         OpenAiChatRequestParameters parameters = OpenAiChatRequestParameters.builder()
-                .serviceTier(serviceTier) // required to get the "serviceTier" attribute in the responses
+                .serviceTier(serviceTier) // required to get the "serviceTier" attribute in the response
                 .build();
 
         ChatRequest chatRequest = ChatRequest.builder()
