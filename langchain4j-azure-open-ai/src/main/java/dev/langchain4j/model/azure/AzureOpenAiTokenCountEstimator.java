@@ -133,14 +133,14 @@ public class AzureOpenAiTokenCountEstimator implements TokenCountEstimator {
 
     /**
      * Estimates the token count for an image based on OpenAI's image token calculation.
-     * 
+     *
      * @param imageContent the image content to estimate tokens for
      * @return the estimated token count
      * @see <a href="https://platform.openai.com/docs/guides/vision">OpenAI Vision API</a>
      */
     private int estimateImageTokenCount(ImageContent imageContent) {
         ImageContent.DetailLevel detailLevel = imageContent.detailLevel();
-        
+
         switch (detailLevel) {
             case LOW:
                 // Low detail images always cost 85 tokens
@@ -160,7 +160,7 @@ public class AzureOpenAiTokenCountEstimator implements TokenCountEstimator {
     /**
      * Calculates tokens for HIGH detail level using OpenAI's algorithm:
      * 1. Resize image to fit within 2048x2048 while maintaining aspect ratio
-     * 2. Scale the shortest side to 768px 
+     * 2. Scale the shortest side to 768px
      * 3. Count how many 512x512 tiles are needed
      * 4. Each tile costs 170 tokens + base cost of 85 tokens
      */
@@ -175,7 +175,7 @@ public class AzureOpenAiTokenCountEstimator implements TokenCountEstimator {
         // Step 1: Resize to fit within 2048x2048 while maintaining aspect ratio
         double width = dimensions.getWidth();
         double height = dimensions.getHeight();
-        
+
         if (width > 2048 || height > 2048) {
             double scale = Math.min(2048.0 / width, 2048.0 / height);
             width *= scale;
@@ -223,7 +223,7 @@ public class AzureOpenAiTokenCountEstimator implements TokenCountEstimator {
     /**
      * Attempts to get the dimensions of an image.
      * Works with base64 encoded images and URL-based images using Java's built-in ImageIO.
-     * 
+     *
      * @param image the image to analyze
      * @return the dimensions if available, null otherwise
      */
@@ -251,8 +251,10 @@ public class AzureOpenAiTokenCountEstimator implements TokenCountEstimator {
                     return new Dimension(bufferedImage.getWidth(), bufferedImage.getHeight());
                 }
             } catch (Exception e) {
-                log.debug("Failed to fetch or read URL image '{}', falling back to estimates: {}", 
-                         image.url(), e.getMessage());
+                log.debug(
+                        "Failed to fetch or read URL image '{}', falling back to estimates: {}",
+                        image.url(),
+                        e.getMessage());
             }
         }
 
