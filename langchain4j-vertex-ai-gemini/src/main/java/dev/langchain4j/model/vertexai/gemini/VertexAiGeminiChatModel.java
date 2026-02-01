@@ -484,7 +484,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
         }
 
         if (this.logResponses && logger.isDebugEnabled()) {
-            logger.debug("GEMINI ({}) response: {}", modelName, response);
+            logger.debug("GEMINI ({}) responses: {}", modelName, response);
         }
 
         Content content = ResponseHandler.getContent(response);

@@ -220,7 +220,7 @@ public class MistralAiChatModel implements ChatModel {
         }
 
         /**
-         * @param maxTokens the maximum number of new tokens to generate in a chat response
+         * @param maxTokens the maximum number of new tokens to generate in a chat responses
          * @return {@code this}.
          */
         public MistralAiChatModelBuilder maxTokens(Integer maxTokens) {

@@ -30,7 +30,7 @@ class VespaResponseLoggingInterceptor implements Interceptor {
                     getHeaders(response.headers()),
                     getBody(response));
         } catch (Exception e) {
-            log.warn("Error while logging response: {}", e.getMessage());
+            log.warn("Error while logging responses: {}", e.getMessage());
         }
     }
 

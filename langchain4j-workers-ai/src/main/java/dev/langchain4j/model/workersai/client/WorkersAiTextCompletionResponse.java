@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * Wrapper for the text completion response.
+ * Wrapper for the text completion responses.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class WorkersAiTextCompletionResponse
@@ -16,7 +16,7 @@ public class WorkersAiTextCompletionResponse
     public WorkersAiTextCompletionResponse() {}
 
     /**
-     * Represents the text portion of the completion response from the Workers AI API.
+     * Represents the text portion of the completion responses from the Workers AI API.
      */
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class TextResponse {
@@ -24,7 +24,7 @@ public class WorkersAiTextCompletionResponse
         /**
          * The generated text.
          */
-        @JsonProperty("response")
+        @JsonProperty("responses")
         private String response;
 
         /**
@@ -112,7 +112,7 @@ public class WorkersAiTextCompletionResponse
 
         @Override
         public String toString() {
-            return "WorkersAiTextCompletionResponse.TextResponse(response=" + this.getResponse() + ", usage="
+            return "WorkersAiTextCompletionResponse.TextResponse(responses=" + this.getResponse() + ", usage="
                     + this.getUsage() + ", finishReason="
                     + this.getFinishReason() + ")";
         }

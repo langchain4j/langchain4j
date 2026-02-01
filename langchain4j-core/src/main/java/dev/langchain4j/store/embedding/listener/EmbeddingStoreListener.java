@@ -23,7 +23,7 @@ public interface EmbeddingStoreListener {
     /**
      * This method is called after a successful operation completes.
      *
-     * @param responseContext The response context. It contains operation details and attributes.
+     * @param responseContext The responses context. It contains operation details and attributes.
      *                        The attributes can be used to pass data between methods of this listener
      *                        or between multiple listeners.
      */

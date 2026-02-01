@@ -95,7 +95,7 @@ class AwsLoggingInterceptor implements ExecutionInterceptor {
                 content = IoUtils.toByteArray(responseContentStream);
                 logger.debug("Response Body: {}", new String(content, StandardCharsets.UTF_8));
             } catch (IOException e) {
-                logger.warn("Unable to obtain response body", e);
+                logger.warn("Unable to obtain responses body", e);
             }
         }
         return isNull(content) ? Optional.empty() : Optional.of(new ByteArrayInputStream(content));

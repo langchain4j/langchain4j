@@ -23,7 +23,7 @@ import java.lang.annotation.Target;
  *         }
  *
  *         @HumanInTheLoopResponseSupplier
- *         static String response() {
+ *         static String responses() {
  *             return System.console().readLine();
  *         }
  *     }

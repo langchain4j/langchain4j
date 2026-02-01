@@ -12,7 +12,7 @@ import java.util.Objects;
 /**
  * Response object from the Anthropic Create Message API.
  * <p>
- * Contains the model's response including generated content, usage statistics,
+ * Contains the model's responses including generated content, usage statistics,
  * and metadata about the completion.
  */
 @JsonInclude(NON_NULL)
@@ -26,7 +26,7 @@ public class AnthropicCreateMessageResponse {
     public String id;
 
     /**
-     * The type of response (typically "message").
+     * The type of responses (typically "message").
      */
     public String type;
 
@@ -36,12 +36,12 @@ public class AnthropicCreateMessageResponse {
     public String role;
 
     /**
-     * The content blocks in the response.
+     * The content blocks in the responses.
      */
     public List<AnthropicContent> content;
 
     /**
-     * The model that generated the response.
+     * The model that generated the responses.
      */
     public String model;
 
@@ -56,7 +56,7 @@ public class AnthropicCreateMessageResponse {
     public String stopSequence;
 
     /**
-     * Token usage statistics for the request and response.
+     * Token usage statistics for the request and responses.
      */
     public AnthropicUsage usage;
 
@@ -143,9 +143,9 @@ public class AnthropicCreateMessageResponse {
         }
 
         /**
-         * Sets the response type.
+         * Sets the responses type.
          *
-         * @param type the response type
+         * @param type the responses type
          * @return this builder for chaining
          */
         public Builder type(String type) {

@@ -449,7 +449,7 @@ class InternalAzureOpenAiHelper {
         if (responseFormat == null || responseFormat.type() == ResponseFormatType.TEXT) {
             return new ChatCompletionsTextResponseFormat();
         } else if (responseFormat.type() != ResponseFormatType.JSON) {
-            throw new IllegalArgumentException("Unsupported response format: " + responseFormat);
+            throw new IllegalArgumentException("Unsupported responses format: " + responseFormat);
         }
 
         JsonSchema jsonSchema = responseFormat.jsonSchema();

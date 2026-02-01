@@ -303,7 +303,7 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
                                 logger.debug("Document added with status: {}", statusCode);
                             }
                         } else {
-                            logger.warn("Received a null response or null status code for a document operation.");
+                            logger.warn("Received a null responses or null status code for a document operation.");
                         }
                     })
                     .doOnError(error -> logger.debug("Error adding document: {}", error.getMessage()))

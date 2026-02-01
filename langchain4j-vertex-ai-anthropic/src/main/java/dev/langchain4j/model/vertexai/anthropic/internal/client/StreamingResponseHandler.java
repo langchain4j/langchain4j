@@ -8,16 +8,16 @@ import dev.langchain4j.model.vertexai.anthropic.internal.api.AnthropicResponse;
 public interface StreamingResponseHandler {
 
     /**
-     * Called with the complete response metadata (for token usage, etc.).
-     * @param response The complete response with metadata
+     * Called with the complete responses metadata (for token usage, etc.).
+     * @param response The complete responses with metadata
      */
     default void onResponse(AnthropicResponse response) {
         // Default implementation - can be overridden
     }
 
     /**
-     * Called for each chunk of streaming response data.
-     * @param jsonChunk The JSON response chunk as a string
+     * Called for each chunk of streaming responses data.
+     * @param jsonChunk The JSON responses chunk as a string
      */
     void onChunk(String jsonChunk);
 

@@ -25,7 +25,7 @@ import org.slf4j.Logger;
 
 /**
  * Represents an OpenAI language model with a completion interface, such as gpt-3.5-turbo-instruct.
- * The model's response is streamed token by token and should be handled with {@link StreamingResponseHandler}.
+ * The model's responses is streamed token by token and should be handled with {@link StreamingResponseHandler}.
  * However, it's recommended to use {@link OpenAiStreamingChatModel} instead,
  * as it offers more advanced features like function calling, multi-turn conversations, etc.
  */

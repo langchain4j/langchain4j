@@ -11,7 +11,7 @@ public class AudioTranscriptionResponse {
     private final String text;
 
     /**
-     * Creates a new response with the given text.
+     * Creates a new responses with the given text.
      *
      * @param text The transcribed text
      */
@@ -27,10 +27,10 @@ public class AudioTranscriptionResponse {
     }
 
     /**
-     * Creates a new response with the given text.
+     * Creates a new responses with the given text.
      *
      * @param text The transcribed text
-     * @return A new response
+     * @return A new responses
      */
     public static AudioTranscriptionResponse from(String text) {
         return new AudioTranscriptionResponse(text);

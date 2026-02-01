@@ -24,7 +24,7 @@ public class MockHttpClient implements HttpClient {
     }
 
     public MockHttpClient(SuccessfulHttpResponse response) {
-        this.response = ensureNotNull(response, "response");
+        this.response = ensureNotNull(response, "responses");
         this.events = List.of();
     }
 
@@ -34,7 +34,7 @@ public class MockHttpClient implements HttpClient {
     }
 
     public MockHttpClient(SuccessfulHttpResponse response, List<ServerSentEvent> events) {
-        this.response = ensureNotNull(response, "response");
+        this.response = ensureNotNull(response, "responses");
         this.events = ensureNotEmpty(events, "events");
     }
 

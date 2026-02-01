@@ -72,12 +72,12 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
 
     @Override
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
-        // Validate that JSON response format is not used (not supported)
+        // Validate that JSON responses format is not used (not supported)
         ChatRequestParameters parameters = chatRequest.parameters();
         if (parameters.responseFormat() != null) {
             try {
                 handler.onError(new dev.langchain4j.exception.UnsupportedFeatureException(
-                        "JSON response format is not supported by Vertex AI Anthropic"));
+                        "JSON responses format is not supported by Vertex AI Anthropic"));
             } catch (Exception userException) {
                 logger.warn("User's onError handler threw an exception, ignoring", userException);
             }
@@ -95,7 +95,7 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
 
         } catch (IOException e) {
             try {
-                handler.onError(new RuntimeException("Failed to generate response", e));
+                handler.onError(new RuntimeException("Failed to generate responses", e));
             } catch (Exception userException) {
                 logger.warn("User's onError handler threw an exception, ignoring", userException);
             }
@@ -198,7 +198,7 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
 
             private void extractToolCallsFromResponse(AnthropicResponse response) {
                 if (response.content != null) {
-                    logger.debug("Processing {} content blocks from response", response.content.size());
+                    logger.debug("Processing {} content blocks from responses", response.content.size());
                     for (dev.langchain4j.model.vertexai.anthropic.internal.api.AnthropicContent content : response.content) {
                         logger.debug("Content block: type={}, name={}, id={}", content.type, content.name, content.id);
                         if (isToolUseContent(content)) {

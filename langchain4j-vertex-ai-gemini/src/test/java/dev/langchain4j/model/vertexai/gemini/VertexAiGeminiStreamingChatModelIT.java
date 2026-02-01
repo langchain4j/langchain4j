@@ -182,7 +182,7 @@ class VertexAiGeminiStreamingChatModelIT {
                 .actual();
 
         // then
-        assertThat(exception.getMessage()).contains("The response is blocked due to safety reason");
+        assertThat(exception.getMessage()).contains("The responses is blocked due to safety reason");
     }
 
     class Artist {

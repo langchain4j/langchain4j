@@ -11,67 +11,6 @@ public final class BatchRequestResponse {
     private BatchRequestResponse() {}
 
     /**
-     * Represents the response of a batch operation.
-     */
-    public sealed interface BatchResponse<T> permits BatchIncomplete, BatchSuccess, BatchError {}
-
-    /**
-     * Represents a batch operation that is currently pending or in progress.
-     */
-    public record BatchIncomplete<T>(BatchName batchName, BatchJobState state) implements BatchResponse<T> {}
-
-    /**
-     * Represents a successful batch operation.
-     */
-    public record BatchSuccess<T>(BatchName batchName, List<T> responses, @Nullable List<Operation.Status> errors)
-            implements BatchResponse<T> {}
-
-    /**
-     * Represents an error that occurred during a batch operation.
-     */
-    public record BatchError<T>(
-            BatchName batchName, int code, String message, BatchJobState state, List<Map<String, Object>> details)
-            implements BatchResponse<T> {}
-
-    /**
-     * Represents a List of Batches.
-     *
-     * @param pageToken Token used to paginate to the next page.
-     * @param responses List of batch responses.
-     */
-    public record BatchList<T>(String pageToken, List<BatchResponse<T>> responses) {}
-
-    /**
-     * Represents the name of a batch operation.
-     */
-    public record BatchName(String value) {
-        public BatchName {
-            ensureOperationNameFormat(value);
-        }
-
-        private static void ensureOperationNameFormat(String operationName) {
-            if (!operationName.startsWith("batches/")) {
-                throw new IllegalArgumentException(
-                        "Batch name must start with 'batches/'. This name is returned when creating "
-                                + "the batch with #createBatchInline.");
-            }
-        }
-    }
-
-    /**
-     * Represents the possible states of a batch job.
-     */
-    public enum BatchJobState {
-        BATCH_STATE_PENDING,
-        BATCH_STATE_RUNNING,
-        BATCH_STATE_SUCCEEDED,
-        BATCH_STATE_FAILED,
-        BATCH_STATE_CANCELLED,
-        BATCH_STATE_EXPIRED,
-        UNSPECIFIED
-    }
-
-    /**
      * Represents a batch request for the Gemini API.
      * A batch allows processing multiple requests asynchronously.
      *
@@ -125,9 +64,9 @@ public final class BatchRequestResponse {
     }
 
     /**
-     * Represents the response from a batch operation.
+     * Represents the responses from a batch operation.
      *
-     * @param <RESP> The type of response (e.g., GeminiGenerateContentResponse, GeminiEmbeddingResponse)
+     * @param <RESP> The type of responses (e.g., GeminiGenerateContentResponse, GeminiEmbeddingResponse)
      */
     @JsonIgnoreProperties(ignoreUnknown = true)
     record BatchCreateResponse<RESP>(@JsonProperty("@type") String type, InlinedResponses<RESP> inlinedResponses) {
@@ -135,15 +74,15 @@ public final class BatchRequestResponse {
         /**
          * Wrapper for the list of inlined responses.
          *
-         * @param inlinedResponses The list of individual response wrappers.
+         * @param inlinedResponses The list of individual responses wrappers.
          */
         @JsonIgnoreProperties(ignoreUnknown = true)
         record InlinedResponses<RESP>(List<InlinedResponseWrapper<RESP>> inlinedResponses) {}
 
         /**
-         * Wrapper for an individual (successful) response OR error.
+         * Wrapper for an individual (successful) responses OR error.
          *
-         * @param response A successful Gemini response.
+         * @param response A successful Gemini responses.
          * @param error An error including message and code
          */
         @JsonIgnoreProperties(ignoreUnknown = true)
@@ -153,7 +92,7 @@ public final class BatchRequestResponse {
     /**
      * Represents a long-running operation that is the result of a network API call.
      *
-     * @param <RESP> The type of response in the operation result
+     * @param <RESP> The type of responses in the operation result
      */
     @JsonIgnoreProperties(ignoreUnknown = true)
     record Operation<RESP>(
@@ -171,9 +110,9 @@ public final class BatchRequestResponse {
     }
 
     /**
-     * Represents a response containing a list of operations and a token for pagination.
+     * Represents a responses containing a list of operations and a token for pagination.
      *
-     * @param <RESP>        the type of the response for each operation
+     * @param <RESP>        the type of the responses for each operation
      * @param operations    a list of operations to be performed
      * @param nextPageToken a token for retrieving the next page of operations, if available; null if there are no more pages
      */

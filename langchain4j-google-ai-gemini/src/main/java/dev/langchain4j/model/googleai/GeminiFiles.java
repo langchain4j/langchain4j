@@ -190,7 +190,7 @@ public final class GeminiFiles {
             if (uploadUrlList.isEmpty()
                     || uploadUrlList.get(0) == null
                     || uploadUrlList.get(0).isEmpty()) {
-                throw new IllegalStateException("Upload URL not found in response headers");
+                throw new IllegalStateException("Upload URL not found in responses headers");
             }
 
             return uploadUrlList.get(0).trim();

@@ -92,7 +92,7 @@ abstract class GPULlama3BaseModel implements AutoCloseable {
     }
 
     /**
-     * Generates a chat response from the model.
+     * Generates a chat responses from the model.
      * Used by GPULlama3StreamingChatModel.
      * @param request
      * @param tokenConsumer
@@ -141,7 +141,7 @@ abstract class GPULlama3BaseModel implements AutoCloseable {
 
         String responseText = model.tokenizer().decode(responseTokens);
 
-        // Add the response content tokens to conversation history
+        // Add the responses content tokens to conversation history
         promptTokens.addAll(responseTokens);
 
         // Add the stop token to complete the message
@@ -198,7 +198,7 @@ abstract class GPULlama3BaseModel implements AutoCloseable {
             }
         }
 
-        // EncodeHeader to prime the model to start generating a new assistant response.
+        // EncodeHeader to prime the model to start generating a new assistant responses.
         promptTokens.addAll(chatFormat.encodeHeader(new ChatFormat.Message(ChatFormat.Role.ASSISTANT, "")));
     }
 

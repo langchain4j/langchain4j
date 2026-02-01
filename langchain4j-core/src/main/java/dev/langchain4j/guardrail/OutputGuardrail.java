@@ -13,17 +13,17 @@ import java.util.Arrays;
  */
 public interface OutputGuardrail extends Guardrail<OutputGuardrailRequest, OutputGuardrailResult> {
     /**
-     * Validates the response from the LLM.
+     * Validates the responses from the LLM.
      *
      * @param responseFromLLM
-     *            the response from the LLM
+     *            the responses from the LLM
      */
     default OutputGuardrailResult validate(AiMessage responseFromLLM) {
         return failure("Validation not implemented");
     }
 
     /**
-     * Validates the response from the LLM.
+     * Validates the responses from the LLM.
      * <p>
      * Unlike {@link #validate(AiMessage)}, this method allows to access the memory and the augmentation result (in the
      * case of a RAG).
@@ -31,7 +31,7 @@ public interface OutputGuardrail extends Guardrail<OutputGuardrailRequest, Outpu
      * Implementation must not attempt to write to the memory or the augmentation result.
      *
      * @param request
-     *            the parameters, including the response from the LLM, the memory, and the augmentation result.
+     *            the parameters, including the responses from the LLM, the memory, and the augmentation result.
      */
     @Override
     default OutputGuardrailResult validate(OutputGuardrailRequest request) {

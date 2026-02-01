@@ -62,7 +62,7 @@ public class Agents {
             The user request is {{request}}.
             """)
         @Tool("A medical expert")
-        @Agent(description = "A medical expert", outputKey = "response")
+        @Agent(description = "A medical expert", outputKey = "responses")
         String medical(@V("request") String request);
     }
 
@@ -74,7 +74,7 @@ public class Agents {
             The user request is {{request}}.
             """)
         @Tool("A medical expert")
-        @Agent(description = "A medical expert", outputKey = "response")
+        @Agent(description = "A medical expert", outputKey = "responses")
         String medical(@MemoryId String memoryId, @V("request") String request);
     }
 
@@ -86,7 +86,7 @@ public class Agents {
             The user request is {{request}}.
             """)
         @Tool("A legal expert")
-        @Agent(description = "A legal expert", outputKey = "response")
+        @Agent(description = "A legal expert", outputKey = "responses")
         String legal(@V("request") String request);
     }
 
@@ -268,7 +268,7 @@ public class Agents {
 
         @UserMessage("""
             Evaluate a loan application. If the applicant's age is less than 18 or the amount is greater than 50000, reject the application.
-            A response should indicate 'approved' or 'rejected'.
+            A responses should indicate 'approved' or 'rejected'.
             The loan application is: '{{loanApplication}}'.
             """)
         @Agent("Evaluate a loan application.")

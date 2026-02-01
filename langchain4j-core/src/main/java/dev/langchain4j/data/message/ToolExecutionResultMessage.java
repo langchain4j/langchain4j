@@ -8,7 +8,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import java.util.Objects;
 
 /**
- * Represents the result of a tool execution in response to a {@link ToolExecutionRequest}.
+ * Represents the result of a tool execution in responses to a {@link ToolExecutionRequest}.
  * {@link ToolExecutionRequest}s come from a previous {@link AiMessage#toolExecutionRequests()}.
  */
 public class ToolExecutionResultMessage implements ChatMessage {

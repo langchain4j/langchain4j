@@ -67,7 +67,7 @@ public class StreamingAgents {
             The user request is {{request}}.
             """)
         @Tool("A medical expert")
-        @Agent(description = "A medical expert", outputKey = "response")
+        @Agent(description = "A medical expert", outputKey = "responses")
         TokenStream medical(@V("request") String request);
     }
 
@@ -78,7 +78,7 @@ public class StreamingAgents {
             Analyze the following user request under a legal point of view and provide the best possible answer.
             The user request is {{request}}.
             """)
-        @Agent(description = "A legal expert", outputKey = "response")
+        @Agent(description = "A legal expert", outputKey = "responses")
         TokenStream legal(@V("request") String request);
     }
 

@@ -834,7 +834,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         switch (returnBehavior) {
             case TO_LLM: {
                 toolInstance = new ToolWithPrimitiveParameters();
-                // 2 times = 2 tool requests + LLM response
+                // 2 times = 2 tool requests + LLM responses
                 chatInvocations = 2;
                 break;
             }
@@ -863,11 +863,11 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         // then
         if (returnBehavior == ReturnBehavior.TO_LLM) {
-            // The tool result is manipulated by the LLM so the response is not equal to the plain tool result
+            // The tool result is manipulated by the LLM so the responses is not equal to the plain tool result
             assertThat(response.content()).contains("124");
             assertThat(response.content()).isNotEqualTo("124");
         } else {
-            // The tool result is returned directly so the content response is null
+            // The tool result is returned directly so the content responses is null
             assertThat(response.content()).isNull();
         }
 
@@ -913,7 +913,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         switch (returnBehavior) {
             case TO_LLM: {
                 toolInstance = new ToolWithPrimitiveParameters();
-                // 2 times = 2 tool requests + LLM response
+                // 2 times = 2 tool requests + LLM responses
                 chatInvocations = 2;
                 break;
             }
@@ -942,11 +942,11 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         // then
         if (returnBehavior == ReturnBehavior.TO_LLM) {
-            // The tool is called twice, the result is manipulated by the LLM so the response is not equal to the plain tool result
+            // The tool is called twice, the result is manipulated by the LLM so the responses is not equal to the plain tool result
             assertThat(response.content()).contains("124");
             assertThat(response.content()).contains("151");
         } else {
-            // The first tool result is returned immediately so the response is equal to the plain tool result
+            // The first tool result is returned immediately so the responses is equal to the plain tool result
             assertThat(response.content()).isNull();
             verify(tool).add(37, 87);
         }
@@ -998,7 +998,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         switch (returnBehavior) {
             case TO_LLM: {
                 toolInstance = new ToolWithPrimitiveParameters();
-                // 3 times = 2 tool requests + LLM response
+                // 3 times = 2 tool requests + LLM responses
                 chatInvocations = 3;
                 break;
             }
@@ -1113,7 +1113,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         assertThat(messages.get(0)).isInstanceOf(UserMessage.class);
         assertThat(((UserMessage) messages.get(0)).singleText()).isEqualTo(request);
 
-        // The second message is the AI response with tool execution request
+        // The second message is the AI responses with tool execution request
         assertThat(messages.get(1)).isInstanceOf(AiMessage.class);
         assertThat(((AiMessage) messages.get(1)).toolExecutionRequests()).hasSize(1);
         assertThat(((AiMessage) messages.get(1)).toolExecutionRequests().get(0).name()).isEqualTo("add");

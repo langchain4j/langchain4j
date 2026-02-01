@@ -279,7 +279,7 @@ class VertexAiGeminiChatModelIT {
                 .actual();
 
         // then
-        assertThat(exception.getMessage()).contains("The response is blocked due to safety reason");
+        assertThat(exception.getMessage()).contains("The responses is blocked due to safety reason");
     }
 
     class Artist {
@@ -561,7 +561,7 @@ class VertexAiGeminiChatModelIT {
 
         // Verify it's valid JSON by parsing it with Gson
 
-        // Parse the JSON response into our POJO
+        // Parse the JSON responses into our POJO
         CountryCapitals capitals = GSON.fromJson(jsonResponse, CountryCapitals.class);
 
         // Verify we have the expected countries and capitals

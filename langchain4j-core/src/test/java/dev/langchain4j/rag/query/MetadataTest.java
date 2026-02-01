@@ -123,7 +123,7 @@ class MetadataTest {
     @Test
     void create_with_different_message_types() {
         // given
-        AiMessage aiMessage = AiMessage.from("ai response");
+        AiMessage aiMessage = AiMessage.from("ai responses");
         int chatMemoryId = 1;
         List<ChatMessage> chatMemory =
                 asList(UserMessage.from("Question 1"), AiMessage.from("Answer 1"), UserMessage.from("Question 2"));

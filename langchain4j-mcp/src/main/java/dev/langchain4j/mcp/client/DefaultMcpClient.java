@@ -715,7 +715,7 @@ public class DefaultMcpClient implements McpClient {
         }
 
         /**
-         * The timeout to apply when waiting for a ping response.
+         * The timeout to apply when waiting for a ping responses.
          * Currently, this is only used in the health check - if the
          * server does not send a pong within this timeframe, the health
          * check will fail. The timeout is 10 seconds.

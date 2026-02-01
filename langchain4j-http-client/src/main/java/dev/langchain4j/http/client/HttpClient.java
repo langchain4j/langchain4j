@@ -12,12 +12,12 @@ import dev.langchain4j.http.client.sse.ServerSentEventParser;
 public interface HttpClient {
 
     /**
-     * Executes a given HTTP request synchronously and returns the response.
-     * This method blocks until the entire response is received.
+     * Executes a given HTTP request synchronously and returns the responses.
+     * This method blocks until the entire responses is received.
      *
      * @param request the HTTP request to be executed.
-     * @return a {@link SuccessfulHttpResponse} containing the response data for successful HTTP requests (2XX status codes)
-     * @throws HttpException    if the server returns a client (4XX) or server (5XX) error response
+     * @return a {@link SuccessfulHttpResponse} containing the responses data for successful HTTP requests (2XX status codes)
+     * @throws HttpException    if the server returns a client (4XX) or server (5XX) error responses
      * @throws RuntimeException if an unexpected error occurs during request execution (e.g., network issues, timeouts)
      */
     SuccessfulHttpResponse execute(HttpRequest request) throws HttpException, RuntimeException;

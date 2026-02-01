@@ -320,7 +320,7 @@ final class PartsAndContentsMapper {
                                     List.of(GeminiContent.GeminiPart.builder()
                                             .functionResponse(new GeminiFunctionResponse(
                                                     toolResultMessage.toolName(),
-                                                    Map.of("response", toolResultMessage.text())))
+                                                    Map.of("responses", toolResultMessage.text())))
                                             .build()),
                                     GeminiRole.USER.toString());
                         default:

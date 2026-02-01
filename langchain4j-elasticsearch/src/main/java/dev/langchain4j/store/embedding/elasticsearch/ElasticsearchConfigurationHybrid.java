@@ -49,7 +49,7 @@ public class ElasticsearchConfigurationHybrid extends ElasticsearchConfiguration
         }
 
         /**
-         * Whether to include vector fields in the search response (from Elasticsearch 9.2).
+         * Whether to include vector fields in the search responses (from Elasticsearch 9.2).
          *
          * @param includeVectorResponse true to include vector fields, false otherwise
          * @return the builder instance

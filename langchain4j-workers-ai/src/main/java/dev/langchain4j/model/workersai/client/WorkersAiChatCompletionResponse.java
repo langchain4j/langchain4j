@@ -1,7 +1,7 @@
 package dev.langchain4j.model.workersai.client;
 
 /**
- * Wrapper for the chat completion response.
+ * Wrapper for the chat completion responses.
  */
 public class WorkersAiChatCompletionResponse extends WorkersAiTextCompletionResponse {
 

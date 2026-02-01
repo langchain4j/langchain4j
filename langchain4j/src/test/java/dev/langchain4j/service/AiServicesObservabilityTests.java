@@ -420,7 +420,7 @@ class AiServicesObservabilityTests {
                                                 .isNotNull()
                                                 .isInstanceOf(OutputGuardrailException.class)
                                                 .hasMessage(
-                                                        "The guardrail %s failed with this message: LLM response is not valid",
+                                                        "The guardrail %s failed with this message: LLM responses is not valid",
                                                         FailureOutputGuardrail.class.getName());
                                     } finally {
                                         latch.countDown();
@@ -464,7 +464,7 @@ class AiServicesObservabilityTests {
                 assistant -> assertThatExceptionOfType(OutputGuardrailException.class)
                         .isThrownBy(() -> assistant.chatWithOutputGuardrails("Hello!"))
                         .withMessage(
-                                "The guardrail %s failed with this message: LLM response is not valid",
+                                "The guardrail %s failed with this message: LLM responses is not valid",
                                 FailureOutputGuardrail.class.getName()),
                 "chatWithOutputGuardrails",
                 false,
@@ -666,7 +666,7 @@ class AiServicesObservabilityTests {
     public static class FailureOutputGuardrail implements OutputGuardrail {
         @Override
         public OutputGuardrailResult validate(AiMessage responseFromLLM) {
-            return failure("LLM response is not valid");
+            return failure("LLM responses is not valid");
         }
     }
 

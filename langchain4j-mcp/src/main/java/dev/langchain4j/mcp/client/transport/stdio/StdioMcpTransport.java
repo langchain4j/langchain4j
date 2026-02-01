@@ -160,7 +160,7 @@ public class StdioMcpTransport implements McpTransport {
         }
         try {
             jsonRpcIoHandler.submit(request);
-            // For messages with null ID, we don't wait for a corresponding response
+            // For messages with null ID, we don't wait for a corresponding responses
             if (id == null) {
                 future.complete(null);
             }

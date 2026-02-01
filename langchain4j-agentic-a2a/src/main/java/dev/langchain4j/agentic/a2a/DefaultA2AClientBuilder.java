@@ -179,11 +179,11 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
             return serviceOutputParser.parseText(returnType, responseText);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            LOG.error("Failed to get response: " + e.getMessage(), e);
-            throw new RuntimeException("Failed to get response: " + e.getMessage(), e);
+            LOG.error("Failed to get responses: " + e.getMessage(), e);
+            throw new RuntimeException("Failed to get responses: " + e.getMessage(), e);
         } catch (ExecutionException e) {
-            LOG.error("Failed to get response: " + e.getMessage(), e);
-            throw new RuntimeException("Failed to get response: " + e.getMessage(), e);
+            LOG.error("Failed to get responses: " + e.getMessage(), e);
+            throw new RuntimeException("Failed to get responses: " + e.getMessage(), e);
         }
     }
 

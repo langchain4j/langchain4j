@@ -10,8 +10,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * The embedding store response context.
- * It contains the response details, corresponding request details, and attributes.
+ * The embedding store responses context.
+ * It contains the responses details, corresponding request details, and attributes.
  * The attributes can be used to pass data between methods of an {@link EmbeddingStoreListener}
  * or between multiple {@link EmbeddingStoreListener}s.
  *
@@ -49,7 +49,7 @@ public abstract class EmbeddingStoreResponseContext<Embedded> {
     }
 
     /**
-     * The {@code add(...)} response context.
+     * The {@code add(...)} responses context.
      *
      * @since 1.11.0
      */
@@ -75,7 +75,7 @@ public abstract class EmbeddingStoreResponseContext<Embedded> {
     }
 
     /**
-     * The {@code addAll(...)} response context.
+     * The {@code addAll(...)} responses context.
      *
      * @since 1.11.0
      */
@@ -101,7 +101,7 @@ public abstract class EmbeddingStoreResponseContext<Embedded> {
     }
 
     /**
-     * The {@code search(...)} response context.
+     * The {@code search(...)} responses context.
      *
      * @since 1.11.0
      */
@@ -127,7 +127,7 @@ public abstract class EmbeddingStoreResponseContext<Embedded> {
     }
 
     /**
-     * The {@code remove(String)} response context.
+     * The {@code remove(String)} responses context.
      *
      * @since 1.11.0
      */
@@ -140,7 +140,7 @@ public abstract class EmbeddingStoreResponseContext<Embedded> {
     }
 
     /**
-     * The {@code removeAll(ids)} response context.
+     * The {@code removeAll(ids)} responses context.
      *
      * @since 1.11.0
      */
@@ -154,7 +154,7 @@ public abstract class EmbeddingStoreResponseContext<Embedded> {
     }
 
     /**
-     * The {@code removeAll(Filter)} response context.
+     * The {@code removeAll(Filter)} responses context.
      *
      * @since 1.11.0
      */
@@ -168,7 +168,7 @@ public abstract class EmbeddingStoreResponseContext<Embedded> {
     }
 
     /**
-     * The {@code removeAll()} response context.
+     * The {@code removeAll()} responses context.
      *
      * @since 1.11.0
      */

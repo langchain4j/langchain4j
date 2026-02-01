@@ -81,7 +81,7 @@ import java.util.concurrent.atomic.AtomicReference;
  *   <li>Connection timeout: defaults to 15 seconds</li>
  *   <li>Read timeout: defaults to 60 seconds</li>
  * </ul>
- * <p>Request/response logging can be enabled via {@link LoggingHttpClient} using builder flags.</p>
+ * <p>Request/responses logging can be enabled via {@link LoggingHttpClient} using builder flags.</p>
  *
  * <h2>Usage Example</h2>
  * <pre>{@code
@@ -95,7 +95,7 @@ import java.util.concurrent.atomic.AtomicReference;
  *     .build();
  *
  * // Synchronous message creation
- * AnthropicCreateMessageResponse response = client.createMessage(request);
+ * AnthropicCreateMessageResponse responses = client.createMessage(request);
  *
  * // Streaming message creation
  * client.createMessage(request, options, new StreamingChatResponseHandler() {
@@ -158,7 +158,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
      * Constructs a new {@link DefaultAnthropicClient} using the provided builder configuration.
      *
      * <p>Initializes the HTTP client with configured timeouts (defaulting to 15s connect, 60s read)
-     * and optionally wraps it with {@link LoggingHttpClient} if request/response logging is enabled.</p>
+     * and optionally wraps it with {@link LoggingHttpClient} if request/responses logging is enabled.</p>
      *
      * @param builder the builder containing configuration parameters
      * @throws IllegalArgumentException if {@code baseUrl}, {@code apiKey}, or {@code version} are blank
@@ -192,11 +192,11 @@ public class DefaultAnthropicClient extends AnthropicClient {
     /**
      * Creates a message synchronously using the Anthropic API.
      *
-     * <p>Sends a request to the {@code /messages} endpoint and blocks until the response is received.</p>
+     * <p>Sends a request to the {@code /messages} endpoint and blocks until the responses is received.</p>
      *
      * @param request the message creation request containing the model, messages, and other parameters
-     * @return the parsed response from the Anthropic API
-     * @throws RuntimeException if the HTTP request fails or the response cannot be parsed
+     * @return the parsed responses from the Anthropic API
+     * @throws RuntimeException if the HTTP request fails or the responses cannot be parsed
      * @see #createMessageWithRawResponse(AnthropicCreateMessageRequest)
      */
     @Override
@@ -205,15 +205,15 @@ public class DefaultAnthropicClient extends AnthropicClient {
     }
 
     /**
-     * Creates a message synchronously and returns both the parsed response and the raw HTTP response.
+     * Creates a message synchronously and returns both the parsed responses and the raw HTTP responses.
      *
-     * <p>Useful when access to raw HTTP response details (headers, status code) is needed alongside
-     * the parsed API response.</p>
+     * <p>Useful when access to raw HTTP responses details (headers, status code) is needed alongside
+     * the parsed API responses.</p>
      *
      * @param request the message creation request containing the model, messages, and other parameters
      * @return a {@link ParsedAndRawResponse} containing both the parsed {@link AnthropicCreateMessageResponse}
      *         and the raw {@link SuccessfulHttpResponse}
-     * @throws RuntimeException if the HTTP request fails or the response cannot be parsed
+     * @throws RuntimeException if the HTTP request fails or the responses cannot be parsed
      */
     @Override
     public ParsedAndRawResponse createMessageWithRawResponse(AnthropicCreateMessageRequest request) {
@@ -225,15 +225,15 @@ public class DefaultAnthropicClient extends AnthropicClient {
     }
 
     /**
-     * Creates a message with streaming response handling.
+     * Creates a message with streaming responses handling.
      *
-     * <p>Sends a request to the {@code /messages} endpoint and processes the response as a stream
+     * <p>Sends a request to the {@code /messages} endpoint and processes the responses as a stream
      * of server-sent events (SSE). The handler receives callbacks for:</p>
      * <ul>
      *   <li>Partial text responses as they arrive</li>
      *   <li>Partial thinking outputs (if {@code options.returnThinking()} is true)</li>
      *   <li>Partial and complete tool calls</li>
-     *   <li>The complete response when streaming finishes</li>
+     *   <li>The complete responses when streaming finishes</li>
      *   <li>Errors if they occur</li>
      * </ul>
      *
@@ -244,7 +244,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
      *   <li>{@code content_block_delta}: Incremental content updates</li>
      *   <li>{@code content_block_stop}: End of a content block</li>
      *   <li>{@code message_delta}: Message-level updates including stop reason and final usage</li>
-     *   <li>{@code message_stop}: End of message, triggers complete response callback</li>
+     *   <li>{@code message_stop}: End of message, triggers complete responses callback</li>
      *   <li>{@code error}: Error event from the API</li>
      * </ul>
      *
@@ -586,8 +586,8 @@ public class DefaultAnthropicClient extends AnthropicClient {
      * token usage before making an actual message creation request.</p>
      *
      * @param request the token counting request containing the messages and model
-     * @return the response containing the token count
-     * @throws RuntimeException if the HTTP request fails or the response cannot be parsed
+     * @return the responses containing the token count
+     * @throws RuntimeException if the HTTP request fails or the responses cannot be parsed
      */
     @Override
     public MessageTokenCountResponse countTokens(AnthropicCountTokensRequest request) {
@@ -602,8 +602,8 @@ public class DefaultAnthropicClient extends AnthropicClient {
      * <p>Sends a GET request to the {@code /models} endpoint to retrieve
      * information about available Claude models.</p>
      *
-     * @return the response containing the list of available models
-     * @throws RuntimeException if the HTTP request fails or the response cannot be parsed
+     * @return the responses containing the list of available models
+     * @throws RuntimeException if the HTTP request fails or the responses cannot be parsed
      */
     @Override
     public AnthropicModelsListResponse listModels() {
@@ -618,7 +618,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
     }
 
     /**
-     * Creates a message with streaming response handling using default options.
+     * Creates a message with streaming responses handling using default options.
      *
      * <p>Convenience method that calls {@link #createMessage(AnthropicCreateMessageRequest, AnthropicCreateMessageOptions, StreamingChatResponseHandler)}
      * with default options (thinking outputs and server tool results disabled).</p>

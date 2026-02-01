@@ -31,23 +31,23 @@ public fun chatRequest(block: ChatRequestBuilder.() -> Unit): dev.langchain4j.mo
 /**
  * A utility class for building and configuring chat request parameters.
  * This builder allows fine-grained control over various fields
- * such as model configuration, response shaping, and tool integration.
+ * such as model configuration, responses shaping, and tool integration.
  *
  * @param B The type of the builder for the default chat request parameters.
  * @property builder The builder used to configure the chat request parameters.
  * @property modelName Specifies the name of the model to be used for the chat request.
- * @property temperature Controls the randomness in the response generation. Higher values produce more random outputs.
+ * @property temperature Controls the randomness in the responses generation. Higher values produce more random outputs.
  * @property topP Configures nucleus sampling, limiting the selection to a subset of tokens
  * with a cumulative probability of `topP`.
- * @property topK Limits the selection to the top `K` tokens during response generation.
+ * @property topK Limits the selection to the top `K` tokens during responses generation.
  * @property frequencyPenalty Applies a penalty to discourage repetition of tokens based on frequency.
  * @property presencePenalty Applies a penalty to encourage diversity by penalizing token presence
  * in the conversation context.
- * @property maxOutputTokens Specifies the maximum number of tokens for the generated response.
- * @property stopSequences A list of sequences that will terminate the response generation if encountered.
+ * @property maxOutputTokens Specifies the maximum number of tokens for the generated responses.
+ * @property stopSequences A list of sequences that will terminate the responses generation if encountered.
  * @property toolSpecifications A list of tool specifications for integrating external tools into the chat request.
  * @property toolChoice Defines the specific tool to be used if multiple tools are available in the request.
- * @property responseFormat Specifies the format of the response, such as plain text or structured data.
+ * @property responseFormat Specifies the format of the responses, such as plain text or structured data.
  * @author Konstantin Pavlov
  */
 @Suppress("LongParameterList")

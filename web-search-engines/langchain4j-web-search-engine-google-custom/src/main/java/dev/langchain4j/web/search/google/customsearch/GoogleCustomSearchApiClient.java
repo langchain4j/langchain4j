@@ -168,7 +168,7 @@ class GoogleCustomSearchApiClient {
         try {
             LOGGER.debug("Response:\n- body: {}", search.toPrettyString());
         } catch (IOException e) {
-            LOGGER.warn("Error while logging response: {}", e.getMessage());
+            LOGGER.warn("Error while logging responses: {}", e.getMessage());
         }
     }
 

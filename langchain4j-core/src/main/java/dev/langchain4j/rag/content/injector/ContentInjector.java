@@ -10,7 +10,7 @@ import java.util.List;
  * Injects given {@link Content}s into a given {@link UserMessage}.
  * <br>
  * The goal is to format and incorporate the {@link Content}s into the original {@link UserMessage}
- * enabling the LLM to utilize it for generating a grounded response.
+ * enabling the LLM to utilize it for generating a grounded responses.
  *
  * @see DefaultContentInjector
  */

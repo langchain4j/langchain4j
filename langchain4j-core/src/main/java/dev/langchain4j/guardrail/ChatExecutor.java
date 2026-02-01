@@ -21,7 +21,7 @@ public interface ChatExecutor {
 
     /**
      * Execute a chat request
-     * @return The response
+     * @return The responses
      */
     ChatResponse execute();
 
@@ -29,7 +29,7 @@ public interface ChatExecutor {
      * Executes a chat request using the provided chat messages
      * @param chatMessages The chat messages containing the context of the conversation.
      *                     It provides the history of messages required for proper interaction with the chat model
-     * @return A response object containing the AI's response and additional metadata.
+     * @return A responses object containing the AI's responses and additional metadata.
      */
     ChatResponse execute(List<ChatMessage> chatMessages);
 
@@ -73,7 +73,7 @@ public interface ChatExecutor {
         /**
          * Sets the {@link ChatRequest} instance for the synchronousBuilder.
          * The {@link ChatRequest} encapsulates the input messages and parameters required
-         * to generate a response from the chat model.
+         * to generate a responses from the chat model.
          *
          * @param chatRequest the {@link ChatRequest} containing the input messages and parameters
          * @return the updated SynchronousBuilder instance

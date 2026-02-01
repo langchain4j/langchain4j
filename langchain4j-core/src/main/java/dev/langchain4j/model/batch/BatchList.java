@@ -12,7 +12,7 @@ import java.util.List;
  * the batch operations for the current page along with pagination information for retrieving
  * additional pages.</p>
  *
- * @param <T> the type of the response payload in each batch (e.g., {@code List<ChatResponse>})
+ * @param <T> the type of the responses payload in each batch (e.g., {@code List<ChatResponse>})
  * @param batches the list of batch responses for the current page
  * @param nextPageToken token to pass to {@link BatchModel#listBatchJobs(Integer, String)} to
  *                      retrieve the next page; may be {@code null} if no more pages exist

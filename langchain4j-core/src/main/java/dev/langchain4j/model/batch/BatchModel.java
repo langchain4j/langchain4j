@@ -11,7 +11,7 @@ import java.util.List;
  * and is ideal for large-scale, non-urgent tasks.</p>
  *
  * @param <REQ> the type of input request (e.g., ChatRequest, TextSegment, ImageGenerationRequest)
- * @param <RES> the type of individual response (e.g., ChatResponse, Embedding, Response&lt;Image&gt;)
+ * @param <RES> the type of individual responses (e.g., ChatResponse, Embedding, Response&lt;Image&gt;)
  *
  * @see BatchResponse
  * @see BatchName
@@ -35,7 +35,7 @@ public interface BatchModel<REQ, RES> {
     /**
      * Retrieves the current state and results of a batch operation.
      *
-     * <p>The response indicates whether the batch is still processing, completed successfully,
+     * <p>The responses indicates whether the batch is still processing, completed successfully,
      * or failed. Clients should poll this method at intervals until the batch completes.</p>
      *
      * @param name the batch identifier obtained from {@link #createBatch(List)}

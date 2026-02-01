@@ -30,7 +30,7 @@ import java.lang.annotation.Target;
  * </p>
  * <p>
  *     When several {@link OutputGuardrail}s are applied, if any guardrail forces a retry or reprompt, then all of the
- *     guardrails will be re-applied to the new response.
+ *     guardrails will be re-applied to the new responses.
  * </p>
  */
 @Documented

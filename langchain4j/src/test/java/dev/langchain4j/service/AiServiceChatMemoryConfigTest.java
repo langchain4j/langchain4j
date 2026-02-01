@@ -100,7 +100,7 @@ class AiServiceChatMemoryConfigTest {
     @Test
     void should_preserve_memory_for_same_id() {
         // given
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("response");
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("responses");
         AiService aiService = AiServices.builder(AiService.class)
                 .chatModel(chatModel)
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
@@ -111,8 +111,8 @@ class AiServiceChatMemoryConfigTest {
         String response2 = aiService.chat("id1", "second value");
 
         // then
-        assertThat(response1).isEqualTo("response");
-        assertThat(response2).isEqualTo("response");
+        assertThat(response1).isEqualTo("responses");
+        assertThat(response2).isEqualTo("responses");
     }
 
     @Test

@@ -48,7 +48,7 @@ public abstract class AbstractWorkersAIModel {
     /**
      * Process errors from the API.
      *
-     * @param res    response
+     * @param res    responses
      * @param errors errors body from retrofit
      * @throws IOException error occurred during invocation
      */

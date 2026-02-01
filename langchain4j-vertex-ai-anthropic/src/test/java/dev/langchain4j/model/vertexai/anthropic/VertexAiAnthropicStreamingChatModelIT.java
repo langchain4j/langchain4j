@@ -81,19 +81,19 @@ class VertexAiAnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT
 
     @Override
     protected boolean supportsJsonResponseFormat() {
-        // Vertex AI Anthropic supports JSON response format through prompt engineering
+        // Vertex AI Anthropic supports JSON responses format through prompt engineering
         return false;
     }
 
     @Override
     protected boolean supportsJsonResponseFormatWithSchema() {
-        // Vertex AI Anthropic does not support response format yet
+        // Vertex AI Anthropic does not support responses format yet
         return false;
     }
 
     @Override
     protected boolean supportsJsonResponseFormatWithRawSchema() {
-        // Vertex AI Anthropic does not support response format yet
+        // Vertex AI Anthropic does not support responses format yet
         return false;
     }
 
@@ -105,7 +105,7 @@ class VertexAiAnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT
 
     @Override
     protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
-        // Vertex AI Anthropic does not support JSON response format with schema combined with tools yet
+        // Vertex AI Anthropic does not support JSON responses format with schema combined with tools yet
         return false;
     }
 

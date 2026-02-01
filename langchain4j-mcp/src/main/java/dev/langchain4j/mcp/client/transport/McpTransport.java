@@ -24,24 +24,24 @@ public interface McpTransport extends Closeable {
     CompletableFuture<JsonNode> initialize(McpInitializeRequest request);
 
     /**
-     * Executes an operation that expects a response from the server.
+     * Executes an operation that expects a responses from the server.
      */
     CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage request);
 
     /**
-     * Executes an operation that expects a response from the server.
+     * Executes an operation that expects a responses from the server.
      */
     CompletableFuture<JsonNode> executeOperationWithResponse(McpCallContext context);
 
     /**
-     * Sends a message that does not expect a response from the server - either a
-     * client-initiated notification or a response to a server-initiated request.
+     * Sends a message that does not expect a responses from the server - either a
+     * client-initiated notification or a responses to a server-initiated request.
      */
     void executeOperationWithoutResponse(McpClientMessage request);
 
     /**
-     * Sends a message that does not expect a response from the server - either a
-     * client-initiated notification or a response to a server-initiated request.
+     * Sends a message that does not expect a responses from the server - either a
+     * client-initiated notification or a responses to a server-initiated request.
      */
     void executeOperationWithoutResponse(McpCallContext context);
 

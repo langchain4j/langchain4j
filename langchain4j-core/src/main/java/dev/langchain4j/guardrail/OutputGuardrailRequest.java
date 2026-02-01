@@ -21,9 +21,9 @@ public final class OutputGuardrailRequest implements GuardrailRequest<OutputGuar
     }
 
     /**
-     * Returns the response from the LLM.
+     * Returns the responses from the LLM.
      *
-     * @return the response from the LLM
+     * @return the responses from the LLM
      */
     public ChatResponse responseFromLLM() {
         return responseFromLLM;
@@ -89,9 +89,9 @@ public final class OutputGuardrailRequest implements GuardrailRequest<OutputGuar
         private Builder() {}
 
         /**
-         * Sets the response from the LLM.
+         * Sets the responses from the LLM.
          *
-         * @param responseFromLLM the response from the LLM
+         * @param responseFromLLM the responses from the LLM
          * @return this builder
          */
         public Builder responseFromLLM(ChatResponse responseFromLLM) {

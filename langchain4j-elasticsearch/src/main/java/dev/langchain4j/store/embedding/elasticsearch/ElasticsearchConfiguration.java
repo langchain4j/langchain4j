@@ -17,7 +17,7 @@ public abstract class ElasticsearchConfiguration {
      * @param client    The Elasticsearch client
      * @param indexName The index name
      * @param embeddingSearchRequest The embedding search request
-     * @return SearchResponse<Document> The search response
+     * @return SearchResponse<Document> The search responses
      * @throws ElasticsearchException if an error occurs during the search
      * @throws IOException            if an I/O error occurs
      */
@@ -30,7 +30,7 @@ public abstract class ElasticsearchConfiguration {
      * @param client    The Elasticsearch client
      * @param indexName The index name
      * @param textQuery The text query
-     * @return SearchResponse<Document> The search response
+     * @return SearchResponse<Document> The search responses
      * @throws ElasticsearchException if an error occurs during the search
      * @throws IOException            if an I/O error occurs
      */
@@ -43,7 +43,7 @@ public abstract class ElasticsearchConfiguration {
      * @param indexName               The index name
      * @param embeddingSearchRequest  The embedding search request
      * @param textQuery               The text query
-     * @return SearchResponse<Document> The search response
+     * @return SearchResponse<Document> The search responses
      * @throws ElasticsearchException if an error occurs during the search
      * @throws IOException            if an I/O error occurs
      */

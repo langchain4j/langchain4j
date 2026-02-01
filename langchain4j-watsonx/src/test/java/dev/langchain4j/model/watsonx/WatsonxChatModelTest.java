@@ -197,10 +197,10 @@ public class WatsonxChatModelTest {
     @Test
     void shouldExtractThinkingWhenConfiguredInModelBuilder() throws Exception {
 
-        var extractionTags = ExtractionTags.of("think", "response");
+        var extractionTags = ExtractionTags.of("think", "responses");
         var resultMessage = new ResultMessage(
                 AssistantMessage.ROLE,
-                "<think>I'm thinking</think><response>Hello</response>",
+                "<think>I'm thinking</think><responses>Hello</responses>",
                 "I'm thinking",
                 null,
                 null);
@@ -294,10 +294,10 @@ public class WatsonxChatModelTest {
     @Test
     void shouldExtractThinkingWhenConfiguredInRequestParameters() throws Exception {
 
-        var extractionTags = ExtractionTags.of("think", "response");
+        var extractionTags = ExtractionTags.of("think", "responses");
         var resultMessage = new ResultMessage(
                 AssistantMessage.ROLE,
-                "<think>I'm thinking</think><response>Hello</response>",
+                "<think>I'm thinking</think><responses>Hello</responses>",
                 "I'm thinking",
                 null,
                 null);
@@ -444,7 +444,7 @@ public class WatsonxChatModelTest {
 
         var resultMessage = new ResultMessage(
                 AssistantMessage.ROLE,
-                "<think>I'm thinking</think><response>Hello</response>",
+                "<think>I'm thinking</think><responses>Hello</responses>",
                 "I'm thinking",
                 null,
                 null);
@@ -465,7 +465,7 @@ public class WatsonxChatModelTest {
                     .messages(dev.langchain4j.data.message.UserMessage.from("Hello"))
                     .build());
             assertEquals(
-                    "<think>I'm thinking</think><response>Hello</response>",
+                    "<think>I'm thinking</think><responses>Hello</responses>",
                     result.aiMessage().text());
             assertNull(result.aiMessage().thinking());
             assertEquals(1, chatRequestCaptor.getValue().messages().size());

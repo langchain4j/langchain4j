@@ -67,8 +67,8 @@ public class WorkersAiClient {
         /**
          * Intercepts an outgoing HTTP request, adding an authorization header.
          *
-         * @param chain The chain of request/response interceptors.
-         * @return The modified response after adding the authorization header.
+         * @param chain The chain of request/responses interceptors.
+         * @return The modified responses after adding the authorization header.
          * @throws IOException If an IO exception occurs during request processing.
          */
         @NotNull

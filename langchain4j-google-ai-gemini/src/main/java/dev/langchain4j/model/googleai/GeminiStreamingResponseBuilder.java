@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * A builder class for constructing streaming responses from Gemini AI model.
- * This class accumulates partial responses and builds a final response.
+ * This class accumulates partial responses and builds a final responses.
  */
 class GeminiStreamingResponseBuilder {
 
@@ -50,10 +50,10 @@ class GeminiStreamingResponseBuilder {
     record TextAndTools(Optional<String> maybeText, Optional<String> maybeThought, List<ToolExecutionRequest> tools) {}
 
     /**
-     * Appends a partial response to the builder.
+     * Appends a partial responses to the builder.
      *
-     * @param partialResponse the partial response from Gemini AI
-     * @return an Optional containing the text of the partial response, or empty if no valid text
+     * @param partialResponse the partial responses from Gemini AI
+     * @return an Optional containing the text of the partial responses, or empty if no valid text
      */
     TextAndTools append(GeminiGenerateContentResponse partialResponse) {
         if (partialResponse == null) {
@@ -82,7 +82,7 @@ class GeminiStreamingResponseBuilder {
     }
 
     /**
-     * Builds the complete response from all accumulated partial responses.
+     * Builds the complete responses from all accumulated partial responses.
      *
      * @return a Response object containing the complete AiMessage, token usage, and finish reason
      */

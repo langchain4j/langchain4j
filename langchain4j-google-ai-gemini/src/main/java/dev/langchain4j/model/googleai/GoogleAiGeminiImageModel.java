@@ -56,7 +56,7 @@ import org.slf4j.Logger;
  *     .build();
  *
  * // Generate an image
- * Response<Image> response = model.generate("A serene mountain landscape at sunset");
+ * Response<Image> responses = model.generate("A serene mountain landscape at sunset");
  *
  * // Edit an existing image
  * Response<Image> edited = model.edit(originalImage, "Add a hot air balloon to the sky");
@@ -267,13 +267,13 @@ public class GoogleAiGeminiImageModel implements ImageModel {
 
     private Image extractImage(GeminiGenerateContentResponse response) {
         if (response.candidates() == null || response.candidates().isEmpty()) {
-            throw new GeminiImageGenerationException("No image generated in response");
+            throw new GeminiImageGenerationException("No image generated in responses");
         }
 
         GeminiGenerateContentResponse.GeminiCandidate candidate =
                 response.candidates().get(0);
         if (candidate.content() == null || candidate.content().parts() == null) {
-            throw new GeminiImageGenerationException("No content in response candidate");
+            throw new GeminiImageGenerationException("No content in responses candidate");
         }
 
         for (GeminiPart part : candidate.content().parts()) {
@@ -285,7 +285,7 @@ public class GoogleAiGeminiImageModel implements ImageModel {
             }
         }
 
-        throw new GeminiImageGenerationException("No image data found in response");
+        throw new GeminiImageGenerationException("No image data found in responses");
     }
 
     /**
@@ -435,7 +435,7 @@ public class GoogleAiGeminiImageModel implements ImageModel {
         /**
          * Enables or disables logging of responses only.
          *
-         * @param logResponses true to enable response logging
+         * @param logResponses true to enable responses logging
          * @return this builder
          */
         public GoogleAiGeminiImageModelBuilder logResponses(Boolean logResponses) {
@@ -444,7 +444,7 @@ public class GoogleAiGeminiImageModel implements ImageModel {
         }
 
         /**
-         * Sets a custom logger for request/response logging.
+         * Sets a custom logger for request/responses logging.
          *
          * @param logger the SLF4J logger to use
          * @return this builder

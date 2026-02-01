@@ -72,7 +72,7 @@ public abstract class AnthropicClient {
      *   <li>{@link #timeout(Duration)} - Connection and read timeout (defaults: 15s connect, 60s read)</li>
      *   <li>{@link #beta(String)} - Beta features header for experimental capabilities</li>
      *   <li>{@link #logRequests(Boolean)} - Enable raw request logging</li>
-     *   <li>{@link #logResponses(Boolean)} - Enable raw response logging</li>
+     *   <li>{@link #logResponses(Boolean)} - Enable raw responses logging</li>
      *   <li>{@link #logger(Logger)} - Custom logger instance</li>
      * </ul>
      *
@@ -247,10 +247,10 @@ public abstract class AnthropicClient {
         /**
          * Sets whether to log raw HTTP responses.
          *
-         * <p>When enabled, the full HTTP response (including headers and body) is logged
+         * <p>When enabled, the full HTTP responses (including headers and body) is logged
          * for debugging purposes. If {@code null} is provided, defaults to {@code false}.</p>
          *
-         * @param logResponses {@code true} to enable response logging, {@code false} to disable,
+         * @param logResponses {@code true} to enable responses logging, {@code false} to disable,
          *                     or {@code null} (defaults to {@code false})
          * @return this builder for method chaining
          */
@@ -263,7 +263,7 @@ public abstract class AnthropicClient {
         }
 
         /**
-         * Sets a custom logger for request and response logging.
+         * Sets a custom logger for request and responses logging.
          *
          * <p>If not specified, the default LangChain4j logger is used.</p>
          *

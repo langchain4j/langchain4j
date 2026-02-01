@@ -256,7 +256,7 @@ public class GitHubModelsStreamingChatModel implements StreamingChatModel {
     private void handleResponseException(Throwable throwable, StreamingResponseHandler<AiMessage> handler) {
         if (throwable instanceof HttpResponseException) {
             HttpResponseException httpResponseException = (HttpResponseException) throwable;
-            logger.info("Error generating response, {}", httpResponseException.getValue());
+            logger.info("Error generating responses, {}", httpResponseException.getValue());
             FinishReason exceptionFinishReason = contentFilterManagement(httpResponseException, "content_filter");
             if (exceptionFinishReason == FinishReason.CONTENT_FILTER) {
                 Response<AiMessage> response = Response.from(

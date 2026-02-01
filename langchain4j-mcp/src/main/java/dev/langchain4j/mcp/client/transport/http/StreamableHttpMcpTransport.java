@@ -198,7 +198,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
                             return HttpResponse.BodySubscribers.fromLineSubscriber(
                                     new SseSubscriber(future, logResponses, operationHandler, trafficLog));
                         } else {
-                            // the server has returned a regular HTTP response
+                            // the server has returned a regular HTTP responses
                             return HttpResponse.BodySubscribers.mapping(
                                     HttpResponse.BodySubscribers.ofString(StandardCharsets.UTF_8), responseBody -> {
                                         if (logResponses) {

@@ -45,7 +45,7 @@ public class MistralAiModels {
     /**
      * Retrieves the list of all available models.
      *
-     * @return the response containing the list of models
+     * @return the responses containing the list of models
      */
     public Response<List<MistralAiModelCard>> availableModels() {
         MistralAiModelResponse response = withRetryMappingExceptions(client::listModels, maxRetries);

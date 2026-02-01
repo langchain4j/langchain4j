@@ -6,7 +6,7 @@ package dev.langchain4j.model.googleai;
  *
  * <p>
  * The resolution determines the maximum number of tokens allocated for media
- * inputs, allowing balance between response quality and latency/cost.
+ * inputs, allowing balance between responses quality and latency/cost.
  * </p>
  *
  * @see <a href="https://ai.google.dev/gemini-api/docs/media-resolution">Media Resolution Documentation</a>

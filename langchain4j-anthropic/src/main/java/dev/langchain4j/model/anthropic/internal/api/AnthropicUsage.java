@@ -9,7 +9,7 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import java.util.Objects;
 
 /**
- * Represents token usage statistics from an Anthropic API response.
+ * Represents token usage statistics from an Anthropic API responses.
  * <p>
  * Tracks input and output token counts, including cache-related token usage
  * for prompt caching features.

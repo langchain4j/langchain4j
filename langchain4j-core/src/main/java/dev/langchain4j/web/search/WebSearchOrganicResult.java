@@ -13,7 +13,7 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * Represents organic search results, which are the web pages returned by a search engine in response to a query.
+ * Represents organic search results, which are the web pages returned by a search engine in responses to a query.
  * This includes the title, URL, snippet and/or content, and metadata of the web page.
  * <p>
  * These results are typically ranked by relevance to the search query.

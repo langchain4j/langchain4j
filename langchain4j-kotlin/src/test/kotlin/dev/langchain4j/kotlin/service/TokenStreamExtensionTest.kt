@@ -103,7 +103,7 @@ internal class TokenStreamExtensionTest {
         val customCapacity = 5
         val maxTokens = 100
         val completeResponse = ChatResponse.builder()
-            .aiMessage(AiMessage("Complete response"))
+            .aiMessage(AiMessage("Complete responses"))
             .build()
 
         // Capture the callbacks
@@ -137,7 +137,7 @@ internal class TokenStreamExtensionTest {
                 "Token-98",
                 "Token-99",
                 "Token-100",
-                "Complete response"
+                "Complete responses"
             )
         } else {
             result shouldBe listOf(
@@ -157,7 +157,7 @@ internal class TokenStreamExtensionTest {
         val customCapacity = 5
         val maxTokens = 100
         val completeResponse = ChatResponse.builder()
-            .aiMessage(AiMessage("Complete response"))
+            .aiMessage(AiMessage("Complete responses"))
             .build()
 
         // Capture the callbacks

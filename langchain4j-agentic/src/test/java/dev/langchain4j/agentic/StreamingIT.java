@@ -208,15 +208,15 @@ public class StreamingIT {
 
         StreamingMedicalExpert medicalExpert = spy(AgenticServices.agentBuilder(StreamingMedicalExpert.class)
                 .streamingChatModel(streamingBaseModel())
-                .outputKey("response")
+                .outputKey("responses")
                 .build());
         StreamingLegalExpert legalExpert = spy(AgenticServices.agentBuilder(StreamingLegalExpert.class)
                 .streamingChatModel(streamingBaseModel())
-                .outputKey("response")
+                .outputKey("responses")
                 .build());
         StreamingTechnicalExpert technicalExpert = spy(AgenticServices.agentBuilder(StreamingTechnicalExpert.class)
                 .streamingChatModel(streamingBaseModel())
-                .outputKey("response")
+                .outputKey("responses")
                 .build());
 
         UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
@@ -236,7 +236,7 @@ public class StreamingIT {
 
         StreamingExpertRouterAgent agentInstance = AgenticServices.sequenceBuilder(StreamingExpertRouterAgent.class)
                 .subAgents(routerAgent, expertsAgent)
-                .outputKey("response")
+                .outputKey("responses")
                 .build();
 
         TokenStream tokenStream = agentInstance.ask("I broke my leg what should I do");
@@ -259,15 +259,15 @@ public class StreamingIT {
 
         StreamingMedicalExpert medicalExpert = spy(AgenticServices.agentBuilder(StreamingMedicalExpert.class)
                 .streamingChatModel(streamingBaseModel())
-                .outputKey("response")
+                .outputKey("responses")
                 .build());
         StreamingLegalExpert legalExpert = spy(AgenticServices.agentBuilder(StreamingLegalExpert.class)
                 .streamingChatModel(streamingBaseModel())
-                .outputKey("response")
+                .outputKey("responses")
                 .build());
         StreamingTechnicalExpert technicalExpert = spy(AgenticServices.agentBuilder(StreamingTechnicalExpert.class)
                 .streamingChatModel(streamingBaseModel())
-                .outputKey("response")
+                .outputKey("responses")
                 .build());
 
         UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
@@ -287,7 +287,7 @@ public class StreamingIT {
 
         ExpertRouterAgent agentInstance = AgenticServices.sequenceBuilder(ExpertRouterAgent.class)
                 .subAgents(routerAgent, expertsAgent)
-                .outputKey("response")
+                .outputKey("responses")
                 .build();
 
         String expertResponse = agentInstance.ask("I broke my leg what should I do");

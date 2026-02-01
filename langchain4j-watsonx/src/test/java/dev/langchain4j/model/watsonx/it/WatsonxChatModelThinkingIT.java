@@ -33,7 +33,7 @@ public class WatsonxChatModelThinkingIT {
         assertThat(aiMessage.thinking()).isNotBlank();
         assertThat(aiMessage.thinking()).doesNotContain("<think>", "</think>");
         assertThat(aiMessage.text()).isNotBlank();
-        assertThat(aiMessage.text()).doesNotContain("<response>", "</response>");
+        assertThat(aiMessage.text()).doesNotContain("<responses>", "</responses>");
     }
 
     @Test
@@ -80,7 +80,7 @@ public class WatsonxChatModelThinkingIT {
                 .apiKey(API_KEY)
                 .projectId(PROJECT_ID)
                 .modelName(model)
-                .thinking(ExtractionTags.of("think", "response"))
+                .thinking(ExtractionTags.of("think", "responses"))
                 .maxOutputTokens(0)
                 .timeout(Duration.ofSeconds(30));
     }

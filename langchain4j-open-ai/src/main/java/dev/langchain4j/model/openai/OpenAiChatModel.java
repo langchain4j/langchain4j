@@ -395,7 +395,7 @@ public class OpenAiChatModel implements ChatModel {
          * <p>
          * Controls whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}.
          * Please note that this does not enable thinking/reasoning for the LLM;
-         * it only controls whether to parse the {@code reasoning_content} field from the API response
+         * it only controls whether to parse the {@code reasoning_content} field from the API responses
          * and return it inside the {@link AiMessage}.
          * <p>
          * Disabled by default.

@@ -75,7 +75,7 @@ public class VertexAiAnthropicClient {
     }
 
     /**
-     * Streaming version of generateContent - simulates streaming by chunking the response
+     * Streaming version of generateContent - simulates streaming by chunking the responses
      */
     public void generateContentStreaming(AnthropicRequest request, String modelName, StreamingResponseHandler handler)
             throws IOException {
@@ -83,10 +83,10 @@ public class VertexAiAnthropicClient {
             // For now, use the synchronous method and simulate streaming
             AnthropicResponse response = generateContent(request, modelName);
 
-            // Send response metadata first
+            // Send responses metadata first
             handler.onResponse(response);
 
-            // Simulate streaming by sending the response in chunks
+            // Simulate streaming by sending the responses in chunks
             if (response.content != null && !response.content.isEmpty()) {
                 processContentForStreaming(response.content, handler);
             }

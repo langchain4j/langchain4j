@@ -105,9 +105,9 @@ abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingResponse>
     protected abstract String getModelId();
 
     /**
-     * Get response class type
+     * Get responses class type
      *
-     * @return response class type
+     * @return responses class type
      */
     protected abstract Class<T> getResponseClassType();
 
@@ -115,7 +115,7 @@ abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingResponse>
      * Invoke model
      *
      * @param body body
-     * @return invoke model response
+     * @return invoke model responses
      */
     protected InvokeModelResponse invoke(final String body) {
 

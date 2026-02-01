@@ -27,7 +27,7 @@ import java.nio.file.Path;
  *     .onGPU(true)
  *     .build();
  *
- * ChatResponse response = model.chat(chatRequest);
+ * ChatResponse responses = model.chat(chatRequest);
  * }</pre>
  */
 public class GPULlama3StreamingChatModel extends GPULlama3BaseModel implements StreamingChatModel {
@@ -61,10 +61,10 @@ public class GPULlama3StreamingChatModel extends GPULlama3BaseModel implements S
             GPULlama3ResponseParser.StreamingParser parser =
                     GPULlama3ResponseParser.createStreamingParser(handler, getModel());
 
-            // Generate response with streaming callback
+            // Generate responses with streaming callback
             String rawResponse = modelResponse(chatRequest, parser::onToken);
 
-            // Parse the complete response and send final result
+            // Parse the complete responses and send final result
             GPULlama3ResponseParser.ParsedResponse parsed = GPULlama3ResponseParser.parseResponse(rawResponse);
 
             ChatResponse chatResponse = ChatResponse.builder()

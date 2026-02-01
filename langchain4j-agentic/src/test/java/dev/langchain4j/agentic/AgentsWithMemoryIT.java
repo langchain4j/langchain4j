@@ -28,12 +28,12 @@ public class AgentsWithMemoryIT {
         Assistant assistant = AgenticServices.agentBuilder(Assistant.class)
                 .chatModel(baseModel())
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
-                .outputKey("response")
+                .outputKey("responses")
                 .build();
 
         UntypedAgent sequenceAgent = AgenticServices.sequenceBuilder()
                 .subAgents(assistant)
-                .outputKey("response")
+                .outputKey("responses")
                 .build();
 
         Map<String, Object> parameters = new HashMap<>();

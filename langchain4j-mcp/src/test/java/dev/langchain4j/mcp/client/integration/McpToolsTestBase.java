@@ -70,7 +70,7 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
         assertThat(error.parameters().properties()).isEmpty();
 
         ToolSpecification errorResponse = toolProviderResult.toolSpecificationByName("errorResponse");
-        assertThat(errorResponse.description()).isEqualTo("Returns a response as an error");
+        assertThat(errorResponse.description()).isEqualTo("Returns a responses as an error");
         assertThat(errorResponse.parameters().properties()).isEmpty();
 
         ToolSpecification structuredContent = toolProviderResult.toolSpecificationByName("structuredContent");

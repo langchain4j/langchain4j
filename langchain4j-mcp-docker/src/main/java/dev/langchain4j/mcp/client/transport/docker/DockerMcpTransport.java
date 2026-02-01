@@ -253,7 +253,7 @@ public class DockerMcpTransport implements McpTransport {
                 Thread.sleep(100);
             }
             callback.close();
-            // For messages with null ID, we don't wait for a corresponding response
+            // For messages with null ID, we don't wait for a corresponding responses
             if (id == null) {
                 future.complete(null);
             }

@@ -7,7 +7,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.function.Consumer;
 
 /**
- * Utility class with lambda-based streaming response handlers.
+ * Utility class with lambda-based streaming responses handlers.
  * <p>
  * Lets you use Java lambda functions to receive <code>onPartialResponse</code> and <code>onError</code> events,
  * from your streaming chat model, instead of creating an anonymous inner class
@@ -73,12 +73,12 @@ public class LambdaStreamingResponseHandler {
     }
 
     /**
-     * Creates a streaming response handler that processes partial responses with the given consumer
+     * Creates a streaming responses handler that processes partial responses with the given consumer
      * and blocks until the streaming is complete.
      *
      * @param model the streaming chat model to use
      * @param message the message to send
-     * @param onPartialResponse consumer to handle each partial response
+     * @param onPartialResponse consumer to handle each partial responses
      * @throws InterruptedException if the thread is interrupted while waiting for completion
      */
     public static void onPartialResponseBlocking(
@@ -88,12 +88,12 @@ public class LambdaStreamingResponseHandler {
     }
 
     /**
-     * Creates a streaming response handler that processes partial responses and errors with the given consumers
+     * Creates a streaming responses handler that processes partial responses and errors with the given consumers
      * and blocks until the streaming is complete.
      *
      * @param model the streaming chat model to use
      * @param message the message to send
-     * @param onPartialResponse consumer to handle each partial response
+     * @param onPartialResponse consumer to handle each partial responses
      * @param onError consumer to handle errors
      * @throws InterruptedException if the thread is interrupted while waiting for completion
      */

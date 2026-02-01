@@ -89,7 +89,7 @@ class AiServicesBuilderTest {
 
     @Test
     void should_allow_building_with_only_chat_model() {
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("response");
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("responses");
 
         TestService service =
                 AiServices.builder(TestService.class).chatModel(chatModel).build();

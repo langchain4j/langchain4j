@@ -223,7 +223,7 @@ abstract class OllamaBaseChatModel {
          * <pre>
          * <code>true</code>: the LLM thinks and returns thoughts in a separate <code>thinking</code> field
          * <code>false</code>: the LLM does not think
-         * <code>null</code> (not set): reasoning LLMs (e.g., DeepSeek R1) will prepend thoughts, delimited by </code>&lt;think&gt;</code> and </code>&lt;/think&gt;</code>, to the actual response
+         * <code>null</code> (not set): reasoning LLMs (e.g., DeepSeek R1) will prepend thoughts, delimited by </code>&lt;think&gt;</code> and </code>&lt;/think&gt;</code>, to the actual responses
          * </pre>
          *
          * @see #returnThinking(Boolean)
@@ -237,7 +237,7 @@ abstract class OllamaBaseChatModel {
          * Controls whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}
          * and whether to invoke the {@link StreamingChatResponseHandler#onPartialThinking(PartialThinking)} callback.
          * Please note that this does not enable thinking/reasoning for the LLM;
-         * it only controls whether to parse the {@code thinking} field from the API response
+         * it only controls whether to parse the {@code thinking} field from the API responses
          * and return it inside the {@link AiMessage}.
          * <p>
          * Disabled by default.

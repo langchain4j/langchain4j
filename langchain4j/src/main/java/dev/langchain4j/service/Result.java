@@ -14,7 +14,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * Represents the result of an AI Service invocation.
- * It contains actual content (LLM response) and additional information associated with it,
+ * It contains actual content (LLM responses) and additional information associated with it,
  * such as:
  * <pre>
  * - Aggregate {@link TokenUsage} over all calls to the {@link ChatModel}
@@ -88,7 +88,7 @@ public class Result<T> {
     }
 
     /**
-     * Returns finish reason of the final {@link ChatModel} response (taken from {@link #finalResponse()}).
+     * Returns finish reason of the final {@link ChatModel} responses (taken from {@link #finalResponse()}).
      */
     public FinishReason finishReason() {
         return finishReason;
@@ -112,8 +112,8 @@ public class Result<T> {
     }
 
     /**
-     * Returns final chat response returned by the {@link ChatModel}.
-     * This response does not contain {@link ToolExecutionRequest}s.
+     * Returns final chat responses returned by the {@link ChatModel}.
+     * This responses does not contain {@link ToolExecutionRequest}s.
      *
      * @since 1.2.0
      */

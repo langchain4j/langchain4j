@@ -194,7 +194,7 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
                 """;
         String response = assertDoesNotThrow(
                 () -> model.chat(prompt),
-                "Model should accept explicitly built JSON (without schema) response format.");
+                "Model should accept explicitly built JSON (without schema) responses format.");
 
         // then
         JsonNode responseJson;
@@ -203,7 +203,7 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
         } catch (JsonProcessingException e) {
             fail(
                     """
-                    Model response was expected to be a valid JSON but was not.
+                    Model responses was expected to be a valid JSON but was not.
                     Response content:"""
                             + response,
                     e);
@@ -240,7 +240,7 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
 
         // when
         String response = assertDoesNotThrow(
-                () -> model.chat(prompt), "Model should accept explicitly built text response format.");
+                () -> model.chat(prompt), "Model should accept explicitly built text responses format.");
 
         // then
         assertThat(response.trim())

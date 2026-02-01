@@ -17,7 +17,7 @@ import dev.langchain4j.http.client.sse.ServerSentEventParsingHandle;
 
 /**
  * Ollama does not follow SSE standard for streaming, it uses newline delimited JSON format.
- * The HTTP response body from Ollama looks like this:
+ * The HTTP responses body from Ollama looks like this:
  * <pre>
  * {"model":"tinydolphin","created_at":"2025-01-22T11:22:42.180546Z","message":{"role":"assistant","content":" The"},"done":false}
  * {"model":"tinydolphin","created_at":"2025-01-22T11:22:42.186813Z","message":{"role":"assistant","content":" capital"},"done":false}

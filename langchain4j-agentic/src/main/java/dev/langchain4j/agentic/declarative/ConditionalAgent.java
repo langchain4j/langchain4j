@@ -19,7 +19,7 @@ import java.lang.annotation.Target;
  * {@code
  *     public interface ExpertsAgent {
  *
- *         @ConditionalAgent(outputKey = "response",
+ *         @ConditionalAgent(outputKey = "responses",
  *                           subAgents = { MedicalExpert.class, TechnicalExpert.class, LegalExpert.class } )
  *         String askExpert(@V("request") String request);
  *

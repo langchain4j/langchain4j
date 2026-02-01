@@ -9,18 +9,21 @@ import dev.langchain4j.Experimental;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Represents the response of a batch operation.
+ * Represents the responses of a batch operation.
  *
- * <p>A batch response contains the batch identifier, current state, and optionally the results
+ * <p>A batch responses contains the batch identifier, current state, and optionally the results
  * when the batch has completed successfully.</p>
  *
- * @param <T>       the type of the response payload (e.g., {@code List<ChatResponse>}, {@code List<Embedding>})
+ * @param <T>       the type of the responses payload (e.g., {@code List<ChatResponse>}, {@code List<Embedding>})
  * @param batchName the unique identifier for this batch operation
  * @param state     the current state of the batch job
- * @param response  the batch results, or {@code null} if the batch has not completed successfully
+ * @param responses  the batch results, or {@code null} if the batch has not completed successfully
  */
 @Experimental
-public record BatchResponse<T>(BatchName batchName, BatchJobState state, List<T> response) {
+public record BatchResponse<T>(BatchName batchName,
+                               BatchJobState state,
+                               List<T> responses,
+                               @Nullable List<ExtractedBatchResults.Status> errors) {
     private static final List<BatchJobState> TERMINAL_BATCH_STATES = List.of(
             BATCH_STATE_EXPIRED, BATCH_STATE_FAILED, BATCH_STATE_SUCCEEDED
     );

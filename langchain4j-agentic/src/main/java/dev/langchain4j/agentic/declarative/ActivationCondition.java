@@ -15,10 +15,10 @@ import java.lang.annotation.Target;
  * {@code
  *     public interface ExpertsAgent {
  *
- *         @ConditionalAgent(outputKey = "response", subAgents = {
- *                 @SubAgent(type = MedicalExpert.class, outputKey = "response"),
- *                 @SubAgent(type = TechnicalExpert.class, outputKey = "response"),
- *                 @SubAgent(type = LegalExpert.class, outputKey = "response")
+ *         @ConditionalAgent(outputKey = "responses", subAgents = {
+ *                 @SubAgent(type = MedicalExpert.class, outputKey = "responses"),
+ *                 @SubAgent(type = TechnicalExpert.class, outputKey = "responses"),
+ *                 @SubAgent(type = LegalExpert.class, outputKey = "responses")
  *         })
  *         String askExpert(@V("request") String request);
  *

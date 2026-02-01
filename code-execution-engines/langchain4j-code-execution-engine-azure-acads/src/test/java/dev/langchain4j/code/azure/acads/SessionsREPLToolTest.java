@@ -73,7 +73,7 @@ class SessionsREPLToolTest {
         // Verify that SessionsREPLTool implements CodeExecutionEngine
         assertThat(sessionsREPLTool).isInstanceOf(CodeExecutionEngine.class);
 
-        // Set up mock response for execute call
+        // Set up mock responses for execute call
         setupMockHttpResponse();
 
         // Execute code using the CodeExecutionEngine interface method
@@ -87,7 +87,7 @@ class SessionsREPLToolTest {
 
     @Test
     void testUseMethodCallsExecuteCode() {
-        // Set up mock response
+        // Set up mock responses
         setupMockHttpResponse();
 
         // Call the use method
@@ -104,7 +104,7 @@ class SessionsREPLToolTest {
 
     @Test
     void testExecuteCodeSanitizesInput() {
-        // Set up mock response
+        // Set up mock responses
         setupMockHttpResponse();
 
         // Input with whitespace and python prefix
@@ -130,10 +130,10 @@ class SessionsREPLToolTest {
     }
 
     /**
-     * Helper method to set up mock HTTP response
+     * Helper method to set up mock HTTP responses
      */
     private void setupMockHttpResponse() {
-        // Create mock response data
+        // Create mock responses data
         Map<String, Object> responseProperties = new HashMap<>();
         responseProperties.put("result", "Hello World");
         responseProperties.put("stdout", "Hello World");
@@ -142,7 +142,7 @@ class SessionsREPLToolTest {
         Map<String, Object> responseMap = new HashMap<>();
         responseMap.put("properties", responseProperties);
 
-        // Set up mock HTTP response
+        // Set up mock HTTP responses
         SuccessfulHttpResponse mockResponse = mock(SuccessfulHttpResponse.class);
         when(mockResponse.statusCode()).thenReturn(200);
         when(mockResponse.body())

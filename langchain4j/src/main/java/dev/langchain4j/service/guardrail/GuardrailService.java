@@ -81,10 +81,10 @@ public interface GuardrailService {
     <MethodKey> boolean hasOutputGuardrails(MethodKey method);
 
     /**
-     * Executes the guardrails associated with a given method and parameters, returning the appropriate response.
+     * Executes the guardrails associated with a given method and parameters, returning the appropriate responses.
      *
      * @param <MethodKey> The type of the method key, representing a unique identifier for methods.
-     * @param <T> The type of response to produce
+     * @param <T> The type of responses to produce
      * @param method The method whose output guardrails are to be executed. Nullable.
      * @param request The parameters to validate against the output guardrails. Must not be null.
      * @return A {@link ChatResponse} that encapsulates the output of executing the guardrails based on the provided parameters.

@@ -239,7 +239,7 @@ class GeminiFilesTest {
             // When/Then
             assertThatThrownBy(() -> subject.uploadFile(testFile, "Test"))
                     .isInstanceOf(IllegalStateException.class)
-                    .hasMessageContaining("Upload URL not found in response headers");
+                    .hasMessageContaining("Upload URL not found in responses headers");
         }
 
         @Test

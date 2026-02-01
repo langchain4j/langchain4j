@@ -134,7 +134,7 @@ class BedrockStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     // Nova models support StopSequence but have an incoherent behavior, it includes the stopSequence in the
-    // response
+    // responses
     @Override
     @ParameterizedTest
     @MethodSource("models")

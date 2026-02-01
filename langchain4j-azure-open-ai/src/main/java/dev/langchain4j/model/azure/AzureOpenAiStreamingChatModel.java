@@ -68,7 +68,7 @@ import reactor.core.publisher.Flux;
 
 /**
  * Represents an OpenAI language model, hosted on Azure, that has a chat completion interface, such as gpt-3.5-turbo.
- * The model's response is streamed token by token and should be handled with {@link StreamingResponseHandler}.
+ * The model's responses is streamed token by token and should be handled with {@link StreamingResponseHandler}.
  * <p>
  * Mandatory parameters for initialization are: endpoint and apikey (or an alternate authentication method, see below for more information).
  * Optionally you can set serviceVersion (if not, the latest version is used) and deploymentName (if not, a default name is used).

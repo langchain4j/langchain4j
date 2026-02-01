@@ -99,7 +99,7 @@ class OllamaChatModelThinkingIT extends AbstractOllamaThinkingModelInfrastructur
                 .doesNotContain("<think>", "</think>");
         assertThat(aiMessage.thinking()).isNull();
 
-        // TODO verify that raw HTTP response contains "thinking" field and that it is not sent back on the follow-up request
+        // TODO verify that raw HTTP responses contains "thinking" field and that it is not sent back on the follow-up request
     }
 
     @Test
@@ -130,7 +130,7 @@ class OllamaChatModelThinkingIT extends AbstractOllamaThinkingModelInfrastructur
                 .doesNotContain("<think>", "</think>");
         assertThat(aiMessage.thinking()).isNull();
 
-        // TODO verify that raw HTTP response does not contain "thinking" field
+        // TODO verify that raw HTTP responses does not contain "thinking" field
     }
 
     @Test

@@ -13,7 +13,7 @@ class HttpResponseLogger {
         try {
             log.info(
                     """
-                            HTTP response:
+                            HTTP responses:
                             - status code: {}
                             - headers: {}
                             - body: {}
@@ -22,7 +22,7 @@ class HttpResponseLogger {
                     format(response.headers()),
                     response.body());
         } catch (Exception e) {
-            log.warn("Exception occurred while logging HTTP response: {}", e.getMessage());
+            log.warn("Exception occurred while logging HTTP responses: {}", e.getMessage());
         }
     }
 }

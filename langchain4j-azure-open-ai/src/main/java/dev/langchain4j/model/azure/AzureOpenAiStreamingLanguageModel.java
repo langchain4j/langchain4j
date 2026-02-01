@@ -30,7 +30,7 @@ import java.util.Map;
 
 /**
  * Represents an OpenAI language model, hosted on Azure, such as gpt-3.5-turbo-instruct.
- * The LLM's response is streamed token by token and should be handled with {@link StreamingResponseHandler}.
+ * The LLM's responses is streamed token by token and should be handled with {@link StreamingResponseHandler}.
  * <p>
  * Mandatory parameters for initialization are: endpoint and apikey (or an alternate authentication method, see below for more information).
  * Optionally you can set serviceVersion (if not, the latest version is used) and deploymentName (if not, a default name is used).

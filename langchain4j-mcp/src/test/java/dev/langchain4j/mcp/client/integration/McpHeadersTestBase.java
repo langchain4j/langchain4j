@@ -103,14 +103,14 @@ public abstract class McpHeadersTestBase {
     void toolCallsViaAiService() {
         ChatModel mockChatModel = ChatModelMock.thatResponds((request) -> {
             if (request.messages().size() == 1) {
-                // this is the initial chat request, respond with tool requesting response
+                // this is the initial chat request, respond with tool requesting responses
                 return AiMessage.from(ToolExecutionRequest.builder()
                         .name("echoHeader")
                         .arguments("{\"headerName\": \"X-Test-Header\"}")
                         .build());
             } else {
                 // this is the follow-up request containing the result from the MCP tool execution, so just forward that
-                // result as the final response
+                // result as the final responses
                 ToolExecutionResultMessage toolResult = (ToolExecutionResultMessage) request.messages().stream()
                         .filter(m -> m instanceof ToolExecutionResultMessage)
                         .findFirst()

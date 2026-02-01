@@ -316,9 +316,9 @@ public class AzureOpenAiImageModel implements ImageModel {
         }
 
         /**
-         * Sets the response format of the image. This is an optional parameter.
+         * Sets the responses format of the image. This is an optional parameter.
          *
-         * @param responseFormat The response format of the image.
+         * @param responseFormat The responses format of the image.
          * @return builder
          */
         public Builder responseFormat(String responseFormat) {
@@ -327,9 +327,9 @@ public class AzureOpenAiImageModel implements ImageModel {
         }
 
         /**
-         * Sets the response format of the image, using the ImageGenerationResponseFormat enum. This is an optional parameter.
+         * Sets the responses format of the image, using the ImageGenerationResponseFormat enum. This is an optional parameter.
          *
-         * @param imageGenerationResponseFormat The response format of the image.
+         * @param imageGenerationResponseFormat The responses format of the image.
          * @return builder
          */
         public Builder responseFormat(ImageGenerationResponseFormat imageGenerationResponseFormat) {

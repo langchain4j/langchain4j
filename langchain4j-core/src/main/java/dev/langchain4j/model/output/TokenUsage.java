@@ -5,7 +5,7 @@ import java.util.Objects;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
 /**
- * Represents the token usage of a response.
+ * Represents the token usage of a responses.
  */
 public class TokenUsage {
 

@@ -4,6 +4,11 @@ import static dev.langchain4j.internal.Utils.firstNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.model.batch.BatchJobState;
+import dev.langchain4j.model.batch.BatchList;
+import dev.langchain4j.model.batch.BatchName;
+import dev.langchain4j.model.batch.BatchResponse;
+import dev.langchain4j.model.batch.ExtractedBatchResults;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateFileRequest;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateFileRequest.FileBatch;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateFileRequest.FileInputConfig;
@@ -13,11 +18,6 @@ import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateRequest.In
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateRequest.InputConfig;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateRequest.Requests;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateResponse;
-import dev.langchain4j.model.googleai.BatchRequestResponse.BatchJobState;
-import dev.langchain4j.model.googleai.BatchRequestResponse.BatchList;
-import dev.langchain4j.model.googleai.BatchRequestResponse.BatchName;
-import dev.langchain4j.model.googleai.BatchRequestResponse.BatchResponse;
-import dev.langchain4j.model.googleai.BatchRequestResponse.BatchSuccess;
 import dev.langchain4j.model.googleai.BatchRequestResponse.Operation;
 import java.util.List;
 import java.util.Map;
@@ -28,9 +28,9 @@ import org.jspecify.annotations.Nullable;
  * Uses composition to provide batch functionality to different model types.
  *
  * @param <REQUEST>      The high-level request type (e.g., ChatRequest, TextSegment)
- * @param <RESPONSE>     The high-level response type (e.g., ChatResponse, Embedding)
+ * @param <RESPONSE>     The high-level responses type (e.g., ChatResponse, Embedding)
  * @param <API_REQUEST>  The low-level API request type (e.g., GeminiGenerateContentRequest, GeminiEmbeddingRequest)
- * @param <API_RESPONSE> The low-level API response type (e.g., GeminiGenerateContentResponse, GeminiEmbeddingResponse)
+ * @param <API_RESPONSE> The low-level API responses type (e.g., GeminiGenerateContentResponse, GeminiEmbeddingResponse)
  */
 @Experimental
 final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
@@ -46,8 +46,8 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
     /**
      * Creates and enqueues a batch of requests for asynchronous processing.
      */
-    BatchResponse<RESPONSE> createBatchInline(
-            String displayName,
+    BatchResponse<RESPONSE> createBatch(
+            @Nullable String displayName,
             @Nullable Long priority,
             List<REQUEST> requests,
             String modelName,
@@ -61,9 +61,12 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
         var request = new BatchCreateRequest<>(new Batch<>(
                 displayName, new InputConfig<>(new Requests<>(inlineRequests)), getOrDefault(priority, 0L)));
 
-        return processResponse(geminiService.batchCreate(modelName, request, operationType), preparer);
+        return processResponse(geminiService.batchCreate(modelName, request, operationType));
     }
 
+    /**
+     * Creates a batch from a previously uploaded file.
+     */
     BatchResponse<RESPONSE> createBatchFromFile(
             String displayName,
             GeminiFiles.GeminiFile file,
@@ -73,8 +76,7 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
                 geminiService.batchCreate(
                         modelName,
                         new BatchCreateFileRequest(new FileBatch(displayName, new FileInputConfig(file.name()))),
-                        operationType),
-                preparer);
+                        operationType));
     }
 
     /**
@@ -83,7 +85,7 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
     @SuppressWarnings("unchecked")
     BatchResponse<RESPONSE> retrieveBatchResults(BatchName name) {
         var operation = geminiService.batchRetrieveBatch(name.value());
-        return processResponse((Operation<API_RESPONSE>) operation, preparer);
+        return processResponse((Operation<API_RESPONSE>) operation);
     }
 
     /**
@@ -101,44 +103,40 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
     }
 
     /**
-     * Lists batch jobs.
+     * Lists batch jobs with optional pagination.
      */
     @SuppressWarnings("unchecked")
     BatchList<RESPONSE> listBatchJobs(@Nullable Integer pageSize, @Nullable String pageToken) {
         var response = geminiService.<List<API_RESPONSE>>batchListBatches(pageSize, pageToken);
 
-        return new BatchList<>(
-                response.nextPageToken(),
-                firstNotNull("operationsResponse", response.operations(), List.of()).stream()
-                        .map(operation -> processResponse((Operation<API_RESPONSE>) operation, preparer))
-                        .toList());
+        var batches = firstNotNull("operationsResponse", response.operations(), List.<Operation<API_RESPONSE>>of())
+                .stream()
+                .map(operation -> processResponse((Operation<API_RESPONSE>) operation))
+                .toList();
+
+        return new BatchList<>(batches, response.nextPageToken());
     }
 
     /**
-     * Processes the operation response and returns the appropriate BatchResponse.
+     * Processes the operation responses and returns the appropriate BatchResponse.
      */
-    private BatchResponse<RESPONSE> processResponse(
-            Operation<API_RESPONSE> operation, RequestPreparer<REQUEST, API_REQUEST, API_RESPONSE, RESPONSE> preparer) {
+    private BatchResponse<RESPONSE> processResponse(Operation<API_RESPONSE> operation) {
+        BatchJobState state = extractBatchState(operation.metadata());
+        BatchName batchName = new BatchName(operation.name());
+
         if (operation.done()) {
             if (operation.error() != null) {
-                return new BatchRequestResponse.BatchError<>(
-                        new BatchName(operation.name()),
-                        operation.error().code(),
-                        operation.error().message(),
-                        extractBatchState(operation.metadata()),
-                        operation.error().details());
+                return new BatchResponse<>(batchName, BatchJobState.BATCH_STATE_FAILED, List.of(), null);
             } else {
-                var extractedResults = preparer.extractResults(operation.response());
-                return new BatchSuccess<>(
-                        new BatchName(operation.name()), extractedResults.responses(), extractedResults.errors());
+                var responses = preparer.extractResults(operation.response());
+                return new BatchResponse<>(batchName, BatchJobState.BATCH_STATE_SUCCEEDED, responses.responses(), responses.errors());
             }
         } else {
-            return new BatchRequestResponse.BatchIncomplete<>(
-                    new BatchName(operation.name()), extractBatchState(operation.metadata()));
+            return new BatchResponse<>(batchName, state, List.of(), null);
         }
     }
 
-    private BatchJobState extractBatchState(Map<String, Object> metadata) {
+    private BatchJobState extractBatchState(@Nullable Map<String, Object> metadata) {
         if (metadata == null) {
             return BatchJobState.UNSPECIFIED;
         }
@@ -155,16 +153,28 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
         }
     }
 
-    record ExtractedBatchResults<T>(List<T> responses, List<BatchRequestResponse.Operation.Status> errors) {}
-
     /**
      * Interface for preparing requests and extracting responses.
+     *
+     * @param <REQUEST>      the high-level request type
+     * @param <API_REQUEST>  the low-level API request type
+     * @param <API_RESPONSE> the low-level API responses type
+     * @param <RESPONSE>     the high-level responses type
      */
     interface RequestPreparer<REQUEST, API_REQUEST, API_RESPONSE, RESPONSE> {
+        /**
+         * Prepares a request by applying defaults and overrides.
+         */
         REQUEST prepareRequest(REQUEST request);
 
+        /**
+         * Converts a high-level request to the low-level API request format.
+         */
         API_REQUEST createInlinedRequest(REQUEST request);
 
+        /**
+         * Extracts high-level responses from the API responses.
+         */
         ExtractedBatchResults<RESPONSE> extractResults(BatchCreateResponse<API_RESPONSE> response);
     }
 }

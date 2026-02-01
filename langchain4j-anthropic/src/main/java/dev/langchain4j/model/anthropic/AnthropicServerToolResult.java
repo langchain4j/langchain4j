@@ -39,7 +39,7 @@ public class AnthropicServerToolResult {
     }
 
     /**
-     * The raw content from the API response.
+     * The raw content from the API responses.
      * For web_search: typically a {@code List<Map<String, Object>>} with search results.
      * For code_execution: typically a {@code Map<String, Object>} with stdout, stderr, return_code, etc.
      */

@@ -7,7 +7,7 @@ import dev.langchain4j.model.output.TokenUsage;
 import java.util.Objects;
 
 /**
- * Represents common chat response metadata supported by most LLM providers.
+ * Represents common chat responses metadata supported by most LLM providers.
  * Specific LLM provider integrations can extend this interface to add provider-specific metadata.
  */
 @JacocoIgnoreCoverageGenerated

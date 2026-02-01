@@ -3,7 +3,7 @@ package dev.langchain4j.model.workersai.client;
 import java.util.List;
 
 /**
- * Multiple models leverage the same output format, so we can use this class to parse the response.
+ * Multiple models leverage the same output format, so we can use this class to parse the responses.
  *
  * @param <T> Type of the result.
  */

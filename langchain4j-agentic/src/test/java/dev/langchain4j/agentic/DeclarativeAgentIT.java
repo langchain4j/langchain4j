@@ -375,7 +375,7 @@ public class DeclarativeAgentIT {
 
     public interface ExpertsAgent {
 
-        @ConditionalAgent( outputKey = "response",
+        @ConditionalAgent( outputKey = "responses",
                 subAgents = { MedicalExpert.class, TechnicalExpert.class, LegalExpert.class } )
         String askExpert(@V("request") String request);
 
@@ -397,7 +397,7 @@ public class DeclarativeAgentIT {
 
     public interface ExpertRouterAgent extends AgentInstance {
 
-        @SequenceAgent( outputKey = "response",
+        @SequenceAgent( outputKey = "responses",
                 subAgents = { CategoryRouter.class, ExpertsAgent.class })
         ResultWithAgenticScope<String> ask(@V("request") String request);
     }
@@ -414,7 +414,7 @@ public class DeclarativeAgentIT {
         AgentInstance conditionalAgentInstance = expertRouterAgent.subagents().get(1);
         assertThat(conditionalAgentInstance.name()).isEqualTo("askExpert");
         assertThat(conditionalAgentInstance.outputType()).isEqualTo(String.class);
-        assertThat(conditionalAgentInstance.outputKey()).isEqualTo("response");
+        assertThat(conditionalAgentInstance.outputKey()).isEqualTo("responses");
         assertThat(conditionalAgentInstance.topology()).isEqualTo(AgenticSystemTopology.ROUTER);
         assertThat(conditionalAgentInstance.subagents()).hasSize(3);
 
@@ -534,7 +534,7 @@ public class DeclarativeAgentIT {
             Analyze the following user request under a medical point of view and provide the best possible answer.
             The user request is {{request}}.
             """)
-        @Agent(description = "A medical expert", outputKey = "response")
+        @Agent(description = "A medical expert", outputKey = "responses")
         String medical(@MemoryId String memoryId, @V("request") String request);
 
         @ChatMemoryProviderSupplier
@@ -556,7 +556,7 @@ public class DeclarativeAgentIT {
             Analyze the following user request under a legal point of view and provide the best possible answer.
             The user request is {{request}}.
             """)
-        @Agent(description = "A legal expert", outputKey = "response", summarizedContext = {"medical", "technical"})
+        @Agent(description = "A legal expert", outputKey = "responses", summarizedContext = {"medical", "technical"})
         String legal(@MemoryId String memoryId, @V("request") String request);
 
         @ChatMemoryProviderSupplier
@@ -578,7 +578,7 @@ public class DeclarativeAgentIT {
             Analyze the following user request under a technical point of view and provide the best possible answer.
             The user request is {{request}}.
             """)
-        @Agent(description = "A technical expert", outputKey = "response")
+        @Agent(description = "A technical expert", outputKey = "responses")
         String technical(@MemoryId String memoryId, @V("request") String request);
 
         @ChatMemoryProviderSupplier
@@ -594,7 +594,7 @@ public class DeclarativeAgentIT {
 
     public interface ExpertsAgentWithMemory {
 
-        @ConditionalAgent( outputKey = "response",
+        @ConditionalAgent( outputKey = "responses",
                 subAgents = { MedicalExpertWithMemory.class, TechnicalExpertWithMemory.class, LegalExpertWithMemory.class })
         String askExpert(@V("request") String request);
 
@@ -624,7 +624,7 @@ public class DeclarativeAgentIT {
 
     public interface ExpertRouterAgentWithMemory extends AgenticScopeAccess {
 
-        @SequenceAgent( outputKey = "response",
+        @SequenceAgent( outputKey = "responses",
                 subAgents = { CategoryRouterWithModel.class, ExpertsAgentWithMemory.class })
         String ask(@MemoryId String memoryId, @V("request") String request);
     }

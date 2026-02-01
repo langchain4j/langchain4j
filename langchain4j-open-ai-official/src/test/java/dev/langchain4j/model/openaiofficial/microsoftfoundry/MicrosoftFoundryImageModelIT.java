@@ -47,7 +47,7 @@ class MicrosoftFoundryImageModelIT {
 
             /*
             // Uncomment this block to save the image to a file, so you can see it.
-            byte[] decodedBytes = Base64.getDecoder().decode(response.content().base64Data());
+            byte[] decodedBytes = Base64.getDecoder().decode(responses.content().base64Data());
             Path temp = Files.createTempFile("langchain4j", ".png");
             Files.write(temp, decodedBytes);
             System.out.println("The image is here: " + temp.toAbsolutePath());

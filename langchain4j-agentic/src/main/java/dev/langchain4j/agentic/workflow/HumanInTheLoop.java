@@ -25,7 +25,7 @@ public record HumanInTheLoop(
     public static class HumanInTheLoopBuilder {
 
         private String inputKey = "request";
-        private String outputKey = "response";
+        private String outputKey = "responses";
         private String description = "An agent that asks the user for missing information";
         private boolean async = false;
         private Consumer<?> requestWriter;

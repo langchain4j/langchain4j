@@ -125,7 +125,7 @@ class ChromaHttpClient {
             try {
                 return objectMapper.readValue(response.body(), responseType);
             } catch (JsonProcessingException e) {
-                throw new RuntimeException("Failed to parse response: " + response.body(), e);
+                throw new RuntimeException("Failed to parse responses: " + response.body(), e);
             }
         } catch (HttpException e) {
             throw new RuntimeException("HTTP error: " + e.getMessage(), e);

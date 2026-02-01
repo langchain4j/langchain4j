@@ -26,7 +26,7 @@ import java.util.Objects;
  * </pre>
  * <p>
  * In case this message contains tool execution requests,
- * the response to this message should be one {@link ToolExecutionResultMessage} for each tool execution request.
+ * the responses to this message should be one {@link ToolExecutionResultMessage} for each tool execution request.
  */
 public class AiMessage implements ChatMessage {
 

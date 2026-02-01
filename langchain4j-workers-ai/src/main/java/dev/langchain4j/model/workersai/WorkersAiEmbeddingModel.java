@@ -143,7 +143,7 @@ public class WorkersAiEmbeddingModel extends AbstractWorkersAIModel implements E
 
             processErrors(retrofitResponse.body(), retrofitResponse.errorBody());
             if (retrofitResponse.body() == null) {
-                throw new RuntimeException("Unexpected response: " + retrofitResponse);
+                throw new RuntimeException("Unexpected responses: " + retrofitResponse);
             }
             dev.langchain4j.model.workersai.client.WorkersAiEmbeddingResponse.EmbeddingResult res = retrofitResponse.body().getResult();
             // Single Vector expected
@@ -229,7 +229,7 @@ public class WorkersAiEmbeddingModel extends AbstractWorkersAIModel implements E
                 .execute();
         processErrors(retrofitResponse.body(), retrofitResponse.errorBody());
         if (retrofitResponse.body() == null) {
-            throw new RuntimeException("Unexpected response: " + retrofitResponse);
+            throw new RuntimeException("Unexpected responses: " + retrofitResponse);
         }
         WorkersAiEmbeddingResponse.EmbeddingResult res = retrofitResponse.body().getResult();
 

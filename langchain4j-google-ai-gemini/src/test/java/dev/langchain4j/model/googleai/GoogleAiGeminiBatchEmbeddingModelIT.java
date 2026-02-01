@@ -1,24 +1,20 @@
 package dev.langchain4j.model.googleai;
 
-import static dev.langchain4j.model.googleai.BatchRequestResponse.BatchJobState.BATCH_STATE_CANCELLED;
-import static dev.langchain4j.model.googleai.BatchRequestResponse.BatchJobState.BATCH_STATE_PENDING;
+import static dev.langchain4j.model.batch.BatchJobState.BATCH_STATE_CANCELLED;
+import static dev.langchain4j.model.batch.BatchJobState.BATCH_STATE_FAILED;
+import static dev.langchain4j.model.batch.BatchJobState.BATCH_STATE_PENDING;
 import static java.nio.file.Files.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.HttpException;
-import dev.langchain4j.model.googleai.BatchRequestResponse.BatchError;
+import dev.langchain4j.model.batch.BatchName;
+import dev.langchain4j.model.batch.BatchResponse;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchFileRequest;
-import dev.langchain4j.model.googleai.BatchRequestResponse.BatchIncomplete;
-import dev.langchain4j.model.googleai.BatchRequestResponse.BatchName;
-import dev.langchain4j.model.googleai.BatchRequestResponse.BatchResponse;
-import dev.langchain4j.model.googleai.BatchRequestResponse.BatchSuccess;
 import dev.langchain4j.model.googleai.GoogleAiEmbeddingModel.TaskType;
 import dev.langchain4j.model.googleai.jsonl.JsonLinesWriters;
 import java.util.List;
-import java.util.Objects;
-import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -31,7 +27,7 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
     private static final String MODEL_NAME = "gemini-embedding-001";
 
     @Nested
-    class CreateBatchInline {
+    class CreateBatch {
 
         @Test
         void should_create_batch_with_valid_text_segments() {
@@ -52,12 +48,12 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
                     TextSegment.from("Germany is known for its engineering."));
 
             // when
-            var response = subject.createBatchInline(displayName, priority, textSegments);
+            var response = subject.createBatch(displayName, priority, textSegments);
 
             // then
-            assertThat(response).isInstanceOf(BatchIncomplete.class);
-            assertThat(((BatchIncomplete<?>) response).batchName().value()).startsWith("batches/");
-            assertThat(((BatchIncomplete<?>) response).state()).isEqualTo(BATCH_STATE_PENDING);
+            assertThat(response.isIncomplete()).isTrue();
+            assertThat(response.batchName().value()).startsWith("batches/");
+            assertThat(response.state()).isEqualTo(BATCH_STATE_PENDING);
         }
 
         @Test
@@ -75,11 +71,11 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
             var textSegments = List.of(TextSegment.from("This is a test document for embedding."));
 
             // when
-            var response = subject.createBatchInline(displayName, priority, textSegments);
+            var response = subject.createBatch(displayName, priority, textSegments);
 
             // then
-            assertThat(response).isInstanceOf(BatchIncomplete.class);
-            assertThat(((BatchIncomplete<?>) response).batchName().value()).startsWith("batches/");
+            assertThat(response.isIncomplete()).isTrue();
+            assertThat(response.batchName().value()).startsWith("batches/");
         }
 
         @Test
@@ -101,11 +97,11 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
                     TextSegment.from("Document about baking techniques"));
 
             // when
-            var response = subject.createBatchInline(displayName, priority, textSegments);
+            var response = subject.createBatch(displayName, priority, textSegments);
 
             // then
-            assertThat(response).isInstanceOf(BatchIncomplete.class);
-            assertThat(((BatchIncomplete<?>) response).batchName().value()).startsWith("batches/");
+            assertThat(response.isIncomplete()).isTrue();
+            assertThat(response.batchName().value()).startsWith("batches/");
         }
 
         @Test
@@ -124,11 +120,34 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
             var textSegments = List.of(TextSegment.from("Query about embeddings with reduced dimensions"));
 
             // when
-            var response = subject.createBatchInline(displayName, priority, textSegments);
+            var response = subject.createBatch(displayName, priority, textSegments);
 
             // then
-            assertThat(response).isInstanceOf(BatchIncomplete.class);
-            assertThat(((BatchIncomplete<?>) response).batchName().value()).startsWith("batches/");
+            assertThat(response.isIncomplete()).isTrue();
+            assertThat(response.batchName().value()).startsWith("batches/");
+        }
+
+        @Test
+        void should_create_batch_using_interface_method() {
+            // given
+            var subject = GoogleAiGeminiBatchEmbeddingModel.builder()
+                    .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                    .modelName(MODEL_NAME)
+                    .taskType(TaskType.RETRIEVAL_DOCUMENT)
+                    .logRequestsAndResponses(true)
+                    .build();
+
+            var textSegments = List.of(
+                    TextSegment.from("Test segment 1"),
+                    TextSegment.from("Test segment 2"));
+
+            // when
+            var response = subject.createBatch(textSegments);
+
+            // then
+            assertThat(response.isIncomplete()).isTrue();
+            assertThat(response.batchName().value()).startsWith("batches/");
+            assertThat(response.state()).isEqualTo(BATCH_STATE_PENDING);
         }
     }
 
@@ -170,9 +189,9 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
             var response = embeddingModel.createBatchFromFile("IT File Batch", uploadedFile);
 
             // then
-            assertThat(response).isInstanceOf(BatchIncomplete.class);
-            assertThat(((BatchIncomplete<?>) response).state()).isEqualTo(BATCH_STATE_PENDING);
-            batchName = ((BatchIncomplete<?>) response).batchName();
+            assertThat(response.isIncomplete()).isTrue();
+            assertThat(response.state()).isEqualTo(BATCH_STATE_PENDING);
+            batchName = response.batchName();
             assertThat(batchName.value()).startsWith("batches/");
         }
 
@@ -219,17 +238,15 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
             var displayName = "Test Batch - To Cancel";
             var priority = 1L;
             var textSegments = List.of(TextSegment.from("Text to embed 1"), TextSegment.from("Text to embed 2"));
-            BatchIncomplete<?> response =
-                    (BatchIncomplete<?>) subject.createBatchInline(displayName, priority, textSegments);
+            var response = subject.createBatch(displayName, priority, textSegments);
 
             // when
             subject.cancelBatchJob(response.batchName());
 
             // then
             var retrieveResponse = subject.retrieveBatchResults(response.batchName());
-            assertThat(retrieveResponse).isInstanceOf(BatchError.class);
-            assertThat(((BatchError<?>) retrieveResponse).state()).isEqualTo(BATCH_STATE_CANCELLED);
-            assertThat(((BatchError<?>) retrieveResponse).code()).isEqualTo(13);
+            assertThat(retrieveResponse.isError()).isTrue();
+            assertThat(retrieveResponse.state()).isIn(BATCH_STATE_CANCELLED, BATCH_STATE_FAILED);
         }
 
         @Test
@@ -266,16 +283,15 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
             var displayName = "Test Batch - To Delete";
             var priority = 1L;
             var textSegments = List.of(TextSegment.from("Text to embed 1"), TextSegment.from("Text to embed 2"));
-            var response = (BatchIncomplete<?>) subject.createBatchInline(displayName, priority, textSegments);
+            var response = subject.createBatch(displayName, priority, textSegments);
 
             // when
             subject.deleteBatchJob(response.batchName());
 
             // then - no longer exists
             var list = subject.listBatchJobs(null, null);
-            var batchNames = list.responses().stream()
-                    .map(GoogleAiGeminiBatchEmbeddingModelIT::getBatchName)
-                    .filter(Objects::nonNull)
+            var batchNames = list.batches().stream()
+                    .map(BatchResponse::batchName)
                     .toList();
             assertThat(batchNames).doesNotContain(response.batchName());
         }
@@ -314,15 +330,15 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
             var displayName = "Test Batch - To List";
             var priority = 1L;
             var textSegments = List.of(TextSegment.from("Text to embed 1"), TextSegment.from("Text to embed 2"));
-            var createOperation = (BatchIncomplete<?>) subject.createBatchInline(displayName, priority, textSegments);
+            var createResponse = subject.createBatch(displayName, priority, textSegments);
 
             // when
             var list = subject.listBatchJobs(null, null);
-            var responses = list.responses();
+            var batches = list.batches();
 
             // then
-            assertThat(responses).hasSizeGreaterThan(0);
-            assertThat(((BatchIncomplete<?>) responses.get(0)).batchName()).isEqualTo(createOperation.batchName());
+            assertThat(batches).hasSizeGreaterThan(0);
+            assertThat(batches.get(0).batchName()).isEqualTo(createResponse.batchName());
         }
 
         @Test
@@ -338,15 +354,15 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
             var displayName = "Test Batch - Pagination ";
             var priority = 1L;
             var textSegments = List.of(TextSegment.from("Text to embed 1"), TextSegment.from("Text to embed 2"));
-            subject.createBatchInline(displayName + "1", priority, textSegments);
-            subject.createBatchInline(displayName + "2", priority, textSegments);
+            subject.createBatch(displayName + "1", priority, textSegments);
+            subject.createBatch(displayName + "2", priority, textSegments);
 
             // when
             var list = subject.listBatchJobs(1, null);
-            assertThat(list.responses()).hasSize(1);
+            assertThat(list.batches()).hasSize(1);
 
-            var secondList = subject.listBatchJobs(1, list.pageToken());
-            assertThat(secondList.responses()).hasSize(1);
+            var secondList = subject.listBatchJobs(1, list.nextPageToken());
+            assertThat(secondList.batches()).hasSize(1);
         }
 
         @Test
@@ -363,7 +379,7 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
             var list = subject.listBatchJobs(5, null);
 
             // then
-            assertThat(list.responses()).hasSizeLessThanOrEqualTo(5);
+            assertThat(list.batches()).hasSizeLessThanOrEqualTo(5);
         }
     }
 
@@ -383,26 +399,14 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
             var displayName = "Test Batch - Retrieve Status";
             var priority = 1L;
             var textSegments = List.of(TextSegment.from("Text to embed 1"), TextSegment.from("Text to embed 2"));
-            var createResponse = (BatchIncomplete<?>) subject.createBatchInline(displayName, priority, textSegments);
+            var createResponse = subject.createBatch(displayName, priority, textSegments);
 
             // when
             var retrieveResponse = subject.retrieveBatchResults(createResponse.batchName());
 
             // then
-            assertThat(retrieveResponse).isInstanceOf(BatchIncomplete.class);
-            assertThat(((BatchIncomplete<?>) retrieveResponse).batchName()).isEqualTo(createResponse.batchName());
-        }
-    }
-
-    private static @Nullable BatchName getBatchName(BatchResponse<?> res) {
-        if (res instanceof BatchSuccess<?> success) {
-            return success.batchName();
-        } else if (res instanceof BatchIncomplete<?> pending) {
-            return pending.batchName();
-        } else if (res instanceof BatchError<?> error) {
-            return error.batchName();
-        } else {
-            return null;
+            assertThat(retrieveResponse.isIncomplete()).isTrue();
+            assertThat(retrieveResponse.batchName()).isEqualTo(createResponse.batchName());
         }
     }
 

@@ -36,7 +36,7 @@ class ConversationalChainTest {
     @BeforeEach
     void setUp() {
         chatMemory = spy(MessageWindowChatMemory.withMaxMessages(10));
-        chatModel = ChatModelMock.thatAlwaysResponds("AI response");
+        chatModel = ChatModelMock.thatAlwaysResponds("AI responses");
     }
 
     @Test
@@ -91,7 +91,7 @@ class ConversationalChainTest {
 
         String response = chain.execute("Hello");
 
-        assertThat(response).isEqualTo("AI response");
+        assertThat(response).isEqualTo("AI responses");
     }
 
     @Test
@@ -113,9 +113,9 @@ class ConversationalChainTest {
         String response2 = chain.execute("Second message");
         String response3 = chain.execute("Third message");
 
-        assertThat(response1).isEqualTo("AI response");
-        assertThat(response2).isEqualTo("AI response");
-        assertThat(response3).isEqualTo("AI response");
+        assertThat(response1).isEqualTo("AI responses");
+        assertThat(response2).isEqualTo("AI responses");
+        assertThat(response3).isEqualTo("AI responses");
 
         verify(chatMemory, times(3)).add(any(UserMessage.class));
         verify(chatMemory, times(3)).add(any(AiMessage.class));
@@ -164,7 +164,7 @@ class ConversationalChainTest {
 
         String response = chain.execute(specialMessage);
 
-        assertThat(response).isEqualTo("AI response");
+        assertThat(response).isEqualTo("AI responses");
         verify(chatMemory).add(UserMessage.from(specialMessage));
     }
 
@@ -176,7 +176,7 @@ class ConversationalChainTest {
 
         if (shouldSucceed) {
             String response = chain.execute(message);
-            assertThat(response).isEqualTo("AI response");
+            assertThat(response).isEqualTo("AI responses");
         } else {
             assertThatThrownBy(() -> chain.execute(message))
                     .isExactlyInstanceOf(IllegalArgumentException.class)
@@ -199,7 +199,7 @@ class ConversationalChainTest {
     void should_work_with_custom_chat_memory_implementation() {
         ChatMemory customMemory = mock(ChatMemory.class);
         when(customMemory.messages())
-                .thenReturn(List.of(UserMessage.from("Previous message"), AiMessage.from("Previous response")));
+                .thenReturn(List.of(UserMessage.from("Previous message"), AiMessage.from("Previous responses")));
 
         ConversationalChain chain = ConversationalChain.builder()
                 .chatModel(chatModel)
@@ -208,7 +208,7 @@ class ConversationalChainTest {
 
         String response = chain.execute("Hello");
 
-        assertThat(response).isEqualTo("AI response");
+        assertThat(response).isEqualTo("AI responses");
         verify(customMemory).add(any(UserMessage.class));
         verify(customMemory).add(any(AiMessage.class));
         verify(customMemory, atLeastOnce()).messages();
@@ -226,7 +226,7 @@ class ConversationalChainTest {
 
         String response = chain.execute("Hello");
 
-        assertThat(response).isEqualTo("AI response");
+        assertThat(response).isEqualTo("AI responses");
         assertThat(memoryWithSystem.messages()).hasSize(3); // system + user + ai
         assertThat(memoryWithSystem.messages().get(0)).isInstanceOf(SystemMessage.class);
     }
