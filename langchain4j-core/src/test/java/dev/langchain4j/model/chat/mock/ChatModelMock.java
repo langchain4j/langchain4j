@@ -25,7 +25,7 @@ import java.util.function.Function;
 
 /**
  * An implementation of a {@link ChatModel} useful for unit testing.
- * Always returns a static responses and records all invocations for verification at the end of a test.
+ * Always returns a static response and records all invocations for verification at the end of a test.
  * This implementation is experimental and subject to change in the future. It may utilize Mockito internally.
  */
 @Experimental

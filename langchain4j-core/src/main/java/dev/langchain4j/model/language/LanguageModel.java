@@ -12,18 +12,18 @@ import dev.langchain4j.model.output.Response;
 public interface LanguageModel {
 
     /**
-     * Generate a responses to the given prompt.
+     * Generate a response to the given prompt.
      *
      * @param prompt the prompt.
-     * @return the responses.
+     * @return the response.
      */
     Response<String> generate(String prompt);
 
     /**
-     * Generate a responses to the given prompt.
+     * Generate a response to the given prompt.
      *
      * @param prompt the prompt.
-     * @return the responses.
+     * @return the response.
      */
     default Response<String> generate(Prompt prompt) {
         return generate(prompt.text());

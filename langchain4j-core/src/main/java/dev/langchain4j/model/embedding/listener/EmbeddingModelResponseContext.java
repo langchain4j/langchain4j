@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * The embedding model responses context.
+ * The embedding model response context.
  * It contains the {@link Response}, corresponding input, the {@link EmbeddingModel} and attributes.
  * The attributes can be used to pass data between methods of an {@link EmbeddingModelListener}
  * or between multiple {@link EmbeddingModelListener}s.
@@ -28,7 +28,7 @@ public class EmbeddingModelResponseContext {
     private final Map<Object, Object> attributes;
 
     public EmbeddingModelResponseContext(Builder builder) {
-        this.response = ensureNotNull(builder.response, "responses");
+        this.response = ensureNotNull(builder.response, "response");
         this.textSegments = copy(ensureNotNull(builder.textSegments, "textSegments"));
         this.embeddingModel = ensureNotNull(builder.embeddingModel, "embeddingModel");
         this.attributes = ensureNotNull(builder.attributes, "attributes");

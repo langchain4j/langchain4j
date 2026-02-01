@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
  * The {@link GuardrailExecutor} for {@link OutputGuardrail}s.
  * <p>
  *     When executing output guardrails, if any {@link OutputGuardrail} triggers a reprompt or retry,
- *     the new responses has to go back through the entire chain of output guardrails to ensure the new responses
+ *     the new response has to go back through the entire chain of output guardrails to ensure the new response
  *     passes all the output guardrails.
  * </p>
  */

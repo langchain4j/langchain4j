@@ -9,7 +9,7 @@ import dev.langchain4j.rag.query.Query;
 import java.util.Map;
 
 /**
- * Represents content relevant to a user {@link Query} with the potential to enhance and ground the LLM's responses.
+ * Represents content relevant to a user {@link Query} with the potential to enhance and ground the LLM's response.
  * <br>
  * Currently, it is limited to text content (i.e., {@link TextSegment}),
  * but future expansions may include support for other modalities (e.g., images, audio, video, etc.).

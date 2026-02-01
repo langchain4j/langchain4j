@@ -22,7 +22,7 @@ public interface InputGuardrail extends Guardrail<InputGuardrailRequest, InputGu
      * <p>
      *
      * @param userMessage
-     *            the responses from the LLM
+     *            the response from the LLM
      */
     default InputGuardrailResult validate(UserMessage userMessage) {
         return failure("Validation not implemented");

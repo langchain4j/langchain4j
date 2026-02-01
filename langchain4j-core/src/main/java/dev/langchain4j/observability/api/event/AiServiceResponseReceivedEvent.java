@@ -6,7 +6,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.observability.event.DefaultAiServiceResponseReceivedEvent;
 
 /**
- * Invoked when responses from a {@link dev.langchain4j.model.chat.ChatModel} is received.
+ * Invoked when response from a {@link dev.langchain4j.model.chat.ChatModel} is received.
  * It is important to note that this can be invoked multiple times during a single AI Service invocation
  * when tools or guardrails exist.
  */
@@ -20,7 +20,7 @@ public interface AiServiceResponseReceivedEvent extends AiServiceEvent {
     ChatRequest request();
 
     /**
-     * Retrieves the chat responses from the AI Service invocation event.
+     * Retrieves the chat response from the AI Service invocation event.
      *
      * @return the {@link ChatResponse} object containing the AI-generated message and related metadata.
      */
@@ -82,7 +82,7 @@ public interface AiServiceResponseReceivedEvent extends AiServiceEvent {
         }
 
         /**
-         * Sets the chat responses.
+         * Sets the chat response.
          */
         public AiServiceResponseReceivedEventBuilder response(ChatResponse response) {
             this.response = response;

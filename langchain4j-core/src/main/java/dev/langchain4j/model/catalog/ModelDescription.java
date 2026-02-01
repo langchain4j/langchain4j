@@ -92,7 +92,7 @@ public class ModelDescription {
     }
 
     /**
-     * Maximum number of tokens the model can generate in a single responses.
+     * Maximum number of tokens the model can generate in a single response.
      * This is typically smaller than the context window.
      * May be <code>null</code> if this information is not provided by the provider.
      */
@@ -199,7 +199,7 @@ public class ModelDescription {
         }
 
         /**
-         * Maximum number of tokens the model can generate in a single responses.
+         * Maximum number of tokens the model can generate in a single response.
          */
         public Builder maxOutputTokens(Integer maxOutputTokens) {
             this.maxOutputTokens = maxOutputTokens;

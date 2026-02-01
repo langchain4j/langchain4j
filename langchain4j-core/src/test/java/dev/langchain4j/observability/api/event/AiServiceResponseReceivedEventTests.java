@@ -47,7 +47,7 @@ class AiServiceResponseReceivedEventTests {
                         .invocationContext(INVOCATION_CONTEXT)
                         .request(CHAT_REQUEST)
                         .build(),
-                "responses cannot be null");
+                "response cannot be null");
     }
 
     @Test
@@ -89,7 +89,7 @@ class AiServiceResponseReceivedEventTests {
                 .request(CHAT_REQUEST);
 
         assertIaeWithMessage(
-                () -> new DefaultAiServiceResponseReceivedEvent(noRequestBuilder), "responses cannot be null");
+                () -> new DefaultAiServiceResponseReceivedEvent(noRequestBuilder), "response cannot be null");
     }
 
     @Test

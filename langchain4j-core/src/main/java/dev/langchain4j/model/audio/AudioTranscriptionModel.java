@@ -16,7 +16,7 @@ public interface AudioTranscriptionModel {
      * Given an audio transcription request, generates a transcription.
      *
      * @param request The transcription request containing the audio file and optional parameters
-     * @return The generated transcription responses
+     * @return The generated transcription response
      */
     AudioTranscriptionResponse transcribe(AudioTranscriptionRequest request);
 

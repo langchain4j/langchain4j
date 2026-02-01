@@ -17,7 +17,7 @@ public class DefaultAiServiceResponseReceivedEvent extends AbstractAiServiceEven
 
     public DefaultAiServiceResponseReceivedEvent(AiServiceResponseReceivedEventBuilder builder) {
         super(builder);
-        this.response = ensureNotNull(builder.response(), "responses");
+        this.response = ensureNotNull(builder.response(), "response");
         this.request = ensureNotNull(builder.request(), "request");
     }
 

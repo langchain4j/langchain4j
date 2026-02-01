@@ -12,7 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * An {@link OutputGuardrail} that will check whether or not a responses can be successfully deserialized to an object
+ * An {@link OutputGuardrail} that will check whether or not a response can be successfully deserialized to an object
  * of type {@code T} from JSON
  * <p>
  * If deserialization fails, the LLM will be reprompted with {@link #getInvalidJsonReprompt(AiMessage, String)}, which
@@ -102,10 +102,10 @@ public class JsonExtractorOutputGuardrail<T> implements OutputGuardrail {
     }
 
     /**
-     * Tries to deserialize the provided LLM responses string into an object of type T using the configured {@link ObjectMapper}.
+     * Tries to deserialize the provided LLM response string into an object of type T using the configured {@link ObjectMapper}.
      * If deserialization fails, an empty Optional is returned.
      *
-     * @param llmResponse the JSON-formatted responses string to be deserialized
+     * @param llmResponse the JSON-formatted response string to be deserialized
      * @return an Optional containing the deserialized object if successful, or an empty Optional if deserialization fails
      */
     protected Optional<JsonParsingUtils.ParsedJson<T>> deserialize(String llmResponse) {

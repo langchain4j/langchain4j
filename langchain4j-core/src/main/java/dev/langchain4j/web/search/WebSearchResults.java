@@ -14,14 +14,14 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.stream.Collectors.toList;
 
 /**
- * Represents the responses of a web search performed.
+ * Represents the response of a web search performed.
  * This includes the list of organic search results, information about the search, and pagination information.
  * <p>
  * {@link WebSearchResults} follow opensearch foundation standard implemented by most web search engine libs like Google, Bing, Yahoo, etc.
- * <a href="https://github.com/dewitt/opensearch/blob/master/opensearch-1-1-draft-6.md#examples-of-opensearch-responses">OpenSearch#responses</a>
+ * <a href="https://github.com/dewitt/opensearch/blob/master/opensearch-1-1-draft-6.md#examples-of-opensearch-responses">OpenSearch#response</a>
  * </p>
  * <p>
- * The organic search results are the web pages that are returned by the search engine in responses to a search query.
+ * The organic search results are the web pages that are returned by the search engine in response to a search query.
  * These results are typically ranked by relevance to the search query.
  */
 public class WebSearchResults {

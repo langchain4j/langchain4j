@@ -14,7 +14,7 @@ public interface AiServiceStartedEvent extends AiServiceEvent {
     /**
      * Retrieves an optional system message associated with the invocation.
      * A system message typically provides instructions regarding the AI's
-     * behavior, actions, or responses style.
+     * behavior, actions, or response style.
      */
     Optional<SystemMessage> systemMessage();
 

@@ -1226,7 +1226,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     // RESPONSE FORMAT
 
-    // TODO test default responses format
+    // TODO test default response format
 
     @ParameterizedTest
     @MethodSource("modelsSupportingStructuredOutputs")
@@ -1282,7 +1282,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         if (assertExceptionType()) {
             throwableAssert
                     .isExactlyInstanceOf(UnsupportedFeatureException.class)
-                    .hasMessageContaining("JSON responses format")
+                    .hasMessageContaining("JSON response format")
                     .hasMessageContaining("not support");
         }
     }
@@ -1386,7 +1386,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         if (assertExceptionType()) {
             throwableAssert
                     .isExactlyInstanceOf(UnsupportedFeatureException.class)
-                    .hasMessageContaining("JSON responses format")
+                    .hasMessageContaining("JSON response format")
                     .hasMessageContaining("not support");
         }
     }

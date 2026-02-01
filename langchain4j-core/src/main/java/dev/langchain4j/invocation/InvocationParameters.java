@@ -19,7 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * }
  *
  * InvocationParameters parameters = InvocationParameters.from(Map.of("userId", "12345"));
- * String responses = assistant.chat("What is the weather in London?", parameters);
+ * String response = assistant.chat("What is the weather in London?", parameters);
  * </pre>
  * <p>
  * {@code InvocationParameters} can be accessed within the {@link Tool}-annotated method:

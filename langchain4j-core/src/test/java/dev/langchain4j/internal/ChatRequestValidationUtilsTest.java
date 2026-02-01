@@ -62,7 +62,7 @@ class ChatRequestValidationUtilsTest {
     void validateResponseFormat_shouldRejectJson() {
         assertThatThrownBy(() -> ChatRequestValidationUtils.validate(ResponseFormat.JSON))
                 .isInstanceOf(UnsupportedFeatureException.class)
-                .hasMessageContaining("JSON responses format");
+                .hasMessageContaining("JSON response format");
     }
 
     @Test

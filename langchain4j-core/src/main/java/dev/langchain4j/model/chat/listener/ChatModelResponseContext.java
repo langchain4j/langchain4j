@@ -9,7 +9,7 @@ import java.util.Map;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
- * The chat responses context.
+ * The chat response context.
  * It contains {@link ChatResponse}, corresponding {@link ChatRequest}, {@link ModelProvider} and attributes.
  * The attributes can be used to pass data between methods of a {@link ChatModelListener}
  * or between multiple {@link ChatModelListener}s.

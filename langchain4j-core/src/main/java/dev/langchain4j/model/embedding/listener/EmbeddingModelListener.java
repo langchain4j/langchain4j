@@ -23,7 +23,7 @@ public interface EmbeddingModelListener {
     /**
      * This method is called after a successful embedding operation completes.
      *
-     * @param responseContext The responses context. It contains the responses, corresponding request and attributes.
+     * @param responseContext The response context. It contains the response, corresponding request and attributes.
      *                        The attributes can be used to pass data between methods of this listener
      *                        or between multiple listeners.
      */

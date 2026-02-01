@@ -67,10 +67,10 @@ abstract class AbstractChatExecutor implements ChatExecutor {
     }
 
     /**
-     * Executes a given chat request and returns the corresponding chat responses.
+     * Executes a given chat request and returns the corresponding chat response.
      *
      * @param chatRequest the chat request to process, containing the input messages and any necessary configurations
-     * @return the chat responses generated as a result of processing the given chat request
+     * @return the chat response generated as a result of processing the given chat request
      */
     protected abstract ChatResponse execute(ChatRequest chatRequest);
 }

@@ -197,11 +197,11 @@ public final class OutputGuardrailResult implements GuardrailResult<OutputGuardr
     }
 
     /**
-     * Gets the responses computed from the combination of the original {@link ChatResponse} in the {@link OutputGuardrailRequest}
+     * Gets the response computed from the combination of the original {@link ChatResponse} in the {@link OutputGuardrailRequest}
      * and this result
      * @param request The output guardrail request
-     * @param <T> The type of responses
-     * @return A responses computed from the combination of the original {@link ChatResponse} in the {@link OutputGuardrailRequest}
+     * @param <T> The type of response
+     * @return A response computed from the combination of the original {@link ChatResponse} in the {@link OutputGuardrailRequest}
      * and this result
      */
     public <T> T response(OutputGuardrailRequest request) {

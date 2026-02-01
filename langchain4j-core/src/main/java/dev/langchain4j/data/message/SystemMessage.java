@@ -10,7 +10,7 @@ import java.util.Optional;
 
 /**
  * Represents a system message, typically defined by a developer.
- * This type of message usually provides instructions regarding the AI's actions, such as its behavior or responses style.
+ * This type of message usually provides instructions regarding the AI's actions, such as its behavior or response style.
  */
 public class SystemMessage implements ChatMessage {
 

@@ -80,7 +80,7 @@ public class ChatRequestValidationUtils {
     public static void validate(ResponseFormat responseFormat) {
         String errorTemplate = "%s is not supported yet by this model provider";
         if (responseFormat != null && responseFormat.type() == ResponseFormatType.JSON) {
-            throw new UnsupportedFeatureException(String.format(errorTemplate, "JSON responses format"));
+            throw new UnsupportedFeatureException(String.format(errorTemplate, "JSON response format"));
         }
     }
 }

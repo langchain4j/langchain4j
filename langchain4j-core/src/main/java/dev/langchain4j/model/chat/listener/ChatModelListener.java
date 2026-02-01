@@ -21,9 +21,9 @@ public interface ChatModelListener {
     }
 
     /**
-     * This method is called after the responses is received from the model.
+     * This method is called after the response is received from the model.
      *
-     * @param responseContext The responses context.
+     * @param responseContext The response context.
      *                        It contains {@link ChatResponse}, corresponding {@link ChatRequest} and attributes.
      *                        The attributes can be used to pass data between methods of this listener
      *                        or between multiple listeners.

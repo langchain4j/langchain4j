@@ -36,7 +36,7 @@ public class TestStreamingResponseHandler<T> implements StreamingResponseHandler
         } else if (response.content() instanceof String) {
             assertThat(response.content()).isEqualTo(expectedTextContent);
         } else {
-            throw illegalArgument("Unknown responses content: " + response.content());
+            throw illegalArgument("Unknown response content: " + response.content());
         }
 
         futureResponse.complete(response);

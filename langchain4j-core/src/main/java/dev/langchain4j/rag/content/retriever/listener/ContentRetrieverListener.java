@@ -23,7 +23,7 @@ public interface ContentRetrieverListener {
     /**
      * This method is called after a successful retrieval.
      *
-     * @param responseContext The responses context. It contains retrieved content, corresponding query and attributes.
+     * @param responseContext The response context. It contains retrieved content, corresponding query and attributes.
      *                        The attributes can be used to pass data between methods of this listener
      *                        or between multiple listeners.
      */

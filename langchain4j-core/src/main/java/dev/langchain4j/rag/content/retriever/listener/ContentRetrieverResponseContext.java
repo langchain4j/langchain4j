@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * The content retriever responses context.
+ * The content retriever response context.
  * It contains retrieved {@link Content}s, corresponding {@link Query}, {@link ContentRetriever} and attributes.
  * The attributes can be used to pass data between methods of a {@link ContentRetrieverListener}
  * or between multiple {@link ContentRetrieverListener}s.
