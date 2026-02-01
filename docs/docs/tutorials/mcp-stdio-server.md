@@ -20,14 +20,14 @@ Add BOMs (recommended):
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-bom</artifactId>
-            <version>${langchain4j.version}</version>
+            <version>YOUR_LANGCHAIN4J_VERSION</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-community-bom</artifactId>
-            <version>${langchain4j.community.version}</version>
+            <version>YOUR_LANGCHAIN4J_COMMUNITY_VERSION</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -119,11 +119,3 @@ Use absolute paths; on Windows, escape backslashes.
 See the `mcp-stdio-server-example` in the examples repository for an end-to-end runnable project (including packaging and client config):
 
 - https://github.com/langchain4j/langchain4j-examples/tree/main/mcp-stdio-server-example
-
-<details>
-<summary>Using SNAPSHOT builds (development only)</summary>
-
-If you need to test unreleased changes, see the SNAPSHOT instructions in the [Get Started](/get-started) guide.
-
-</details>
-
