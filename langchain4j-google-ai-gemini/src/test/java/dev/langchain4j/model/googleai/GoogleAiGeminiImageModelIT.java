@@ -8,6 +8,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Base64;
+import java.util.List;
+import java.util.Map;
+
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -86,19 +89,42 @@ class GoogleAiGeminiImageModelIT {
                 .build();
 
         // when
-        var imageResposne = subject.generate("""
+        var imageResponse = subject.generate("""
             A kawaii illustration of the current weather forecast for Paris (France)
             showing the current temperature (in Celsius)
             """);
-        saveImage(imageResposne.content(), "paris_weather_illustration");
+        saveImage(imageResponse.content(), "paris_weather_illustration");
 
         // then
-        assertThat(imageResposne).isNotNull();
-        assertThat(imageResposne.content()).isNotNull();
-        assertThat(imageResposne.content().base64Data()).isNotBlank();
-        assertThat(imageResposne.content().mimeType()).startsWith("image/");
+        assertThat(imageResponse).isNotNull();
+        assertThat(imageResponse.content()).isNotNull();
+        assertThat(imageResponse.content().base64Data()).isNotBlank();
+        assertThat(imageResponse.content().mimeType()).startsWith("image/");
 
-        saveImage(imageResposne.content(), "paris_weather_illustration");
+        assertThat(imageResponse.metadata().get("groundingMetadata")).isNotNull();
+        Map<String, Object> groundingMetadata = (Map<String, Object>) imageResponse.metadata().get("groundingMetadata");
+        assertThat(groundingMetadata).isNotNull();
+
+        assertThat(groundingMetadata).containsKey("webSearchQueries");
+        List<String> webSearchQueries = (List<String>) groundingMetadata.get("webSearchQueries");
+        assertThat(webSearchQueries).isNotEmpty();
+
+        assertThat(groundingMetadata).containsKey("groundingChunks");
+        List<Map<String, Object>> groundingChunks = (List<Map<String, Object>>) groundingMetadata.get("groundingChunks");
+        assertThat(groundingChunks).isNotEmpty();
+
+        groundingChunks.forEach(chunk -> {
+            assertThat(chunk).containsKey("web");
+            Map<String, Object> web = (Map<String, Object>) chunk.get("web");
+            assertThat(web).containsKeys("uri", "title");
+        });
+
+        assertThat(groundingMetadata).containsKey("searchEntryPoint");
+        Map<String, Object> searchEntryPoint = (Map<String, Object>) groundingMetadata.get("searchEntryPoint");
+        assertThat(searchEntryPoint).containsKey("renderedContent");
+        assertThat((String) searchEntryPoint.get("renderedContent")).isNotBlank();
+
+        saveImage(imageResponse.content(), "paris_weather_illustration");
     }
 
     private static void saveImage(Image image, String fileName) throws IOException {

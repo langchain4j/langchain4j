@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.googleai.GeminiResponseModality.IMAGE;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.http.client.HttpClientBuilder;
@@ -16,10 +17,14 @@ import dev.langchain4j.model.googleai.GeminiGenerateContentRequest.GeminiTool;
 import dev.langchain4j.model.googleai.GeminiGenerateContentRequest.GeminiTool.GeminiGoogleSearchRetrieval;
 import dev.langchain4j.model.googleai.GeminiGenerationConfig.GeminiImageConfig;
 import dev.langchain4j.model.image.ImageModel;
+import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 
@@ -156,7 +161,7 @@ public class GoogleAiGeminiImageModel implements ImageModel {
         var request = createGenerateRequest(prompt);
         var response = withRetryMappingExceptions(() -> geminiService.generateContent(modelName, request), maxRetries);
 
-        return Response.from(extractImage(response));
+        return toResponse(response);
     }
 
     /**
@@ -187,7 +192,7 @@ public class GoogleAiGeminiImageModel implements ImageModel {
         var request = createEditRequest(prompt, image, null);
         var response = withRetryMappingExceptions(() -> geminiService.generateContent(modelName, request), maxRetries);
 
-        return Response.from(extractImage(response));
+        return toResponse(response);
     }
 
     /**
@@ -213,7 +218,39 @@ public class GoogleAiGeminiImageModel implements ImageModel {
         var request = createEditRequest(prompt, image, mask);
         var response = withRetryMappingExceptions(() -> geminiService.generateContent(modelName, request), maxRetries);
 
-        return Response.from(extractImage(response));
+        return toResponse(response);
+    }
+
+    private Response<Image> toResponse(GeminiGenerateContentResponse response) {
+        Image image = extractImage(response);
+
+        TokenUsage tokenUsage = null;
+        if (response.usageMetadata() != null) {
+            tokenUsage = new TokenUsage(
+                response.usageMetadata().promptTokenCount(),
+                response.usageMetadata().candidatesTokenCount(),
+                response.usageMetadata().totalTokenCount()
+            );
+        }
+
+        FinishReason finishReason = null;
+        if (response.candidates().get(0).finishReason() != null) {
+            finishReason = FinishReasonMapper.fromGFinishReasonToFinishReason(response.candidates().get(0).finishReason());
+        }
+
+        Map<String, Object> metadata = new HashMap<>();
+        GroundingMetadata groundingMetadata = response.groundingMetadata();
+        if (groundingMetadata == null && !response.candidates().isEmpty()) {
+            groundingMetadata = response.candidates().get(0).groundingMetadata();
+        }
+
+        if (groundingMetadata != null) {
+            Map<String, Object> groundingMetadataMap =
+                    Json.convertValue(groundingMetadata, new TypeReference<>() {});
+            metadata.put("groundingMetadata", groundingMetadataMap);
+        }
+
+        return Response.from(image, tokenUsage, finishReason, metadata);
     }
 
     private GeminiGenerateContentRequest createGenerateRequest(String prompt) {
