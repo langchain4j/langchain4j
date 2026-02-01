@@ -10,7 +10,6 @@ import java.nio.file.Paths;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
-
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -89,10 +88,11 @@ class GoogleAiGeminiImageModelIT {
                 .build();
 
         // when
-        var imageResponse = subject.generate("""
-            A kawaii illustration of the current weather forecast for Paris (France)
-            showing the current temperature (in Celsius)
-            """);
+        var imageResponse = subject.generate(
+                """
+                A kawaii illustration of the current weather forecast for Paris (France)
+                showing the current temperature (in Celsius)
+                """);
         saveImage(imageResponse.content(), "paris_weather_illustration");
 
         // then
@@ -102,7 +102,8 @@ class GoogleAiGeminiImageModelIT {
         assertThat(imageResponse.content().mimeType()).startsWith("image/");
 
         assertThat(imageResponse.metadata().get("groundingMetadata")).isNotNull();
-        Map<String, Object> groundingMetadata = (Map<String, Object>) imageResponse.metadata().get("groundingMetadata");
+        Map<String, Object> groundingMetadata =
+                (Map<String, Object>) imageResponse.metadata().get("groundingMetadata");
         assertThat(groundingMetadata).isNotNull();
 
         assertThat(groundingMetadata).containsKey("webSearchQueries");
@@ -110,7 +111,8 @@ class GoogleAiGeminiImageModelIT {
         assertThat(webSearchQueries).isNotEmpty();
 
         assertThat(groundingMetadata).containsKey("groundingChunks");
-        List<Map<String, Object>> groundingChunks = (List<Map<String, Object>>) groundingMetadata.get("groundingChunks");
+        List<Map<String, Object>> groundingChunks =
+                (List<Map<String, Object>>) groundingMetadata.get("groundingChunks");
         assertThat(groundingChunks).isNotEmpty();
 
         groundingChunks.forEach(chunk -> {

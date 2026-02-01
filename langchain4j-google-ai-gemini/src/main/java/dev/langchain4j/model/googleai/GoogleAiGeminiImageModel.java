@@ -227,15 +227,15 @@ public class GoogleAiGeminiImageModel implements ImageModel {
         TokenUsage tokenUsage = null;
         if (response.usageMetadata() != null) {
             tokenUsage = new TokenUsage(
-                response.usageMetadata().promptTokenCount(),
-                response.usageMetadata().candidatesTokenCount(),
-                response.usageMetadata().totalTokenCount()
-            );
+                    response.usageMetadata().promptTokenCount(),
+                    response.usageMetadata().candidatesTokenCount(),
+                    response.usageMetadata().totalTokenCount());
         }
 
         FinishReason finishReason = null;
         if (response.candidates().get(0).finishReason() != null) {
-            finishReason = FinishReasonMapper.fromGFinishReasonToFinishReason(response.candidates().get(0).finishReason());
+            finishReason = FinishReasonMapper.fromGFinishReasonToFinishReason(
+                    response.candidates().get(0).finishReason());
         }
 
         Map<String, Object> metadata = new HashMap<>();
@@ -245,8 +245,7 @@ public class GoogleAiGeminiImageModel implements ImageModel {
         }
 
         if (groundingMetadata != null) {
-            Map<String, Object> groundingMetadataMap =
-                    Json.convertValue(groundingMetadata, new TypeReference<>() {});
+            Map<String, Object> groundingMetadataMap = Json.convertValue(groundingMetadata, new TypeReference<>() {});
             metadata.put("groundingMetadata", groundingMetadataMap);
         }
 
