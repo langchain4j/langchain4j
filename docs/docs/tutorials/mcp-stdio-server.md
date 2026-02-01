@@ -20,14 +20,14 @@ Add BOMs (recommended):
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-bom</artifactId>
-            <version>YOUR_LANGCHAIN4J_VERSION</version>
+            <version>${latest version here}</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-community-bom</artifactId>
-            <version>YOUR_LANGCHAIN4J_COMMUNITY_VERSION</version>
+            <version>${latest version here}</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
