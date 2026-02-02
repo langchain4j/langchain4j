@@ -10,9 +10,9 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
 import java.time.Instant;
@@ -518,27 +518,14 @@ class BedrockPromptCachingIT {
                 .region(Region.US_EAST_1)
                 .build();
 
-        List<String> responses = new java.util.ArrayList<>();
-        streamingModel.chat(
-                ChatRequest.builder()
-                        .messages(Arrays.asList(systemMessage, UserMessage.from("What is AI in one sentence?")))
-                        .build(),
-                new StreamingChatResponseHandler() {
-                    @Override
-                    public void onPartialResponse(String response) {
-                        responses.add(response);
-                    }
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(Arrays.asList(systemMessage, UserMessage.from("What is AI in one sentence?")))
+                .build();
 
-                    @Override
-                    public void onCompleteResponse(ChatResponse response) {}
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        streamingModel.chat(chatRequest, handler);
 
-                    @Override
-                    public void onError(Throwable error) {
-                        throw new RuntimeException("Streaming failed", error);
-                    }
-                });
-
-        String fullResponse = String.join("", responses);
+        String fullResponse = handler.get().aiMessage().text();
         assertThat(fullResponse).isNotBlank();
     }
 
@@ -558,28 +545,14 @@ class BedrockPromptCachingIT {
                 .region(Region.US_EAST_1)
                 .build();
 
-        List<String> responses = new java.util.ArrayList<>();
-        streamingModel.chat(
-                ChatRequest.builder()
-                        .messages(Arrays.asList(
-                                systemMsg1, systemMsg2, UserMessage.from("Tell me something interesting.")))
-                        .build(),
-                new StreamingChatResponseHandler() {
-                    @Override
-                    public void onPartialResponse(String response) {
-                        responses.add(response);
-                    }
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(systemMsg1, systemMsg2, UserMessage.from("Tell me something interesting."))
+                .build();
 
-                    @Override
-                    public void onCompleteResponse(ChatResponse response) {}
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        streamingModel.chat(chatRequest, handler);
 
-                    @Override
-                    public void onError(Throwable error) {
-                        throw new RuntimeException("Streaming failed", error);
-                    }
-                });
-
-        String fullResponse = String.join("", responses);
+        String fullResponse = handler.get().aiMessage().text();
         assertThat(fullResponse).isNotBlank();
     }
 
@@ -606,7 +579,7 @@ class BedrockPromptCachingIT {
                 .build();
 
         ChatRequest request = ChatRequest.builder()
-                .messages(Arrays.asList(coreSystemMsg, bedrockSystemMsg, UserMessage.from("What is AI?")))
+                .messages(coreSystemMsg, bedrockSystemMsg, UserMessage.from("What is AI?"))
                 .build();
 
         ChatResponse response = model.chat(request);
