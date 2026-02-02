@@ -1,5 +1,6 @@
 package dev.langchain4j.data.message;
 
+
 import dev.langchain4j.data.image.Image;
 
 import java.net.URI;
@@ -11,6 +12,10 @@ import static dev.langchain4j.internal.ContentUtil.extractBase64Content;
 import static dev.langchain4j.data.message.ImageContent.DetailLevel.LOW;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
+import dev.langchain4j.data.image.Image;
+import java.net.URI;
+import java.util.Objects;
 
 /**
  * Represents an image with a DetailLevel.
@@ -26,9 +31,19 @@ public class ImageContent implements Content {
         LOW,
 
         /**
+         * Medium detail. A balance between detail, cost, and latency.
+         */
+        MEDIUM,
+
+        /**
          * High detail.
          */
         HIGH,
+
+        /**
+         * Ultra-high detail. Highest token count, required for specific use cases such as computer use.
+         */
+        ULTRA_HIGH,
 
         /**
          * Auto detail.
@@ -68,9 +83,7 @@ public class ImageContent implements Content {
      * @param detailLevel the detail level of the image.
      */
     public ImageContent(URI url, DetailLevel detailLevel) {
-        this(Image.builder()
-                .url(ensureNotNull(url, "url"))
-                .build(), detailLevel);
+        this(Image.builder().url(ensureNotNull(url, "url")).build(), detailLevel);
     }
 
     /**
@@ -103,10 +116,12 @@ public class ImageContent implements Content {
      * @param detailLevel the detail level of the image.
      */
     public ImageContent(String base64Data, String mimeType, DetailLevel detailLevel) {
-        this(Image.builder()
-                .base64Data(ensureNotBlank(base64Data, "base64Data"))
-                .mimeType(ensureNotBlank(mimeType, "mimeType"))
-                .build(), detailLevel);
+        this(
+                Image.builder()
+                        .base64Data(ensureNotBlank(base64Data, "base64Data"))
+                        .mimeType(ensureNotBlank(mimeType, "mimeType"))
+                        .build(),
+                detailLevel);
     }
 
     /**
@@ -157,8 +172,7 @@ public class ImageContent implements Content {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         ImageContent that = (ImageContent) o;
-        return Objects.equals(this.image, that.image)
-                && Objects.equals(this.detailLevel, that.detailLevel);
+        return Objects.equals(this.image, that.image) && Objects.equals(this.detailLevel, that.detailLevel);
     }
 
     @Override
@@ -168,10 +182,7 @@ public class ImageContent implements Content {
 
     @Override
     public String toString() {
-        return "ImageContent {" +
-                " image = " + image +
-                " detailLevel = " + detailLevel +
-                " }";
+        return "ImageContent {" + " image = " + image + " detailLevel = " + detailLevel + " }";
     }
 
     /**

@@ -27,7 +27,8 @@ record GeminiContent(List<GeminiPart> parts, String role) {
             GeminiExecutableCode executableCode,
             GeminiCodeExecutionResult codeExecutionResult,
             Boolean thought,
-            String thoughtSignature) {
+            String thoughtSignature,
+            GeminiMediaResolution mediaResolution) {
 
         static GeminiPart ofText(String text) {
             return GeminiPart.builder().text(text).build();
@@ -51,6 +52,7 @@ record GeminiContent(List<GeminiPart> parts, String role) {
             private GeminiCodeExecutionResult codeExecutionResult;
             private Boolean thought;
             private String thoughtSignature;
+            private GeminiMediaResolution mediaResolution;
 
             private Builder() {}
 
@@ -99,6 +101,11 @@ record GeminiContent(List<GeminiPart> parts, String role) {
                 return this;
             }
 
+            Builder mediaResolution(GeminiMediaResolution mediaResolution) {
+                this.mediaResolution = mediaResolution;
+                return this;
+            }
+
             GeminiPart build() {
                 return new GeminiPart(
                         text,
@@ -109,7 +116,8 @@ record GeminiContent(List<GeminiPart> parts, String role) {
                         executableCode,
                         codeExecutionResult,
                         thought,
-                        thoughtSignature);
+                        thoughtSignature,
+                        mediaResolution);
             }
         }
 
