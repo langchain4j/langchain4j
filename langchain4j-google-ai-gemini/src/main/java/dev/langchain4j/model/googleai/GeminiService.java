@@ -103,28 +103,26 @@ class GeminiService {
         return sendRequest(url, apiKey, request, GeminiGenerateContentResponse.class);
     }
 
-    @SuppressWarnings("unchecked")
-    <REQ, RESP> BatchRequestResponse.Operation<RESP> batchCreate(
+    <REQ> BatchRequestResponse.Operation batchCreate(
             String modelName, BatchRequestResponse.BatchCreateRequest<REQ> request, BatchOperationType operationType) {
-        return (BatchRequestResponse.Operation<RESP>) sendRequest(
+        return sendRequest(
                 String.format("%s/models/%s:%s", baseUrl, modelName, operationType.value),
                 apiKey,
                 request,
                 BatchRequestResponse.Operation.class);
     }
 
-    <REQ, RESP> BatchRequestResponse.Operation<RESP> batchCreate(
+    BatchRequestResponse.Operation batchCreate(
             String modelName, BatchRequestResponse.BatchCreateFileRequest request, BatchOperationType operationType) {
-        return (BatchRequestResponse.Operation<RESP>) sendRequest(
+        return sendRequest(
                 String.format("%s/models/%s:%s", baseUrl, modelName, operationType.value),
                 apiKey,
                 request,
                 BatchRequestResponse.Operation.class);
     }
 
-    @SuppressWarnings("unchecked")
-    <RESP> BatchRequestResponse.Operation<RESP> batchRetrieveBatch(String operationName) {
-        return (BatchRequestResponse.Operation<RESP>) sendRequest(
+    BatchRequestResponse.Operation batchRetrieveBatch(String operationName) {
+        return sendRequest(
                 String.format("%s/%s", baseUrl, operationName),
                 apiKey,
                 null,
@@ -142,8 +140,7 @@ class GeminiService {
         return sendRequest(url, apiKey, null, Void.class, DELETE);
     }
 
-    @SuppressWarnings("unchecked")
-    <RESP> ListOperationsResponse<RESP> batchListBatches(@Nullable Integer pageSize, @Nullable String pageToken) {
+    ListOperationsResponse batchListBatches(@Nullable Integer pageSize, @Nullable String pageToken) {
         String url = buildUrl(
                 baseUrl + "/batches",
                 new StringPair("pageSize", pageSize != null ? String.valueOf(pageSize) : null),
@@ -281,5 +278,6 @@ class GeminiService {
         return queryParams.isEmpty() ? baseUrl : baseUrl + "?" + queryParams;
     }
 
-    private record StringPair(String key, @Nullable String value) {}
+    private record StringPair(String key, @Nullable String value) {
+    }
 }

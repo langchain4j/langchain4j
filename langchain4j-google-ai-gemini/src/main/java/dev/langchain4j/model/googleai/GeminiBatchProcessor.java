@@ -3,6 +3,7 @@ package dev.langchain4j.model.googleai;
 import static dev.langchain4j.internal.Utils.firstNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.batch.BatchJobState;
 import dev.langchain4j.model.batch.BatchList;
@@ -22,6 +23,8 @@ import dev.langchain4j.model.googleai.BatchRequestResponse.Operation;
 import java.util.List;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Handles batch processing operations for Google AI Gemini.
@@ -82,10 +85,8 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
     /**
      * Retrieves the current state and results of a batch operation.
      */
-    @SuppressWarnings("unchecked")
     BatchResponse<RESPONSE> retrieveBatchResults(BatchName name) {
-        var operation = geminiService.batchRetrieveBatch(name.value());
-        return processResponse((Operation<API_RESPONSE>) operation);
+        return processResponse(geminiService.batchRetrieveBatch(name.value()));
     }
 
     /**
@@ -105,13 +106,12 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
     /**
      * Lists batch jobs with optional pagination.
      */
-    @SuppressWarnings("unchecked")
     BatchList<RESPONSE> listBatchJobs(@Nullable Integer pageSize, @Nullable String pageToken) {
         var response = geminiService.<List<API_RESPONSE>>batchListBatches(pageSize, pageToken);
 
-        var batches = firstNotNull("operationsResponse", response.operations(), List.<Operation<API_RESPONSE>>of())
+        var batches = firstNotNull("operationsResponse", response.operations(), List.<Operation>of())
                 .stream()
-                .map(operation -> processResponse((Operation<API_RESPONSE>) operation))
+                .map(this::processResponse)
                 .toList();
 
         return new BatchList<>(batches, response.nextPageToken());
@@ -120,15 +120,19 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
     /**
      * Processes the operation responses and returns the appropriate BatchResponse.
      */
-    private BatchResponse<RESPONSE> processResponse(Operation<API_RESPONSE> operation) {
-        BatchJobState state = extractBatchState(operation.metadata());
-        BatchName batchName = new BatchName(operation.name());
+    private BatchResponse<RESPONSE> processResponse(Operation operation) {
+        var state = extractBatchState(operation.metadata());
+        var batchName = new BatchName(operation.name());
 
         if (operation.done()) {
             if (operation.error() != null) {
                 return new BatchResponse<>(batchName, BatchJobState.BATCH_STATE_FAILED, List.of(), null);
             } else {
-                var responses = preparer.extractResults(operation.response());
+                BatchCreateResponse<API_RESPONSE> typedResponse = null;
+                if (operation.response() != null) {
+                    typedResponse = Json.convertValue(operation.response(), preparer.getResponseTypeReference());
+                }
+                var responses = preparer.extractResults(typedResponse);
                 return new BatchResponse<>(batchName, BatchJobState.BATCH_STATE_SUCCEEDED, responses.responses(), responses.errors());
             }
         } else {
@@ -175,6 +179,13 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
         /**
          * Extracts high-level responses from the API responses.
          */
-        ExtractedBatchResults<RESPONSE> extractResults(BatchCreateResponse<API_RESPONSE> response);
+        ExtractedBatchResults<RESPONSE> extractResults(@Nullable  BatchCreateResponse<API_RESPONSE>response);
+
+        /**
+         * Used to convert Json `Object` to `API_RESPONSE` types using Jackson.
+         *
+         * @see Json#convertValue(Object, TypeReference)
+         */
+        TypeReference<BatchCreateResponse<API_RESPONSE>> getResponseTypeReference();  // NEW
     }
 }
