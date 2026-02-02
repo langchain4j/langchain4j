@@ -239,6 +239,21 @@ public abstract class AiServices<T> {
     }
 
     /**
+     * Configures the system message to be used each time an AI service is invoked.
+     * It can be either a complete system message or a system message template containing unresolved template
+     * variables (e.g. "{{name}}"), which will be resolved using the values of method parameters annotated with @{@link V}.
+     * <br>
+     * When both {@code @SystemMessage} and the system message provider are configured,
+     * {@code @SystemMessage} takes precedence.
+     *
+     * @param systemMessage The system message to be used.
+     * @return builder
+     */
+    public AiServices<T> systemMessage(String systemMessage) {
+        return systemMessageProvider(ignore -> systemMessage);
+    }
+
+    /**
      * Configures the system message provider, which provides a system message to be used each time an AI service is invoked.
      * <br>
      * When both {@code @SystemMessage} and the system message provider are configured,
@@ -256,6 +271,42 @@ public abstract class AiServices<T> {
      */
     public AiServices<T> systemMessageProvider(Function<Object, String> systemMessageProvider) {
         context.systemMessageProvider = systemMessageProvider.andThen(Optional::ofNullable);
+        return this;
+    }
+
+    /**
+     * Configures the user message to be used each time an AI service is invoked.
+     * It can be either a complete user message or a user message template containing unresolved template
+     * variables (e.g. "{{name}}"), which will be resolved using the values of method parameters annotated with @{@link V}.
+     * <br>
+     * When both {@code @UserMessage} and the user message provider are configured,
+     * {@code @UserMessage} takes precedence.
+     *
+     * @param userMessage The user message to be used.
+     * @return builder
+     */
+    public AiServices<T> userMessage(String userMessage) {
+        return userMessageProvider(ignore -> userMessage);
+    }
+
+    /**
+     * Configures the user message provider, which provides a user message to be used each time an AI service is invoked.
+     * <br>
+     * When both {@code @UserMessage} and the user message provider are configured,
+     * {@code @UserMessage} takes precedence.
+     *
+     * @param userMessageProvider A {@link Function} that accepts a chat memory ID
+     *                              (a value of a method parameter annotated with @{@link MemoryId})
+     *                              and returns a user message to be used.
+     *                              If there is no parameter annotated with {@code @MemoryId},
+     *                              the value of memory ID is "default".
+     *                              The returned {@link String} can be either a complete user message
+     *                              or a user message template containing unresolved template variables (e.g. "{{name}}"),
+     *                              which will be resolved using the values of method parameters annotated with @{@link V}.
+     * @return builder
+     */
+    public AiServices<T> userMessageProvider(Function<Object, String> userMessageProvider) {
+        context.userMessageProvider = userMessageProvider.andThen(Optional::ofNullable);
         return this;
     }
 

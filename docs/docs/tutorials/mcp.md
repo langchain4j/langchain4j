@@ -5,6 +5,11 @@ MCP compliant servers that can provide and execute tools. General
 information about the protocol can be found at the [MCP
 website](https://modelcontextprotocol.io/).
 
+:::note
+Looking to build an MCP **stdio server** in Java?
+The server implementation lives in LangChain4j Community. See [Building a Java MCP stdio server](./mcp-stdio-server).
+:::
+
 The protocol specifies two types of transport, both of these are supported:
 
 - [Streamable HTTP](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#streamable-http):
@@ -264,6 +269,18 @@ McpClient mcpClient = new DefaultMcpClient.Builder()
     .logMessageHandler(new MyLogMessageHandler())
     .build();
 ```
+
+## MCP listeners
+
+The MCP client supports listeners that can listen to events happening
+during the lifetime of the client. The interface
+`dev.langchain4j.mcp.client.McpClientListener` serves as the base
+for listener implementations. The listener will
+be invoked before and after every tool call, prompt rendering
+and resource access. The respective `McpCallContext` is injected when calling
+the listeners. This object contains the actual MCP message being sent to the
+server and an instance of `InvocationContext` when applicable (only when this
+call happens as part of an AI service invocation).
 
 ## Resources
 

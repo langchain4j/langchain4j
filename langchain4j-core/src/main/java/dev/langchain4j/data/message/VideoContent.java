@@ -3,9 +3,11 @@ package dev.langchain4j.data.message;
 import dev.langchain4j.data.video.Video;
 
 import java.net.URI;
+import java.nio.file.Path;
 import java.util.Objects;
 
 import static dev.langchain4j.data.message.ContentType.VIDEO;
+import static dev.langchain4j.internal.ContentUtil.extractBase64Content;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
@@ -117,6 +119,17 @@ public class VideoContent implements Content {
      */
     public static VideoContent from(String base64Data, String mimeType) {
         return new VideoContent(base64Data, mimeType);
+    }
+
+    /**
+     * Create a new {@link VideoContent} from the file at the given path and mime type.
+     *
+     * @param videoFilePath the path to the image file.
+     * @param mimeType the mime type of the image.
+     * @return the new {@link VideoContent}.
+     */
+    public static VideoContent from(Path videoFilePath, String mimeType) {
+        return from(extractBase64Content(videoFilePath), mimeType);
     }
 
     /**

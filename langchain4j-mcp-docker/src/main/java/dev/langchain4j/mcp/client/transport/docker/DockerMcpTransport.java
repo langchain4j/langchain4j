@@ -16,15 +16,12 @@ import com.github.dockerjava.core.DockerClientImpl;
 import com.github.dockerjava.core.NameParser;
 import com.github.dockerjava.httpclient5.ApacheDockerHttpClient;
 import com.github.dockerjava.transport.DockerHttpClient;
-import dev.langchain4j.mcp.protocol.McpJsonRpcMessage;
-import dev.langchain4j.mcp.protocol.McpInitializationNotification;
-import dev.langchain4j.mcp.protocol.McpInitializeRequest;
+import dev.langchain4j.mcp.client.McpCallContext;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
-import dev.langchain4j.mcp.client.transport.websocket.WebSocketMcpTransport;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import dev.langchain4j.mcp.protocol.McpClientMessage;
+import dev.langchain4j.mcp.protocol.McpInitializationNotification;
+import dev.langchain4j.mcp.protocol.McpInitializeRequest;
 import java.io.IOException;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
@@ -33,8 +30,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class DockerMcpTransport  implements McpTransport {
+public class DockerMcpTransport implements McpTransport {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Logger log = LoggerFactory.getLogger(DockerMcpTransport.class);
 
@@ -98,7 +97,9 @@ public class DockerMcpTransport  implements McpTransport {
                 .withRegistryUrl(registryUrl)
                 .withApiVersion(apiVersion)
                 .build();
-        DockerHttpClient httpClient = new ApacheDockerHttpClient.Builder().dockerHost(config.getDockerHost()).build();
+        DockerHttpClient httpClient = new ApacheDockerHttpClient.Builder()
+                .dockerHost(config.getDockerHost())
+                .build();
         this.dockerClient = DockerClientImpl.getInstance(config, httpClient);
 
         var imageNameWithoutTag = getImageNameWithoutTag(image);
@@ -107,7 +108,8 @@ public class DockerMcpTransport  implements McpTransport {
         // and prevent errors with Podman trying to pull "image:tag:tag"
         try (var pull = dockerClient.pullImageCmd(imageNameWithoutTag)) {
             var tag = !parsedTagFromImage.tag.isEmpty() ? parsedTagFromImage.tag : "latest";
-            var repository = pull.getRepository().contains(":") ? pull.getRepository().split(":")[0] : pull.getRepository();
+            var repository =
+                    pull.getRepository().contains(":") ? pull.getRepository().split(":")[0] : pull.getRepository();
             pull.withTag(tag).exec(new PullImageResultCallback()).awaitCompletion();
             log.trace("Image pulled [{}:{}]", repository, tag);
         } catch (InterruptedException e) {
@@ -116,14 +118,17 @@ public class DockerMcpTransport  implements McpTransport {
 
         HostConfig hostConfig = new HostConfig()
                 .withBinds(binds.stream().map(bind -> Bind.parse(bind)).toList());
-        CreateContainerCmd container = dockerClient.createContainerCmd(image)
+        CreateContainerCmd container = dockerClient
+                .createContainerCmd(image)
                 .withTty(false)
                 .withAttachStdin(true)
                 .withAttachStdout(true)
                 .withAttachStderr(true)
                 .withStdinOpen(true)
                 .withCmd(command.toArray(new String[0]))
-                .withEnv(environment.entrySet().stream().map(r -> r.getKey() + "=" + r.getValue()).toList())
+                .withEnv(environment.entrySet().stream()
+                        .map(r -> r.getKey() + "=" + r.getValue())
+                        .toList())
                 .withHostConfig(hostConfig);
         try {
             CreateContainerResponse exec = container.exec();
@@ -167,19 +172,29 @@ public class DockerMcpTransport  implements McpTransport {
     }
 
     @Override
-    public CompletableFuture<JsonNode> executeOperationWithResponse(McpJsonRpcMessage operation) {
+    public CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage operation) {
+        return executeOperationWithResponse(new McpCallContext(null, operation));
+    }
+
+    @Override
+    public CompletableFuture<JsonNode> executeOperationWithResponse(McpCallContext context) {
         try {
-            String requestString = OBJECT_MAPPER.writeValueAsString(operation);
-            return execute(requestString, operation.getId());
+            String requestString = OBJECT_MAPPER.writeValueAsString(context.message());
+            return execute(requestString, context.message().getId());
         } catch (JsonProcessingException e) {
             return CompletableFuture.failedFuture(e);
         }
     }
 
     @Override
-    public void executeOperationWithoutResponse(McpJsonRpcMessage operation) {
+    public void executeOperationWithoutResponse(McpClientMessage operation) {
+        executeOperationWithoutResponse(new McpCallContext(null, operation));
+    }
+
+    @Override
+    public void executeOperationWithoutResponse(McpCallContext context) {
         try {
-            String requestString = OBJECT_MAPPER.writeValueAsString(operation);
+            String requestString = OBJECT_MAPPER.writeValueAsString(context.message());
             execute(requestString, null);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
@@ -188,8 +203,10 @@ public class DockerMcpTransport  implements McpTransport {
 
     @Override
     public void checkHealth() {
-        final InspectContainerResponse inspectContainer = this.dockerClient.inspectContainerCmd(containerId).exec();
-        if (inspectContainer == null || Boolean.FALSE.equals(inspectContainer.getState().getRunning())) {
+        final InspectContainerResponse inspectContainer =
+                this.dockerClient.inspectContainerCmd(containerId).exec();
+        if (inspectContainer == null
+                || Boolean.FALSE.equals(inspectContainer.getState().getRunning())) {
             throw new IllegalStateException("Container is not alive");
         }
     }
@@ -213,11 +230,10 @@ public class DockerMcpTransport  implements McpTransport {
             messageHandler.startOperation(id, future);
         }
 
-        try (
-                PipedOutputStream out = new PipedOutputStream();
-                PipedInputStream in = new PipedInputStream(out)
-        ) {
-            DockerResultCallback callback = dockerClient.attachContainerCmd(containerId)
+        try (PipedOutputStream out = new PipedOutputStream();
+                PipedInputStream in = new PipedInputStream(out)) {
+            DockerResultCallback callback = dockerClient
+                    .attachContainerCmd(containerId)
                     .withStdOut(true)
                     .withStdErr(true)
                     .withFollowStream(true)
@@ -232,7 +248,8 @@ public class DockerMcpTransport  implements McpTransport {
                 // if there is an ID, wait for a frame to be sent back from the container
                 callback.awaitCompletion();
             } else {
-                // if we didn't wait for a frame, we still wait a little to be sure the container receive and process the request
+                // if we didn't wait for a frame, we still wait a little to be sure the container receive and process
+                // the request
                 Thread.sleep(100);
             }
             callback.close();

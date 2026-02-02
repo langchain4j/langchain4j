@@ -14,6 +14,7 @@ import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import dev.langchain4j.agentic.agent.AgentBuilder;
+import dev.langchain4j.agentic.agent.UntypedAgentBuilder;
 import dev.langchain4j.agentic.declarative.AgentListenerSupplier;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.observability.AgentListener;
@@ -120,13 +121,22 @@ public class AgenticServices {
     }
 
     /**
+     * Creates an agent builder for untyped agents.
+     *
+     * @return a new UntypedAgentBuilder instance
+     */
+    public static UntypedAgentBuilder agentBuilder() {
+        return new UntypedAgentBuilder();
+    }
+
+    /**
      * Creates an agent builder for the given agent service class.
      *
      * @param agentServiceClass the class of the agent service
      * @return a new AgentBuilder instance
      */
-    public static <T> AgentBuilder<T> agentBuilder(Class<T> agentServiceClass) {
-        return new AgentBuilder<>(agentServiceClass, validateAgentClass(agentServiceClass));
+    public static <T> AgentBuilder<T, AgentBuilder<T, ?>> agentBuilder(Class<T> agentServiceClass) {
+        return new AgentBuilder<>(agentServiceClass);
     }
 
     /**
@@ -264,10 +274,10 @@ public class AgenticServices {
     public interface DeclarativeAgentCreationContext<T> {
         Class<T> agentServiceClass();
 
-        AgentBuilder<T> agentBuilder();
+        AgentBuilder<T, ?> agentBuilder();
     }
 
-    public record DefaultDeclarativeAgentCreationContext<T>(Class<T> agentServiceClass, AgentBuilder<T> agentBuilder)
+    public record DefaultDeclarativeAgentCreationContext<T>(Class<T> agentServiceClass, AgentBuilder<T, ?> agentBuilder)
             implements DeclarativeAgentCreationContext<T> {}
 
     /**
@@ -692,7 +702,7 @@ public class AgenticServices {
             return agentExecutor;
         }
 
-        AgentBuilder<?> agentBuilder = agentBuilder(subgentClass);
+        AgentBuilder<?, ?> agentBuilder = agentBuilder(subgentClass);
         configureAgent(subgentClass, chatModel, agentBuilder, agentConfigurator);
 
         return agentToExecutor(agentBuilder.build());
