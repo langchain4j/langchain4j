@@ -2,6 +2,7 @@ package dev.langchain4j.store.prompt;
 
 import dev.langchain4j.spi.services.prompt.PromptResourceLoader;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Scanner;
 
 /**
@@ -37,9 +38,8 @@ public class ClasspathPromptResourceLoader implements PromptResourceLoader {
         if (inputStream == null) {
             return null;
         }
-        try (Scanner scanner = new Scanner(inputStream);
-                Scanner s = scanner.useDelimiter("\\A")) {
-            return s.hasNext() ? s.next() : "";
+        try (Scanner scanner = new Scanner(inputStream, StandardCharsets.UTF_8).useDelimiter("\\A")) {
+            return scanner.hasNext() ? scanner.next() : "";
         }
     }
 }

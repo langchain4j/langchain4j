@@ -12,22 +12,7 @@ class PromptResourceLoaderRegistryTest {
     @Test
     void should_create_registry_with_additional_loaders() {
         // Given
-        PromptResourceLoader customLoader = new PromptResourceLoader() {
-            @Override
-            public String getProtocol() {
-                return "test";
-            }
-
-            @Override
-            public String loadResource(String resource, Class<?> contextClass) {
-                return "custom content";
-            }
-
-            @Override
-            public int getPriority() {
-                return 100;
-            }
-        };
+        PromptResourceLoader customLoader = createLoader("test", "custom content", 100);
 
         // When
         PromptResourceLoaderRegistry registry = PromptResourceLoaderRegistry.with(customLoader);
@@ -40,39 +25,8 @@ class PromptResourceLoaderRegistryTest {
     @Test
     void should_create_registry_with_only_provided_loaders() {
         // Given
-        PromptResourceLoader loader1 = new PromptResourceLoader() {
-            @Override
-            public String getProtocol() {
-                return "custom1";
-            }
-
-            @Override
-            public String loadResource(String resource, Class<?> contextClass) {
-                return "content from loader1";
-            }
-
-            @Override
-            public int getPriority() {
-                return 50;
-            }
-        };
-
-        PromptResourceLoader loader2 = new PromptResourceLoader() {
-            @Override
-            public String getProtocol() {
-                return "custom2";
-            }
-
-            @Override
-            public String loadResource(String resource, Class<?> contextClass) {
-                return "content from loader2";
-            }
-
-            @Override
-            public int getPriority() {
-                return 100;
-            }
-        };
+        PromptResourceLoader loader1 = createLoader("custom1", "content from loader1", 50);
+        PromptResourceLoader loader2 = createLoader("custom2", "content from loader2", 100);
 
         // When
         PromptResourceLoaderRegistry registry = PromptResourceLoaderRegistry.of(loader1, loader2);
@@ -88,39 +42,8 @@ class PromptResourceLoaderRegistryTest {
     @Test
     void should_use_higher_priority_loader_when_multiple_loaders_support_same_protocol() {
         // Given
-        PromptResourceLoader lowerPriorityLoader = new PromptResourceLoader() {
-            @Override
-            public String getProtocol() {
-                return "test";
-            }
-
-            @Override
-            public String loadResource(String resource, Class<?> contextClass) {
-                return "low priority content";
-            }
-
-            @Override
-            public int getPriority() {
-                return 10;
-            }
-        };
-
-        PromptResourceLoader higherPriorityLoader = new PromptResourceLoader() {
-            @Override
-            public String getProtocol() {
-                return "test";
-            }
-
-            @Override
-            public String loadResource(String resource, Class<?> contextClass) {
-                return "high priority content";
-            }
-
-            @Override
-            public int getPriority() {
-                return 100;
-            }
-        };
+        PromptResourceLoader lowerPriorityLoader = createLoader("test", "low priority content", 10);
+        PromptResourceLoader higherPriorityLoader = createLoader("test", "high priority content", 100);
 
         // When
         PromptResourceLoaderRegistry registry =
@@ -134,17 +57,7 @@ class PromptResourceLoaderRegistryTest {
     @Test
     void should_fail_when_no_loader_supports_protocol() {
         // Given
-        PromptResourceLoader loader = new PromptResourceLoader() {
-            @Override
-            public String getProtocol() {
-                return "test";
-            }
-
-            @Override
-            public String loadResource(String resource, Class<?> contextClass) {
-                return "test content";
-            }
-        };
+        PromptResourceLoader loader = createLoader("test", "test content");
 
         PromptResourceLoaderRegistry registry = PromptResourceLoaderRegistry.of(loader);
 
@@ -157,17 +70,7 @@ class PromptResourceLoaderRegistryTest {
     @Test
     void should_include_spi_loaders_when_using_with() {
         // Given: MockPromptResourceLoader is registered via SPI
-        PromptResourceLoader customLoader = new PromptResourceLoader() {
-            @Override
-            public String getProtocol() {
-                return "custom";
-            }
-
-            @Override
-            public String loadResource(String resource, Class<?> contextClass) {
-                return "custom content";
-            }
-        };
+        PromptResourceLoader customLoader = createLoader("custom", "custom content");
 
         // When
         PromptResourceLoaderRegistry registry = PromptResourceLoaderRegistry.with(customLoader);
@@ -184,17 +87,7 @@ class PromptResourceLoaderRegistryTest {
     @Test
     void should_not_include_spi_loaders_when_using_of() {
         // Given
-        PromptResourceLoader customLoader = new PromptResourceLoader() {
-            @Override
-            public String getProtocol() {
-                return "custom";
-            }
-
-            @Override
-            public String loadResource(String resource, Class<?> contextClass) {
-                return "custom content";
-            }
-        };
+        PromptResourceLoader customLoader = createLoader("custom", "custom content");
 
         // When
         PromptResourceLoaderRegistry registry = PromptResourceLoaderRegistry.of(customLoader);
@@ -207,5 +100,28 @@ class PromptResourceLoaderRegistryTest {
         assertThatThrownBy(() -> registry.loadResource("mock:simple-recipe", PromptResourceLoaderRegistryTest.class))
                 .isInstanceOf(IllegalConfigurationException.class)
                 .hasMessageContaining("No loader found for protocol 'mock'");
+    }
+
+    private static PromptResourceLoader createLoader(String protocol, String content) {
+        return createLoader(protocol, content, 0);
+    }
+
+    private static PromptResourceLoader createLoader(String protocol, String content, int priority) {
+        return new PromptResourceLoader() {
+            @Override
+            public String getProtocol() {
+                return protocol;
+            }
+
+            @Override
+            public String loadResource(String resource, Class<?> contextClass) {
+                return content;
+            }
+
+            @Override
+            public int getPriority() {
+                return priority;
+            }
+        };
     }
 }
