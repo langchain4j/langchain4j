@@ -53,6 +53,7 @@ class BaseGeminiChatModel {
     protected final Boolean responseLogprobs;
     protected final Boolean enableEnhancedCivicAnswers;
     protected final GeminiMediaResolutionLevel mediaResolution;
+    protected final boolean mediaResolutionPerPartEnabled;
 
     protected final ChatRequestParameters defaultRequestParameters;
 
@@ -76,6 +77,7 @@ class BaseGeminiChatModel {
         this.enableEnhancedCivicAnswers = getOrDefault(builder.enableEnhancedCivicAnswers, false);
         this.logprobs = builder.logprobs;
         this.mediaResolution = builder.mediaResolution;
+        this.mediaResolutionPerPartEnabled = getOrDefault(builder.mediaResolutionPerPartEnabled, false);
 
         ChatRequestParameters parameters;
         if (builder.defaultRequestParameters != null) {
@@ -115,8 +117,8 @@ class BaseGeminiChatModel {
         ChatRequestParameters parameters = chatRequest.parameters();
 
         GeminiContent systemInstruction = new GeminiContent(List.of(), GeminiRole.MODEL.toString());
-        List<GeminiContent> geminiContentList =
-                fromMessageToGContent(chatRequest.messages(), systemInstruction, sendThinking);
+        List<GeminiContent> geminiContentList = fromMessageToGContent(
+                chatRequest.messages(), systemInstruction, sendThinking, mediaResolutionPerPartEnabled);
 
         ResponseFormat responseFormat = chatRequest.responseFormat();
         GeminiSchema schema = null;
@@ -293,6 +295,7 @@ class BaseGeminiChatModel {
         protected Integer logprobs;
         protected List<ChatModelListener> listeners;
         protected GeminiMediaResolutionLevel mediaResolution;
+        protected Boolean mediaResolutionPerPartEnabled;
 
         @SuppressWarnings("unchecked")
         protected B builder() {
@@ -637,6 +640,33 @@ class BaseGeminiChatModel {
          */
         public B mediaResolution(GeminiMediaResolutionLevel mediaResolution) {
             this.mediaResolution = mediaResolution;
+            return builder();
+        }
+
+        /**
+         * Enables per-part media resolution mapping from {@link dev.langchain4j.data.message.ImageContent.DetailLevel}
+         * to {@link GeminiMediaResolutionLevel}.
+         *
+         * <p>When enabled, the {@code DetailLevel} set on each {@link dev.langchain4j.data.message.ImageContent}
+         * will be mapped to the corresponding {@code GeminiMediaResolutionLevel} and set on the per-part level.
+         * This is only supported by Gemini 3 models for now.</p>
+         *
+         * <p>The mapping is as follows:</p>
+         * <ul>
+         *   <li>{@code LOW} → {@code MEDIA_RESOLUTION_LOW}</li>
+         *   <li>{@code MEDIUM} → {@code MEDIA_RESOLUTION_MEDIUM}</li>
+         *   <li>{@code HIGH} → {@code MEDIA_RESOLUTION_HIGH}</li>
+         *   <li>{@code ULTRA_HIGH} → {@code MEDIA_RESOLUTION_ULTRA_HIGH}</li>
+         *   <li>{@code AUTO} → {@code MEDIA_RESOLUTION_UNSPECIFIED}</li>
+         * </ul>
+         *
+         * <p>Disabled by default. When disabled, the global {@link #mediaResolution(GeminiMediaResolutionLevel)}
+         * setting will be used for all media parts.</p>
+         *
+         * @see <a href="https://ai.google.dev/gemini-api/docs/media-resolution">Media Resolution Documentation</a>
+         */
+        public B mediaResolutionPerPartEnabled(Boolean mediaResolutionPerPartEnabled) {
+            this.mediaResolutionPerPartEnabled = mediaResolutionPerPartEnabled;
             return builder();
         }
     }

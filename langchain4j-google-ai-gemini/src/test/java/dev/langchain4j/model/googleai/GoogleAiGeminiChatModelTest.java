@@ -186,6 +186,7 @@ class GoogleAiGeminiChatModelTest {
                                     .build()),
                             "model"),
                     GeminiFinishReason.STOP,
+                    null,
                     null);
 
             var geminiResponse = new GeminiGenerateContentResponse(
@@ -222,6 +223,7 @@ class GoogleAiGeminiChatModelTest {
                                     .build()),
                             "mode"),
                     GeminiFinishReason.MAX_TOKENS,
+                    null,
                     null);
 
             var geminiResponse = new GeminiGenerateContentResponse(
@@ -314,6 +316,7 @@ class GoogleAiGeminiChatModelTest {
                 new GeminiContent(
                         List.of(GeminiContent.GeminiPart.builder().text(text).build()), "model"),
                 GeminiFinishReason.STOP,
+                null,
                 null);
 
         return new GeminiGenerateContentResponse(

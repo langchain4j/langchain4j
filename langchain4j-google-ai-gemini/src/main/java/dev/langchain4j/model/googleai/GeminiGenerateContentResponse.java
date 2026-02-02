@@ -13,7 +13,10 @@ record GeminiGenerateContentResponse(
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     record GeminiCandidate(
-            GeminiContent content, GeminiFinishReason finishReason, GeminiUrlContextMetadata urlContextMetadata) {
+            GeminiContent content,
+            GeminiFinishReason finishReason,
+            GeminiUrlContextMetadata urlContextMetadata,
+            GroundingMetadata groundingMetadata) {
         enum GeminiFinishReason {
             FINISH_REASON_UNSPECIFIED,
             STOP,
