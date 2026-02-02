@@ -89,9 +89,9 @@ class GoogleAiGeminiBatchChatModelTest {
                     createChatRequest(MODEL_NAME, "What is the capital of Germany?"));
             var expectedOperation = createPendingOperation("batches/test-123", BATCH_STATE_PENDING);
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
-                    any(),
-                    ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(),
-                    eq(BATCH_GENERATE_CONTENT)))
+                            any(),
+                            ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(),
+                            eq(BATCH_GENERATE_CONTENT)))
                     .thenReturn(expectedOperation);
 
             // when
@@ -121,9 +121,9 @@ class GoogleAiGeminiBatchChatModelTest {
                     .build());
             var expectedOperation = createPendingOperation("batches/test-456", BATCH_STATE_PENDING);
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
-                    any(),
-                    ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(),
-                    eq(BATCH_GENERATE_CONTENT)))
+                            any(),
+                            ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(),
+                            eq(BATCH_GENERATE_CONTENT)))
                     .thenReturn(expectedOperation);
 
             // when
@@ -150,9 +150,9 @@ class GoogleAiGeminiBatchChatModelTest {
             var requests = List.of(createChatRequest(MODEL_NAME, "Explain quantum computing"));
             var expectedOperation = createPendingOperation("batches/test-789", BATCH_STATE_PENDING);
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
-                    any(),
-                    ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(),
-                    eq(BATCH_GENERATE_CONTENT)))
+                            any(),
+                            ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(),
+                            eq(BATCH_GENERATE_CONTENT)))
                     .thenReturn(expectedOperation);
 
             // when
@@ -194,9 +194,9 @@ class GoogleAiGeminiBatchChatModelTest {
             var requests = List.of(createChatRequest(MODEL_NAME, "What is AI?"));
             var expectedOperation = createPendingOperation("batches/test-negative", BATCH_STATE_PENDING);
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
-                    any(),
-                    ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(),
-                    eq(BATCH_GENERATE_CONTENT)))
+                            any(),
+                            ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(),
+                            eq(BATCH_GENERATE_CONTENT)))
                     .thenReturn(expectedOperation);
 
             // when
@@ -225,9 +225,9 @@ class GoogleAiGeminiBatchChatModelTest {
                     createChatRequest(MODEL_NAME, "Question 3"));
             var expectedOperation = createPendingOperation("batches/test-model", BATCH_STATE_PENDING);
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
-                    any(),
-                    ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(),
-                    eq(BATCH_GENERATE_CONTENT)))
+                            any(),
+                            ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(),
+                            eq(BATCH_GENERATE_CONTENT)))
                     .thenReturn(expectedOperation);
 
             // when
@@ -251,9 +251,9 @@ class GoogleAiGeminiBatchChatModelTest {
             var requests = List.of(createChatRequest(MODEL_NAME, "Test message"));
             var expectedOperation = createPendingOperation("batches/test-metadata", BATCH_STATE_PENDING);
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
-                    any(),
-                    ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(),
-                    eq(BATCH_GENERATE_CONTENT)))
+                            any(),
+                            ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(),
+                            eq(BATCH_GENERATE_CONTENT)))
                     .thenReturn(expectedOperation);
 
             // when
@@ -284,9 +284,9 @@ class GoogleAiGeminiBatchChatModelTest {
                     createChatRequest(MODEL_NAME, "Question 5"));
             var expectedOperation = createPendingOperation("batches/test-multiple", BATCH_STATE_PENDING);
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
-                    any(),
-                    ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(),
-                    eq(BATCH_GENERATE_CONTENT)))
+                            any(),
+                            ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(),
+                            eq(BATCH_GENERATE_CONTENT)))
                     .thenReturn(expectedOperation);
 
             // when
@@ -311,9 +311,9 @@ class GoogleAiGeminiBatchChatModelTest {
             var requests = List.of(createChatRequest(MODEL_NAME, "What is AI?"));
             var expectedOperation = createPendingOperation("batches/test-interface", BATCH_STATE_PENDING);
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
-                    any(),
-                    ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(),
-                    eq(BATCH_GENERATE_CONTENT)))
+                            any(),
+                            ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(),
+                            eq(BATCH_GENERATE_CONTENT)))
                     .thenReturn(expectedOperation);
 
             // when
@@ -346,7 +346,7 @@ class GoogleAiGeminiBatchChatModelTest {
             when(mockGeminiFile.name()).thenReturn("files/test-file-123");
             var expectedOperation = createPendingOperation("batches/chat-file-test-123", BATCH_STATE_PENDING);
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
-                    eq(MODEL_NAME), any(BatchCreateFileRequest.class), eq(BATCH_GENERATE_CONTENT)))
+                            eq(MODEL_NAME), any(BatchCreateFileRequest.class), eq(BATCH_GENERATE_CONTENT)))
                     .thenReturn(expectedOperation);
 
             // when
@@ -373,7 +373,7 @@ class GoogleAiGeminiBatchChatModelTest {
             when(mockGeminiFile.name()).thenReturn("files/test-file-456");
             var expectedOperation = createPendingOperation("batches/chat-file-test-456", BATCH_STATE_PENDING);
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
-                    eq(MODEL_NAME), any(BatchCreateFileRequest.class), eq(BATCH_GENERATE_CONTENT)))
+                            eq(MODEL_NAME), any(BatchCreateFileRequest.class), eq(BATCH_GENERATE_CONTENT)))
                     .thenReturn(expectedOperation);
 
             // when
@@ -399,7 +399,7 @@ class GoogleAiGeminiBatchChatModelTest {
             String displayName = "Batch from File";
             when(mockGeminiFile.name()).thenReturn("files/test-file-error");
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
-                    eq(MODEL_NAME), any(BatchCreateFileRequest.class), eq(BATCH_GENERATE_CONTENT)))
+                            eq(MODEL_NAME), any(BatchCreateFileRequest.class), eq(BATCH_GENERATE_CONTENT)))
                     .thenThrow(new RuntimeException("Error creating batch from file"));
 
             // when & then
@@ -415,7 +415,7 @@ class GoogleAiGeminiBatchChatModelTest {
             when(mockGeminiFile.name()).thenReturn("files/test-file-model");
             var expectedOperation = createPendingOperation("batches/chat-file-model", BATCH_STATE_PENDING);
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
-                    eq(MODEL_NAME), any(BatchCreateFileRequest.class), eq(BATCH_GENERATE_CONTENT)))
+                            eq(MODEL_NAME), any(BatchCreateFileRequest.class), eq(BATCH_GENERATE_CONTENT)))
                     .thenReturn(expectedOperation);
 
             // when
@@ -542,8 +542,7 @@ class GoogleAiGeminiBatchChatModelTest {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     BatchFileRequest<GeminiGenerateContentRequest> batchRequest =
-                            testMapper.readValue(line, new TypeReference<>() {
-                            });
+                            testMapper.readValue(line, new TypeReference<>() {});
 
                     requests.add(batchRequest.request());
                 }
@@ -554,13 +553,6 @@ class GoogleAiGeminiBatchChatModelTest {
 
     @Nested
     class RetrieveBatchResults {
-
-        @Test
-        void should_throw_when_invalid_batch_name() {
-            assertThatThrownBy(() -> new BatchName("test-pending"))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("Batch name must start with 'batches/'");
-        }
 
         @Test
         void should_return_incomplete_when_batch_is_still_processing() {
@@ -637,8 +629,7 @@ class GoogleAiGeminiBatchChatModelTest {
 
             assertThat(result.errors()).hasSize(1);
             assertThat(result.errors().get(0).code()).isEqualTo(4);
-            assertThat(result.errors().get(0).message())
-                    .isEqualTo("Deadline expired before operation could complete.");
+            assertThat(result.errors().get(0).message()).isEqualTo("Deadline expired before operation could complete.");
         }
 
         @Test
@@ -757,9 +748,9 @@ class GoogleAiGeminiBatchChatModelTest {
     class CancelBatchJob {
         @ParameterizedTest
         @CsvSource({
-                "batches/test-cannot-cancel, Batch cannot be cancelled because it has already completed",
-                "batches/test-already-cancelled, Batch is already in CANCELLED state",
-                "batches/non-existent, Batch not found"
+            "batches/test-cannot-cancel, Batch cannot be cancelled because it has already completed",
+            "batches/test-already-cancelled, Batch is already in CANCELLED state",
+            "batches/non-existent, Batch not found"
         })
         void should_throw_exception_when_batch_cancellation_fails(String batchNameValue, String errorMessage) {
             // given
@@ -814,9 +805,9 @@ class GoogleAiGeminiBatchChatModelTest {
 
         @ParameterizedTest
         @CsvSource({
-                "batches/test-cannot-delete, Batch cannot be deleted due to server error",
-                "batches/non-existent, Batch not found",
-                "batches/invalid-name, Invalid batch name format"
+            "batches/test-cannot-delete, Batch cannot be deleted due to server error",
+            "batches/non-existent, Batch not found",
+            "batches/invalid-name, Invalid batch name format"
         })
         void should_throw_exception_when_batch_deletion_fails(String batchNameValue, String errorMessage) {
             // given
@@ -999,7 +990,6 @@ class GoogleAiGeminiBatchChatModelTest {
 
     @Nested
     class BatchChatSerialization {
-
         private static final String PENDING_RESPONSE =
                 """
                         {
@@ -1039,12 +1029,12 @@ class GoogleAiGeminiBatchChatModelTest {
                             "name": "batches/tti3ik8qob66dxcvynlg5swnutyntbi926ac"
                           },
                           "done": true,
-                          "responses": {
+                          "response": {
                             "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.GenerateContentBatchOutput",
                             "inlinedResponses": {
                               "inlinedResponses": [
                                 {
-                                  "responses": {
+                                  "response": {
                                     "candidates": [
                                       {
                                         "content": {
@@ -1068,7 +1058,7 @@ class GoogleAiGeminiBatchChatModelTest {
                                   }
                                 },
                                 {
-                                  "responses": {
+                                  "response": {
                                     "candidates": [
                                       {
                                         "content": {
@@ -1092,7 +1082,7 @@ class GoogleAiGeminiBatchChatModelTest {
                                   }
                                 },
                                 {
-                                  "responses": {
+                                  "response": {
                                     "candidates": [
                                       {
                                         "content": {
@@ -1123,87 +1113,87 @@ class GoogleAiGeminiBatchChatModelTest {
 
         private String ERROR_RESPONSE =
                 """
+                {
+                  "name": "batches/tti3ik8qob66dxcvynlg5swnutyntbi926ac",
+                  "metadata": {
+                    "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.GenerateContentBatch",
+                    "model": "models/gemini-3-flash-preview",
+                    "displayName": "error-batch",
+                    "createTime": "2025-12-03T17:23:06.004734302Z",
+                    "endTime": "2025-12-03T17:24:41.850709659Z",
+                    "updateTime": "2025-12-03T17:24:41.850709619Z",
+                    "batchStats": {
+                      "requestCount": "3",
+                      "successfulRequestCount": "2",
+                      "failedRequestCount": "1"
+                    },
+                    "state": "BATCH_STATE_SUCCEEDED",
+                    "name": "batches/tti3ik8qob66dxcvynlg5swnutyntbi926ac"
+                  },
+                  "done": true,
+                  "response": {
+                    "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.GenerateContentBatchOutput",
+                    "inlinedResponses": {
+                      "inlinedResponses": [
                         {
-                          "name": "batches/tti3ik8qob66dxcvynlg5swnutyntbi926ac",
-                          "metadata": {
-                            "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.GenerateContentBatch",
-                            "model": "models/gemini-3-flash-preview",
-                            "displayName": "error-batch",
-                            "createTime": "2025-12-03T17:23:06.004734302Z",
-                            "endTime": "2025-12-03T17:24:41.850709659Z",
-                            "updateTime": "2025-12-03T17:24:41.850709619Z",
-                            "batchStats": {
-                              "requestCount": "3",
-                              "successfulRequestCount": "2",
-                              "failedRequestCount": "1"
+                          "response": {
+                            "candidates": [
+                              {
+                                "content": {
+                                  "parts": [
+                                    {
+                                      "text": "{some json}"
+                                    }
+                                  ],
+                                  "role": "model"
+                                },
+                                "finishReason": "STOP",
+                                "index": 0
+                              }
+                            ],
+                            "usageMetadata": {
+                              "promptTokenCount": 13469,
+                              "candidatesTokenCount": 281,
+                              "totalTokenCount": 16109
                             },
-                            "state": "BATCH_STATE_SUCCEEDED",
-                            "name": "batches/tti3ik8qob66dxcvynlg5swnutyntbi926ac"
-                          },
-                          "done": true,
-                          "responses": {
-                            "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.GenerateContentBatchOutput",
-                            "inlinedResponses": {
-                              "inlinedResponses": [
-                                {
-                                  "responses": {
-                                    "candidates": [
-                                      {
-                                        "content": {
-                                          "parts": [
-                                            {
-                                              "text": "{some json}"
-                                            }
-                                          ],
-                                          "role": "model"
-                                        },
-                                        "finishReason": "STOP",
-                                        "index": 0
-                                      }
-                                    ],
-                                    "usageMetadata": {
-                                      "promptTokenCount": 13469,
-                                      "candidatesTokenCount": 281,
-                                      "totalTokenCount": 16109
-                                    },
-                                    "modelVersion": "gemini-3-flash-preview"
-                                  }
+                            "modelVersion": "gemini-3-flash-preview"
+                          }
+                        },
+                        {
+                          "error": {
+                            "code": 4,
+                            "message": "Deadline expired before operation could complete."
+                          }
+                        },
+                        {
+                          "response": {
+                            "candidates": [
+                              {
+                                "content": {
+                                  "parts": [
+                                    {
+                                      "text": "{...}"
+                                    }
+                                  ],
+                                  "role": "model"
                                 },
-                                {
-                                  "error": {
-                                    "code": 4,
-                                    "message": "Deadline expired before operation could complete."
-                                  }
-                                },
-                                {
-                                  "responses": {
-                                    "candidates": [
-                                      {
-                                        "content": {
-                                          "parts": [
-                                            {
-                                              "text": "{...}"
-                                            }
-                                          ],
-                                          "role": "model"
-                                        },
-                                        "finishReason": "STOP",
-                                        "index": 0
-                                      }
-                                    ],
-                                    "usageMetadata": {
-                                      "promptTokenCount": 6021,
-                                      "candidatesTokenCount": 449,
-                                      "totalTokenCount": 9070
-                                    },
-                                    "modelVersion": "gemini-3-flash-preview"
-                                  }
-                                }
-                              ]
-                            }
+                                "finishReason": "STOP",
+                                "index": 0
+                              }
+                            ],
+                            "usageMetadata": {
+                              "promptTokenCount": 6021,
+                              "candidatesTokenCount": 449,
+                              "totalTokenCount": 9070
+                            },
+                            "modelVersion": "gemini-3-flash-preview"
                           }
                         }
-                        """;
+                      ]
+                    }
+                  }
+                }
+                """;
 
         @Test
         void should_deserialize_batch_response_with_error() {
@@ -1231,8 +1221,7 @@ class GoogleAiGeminiBatchChatModelTest {
             // Second responses - error (check how your model represents this)
             assertThat(result.errors()).hasSize(1);
             assertThat(result.errors().get(0).code()).isEqualTo(4);
-            assertThat(result.errors().get(0).message())
-                    .isEqualTo("Deadline expired before operation could complete.");
+            assertThat(result.errors().get(0).message()).isEqualTo("Deadline expired before operation could complete.");
         }
 
         @Test

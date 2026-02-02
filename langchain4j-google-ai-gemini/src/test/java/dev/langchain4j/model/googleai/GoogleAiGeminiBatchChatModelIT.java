@@ -62,9 +62,7 @@ class GoogleAiGeminiBatchChatModelIT {
                     .logRequestsAndResponses(true)
                     .build();
 
-            var requests = List.of(
-                    createChatRequest("What is 2 + 2?"),
-                    createChatRequest("What is 3 + 3?"));
+            var requests = List.of(createChatRequest("What is 2 + 2?"), createChatRequest("What is 3 + 3?"));
 
             // when
             var response = subject.createBatch(requests);
@@ -234,9 +232,8 @@ class GoogleAiGeminiBatchChatModelIT {
 
             // then - no longer exists
             var list = subject.listBatchJobs(null, null);
-            var batchNames = list.batches().stream()
-                    .map(BatchResponse::batchName)
-                    .toList();
+            var batchNames =
+                    list.batches().stream().map(BatchResponse::batchName).toList();
             assertThat(batchNames).doesNotContain(response.batchName());
         }
 

@@ -27,9 +27,7 @@ class GoogleAiGeminiBatchImageModelIT {
 
         var displayName = "Test Image Batch";
         var priority = 1L;
-        var prompts = List.of(
-                "A simple red circle on white background",
-                "A simple blue square on white background");
+        var prompts = List.of("A simple red circle on white background", "A simple blue square on white background");
 
         // when
         var response = subject.createBatch(displayName, priority, prompts);

@@ -97,10 +97,7 @@ import org.slf4j.Logger;
 public final class GoogleAiGeminiBatchImageModel implements BatchImageModel {
 
     private final GeminiBatchProcessor<
-            String,
-            Response<@NonNull Image>,
-            GeminiGenerateContentRequest,
-            GeminiGenerateContentResponse>
+                    String, Response<@NonNull Image>, GeminiGenerateContentRequest, GeminiGenerateContentResponse>
             batchProcessor;
     private final String modelName;
     private final GeminiImageConfig imageConfig;
@@ -152,7 +149,7 @@ public final class GoogleAiGeminiBatchImageModel implements BatchImageModel {
      * @return a {@link BatchResponse} representing the initial state of the batch operation
      */
     @Override
-    public BatchResponse<Response<@NonNull Image>> createBatch(List<String> prompts) {
+    public BatchResponse<Response<Image>> createBatch(List<String> prompts) {
         return createBatch(null, null, prompts);
     }
 
@@ -284,8 +281,7 @@ public final class GoogleAiGeminiBatchImageModel implements BatchImageModel {
      * @return a {@link BatchList} containing batch responses and pagination information
      */
     @Override
-    public BatchList<Response<@NonNull Image>> listBatchJobs(
-            @Nullable Integer pageSize, @Nullable String pageToken) {
+    public BatchList<Response<@NonNull Image>> listBatchJobs(@Nullable Integer pageSize, @Nullable String pageToken) {
         return batchProcessor.listBatchJobs(pageSize, pageToken);
     }
 
@@ -316,8 +312,7 @@ public final class GoogleAiGeminiBatchImageModel implements BatchImageModel {
         private Logger logger;
         private List<GeminiSafetySetting> safetySettings;
 
-        private GoogleAiGeminiBatchImageModelBuilder() {
-        }
+        private GoogleAiGeminiBatchImageModelBuilder() {}
 
         /**
          * Sets the HTTP client builder for custom HTTP configuration.
@@ -473,16 +468,11 @@ public final class GoogleAiGeminiBatchImageModel implements BatchImageModel {
 
     private class ImageRequestPreparer
             implements GeminiBatchProcessor.RequestPreparer<
-            String,
-            GeminiGenerateContentRequest,
-            GeminiGenerateContentResponse,
-            Response<@NonNull Image>> {
+                    String, GeminiGenerateContentRequest, GeminiGenerateContentResponse, Response<@NonNull Image>> {
         private static final TypeReference<GeminiGenerateContentResponse> responseWrapperType =
-                new TypeReference<>() {
-                };
+                new TypeReference<>() {};
         private static final TypeReference<BatchCreateResponse.InlinedResponseWrapper<GeminiGenerateContentResponse>>
-                inlinedResponseWrapperType = new TypeReference<>() {
-        };
+                inlinedResponseWrapperType = new TypeReference<>() {};
 
         @Override
         public String prepareRequest(String prompt) {
@@ -491,8 +481,7 @@ public final class GoogleAiGeminiBatchImageModel implements BatchImageModel {
 
         @Override
         public GeminiGenerateContentRequest createInlinedRequest(String prompt) {
-            GeminiContent content =
-                    new GeminiContent(List.of(GeminiPart.ofText(prompt)), GeminiRole.USER.toString());
+            GeminiContent content = new GeminiContent(List.of(GeminiPart.ofText(prompt)), GeminiRole.USER.toString());
 
             // Build imageConfig only if there are values to set
             GeminiImageConfig config =
@@ -512,7 +501,7 @@ public final class GoogleAiGeminiBatchImageModel implements BatchImageModel {
 
         @Override
         public ExtractedBatchResults<Response<@NonNull Image>> extractResults(
-                BatchCreateResponse<GeminiGenerateContentResponse> response) {
+                @Nullable BatchCreateResponse<GeminiGenerateContentResponse> response) {
             if (response == null || response.inlinedResponses() == null) {
                 return new ExtractedBatchResults<>(List.of(), List.of());
             }
@@ -526,12 +515,9 @@ public final class GoogleAiGeminiBatchImageModel implements BatchImageModel {
                     var geminiResponse = Json.convertValue(typed.response(), responseWrapperType);
                     responses.add(extractImage(geminiResponse));
                 }
-                if (typed.error() != null) {
-                    errors.add(new ExtractedBatchResults.Status(
-                            typed.error().code(),
-                            typed.error().message(),
-                            typed.error().details()
-                    ));
+                var error = typed.error();
+                if (error != null) {
+                    errors.add(new ExtractedBatchResults.Status(error.code(), error.message(), error.details()));
                 }
             }
 

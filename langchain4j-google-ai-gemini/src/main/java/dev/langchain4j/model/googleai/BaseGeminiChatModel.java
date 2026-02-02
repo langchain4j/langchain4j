@@ -32,6 +32,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 
 class BaseGeminiChatModel {
@@ -221,7 +222,7 @@ class BaseGeminiChatModel {
         };
     }
 
-    protected ChatResponse processResponse(GeminiGenerateContentResponse geminiResponse) {
+    protected ChatResponse processResponse(@NonNull GeminiGenerateContentResponse geminiResponse) {
         GeminiCandidate firstCandidate = geminiResponse.candidates().get(0);
         AiMessage aiMessage = createAiMessage(firstCandidate);
 

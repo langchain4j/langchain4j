@@ -72,11 +72,10 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
             GeminiFiles.GeminiFile file,
             String modelName,
             GeminiService.BatchOperationType operationType) {
-        return processResponse(
-                geminiService.batchCreate(
-                        modelName,
-                        new BatchCreateFileRequest(new FileBatch(displayName, new FileInputConfig(file.name()))),
-                        operationType));
+        return processResponse(geminiService.batchCreate(
+                modelName,
+                new BatchCreateFileRequest(new FileBatch(displayName, new FileInputConfig(file.name()))),
+                operationType));
     }
 
     /**
@@ -109,10 +108,10 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
     BatchList<RESPONSE> listBatchJobs(@Nullable Integer pageSize, @Nullable String pageToken) {
         var response = geminiService.<List<API_RESPONSE>>batchListBatches(pageSize, pageToken);
 
-        var batches = firstNotNull("operationsResponse", response.operations(), List.<Operation<API_RESPONSE>>of())
-                .stream()
-                .map(operation -> processResponse((Operation<API_RESPONSE>) operation))
-                .toList();
+        var batches =
+                firstNotNull("operationsResponse", response.operations(), List.<Operation<API_RESPONSE>>of()).stream()
+                        .map(operation -> processResponse((Operation<API_RESPONSE>) operation))
+                        .toList();
 
         return new BatchList<>(batches, response.nextPageToken());
     }
@@ -129,7 +128,8 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
                 return new BatchResponse<>(batchName, BatchJobState.BATCH_STATE_FAILED, List.of(), null);
             } else {
                 var responses = preparer.extractResults(operation.response());
-                return new BatchResponse<>(batchName, BatchJobState.BATCH_STATE_SUCCEEDED, responses.responses(), responses.errors());
+                return new BatchResponse<>(
+                        batchName, BatchJobState.BATCH_STATE_SUCCEEDED, responses.responses(), responses.errors());
             }
         } else {
             return new BatchResponse<>(batchName, state, List.of(), null);
@@ -175,6 +175,6 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
         /**
          * Extracts high-level responses from the API responses.
          */
-        ExtractedBatchResults<RESPONSE> extractResults(BatchCreateResponse<API_RESPONSE> response);
+        ExtractedBatchResults<RESPONSE> extractResults(@Nullable BatchCreateResponse<API_RESPONSE> response);
     }
 }

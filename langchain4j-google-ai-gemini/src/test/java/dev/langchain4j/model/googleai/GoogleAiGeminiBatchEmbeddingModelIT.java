@@ -137,9 +137,7 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
                     .logRequestsAndResponses(true)
                     .build();
 
-            var textSegments = List.of(
-                    TextSegment.from("Test segment 1"),
-                    TextSegment.from("Test segment 2"));
+            var textSegments = List.of(TextSegment.from("Test segment 1"), TextSegment.from("Test segment 2"));
 
             // when
             var response = subject.createBatch(textSegments);
@@ -290,9 +288,8 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
 
             // then - no longer exists
             var list = subject.listBatchJobs(null, null);
-            var batchNames = list.batches().stream()
-                    .map(BatchResponse::batchName)
-                    .toList();
+            var batchNames =
+                    list.batches().stream().map(BatchResponse::batchName).toList();
             assertThat(batchNames).doesNotContain(response.batchName());
         }
 

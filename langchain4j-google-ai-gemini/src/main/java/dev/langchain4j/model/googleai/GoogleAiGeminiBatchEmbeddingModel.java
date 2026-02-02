@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -37,8 +38,8 @@ import org.jspecify.annotations.Nullable;
  * @see BatchResponse
  */
 @Experimental
+@NullMarked
 public final class GoogleAiGeminiBatchEmbeddingModel implements BatchEmbeddingModel {
-
     private final GeminiBatchProcessor<TextSegment, Embedding, GeminiEmbeddingRequest, GeminiEmbeddingResponse>
             batchProcessor;
     private final String modelName;
@@ -233,10 +234,9 @@ public final class GoogleAiGeminiBatchEmbeddingModel implements BatchEmbeddingMo
 
     private class EmbeddingRequestPreparer
             implements GeminiBatchProcessor.RequestPreparer<
-            TextSegment, GeminiEmbeddingRequest, GeminiEmbeddingResponse, Embedding> {
+                    TextSegment, GeminiEmbeddingRequest, GeminiEmbeddingResponse, Embedding> {
         private static final TypeReference<BatchCreateResponse.InlinedResponseWrapper<GeminiEmbeddingResponse>>
-                responseWrapperType = new TypeReference<>() {
-        };
+                responseWrapperType = new TypeReference<>() {};
 
         @Override
         public TextSegment prepareRequest(TextSegment textSegment) {
@@ -262,7 +262,8 @@ public final class GoogleAiGeminiBatchEmbeddingModel implements BatchEmbeddingMo
         }
 
         @Override
-        public ExtractedBatchResults<Embedding> extractResults(BatchCreateResponse<GeminiEmbeddingResponse> response) {
+        public ExtractedBatchResults<Embedding> extractResults(
+                @Nullable BatchCreateResponse<GeminiEmbeddingResponse> response) {
             if (response == null || response.inlinedResponses() == null) {
                 return new ExtractedBatchResults<>(List.of(), List.of());
             }
@@ -272,15 +273,14 @@ public final class GoogleAiGeminiBatchEmbeddingModel implements BatchEmbeddingMo
 
             for (Object wrapper : response.inlinedResponses().inlinedResponses()) {
                 var typed = Json.convertValue(wrapper, responseWrapperType);
-                if (typed.response() != null) {
-                    var embedding = Embedding.from(typed.response().embedding().values());
+                var typedResponse = typed.response();
+                if (typedResponse != null) {
+                    var embedding = Embedding.from(typedResponse.embedding().values());
                     responses.add(embedding);
                 }
-                if (typed.error() != null) {
-                    errors.add(new ExtractedBatchResults.Status(
-                            typed.error().code(),
-                            typed.error().message(),
-                            typed.error().details()));
+                var error = typed.error();
+                if (error != null) {
+                    errors.add(new ExtractedBatchResults.Status(error.code(), error.message(), error.details()));
                 }
             }
 

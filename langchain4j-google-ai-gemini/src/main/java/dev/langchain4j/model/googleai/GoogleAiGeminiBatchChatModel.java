@@ -1,5 +1,9 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.model.googleai.BaseGeminiChatModel.buildGeminiService;
+import static dev.langchain4j.model.googleai.GeminiService.BatchOperationType.BATCH_GENERATE_CONTENT;
+
+import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.batch.BatchChatModel;
 import dev.langchain4j.model.batch.BatchJobState;
@@ -10,21 +14,16 @@ import dev.langchain4j.model.batch.ExtractedBatchResults;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateResponse;
-import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchFileRequest;
 import dev.langchain4j.model.googleai.GeminiFiles.GeminiFile;
 import dev.langchain4j.model.googleai.jsonl.JsonLinesWriter;
-import org.jspecify.annotations.Nullable;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import static dev.langchain4j.model.googleai.BaseGeminiChatModel.buildGeminiService;
-import static dev.langchain4j.model.googleai.GeminiService.BatchOperationType.BATCH_GENERATE_CONTENT;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Provides an interface for interacting with the Gemini Batch API, an asynchronous service designed for processing
@@ -41,7 +40,7 @@ import static dev.langchain4j.model.googleai.GeminiService.BatchOperationType.BA
 public final class GoogleAiGeminiBatchChatModel implements BatchChatModel {
 
     private final GeminiBatchProcessor<
-            ChatRequest, ChatResponse, GeminiGenerateContentRequest, GeminiGenerateContentResponse>
+                    ChatRequest, ChatResponse, GeminiGenerateContentRequest, GeminiGenerateContentResponse>
             batchProcessor;
     private final BaseGeminiChatModel chatModel;
     private final String modelName;
@@ -245,8 +244,7 @@ public final class GoogleAiGeminiBatchChatModel implements BatchChatModel {
      * Builder for constructing {@link GoogleAiGeminiBatchChatModel} instances.
      */
     public static final class Builder extends BaseGeminiChatModel.GoogleAiGeminiChatModelBaseBuilder<Builder> {
-        private Builder() {
-        }
+        private Builder() {}
 
         /**
          * Builds a new {@link GoogleAiGeminiBatchChatModel} instance.
@@ -260,10 +258,9 @@ public final class GoogleAiGeminiBatchChatModel implements BatchChatModel {
 
     private class ChatRequestPreparer
             implements GeminiBatchProcessor.RequestPreparer<
-            ChatRequest, GeminiGenerateContentRequest, GeminiGenerateContentResponse, ChatResponse> {
+                    ChatRequest, GeminiGenerateContentRequest, GeminiGenerateContentResponse, ChatResponse> {
         private static final TypeReference<BatchCreateResponse.InlinedResponseWrapper<GeminiGenerateContentResponse>>
-                responseWrapperType = new TypeReference<>() {
-        };
+                responseWrapperType = new TypeReference<>() {};
 
         @Override
         public ChatRequest prepareRequest(ChatRequest request) {
@@ -280,7 +277,7 @@ public final class GoogleAiGeminiBatchChatModel implements BatchChatModel {
 
         @Override
         public ExtractedBatchResults<ChatResponse> extractResults(
-                BatchCreateResponse<GeminiGenerateContentResponse> response) {
+                @Nullable BatchCreateResponse<GeminiGenerateContentResponse> response) {
             if (response == null || response.inlinedResponses() == null) {
                 return new ExtractedBatchResults<>(List.of(), List.of());
             }
@@ -290,15 +287,13 @@ public final class GoogleAiGeminiBatchChatModel implements BatchChatModel {
 
             for (Object wrapper : response.inlinedResponses().inlinedResponses()) {
                 var typed = Json.convertValue(wrapper, responseWrapperType);
-                if (typed.response() != null) {
-                    responses.add(chatModel.processResponse(typed.response()));
+                var typedResponse = typed.response();
+                if (typedResponse != null) {
+                    responses.add(chatModel.processResponse(typedResponse));
                 }
-                if (typed.error() != null) {
-                    errors.add(new ExtractedBatchResults.Status(
-                            typed.error().code(),
-                            typed.error().message(),
-                            typed.error().details()
-                    ));
+                var error = typed.error();
+                if (error != null) {
+                    errors.add(new ExtractedBatchResults.Status(error.code(), error.message(), error.details()));
                 }
             }
 

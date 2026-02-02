@@ -84,15 +84,12 @@ class GoogleAiGeminiBatchImageModelTest {
             // given
             var displayName = "Test Image Batch";
             var priority = 1L;
-            var prompts = List.of(
-                    "A serene mountain landscape",
-                    "A futuristic cityscape",
-                    "A cute cartoon cat");
+            var prompts = List.of("A serene mountain landscape", "A futuristic cityscape", "A cute cartoon cat");
             var expectedOperation = createPendingOperation("batches/test-123", BATCH_STATE_PENDING);
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
-                    any(),
-                    ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(),
-                    eq(BATCH_GENERATE_CONTENT)))
+                            any(),
+                            ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(),
+                            eq(BATCH_GENERATE_CONTENT)))
                     .thenReturn(expectedOperation);
 
             // when
@@ -120,9 +117,9 @@ class GoogleAiGeminiBatchImageModelTest {
             var prompts = List.of("A simple red circle");
             var expectedOperation = createPendingOperation("batches/test-456", BATCH_STATE_PENDING);
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
-                    any(),
-                    ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(),
-                    eq(BATCH_GENERATE_CONTENT)))
+                            any(),
+                            ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(),
+                            eq(BATCH_GENERATE_CONTENT)))
                     .thenReturn(expectedOperation);
 
             // when
@@ -148,9 +145,9 @@ class GoogleAiGeminiBatchImageModelTest {
             var prompts = List.of("A minimalist logo design");
             var expectedOperation = createPendingOperation("batches/test-789", BATCH_STATE_PENDING);
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
-                    any(),
-                    ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(),
-                    eq(BATCH_GENERATE_CONTENT)))
+                            any(),
+                            ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(),
+                            eq(BATCH_GENERATE_CONTENT)))
                     .thenReturn(expectedOperation);
 
             // when
@@ -177,9 +174,9 @@ class GoogleAiGeminiBatchImageModelTest {
             var prompts = List.of("A product mockup");
             var expectedOperation = createPendingOperation("batches/test-negative", BATCH_STATE_PENDING);
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
-                    any(),
-                    ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(),
-                    eq(BATCH_GENERATE_CONTENT)))
+                            any(),
+                            ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(),
+                            eq(BATCH_GENERATE_CONTENT)))
                     .thenReturn(expectedOperation);
 
             // when
@@ -212,9 +209,9 @@ class GoogleAiGeminiBatchImageModelTest {
             var prompts = List.of("A landscape image");
             var expectedOperation = createPendingOperation("batches/test-config", BATCH_STATE_PENDING);
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
-                    any(),
-                    ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(),
-                    eq(BATCH_GENERATE_CONTENT)))
+                            any(),
+                            ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(),
+                            eq(BATCH_GENERATE_CONTENT)))
                     .thenReturn(expectedOperation);
 
             // when
@@ -242,9 +239,9 @@ class GoogleAiGeminiBatchImageModelTest {
             var prompts = List.of("Test image");
             var expectedOperation = createPendingOperation("batches/test-modalities", BATCH_STATE_PENDING);
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
-                    any(),
-                    ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(),
-                    eq(BATCH_GENERATE_CONTENT)))
+                            any(),
+                            ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(),
+                            eq(BATCH_GENERATE_CONTENT)))
                     .thenReturn(expectedOperation);
 
             // when
@@ -267,9 +264,9 @@ class GoogleAiGeminiBatchImageModelTest {
             var prompts = List.of("Test image prompt");
             var expectedOperation = createPendingOperation("batches/test-interface", BATCH_STATE_PENDING);
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
-                    any(),
-                    ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(),
-                    eq(BATCH_GENERATE_CONTENT)))
+                            any(),
+                            ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(),
+                            eq(BATCH_GENERATE_CONTENT)))
                     .thenReturn(expectedOperation);
 
             // when
@@ -303,7 +300,7 @@ class GoogleAiGeminiBatchImageModelTest {
             when(mockGeminiFile.name()).thenReturn("files/test-file-123");
             var expectedOperation = createPendingOperation("batches/image-file-test-123", BATCH_STATE_PENDING);
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
-                    eq(MODEL_NAME), any(BatchCreateFileRequest.class), eq(BATCH_GENERATE_CONTENT)))
+                            eq(MODEL_NAME), any(BatchCreateFileRequest.class), eq(BATCH_GENERATE_CONTENT)))
                     .thenReturn(expectedOperation);
 
             // when
@@ -329,7 +326,7 @@ class GoogleAiGeminiBatchImageModelTest {
             String displayName = "Batch from File";
             when(mockGeminiFile.name()).thenReturn("files/test-file-error");
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
-                    eq(MODEL_NAME), any(BatchCreateFileRequest.class), eq(BATCH_GENERATE_CONTENT)))
+                            eq(MODEL_NAME), any(BatchCreateFileRequest.class), eq(BATCH_GENERATE_CONTENT)))
                     .thenThrow(new RuntimeException("Error creating batch from file"));
 
             // when & then
@@ -550,12 +547,12 @@ class GoogleAiGeminiBatchImageModelTest {
                     "name": "batches/image-test-123"
                   },
                   "done": true,
-                  "responses": {
+                  "response": {
                     "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.GenerateContentBatchOutput",
                     "inlinedResponses": {
                       "inlinedResponses": [
                         {
-                          "responses": {
+                          "response": {
                             "candidates": [
                               {
                                 "content": {
@@ -582,7 +579,7 @@ class GoogleAiGeminiBatchImageModelTest {
                           }
                         },
                         {
-                          "responses": {
+                          "response": {
                             "candidates": [
                               {
                                 "content": {
