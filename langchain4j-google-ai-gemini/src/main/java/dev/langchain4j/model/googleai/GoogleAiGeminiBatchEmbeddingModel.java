@@ -237,9 +237,6 @@ public final class GoogleAiGeminiBatchEmbeddingModel implements BatchEmbeddingMo
         private static final TypeReference<BatchCreateResponse.InlinedResponseWrapper<GeminiEmbeddingResponse>>
                 responseWrapperType = new TypeReference<>() {
         };
-        private static final TypeReference<BatchCreateResponse<GeminiEmbeddingResponse>> responseTypeReference =
-                new TypeReference<>() {
-                };
 
         @Override
         public TextSegment prepareRequest(TextSegment textSegment) {
@@ -279,21 +276,15 @@ public final class GoogleAiGeminiBatchEmbeddingModel implements BatchEmbeddingMo
                     var embedding = Embedding.from(typed.response().embedding().values());
                     responses.add(embedding);
                 }
-                var error = typed.error();
-                if (error != null) {
+                if (typed.error() != null) {
                     errors.add(new ExtractedBatchResults.Status(
-                            error.code(),
-                            error.message(),
-                            error.details()));
+                            typed.error().code(),
+                            typed.error().message(),
+                            typed.error().details()));
                 }
             }
 
             return new ExtractedBatchResults<>(responses, errors);
-        }
-
-        @Override
-        public TypeReference<BatchCreateResponse<GeminiEmbeddingResponse>> getResponseTypeReference() {
-            return responseTypeReference;
         }
     }
 }

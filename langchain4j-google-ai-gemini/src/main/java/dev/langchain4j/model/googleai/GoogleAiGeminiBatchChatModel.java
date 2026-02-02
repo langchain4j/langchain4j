@@ -15,8 +15,6 @@ import dev.langchain4j.model.googleai.BatchRequestResponse.BatchFileRequest;
 import dev.langchain4j.model.googleai.GeminiFiles.GeminiFile;
 import dev.langchain4j.model.googleai.jsonl.JsonLinesWriter;
 import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -266,9 +264,6 @@ public final class GoogleAiGeminiBatchChatModel implements BatchChatModel {
         private static final TypeReference<BatchCreateResponse.InlinedResponseWrapper<GeminiGenerateContentResponse>>
                 responseWrapperType = new TypeReference<>() {
         };
-        private static final TypeReference<BatchCreateResponse<GeminiGenerateContentResponse>> responseTypeReference =
-                new TypeReference<>() {
-                };
 
         @Override
         public ChatRequest prepareRequest(ChatRequest request) {
@@ -283,73 +278,31 @@ public final class GoogleAiGeminiBatchChatModel implements BatchChatModel {
             return chatModel.createGenerateContentRequest(request);
         }
 
-        private static final Logger logger = LoggerFactory.getLogger(GoogleAiGeminiBatchChatModel.class);
-
         @Override
         public ExtractedBatchResults<ChatResponse> extractResults(
                 BatchCreateResponse<GeminiGenerateContentResponse> response) {
-            logger.debug("extractResults called with response: {}", response);
-
-            if (response == null) {
-                logger.warn("Response is null");
-                return new ExtractedBatchResults<>(List.of(), List.of());
-            }
-
-            if (response.inlinedResponses() == null) {
-                logger.warn("InlinedResponses is null");
+            if (response == null || response.inlinedResponses() == null) {
                 return new ExtractedBatchResults<>(List.of(), List.of());
             }
 
             List<ChatResponse> responses = new ArrayList<>();
             List<ExtractedBatchResults.Status> errors = new ArrayList<>();
 
-            var inlinedResponses = response.inlinedResponses().inlinedResponses();
-            if (inlinedResponses == null) {
-                logger.warn("InlinedResponses.inlinedResponses() is null");
-                return new ExtractedBatchResults<>(List.of(), List.of());
-            }
-
-            logger.debug("Processing {} inlined responses", inlinedResponses.size());
-
-            for (int i = 0; i < inlinedResponses.size(); i++) {
-                var wrapper = inlinedResponses.get(i);
-                logger.debug("Wrapper [{}] class: {}", i, wrapper.getClass().getName());
-                logger.debug("Wrapper [{}] value: {}", i, wrapper);
-
-                BatchCreateResponse.InlinedResponseWrapper<GeminiGenerateContentResponse> typed;
-                try {
-                    typed = Json.convertValue(wrapper, responseWrapperType);
-                    logger.debug("Typed [{}]: response={}, error={}", i, typed.response(), typed.error());
-                } catch (Exception e) {
-                    logger.error("Failed to convert wrapper [{}]: {}", i, e.getMessage(), e);
-                    continue;
-                }
-
+            for (Object wrapper : response.inlinedResponses().inlinedResponses()) {
+                var typed = Json.convertValue(wrapper, responseWrapperType);
                 if (typed.response() != null) {
-                    logger.debug("Processing response [{}]", i);
                     responses.add(chatModel.processResponse(typed.response()));
-                } else {
-                    logger.debug("Response [{}] is null", i);
                 }
-
-                var error = typed.error();
-                if (error != null) {
-                    logger.debug("Error [{}]: code={}, message={}", i, error.code(), error.message());
+                if (typed.error() != null) {
                     errors.add(new ExtractedBatchResults.Status(
-                            error.code(),
-                            error.message(),
-                            error.details()
+                            typed.error().code(),
+                            typed.error().message(),
+                            typed.error().details()
                     ));
                 }
             }
 
-            logger.debug("Extracted {} responses and {} errors", responses.size(), errors.size());
             return new ExtractedBatchResults<>(responses, errors);
-        }
-
-        @Override
-        public TypeReference<BatchCreateResponse<GeminiGenerateContentResponse>> getResponseTypeReference() {
-            return responseTypeReference;
         }
     }
 }

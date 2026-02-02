@@ -91,10 +91,12 @@ public final class BatchRequestResponse {
 
     /**
      * Represents a long-running operation that is the result of a network API call.
+     *
+     * @param <RESP> The type of responses in the operation result
      */
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record Operation(
-            String name, Map<String, Object> metadata, boolean done, Status error, Object response) {
+    record Operation<RESP>(
+            String name, Map<String, Object> metadata, boolean done, Status error, BatchCreateResponse<RESP> response) {
 
         /**
          * Represents the error status of an operation.
@@ -110,10 +112,11 @@ public final class BatchRequestResponse {
     /**
      * Represents a responses containing a list of operations and a token for pagination.
      *
+     * @param <RESP>        the type of the responses for each operation
      * @param operations    a list of operations to be performed
      * @param nextPageToken a token for retrieving the next page of operations, if available; null if there are no more pages
      */
-    record ListOperationsResponse(@Nullable List<Operation> operations, @Nullable String nextPageToken) {}
+    record ListOperationsResponse<RESP>(@Nullable List<Operation<RESP>> operations, @Nullable String nextPageToken) {}
 
     /**
      * Represents a batch request for a file operation.

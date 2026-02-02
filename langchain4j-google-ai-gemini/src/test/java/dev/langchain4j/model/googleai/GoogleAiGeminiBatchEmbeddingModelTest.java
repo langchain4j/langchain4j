@@ -752,7 +752,7 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
         void should_return_incomplete_with_unspecified_state_when_metadata_is_null() {
             // given
             var batchName = new BatchName("batches/embed-test-no-metadata");
-            var operation = new Operation(
+            var operation = new Operation<GeminiEmbeddingResponse>(
                     "batches/embed-test-no-metadata", null, false, null, null);
             when(mockGeminiService.<GeminiEmbeddingResponse>batchRetrieveBatch(batchName.value()))
                     .thenReturn(operation);
@@ -770,7 +770,7 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
         void should_return_incomplete_with_unspecified_state_when_state_is_missing_from_metadata() {
             // given
             var batchName = new BatchName("batches/embed-test-no-state");
-            var operation = new Operation(
+            var operation = new Operation<GeminiEmbeddingResponse>(
                     "batches/embed-test-no-state", Map.of("createTime", "2025-10-23T09:26:30Z"), false, null, null);
             when(mockGeminiService.<GeminiEmbeddingResponse>batchRetrieveBatch(batchName.value()))
                     .thenReturn(operation);
@@ -909,7 +909,7 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
         void should_return_empty_list_when_none_available() {
             // given
             when(mockGeminiService.<GeminiGenerateContentResponse>batchListBatches(null, null))
-                    .thenReturn(new ListOperationsResponse(null, null));
+                    .thenReturn(new ListOperationsResponse<>(null, null));
 
             // when
             var result = subject.listBatchJobs(null, null);
@@ -923,7 +923,7 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
             // given
             var operation1 = createMockEmbeddingOperation("batches/batch-1", BatchJobState.BATCH_STATE_SUCCEEDED);
             var operation2 = createMockEmbeddingOperation("batches/batch-2", BatchJobState.BATCH_STATE_RUNNING);
-            var listResponse = new ListOperationsResponse(List.of(operation1, operation2), null);
+            var listResponse = new ListOperationsResponse<>(List.of(operation1, operation2), null);
 
             when(mockGeminiService.<GeminiEmbeddingResponse>batchListBatches(null, null))
                     .thenReturn(listResponse);
@@ -941,7 +941,7 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
             // given
             Integer pageSize = 10;
             var operation = createMockEmbeddingOperation("batches/batch-1", BatchJobState.BATCH_STATE_SUCCEEDED);
-            var listResponse = new ListOperationsResponse(List.of(operation), "next-page-token");
+            var listResponse = new ListOperationsResponse<>(List.of(operation), "next-page-token");
 
             when(mockGeminiService.<GeminiEmbeddingResponse>batchListBatches(pageSize, null))
                     .thenReturn(listResponse);
@@ -960,7 +960,7 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
             // given
             String pageToken = "token-123";
             var operation = createMockEmbeddingOperation("batches/batch-1", BatchJobState.BATCH_STATE_SUCCEEDED);
-            var listResponse = new ListOperationsResponse(List.of(operation), null);
+            var listResponse = new ListOperationsResponse<>(List.of(operation), null);
 
             when(mockGeminiService.<GeminiEmbeddingResponse>batchListBatches(null, pageToken))
                     .thenReturn(listResponse);
@@ -979,7 +979,7 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
             Integer pageSize = 5;
             String pageToken = "token-456";
             var operation = createMockEmbeddingOperation("batches/batch-1", BatchJobState.BATCH_STATE_PENDING);
-            var listResponse = new ListOperationsResponse(List.of(operation), "next-token");
+            var listResponse = new ListOperationsResponse<>(List.of(operation), "next-token");
 
             when(mockGeminiService.<GeminiEmbeddingResponse>batchListBatches(pageSize, pageToken))
                     .thenReturn(listResponse);
@@ -995,7 +995,7 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
         @Test
         void should_return_empty_list_when_no_batch_jobs_exist() {
             // given
-            var listResponse = new ListOperationsResponse(List.of(), null);
+            var listResponse = new ListOperationsResponse<GeminiEmbeddingResponse>(List.of(), null);
 
             when(mockGeminiService.<GeminiEmbeddingResponse>batchListBatches(null, null))
                     .thenReturn(listResponse);
@@ -1014,7 +1014,7 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
             var operation1 = createMockEmbeddingOperation("batches/batch-1", BatchJobState.BATCH_STATE_SUCCEEDED);
             var operation2 = createMockEmbeddingOperation("batches/batch-2", BatchJobState.BATCH_STATE_FAILED);
             var operation3 = createMockEmbeddingOperation("batches/batch-3", BatchJobState.BATCH_STATE_CANCELLED);
-            var listResponse = new ListOperationsResponse(List.of(operation1, operation2, operation3), null);
+            var listResponse = new ListOperationsResponse<>(List.of(operation1, operation2, operation3), null);
 
             when(mockGeminiService.<GeminiEmbeddingResponse>batchListBatches(null, null))
                     .thenReturn(listResponse);
@@ -1065,8 +1065,8 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
                     .hasMessageContaining("Invalid page token");
         }
 
-        private Operation createMockEmbeddingOperation(String name, BatchJobState state) {
-            return new Operation(name, Map.of("state", state), false, null, null);
+        private Operation<GeminiEmbeddingResponse> createMockEmbeddingOperation(String name, BatchJobState state) {
+            return new Operation<>(name, Map.of("state", state), false, null, null);
         }
     }
 
@@ -1180,7 +1180,7 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
         }
     }
 
-    private static Operation createSuccessOperation(
+    private static Operation<GeminiEmbeddingResponse> createSuccessOperation(
             String operationName, List<Embedding> embeddings) {
         var inlinedResponses = embeddings.stream()
                 .map(embedding -> new GeminiEmbeddingResponse(
@@ -1192,17 +1192,17 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
                 "type.googleapis.com/google.ai.generativelanguage.v1main.EmbedContentBatchOutput",
                 new BatchCreateResponse.InlinedResponses<>(inlinedResponses));
 
-        return new Operation(operationName, Map.of("state", BATCH_STATE_SUCCEEDED.name()), true, null, response);
+        return new Operation<>(operationName, Map.of("state", BATCH_STATE_SUCCEEDED.name()), true, null, response);
     }
 
-    private static Operation createSuccessOperationWithNullResponse(String operationName) {
-        return new Operation(operationName, Map.of("state", BATCH_STATE_SUCCEEDED.name()), true, null, null);
+    private static Operation<GeminiEmbeddingResponse> createSuccessOperationWithNullResponse(String operationName) {
+        return new Operation<>(operationName, Map.of("state", BATCH_STATE_SUCCEEDED.name()), true, null, null);
     }
 
-    private static Operation createErrorOperation(
+    private static Operation<GeminiEmbeddingResponse> createErrorOperation(
             String operationName, int errorCode, String errorMessage, List<Map<String, Object>> errorDetails) {
         var errorStatus = new Operation.Status(errorCode, errorMessage, errorDetails);
-        return new Operation(operationName, Map.of("state", BATCH_STATE_FAILED.name()), true, errorStatus, null);
+        return new Operation<>(operationName, Map.of("state", BATCH_STATE_FAILED.name()), true, errorStatus, null);
     }
 
     private GoogleAiGeminiBatchEmbeddingModel createSubject() {
@@ -1214,7 +1214,7 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
                 mockGeminiService);
     }
 
-    private static Operation createPendingOperation(String operationName, BatchJobState state) {
-        return new Operation(operationName, Map.of("state", state.name()), false, null, null);
+    private static Operation<GeminiEmbeddingResponse> createPendingOperation(String operationName, BatchJobState state) {
+        return new Operation<>(operationName, Map.of("state", state.name()), false, null, null);
     }
 }

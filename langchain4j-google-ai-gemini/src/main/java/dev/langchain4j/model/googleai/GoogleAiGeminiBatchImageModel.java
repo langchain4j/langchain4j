@@ -483,8 +483,6 @@ public final class GoogleAiGeminiBatchImageModel implements BatchImageModel {
         private static final TypeReference<BatchCreateResponse.InlinedResponseWrapper<GeminiGenerateContentResponse>>
                 inlinedResponseWrapperType = new TypeReference<>() {
         };
-        private static final TypeReference<BatchCreateResponse<GeminiGenerateContentResponse>> responseTypeReference =
-                new TypeReference<>() {};
 
         @Override
         public String prepareRequest(String prompt) {
@@ -528,22 +526,16 @@ public final class GoogleAiGeminiBatchImageModel implements BatchImageModel {
                     var geminiResponse = Json.convertValue(typed.response(), responseWrapperType);
                     responses.add(extractImage(geminiResponse));
                 }
-                var error = typed.error();
-                if (error != null) {
+                if (typed.error() != null) {
                     errors.add(new ExtractedBatchResults.Status(
-                            error.code(),
-                            error.message(),
-                            error.details()
+                            typed.error().code(),
+                            typed.error().message(),
+                            typed.error().details()
                     ));
                 }
             }
 
             return new ExtractedBatchResults<>(responses, errors);
-        }
-
-        @Override
-        public TypeReference<BatchCreateResponse<GeminiGenerateContentResponse>> getResponseTypeReference() {
-                return responseTypeReference;
         }
 
         private Response<@NonNull Image> extractImage(GeminiGenerateContentResponse geminiResponse) {
