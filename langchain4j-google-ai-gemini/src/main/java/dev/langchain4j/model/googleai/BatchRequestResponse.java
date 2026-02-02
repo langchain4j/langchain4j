@@ -74,7 +74,7 @@ public final class BatchRequestResponse {
         /**
          * Wrapper for the list of inlined responses.
          *
-         * @param inlinedResponses The list of individual responses wrappers.
+         * @param inlinedResponses The list of individual response wrappers.
          */
         @JsonIgnoreProperties(ignoreUnknown = true)
         record InlinedResponses<RESP>(List<InlinedResponseWrapper<RESP>> inlinedResponses) {}

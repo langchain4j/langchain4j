@@ -91,7 +91,7 @@ public final class GoogleAiGeminiBatchEmbeddingModel implements BatchEmbeddingMo
      * It is designed for efficient, asynchronous processing of multiple texts. This method uses the
      * inline batch creation endpoint, which supports requests up to 20 MB in size.</p>
      *
-     * <p>The responses contains the initial state of the batch job (usually PENDING). You can monitor
+     * <p>The response contains the initial state of the batch job (usually PENDING). You can monitor
      * the job's progress using {@link #retrieveBatchResults(BatchName)}.</p>
      *
      * @param displayName a user-defined name for the batch, used for identification and listing; may be {@code null}

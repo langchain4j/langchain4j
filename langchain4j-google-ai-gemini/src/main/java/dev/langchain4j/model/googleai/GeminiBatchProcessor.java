@@ -4,6 +4,11 @@ import static dev.langchain4j.internal.Utils.firstNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.model.batch.BatchJobState;
+import dev.langchain4j.model.batch.BatchList;
+import dev.langchain4j.model.batch.BatchName;
+import dev.langchain4j.model.batch.BatchResponse;
+import dev.langchain4j.model.batch.ExtractedBatchResults;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateFileRequest;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateFileRequest.FileBatch;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateFileRequest.FileInputConfig;
@@ -13,11 +18,6 @@ import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateRequest.In
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateRequest.InputConfig;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateRequest.Requests;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateResponse;
-import dev.langchain4j.model.googleai.BatchRequestResponse.BatchJobState;
-import dev.langchain4j.model.googleai.BatchRequestResponse.BatchList;
-import dev.langchain4j.model.googleai.BatchRequestResponse.BatchName;
-import dev.langchain4j.model.googleai.BatchRequestResponse.BatchResponse;
-import dev.langchain4j.model.googleai.BatchRequestResponse.BatchSuccess;
 import dev.langchain4j.model.googleai.BatchRequestResponse.Operation;
 import java.util.List;
 import java.util.Map;
@@ -46,7 +46,7 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
     /**
      * Creates and enqueues a batch of requests for asynchronous processing.
      */
-    BatchResponse<RESPONSE> createBatchInline(
+    BatchResponse<RESPONSE> createBatch(
             String displayName,
             @Nullable Long priority,
             List<REQUEST> requests,
@@ -61,7 +61,7 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
         var request = new BatchCreateRequest<>(new Batch<>(
                 displayName, new InputConfig<>(new Requests<>(inlineRequests)), getOrDefault(priority, 0L)));
 
-        return processResponse(geminiService.batchCreate(modelName, request, operationType), preparer);
+        return processResponse(geminiService.batchCreate(modelName, request, operationType));
     }
 
     BatchResponse<RESPONSE> createBatchFromFile(
@@ -73,8 +73,7 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
                 geminiService.batchCreate(
                         modelName,
                         new BatchCreateFileRequest(new FileBatch(displayName, new FileInputConfig(file.name()))),
-                        operationType),
-                preparer);
+                        operationType));
     }
 
     /**
@@ -83,7 +82,7 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
     @SuppressWarnings("unchecked")
     BatchResponse<RESPONSE> retrieveBatchResults(BatchName name) {
         var operation = geminiService.batchRetrieveBatch(name.value());
-        return processResponse((Operation<API_RESPONSE>) operation, preparer);
+        return processResponse((Operation<API_RESPONSE>) operation);
     }
 
     /**
@@ -108,33 +107,28 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
         var response = geminiService.<List<API_RESPONSE>>batchListBatches(pageSize, pageToken);
 
         return new BatchList<>(
-                response.nextPageToken(),
                 firstNotNull("operationsResponse", response.operations(), List.of()).stream()
-                        .map(operation -> processResponse((Operation<API_RESPONSE>) operation, preparer))
-                        .toList());
+                        .map(operation -> processResponse((Operation<API_RESPONSE>) operation))
+                        .toList(),
+                response.nextPageToken());
     }
 
     /**
      * Processes the operation response and returns the appropriate BatchResponse.
      */
-    private BatchResponse<RESPONSE> processResponse(
-            Operation<API_RESPONSE> operation, RequestPreparer<REQUEST, API_REQUEST, API_RESPONSE, RESPONSE> preparer) {
+    private BatchResponse<RESPONSE> processResponse(Operation<API_RESPONSE> operation) {
+        var state = extractBatchState(operation.metadata());
+        var batchName = new BatchName(operation.name());
+
         if (operation.done()) {
             if (operation.error() != null) {
-                return new BatchRequestResponse.BatchError<>(
-                        new BatchName(operation.name()),
-                        operation.error().code(),
-                        operation.error().message(),
-                        extractBatchState(operation.metadata()),
-                        operation.error().details());
+                return new BatchResponse<>(batchName, BatchJobState.BATCH_STATE_FAILED, List.of(), null);
             } else {
-                var extractedResults = preparer.extractResults(operation.response());
-                return new BatchSuccess<>(
-                        new BatchName(operation.name()), extractedResults.responses(), extractedResults.errors());
+                var responses = preparer.extractResults(operation.response());
+                return new BatchResponse<>(batchName, BatchJobState.BATCH_STATE_SUCCEEDED, responses.responses(), responses.errors());
             }
         } else {
-            return new BatchRequestResponse.BatchIncomplete<>(
-                    new BatchName(operation.name()), extractBatchState(operation.metadata()));
+            return new BatchResponse<>(batchName, state, List.of(), null);
         }
     }
 
@@ -154,8 +148,6 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
             return BatchJobState.UNSPECIFIED;
         }
     }
-
-    record ExtractedBatchResults<T>(List<T> responses, List<BatchRequestResponse.Operation.Status> errors) {}
 
     /**
      * Interface for preparing requests and extracting responses.
