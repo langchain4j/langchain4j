@@ -225,7 +225,7 @@ class GoogleAiGeminiStreamingChatModelIT {
                 handler);
         ChatResponse response = handler.get();
 
-        System.out.println("responses = " + response);
+        System.out.println("response = " + response);
 
         // then
         assertThat(response.aiMessage().text().trim())
@@ -327,7 +327,7 @@ class GoogleAiGeminiStreamingChatModelIT {
                 handler);
         ChatResponse response = handler.get();
 
-        System.out.println("responses = " + response);
+        System.out.println("response = " + response);
 
         // then
         Integer[] diceRolls = new ObjectMapper().readValue(response.aiMessage().text(), Integer[].class);

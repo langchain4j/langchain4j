@@ -32,7 +32,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 
 class BaseGeminiChatModel {
@@ -222,7 +221,7 @@ class BaseGeminiChatModel {
         };
     }
 
-    protected ChatResponse processResponse(@NonNull GeminiGenerateContentResponse geminiResponse) {
+    protected ChatResponse processResponse(GeminiGenerateContentResponse geminiResponse) {
         GeminiCandidate firstCandidate = geminiResponse.candidates().get(0);
         AiMessage aiMessage = createAiMessage(firstCandidate);
 
@@ -456,7 +455,7 @@ class BaseGeminiChatModel {
          * to use that token again increasing the vocabulary of responses.</p>
          *
          * <p><strong>Caution:</strong>A negative penalty will encourage the model to reuse tokens proportional to the
-         * number of times the token has been used. Small negative values will reduce the vocabulary of a responses.
+         * number of times the token has been used. Small negative values will reduce the vocabulary of a response.
          * Larger negative values will cause the model to start repeating a common token until it hits the
          * {@code maxOutputTokens} limit.</p>
          */
@@ -466,15 +465,15 @@ class BaseGeminiChatModel {
         }
 
         /**
-         * Presence penalty applied to the next token's {@code logprobs} if the token has already been seen in the responses.
+         * Presence penalty applied to the next token's {@code logprobs} if the token has already been seen in the response.
          *
          * <p>This penalty is binary on/off and not dependent on the number of times the token is used
          * (after the first). Use frequencyPenalty for a penalty that increases with each use.</p>
          *
          * <ul>
-         *  <li>A positive penalty will discourage the use of tokens that have already been used in the responses,
+         *  <li>A positive penalty will discourage the use of tokens that have already been used in the response,
          *  increasing the vocabulary.</li>
-         *  <li>A negative penalty will encourage the use of tokens that have already been used in the responses,
+         *  <li>A negative penalty will encourage the use of tokens that have already been used in the response,
          *  decreasing the vocabulary.</li>
          * </ul>
          */
@@ -484,7 +483,7 @@ class BaseGeminiChatModel {
         }
 
         /**
-         * The maximum number of tokens to include in a responses candidate.
+         * The maximum number of tokens to include in a response candidate.
          *
          * <p><strong>>Note:</strong> The default value varies by model, see the Model.output_token_limit attribute of
          * the Model returned from the getModel function.</p>
@@ -506,7 +505,7 @@ class BaseGeminiChatModel {
         /**
          * The set of character sequences (up to 5) that will stop output generation. If specified, the API will
          * stop at the first appearance of a stop_sequence. The stop sequence will not be included as
-         * part of the responses.
+         * part of the response.
          */
         public B stopSequences(List<String> stopSequences) {
             this.stopSequences = stopSequences;
@@ -538,7 +537,7 @@ class BaseGeminiChatModel {
         }
 
         /**
-         * Retrieve the Google Maps widget <a href="https://ai.google.dev/gemini-api/docs/maps-grounding#display_the_google_maps_contextual_widget">context token</a> in the responses for use with the Google Maps JS API.
+         * Retrieve the Google Maps widget <a href="https://ai.google.dev/gemini-api/docs/maps-grounding#display_the_google_maps_contextual_widget">context token</a> in the response for use with the Google Maps JS API.
          */
         public B retrieveGoogleMapsWidgetToken(Boolean retrieveGoogleMapsWidgetToken) {
             this.retrieveGoogleMapsWidgetToken = retrieveGoogleMapsWidgetToken;
@@ -576,7 +575,7 @@ class BaseGeminiChatModel {
         /**
          * Controls whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}.
          * Please note that this does not enable thinking/reasoning for the LLM;
-         * it only controls whether to parse the {@code thought} block from the API responses
+         * it only controls whether to parse the {@code thought} block from the API response
          * and return it inside the {@link AiMessage}.
          * <p>
          * Disabled by default.
@@ -584,7 +583,7 @@ class BaseGeminiChatModel {
          * If enabled, thinking signatures will also be stored and returned inside the {@link AiMessage#attributes()}.
          * <p>
          * Please note that when {@code returnThinking} is not set (is {@code null}) and {@code thinkingConfig} is set,
-         * thinking/reasoning text will be prepended to the actual responses inside the {@link AiMessage#text()} field.
+         * thinking/reasoning text will be prepended to the actual response inside the {@link AiMessage#text()} field.
          *
          * @see #thinkingConfig(GeminiThinkingConfig)
          * @see #sendThinking(Boolean)
@@ -611,7 +610,7 @@ class BaseGeminiChatModel {
         }
 
         /**
-         * If true, export the logprobs results in responses.
+         * If true, export the logprobs results in response.
          */
         public B responseLogprobs(Boolean responseLogprobs) {
             this.responseLogprobs = responseLogprobs;

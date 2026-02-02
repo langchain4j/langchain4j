@@ -60,7 +60,7 @@ class GoogleAiGeminiChatModelTest {
         @Test
         void shouldReturnCorrectChatResponse() {
             // Given
-            var expectedResponse = createGeminiResponse("Test responses");
+            var expectedResponse = createGeminiResponse("Test response");
             when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
                     .thenReturn(expectedResponse);
 
@@ -78,9 +78,9 @@ class GoogleAiGeminiChatModelTest {
 
             // Then
             assertThat(chatResponse.aiMessage()).isNotNull();
-            assertThat(chatResponse.aiMessage().text()).isEqualTo("Test responses");
+            assertThat(chatResponse.aiMessage().text()).isEqualTo("Test response");
             assertThat(chatResponse.metadata()).isNotNull();
-            assertThat(chatResponse.metadata().id()).isEqualTo("responses-id-123");
+            assertThat(chatResponse.metadata().id()).isEqualTo("response-id-123");
             assertThat(chatResponse.metadata().modelName()).isEqualTo("gemini-pro-v1");
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(FinishReason.STOP);
             assertThat(chatResponse.metadata().tokenUsage()).isNotNull();
@@ -130,7 +130,7 @@ class GoogleAiGeminiChatModelTest {
             var chatRequest = ChatRequest.builder()
                     .messages(
                             new UserMessage("First message"),
-                            new AiMessage("First responses"),
+                            new AiMessage("First response"),
                             new UserMessage("Second message"))
                     .build();
 
@@ -190,7 +190,7 @@ class GoogleAiGeminiChatModelTest {
                     null);
 
             var geminiResponse = new GeminiGenerateContentResponse(
-                    "token-responses-id", "gemini-pro-v1", List.of(candidate), usageMetadata, null);
+                    "token-response-id", "gemini-pro-v1", List.of(candidate), usageMetadata, null);
 
             when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
                     .thenReturn(geminiResponse);
@@ -219,7 +219,7 @@ class GoogleAiGeminiChatModelTest {
             var candidate = new GeminiCandidate(
                     new GeminiContent(
                             List.of(GeminiContent.GeminiPart.builder()
-                                    .text("Partial responses")
+                                    .text("Partial response")
                                     .build()),
                             "mode"),
                     GeminiFinishReason.MAX_TOKENS,
@@ -320,7 +320,7 @@ class GoogleAiGeminiChatModelTest {
                 null);
 
         return new GeminiGenerateContentResponse(
-                "responses-id-123", "gemini-pro-v1", List.of(candidate), createUsageMetadata(10, 20, 30), null);
+                "response-id-123", "gemini-pro-v1", List.of(candidate), createUsageMetadata(10, 20, 30), null);
     }
 
     private static GeminiUsageMetadata createUsageMetadata(int promptTokens, int candidateTokens, int totalTokens) {

@@ -66,7 +66,7 @@ class GoogleAiGeminiImageModelTest {
         void shouldThrowExceptionWhenNoCandidatesInResponse() {
             // Given
             var emptyResponse =
-                    new GeminiGenerateContentResponse("responses-id", "gemini-pro-v1", List.of(), null, null);
+                    new GeminiGenerateContentResponse("response-id", "gemini-pro-v1", List.of(), null, null);
             when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
                     .thenReturn(emptyResponse);
 
@@ -80,7 +80,7 @@ class GoogleAiGeminiImageModelTest {
             // When & Then
             assertThatThrownBy(() -> subject.generate("A simple red circle"))
                     .isInstanceOf(GeminiImageGenerationException.class)
-                    .hasMessage("No image generated in responses");
+                    .hasMessage("No image generated in response");
         }
 
         @Test
@@ -88,7 +88,7 @@ class GoogleAiGeminiImageModelTest {
             // Given
             var candidate = new GeminiCandidate(null, GeminiFinishReason.STOP, null, null);
             var responseWithNullContent =
-                    new GeminiGenerateContentResponse("responses-id", "gemini-pro-v1", List.of(candidate), null, null);
+                    new GeminiGenerateContentResponse("response-id", "gemini-pro-v1", List.of(candidate), null, null);
             when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
                     .thenReturn(responseWithNullContent);
 
@@ -102,7 +102,7 @@ class GoogleAiGeminiImageModelTest {
             // When & Then
             assertThatThrownBy(() -> subject.generate("A simple blue square"))
                     .isInstanceOf(GeminiImageGenerationException.class)
-                    .hasMessage("No content in responses candidate");
+                    .hasMessage("No content in response candidate");
         }
 
         @Test
@@ -118,7 +118,7 @@ class GoogleAiGeminiImageModelTest {
                     null,
                     null);
             var textOnlyResponse = new GeminiGenerateContentResponse(
-                    "responses-id", "gemini-pro-v1", List.of(textOnlyCandidate), null, null);
+                    "response-id", "gemini-pro-v1", List.of(textOnlyCandidate), null, null);
             when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
                     .thenReturn(textOnlyResponse);
 
@@ -132,7 +132,7 @@ class GoogleAiGeminiImageModelTest {
             // When & Then
             assertThatThrownBy(() -> subject.generate("A green triangle"))
                     .isInstanceOf(GeminiImageGenerationException.class)
-                    .hasMessage("No image data found in responses");
+                    .hasMessage("No image data found in response");
         }
     }
 
@@ -477,7 +477,7 @@ class GoogleAiGeminiImageModelTest {
                 null,
                 null);
 
-        return new GeminiGenerateContentResponse("responses-id-123", "gemini-pro", List.of(candidate), null, null);
+        return new GeminiGenerateContentResponse("response-id-123", "gemini-pro", List.of(candidate), null, null);
     }
 
     /**

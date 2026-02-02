@@ -56,7 +56,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
     @Override
     public Set<Capability> supportedCapabilities() {
         Set<Capability> capabilities = new HashSet<>(supportedCapabilities);
-        // when responses format is not null, it's JSON, either application/json or text/x.enum
+        // when response format is not null, it's JSON, either application/json or text/x.enum
         ResponseFormat responseFormat = this.defaultRequestParameters.responseFormat();
         if (responseFormat != null && ResponseFormatType.JSON.equals(responseFormat.type())) {
             capabilities.add(RESPONSE_FORMAT_JSON_SCHEMA);

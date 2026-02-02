@@ -64,9 +64,9 @@ public final class BatchRequestResponse {
     }
 
     /**
-     * Represents the responses from a batch operation.
+     * Represents the response from a batch operation.
      *
-     * @param <RESP> The type of responses (e.g., GeminiGenerateContentResponse, GeminiEmbeddingResponse)
+     * @param <RESP> The type of response (e.g., GeminiGenerateContentResponse, GeminiEmbeddingResponse)
      */
     @JsonIgnoreProperties(ignoreUnknown = true)
     record BatchCreateResponse<RESP>(@JsonProperty("@type") String type, InlinedResponses<RESP> inlinedResponses) {
@@ -80,9 +80,9 @@ public final class BatchRequestResponse {
         record InlinedResponses<RESP>(List<InlinedResponseWrapper<RESP>> inlinedResponses) {}
 
         /**
-         * Wrapper for an individual (successful) responses OR error.
+         * Wrapper for an individual (successful) response OR error.
          *
-         * @param response A successful Gemini responses.
+         * @param response A successful Gemini response.
          * @param error An error including message and code
          */
         @JsonIgnoreProperties(ignoreUnknown = true)
@@ -92,7 +92,7 @@ public final class BatchRequestResponse {
     /**
      * Represents a long-running operation that is the result of a network API call.
      *
-     * @param <RESP> The type of responses in the operation result
+     * @param <RESP> The type of response in the operation result
      */
     @JsonIgnoreProperties(ignoreUnknown = true)
     record Operation<RESP>(
@@ -110,9 +110,9 @@ public final class BatchRequestResponse {
     }
 
     /**
-     * Represents a responses containing a list of operations and a token for pagination.
+     * Represents a response containing a list of operations and a token for pagination.
      *
-     * @param <RESP>        the type of the responses for each operation
+     * @param <RESP>        the type of the response for each operation
      * @param operations    a list of operations to be performed
      * @param nextPageToken a token for retrieving the next page of operations, if available; null if there are no more pages
      */
