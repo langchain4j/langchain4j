@@ -5,6 +5,9 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static java.util.Arrays.asList;
 
 import com.openai.client.OpenAIClient;
 import com.openai.core.JsonValue;
@@ -50,6 +53,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -71,7 +75,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -94,11 +97,11 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
     private final String modelName;
     private final Double temperature;
     private final Double topP;
-    private final Long maxOutputTokens;
-    private final Long maxToolCalls;
+    private final Integer maxOutputTokens;
+    private final Integer maxToolCalls;
     private final Boolean parallelToolCalls;
     private final String previousResponseId;
-    private final Long topLogprobs;
+    private final Integer topLogprobs;
     private final String truncation;
     private final List<String> include;
     private final String serviceTier;
@@ -114,9 +117,9 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
     private final Boolean strict;
 
     private OpenAiOfficialResponsesStreamingChatModel(Builder builder) {
-        this.client = Objects.requireNonNull(builder.client, "client");
-        this.executorService = Objects.requireNonNull(builder.executorService, "executorService");
-        this.modelName = Objects.requireNonNull(builder.modelName, "modelName");
+        this.client = ensureNotNull(builder.client, "client");
+        this.executorService = getOrDefault(builder.executorService, DefaultExecutorProvider::getDefaultExecutorService);
+        this.modelName = ensureNotNull(builder.modelName, "modelName");
         this.temperature = builder.temperature;
         this.topP = builder.topP;
         this.maxOutputTokens = builder.maxOutputTokens;
@@ -133,17 +136,16 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         this.reasoningEffort = builder.reasoningEffort;
         this.textVerbosity = builder.textVerbosity;
         this.streamIncludeObfuscation = builder.streamIncludeObfuscation;
-        this.store = builder.store != null ? builder.store : false;
+        this.store = getOrDefault(builder.store, false);
         this.listeners = copy(builder.listeners);
-        Integer maxOutputTokensInt = maxOutputTokens != null ? maxOutputTokens.intValue() : null;
         this.defaultRequestParameters = OpenAiOfficialChatRequestParameters.builder()
                 .modelName(modelName)
                 .temperature(temperature)
                 .topP(topP)
-                .maxOutputTokens(maxOutputTokensInt)
-                .maxCompletionTokens(maxOutputTokensInt)
+                .maxOutputTokens(maxOutputTokens)
+                .maxCompletionTokens(maxOutputTokens)
                 .build();
-        this.strict = builder.strict != null ? builder.strict : true;
+        this.strict = getOrDefault(builder.strict, true);
     }
 
     public static Builder builder() {
@@ -185,11 +187,9 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 paramsBuilder.topP(effectiveTopP);
             }
 
-            Integer requestMaxOutputTokens = chatRequest.maxOutputTokens();
-            Long effectiveMaxOutputTokens =
-                    requestMaxOutputTokens != null ? (Long) requestMaxOutputTokens.longValue() : maxOutputTokens;
+            Integer effectiveMaxOutputTokens = getOrDefault(chatRequest.maxOutputTokens(), maxOutputTokens);
             if (effectiveMaxOutputTokens != null) {
-                paramsBuilder.maxOutputTokens(effectiveMaxOutputTokens);
+                paramsBuilder.maxOutputTokens(effectiveMaxOutputTokens.longValue());
             }
             if (maxToolCalls != null) {
                 paramsBuilder.maxToolCalls(maxToolCalls);
@@ -472,15 +472,16 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
     }
 
     public static class Builder {
+
         private OpenAIClient client;
         private String modelName;
         private Double temperature;
         private Double topP;
-        private Long maxOutputTokens;
-        private Long maxToolCalls;
+        private Integer maxOutputTokens;
+        private Integer maxToolCalls;
         private Boolean parallelToolCalls;
         private String previousResponseId;
-        private Long topLogprobs;
+        private Integer topLogprobs;
         private String truncation;
         private List<String> include;
         private String serviceTier;
@@ -515,12 +516,12 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             return this;
         }
 
-        public Builder maxOutputTokens(Long maxOutputTokens) {
+        public Builder maxOutputTokens(Integer maxOutputTokens) {
             this.maxOutputTokens = maxOutputTokens;
             return this;
         }
 
-        public Builder maxToolCalls(Long maxToolCalls) {
+        public Builder maxToolCalls(Integer maxToolCalls) {
             this.maxToolCalls = maxToolCalls;
             return this;
         }
@@ -535,7 +536,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             return this;
         }
 
-        public Builder topLogprobs(Long topLogprobs) {
+        public Builder topLogprobs(Integer topLogprobs) {
             this.topLogprobs = topLogprobs;
             return this;
         }
@@ -599,6 +600,10 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             return this;
         }
 
+        public Builder listeners(ChatModelListener... listeners) {
+            return this.listeners(asList(listeners));
+        }
+
         public Builder executorService(ExecutorService executorService) {
             this.executorService = executorService;
             return this;
@@ -622,6 +627,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
     /** Event handler for Responses API streaming. */
     private static class ResponsesEventHandler {
+
         private final StreamingChatResponseHandler handler;
         private final AtomicReference<String> responseIdRef;
         private final String modelName;

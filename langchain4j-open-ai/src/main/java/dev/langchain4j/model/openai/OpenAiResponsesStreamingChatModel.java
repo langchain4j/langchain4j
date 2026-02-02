@@ -2,6 +2,9 @@ package dev.langchain4j.model.openai;
 
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static java.util.Arrays.asList;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.http.client.HttpClientBuilder;
@@ -12,8 +15,8 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+
 import java.util.List;
-import java.util.Objects;
 
 @Experimental
 public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
@@ -47,9 +50,11 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
                 .baseUrl(builder.baseUrl)
                 .apiKey(builder.apiKey)
                 .organizationId(builder.organizationId)
+                .logRequests(builder.logRequests)
+                .logResponses(builder.logResponses)
                 .build();
 
-        this.modelName = Objects.requireNonNull(builder.modelName, "modelName");
+        this.modelName = ensureNotNull(builder.modelName, "modelName");
         this.temperature = builder.temperature;
         this.topP = builder.topP;
         this.maxOutputTokens = builder.maxOutputTokens;
@@ -66,8 +71,8 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
         this.reasoningEffort = builder.reasoningEffort;
         this.textVerbosity = builder.textVerbosity;
         this.streamIncludeObfuscation = builder.streamIncludeObfuscation;
-        this.store = builder.store != null ? builder.store : false;
-        this.strict = builder.strict != null ? builder.strict : true;
+        this.store = getOrDefault(builder.store, false);
+        this.strict = getOrDefault(builder.strict, true);
         this.listeners = copy(builder.listeners);
         this.defaultRequestParameters = DefaultChatRequestParameters.builder()
                 .modelName(modelName)
@@ -123,6 +128,7 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
     }
 
     public static class Builder {
+
         private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private String apiKey;
@@ -146,6 +152,8 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
         private Boolean streamIncludeObfuscation;
         private Boolean store;
         private Boolean strict;
+        private Boolean logRequests;
+        private Boolean logResponses;
         private List<ChatModelListener> listeners;
 
         public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
@@ -263,9 +271,23 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
+        public Builder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public Builder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
         public Builder listeners(List<ChatModelListener> listeners) {
             this.listeners = listeners;
             return this;
+        }
+
+        public Builder listeners(ChatModelListener... listeners) {
+            return listeners(asList(listeners));
         }
 
         public OpenAiResponsesStreamingChatModel build() {

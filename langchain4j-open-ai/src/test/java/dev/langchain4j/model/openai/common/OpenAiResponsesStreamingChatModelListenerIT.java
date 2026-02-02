@@ -36,7 +36,7 @@ class OpenAiResponsesStreamingChatModelListenerIT extends AbstractStreamingChatM
         return OpenAiResponsesStreamingChatModel.builder()
                 .apiKey("banana")
                 .modelName(modelName())
-                .listeners(singletonList(listener))
+                .listeners(listener)
                 .build();
     }
 

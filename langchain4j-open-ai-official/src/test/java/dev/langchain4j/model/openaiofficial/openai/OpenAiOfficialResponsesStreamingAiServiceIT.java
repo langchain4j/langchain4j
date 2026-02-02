@@ -24,7 +24,6 @@ class OpenAiOfficialResponsesStreamingAiServiceIT extends AbstractStreamingAiSer
         StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
                 .client(client)
                 .modelName(InternalOpenAiOfficialTestHelper.CHAT_MODEL_NAME.toString())
-                .executorService(Executors.newCachedThreadPool())
                 .build();
 
         return List.of(model);

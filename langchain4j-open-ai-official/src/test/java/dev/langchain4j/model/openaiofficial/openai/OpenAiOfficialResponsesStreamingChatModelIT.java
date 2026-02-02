@@ -22,7 +22,6 @@ import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChat
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.List;
-import java.util.concurrent.Executors;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -39,8 +38,7 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
 
         StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
                 .client(client)
-                .modelName(InternalOpenAiOfficialTestHelper.CHAT_MODEL_NAME.toString())
-                .executorService(Executors.newCachedThreadPool())
+                .modelName("gpt-5-mini")
                 .build();
 
         return List.of(model);
@@ -54,8 +52,7 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
 
         OpenAiOfficialResponsesStreamingChatModel.Builder modelBuilder =
                 OpenAiOfficialResponsesStreamingChatModel.builder()
-                        .client(client)
-                        .executorService(Executors.newCachedThreadPool());
+                        .client(client);
 
         if (parameters.modelName() != null) {
             modelBuilder.modelName(parameters.modelName());
@@ -71,7 +68,7 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
                 modelBuilder.topP(openAiParams.topP());
             }
             if (openAiParams.maxOutputTokens() != null) {
-                modelBuilder.maxOutputTokens(openAiParams.maxOutputTokens().longValue());
+                modelBuilder.maxOutputTokens(openAiParams.maxOutputTokens());
             }
         }
 
@@ -111,8 +108,7 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
         return OpenAiOfficialResponsesStreamingChatModel.builder()
                 .client(client)
                 .modelName(InternalOpenAiOfficialTestHelper.CHAT_MODEL_NAME.toString())
-                .executorService(Executors.newCachedThreadPool())
-                .listeners(List.of(listener))
+                .listeners(listener)
                 .build();
     }
 
@@ -318,7 +314,6 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
         StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
                 .client(client)
                 .modelName("o4-mini")
-                .executorService(Executors.newCachedThreadPool())
                 .build();
 
         // when
@@ -340,7 +335,6 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
         StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
                 .client(client)
                 .modelName(InternalOpenAiOfficialTestHelper.CHAT_MODEL_NAME.toString())
-                .executorService(Executors.newCachedThreadPool())
                 .strict(false)
                 .build();
 
@@ -363,7 +357,6 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
         StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
                 .client(client)
                 .modelName("o4-mini")
-                .executorService(Executors.newCachedThreadPool())
                 .reasoningEffort("medium")
                 .build();
 
@@ -386,8 +379,7 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
         StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
                 .client(client)
                 .modelName(InternalOpenAiOfficialTestHelper.CHAT_MODEL_NAME.toString())
-                .executorService(Executors.newCachedThreadPool())
-                .maxToolCalls(1L)
+                .maxToolCalls(1)
                 .build();
 
         // when
@@ -409,7 +401,6 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
         StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
                 .client(client)
                 .modelName(InternalOpenAiOfficialTestHelper.CHAT_MODEL_NAME.toString())
-                .executorService(Executors.newCachedThreadPool())
                 .parallelToolCalls(false)
                 .build();
 
@@ -421,25 +412,14 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
         assertThat(handler.get().aiMessage().text()).isNotBlank();
     }
 
-    // Responses API does not support vision/images
     @Override
     protected boolean supportsSingleImageInputAsPublicURL() {
         return false;
     }
 
     @Override
-    protected boolean supportsSingleImageInputAsBase64EncodedString() {
-        return true;
-    }
-
-    @Override
     protected boolean supportsMultipleImageInputsAsPublicURLs() {
         return false;
-    }
-
-    @Override
-    protected boolean supportsMultipleImageInputsAsBase64EncodedStrings() {
-        return true;
     }
 
     @Override

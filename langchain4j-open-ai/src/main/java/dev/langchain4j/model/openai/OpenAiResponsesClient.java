@@ -25,6 +25,7 @@ import dev.langchain4j.http.client.HttpClientBuilderLoader;
 import dev.langchain4j.http.client.HttpMethod;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.log.LoggingHttpClient;
 import dev.langchain4j.http.client.sse.CancellationUnsupportedHandle;
 import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
@@ -44,7 +45,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 class OpenAiResponsesClient {
@@ -144,9 +144,14 @@ class OpenAiResponsesClient {
     OpenAiResponsesClient(Builder builder) {
         HttpClientBuilder httpClientBuilder =
                 getOrDefault(builder.httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder);
-        this.httpClient = httpClientBuilder.build();
+        HttpClient httpClient = httpClientBuilder.build();
+        if (builder.logRequests || builder.logResponses) {
+            this.httpClient = new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses);
+        } else {
+            this.httpClient = httpClient;
+        }
         this.baseUrl = getOrDefault(builder.baseUrl, DEFAULT_BASE_URL);
-        this.apiKey = Objects.requireNonNull(builder.apiKey, "apiKey");
+        this.apiKey = builder.apiKey;
         this.organizationId = builder.organizationId;
     }
 
@@ -461,10 +466,13 @@ class OpenAiResponsesClient {
     }
 
     static class Builder {
+
         private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private String apiKey;
         private String organizationId;
+        private boolean logRequests;
+        private boolean logResponses;
 
         Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
@@ -483,6 +491,20 @@ class OpenAiResponsesClient {
 
         Builder organizationId(String organizationId) {
             this.organizationId = organizationId;
+            return this;
+        }
+
+        Builder logRequests(Boolean logRequests) {
+            if (logRequests != null) {
+                this.logRequests = logRequests;
+            }
+            return this;
+        }
+
+        Builder logResponses(Boolean logResponses) {
+            if (logResponses != null) {
+                this.logResponses = logResponses;
+            }
             return this;
         }
 

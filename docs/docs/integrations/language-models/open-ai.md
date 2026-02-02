@@ -396,11 +396,6 @@ More information can be found [here](/tutorials/customizable-http-client).
 
 OpenAI's [Responses API](https://platform.openai.com/docs/api-reference/responses) (`/v1/responses`) is an alternative to the Chat Completions API that provides enhanced control over streaming responses and cancellation.
 
-### When to use Responses API
-- You need to cancel streaming responses mid-flight
-- You want more granular control over response streaming
-- You're building interactive applications with real-time feedback
-
 ### Creating `OpenAiResponsesStreamingChatModel`
 
 ```java

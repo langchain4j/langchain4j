@@ -1,14 +1,11 @@
 package dev.langchain4j.model.openaiofficial.openai;
 
-import static java.util.Collections.singletonList;
-
 import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.openai.models.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel;
-import java.util.concurrent.Executors;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
@@ -25,9 +22,8 @@ class OpenAiOfficialResponsesStreamingChatModelListenerIT extends AbstractStream
                 .modelName(modelName())
                 .temperature(temperature())
                 .topP(topP())
-                .maxOutputTokens((long) maxTokens())
-                .executorService(Executors.newCachedThreadPool())
-                .listeners(singletonList(listener))
+                .maxOutputTokens(maxTokens())
+                .listeners(listener)
                 .build();
     }
 
@@ -43,8 +39,7 @@ class OpenAiOfficialResponsesStreamingChatModelListenerIT extends AbstractStream
         return OpenAiOfficialResponsesStreamingChatModel.builder()
                 .client(client)
                 .modelName(modelName())
-                .executorService(Executors.newCachedThreadPool())
-                .listeners(singletonList(listener))
+                .listeners(listener)
                 .build();
     }
 
