@@ -80,7 +80,7 @@ class Converter {
     public static PartialToolCall toPartialToolCall(com.ibm.watsonx.ai.chat.model.PartialToolCall partialToolCall) {
         return PartialToolCall.builder()
                 .id(partialToolCall.id())
-                .index(partialToolCall.index())
+                .index(partialToolCall.toolIndex())
                 .name(partialToolCall.name())
                 .partialArguments(partialToolCall.arguments())
                 .build();

@@ -16,6 +16,7 @@ import dev.langchain4j.model.googleai.BatchRequestResponse.BatchList;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchName;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchResponse;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchSuccess;
+import dev.langchain4j.model.googleai.GeminiBatchProcessor.ExtractedBatchResults;
 import dev.langchain4j.model.googleai.GeminiContent.GeminiPart;
 import dev.langchain4j.model.googleai.GeminiFiles.GeminiFile;
 import dev.langchain4j.model.googleai.GeminiGenerationConfig.GeminiImageConfig;
@@ -24,6 +25,7 @@ import dev.langchain4j.model.googleai.jsonl.JsonLinesWriter;
 import dev.langchain4j.model.output.Response;
 import java.io.IOException;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -110,7 +112,6 @@ public final class GoogleAiGeminiBatchImageModel {
     }
 
     GoogleAiGeminiBatchImageModel(GoogleAiGeminiBatchImageModelBuilder builder, GeminiService geminiService) {
-
         this.modelName = getOrDefault(builder.modelName, "gemini-2.5-flash-preview-image-generation");
         this.responseModalities = List.of(IMAGE);
         this.safetySettings = builder.safetySettings;
@@ -160,7 +161,7 @@ public final class GoogleAiGeminiBatchImageModel {
      *                    defaults to 0 if null
      * @param requests    a list of image generation requests to be processed in the batch
      * @return a {@link BatchResponse} representing the initial state of the batch operation,
-     *         typically {@link BatchIncomplete}
+     * typically {@link BatchIncomplete}
      */
     public BatchResponse<Response<@NonNull Image>> createBatchInline(
             String displayName, @Nullable Long priority, List<ImageGenerationRequest> requests) {
@@ -181,7 +182,7 @@ public final class GoogleAiGeminiBatchImageModel {
      * @param displayName a user-defined name for the batch, used for identification
      * @param file        the GeminiFile object representing the uploaded file containing batch requests
      * @return a {@link BatchResponse} representing the initial state of the batch operation,
-     *         typically {@link BatchIncomplete}
+     * typically {@link BatchIncomplete}
      * @see #writeBatchToFile
      * @see GeminiFiles#uploadFile
      */
@@ -254,7 +255,7 @@ public final class GoogleAiGeminiBatchImageModel {
      *
      * @param name the name of the batch operation to cancel
      * @throws dev.langchain4j.exception.HttpException if the batch cannot be cancelled
-     *         (e.g., already completed, already cancelled, or does not exist)
+     *                                                 (e.g., already completed, already cancelled, or does not exist)
      */
     public void cancelBatchJob(BatchName name) {
         batchProcessor.cancelBatchJob(name);
@@ -496,6 +497,8 @@ public final class GoogleAiGeminiBatchImageModel {
                     Response<@NonNull Image>> {
         private static final TypeReference<GeminiGenerateContentResponse> responseWrapperType =
                 new TypeReference<>() {};
+        private static final TypeReference<BatchCreateResponse.InlinedResponseWrapper<GeminiGenerateContentResponse>>
+                inlinedResponseWrapperType = new TypeReference<>() {};
 
         @Override
         public ImageGenerationRequest prepareRequest(ImageGenerationRequest request) {
@@ -524,15 +527,27 @@ public final class GoogleAiGeminiBatchImageModel {
         }
 
         @Override
-        public List<Response<@NonNull Image>> extractResponses(
+        public ExtractedBatchResults<Response<@NonNull Image>> extractResults(
                 BatchCreateResponse<GeminiGenerateContentResponse> response) {
             if (response == null || response.inlinedResponses() == null) {
-                return List.of();
+                return new ExtractedBatchResults<>(List.of(), List.of());
             }
-            return response.inlinedResponses().inlinedResponses().stream()
-                    .map(wrapper -> Json.convertValue(wrapper.response(), responseWrapperType))
-                    .map(this::extractImage)
-                    .toList();
+
+            List<Response<@NonNull Image>> responses = new ArrayList<>();
+            List<BatchRequestResponse.Operation.Status> errors = new ArrayList<>();
+
+            for (Object wrapper : response.inlinedResponses().inlinedResponses()) {
+                var typed = Json.convertValue(wrapper, inlinedResponseWrapperType);
+                if (typed.response() != null) {
+                    var geminiResponse = Json.convertValue(typed.response(), responseWrapperType);
+                    responses.add(extractImage(geminiResponse));
+                }
+                if (typed.error() != null) {
+                    errors.add(typed.error());
+                }
+            }
+
+            return new ExtractedBatchResults<>(responses, errors);
         }
 
         private Response<@NonNull Image> extractImage(GeminiGenerateContentResponse geminiResponse) {

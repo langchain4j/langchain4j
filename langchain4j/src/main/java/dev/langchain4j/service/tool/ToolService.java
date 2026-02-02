@@ -304,8 +304,12 @@ public class ToolService {
             for (Map.Entry<ToolExecutionRequest, ToolExecutionResult> entry : toolResults.entrySet()) {
                 ToolExecutionRequest request = entry.getKey();
                 ToolExecutionResult result = entry.getValue();
-                ToolExecutionResultMessage resultMessage =
-                        ToolExecutionResultMessage.from(request, result.resultText());
+                ToolExecutionResultMessage resultMessage = ToolExecutionResultMessage.builder()
+                        .id(request.id())
+                        .toolName(request.name())
+                        .text(result.resultText())
+                        .isError(result.isError())
+                        .build();
 
                 ToolExecution toolExecution =
                         ToolExecution.builder().request(request).result(result).build();

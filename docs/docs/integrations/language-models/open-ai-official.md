@@ -254,3 +254,21 @@ StreamingChatModel model = OpenAiOfficialStreamingChatModel.builder()
 
 You can also use the specific `isAzure()` and `isGitHubModels()` methods to force the usage of Azure OpenAI or GitHub Models, as detailed in the non-streaming configuration section.
 
+## OpenAI Responses API
+
+OpenAI's [Responses API](https://platform.openai.com/docs/api-reference/responses) (`/v1/responses`) is an alternative to the Chat Completions API that provides enhanced control over streaming responses and cancellation.
+
+### Creating `OpenAiOfficialResponsesStreamingChatModel`
+
+```java
+StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName(GPT_5_MINI)
+        .build();
+```
+
+### Key differences from Chat Completions API
+- **Streaming-only**: Currently only streaming mode is supported
+- **Cancellation**: Supports `StreamingHandle.cancel()` to stop responses
+- **Same features**: Full support for tools, listeners, and all standard parameters
+
