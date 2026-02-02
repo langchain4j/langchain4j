@@ -235,7 +235,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     allContents.add(content);
                                 }
                             }
-                            userMessage = userMessage.toBuilder().contents(allContents).build();
+                            userMessage = userMessage.toBuilder()
+                                    .contents(allContents)
+                                    .build();
                         }
 
                         List<ChatMessage> messages = new ArrayList<>();
