@@ -13,12 +13,14 @@ import dev.langchain4j.model.googleai.BatchRequestResponse.BatchIncomplete;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchList;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchName;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchResponse;
+import dev.langchain4j.model.googleai.GeminiBatchProcessor.ExtractedBatchResults;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingRequest;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingResponse;
 import dev.langchain4j.model.googleai.GeminiFiles.GeminiFile;
 import dev.langchain4j.model.googleai.GoogleAiEmbeddingModel.BaseGoogleAiEmbeddingModelBuilder;
 import dev.langchain4j.model.googleai.jsonl.JsonLinesWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
@@ -199,17 +201,26 @@ public final class GoogleAiGeminiBatchEmbeddingModel {
         }
 
         @Override
-        public List<Embedding> extractResponses(BatchCreateResponse<GeminiEmbeddingResponse> response) {
+        public ExtractedBatchResults<Embedding> extractResults(BatchCreateResponse<GeminiEmbeddingResponse> response) {
             if (response == null || response.inlinedResponses() == null) {
-                return List.of();
+                return new ExtractedBatchResults<>(List.of(), List.of());
             }
 
-            return response.inlinedResponses().inlinedResponses().stream()
-                    .map(wrapper -> Json.convertValue(wrapper, responseWrapperType))
-                    .map(BatchCreateResponse.InlinedResponseWrapper::response)
-                    .map(GeminiEmbeddingResponse::embedding)
-                    .map(contentEmbedding -> Embedding.from(contentEmbedding.values()))
-                    .toList();
+            List<Embedding> responses = new ArrayList<>();
+            List<BatchRequestResponse.Operation.Status> errors = new ArrayList<>();
+
+            for (Object wrapper : response.inlinedResponses().inlinedResponses()) {
+                var typed = Json.convertValue(wrapper, responseWrapperType);
+                if (typed.response() != null) {
+                    var embedding = Embedding.from(typed.response().embedding().values());
+                    responses.add(embedding);
+                }
+                if (typed.error() != null) {
+                    errors.add(typed.error());
+                }
+            }
+
+            return new ExtractedBatchResults<>(responses, errors);
         }
     }
 }

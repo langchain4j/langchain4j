@@ -17,7 +17,7 @@
         https://playwright.dev/</description>
 
     <properties>
-        <playwright.version>1.56.0</playwright.version>
+        <playwright.version>1.57.0</playwright.version>
     </properties>
 
     <dependencies>
