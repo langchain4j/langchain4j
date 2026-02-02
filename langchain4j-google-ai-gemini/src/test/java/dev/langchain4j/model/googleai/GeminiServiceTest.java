@@ -610,6 +610,7 @@ class GeminiServiceTest {
                 new GeminiContent(
                         List.of(GeminiContent.GeminiPart.builder().text(text).build()), "model"),
                 null,
+                null,
                 null);
         return new GeminiGenerateContentResponse("responseId", "modelName", List.of(candidate), null, null);
     }

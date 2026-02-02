@@ -999,7 +999,7 @@ class GoogleAiGeminiBatchImageModelTest {
                 .inlineData(new GeminiBlob(mimeType, base64Data))
                 .build();
         var content = new GeminiContent(List.of(part), "model");
-        var candidate = new GeminiCandidate(content, GeminiFinishReason.STOP, null);
+        var candidate = new GeminiCandidate(content, GeminiFinishReason.STOP, null, null);
 
         return new GeminiGenerateContentResponse("response-id", MODEL_NAME, List.of(candidate), null, null);
     }
