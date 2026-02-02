@@ -609,8 +609,9 @@ class GeminiServiceTest {
         var candidate = new GeminiCandidate(
                 new GeminiContent(
                         List.of(GeminiContent.GeminiPart.builder().text(text).build()), "model"),
+                null,
                 null);
-        return new GeminiGenerateContentResponse("responseId", "modelName", List.of(candidate), null);
+        return new GeminiGenerateContentResponse("responseId", "modelName", List.of(candidate), null, null);
     }
 
     private static GeminiEmbeddingRequest createEmbeddingRequest(GeminiContent content) {

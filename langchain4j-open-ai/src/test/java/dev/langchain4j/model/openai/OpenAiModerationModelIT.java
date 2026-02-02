@@ -5,7 +5,7 @@ import dev.langchain4j.model.moderation.ModerationModel;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
-import static dev.langchain4j.model.openai.OpenAiModerationModelName.TEXT_MODERATION_LATEST;
+import static dev.langchain4j.model.openai.OpenAiModerationModelName.OMNI_MODERATION_LATEST;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
@@ -39,7 +39,7 @@ class OpenAiModerationModelIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName(TEXT_MODERATION_LATEST)
+                .modelName(OMNI_MODERATION_LATEST)
                 .build();
 
         // when

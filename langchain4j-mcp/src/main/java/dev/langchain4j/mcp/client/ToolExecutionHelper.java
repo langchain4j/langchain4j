@@ -21,25 +21,29 @@ class ToolExecutionHelper {
      * If the response contains both 'content' and 'structuredContent' elements, the
      * structured content is given precedence.
      */
-    static ToolExecutionResult extractResult(JsonNode result) {
+    static ToolExecutionResult extractResult(JsonNode result, boolean ignoreApplicationLevelErrors) {
         if (result.has("result")) {
             JsonNode resultNode = result.get("result");
             if (resultNode.has("structuredContent")
                     && !resultNode.get("structuredContent").isNull()) {
                 JsonNode content = resultNode.get("structuredContent");
-                if (isError(resultNode)) {
+                if (isError(resultNode) && !ignoreApplicationLevelErrors) {
                     throw new ToolExecutionException(content.toString());
                 }
                 return ToolExecutionResult.builder()
                         .result(toObject(content))
                         .resultText(content.toString())
+                        .isError(isError(resultNode))
                         .build();
             } else if (resultNode.has("content")) {
                 String content = extractSuccessfulResult((ArrayNode) resultNode.get("content"));
-                if (isError(resultNode)) {
+                if (isError(resultNode) && !ignoreApplicationLevelErrors) {
                     throw new ToolExecutionException(content);
                 }
-                return ToolExecutionResult.builder().resultText(content).build();
+                return ToolExecutionResult.builder()
+                        .isError(isError(resultNode))
+                        .resultText(content)
+                        .build();
             } else {
                 throw new RuntimeException("Result does not contain 'content' element: " + result);
             }
@@ -60,7 +64,7 @@ class ToolExecutionHelper {
     /**
      * Converts any JsonNode into a recursive Map using basic Java types
      */
-    private static Object toObject(JsonNode content) {
+    static Object toObject(JsonNode content) {
         return switch (content.getNodeType()) {
             case BOOLEAN -> content.asBoolean();
             case NUMBER ->
