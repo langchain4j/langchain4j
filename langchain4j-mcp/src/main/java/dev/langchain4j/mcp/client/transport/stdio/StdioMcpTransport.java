@@ -45,9 +45,9 @@ public class StdioMcpTransport implements McpTransport {
         this.logger = builder.logger;
         this.executorService =
                 getOrDefault(builder.executorService, DefaultExecutorProvider::getDefaultExecutorService);
-        // FIXME: are there actually any cases where we should shut down the executor service?
-        // the DefaultExecutorProvider always returns a single shared instance, so we can't shut it down
-        this.shouldShutdownExecutorService = false;
+        // Only shutdown executor if user explicitly provided one, never shutdown the shared default executor
+        this.shouldShutdownExecutorService = builder.executorService != null
+                && builder.executorService != DefaultExecutorProvider.getDefaultExecutorService();
     }
 
     @Override
