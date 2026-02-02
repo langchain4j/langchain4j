@@ -209,7 +209,7 @@ class Converter {
                             case AUTO -> Detail.AUTO;
                             case HIGH -> Detail.HIGH;
                             case LOW -> Detail.LOW;
-                            default -> Detail.AUTO;
+                            default -> throw new UnsupportedFeatureException("Unsupported detail level: " + imageContent.detailLevel());
                         };
                 yield ImageContent.of(mimeType, base64Data, detailLevel);
             }
