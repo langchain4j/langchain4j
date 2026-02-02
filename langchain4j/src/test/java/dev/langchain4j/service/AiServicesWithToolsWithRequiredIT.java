@@ -15,8 +15,10 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
+import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import java.util.List;
 import java.util.Optional;
@@ -181,7 +183,7 @@ class AiServicesWithToolsWithRequiredIT {
         assistant.chat(text);
 
         // then
-        verify(tool).process("Klaus", null);
+        verify(tool).process("Klaus", Optional.empty());
         verifyNoMoreInteractions(tool);
 
         verify(model, times(2)).chat(chatRequestCaptor.capture());
@@ -194,5 +196,51 @@ class AiServicesWithToolsWithRequiredIT {
         assertThat(toolSpecification.name()).isEqualTo("process");
         assertThat(toolSpecification.description()).isNull();
         assertThat(toolSpecification.parameters()).isEqualTo(ToolWithOptionalJavaOptional.EXPECTED_SCHEMA);
+    }
+
+    @Test
+    void should_execute_tool_with_java_optional_parameter_containing_complex_type() {
+
+        // given
+        class ToolWithOptionalComplexType {
+
+            @Tool
+            void process(@P("name") String name, @P(value = "items") Optional<List<String>> items) {}
+
+            static final JsonSchemaElement EXPECTED_SCHEMA = JsonObjectSchema.builder()
+                    .addStringProperty("arg0", "name")
+                    .addProperty(
+                            "arg1",
+                            JsonArraySchema.builder()
+                                    .description("items")
+                                    .items(new JsonStringSchema())
+                                    .build())
+                    .required("arg0")
+                    .build();
+        }
+
+        ToolWithOptionalComplexType tool = spy(new ToolWithOptionalComplexType());
+
+        Assistant assistant =
+                AiServices.builder(Assistant.class).chatModel(model).tools(tool).build();
+
+        String text = "Use 'process' tool with name 'test' and no items";
+
+        // when
+        assistant.chat(text);
+
+        // then
+        verify(tool).process("test", Optional.empty());
+        verifyNoMoreInteractions(tool);
+
+        verify(model, times(2)).chat(chatRequestCaptor.capture());
+        verifyNoMoreInteractionsFor(model);
+
+        List<ToolSpecification> toolSpecifications =
+                chatRequestCaptor.getValue().parameters().toolSpecifications();
+        assertThat(toolSpecifications).hasSize(1);
+        ToolSpecification toolSpecification = toolSpecifications.get(0);
+        assertThat(toolSpecification.name()).isEqualTo("process");
+        assertThat(toolSpecification.parameters()).isEqualTo(ToolWithOptionalComplexType.EXPECTED_SCHEMA);
     }
 }
