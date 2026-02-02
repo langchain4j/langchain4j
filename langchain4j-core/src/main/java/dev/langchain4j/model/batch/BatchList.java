@@ -22,7 +22,7 @@ import java.util.List;
  */
 @Experimental
 public record BatchList<T>(
-        List<? extends BatchResponse<T>> batches,
+        List<BatchResponse<T>> batches,
         @Nullable String nextPageToken
 ) {
 }
