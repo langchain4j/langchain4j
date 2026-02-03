@@ -29,6 +29,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.mockito.InOrder;
@@ -756,7 +757,7 @@ public abstract class HttpClientIT {
         for (HttpClient client : clients()) {
 
             // given
-            String incorrectUrl = "http://banana";
+            String incorrectUrl = incorrectUrl();
 
             HttpRequest request = HttpRequest.builder()
                     .method(POST)
@@ -824,6 +825,10 @@ public abstract class HttpClientIT {
             verify(spyListener).onError(any());
             verifyNoMoreInteractions(spyListener);
         }
+    }
+
+    protected String incorrectUrl() {
+        return "http://banana";
     }
 
     @Test

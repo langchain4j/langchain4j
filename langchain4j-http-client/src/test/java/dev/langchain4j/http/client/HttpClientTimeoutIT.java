@@ -36,6 +36,18 @@ public abstract class HttpClientTimeoutIT {
 
     private WireMockServer wireMockServer;
 
+    protected int readTimeoutMillis() {
+        return 250;
+    }
+
+    protected String[] readAsyncMessageKeywords() {
+        return new String[] {"time", "out"};
+    }
+
+    protected String[] readSyncMessageKeywords() {
+        return readAsyncMessageKeywords();
+    }
+
     @BeforeEach
     void beforeEach() {
         wireMockServer = new WireMockServer(WireMockConfiguration.options().port(WIREMOCK_PORT));
@@ -56,7 +68,7 @@ public abstract class HttpClientTimeoutIT {
     void should_timeout_on_read_sync() {
 
         // given
-        int readTimeoutMillis = 250;
+        int readTimeoutMillis = readTimeoutMillis();
 
         for (HttpClient client : clients(Duration.ofMillis(readTimeoutMillis))) {
 
@@ -72,7 +84,7 @@ public abstract class HttpClientTimeoutIT {
             assertThatThrownBy(() -> client.execute(request))
                     .isExactlyInstanceOf(TimeoutException.class)
                     .hasRootCauseExactlyInstanceOf(expectedReadTimeoutRootCauseExceptionType())
-                    .hasMessageContainingAll("time", "out");
+                    .hasMessageContainingAll(readSyncMessageKeywords());
         }
     }
 
@@ -80,7 +92,7 @@ public abstract class HttpClientTimeoutIT {
     void should_timeout_on_read_async() throws Exception {
 
         // given
-        int readTimeoutMillis = 250;
+        int readTimeoutMillis = readTimeoutMillis();
 
         for (HttpClient client : clients(Duration.ofMillis(readTimeoutMillis))) {
 
@@ -128,12 +140,12 @@ public abstract class HttpClientTimeoutIT {
             client.execute(request, new DefaultServerSentEventParser(), spyListener);
 
             // then
-            StreamingResult streamingResult = completableFuture.get(readTimeoutMillis * 3, MILLISECONDS);
+            StreamingResult streamingResult = completableFuture.get(readTimeoutMillis * 3L, MILLISECONDS);
 
             assertThat(streamingResult.throwable())
                     .isExactlyInstanceOf(TimeoutException.class)
                     .hasRootCauseExactlyInstanceOf(expectedReadTimeoutRootCauseExceptionType())
-                    .hasMessageContainingAll("time", "out");
+                    .hasMessageContainingAll(readAsyncMessageKeywords());
 
             assertThat(streamingResult.threads()).hasSize(1);
             assertThat(streamingResult.threads().iterator().next()).isNotEqualTo(Thread.currentThread());

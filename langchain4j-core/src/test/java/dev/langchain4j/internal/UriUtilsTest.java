@@ -1,4 +1,4 @@
-package dev.langchain4j.web.search.google.customsearch;
+package dev.langchain4j.internal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -8,13 +8,13 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-class GoogleCustomWebSearchUtilsTest {
+class UriUtilsTest {
 
     @ParameterizedTest
     @NullAndEmptySource
     @ValueSource(strings = {"   ", "\t", "\n", " \t \n "})
     void createUriSafely_withNullEmptyOrBlankString_returnsNull(String input) {
-        URI result = GoogleCustomWebSearchUtils.createUriSafely(input);
+        URI result = UriUtils.createUriSafely(input);
 
         assertThat(result).isNull();
     }
@@ -23,7 +23,7 @@ class GoogleCustomWebSearchUtilsTest {
     void createUriSafely_withValidHttpsUri_returnsCorrectUri() {
         String validUri = "https://example.com/path?query=value";
 
-        URI result = GoogleCustomWebSearchUtils.createUriSafely(validUri);
+        URI result = UriUtils.createUriSafely(validUri);
 
         assertThat(result).hasToString(validUri);
     }
@@ -32,14 +32,14 @@ class GoogleCustomWebSearchUtilsTest {
     @ValueSource(
             strings = {
                 "https://example.com",
-                "http://test.org/path",
+                "http://example.org/path",
                 "https://example.com:8080/path?param=value",
                 "ftp://files.example.com/file.txt",
                 "mailto:user@example.com",
                 "file:///path/to/file.txt"
             })
     void createUriSafely_withValidUris_returnsCorrectUris(String validUri) {
-        URI result = GoogleCustomWebSearchUtils.createUriSafely(validUri);
+        URI result = UriUtils.createUriSafely(validUri);
 
         assertThat(result).hasToString(validUri);
     }
@@ -48,7 +48,7 @@ class GoogleCustomWebSearchUtilsTest {
     void createUriSafely_withAlreadyEncodedUri_preservesEncoding() {
         String encodedUri = "https://example.com/search?q=hello%20world";
 
-        URI result = GoogleCustomWebSearchUtils.createUriSafely(encodedUri);
+        URI result = UriUtils.createUriSafely(encodedUri);
 
         assertThat(result).hasToString(encodedUri);
     }
@@ -68,7 +68,7 @@ class GoogleCustomWebSearchUtilsTest {
                 "https://example.com/path\"quote/file.html"
             })
     void createUriSafely_withUrlsContainingInvalidCharacters_encodesCorrectly(String urlWithInvalidChars) {
-        URI result = GoogleCustomWebSearchUtils.createUriSafely(urlWithInvalidChars);
+        URI result = UriUtils.createUriSafely(urlWithInvalidChars);
 
         assertThat(result.toString()).isNotEqualTo(urlWithInvalidChars);
         assertThat(result.toString()).contains("%");
@@ -79,7 +79,7 @@ class GoogleCustomWebSearchUtilsTest {
     void createUriSafely_withSpaceInUri_encodesSpace() {
         String uriWithSpace = "https://example.com/search?q=hello world";
 
-        URI result = GoogleCustomWebSearchUtils.createUriSafely(uriWithSpace);
+        URI result = UriUtils.createUriSafely(uriWithSpace);
 
         assertThat(result.toString()).contains("%20");
         assertThat(result.toString()).doesNotContain(" ");
@@ -89,7 +89,7 @@ class GoogleCustomWebSearchUtilsTest {
     void createUriSafely_withMixedEncodedAndUnencoded_handlesCorrectly() {
         String mixedUri = "https://example.com/search?q=hello%20world and more";
 
-        URI result = GoogleCustomWebSearchUtils.createUriSafely(mixedUri);
+        URI result = UriUtils.createUriSafely(mixedUri);
 
         assertThat(result.toString()).contains("%20world"); // preserves existing encoding
         assertThat(result.toString()).contains("%20and%20more"); // encodes new spaces
@@ -99,16 +99,16 @@ class GoogleCustomWebSearchUtilsTest {
     void createUriSafely_withReservedCharacters_preservesReservedChars() {
         String uriWithReserved = "https://example.com:8080/path?param=value&other=test#fragment";
 
-        URI result = GoogleCustomWebSearchUtils.createUriSafely(uriWithReserved);
+        URI result = UriUtils.createUriSafely(uriWithReserved);
 
         assertThat(result).hasToString(uriWithReserved);
     }
 
     @Test
     void createUriSafely_withUnreservedCharacters_preservesUnreservedChars() {
-        String uriWithUnreserved = "https://example-test.com/path_with-dots.html";
+        String uriWithUnreserved = "https://test.example.com/path_with-dots.html";
 
-        URI result = GoogleCustomWebSearchUtils.createUriSafely(uriWithUnreserved);
+        URI result = UriUtils.createUriSafely(uriWithUnreserved);
 
         assertThat(result).hasToString(uriWithUnreserved);
     }
@@ -117,16 +117,16 @@ class GoogleCustomWebSearchUtilsTest {
     void createUriSafely_withSeverelyInvalidUri_returnsNull() {
         String invalidUri = "ht[tp://example.com with spaces and [brackets] and {braces}";
 
-        URI result = GoogleCustomWebSearchUtils.createUriSafely(invalidUri);
+        URI result = UriUtils.createUriSafely(invalidUri);
 
         assertThat(result).isNull();
     }
 
     @Test
     void createUriSafely_withComplexQuery_handlesCorrectly() {
-        String complexQuery = "https://www.google.com/search?q=java uri encoding test&ie=utf-8";
+        String complexQuery = "https://example.com/search?q=java uri encoding test&ie=utf-8";
 
-        URI result = GoogleCustomWebSearchUtils.createUriSafely(complexQuery);
+        URI result = UriUtils.createUriSafely(complexQuery);
 
         assertThat(result.toString()).contains("%20");
         assertThat(result.toString()).doesNotContain(" ");
@@ -136,7 +136,7 @@ class GoogleCustomWebSearchUtilsTest {
     void createUriSafely_withPathContainingSpaces_encodesSpaces() {
         String pathWithSpaces = "https://example.com/my documents/file.txt";
 
-        URI result = GoogleCustomWebSearchUtils.createUriSafely(pathWithSpaces);
+        URI result = UriUtils.createUriSafely(pathWithSpaces);
 
         assertThat(result.toString()).contains("%20");
         assertThat(result.toString()).doesNotContain(" ");
@@ -146,7 +146,7 @@ class GoogleCustomWebSearchUtilsTest {
     void createUriSafely_withMultipleConsecutiveSpaces_encodesAllSpaces() {
         String uriWithMultipleSpaces = "https://example.com/path   with   spaces";
 
-        URI result = GoogleCustomWebSearchUtils.createUriSafely(uriWithMultipleSpaces);
+        URI result = UriUtils.createUriSafely(uriWithMultipleSpaces);
 
         assertThat(result.toString()).contains("%20%20%20");
         assertThat(result.toString()).doesNotContain(" ");
@@ -156,7 +156,7 @@ class GoogleCustomWebSearchUtilsTest {
     void createUriSafely_withTabsAndNewlines_encodesCorrectly() {
         String uriWithWhitespace = "https://example.com/path\twith\ttabs\nand\nnewlines";
 
-        URI result = GoogleCustomWebSearchUtils.createUriSafely(uriWithWhitespace);
+        URI result = UriUtils.createUriSafely(uriWithWhitespace);
 
         assertThat(result.toString()).contains("%09"); // tab
         assertThat(result.toString()).contains("%0A"); // newline
@@ -168,7 +168,7 @@ class GoogleCustomWebSearchUtilsTest {
     void createUriSafely_withMultiplePercentEncodedSequences_preservesAll() {
         String encodedUri = "https://example.com/search?q=hello%20world%21%40%23";
 
-        URI result = GoogleCustomWebSearchUtils.createUriSafely(encodedUri);
+        URI result = UriUtils.createUriSafely(encodedUri);
 
         assertThat(result).hasToString(encodedUri);
     }
@@ -177,7 +177,7 @@ class GoogleCustomWebSearchUtilsTest {
     void createUriSafely_withPartiallyInvalidPercentEncoding_handlesCorrectly() {
         String partiallyInvalidUri = "https://example.com/search?q=hello%20world%ZZ test";
 
-        URI result = GoogleCustomWebSearchUtils.createUriSafely(partiallyInvalidUri);
+        URI result = UriUtils.createUriSafely(partiallyInvalidUri);
 
         assertThat(result.toString()).contains("%20world"); // preserves valid encoding
         assertThat(result.toString()).contains("%25ZZ"); // encodes invalid % sequence
