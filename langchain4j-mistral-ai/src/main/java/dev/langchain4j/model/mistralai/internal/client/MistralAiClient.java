@@ -1,6 +1,7 @@
 package dev.langchain4j.model.mistralai.internal.client;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -22,6 +23,16 @@ public abstract class MistralAiClient {
 
     public abstract void streamingChatCompletion(
             MistralAiChatCompletionRequest request, StreamingChatResponseHandler handler);
+
+    public void streamingChatCompletion(
+            MistralAiChatCompletionRequest request, StreamingChatResponseHandler handler, boolean returnThinking) {
+        if (returnThinking) {
+            throw new UnsupportedFeatureException("Returning thinking/reasoning content is not supported with this " +
+                    "client implementation: " + getClass().getName());
+        } else {
+            streamingChatCompletion(request, handler);
+        }
+    }
 
     public abstract MistralAiEmbeddingResponse embedding(MistralAiEmbeddingRequest request);
 
