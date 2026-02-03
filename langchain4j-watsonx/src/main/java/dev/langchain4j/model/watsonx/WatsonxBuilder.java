@@ -19,9 +19,10 @@ abstract class WatsonxBuilder<T extends WatsonxBuilder<T>> {
     protected Duration timeout;
     protected Authenticator authenticator;
     protected HttpClient httpClient;
+    protected boolean verifySsl = true;
 
     public T baseUrl(CloudRegion baseUrl) {
-        return baseUrl(baseUrl.getMlEndpoint());
+        return baseUrl(baseUrl.mlEndpoint());
     }
 
     public T baseUrl(String url) {
@@ -75,6 +76,11 @@ abstract class WatsonxBuilder<T extends WatsonxBuilder<T>> {
 
     public T httpClient(HttpClient httpClient) {
         this.httpClient = httpClient;
+        return (T) this;
+    }
+
+    public T verifySsl(boolean verifySsl) {
+        this.verifySsl = verifySsl;
         return (T) this;
     }
 }

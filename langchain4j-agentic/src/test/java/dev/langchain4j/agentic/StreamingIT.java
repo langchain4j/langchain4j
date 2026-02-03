@@ -23,6 +23,7 @@ import dev.langchain4j.agentic.StreamingAgents.StreamingExpertRouterAgent;
 import dev.langchain4j.agentic.StreamingAgents.StreamingMedicalExpert;
 import dev.langchain4j.agentic.StreamingAgents.StreamingLegalExpert;
 import dev.langchain4j.agentic.StreamingAgents.StreamingTechnicalExpert;
+import dev.langchain4j.agentic.StreamingAgents.StreamingStoryCreator;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.Map;
@@ -292,5 +293,18 @@ public class StreamingIT {
         String expertResponse = agentInstance.ask("I broke my leg what should I do");
         verify(medicalExpert).medical("I broke my leg what should I do");
         assertThat(expertResponse).isNotBlank();
+    }
+
+    @Test
+    void declarative_streaming_sequence_tests() {
+        StreamingStoryCreator storyCreator = AgenticServices.createAgenticSystem(StreamingStoryCreator.class);
+
+        TokenStream tokenStream = storyCreator.write("dragons and wizards", "fantasy", "young adults");
+        StringBuilder answerBuilder = new StringBuilder();
+        ChatResponse response = waitCompleteResponse(tokenStream, answerBuilder);
+        String story = answerBuilder.toString();
+
+        assertThat(story).isNotBlank();
+        assertThat(response.finishReason()).isEqualTo(FinishReason.STOP);
     }
 }

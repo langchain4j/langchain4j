@@ -23,10 +23,13 @@ import java.util.function.Function;
 @Internal
 public class AiServiceContext {
 
-    private static final Function<Object, Optional<String>> DEFAULT_MESSAGE_PROVIDER = x -> Optional.empty();
+    private static final Function<Object, Optional<String>> DEFAULT_USER_MESSAGE_PROVIDER = x -> Optional.empty();
+    private static final Function<Object, Optional<String>> DEFAULT_SYSTEM_MESSAGE_PROVIDER = x -> Optional.empty();
 
     public final Class<?> aiServiceClass;
     public final AiServiceListenerRegistrar eventListenerRegistrar = AiServiceListenerRegistrar.newInstance();
+
+    public Class<?> returnType;
 
     public ChatModel chatModel;
     public StreamingChatModel streamingChatModel;
@@ -44,7 +47,8 @@ public class AiServiceContext {
 
     public boolean storeRetrievedContentInChatMemory = true;
 
-    public Function<Object, Optional<String>> systemMessageProvider = DEFAULT_MESSAGE_PROVIDER;
+    public Function<Object, Optional<String>> userMessageProvider = DEFAULT_USER_MESSAGE_PROVIDER;
+    public Function<Object, Optional<String>> systemMessageProvider = DEFAULT_SYSTEM_MESSAGE_PROVIDER;
 
     public BiFunction<ChatRequest, Object, ChatRequest> chatRequestTransformer = (req, memId) -> req;
 

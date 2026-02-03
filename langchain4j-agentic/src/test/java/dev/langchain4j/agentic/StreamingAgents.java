@@ -1,10 +1,14 @@
 package dev.langchain4j.agentic;
 
 import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.service.MemoryId;
+import dev.langchain4j.agentic.declarative.SequenceAgent;
+import dev.langchain4j.agentic.declarative.StreamingChatModelSupplier;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
+
+import static dev.langchain4j.agentic.Models.streamingBaseModel;
 
 public class StreamingAgents {
 
@@ -19,7 +23,6 @@ public class StreamingAgents {
         @Agent(description = "Generate a story based on the given topic", outputKey = "story")
         TokenStream generateStory(@V("topic") String topic);
     }
-
 
     public interface StreamingAudienceEditor {
 
@@ -88,5 +91,33 @@ public class StreamingAgents {
             """)
         @Agent("A technical expert")
         TokenStream technical(@V("request") String request);
+    }
+
+    public interface StreamingCreativeWriterWithModel extends StreamingCreativeWriter {
+        @StreamingChatModelSupplier
+        static StreamingChatModel chatModel() {
+            return streamingBaseModel();
+        }
+    }
+
+    public interface StreamingAudienceEditorWithModel extends StreamingAudienceEditor {
+        @StreamingChatModelSupplier
+        static StreamingChatModel chatModel() {
+            return streamingBaseModel();
+        }
+    }
+
+    public interface StreamingStyleEditorWithModel extends StreamingStyleEditor {
+        @StreamingChatModelSupplier
+        static StreamingChatModel chatModel() {
+            return streamingBaseModel();
+        }
+    }
+
+    public interface StreamingStoryCreator {
+
+        @SequenceAgent( outputKey = "story",
+                subAgents = { StreamingCreativeWriterWithModel.class, StreamingAudienceEditorWithModel.class, StreamingStyleEditorWithModel.class})
+        TokenStream write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
     }
 }

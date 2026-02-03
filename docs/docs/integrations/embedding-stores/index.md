@@ -8,6 +8,7 @@ sidebar_position: 0
 |---------------------------------------------------------------------------------------|------------------|----------------------------|---------------------|
 | [In-memory](/integrations/embedding-stores/in-memory)                                 | ✅                | ✅                          | ✅                   |
 | [AlloyDB for Postgres](/integrations/embedding-stores/alloydb)                                     | ✅               | ✅                         | ✅                  |
+| [Amazon S3 Vectors](/integrations/embedding-stores/amazon-s3-vectors)                 | ✅                | ✅                          | ✅                   |
 | [Astra DB](/integrations/embedding-stores/astra-db)                                   | ✅                |                            |                     |
 | [Azure AI Search](/integrations/embedding-stores/azure-ai-search)                     | ✅                | ✅                          | ✅                   |
 | [Azure CosmosDB Mongo vCore](/integrations/embedding-stores/azure-cosmos-mongo-vcore) | ✅                |                            |                     |
@@ -27,7 +28,7 @@ sidebar_position: 0
 | [MongoDB Atlas](/integrations/embedding-stores/mongodb-atlas)                         | ✅                | ✅                          | ✅                   |
 | [Neo4j](/integrations/embedding-stores/neo4j)                                         | ✅                |                            |                     |
 | [OceanBase](/integrations/embedding-stores/oceanbase)                                 | ✅                | ✅                          | ✅                   |
-| [OpenSearch](/integrations/embedding-stores/opensearch)                               | ✅                |                            |                     |
+| [OpenSearch](/integrations/embedding-stores/opensearch)                               | ✅                | ✅                          | ✅                   |
 | [Oracle](/integrations/embedding-stores/oracle)                                       | ✅                | ✅                          | ✅                   |
 | [PGVector](/integrations/embedding-stores/pgvector)                                   | ✅                | ✅                          | ✅                   |
 | [Pinecone](/integrations/embedding-stores/pinecone)                                   | ✅                | ✅                          | ✅                   |

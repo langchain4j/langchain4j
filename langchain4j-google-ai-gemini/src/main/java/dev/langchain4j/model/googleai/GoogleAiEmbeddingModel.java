@@ -32,7 +32,6 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final Integer outputDimensionality;
 
     public GoogleAiEmbeddingModel(GoogleAiEmbeddingModelBuilder builder) {
-        ensureNotBlank(builder.apiKey, "apiKey");
         this.geminiService = new GeminiService(
                 builder.httpClientBuilder,
                 builder.apiKey,
