@@ -9,7 +9,6 @@ import dev.langchain4j.model.openaiofficial.OpenAiOfficialTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.common.AbstractStreamingAiServiceIT;
 import java.util.List;
-import java.util.concurrent.Executors;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
