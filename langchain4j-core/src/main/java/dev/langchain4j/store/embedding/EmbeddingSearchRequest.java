@@ -42,11 +42,13 @@ public class EmbeddingSearchRequest {
     }
 
     /** This constructor is used when subclass (e.g., MilvusEmbeddingSearchRequest) needs to allow null queryEmbedding for sparse embedding only */
-    protected EmbeddingSearchRequest(Embedding queryEmbedding,
+    protected EmbeddingSearchRequest(String query,
+                                         Embedding queryEmbedding,
                                      Integer maxResults,
                                      Double minScore,
                                      Filter filter,
                                      boolean allowNullQueryEmbedding) {
+        this.query = query;
         this.queryEmbedding = allowNullQueryEmbedding ? queryEmbedding : ensureNotNull(queryEmbedding, "queryEmbedding");
         this.maxResults = ensureGreaterThanZero(getOrDefault(maxResults, 3), "maxResults");
         this.minScore = ensureBetween(getOrDefault(minScore, 0.0), 0.0, 1.0, "minScore");

@@ -23,7 +23,7 @@ public class MilvusEmbeddingSearchRequest extends EmbeddingSearchRequest {
             Double minScore,
             Filter filter,
             MilvusEmbeddingSearchMode searchMode) {
-        super(queryEmbedding, maxResults, minScore, filter, true);
+        super(sparseQueryText, queryEmbedding, maxResults, minScore, filter, true);
         this.sparseEmbedding = sparseEmbedding;
         this.sparseQueryText = sparseQueryText;
         this.searchMode = getOrDefault(searchMode, MilvusEmbeddingSearchMode.DENSE);
