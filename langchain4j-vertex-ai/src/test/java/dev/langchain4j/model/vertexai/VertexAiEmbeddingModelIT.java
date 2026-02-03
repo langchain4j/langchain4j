@@ -134,7 +134,7 @@ class VertexAiEmbeddingModelIT {
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
                 .publisher("google")
-                .modelName("text-embedding-005")
+                .modelName("text-multilingual-embedding-002")
                 .maxSegmentsPerBatch(125)
                 .maxTokensPerBatch(10_000)
                 .build();
@@ -142,7 +142,7 @@ class VertexAiEmbeddingModelIT {
         // 617 segments requires splitting in batches of 125 or less
         // 617 times 21 tokens is above the 10k token limit
         List<TextSegment> segments = Collections.nCopies(
-                617, TextSegment.from("Once upon a time, in a haunted forrest, lived a gentle squirrel."));
+                617, TextSegment.from("Once upon a time, in forrest, lived a squirrel."));
 
         List<Integer> tokenCounts = model.calculateTokensCounts(segments);
         assertThat(tokenCounts).hasSize(617);
