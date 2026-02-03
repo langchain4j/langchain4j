@@ -5,19 +5,23 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.8.0-beta15-SNAPSHOT</version>
+        <version>1.11.0-beta19-SNAPSHOT</version>
         <relativePath>../../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>langchain4j-document-loader-github</artifactId>
     <name>LangChain4j :: Document Loader :: GitHub</name>
 
+    <properties>
+        <github-api.version>1.329</github-api.version>
+    </properties>
+
     <dependencies>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.8.0-SNAPSHOT</version>
+            <version>1.11.0-SNAPSHOT</version>
         </dependency>
 
         <dependency>
@@ -31,13 +35,12 @@
             <artifactId>slf4j-api</artifactId>
         </dependency>
 
-
         <!-- test dependencies -->
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
-            <version>1.8.0-SNAPSHOT</version>
+            <version>1.11.0-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
 
@@ -51,19 +54,13 @@
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-core</artifactId>
-            <version>2.22.0</version>
+            <version>2.25.3</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-slf4j2-impl</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-engine</artifactId>
             <scope>test</scope>
         </dependency>
 

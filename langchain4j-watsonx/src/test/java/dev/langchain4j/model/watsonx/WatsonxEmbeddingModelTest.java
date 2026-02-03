@@ -3,13 +3,14 @@ package dev.langchain4j.model.watsonx;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import com.ibm.watsonx.ai.CloudRegion;
 import com.ibm.watsonx.ai.core.Json;
-import com.ibm.watsonx.ai.core.auth.iam.IAMAuthenticator;
+import com.ibm.watsonx.ai.core.auth.ibmcloud.IBMCloudAuthenticator;
 import com.ibm.watsonx.ai.core.provider.HttpClientProvider;
 import com.ibm.watsonx.ai.embedding.EmbeddingParameters;
 import com.ibm.watsonx.ai.embedding.EmbeddingRequest;
@@ -49,13 +50,17 @@ public class WatsonxEmbeddingModelTest {
     @BeforeEach
     void setUp() {
         when(mockEmbeddingServiceBuilder.modelId(any())).thenReturn(mockEmbeddingServiceBuilder);
-        when(mockEmbeddingServiceBuilder.url(any(URI.class))).thenReturn(mockEmbeddingServiceBuilder);
+        when(mockEmbeddingServiceBuilder.baseUrl(any(URI.class))).thenReturn(mockEmbeddingServiceBuilder);
         when(mockEmbeddingServiceBuilder.projectId(any())).thenReturn(mockEmbeddingServiceBuilder);
         when(mockEmbeddingServiceBuilder.spaceId(any())).thenReturn(mockEmbeddingServiceBuilder);
         when(mockEmbeddingServiceBuilder.timeout(any())).thenReturn(mockEmbeddingServiceBuilder);
         when(mockEmbeddingServiceBuilder.version(any())).thenReturn(mockEmbeddingServiceBuilder);
         when(mockEmbeddingServiceBuilder.logRequests(any())).thenReturn(mockEmbeddingServiceBuilder);
         when(mockEmbeddingServiceBuilder.logResponses(any())).thenReturn(mockEmbeddingServiceBuilder);
+        when(mockEmbeddingServiceBuilder.authenticator(any())).thenReturn(mockEmbeddingServiceBuilder);
+        when(mockEmbeddingServiceBuilder.apiKey(any())).thenReturn(mockEmbeddingServiceBuilder);
+        when(mockEmbeddingServiceBuilder.httpClient(any())).thenReturn(mockEmbeddingServiceBuilder);
+        when(mockEmbeddingServiceBuilder.verifySsl(anyBoolean())).thenReturn(mockEmbeddingServiceBuilder);
         when(mockEmbeddingServiceBuilder.build()).thenReturn(mockEmbeddingService);
     }
 
@@ -67,7 +72,7 @@ public class WatsonxEmbeddingModelTest {
 
         var mockHttpClient = mock(HttpClient.class);
         var mockHttpResponse = mock(HttpResponse.class);
-        var mockAuthenticatorProvider = mock(IAMAuthenticator.class);
+        var mockAuthenticatorProvider = mock(IBMCloudAuthenticator.class);
         var mockHttpRequest = ArgumentCaptor.forClass(HttpRequest.class);
 
         when(mockAuthenticatorProvider.token()).thenReturn("my-token");
@@ -78,10 +83,10 @@ public class WatsonxEmbeddingModelTest {
                 .thenReturn(mockHttpResponse);
 
         try (MockedStatic<HttpClientProvider> httpClientProvider = mockStatic(HttpClientProvider.class)) {
-            httpClientProvider.when(HttpClientProvider::httpClient).thenReturn(mockHttpClient);
+            httpClientProvider.when(() -> HttpClientProvider.httpClient(true)).thenReturn(mockHttpClient);
 
             var embeddingModel = WatsonxEmbeddingModel.builder()
-                    .url(CloudRegion.FRANKFURT)
+                    .baseUrl(CloudRegion.FRANKFURT)
                     .modelName("model-name")
                     .apiKey("api-key-test")
                     .projectId("project-id")
@@ -89,7 +94,7 @@ public class WatsonxEmbeddingModelTest {
                     .version("my-version")
                     .logRequests(true)
                     .logResponses(true)
-                    .authenticationProvider(mockAuthenticatorProvider)
+                    .authenticator(mockAuthenticatorProvider)
                     .timeout(Duration.ofSeconds(10))
                     .build();
 
@@ -100,12 +105,10 @@ public class WatsonxEmbeddingModelTest {
             assertEquals("model-name", embeddingRequest.modelId());
             assertEquals("project-id", embeddingRequest.projectId());
             assertEquals("space-id", embeddingRequest.spaceId());
-            // 6. Test builder secondario
             assertDoesNotThrow(() -> WatsonxEmbeddingModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("model-name")
-                    .authenticationProvider(
-                            IAMAuthenticator.builder().apiKey("api-key").build())
+                    .apiKey("api-key")
                     .projectId("project-id")
                     .spaceId("space-id")
                     .build());
@@ -124,7 +127,7 @@ public class WatsonxEmbeddingModelTest {
 
         withEmbeddingServiceMock(() -> {
             EmbeddingModel embeddingModel = WatsonxEmbeddingModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .projectId("projectId")
                     .modelName("modelName")
                     .apiKey("apiKey")
@@ -154,7 +157,7 @@ public class WatsonxEmbeddingModelTest {
 
         withEmbeddingServiceMock(() -> {
             WatsonxEmbeddingModel embeddingModel = WatsonxEmbeddingModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .projectId("projectId")
                     .modelName("modelName")
                     .apiKey("apiKey")

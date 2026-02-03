@@ -27,7 +27,7 @@ For example, for OpenAI (`langchain4j-open-ai`), the dependency name would be `l
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>1.7.1-beta14</version>
+    <version>1.10.0-beta18</version>
 </dependency>
 ```
 
@@ -78,7 +78,7 @@ import `langchain4j-spring-boot-starter`:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-spring-boot-starter</artifactId>
-    <version>1.7.1-beta14</version>
+    <version>1.10.0-beta18</version>
 </dependency>
 ```
 
@@ -121,6 +121,7 @@ The following components will be automatically wired into the AI Service if avai
 - `ChatMemoryProvider`
 - `ContentRetriever`
 - `RetrievalAugmentor`
+- `ToolProvider`
 - All methods of any `@Component` or `@Service` class that are annotated with `@Tool`
 An example:
 ```java
@@ -270,7 +271,9 @@ created by one of our Spring Boot starters.
 
 ## Supported versions
 
-LangChain4j Spring Boot integration requires Java 17 and Spring Boot 3.2.
+LangChain4j Spring Boot integration requires Java 17 and Spring Boot 3.5, in line with the [Spring Boot OSS support policy](https://spring.io/projects/spring-boot#support).
+
+Support for Spring Boot 4.x is not available yet in LangChain4j, but it's planned for a future release.
 
 ## Examples
 - [Low-level Spring Boot example](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/main/java/dev/langchain4j/example/lowlevel/ChatModelController.java) using [ChatModel API](/tutorials/chat-and-language-models)

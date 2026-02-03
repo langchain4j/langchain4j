@@ -1,10 +1,13 @@
 package dev.langchain4j.guardrail.config;
 
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
+
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * The default implementation of {@link OutputGuardrailsConfig} for this library if no other libraries provide their own implementations.
  */
+@JacocoIgnoreCoverageGenerated
 final class DefaultOutputGuardrailsConfig implements OutputGuardrailsConfig {
     private final int maxRetries;
 

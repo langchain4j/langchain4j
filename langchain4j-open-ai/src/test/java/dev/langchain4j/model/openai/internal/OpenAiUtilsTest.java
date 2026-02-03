@@ -1,5 +1,11 @@
 package dev.langchain4j.model.openai.internal;
 
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.aiMessageFrom;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.toOpenAiToolChoice;
+import static dev.langchain4j.model.openai.internal.chat.ToolType.FUNCTION;
+import static java.util.Collections.singletonList;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.request.ToolChoice;
@@ -12,12 +18,6 @@ import dev.langchain4j.model.openai.internal.chat.ToolChoiceMode;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
-
-import static dev.langchain4j.model.openai.internal.OpenAiUtils.aiMessageFrom;
-import static dev.langchain4j.model.openai.internal.OpenAiUtils.toOpenAiToolChoice;
-import static dev.langchain4j.model.openai.internal.chat.ToolType.FUNCTION;
-import static java.util.Collections.singletonList;
-import static org.assertj.core.api.Assertions.assertThat;
 
 class OpenAiUtilsTest {
 
@@ -65,12 +65,11 @@ class OpenAiUtilsTest {
         AiMessage aiMessage = aiMessageFrom(response);
 
         // then
-        assertThat(aiMessage.toolExecutionRequests()).containsExactly(ToolExecutionRequest
-                .builder()
-                .name(functionName)
-                .arguments(functionArguments)
-                .build()
-        );
+        assertThat(aiMessage.toolExecutionRequests())
+                .containsExactly(ToolExecutionRequest.builder()
+                        .name(functionName)
+                        .arguments(functionArguments)
+                        .build());
     }
 
     @Test
@@ -98,12 +97,11 @@ class OpenAiUtilsTest {
         AiMessage aiMessage = aiMessageFrom(response);
 
         // then
-        assertThat(aiMessage.toolExecutionRequests()).containsExactly(ToolExecutionRequest
-                .builder()
-                .name(functionName)
-                .arguments(functionArguments)
-                .build()
-        );
+        assertThat(aiMessage.toolExecutionRequests())
+                .containsExactly(ToolExecutionRequest.builder()
+                        .name(functionName)
+                        .arguments(functionArguments)
+                        .build());
     }
 
     @Test
@@ -133,12 +131,11 @@ class OpenAiUtilsTest {
 
         // then
         assertThat(aiMessage.text()).isEqualTo("Hello");
-        assertThat(aiMessage.toolExecutionRequests()).containsExactly(ToolExecutionRequest
-                .builder()
-                .name(functionName)
-                .arguments(functionArguments)
-                .build()
-        );
+        assertThat(aiMessage.toolExecutionRequests())
+                .containsExactly(ToolExecutionRequest.builder()
+                        .name(functionName)
+                        .arguments(functionArguments)
+                        .build());
     }
 
     @Test
@@ -152,5 +149,101 @@ class OpenAiUtilsTest {
     @EnumSource
     void should_map_all_tool_choices(ToolChoice toolChoice) {
         assertThat(toOpenAiToolChoice(toolChoice)).isNotNull();
+    }
+
+    @Test
+    void should_include_thinking_content_when_returnThinking_is_true() {
+        // given
+        String messageContent = "The answer is 1";
+        String reasoningContent = "Let me think...";
+
+        ChatCompletionResponse response = ChatCompletionResponse.builder()
+                .choices(singletonList(ChatCompletionChoice.builder()
+                        .message(AssistantMessage.builder()
+                                .content(messageContent)
+                                .reasoningContent(reasoningContent)
+                                .build())
+                        .build()))
+                .build();
+
+        // when
+        AiMessage aiMessage = aiMessageFrom(response, true);
+
+        // then
+        assertThat(aiMessage.text()).isEqualTo(messageContent);
+        assertThat(aiMessage.thinking()).isEqualTo(reasoningContent);
+    }
+
+    @Test
+    void should_exclude_thinking_content_when_returnThinking_is_false() {
+        // given
+        String messageContent = "The answer is 1";
+        String reasoningContent = "Let me think...";
+
+        ChatCompletionResponse response = ChatCompletionResponse.builder()
+                .choices(singletonList(ChatCompletionChoice.builder()
+                        .message(AssistantMessage.builder()
+                                .content(messageContent)
+                                .reasoningContent(reasoningContent)
+                                .build())
+                        .build()))
+                .build();
+
+        // when
+        AiMessage aiMessage = aiMessageFrom(response, false);
+
+        // then
+        assertThat(aiMessage.text()).isEqualTo(messageContent);
+        assertThat(aiMessage.thinking()).isNull();
+    }
+
+    @Test
+    void should_handle_tool_call_with_id() {
+        // given
+        String toolCallId = "id";
+        String functionName = "check";
+        String functionArguments = "{\"query\":\"OpenAI\"}";
+
+        ChatCompletionResponse response = ChatCompletionResponse.builder()
+                .choices(singletonList(ChatCompletionChoice.builder()
+                        .message(AssistantMessage.builder()
+                                .toolCalls(singletonList(ToolCall.builder()
+                                        .id(toolCallId)
+                                        .type(FUNCTION)
+                                        .function(FunctionCall.builder()
+                                                .name(functionName)
+                                                .arguments(functionArguments)
+                                                .build())
+                                        .build()))
+                                .build())
+                        .build()))
+                .build();
+
+        // when
+        AiMessage aiMessage = aiMessageFrom(response);
+
+        // then
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+        ToolExecutionRequest request = aiMessage.toolExecutionRequests().get(0);
+        assertThat(request.id()).isEqualTo(toolCallId);
+        assertThat(request.name()).isEqualTo(functionName);
+        assertThat(request.arguments()).isEqualTo(functionArguments);
+    }
+
+    @Test
+    void should_return_null_text_when_content_is_null() {
+        // given
+        ChatCompletionResponse response = ChatCompletionResponse.builder()
+                .choices(singletonList(ChatCompletionChoice.builder()
+                        .message(AssistantMessage.builder().content(null).build())
+                        .build()))
+                .build();
+
+        // when
+        AiMessage aiMessage = aiMessageFrom(response);
+
+        // then
+        assertThat(aiMessage.text()).isNull();
+        assertThat(aiMessage.toolExecutionRequests()).isEmpty();
     }
 }

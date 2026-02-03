@@ -1,16 +1,19 @@
 package dev.langchain4j.model.bedrock.common;
 
+import static dev.langchain4j.model.bedrock.TestedModels.CLAUDE_3_HAIKU;
+import static dev.langchain4j.model.bedrock.common.BedrockAiServicesIT.sleepIfNeeded;
+
 import dev.langchain4j.model.bedrock.BedrockChatModel;
+import dev.langchain4j.model.bedrock.BedrockChatResponseMetadata;
+import dev.langchain4j.model.bedrock.BedrockTokenUsage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.output.TokenUsage;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
-import java.util.List;
-
-import static dev.langchain4j.model.bedrock.common.BedrockAiServicesIT.sleepIfNeeded;
-import static dev.langchain4j.model.bedrock.TestedModels.CLAUDE_3_HAIKU;
 
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
 class BedrockChatModelWithVisionIT extends AbstractChatModelIT {
@@ -27,9 +30,7 @@ class BedrockChatModelWithVisionIT extends AbstractChatModelIT {
 
     @Override
     protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
-        return ChatRequestParameters.builder()
-                .maxOutputTokens(maxOutputTokens)
-                .build();
+        return ChatRequestParameters.builder().maxOutputTokens(maxOutputTokens).build();
     }
 
     @Override
@@ -39,6 +40,11 @@ class BedrockChatModelWithVisionIT extends AbstractChatModelIT {
                 // force a working model with stopSequence parameter for @Tests
                 .modelId("cohere.command-r-v1:0")
                 .build();
+    }
+
+    @Override
+    protected Class<? extends TokenUsage> tokenUsageType(ChatModel model) {
+        return BedrockTokenUsage.class;
     }
 
     @Override
@@ -54,6 +60,11 @@ class BedrockChatModelWithVisionIT extends AbstractChatModelIT {
     @Override
     protected boolean supportsJsonResponseFormatWithRawSchema() {
         return false; // output format not supported
+    }
+
+    @Override
+    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(final ChatModel model) {
+        return BedrockChatResponseMetadata.class;
     }
 
     @AfterEach

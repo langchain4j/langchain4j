@@ -2,7 +2,7 @@ package dev.langchain4j.model.openai;
 
 import static dev.langchain4j.internal.Utils.repeat;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_5_NANO;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_5_MINI;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static java.util.Map.entry;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -134,7 +134,7 @@ class OpenAiStreamingChatModelIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName(GPT_5_NANO)
+                .modelName(GPT_5_MINI)
                 .logRequests(true)
                 .logResponses(true)
                 .build();

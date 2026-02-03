@@ -5,7 +5,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.8.0-beta15-SNAPSHOT</version>
+        <version>1.11.0-beta19-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -18,9 +18,24 @@
             <dependency>
                 <groupId>io.netty</groupId>
                 <artifactId>netty-bom</artifactId>
-                <version>4.1.118.Final</version>
+                <version>4.1.127.Final</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.azure</groupId>
+                <artifactId>azure-core-http-netty</artifactId>
+                <version>1.16.2</version>
+            </dependency>
+            <dependency>
+                <groupId>io.projectreactor</groupId>
+                <artifactId>reactor-core</artifactId>
+                <version>3.7.11</version>
+            </dependency>
+            <dependency>
+                <groupId>io.projectreactor.netty</groupId>
+                <artifactId>reactor-netty-http</artifactId>
+                <version>1.2.10</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -30,7 +45,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.8.0-SNAPSHOT</version>
+            <version>1.11.0-SNAPSHOT</version>
             <scope>compile</scope>
         </dependency>
 
@@ -41,6 +56,10 @@
                 <exclusion>
                     <groupId>net.minidev</groupId>
                     <artifactId>json-smart</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>netty-tcnative-boringssl-static</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -61,15 +80,9 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.8.0-SNAPSHOT</version>
+            <version>1.11.0-SNAPSHOT</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-engine</artifactId>
             <scope>test</scope>
         </dependency>
 
@@ -94,14 +107,14 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-azure-open-ai</artifactId>
-            <version>1.8.0-SNAPSHOT</version>
+            <version>1.11.0-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
-            <version>1.8.0-SNAPSHOT</version>
+            <version>1.11.0-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
 

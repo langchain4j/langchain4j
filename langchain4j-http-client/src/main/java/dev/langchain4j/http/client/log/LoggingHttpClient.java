@@ -9,6 +9,7 @@ import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
+import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
 import org.slf4j.Logger;
@@ -80,6 +81,14 @@ public class LoggingHttpClient implements HttpClient {
             }
 
             @Override
+            public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
+                if (logResponses) {
+                    log.debug("{}", event);
+                }
+                delegateListener.onEvent(event, context);
+            }
+
+            @Override
             public void onError(Throwable throwable) {
                 delegateListener.onError(throwable);
             }
@@ -114,6 +123,14 @@ public class LoggingHttpClient implements HttpClient {
                     log.debug("{}", event);
                 }
                 delegateListener.onEvent(event);
+            }
+
+            @Override
+            public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
+                if (logResponses) {
+                    log.debug("{}", event);
+                }
+                delegateListener.onEvent(event, context);
             }
 
             @Override

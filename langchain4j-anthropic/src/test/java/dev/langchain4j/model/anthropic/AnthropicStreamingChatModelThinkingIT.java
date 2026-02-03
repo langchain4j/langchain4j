@@ -1,10 +1,10 @@
 package dev.langchain4j.model.anthropic;
 
 import static dev.langchain4j.JsonTestUtils.jsonify;
-import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_7_SONNET_20250219;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_OPUS_4_20250514;
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_SONNET_4_5_20250929;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.params.provider.EnumSource.Mode.INCLUDE;
+import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.atLeast;
@@ -42,10 +42,9 @@ class AnthropicStreamingChatModelThinkingIT {
     private final SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
 
     @ParameterizedTest
-    @EnumSource(value = AnthropicChatModelName.class, mode = INCLUDE, names = {
-            "CLAUDE_OPUS_4_20250514",
-            "CLAUDE_SONNET_4_20250514",
-            "CLAUDE_3_7_SONNET_20250219"
+    @EnumSource(value = AnthropicChatModelName.class, mode = EXCLUDE, names = {
+            "CLAUDE_3_5_HAIKU_20241022",
+            "CLAUDE_3_HAIKU_20240307",
     })
     void should_return_and_send_thinking(AnthropicChatModelName modelName) {
 
@@ -84,8 +83,8 @@ class AnthropicStreamingChatModelThinkingIT {
 
         InOrder inOrder1 = inOrder(spyHandler1);
         inOrder1.verify(spyHandler1).get();
-        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinking(any());
-        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialResponse(any());
+        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinking(any(), any());
+        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialResponse(any(), any());
         inOrder1.verify(spyHandler1).onCompleteResponse(any());
         inOrder1.verify(spyHandler1).getThinking();
         inOrder1.verifyNoMoreInteractions();
@@ -106,8 +105,8 @@ class AnthropicStreamingChatModelThinkingIT {
 
         InOrder inOrder2 = inOrder(spyHandler2);
         inOrder2.verify(spyHandler2).get();
-        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialThinking(any());
-        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialResponse(any());
+        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialThinking(any(), any());
+        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialResponse(any(), any());
         inOrder2.verify(spyHandler2).onCompleteResponse(any());
         inOrder2.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler2);
@@ -123,10 +122,9 @@ class AnthropicStreamingChatModelThinkingIT {
 
 
     @ParameterizedTest
-    @EnumSource(value = AnthropicChatModelName.class, mode = INCLUDE, names = {
-            "CLAUDE_OPUS_4_20250514",
-            "CLAUDE_SONNET_4_20250514",
-            "CLAUDE_3_7_SONNET_20250219"
+    @EnumSource(value = AnthropicChatModelName.class, mode = EXCLUDE, names = {
+            "CLAUDE_3_5_HAIKU_20241022",
+            "CLAUDE_3_HAIKU_20240307",
     })
     void should_return_and_NOT_send_thinking(AnthropicChatModelName modelName) {
 
@@ -164,8 +162,8 @@ class AnthropicStreamingChatModelThinkingIT {
 
         InOrder inOrder1 = inOrder(spyHandler1);
         inOrder1.verify(spyHandler1).get();
-        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinking(any());
-        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialResponse(any());
+        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinking(any(), any());
+        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialResponse(any(), any());
         inOrder1.verify(spyHandler1).onCompleteResponse(any());
         inOrder1.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler1);
@@ -185,8 +183,8 @@ class AnthropicStreamingChatModelThinkingIT {
 
         InOrder inOrder2 = inOrder(spyHandler2);
         inOrder2.verify(spyHandler2).get();
-        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialThinking(any());
-        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialResponse(any());
+        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialThinking(any(), any());
+        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialResponse(any(), any());
         inOrder2.verify(spyHandler2).onCompleteResponse(any());
         inOrder2.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler2);
@@ -201,10 +199,9 @@ class AnthropicStreamingChatModelThinkingIT {
     }
 
     @ParameterizedTest
-    @EnumSource(value = AnthropicChatModelName.class, mode = INCLUDE, names = {
-            "CLAUDE_OPUS_4_20250514",
-            "CLAUDE_SONNET_4_20250514",
-            "CLAUDE_3_7_SONNET_20250219"
+    @EnumSource(value = AnthropicChatModelName.class, mode = EXCLUDE, names = {
+            "CLAUDE_3_5_HAIKU_20241022",
+            "CLAUDE_3_HAIKU_20240307",
     })
     void should_return_and_send_thinking_with_tools(AnthropicChatModelName modelName) {
 
@@ -254,10 +251,10 @@ class AnthropicStreamingChatModelThinkingIT {
 
         InOrder inOrder1 = inOrder(spyHandler1);
         inOrder1.verify(spyHandler1).get();
-        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinking(any());
-        inOrder1.verify(spyHandler1, atLeast(0)).onPartialResponse(any()); // do not care if onPartialResponse was called
+        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinking(any(), any());
+        inOrder1.verify(spyHandler1, atLeast(0)).onPartialResponse(any(), any()); // do not care if onPartialResponse was called
         inOrder1.verify(spyHandler1, atLeastOnce()).onPartialToolCall(argThat(toolCall ->
-                toolCall.name().equals(toolExecutionRequest1.name())));
+                toolCall.name().equals(toolExecutionRequest1.name())), any());
         inOrder1.verify(spyHandler1).onCompleteToolCall(argThat(toolCall ->
                 toolCall.toolExecutionRequest().equals(toolExecutionRequest1)));
         inOrder1.verify(spyHandler1).onCompleteResponse(any());
@@ -280,7 +277,7 @@ class AnthropicStreamingChatModelThinkingIT {
 
         InOrder inOrder2 = inOrder(spyHandler2);
         inOrder2.verify(spyHandler2).get();
-        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialResponse(any());
+        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialResponse(any(), any());
         inOrder2.verify(spyHandler2).onCompleteResponse(any());
         inOrder2.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler2);
@@ -305,10 +302,10 @@ class AnthropicStreamingChatModelThinkingIT {
 
         InOrder inOrder3 = inOrder(spyHandler3);
         inOrder3.verify(spyHandler3).get();
-        inOrder3.verify(spyHandler3, atLeastOnce()).onPartialThinking(any());
-        inOrder3.verify(spyHandler3, atLeast(0)).onPartialResponse(any()); // do not care if onPartialResponse was called
+        inOrder3.verify(spyHandler3, atLeastOnce()).onPartialThinking(any(), any());
+        inOrder3.verify(spyHandler3, atLeast(0)).onPartialResponse(any(), any()); // do not care if onPartialResponse was called
         inOrder3.verify(spyHandler3, atLeastOnce()).onPartialToolCall(argThat(toolCall ->
-                toolCall.name().equals(toolExecutionRequest2.name())));
+                toolCall.name().equals(toolExecutionRequest2.name())), any());
         inOrder3.verify(spyHandler3).onCompleteToolCall(argThat(toolCall ->
                 toolCall.toolExecutionRequest().equals(toolExecutionRequest2)));
         inOrder3.verify(spyHandler3).onCompleteResponse(any());
@@ -331,7 +328,7 @@ class AnthropicStreamingChatModelThinkingIT {
 
         InOrder inOrder4 = inOrder(spyHandler4);
         inOrder4.verify(spyHandler4).get();
-        inOrder4.verify(spyHandler4, atLeastOnce()).onPartialResponse(any());
+        inOrder4.verify(spyHandler4, atLeastOnce()).onPartialResponse(any(), any());
         inOrder4.verify(spyHandler4).onCompleteResponse(any());
         inOrder4.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler4);
@@ -403,10 +400,10 @@ class AnthropicStreamingChatModelThinkingIT {
 
         InOrder inOrder1 = inOrder(spyHandler1);
         inOrder1.verify(spyHandler1).get();
-        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinking(any());
-        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialResponse(any());
+        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinking(any(), any());
+        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialResponse(any(), any());
         inOrder1.verify(spyHandler1, atLeastOnce()).onPartialToolCall(argThat(toolCall ->
-                toolCall.name().equals(toolExecutionRequest1.name())));
+                toolCall.name().equals(toolExecutionRequest1.name())), any());
         inOrder1.verify(spyHandler1).onCompleteToolCall(argThat(toolCall ->
                 toolCall.toolExecutionRequest().equals(toolExecutionRequest1)));
         inOrder1.verify(spyHandler1).onCompleteResponse(any());
@@ -434,8 +431,8 @@ class AnthropicStreamingChatModelThinkingIT {
 
         InOrder inOrder2 = inOrder(spyHandler2);
         inOrder2.verify(spyHandler2).get();
-        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialThinking(any());
-        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialResponse(any());
+        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialThinking(any(), any());
+        inOrder2.verify(spyHandler2, atLeastOnce()).onPartialResponse(any(), any());
         inOrder2.verify(spyHandler2).onCompleteResponse(any());
         inOrder2.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler2);
@@ -463,10 +460,10 @@ class AnthropicStreamingChatModelThinkingIT {
 
         InOrder inOrder3 = inOrder(spyHandler3);
         inOrder3.verify(spyHandler3).get();
-        inOrder3.verify(spyHandler3, atLeastOnce()).onPartialThinking(any());
-        inOrder3.verify(spyHandler3, atLeastOnce()).onPartialResponse(any());
+        inOrder3.verify(spyHandler3, atLeastOnce()).onPartialThinking(any(), any());
+        inOrder3.verify(spyHandler3, atLeastOnce()).onPartialResponse(any(), any());
         inOrder3.verify(spyHandler3, atLeastOnce()).onPartialToolCall(argThat(toolCall ->
-                toolCall.name().equals(toolExecutionRequest2.name())));
+                toolCall.name().equals(toolExecutionRequest2.name())), any());
         inOrder3.verify(spyHandler3).onCompleteToolCall(argThat(toolCall ->
                 toolCall.toolExecutionRequest().equals(toolExecutionRequest2)));
         inOrder3.verify(spyHandler3).onCompleteResponse(any());
@@ -494,8 +491,8 @@ class AnthropicStreamingChatModelThinkingIT {
 
         InOrder inOrder4 = inOrder(spyHandler4);
         inOrder4.verify(spyHandler4).get();
-        inOrder4.verify(spyHandler4, atLeastOnce()).onPartialThinking(any());
-        inOrder4.verify(spyHandler4, atLeastOnce()).onPartialResponse(any());
+        inOrder4.verify(spyHandler4, atLeastOnce()).onPartialThinking(any(), any());
+        inOrder4.verify(spyHandler4, atLeastOnce()).onPartialResponse(any(), any());
         inOrder4.verify(spyHandler4).onCompleteResponse(any());
         inOrder4.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler4);
@@ -514,67 +511,6 @@ class AnthropicStreamingChatModelThinkingIT {
                 .contains(jsonify(signature3));
     }
 
-    @Test
-    void test_redacted_thinking() {
-
-        // given
-        boolean returnThinking = true;
-        // sendThinking = true by default
-
-        StreamingChatModel model = AnthropicStreamingChatModel.builder()
-                .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
-                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .modelName(CLAUDE_3_7_SONNET_20250219)
-
-                .thinkingType("enabled")
-                .thinkingBudgetTokens(THINKING_BUDGET_TOKENS)
-                .maxTokens(THINKING_BUDGET_TOKENS + 100)
-                .returnThinking(returnThinking)
-
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-
-        UserMessage userMessage1 = UserMessage.from("ANTHROPIC_MAGIC_STRING_TRIGGER_REDACTED_THINKING_46C9A13E193C177646C7398A98432ECCCE4C1253D5E2D82641AC0E52CC2876CB");
-
-        // when
-        TestStreamingChatResponseHandler spyHandler1 = spy(new TestStreamingChatResponseHandler());
-        model.chat(List.of(userMessage1), spyHandler1);
-
-        // then
-        AiMessage aiMessage1 = spyHandler1.get().aiMessage();
-        assertThat(aiMessage1.text()).isNotBlank();
-        assertThat(aiMessage1.thinking()).isNull();
-        assertThat(aiMessage1.attributes()).hasSize(1);
-        List<String> redactedThinkings = aiMessage1.attribute("redacted_thinking", List.class);
-        assertThat(redactedThinkings).hasSizeGreaterThanOrEqualTo(1);
-        redactedThinkings.forEach(redactedThinking -> assertThat(redactedThinking).isNotBlank());
-
-        InOrder inOrder1 = inOrder(spyHandler1);
-        inOrder1.verify(spyHandler1).get();
-        inOrder1.verify(spyHandler1, atLeastOnce()).onPartialResponse(any());
-        inOrder1.verify(spyHandler1).onCompleteResponse(any());
-        inOrder1.verifyNoMoreInteractions();
-        verifyNoMoreInteractions(spyHandler1);
-
-        // given
-        UserMessage userMessage2 = UserMessage.from("What is the capital of Germany?");
-
-        // when
-        TestStreamingChatResponseHandler spyHandler2 = spy(new TestStreamingChatResponseHandler());
-        model.chat(List.of(userMessage1, aiMessage1, userMessage2), spyHandler2);
-
-        // then
-        AiMessage aiMessage2 = spyHandler2.get().aiMessage();
-        assertThat(aiMessage2.text()).contains("Berlin");
-
-        // should send redacted thinking in the follow-up requests
-        List<HttpRequest> httpRequests = spyingHttpClient.requests();
-        assertThat(httpRequests).hasSize(2);
-        assertThat(httpRequests.get(1).body()).contains(jsonify(aiMessage1.text()));
-        redactedThinkings.forEach(rt -> assertThat(httpRequests.get(1).body()).contains(jsonify(rt)));
-    }
-
     @ParameterizedTest
     @NullSource
     @ValueSource(booleans = false)
@@ -583,7 +519,7 @@ class AnthropicStreamingChatModelThinkingIT {
         // given
         StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .modelName(CLAUDE_3_7_SONNET_20250219)
+                .modelName(CLAUDE_SONNET_4_5_20250929)
 
                 .thinkingType("enabled")
                 .thinkingBudgetTokens(THINKING_BUDGET_TOKENS)
@@ -608,7 +544,7 @@ class AnthropicStreamingChatModelThinkingIT {
 
         InOrder inOrder = inOrder(spyHandler);
         inOrder.verify(spyHandler).get();
-        inOrder.verify(spyHandler, atLeastOnce()).onPartialResponse(any());
+        inOrder.verify(spyHandler, atLeastOnce()).onPartialResponse(any(), any());
         inOrder.verify(spyHandler).onCompleteResponse(any());
         inOrder.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler);

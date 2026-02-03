@@ -143,6 +143,12 @@ You can specify one or more `ToolSpecification`s when creating the `ChatRequest`
 - The `name` of the tool
 - The `description` of the tool
 - The `parameters` of the tool and their descriptions
+- The `metadata` of the tool.
+By default, it is not sent to the LLM provider, you must explicitly specify which metadata keys should be sent
+when creating a `ChatModel`.
+Currently, tool metadata is supported only by the `langchain4j-anthropic` module.
+When tools are provided by the [McpToolProvider](/tutorials/mcp#mcp-tool-provider),
+`metadata` can contain MCP-specific entries.
 
 It is recommended to provide as much information about the tool as possible:
 a clear name, a comprehensive description, and a description for each parameter, etc.
@@ -483,9 +489,14 @@ System.out.println(answer); // The square root of 475695037565 is 689706.486532.
 When the `ask` method is called, 2 interactions with the LLM occur, as described in the earlier section.
 In between those interactions, the `squareRoot` method is called automatically.
 
-The `@Tool` annotation has 2 optional fields:
+The `@Tool` annotation has these fields:
 - `name`: the tool's name. If this is not provided, the method's name will serve as the tool's name.
 - `value`: the tool's description.
+- `returnBehavior`: see [this](/tutorials/tools#returning-immediately-the-result-of-a-tool-execution-request) for more details
+- `metadata`: a valid JSON string that contains LLM-provider-specific tool metadata entries.
+By default, it is not sent to the LLM provider, you must explicitly specify which metadata keys should be sent
+when creating a `ChatModel`.
+Currently, tool metadata is supported only by the `langchain4j-anthropic` module.
 
 Depending on the tool, the LLM might understand it well even without any description
 (for example, `add(a, b)` is obvious),
@@ -574,6 +585,26 @@ Parameters are stored in a mutable, thread safe `Map`.
 Data can be passed between AI Service components inside the `InvocationParameters`
 (for example, from one tool to another or from a RAG component to a tool)
 during a single invocation of the AI Service.
+
+### `InvocationContext`
+
+Similarly to `InvocationParameters`, `@Tool`-annotated methods
+can accept `InvocationContext` parameter to get access to the information
+about AI Service invocation.
+
+```java
+class Tools {
+    @Tool
+    String getWeather(String city, InvocationContext context) {
+        UUID invocationId = context.invocationId();
+        String aiServiceInterfaceName = context.interfaceName();
+        ...
+    }
+}
+```
+
+In this case, the LLM is not aware of these parameters;
+they are only visible to LangChain4j and user code.
 
 ### `@ToolMemoryId`
 If your AI Service method has a parameter annotated with `@MemoryId`,
@@ -691,12 +722,38 @@ ToolExecutor toolExecutor = (toolExecutionRequest, memoryId) -> {
 };
 ```
 
+LangChain4j also provides the `DefaultToolExecutor`, which can automatically invoke methods on Java objects and handle
+parameter mapping:
+```java
+class BookingTools {
+    String getBookingDetails(String bookingNumber) {
+        Booking booking = loadBookingFromDatabase(bookingNumber);
+        return booking.toString();
+    }
+}
+
+BookingTools tools = new BookingTools();
+Method method = BookingTools.class.getMethod("getBookingDetails", String.class);
+ToolExecutor toolExecutor = new DefaultToolExecutor(tools, method);
+```
+
 Once we have one or multiple (`ToolSpecification`, `ToolExecutor`) pairs,
 we can specify them when creating an AI Service:
 ```java
 Assistant assistant = AiServices.builder(Assistant.class)
     .chatModel(chatModel)
     .tools(Map.of(toolSpecification, toolExecutor))
+    .build();
+```
+
+Additionally, we can pass a list of tool names that should [immediately/directly return](/tutorials/tools#returning-immediately-the-result-of-a-tool-execution-request) their results and not send them to the LLM for reprocessing.
+
+```java
+Set<String> immediateReturnToolNames = Set.of("get_booking_details");
+
+Assistant assistant = AiServices.builder(Assistant.class)
+    .chatModel(chatModel)
+    .tools(Map.of(toolSpecification, toolExecutor), immediateReturnToolNames)
     .build();
 ```
 
@@ -732,6 +789,30 @@ Assistant assistant = AiServices.builder(Assistant.class)
     .chatModel(model)
     .toolProvider(toolProvider)
     .build();
+```
+
+#### Configuring Immediate Return in Dynamic Tools
+
+When building `ToolProviderResult`, you can mark tools for [immediate return](/tutorials/tools#returning-immediately-the-result-of-a-tool-execution-request) using the ToolProviderResult.builder():
+
+```java
+ToolProvider toolProvider = (toolProviderRequest) -> {
+    return ToolProviderResult.builder()
+        .add(bookingToolSpec, bookingExecutor, ReturnBehavior.IMMEDIATE)
+        .add(weatherToolSpec, weatherExecutor)
+        .build();
+};
+```
+
+You can also mark multiple tools by name:
+
+```java
+ToolProvider toolProvider = (toolProviderRequest) -> {
+    return ToolProviderResult.builder()
+        .addAll(allTools)
+        .immediateReturnToolNames(Set.of("get_booking_details", "cancel_booking"))
+        .build();
+};
 ```
 
 It is possible for an AI service to use both programmatically and dynamically specified tools in the same invocation.
@@ -780,6 +861,13 @@ Result<String> result = assistant.chat("How much is 37 plus 87?");
 will produce a `Result` with a null content, while the actual response of `124` will have to be retrieved from the `result.toolExecutions()`. Without the immediate return, the LLM would have to reprocess the result of the `add` tool execution request, thus returning a response like: `The result of adding 37 and 87 is 124.`
 
 Also note that if the LLM calls multiple tools and at least one of them is not immediate, then reprocessing will happen.
+
+:::note
+When using programmatic tools, you can mark tools for immediate return by passing a set of tool names
+to the `.tools()` method. When using dynamic tools via `ToolProvider`, you can use the overloaded method, 
+`.add(ToolSpecification, ToolExecutor, ReturnBehavior)`, on `ToolProviderResult.builder()`. 
+See the respective sections above for examples.
+:::
 
 ### Error Handling
 

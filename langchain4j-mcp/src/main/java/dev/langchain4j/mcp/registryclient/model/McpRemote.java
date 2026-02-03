@@ -19,4 +19,13 @@ public class McpRemote {
     public String getUrl() {
         return url;
     }
+
+    @Override
+    public String toString() {
+        return "McpRemote{" +
+                "headers=" + headers +
+                ", type='" + type + '\'' +
+                ", url='" + url + '\'' +
+                '}';
+    }
 }

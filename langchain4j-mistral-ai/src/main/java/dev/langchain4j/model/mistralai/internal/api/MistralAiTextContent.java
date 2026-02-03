@@ -1,13 +1,14 @@
 package dev.langchain4j.model.mistralai.internal.api;
 
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-
 import java.util.Objects;
-
-import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 @JsonInclude(NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -16,12 +17,17 @@ public class MistralAiTextContent extends MistralAiMessageContent {
 
     public String text;
 
-    public MistralAiTextContent(String text) {
+    @JsonCreator
+    public MistralAiTextContent(@JsonProperty("text") String text) {
         super("text");
         this.text = text;
     }
 
     public String asText() {
+        return text;
+    }
+
+    public String getText() {
         return text;
     }
 
@@ -40,8 +46,6 @@ public class MistralAiTextContent extends MistralAiMessageContent {
 
     @Override
     public String toString() {
-        return "MistralAiTextContent{" + "text='"
-                + text + '\'' + ", type='"
-                + type + '\'' + '}';
+        return "MistralAiTextContent{" + "text='" + text + '\'' + ", type='" + type + '\'' + '}';
     }
 }

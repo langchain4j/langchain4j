@@ -1,6 +1,7 @@
 package dev.langchain4j.data.message;
 
 import static com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY;
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY;
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 import static com.fasterxml.jackson.annotation.JsonTypeInfo.As.EXISTING_PROPERTY;
 import static com.fasterxml.jackson.annotation.JsonTypeInfo.Id.NAME;
@@ -119,7 +120,7 @@ public class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec {
         public SystemMessageMixin(@JsonProperty("text") String text) {}
     }
 
-    @JsonInclude(NON_NULL)
+    @JsonInclude(NON_EMPTY)
     @JsonDeserialize(builder = UserMessage.Builder.class)
     private abstract static class UserMessageMixin {}
 
@@ -132,13 +133,11 @@ public class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec {
     private abstract static class ToolExecutionRequestMixin {}
 
     @JsonInclude(NON_NULL)
-    private static class ToolExecutionResultMessageMixin {
+    @JsonDeserialize(builder = ToolExecutionResultMessage.Builder.class)
+    private abstract static class ToolExecutionResultMessageMixin {
 
-        @JsonCreator
-        public ToolExecutionResultMessageMixin(
-                @JsonProperty("id") String id,
-                @JsonProperty("toolName") String toolName,
-                @JsonProperty("text") String text) {}
+        @JsonProperty("isError")
+        abstract Boolean isError();
     }
 
     @JsonInclude(NON_NULL)

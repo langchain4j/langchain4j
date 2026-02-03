@@ -23,13 +23,12 @@ public class WatsonxStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected List<StreamingChatModel> models() {
-        return List.of(createStreamingChatModel("meta-llama/llama-4-maverick-17b-128e-instruct-fp8")
-                .build());
+        return List.of(createStreamingChatModel("mistralai/mistral-medium-2505").build());
     }
 
     @Override
     protected String customModelName() {
-        return "ibm/granite-3-3-8b-instruct";
+        return "ibm/granite-4-h-small";
     }
 
     @Override
@@ -41,16 +40,46 @@ public class WatsonxStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected StreamingChatModel createModelWith(ChatRequestParameters parameters) {
-        return createStreamingChatModel("ibm/granite-3-3-8b-instruct")
+        return createStreamingChatModel("ibm/granite-4-h-small")
                 .defaultRequestParameters(parameters)
                 .build();
     }
 
     @Override
     public StreamingChatModel createModelWith(ChatModelListener listener) {
-        return createStreamingChatModel("ibm/granite-3-3-8b-instruct")
+        return createStreamingChatModel("ibm/granite-4-h-small")
                 .listeners(List.of(listener))
                 .build();
+    }
+
+    @Override
+    protected void should_execute_a_tool_then_answer(StreamingChatModel model) {
+        super.should_execute_a_tool_then_answer(
+                createStreamingChatModel("ibm/granite-4-h-small").build());
+    }
+
+    @Override
+    protected void should_execute_a_tool_without_arguments_then_answer(StreamingChatModel model) {
+        super.should_execute_a_tool_without_arguments_then_answer(
+                createStreamingChatModel("ibm/granite-4-h-small").build());
+    }
+
+    @Override
+    protected void should_execute_multiple_tools_in_parallel_then_answer(StreamingChatModel model) {
+        super.should_execute_multiple_tools_in_parallel_then_answer(
+                createStreamingChatModel("ibm/granite-4-h-small").build());
+    }
+
+    @Override
+    protected void should_force_LLM_to_execute_any_tool(StreamingChatModel model) {
+        super.should_force_LLM_to_execute_any_tool(
+                createStreamingChatModel("ibm/granite-4-h-small").build());
+    }
+
+    @Override
+    protected void should_force_LLM_to_execute_specific_tool(StreamingChatModel model) {
+        super.should_force_LLM_to_execute_specific_tool(
+                createStreamingChatModel("ibm/granite-4-h-small").build());
     }
 
     @Override
@@ -60,38 +89,33 @@ public class WatsonxStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected void should_accept_single_image_as_base64_encoded_string(StreamingChatModel model) {
-        super.should_respect_user_message(
-                createStreamingChatModel("mistralai/mistral-medium-2505").build());
+    protected boolean supportsStreamingCancellation() {
+        return false;
     }
 
     @Override
     protected void should_respect_user_message(StreamingChatModel model) {
-        // Maverick doesn't work for this test. It is better to use meta-llama/llama-3-3-70b-instruct instead.
         super.should_respect_user_message(
-                createStreamingChatModel("meta-llama/llama-3-3-70b-instruct").build());
+                createStreamingChatModel("ibm/granite-4-h-small").build());
     }
 
     @Override
     protected void should_respect_JSON_response_format(StreamingChatModel model) {
-        // Maverick doesn't work for this test. It is better to use meta-llama/llama-3-3-70b-instruct instead.
         super.should_respect_JSON_response_format(
-                createStreamingChatModel("meta-llama/llama-3-3-70b-instruct").build());
+                createStreamingChatModel("ibm/granite-4-h-small").build());
     }
 
     @Override
     protected void should_execute_a_tool_then_answer_respecting_JSON_response_format_with_schema(
             StreamingChatModel model) {
-        // Maverick doesn't work for this test. It is better to use meta-llama/llama-3-3-70b-instruct instead.
         super.should_execute_a_tool_then_answer_respecting_JSON_response_format_with_schema(
-                createStreamingChatModel("meta-llama/llama-3-3-70b-instruct").build());
+                createStreamingChatModel("ibm/granite-4-h-small").build());
     }
 
     @Override
     protected void should_respect_JSON_response_format_with_schema(StreamingChatModel model) {
-        // Maverick doesn't work for this test. It is better to use meta-llama/llama-3-3-70b-instruct instead.
         super.should_respect_JSON_response_format_with_schema(
-                createStreamingChatModel("meta-llama/llama-3-3-70b-instruct").build());
+                createStreamingChatModel("ibm/granite-4-h-small").build());
     }
 
     @Override
@@ -114,13 +138,11 @@ public class WatsonxStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     private WatsonxStreamingChatModel.Builder createStreamingChatModel(String model) {
         return WatsonxStreamingChatModel.builder()
-                .url(URL)
+                .baseUrl(URL)
                 .apiKey(API_KEY)
                 .projectId(PROJECT_ID)
                 .modelName(model)
                 .temperature(0.0)
-                .logRequests(true)
-                .logResponses(true)
-                .timeLimit(Duration.ofSeconds(30));
+                .timeout(Duration.ofSeconds(30));
     }
 }

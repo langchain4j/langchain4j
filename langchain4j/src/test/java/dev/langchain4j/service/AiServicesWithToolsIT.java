@@ -20,8 +20,6 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.langchain4j.invocation.InvocationParameters;
-import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -31,6 +29,8 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.internal.Json;
+import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
@@ -50,13 +50,16 @@ import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderResult;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -149,10 +152,15 @@ class AiServicesWithToolsIT {
 
         ChatModel spyChatModel = spy(chatModel);
 
+        List<String> toolCalls = new ArrayList<>();
+        Map<String, Object> toolResults = new HashMap<>();
+
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(spyChatModel)
                 .chatMemory(chatMemory)
                 .tools(transactionService)
+                .beforeToolExecution(before -> toolCalls.add(before.request().name()))
+                .afterToolExecution(exec -> toolResults.put(exec.request().name(), exec.resultObject()))
                 .build();
 
         String userMessage = "What is the amounts of transaction T001?";
@@ -224,6 +232,9 @@ class AiServicesWithToolsIT {
                         .messages(messages.get(0), messages.get(1), messages.get(2))
                         .toolSpecifications(EXPECTED_SPECIFICATION)
                         .build());
+
+        assertThat(toolCalls).hasSize(1).contains("getTransactionAmount");
+        assertThat(toolResults).hasSize(1).containsKey("getTransactionAmount").containsValue(11.1);
     }
 
     @ParameterizedTest
@@ -745,7 +756,8 @@ class AiServicesWithToolsIT {
                 .tools(calculator)
                 .build();
 
-        Result<String> result = assistant.chat("Apply the function xyz on the number of the year when my booking 123-456 starts");
+        Result<String> result =
+                assistant.chat("Apply the function xyz on the number of the year when my booking 123-456 starts");
         assertThat(result.content()).contains("2028");
 
         verify(calculator).xyz(2027);
@@ -783,12 +795,11 @@ class AiServicesWithToolsIT {
                 .tools(calculator)
                 .build();
 
-        assertThat(
-                assertThrows(IllegalConfigurationException.class,
-                        () -> assistant.chat("Apply the function xyz on the number 2027"))
-        ).hasMessageContaining("xyz");
+        assertThat(assertThrows(
+                        IllegalConfigurationException.class,
+                        () -> assistant.chat("Apply the function xyz on the number 2027")))
+                .hasMessageContaining("xyz");
     }
-
 
     @Test
     void should_propagate_invocation_parameters_into_tool() {
@@ -808,7 +819,8 @@ class AiServicesWithToolsIT {
 
         interface Assistant {
 
-            String chat(@dev.langchain4j.service.UserMessage String userMessage, InvocationParameters invocationParameters);
+            String chat(
+                    @dev.langchain4j.service.UserMessage String userMessage, InvocationParameters invocationParameters);
         }
 
         Tools spyTools = spy(new Tools());
@@ -863,7 +875,9 @@ class AiServicesWithToolsIT {
 
         interface Assistant {
 
-            String chat(@dev.langchain4j.service.UserMessage String userMessage, CustomInvocationParameters invocationParameters);
+            String chat(
+                    @dev.langchain4j.service.UserMessage String userMessage,
+                    CustomInvocationParameters invocationParameters);
         }
 
         Tools spyTools = spy(new Tools());
@@ -901,7 +915,8 @@ class AiServicesWithToolsIT {
 
         interface Assistant {
 
-            String chat(@dev.langchain4j.service.UserMessage String userMessage, InvocationParameters invocationParameters);
+            String chat(
+                    @dev.langchain4j.service.UserMessage String userMessage, InvocationParameters invocationParameters);
         }
 
         Tools spyTools = spy(new Tools());
@@ -983,13 +998,13 @@ class AiServicesWithToolsIT {
         // given
         interface Assistant {
 
-            String chat(@dev.langchain4j.service.UserMessage String userMessage, InvocationParameters invocationParameters);
+            String chat(
+                    @dev.langchain4j.service.UserMessage String userMessage, InvocationParameters invocationParameters);
         }
 
         String includeToolsKey = "includeTools";
 
         ToolProvider toolProvider = request -> {
-
             if (request.invocationContext().invocationParameters().get(includeToolsKey)) {
                 ToolSpecification toolSpecification = ToolSpecification.builder()
                         .name("xyz")
@@ -1002,8 +1017,11 @@ class AiServicesWithToolsIT {
                         .add(toolSpecification, new ToolExecutor() {
 
                             @Override
-                            public ToolExecutionResult executeWithContext(ToolExecutionRequest request, InvocationContext context) {
-                                assertThat((boolean) context.invocationParameters().get(includeToolsKey)).isEqualTo(true);
+                            public ToolExecutionResult executeWithContext(
+                                    ToolExecutionRequest request, InvocationContext context) {
+                                assertThat((boolean)
+                                                context.invocationParameters().get(includeToolsKey))
+                                        .isEqualTo(true);
                                 Map<String, Object> arguments = toMap(request.arguments());
                                 assertThat(arguments).containsExactly(entry("number", 2027));
                                 return ToolExecutionResult.builder()
@@ -1036,7 +1054,9 @@ class AiServicesWithToolsIT {
         assistant.chat("does not matter", invocationParameters1);
 
         // then
-        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.toolSpecifications().isEmpty()));
+        verify(spyModel)
+                .chat(argThat((ChatRequest chatRequest) ->
+                        chatRequest.toolSpecifications().isEmpty()));
 
         // given
         InvocationParameters invocationParameters2 = new InvocationParameters();
@@ -1046,7 +1066,9 @@ class AiServicesWithToolsIT {
         assistant.chat("does not matter", invocationParameters2);
 
         // then
-        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.toolSpecifications().size() == 1));
+        verify(spyModel)
+                .chat(argThat((ChatRequest chatRequest) ->
+                        chatRequest.toolSpecifications().size() == 1));
     }
 
     private static Map<String, Object> toMap(String arguments) {
@@ -1136,8 +1158,7 @@ class AiServicesWithToolsIT {
 
     @ParameterizedTest
     @MethodSource("modelsWithoutParallelToolCalling")
-    void should_execute_multiple_tools_sequentially_and_context_included_in_result(
-            ChatModel chatModel) {
+    void should_execute_multiple_tools_sequentially_and_context_included_in_result(ChatModel chatModel) {
 
         // given
         TransactionService transactionService = spy(new TransactionService());
@@ -1179,24 +1200,20 @@ class AiServicesWithToolsIT {
             ChatModel chatModel) {
 
         // given
-        TransactionService transactionService = spy(new TransactionService());
-
-        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
-
-        ChatModel spyChatModel = spy(chatModel);
+        int maxSequentialToolsInvocations = 1; // only one sequential tool call allowed, the test makes 3
 
         AssistantReturningResult assistant = AiServices.builder(AssistantReturningResult.class)
-                .chatModel(spyChatModel)
-                .chatMemory(chatMemory)
-                .tools(transactionService)
-                .maxSequentialToolsInvocations(1) // only one sequential tool call allowed, the test makes 3
+                .chatModel(chatModel)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
+                .tools(new TransactionService())
+                .maxSequentialToolsInvocations(maxSequentialToolsInvocations)
                 .build();
 
         String userMessage = "What are the amounts of transactions T001 and T002?";
 
         assertThatExceptionOfType(RuntimeException.class)
                 .isThrownBy(() -> assistant.chat(userMessage))
-                .withMessage("Something is wrong, exceeded 1 sequential tool executions");
+                .withMessage("Something is wrong, exceeded 1 sequential tool invocations");
     }
 
     @ParameterizedTest
@@ -1278,10 +1295,10 @@ class AiServicesWithToolsIT {
         verifyNoMoreInteractions(tools);
     }
 
-
     interface RouterAgent {
 
-        @dev.langchain4j.service.UserMessage("""
+        @dev.langchain4j.service.UserMessage(
+                """
             Analyze the following user request and categorize it as 'legal', 'medical' or 'technical',
             then forward the request as it is to the corresponding expert provided as a tool.
             Finally return the answer that you received from the expert without any modification.
@@ -1293,7 +1310,8 @@ class AiServicesWithToolsIT {
 
     interface MedicalExpert {
 
-        @dev.langchain4j.service.UserMessage("""
+        @dev.langchain4j.service.UserMessage(
+                """
             You are a medical expert.
             Analyze the following user request under a medical point of view and provide the best possible answer.
             The user request is {{it}}.
@@ -1304,7 +1322,8 @@ class AiServicesWithToolsIT {
 
     interface LegalExpert {
 
-        @dev.langchain4j.service.UserMessage("""
+        @dev.langchain4j.service.UserMessage(
+                """
             You are a legal expert.
             Analyze the following user request under a legal point of view and provide the best possible answer.
             The user request is {{it}}.
@@ -1315,7 +1334,8 @@ class AiServicesWithToolsIT {
 
     interface TechnicalExpert {
 
-        @dev.langchain4j.service.UserMessage("""
+        @dev.langchain4j.service.UserMessage(
+                """
             You are a technical expert.
             Analyze the following user request under a technical point of view and provide the best possible answer.
             The user request is {{it}}.
@@ -1327,15 +1347,12 @@ class AiServicesWithToolsIT {
     @ParameterizedTest
     @MethodSource("models")
     void tools_as_agents_tests(ChatModel model) {
-        MedicalExpert medicalExpert = spy(AiServices.builder(MedicalExpert.class)
-                .chatModel(model)
-                .build());
-        LegalExpert legalExpert = spy(AiServices.builder(LegalExpert.class)
-                .chatModel(model)
-                .build());
-        TechnicalExpert technicalExpert = spy(AiServices.builder(TechnicalExpert.class)
-                .chatModel(model)
-                .build());
+        MedicalExpert medicalExpert =
+                spy(AiServices.builder(MedicalExpert.class).chatModel(model).build());
+        LegalExpert legalExpert =
+                spy(AiServices.builder(LegalExpert.class).chatModel(model).build());
+        TechnicalExpert technicalExpert =
+                spy(AiServices.builder(TechnicalExpert.class).chatModel(model).build());
 
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
         RouterAgent routerAgent = AiServices.builder(RouterAgent.class)
@@ -1354,5 +1371,130 @@ class AiServicesWithToolsIT {
         assertThat(messages.get(1)).isInstanceOf(AiMessage.class); // ai message to invoke the tool
         assertThat(messages.get(2)).isInstanceOf(ToolExecutionResultMessage.class); // tool response
         assertThat(messages.get(3)).isInstanceOf(AiMessage.class); // final ai message
+    }
+
+    interface VoidAssistant {
+
+        void chat(String userMessage);
+    }
+
+    @ParameterizedTest
+    @MethodSource("modelsWithoutParallelToolCalling")
+    void should_allow_void_return(ChatModel chatModel) {
+
+        LocalDate now = LocalDate.of(2025, 2, 24);
+
+        record ToolResult(LocalDate localDate) {}
+
+        class Tools {
+
+            @Tool
+            ToolResult currentDate() {
+                return new ToolResult(now);
+            }
+        }
+
+        Tools tools = spy(new Tools());
+
+        ChatModel spyChatModel = spy(chatModel);
+
+        VoidAssistant assistant = AiServices.builder(VoidAssistant.class)
+                .chatModel(spyChatModel)
+                .tools(tools)
+                .build();
+
+        String userMessage = "What is the current date?";
+
+        assistant.chat(userMessage);
+
+        verify(tools).currentDate();
+        verifyNoMoreInteractions(tools);
+    }
+
+    interface ResultOfVoidAssistant {
+
+        Result<Void> chat(String userMessage);
+    }
+
+    @ParameterizedTest
+    @MethodSource("modelsWithoutParallelToolCalling")
+    void should_allow_result_of_void_return(ChatModel chatModel) {
+
+        LocalDate now = LocalDate.of(2025, 2, 24);
+
+        record ToolResult(LocalDate localDate) {}
+
+        class Tools {
+
+            @Tool
+            ToolResult currentDate() {
+                return new ToolResult(now);
+            }
+        }
+
+        Tools tools = spy(new Tools());
+
+        ChatModel spyChatModel = spy(chatModel);
+
+        ResultOfVoidAssistant assistant = AiServices.builder(ResultOfVoidAssistant.class)
+                .chatModel(spyChatModel)
+                .tools(tools)
+                .build();
+
+        String userMessage = "What is the current date?";
+
+        Result<Void> result = assistant.chat(userMessage);
+        assertThat(result.content()).isNull();
+        assertThat(result.toolExecutions()).hasSize(1);
+        assertThat(result.toolExecutions().get(0).resultObject()).isEqualTo(new ToolResult(now));
+
+        verify(tools).currentDate();
+        verifyNoMoreInteractions(tools);
+    }
+
+    interface Counter {
+
+        @dev.langchain4j.service.UserMessage("Calculate the result of the following expression:\n|||{{it}}|||")
+        int doMath(String sentence);
+    }
+
+    @ParameterizedTest
+    @MethodSource("modelsWithoutParallelToolCalling")
+    void should_rewrite_chat_request_using_tool(ChatModel chatModel) {
+        AtomicInteger result = new AtomicInteger();
+        AiServicesIT.UserMessageTransformer requestTransformer = userMessage -> userMessage.replace("three", "four");
+
+        Counter counter = AiServices.builder(Counter.class)
+                .chatModel(chatModel)
+                .tools(new CalculatorTool(result))
+                .chatRequestTransformer(requestTransformer)
+                .build();
+
+        String sentence = "Add ten to three then multiply the result by three.";
+
+        int count = counter.doMath(sentence);
+        assertThat(count).isEqualTo(56);
+        // check that the tools have been correctly invoked
+        assertThat(result.get()).isEqualTo(56);
+    }
+
+    public static class CalculatorTool {
+        private final AtomicInteger result;
+
+        public CalculatorTool(final AtomicInteger result) {
+            this.result = result;
+        }
+
+        @Tool("calculates the sum of two integers")
+        public int sum(int first, int second) {
+            return first + second;
+        }
+
+        @Tool("calculates the multiplication of two integers")
+        public int multiply(int first, int second) {
+            int prod = first * second;
+            result.set(prod);
+            return prod;
+        }
     }
 }

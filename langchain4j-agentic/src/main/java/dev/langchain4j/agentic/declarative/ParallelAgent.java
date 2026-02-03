@@ -1,26 +1,24 @@
 package dev.langchain4j.agentic.declarative;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
+import dev.langchain4j.agentic.Agent;
 
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
+
 /**
  * Marks a method as a definition of a parallel agent, used to orchestrate the agentic workflow
  * by invoking a series of sub-agents in parallel.
- * Each sub-agent is defined using the {@link SubAgent} annotation, which specifies the sub-agent's type
- * and its output variable name.
  * <p>
  * Example:
  * <pre>
  * {@code
  *     public interface EveningPlannerAgent {
  *
- *         @ParallelAgent(outputName = "plans", subAgents = {
- *                 @SubAgent(type = FoodExpert.class, outputName = "meals"),
- *                 @SubAgent(type = MovieExpert.class, outputName = "movies")
- *         })
+ *         @ParallelAgent( outputKey = "plans",
+ *                 subAgents = { FoodExpert.class, MovieExpert.class })
  *         List<EveningPlan> plan(@V("mood") String mood);
  *     }
  * }
@@ -46,16 +44,25 @@ public @interface ParallelAgent {
     String description() default "";
 
     /**
-     * Name of the output variable that will hold the result of the agent invocation.
+     * Key of the output variable that will be used to store the result of the agent's invocation.
      *
      * @return name of the output variable.
      */
-    String outputName() default "";
+    String outputKey() default "";
+
+    /**
+     * Strongly typed key of the output variable that will be used to store the result of the agent's invocation.
+     * It enforces type safety when retrieving the output from the agent's state and can be used in alternative
+     * to the {@code outputKey()} attribute. Note that only one of those two attributes can be used at a time.
+     *
+     * @return class representing the typed output variable.
+     */
+    Class<? extends TypedKey<?>> typedOutputKey() default Agent.NoTypedKey.class;
 
     /**
      * Array of sub-agents that will be invoked in parallel.
      *
      * @return array of sub-agents.
      */
-    SubAgent[] subAgents();
+    Class<?>[] subAgents();
 }

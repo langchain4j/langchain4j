@@ -1,5 +1,12 @@
 package dev.langchain4j.model.openai;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_OPENAI_URL;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_USER_AGENT;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.time.Duration.ofSeconds;
+
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.model.StreamingResponseHandler;
@@ -11,17 +18,10 @@ import dev.langchain4j.model.openai.internal.completion.CompletionRequest;
 import dev.langchain4j.model.openai.internal.shared.StreamOptions;
 import dev.langchain4j.model.openai.spi.OpenAiStreamingLanguageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
-import org.slf4j.Logger;
-
 import java.time.Duration;
 import java.util.Map;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
-import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_OPENAI_URL;
-import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_USER_AGENT;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.time.Duration.ofSeconds;
+import java.util.function.Supplier;
+import org.slf4j.Logger;
 
 /**
  * Represents an OpenAI language model with a completion interface, such as gpt-3.5-turbo-instruct.
@@ -48,7 +48,8 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel {
                 .logResponses(getOrDefault(builder.logResponses, false))
                 .logger(builder.logger)
                 .userAgent(DEFAULT_USER_AGENT)
-                .customHeaders(builder.customHeaders)
+                .customHeaders(builder.customHeadersSupplier)
+                .customQueryParams(builder.customQueryParams)
                 .build();
         this.modelName = builder.modelName;
         this.temperature = builder.temperature;
@@ -61,11 +62,8 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel {
     @Override
     public void generate(String prompt, StreamingResponseHandler<String> handler) {
 
-        CompletionRequest request = CompletionRequest.builder()
-                .stream(true)
-                .streamOptions(StreamOptions.builder()
-                        .includeUsage(true)
-                        .build())
+        CompletionRequest request = CompletionRequest.builder().stream(true)
+                .streamOptions(StreamOptions.builder().includeUsage(true).build())
                 .model(modelName)
                 .prompt(prompt)
                 .temperature(temperature)
@@ -88,8 +86,7 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel {
                     handler.onComplete(Response.from(
                             chatResponse.aiMessage().text(),
                             chatResponse.metadata().tokenUsage(),
-                            chatResponse.metadata().finishReason()
-                    ));
+                            chatResponse.metadata().finishReason()));
                 })
                 .onError(throwable -> {
                     handler.onError(ExceptionMapper.DEFAULT.mapException(throwable));
@@ -98,7 +95,8 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel {
     }
 
     public static OpenAiStreamingLanguageModelBuilder builder() {
-        for (OpenAiStreamingLanguageModelBuilderFactory factory : loadFactories(OpenAiStreamingLanguageModelBuilderFactory.class)) {
+        for (OpenAiStreamingLanguageModelBuilderFactory factory :
+                loadFactories(OpenAiStreamingLanguageModelBuilderFactory.class)) {
             return factory.get();
         }
         return new OpenAiStreamingLanguageModelBuilder();
@@ -118,7 +116,8 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel {
         private Boolean logRequests;
         private Boolean logResponses;
         private Logger logger;
-        private Map<String, String> customHeaders;
+        private Supplier<Map<String, String>> customHeadersSupplier;
+        private Map<String, String> customQueryParams;
 
         public OpenAiStreamingLanguageModelBuilder() {
             // This is public so it can be extended
@@ -188,8 +187,26 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel {
             return this;
         }
 
+        /**
+         * Sets custom HTTP headers.
+         */
         public OpenAiStreamingLanguageModelBuilder customHeaders(Map<String, String> customHeaders) {
-            this.customHeaders = customHeaders;
+            this.customHeadersSupplier = () -> customHeaders;
+            return this;
+        }
+
+        /**
+         * Sets a supplier for custom HTTP headers.
+         * The supplier is called before each request, allowing dynamic header values.
+         * For example, this is useful for OAuth2 tokens that expire and need refreshing.
+         */
+        public OpenAiStreamingLanguageModelBuilder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
+            return this;
+        }
+
+        public OpenAiStreamingLanguageModelBuilder customQueryParams(Map<String, String> customQueryParams) {
+            this.customQueryParams = customQueryParams;
             return this;
         }
 

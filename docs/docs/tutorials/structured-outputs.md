@@ -111,6 +111,15 @@ ChatModel chatModel = MistralAiChatModel.builder()
         .logRequests(true)
         .logResponses(true)
         .build();
+// OR
+ChatModel chatModel = WatsonxChatModel.builder()
+        .baseUrl(System.getenv("WATSONX_URL"))
+        .projectId(System.getenv("WATSONX_PROJECT_ID"))
+        .apiKey(System.getenv("WATSONX_API_KEY"))
+        .modelName("ibm/granite-4-h-small")
+        .logRequests(true)
+        .logResponses(true)
+        .build();
 
 ChatResponse chatResponse = chatModel.chat(chatRequest);
 
@@ -355,7 +364,8 @@ JsonRawSchema schema = JsonRawSchema.from(rawSchema);
 ```
 
 :::note
-The `JsonRawSchema` is currently supported only by Azure OpenAI, Mistral, Ollama, OpenAI and OpenAI Official.
+The `JsonRawSchema` is currently supported only by Azure OpenAI, Mistral, Ollama, OpenAI, OpenAI Official and Google AI Gemini.
+For Google AI Gemini specifically, see the example in the [Response JSON Schema](/integrations/language-models/google-ai-gemini/#response-json-schema).
 :::
 
 
@@ -428,6 +438,16 @@ ChatModel chatModel = MistralAiChatModel.builder()
          .logRequests(true)
          .logResponses(true)
          .build();
+// OR
+ChatModel chatModel = WatsonxChatModel.builder()
+        .baseUrl(System.getenv("WATSONX_URL"))
+        .projectId(System.getenv("WATSONX_PROJECT_ID"))
+        .apiKey(System.getenv("WATSONX_API_KEY"))
+        .modelName("ibm/granite-4-h-small")
+        .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA) // see [7] below
+        .logRequests(true)
+        .logResponses(true)
+        .build();
 
 PersonExtractor personExtractor = AiServices.create(PersonExtractor.class, chatModel); // see [1] below
 
@@ -451,6 +471,7 @@ as these beans are created automatically. More info on this:
 - [4] - This is required to enable the JSON Schema feature for [Google AI Gemini](/integrations/language-models/google-ai-gemini).
 - [5] - This is required to enable the JSON Schema feature for [Ollama](/integrations/language-models/ollama).
 - [6] - This is required to enable the JSON Schema feature for [Mistral](/integrations/language-models/mistral-ai).
+- [7] - This is required to enable the JSON Schema feature for [watsonx.ai](/integrations/language-models/watsonx).
 
 When all the following conditions are met:
 - AI Service method returns a POJO

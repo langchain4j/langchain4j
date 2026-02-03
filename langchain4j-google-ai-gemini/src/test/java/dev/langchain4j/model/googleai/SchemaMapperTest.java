@@ -1,7 +1,6 @@
 package dev.langchain4j.model.googleai;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
@@ -11,7 +10,6 @@ import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonNullSchema;
 import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
@@ -259,17 +257,5 @@ public class SchemaMapperTest {
 
         // then
         assertThat(result.getType()).isEqualTo(GeminiType.NULL);
-    }
-
-    @Test
-    public void should_throw_exception_for_unsupported_schema_type() {
-        // given
-        JsonSchemaElement unsupportedSchema =
-                new JsonRawSchema.Builder().schema("{ \"type\": \"string\" }").build();
-
-        // when/then
-        assertThrows(IllegalArgumentException.class, () -> {
-            SchemaMapper.fromJsonSchemaToGSchema(unsupportedSchema);
-        });
     }
 }

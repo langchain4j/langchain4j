@@ -19,12 +19,9 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
-import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.service.Result;
-import dev.langchain4j.service.TokenStream;
-import dev.langchain4j.service.tool.ToolExecution;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,13 +32,13 @@ import org.mockito.Captor;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalTime;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import static dev.langchain4j.data.message.ChatMessageType.TOOL_EXECUTION_RESULT;
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
 import static dev.langchain4j.service.common.AbstractAiServiceWithToolsIT.ToolWithEnumParameter.TemperatureUnit.CELSIUS;
@@ -50,6 +47,7 @@ import static dev.langchain4j.service.common.AbstractAiServiceWithToolsIT.ToolWi
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -122,7 +120,7 @@ public abstract class AbstractAiServiceWithToolsIT {
                 .tools(tool)
                 .build();
 
-        String text = "How much is 37 plus 87?";
+        String text = adaptPrompt2("How much is 37 plus 87?");
 
         // when
         Result<String> result = assistant.chat(text);
@@ -145,6 +143,10 @@ public abstract class AbstractAiServiceWithToolsIT {
             assertThat(toolSpecification.description()).isNull();
             assertThat(toolSpecification.parameters()).isEqualTo(PRIMITIVE_TOOL_EXPECTED_SCHEMA);
         }
+    }
+
+    protected String adaptPrompt2(String prompt) {
+        return prompt;
     }
 
     static class ToolWithPojoParameter {
@@ -278,6 +280,7 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         @Tool
         void process(Person person) {
+            System.out.println(person);
         }
 
         static final String REFERENCE = generateUUIDFrom(Person.class.getName());
@@ -853,7 +856,7 @@ public abstract class AbstractAiServiceWithToolsIT {
                 .tools(tool)
                 .build();
 
-        var text = "How much is 37 plus 87?";
+        var text = adaptPrompt3("How much is 37 plus 87?");
 
         // when
         var response = assistant.chat(text);
@@ -885,6 +888,10 @@ public abstract class AbstractAiServiceWithToolsIT {
             assertThat(toolSpecification.description()).isNull();
             assertThat(toolSpecification.parameters()).isEqualTo(PRIMITIVE_TOOL_EXPECTED_SCHEMA);
         }
+    }
+
+    protected String adaptPrompt3(String prompt) {
+        return prompt;
     }
 
     @ParameterizedTest
@@ -1014,7 +1021,7 @@ public abstract class AbstractAiServiceWithToolsIT {
                 .tools(addTool, multiplyTool)
                 .build();
 
-        var text = "First add 2 and 3, then multiply the result by 4";
+        var text = adaptPrompt1("First add 2 and 3, then multiply the result by 4");
 
         // when
         var response = assistant.chat(text);
@@ -1066,6 +1073,10 @@ public abstract class AbstractAiServiceWithToolsIT {
             assertThat(response2.content()).contains("124");
         }
         assertThat(response2.toolExecutions().get(0).result()).isEqualTo("124");
+    }
+
+    protected String adaptPrompt1(String prompt) {
+        return prompt;
     }
 
     @ParameterizedTest
@@ -1137,5 +1148,41 @@ public abstract class AbstractAiServiceWithToolsIT {
         assertThatThrownBy(() -> assistant.chat(text))
                 .isInstanceOf(IllegalConfigurationException.class)
                 .hasMessageContaining("add");
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_allow_empty_tool_result(ChatModel model) {
+
+        // given
+        class Tools {
+
+            @Tool
+            String modify(int ignored) {
+                return "";
+            }
+        }
+
+        model = spy(model);
+
+        Tools tools = spy(new Tools());
+
+        StringAssistant assistant = AiServices.builder(StringAssistant.class)
+                .chatModel(model)
+                .tools(tools)
+                .build();
+
+        String text = "Call tool 'modify' for argument '7'";
+
+        // when-then
+        assertThatNoException().isThrownBy(() -> assistant.chat(text));
+
+        verify(tools).modify(7);
+
+        verify(model).chat(argThat((ChatRequest request) ->
+                request.messages().size() == 3
+                        && request.messages().get(2).type() == TOOL_EXECUTION_RESULT
+                        && ((ToolExecutionResultMessage) request.messages().get(2)).text().isEmpty()
+        ));
     }
 }

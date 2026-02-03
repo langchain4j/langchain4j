@@ -44,19 +44,19 @@ jobs:
       - name: Replace versions in docs recursively
         run: |
           echo "Replacing all occurrences of stable and beta versions recursively under docs/docs/..."
-          
-          # Replace stable versions
-          grep -rl "${{ steps.extract-current-versions.outputs.stableCurrent }}" docs/docs | \
-            xargs sed -i "s/${{ steps.extract-current-versions.outputs.stableCurrent }}/${{ env.STABLE_VERSION }}/g" || true
 
           # Replace beta versions
           grep -rl "${{ steps.extract-current-versions.outputs.betaCurrent }}" docs/docs | \
             xargs sed -i "s/${{ steps.extract-current-versions.outputs.betaCurrent }}/${{ env.BETA_VERSION }}/g" || true
 
+          # Replace stable versions
+          grep -rl "${{ steps.extract-current-versions.outputs.stableCurrent }}" docs/docs | \
+            xargs sed -i "s/${{ steps.extract-current-versions.outputs.stableCurrent }}/${{ env.STABLE_VERSION }}/g" || true
+
       - name: Update metadata in get-started.md
         run: |
-          sed -i "s/stableVersion: .*/stableVersion: ${{ env.STABLE_VERSION }}/" docs/docs/get-started.md
           sed -i "s/betaVersion: .*/betaVersion: ${{ env.BETA_VERSION }}/" docs/docs/get-started.md
+          sed -i "s/stableVersion: .*/stableVersion: ${{ env.STABLE_VERSION }}/" docs/docs/get-started.md
 
       - name: Check if any changes were made
         id: git-check

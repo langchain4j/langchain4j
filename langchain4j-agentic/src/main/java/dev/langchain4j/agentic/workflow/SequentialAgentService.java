@@ -1,5 +1,7 @@
 package dev.langchain4j.agentic.workflow;
 
-public interface SequentialAgentService<T> extends WorkflowService<SequentialAgentService<T>, T> {
+import dev.langchain4j.agentic.planner.AgenticService;
+
+public interface SequentialAgentService<T> extends AgenticService<SequentialAgentService<T>, T> {
 
 }

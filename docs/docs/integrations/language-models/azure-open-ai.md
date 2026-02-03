@@ -8,12 +8,11 @@ sidebar_position: 3
 
 This is the documentation for the `Azure OpenAI` integration, that uses the Azure SDK from Microsoft, and works best if you are using the Microsoft Java stack, including advanced Azure authentication mechanisms.
 
-LangChain4j provides 4 different integrations with OpenAI for using chat models, and this is #3 :
+LangChain4j provides 3 different integrations with OpenAI for using chat models, and this is #3 :
 
 - [OpenAI](/integrations/language-models/open-ai) uses a custom Java implementation of the OpenAI REST API, that works best with Quarkus (as it uses the Quarkus REST client) and Spring (as it uses Spring's RestClient).
 - [OpenAI Official SDK](/integrations/language-models/open-ai-official) uses the official OpenAI Java SDK.
 - [Azure OpenAI](/integrations/language-models/azure-open-ai) uses the Azure SDK from Microsoft, and works best if you are using the Microsoft Java stack, including advanced Azure authentication mechanisms.
-- [GitHub Models](/integrations/language-models/github-models) uses the Azure AI Inference API to access GitHub Models.
 
 :::
 
@@ -33,7 +32,7 @@ The `langchain4j-azure-open-ai` library is available on Maven Central.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-open-ai</artifactId>
-    <version>1.7.1</version>
+    <version>1.10.0</version>
 </dependency>
 ```
 
@@ -45,7 +44,7 @@ A Spring Boot starter is available to configure the `langchain4j-azure-open-ai` 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-open-ai-spring-boot-starter</artifactId>
-    <version>1.7.1-beta14</version>
+    <version>1.10.0-beta18</version>
 </dependency>
 ```
 
@@ -94,6 +93,7 @@ langchain4j.azure-open-ai.chat-model.max-retries=...
 langchain4j.azure-open-ai.chat-model.log-requests-and-responses=...
 langchain4j.azure-open-ai.chat-model.user-agent-suffix=
 langchain4j.azure-open-ai.chat-model.custom-headers=...
+langchain4j.azure-open-ai.chat-model.reasoningEffort=...
 ```
 See the description of some of the parameters above [here](https://learn.microsoft.com/en-us/azure/ai-services/openai/reference#completions).
 
@@ -342,6 +342,7 @@ langchain4j.azure-open-ai.streaming-chat-model.max-retries=...
 langchain4j.azure-open-ai.streaming-chat-model.log-requests-and-responses=...
 langchain4j.azure-open-ai.streaming-chat-model.user-agent-suffix=...
 langchain4j.azure-open-ai.streaming-chat-model.customHeaders=...
+langchain4j.azure-open-ai.streaming-chat-model.reasoningEffort=...
 ```
 
 
@@ -357,7 +358,7 @@ The audio transcription feature is included in the main `langchain4j-azure-open-
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-open-ai</artifactId>
-    <version>1.7.1</version>
+    <version>1.10.0</version>
 </dependency>
 ```
 

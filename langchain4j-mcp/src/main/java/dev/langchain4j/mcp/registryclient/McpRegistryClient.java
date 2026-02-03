@@ -20,8 +20,21 @@ public interface McpRegistryClient {
 
     /**
      * Obtains the details for a single MCP server denoted by its ID.
+     * @deprecated This method is not supported on the official MCP registry anymore.
      */
+    @Deprecated(forRemoval = true)
     McpGetServerResponse getServerDetails(String id);
+
+    /**
+     * Get detailed information about a specific version of an MCP server.
+     * Use the special version 'latest' to get the latest version.
+     */
+    McpGetServerResponse getSpecificServerVersion(String serverName, String version);
+
+    /**
+     * Get all available versions for a specific MCP server
+     */
+    McpServerList getAllVersionsOfServer(String serverName);
 
     /**
      * Runs a health check against the MCP registry. If the registry is healthy,

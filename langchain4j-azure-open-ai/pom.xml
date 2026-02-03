@@ -5,13 +5,17 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.8.0-beta15-SNAPSHOT</version>
+        <version>1.11.0-beta19-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>langchain4j-azure-open-ai</artifactId>
-    <version>1.8.0-SNAPSHOT</version>
+    <version>1.11.0-SNAPSHOT</version>
     <name>LangChain4j :: Integration :: Azure OpenAI</name>
+
+    <properties>
+        <azure-ai-openai.version>1.0.0-beta.16</azure-ai-openai.version>
+    </properties>
 
     <developers>
         <developer>
@@ -27,7 +31,7 @@
             <dependency>
                 <groupId>io.netty</groupId>
                 <artifactId>netty-bom</artifactId>
-                <version>4.1.118.Final</version>
+                <version>4.1.128.Final</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -39,13 +43,27 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.8.0-SNAPSHOT</version>
+            <version>1.11.0-SNAPSHOT</version>
         </dependency>
 
         <dependency>
             <groupId>com.azure</groupId>
             <artifactId>azure-ai-openai</artifactId>
             <version>${azure-ai-openai.version}</version>
+            <exclusions>
+                <!-- because of CVE-2025-55163 -->
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>netty-codec-http2</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- fixes CVE-2025-55163 -->
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-codec-http2</artifactId>
+            <version>4.1.128.Final</version>
         </dependency>
 
         <dependency>
@@ -82,7 +100,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.8.0-SNAPSHOT</version>
+            <version>1.11.0-SNAPSHOT</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>
@@ -91,14 +109,14 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
-            <version>1.8.0-SNAPSHOT</version>
+            <version>1.11.0-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
-            <version>1.8.0-SNAPSHOT</version>
+            <version>1.11.0-SNAPSHOT</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>
@@ -119,12 +137,6 @@
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-slf4j2-impl</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-params</artifactId>
             <scope>test</scope>
         </dependency>
 

@@ -8,12 +8,11 @@ sidebar_position: 16
 
 This is the documentation for the `OpenAI Official SDK` integration, that uses the [official OpenAI Java SDK](https://github.com/openai/openai-java).
 
-LangChain4j provides 4 different integrations with OpenAI for using chat models, and this is #2 :
+LangChain4j provides 3 different integrations with OpenAI for using chat models, and this is #2 :
 
 - [OpenAI](/integrations/language-models/open-ai) uses a custom Java implementation of the OpenAI REST API, that works best with Quarkus (as it uses the Quarkus REST client) and Spring (as it uses Spring's RestClient).
 - [OpenAI Official SDK](/integrations/language-models/open-ai-official) uses the official OpenAI Java SDK.
 - [Azure OpenAI](/integrations/language-models/azure-open-ai) uses the Azure SDK from Microsoft, and works best if you are using the Microsoft Java stack, including advanced Azure authentication mechanisms.
-- [GitHub Models](/integrations/language-models/github-models) uses the Azure AI Inference API to access GitHub Models.
 
 :::
 
@@ -22,7 +21,7 @@ LangChain4j provides 4 different integrations with OpenAI for using chat models,
 This integration uses the [OpenAI Java SDK GitHub Repository](https://github.com/openai/openai-java), and will work for all OpenAI models which can be provided by:
 
 - OpenAI
-- Azure OpenAI
+- Microsoft Foundry
 - GitHub Models
 
 It will also work with models supporting the OpenAI API, such as DeepSeek.
@@ -39,7 +38,7 @@ It will also work with models supporting the OpenAI API, such as DeepSeek.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-official</artifactId>
-    <version>1.7.1-beta14</version>
+    <version>1.10.0-beta18</version>
 </dependency>
 ```
 
@@ -254,4 +253,22 @@ StreamingChatModel model = OpenAiOfficialStreamingChatModel.builder()
 ```
 
 You can also use the specific `isAzure()` and `isGitHubModels()` methods to force the usage of Azure OpenAI or GitHub Models, as detailed in the non-streaming configuration section.
+
+## OpenAI Responses API
+
+OpenAI's [Responses API](https://platform.openai.com/docs/api-reference/responses) (`/v1/responses`) is an alternative to the Chat Completions API that provides enhanced control over streaming responses and cancellation.
+
+### Creating `OpenAiOfficialResponsesStreamingChatModel`
+
+```java
+StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName(GPT_5_MINI)
+        .build();
+```
+
+### Key differences from Chat Completions API
+- **Streaming-only**: Currently only streaming mode is supported
+- **Cancellation**: Supports `StreamingHandle.cancel()` to stop responses
+- **Same features**: Full support for tools, listeners, and all standard parameters
 

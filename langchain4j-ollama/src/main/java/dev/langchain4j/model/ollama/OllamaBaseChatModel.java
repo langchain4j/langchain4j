@@ -4,11 +4,6 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static java.util.Arrays.asList;
 
-import java.time.Duration;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
@@ -19,6 +14,13 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.PartialThinking;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import java.time.Duration;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 
 abstract class OllamaBaseChatModel {
@@ -34,7 +36,7 @@ abstract class OllamaBaseChatModel {
                 .httpClientBuilder(builder.httpClientBuilder)
                 .baseUrl(builder.baseUrl)
                 .timeout(builder.timeout)
-                .customHeaders(builder.customHeaders)
+                .customHeaders(builder.customHeadersSupplier)
                 .logRequests(builder.logRequests)
                 .logResponses(builder.logResponses)
                 .logger(builder.logger)
@@ -49,9 +51,9 @@ abstract class OllamaBaseChatModel {
         }
 
         OllamaChatRequestParameters ollamaParameters =
-                builder.defaultRequestParameters instanceof OllamaChatRequestParameters ollamaChatRequestParameters ?
-                        ollamaChatRequestParameters :
-                        OllamaChatRequestParameters.EMPTY;
+                builder.defaultRequestParameters instanceof OllamaChatRequestParameters ollamaChatRequestParameters
+                        ? ollamaChatRequestParameters
+                        : OllamaChatRequestParameters.EMPTY;
 
         this.defaultRequestParameters = OllamaChatRequestParameters.builder()
                 // common parameters
@@ -109,7 +111,7 @@ abstract class OllamaBaseChatModel {
         protected Boolean think;
         protected Boolean returnThinking;
         protected Duration timeout;
-        protected Map<String, String> customHeaders;
+        protected Supplier<Map<String, String>> customHeadersSupplier;
         protected Boolean logRequests;
         protected Boolean logResponses;
         protected Logger logger;
@@ -233,7 +235,7 @@ abstract class OllamaBaseChatModel {
 
         /**
          * Controls whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}
-         * and whether to invoke the {@link dev.langchain4j.model.chat.response.StreamingChatResponseHandler#onPartialThinking(PartialThinking)} callback.
+         * and whether to invoke the {@link StreamingChatResponseHandler#onPartialThinking(PartialThinking)} callback.
          * Please note that this does not enable thinking/reasoning for the LLM;
          * it only controls whether to parse the {@code thinking} field from the API response
          * and return it inside the {@link AiMessage}.
@@ -253,8 +255,21 @@ abstract class OllamaBaseChatModel {
             return self();
         }
 
+        /**
+         * Sets custom HTTP headers.
+         */
         public B customHeaders(Map<String, String> customHeaders) {
-            this.customHeaders = customHeaders;
+            this.customHeadersSupplier = () -> customHeaders;
+            return self();
+        }
+
+        /**
+         * Sets a supplier for custom HTTP headers.
+         * The supplier is called before each request, allowing dynamic header values.
+         * For example, this is useful for OAuth2 tokens that expire and need refreshing.
+         */
+        public B customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
             return self();
         }
 

@@ -3,11 +3,13 @@ package dev.langchain4j.model.mistralai;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiModelCard;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@EnabledIfEnvironmentVariable(named = "MISTRAL_AI_API_KEY", matches = ".+")
 class MistralAiModelsIT {
 
     MistralAiModels models = MistralAiModels.withApiKey(System.getenv("MISTRAL_AI_API_KEY"));
@@ -20,7 +22,7 @@ class MistralAiModelsIT {
 
         // then
         assertThat(response.content().size()).isGreaterThan(0);
-        assertThat(response.content()).extracting("id").contains(MistralAiChatModelName.OPEN_MISTRAL_7B.toString());
+        assertThat(response.content()).extracting("id").contains("mistral-large-latest");
         assertThat(response.content()).extracting("object").contains("model");
         assertThat(response.content()).extracting("permission").isNotNull();
     }

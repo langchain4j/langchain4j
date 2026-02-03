@@ -26,15 +26,16 @@ Each type of event includes information encapsulated inside an
 
 The following types of events are currently available:
 
-| Event Name                                                                                                                                                                                          | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [`AiServiceStartedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceStartedEvent.java)                   | Invoked when an LLM invocation has started.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| [`AiServiceResponseReceivedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceResponseReceivedEvent.java) | Invoked with a response from an LLM. It is important to note that this can be invoked multiple times during a single AiService invocation when tools or guardrails exist.<br/><br/> Contains information such as the system message and the user message.<br/><br/>Not every invocation will receive this event. If an invocation fails it will receive an [`AiServiceErrorEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceErrorEvent.java) instead. |
-| [`AiServiceErrorEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceErrorEvent.java)                       | Fired when an invocation with an LLM fails. The failure could be because of network failure, AiService unavailable, input/output guardrails blocking the request, or many other reasons.<br/><br/>Contains information about the failure that occurred.                                                                                                                                                                                                                                                                                           |
-| [`AiServiceCompletedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceCompletedEvent.java)               | Invoked when an LLM invocation has completed successfully.<br/><br/>Not every invocation will receive this event. If an invocation fails it will receive an [`AiServiceErrorEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceErrorEvent.java) instead.<br/><br/>Contains information about the result of the invocation.                                                                                                                              |
-| [`ToolExecutedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/ToolExecutedEvent.java)                           | Invoked when a tool invocation has completed. It is important to note that this can be invoked multiple times within a single llm invocation.<br/><br/>Contains information about the tool request and result.                                                                                                                                                                                                                                                                                                                                    |
-| [`InputGuardrailExecutedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/InputGuardrailExecutedEvent.java)       | Invoked when an [input guardrail](https://docs.langchain4j.dev/tutorials/guardrails#input-guardrails) validation has been executed. One of these events will be fired for each invocation of a guardrail.<br/><br/>Contains information about the input to an individual input guardrail as well as its output (i.e. was it successful or a failure?).                                                                                                                                                                                            |
-| [`OutputGuardrailExecutedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/OutputGuardrailExecutedEvent.java)     | Invoked when an [output guardrail](https://docs.langchain4j.dev/tutorials/guardrails#output-guardrails) validation has been executed. One of these events will be fired for each invocation of a guardrail.<br/><br/>Contains information about the input to an individual output guardrail as well as its output (i.e. was it successful? failure? a retry? reprompt?).                                                                                                                                                                          |
+| Event Name                                                                                                                                                                                          | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`AiServiceStartedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceStartedEvent.java)                   | Invoked when an LLM invocation has started.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| [`AiServiceRequestIssuedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceRequestIssuedEvent.java)       | Invoked just before a request to an LLM is sent. Contains the details of the request being made. It is important to note that this can be invoked multiple times during a single AiService invocation when tools or guardrails exist.<br/><br/> Contains information such as the system message and the user message.                                                                                                                                                                                                                                                                                                           |
+| [`AiServiceResponseReceivedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceResponseReceivedEvent.java) | Invoked when a response from an LLM is received. Contains the LLM response along with the corresponding request. It is important to note that this can be invoked multiple times during a single AiService invocation when tools or guardrails exist.<br/><br/> Contains information such as the system message and the user message.<br/><br/>Not every invocation will receive this event. If an invocation fails it will receive an [`AiServiceErrorEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceErrorEvent.java) instead. |
+| [`AiServiceErrorEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceErrorEvent.java)                       | Fired when an invocation with an LLM fails. The failure could be because of network failure, AiService unavailable, input/output guardrails blocking the request, or many other reasons.<br/><br/>Contains information about the failure that occurred.                                                                                                                                                                                                                                                                                                                                                                       |
+| [`AiServiceCompletedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceCompletedEvent.java)               | Invoked when an LLM invocation has completed successfully.<br/><br/>Not every invocation will receive this event. If an invocation fails it will receive an [`AiServiceErrorEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceErrorEvent.java) instead.<br/><br/>Contains information about the result of the invocation.                                                                                                                                                                                                          |
+| [`ToolExecutedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/ToolExecutedEvent.java)                           | Invoked when a tool invocation has completed. It is important to note that this can be invoked multiple times within a single LLM invocation.<br/><br/>Contains information about the tool request and result.                                                                                                                                                                                                                                                                                                                                                                                                                |
+| [`InputGuardrailExecutedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/InputGuardrailExecutedEvent.java)       | Invoked when an [input guardrail](https://docs.langchain4j.dev/tutorials/guardrails#input-guardrails) validation has been executed. One of these events will be fired for each invocation of a guardrail.<br/><br/>Contains information about the input to an individual input guardrail, its output (i.e. was it successful or a failure?), and the execution duration.                                                                                                                                                                                                                                                      |
+| [`OutputGuardrailExecutedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/OutputGuardrailExecutedEvent.java)     | Invoked when an [output guardrail](https://docs.langchain4j.dev/tutorials/guardrails#output-guardrails) validation has been executed. One of these events will be fired for each invocation of a guardrail.<br/><br/>Contains information about the input to an individual output guardrail, its output (i.e. was it successful? failure? a retry? reprompt?), and the execution duration.                                                                                                                                                                                                                                    |
 
 ### Listening for an event
 
@@ -42,13 +43,14 @@ Each of the [types of events](#types-of-events) has its own listener that can be
 
 To listen for an event, create your own class implementing the listener interface you'd like to listen to. These are the available listener interfaces:
 
-| Listener Name                                                                                                                                                                                                          | Event                                                                                                                                                                                               |
-|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Listener Name                                                                                                                                                                                                | Event                                                                                                                                                                                               |
+|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [`AiServiceStartedListener`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/listener/AiServiceStartedListener.java)                   | [`AiServiceStartedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceStartedEvent.java)                   |
+| [`AiServiceRequestIssuedListener`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/listener/AiServiceRequestIssuedListener.java)       | [`AiServiceRequestIssuedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceRequestIssuedEvent.java)       |
 | [`AiServiceResponseReceivedListener`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/listener/AiServiceResponseReceivedListener.java) | [`AiServiceResponseReceivedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceResponseReceivedEvent.java) |
 | [`AiServiceErrorListener`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/listener/AiServiceErrorListener.java)                       | [`AiServiceErrorEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceErrorEvent.java)                       |
 | [`AiServiceCompletedListener`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/listener/AiServiceCompletedListener.java)               | [`AiServiceCompletedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceCompletedEvent.java)               |
-| [`ToolExecutedListener`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/listener/ToolExecutedListener.java)                           | [`ToolExecutedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/ToolExecutedEvent.java)                           |
+| [`ToolExecutedEventListener`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/listener/ToolExecutedEventListener.java)                 | [`ToolExecutedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/ToolExecutedEvent.java)                           |
 | [`InputGuardrailExecutedListener`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/listener/InputGuardrailExecutedListener.java)       | [`InputGuardrailExecutedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/InputGuardrailExecutedEvent.java)       |
 | [`OutputGuardrailExecutedListener`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/listener/OutputGuardrailExecutedListener.java)     | [`OutputGuardrailExecutedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/OutputGuardrailExecutedEvent.java)     |
 
@@ -113,7 +115,7 @@ This could be useful if you want to manage the way you register/unregister your 
 ## Chat Model Observability
 
 [Certain](/integrations/language-models) implementations of `ChatModel` and `StreamingChatModel`
-(see "Observability" column") allow configuring `ChatModelListener`(s) to listen for events such as:
+(see "Observability" column) allow configuring `ChatModelListener`(s) to listen for events such as:
 - Requests to the LLM
 - Response from the LLM
 - Errors
@@ -269,6 +271,144 @@ The `attributes` map allows passing information between the `onRequest`, `onResp
   `StreamingChatResponseHandler.onCompleteResponse()` is called. The `ChatModelListener.onError()` is called
   before the `StreamingChatResponseHandler.onError()` is called.
 
+## RAG Observability (EmbeddingModel, EmbeddingStore and ContentRetriever)
+
+`EmbeddingModel`, `EmbeddingStore` and `ContentRetriever` can be instrumented with listeners to observe:
+- Latency (measure duration using `attributes`)
+- Payloads (e.g., `EmbeddingSearchRequest.queryEmbedding()` and retrieved matches/contents)
+- Errors
+
+### EmbeddingModel listener
+
+Implement `EmbeddingModelListener`:
+
+```java
+import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
+import dev.langchain4j.model.embedding.listener.EmbeddingModelRequestContext;
+import dev.langchain4j.model.embedding.listener.EmbeddingModelResponseContext;
+import dev.langchain4j.model.embedding.listener.EmbeddingModelErrorContext;
+
+public class MyEmbeddingModelListener implements EmbeddingModelListener {
+
+    @Override
+    public void onRequest(EmbeddingModelRequestContext requestContext) {
+        requestContext.attributes().put("startNanos", System.nanoTime());
+    }
+
+    @Override
+    public void onResponse(EmbeddingModelResponseContext responseContext) {
+        long startNanos = (long) responseContext.attributes().get("startNanos");
+        long durationNanos = System.nanoTime() - startNanos;
+        // Do something with duration and/or responseContext.response()
+    }
+
+    @Override
+    public void onError(EmbeddingModelErrorContext errorContext) {
+        // Do something with errorContext.error()
+    }
+}
+```
+
+Attach listeners using `EmbeddingModel#addListener(s)`:
+
+```java
+EmbeddingModel observedModel = embeddingModel.addListener(new MyEmbeddingModelListener());
+
+observedModel.embed("hello");
+```
+
+### EmbeddingStore listener
+
+Implement `EmbeddingStoreListener`:
+
+```java
+import dev.langchain4j.store.embedding.listener.EmbeddingStoreListener;
+import dev.langchain4j.store.embedding.listener.EmbeddingStoreRequestContext;
+import dev.langchain4j.store.embedding.listener.EmbeddingStoreResponseContext;
+import dev.langchain4j.store.embedding.listener.EmbeddingStoreErrorContext;
+
+public class MyEmbeddingStoreListener implements EmbeddingStoreListener {
+
+    @Override
+    public void onRequest(EmbeddingStoreRequestContext<?> requestContext) {
+        requestContext.attributes().put("startNanos", System.nanoTime());
+    }
+
+    @Override
+    public void onResponse(EmbeddingStoreResponseContext<?> responseContext) {
+        long startNanos = (long) responseContext.attributes().get("startNanos");
+        long durationNanos = System.nanoTime() - startNanos;
+        // Do something with duration and/or the response payload (if any), e.g.:
+        if (responseContext instanceof EmbeddingStoreResponseContext.Search<?> search) {
+            // Do something with search.searchResult()
+        }
+    }
+
+    @Override
+    public void onError(EmbeddingStoreErrorContext<?> errorContext) {
+        // Do something with errorContext.error()
+    }
+}
+```
+
+Attach listeners using `EmbeddingStore#addListener(s)`:
+
+```java
+EmbeddingStore<TextSegment> observedStore = embeddingStore.addListener(new MyEmbeddingStoreListener());
+
+// Use observedStore as usual, e.g. in EmbeddingStoreIngestor / EmbeddingStoreContentRetriever
+```
+
+### ContentRetriever listener
+
+Implement `ContentRetrieverListener`:
+
+```java
+import dev.langchain4j.rag.content.retriever.listener.ContentRetrieverListener;
+import dev.langchain4j.rag.content.retriever.listener.ContentRetrieverRequestContext;
+import dev.langchain4j.rag.content.retriever.listener.ContentRetrieverResponseContext;
+import dev.langchain4j.rag.content.retriever.listener.ContentRetrieverErrorContext;
+
+public class MyContentRetrieverListener implements ContentRetrieverListener {
+
+    @Override
+    public void onRequest(ContentRetrieverRequestContext requestContext) {
+        requestContext.attributes().put("startNanos", System.nanoTime());
+    }
+
+    @Override
+    public void onResponse(ContentRetrieverResponseContext responseContext) {
+        long startNanos = (long) responseContext.attributes().get("startNanos");
+        long durationNanos = System.nanoTime() - startNanos;
+        // Do something with duration and/or responseContext.contents()
+    }
+
+    @Override
+    public void onError(ContentRetrieverErrorContext errorContext) {
+        // Do something with errorContext.error()
+    }
+}
+```
+
+Attach listeners using `ContentRetriever#addListener(s)`:
+
+```java
+ContentRetriever observedRetriever = contentRetriever.addListener(new MyContentRetrieverListener());
+
+observedRetriever.retrieve(Query.from("my query"));
+```
+
+### How listeners work
+
+- Listeners are specified as a `List` and are called in the order of iteration.
+- Listeners are called synchronously and in the same thread.
+- `onRequest()` is called right before executing the underlying operation.
+- `onResponse()` is called once after successful completion.
+- `onError()` is called once if an exception is thrown by the underlying operation.
+- If an exception is thrown from one of the listener methods, it will be logged at the `WARN` level and ignored.
+- The `attributes` map allows passing information between the `onRequest`, `onResponse`, and `onError` methods of the same
+  listener, as well as between multiple listeners.
+
 
 ## Observability in Spring Boot Application
 
@@ -277,3 +417,52 @@ See more details [here](/tutorials/spring-boot-integration#observability).
 ## Third-party Integrations
 
 - [Arize Phoenix](https://github.com/Arize-ai/phoenix)
+
+### OpenTelemetry GenAI instrumentation
+
+The community-maintained [otel-genai-bridges](https://github.com/dineshkumarkummara/otel-genai-bridges) project ships a Spring Boot starter that auto-instruments LangChain4j chat applications using the [OpenTelemetry Generative AI semantic conventions](https://github.com/open-telemetry/semantic-conventions/tree/main/docs/gen-ai).
+
+#### Why use it?
+
+- Wraps any `ChatLanguageModel` bean and emits spans, events, and metrics.
+- Captures prompts, completions, tool calls, latency, token usage, cost, and RAG retrieval latency out of the box.
+- Provides Docker Compose samples (Collector → Tempo/Prometheus → Grafana) with prebuilt Grafana dashboards.
+
+#### Getting started
+
+Add the starter to your Spring Boot project:
+
+```xml
+<!-- pom.xml -->
+<dependency>
+  <groupId>com.dineshkumarkummara.otel</groupId>
+  <artifactId>langchain4j-otel</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
+</dependency>
+```
+
+Enable the starter via `application.yaml`:
+
+```yaml
+otel:
+  langchain4j:
+    enabled: true
+    system: openai
+    default-model: gpt-4o
+    capture-prompts: true
+    capture-completions: true
+    cost:
+      enabled: true
+      input-per-thousand: 0.0005
+      output-per-thousand: 0.0015
+```
+
+The nested `cost` stanza is optional; include it when you want cost-per-token metrics.
+
+With the dependency on the classpath, the starter locates `ChatLanguageModel` beans automatically and wraps them with telemetry.
+
+#### Observability view
+
+![Grafana latency panel](https://github.com/dineshkumarkummara/otel-genai-bridges/raw/main/docs/screenshots/grafana-latency.png)
+
+For a full working example (including the observability stack and Semantic Kernel parity), see [dineshkumarkummara/otel-genai-bridges](https://github.com/dineshkumarkummara/otel-genai-bridges).

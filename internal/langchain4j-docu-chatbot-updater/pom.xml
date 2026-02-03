@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.8.0-beta15-SNAPSHOT</version>
+        <version>1.11.0-beta19-SNAPSHOT</version>
         <relativePath>../../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>langchain4j-docu-chatbot-updater</artifactId>
+    <name>LangChain4j :: Internal :: Documentation Chatbot Updater</name>
 
     <properties>
         <enforcer.skipRules>dependencyConvergence,requireUpperBoundDeps</enforcer.skipRules>
@@ -58,6 +58,15 @@
                 <version>3.1.0</version>
                 <configuration>
                     <mainClass>dev.langchain4j.docu.chatbot.updater.Updater</mainClass>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.honton.chas</groupId>
+                <artifactId>license-maven-plugin</artifactId>
+                <configuration>
+                    <!-- logback-classic has a LGPL-2.1 license -->
+                    <skipCompliance>true</skipCompliance>
                 </configuration>
             </plugin>
         </plugins>

@@ -10,7 +10,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+@EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 class GoogleAiEmbeddingModelIT {
 
     private static final String GOOGLE_AI_GEMINI_API_KEY = System.getenv("GOOGLE_AI_GEMINI_API_KEY");
@@ -21,7 +23,7 @@ class GoogleAiEmbeddingModelIT {
         // given
         GoogleAiEmbeddingModel embeddingModel = GoogleAiEmbeddingModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("embedding-001")
+                .modelName("gemini-embedding-001")
                 .logRequests(true)
                 .logResponses(false) // embeddings are huge in logs
                 .build();
@@ -33,9 +35,9 @@ class GoogleAiEmbeddingModelIT {
         Embedding content = embed.content();
         assertThat(content).isNotNull();
         assertThat(content.vector()).isNotNull();
-        assertThat(content.vector()).hasSize(768);
+        assertThat(content.vector()).hasSize(3072);
 
-        assertThat(embeddingModel.dimension()).isEqualTo(768);
+        assertThat(embeddingModel.dimension()).isEqualTo(3072);
     }
 
     @Test
@@ -43,7 +45,7 @@ class GoogleAiEmbeddingModelIT {
         // given
         GoogleAiEmbeddingModel embeddingModel = GoogleAiEmbeddingModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("embedding-001")
+                .modelName("gemini-embedding-001")
                 .logRequests(false) // embeddings are huge in logs
                 .logResponses(false)
                 .titleMetadataKey("title")
@@ -69,7 +71,7 @@ class GoogleAiEmbeddingModelIT {
 
         GoogleAiEmbeddingModel embeddingModel = GoogleAiEmbeddingModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("embedding-001")
+                .modelName("gemini-embedding-001")
                 .logRequests(false) // embeddings are huge in logs
                 .logResponses(false)
                 .outputDimensionality(outputDimensionality)
@@ -98,7 +100,7 @@ class GoogleAiEmbeddingModelIT {
         // given
         GoogleAiEmbeddingModel embeddingModel = GoogleAiEmbeddingModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("text-embedding-004")
+                .modelName("gemini-embedding-001")
                 .build();
 
         // when

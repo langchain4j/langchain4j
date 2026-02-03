@@ -11,6 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -55,6 +56,18 @@ class ChatMessageSerializerTest {
                         UserMessage.from(PdfFileContent.from("cGRm", "application/pdf")),
                         "{\"contents\":[{\"pdfFile\":{\"base64Data\":\"cGRm\",\"mimeType\":\"application/pdf\"},\"type\":\"PDF\"}],\"type\":\"USER\"}"),
                 Arguments.of(
+                        UserMessage.builder()
+                                .addContent(TextContent.from("hello"))
+                                .attributes(new LinkedHashMap<>() {
+                                    {
+                                        put("name", "Klaus");
+                                        put("age", 42);
+                                        put("extra", List.of("one", "two"));
+                                    }
+                                })
+                                .build(),
+                        "{\"contents\":[{\"text\":\"hello\",\"type\":\"TEXT\"}],\"attributes\":{\"name\":\"Klaus\",\"age\":42,\"extra\":[\"one\",\"two\"]},\"type\":\"USER\"}"),
+                Arguments.of(
                         AiMessage.from("hello"),
                         "{\"text\":\"hello\",\"toolExecutionRequests\":[],\"attributes\":{},\"type\":\"AI\"}"),
                 Arguments.of(
@@ -83,6 +96,14 @@ class ChatMessageSerializerTest {
                 Arguments.of(
                         ToolExecutionResultMessage.from("12345", "weather", "sunny"),
                         "{\"id\":\"12345\",\"toolName\":\"weather\",\"text\":\"sunny\",\"type\":\"TOOL_EXECUTION_RESULT\"}"),
+                Arguments.of(
+                        ToolExecutionResultMessage.builder()
+                                .id("12345")
+                                .toolName("weather")
+                                .text("error occurred")
+                                .isError(true)
+                                .build(),
+                        "{\"id\":\"12345\",\"toolName\":\"weather\",\"text\":\"error occurred\",\"isError\":true,\"type\":\"TOOL_EXECUTION_RESULT\"}"),
                 Arguments.of(
                         CustomMessage.from(new LinkedHashMap<>() {
                             {
@@ -122,6 +143,20 @@ class ChatMessageSerializerTest {
     }
 
     @Test
+    void should_deserialize_UserMessage_without_attributes() {
+
+        UserMessage deserialized = (UserMessage)
+                messageFromJson("{\"contents\":[{\"text\":\"hello\",\"type\":\"TEXT\"}],\"type\":\"USER\"}");
+
+        assertThat(deserialized.name()).isNull();
+        assertThat(deserialized.contents()).containsExactly(TextContent.from("hello"));
+        assertThat(deserialized.attributes()).isEmpty();
+
+        deserialized.attributes().put("k", "v");
+        assertThat(deserialized.attributes()).containsExactly(Map.entry("k", "v"));
+    }
+
+    @Test
     void should_deserialize_empty_AiMessage() {
 
         AiMessage deserialized = (AiMessage) messageFromJson("{\"type\":\"AI\"}");
@@ -130,5 +165,17 @@ class ChatMessageSerializerTest {
         assertThat(deserialized.thinking()).isNull();
         assertThat(deserialized.toolExecutionRequests()).isEmpty();
         assertThat(deserialized.attributes()).isEmpty();
+    }
+
+    @Test
+    void should_deserialize_ToolExecutionResultMessage_without_isError() {
+
+        ToolExecutionResultMessage deserialized = (ToolExecutionResultMessage) messageFromJson(
+                "{\"id\":\"12345\",\"toolName\":\"weather\",\"text\":\"sunny\",\"type\":\"TOOL_EXECUTION_RESULT\"}");
+
+        assertThat(deserialized.id()).isEqualTo("12345");
+        assertThat(deserialized.toolName()).isEqualTo("weather");
+        assertThat(deserialized.text()).isEqualTo("sunny");
+        assertThat(deserialized.isError()).isNull();
     }
 }

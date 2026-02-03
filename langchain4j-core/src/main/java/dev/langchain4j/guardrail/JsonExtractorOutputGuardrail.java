@@ -3,11 +3,11 @@ package dev.langchain4j.guardrail;
 import static dev.langchain4j.internal.JsonParsingUtils.extractAndParseJson;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import java.util.Optional;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.internal.JsonParsingUtils;
-import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,12 +15,15 @@ import org.slf4j.LoggerFactory;
  * An {@link OutputGuardrail} that will check whether or not a response can be successfully deserialized to an object
  * of type {@code T} from JSON
  * <p>
- *     If deserialization fails, the LLM will be reprompted with {@link #getInvalidJsonReprompt(AiMessage, String)}, which
- *     defaults to {@link #DEFAULT_REPROMPT_PROMPT}.
+ * If deserialization fails, the LLM will be reprompted with {@link #getInvalidJsonReprompt(AiMessage, String)}, which
+ * defaults to {@link #DEFAULT_REPROMPT_PROMPT}.
  * </p>
  *
  * @param <T> The type of object that the class should deserialize from JSON
+ * @deprecated This class has been moved to the `langchain4j-guardrails` module and will be removed in a future release.
+ * *             Add a dependency on `dev.langchain4j:langchain4j-guardrails` and use the class from that module instead.
  */
+@Deprecated(since = "1.9.0", forRemoval = true)
 public class JsonExtractorOutputGuardrail<T> implements OutputGuardrail {
     /**
      * The default message to use when reprompting
@@ -75,7 +78,7 @@ public class JsonExtractorOutputGuardrail<T> implements OutputGuardrail {
      * Generates a message indicating that the provided JSON is invalid.
      *
      * @param aiMessage the AI message associated with the invalid JSON. This parameter is not used.
-     * @param json the JSON that failed validation. This parameter is not used.
+     * @param json      the JSON that failed validation. This parameter is not used.
      * @return a default message indicating that the JSON is invalid.
      */
     protected String getInvalidJsonMessage(
@@ -86,11 +89,11 @@ public class JsonExtractorOutputGuardrail<T> implements OutputGuardrail {
     /**
      * Generates a reprompt message indicating that the provided JSON is invalid.
      * <p>
-     *     This message is appended to the user message from the previous request.
+     * This message is appended to the user message from the previous request.
      * </p>
      *
      * @param aiMessage the AI message associated with the invalid JSON. This parameter is not used.
-     * @param json the JSON input that failed validation. This parameter is not used.
+     * @param json      the JSON input that failed validation. This parameter is not used.
      * @return a reprompt message indicating that the JSON is invalid.
      */
     protected String getInvalidJsonReprompt(
@@ -107,9 +110,9 @@ public class JsonExtractorOutputGuardrail<T> implements OutputGuardrail {
      */
     protected Optional<JsonParsingUtils.ParsedJson<T>> deserialize(String llmResponse) {
         try {
-            return this.outputClass != null
+            return Optional.of(this.outputClass != null
                     ? extractAndParseJson(llmResponse, text -> this.objectMapper.readValue(text, this.outputClass))
-                    : extractAndParseJson(llmResponse, text -> this.objectMapper.readValue(text, this.outputType));
+                    : extractAndParseJson(llmResponse, text -> this.objectMapper.readValue(text, this.outputType)));
         } catch (Exception e) {
             return Optional.empty();
         }

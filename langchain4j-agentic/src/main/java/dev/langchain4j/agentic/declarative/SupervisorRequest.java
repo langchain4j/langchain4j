@@ -14,9 +14,9 @@ import java.lang.annotation.Target;
  * {@code
  *     public interface SupervisorStoryCreator {
  *
- *         @SupervisorAgent(outputName = "story", subAgents = {
- *                 @SubAgent(type = CreativeWriter.class, outputName = "story"),
- *                 @SubAgent(type = StyleReviewLoopAgent.class, outputName = "story")
+ *         @SupervisorAgent(outputKey = "story", subAgents = {
+ *                 @SubAgent(type = CreativeWriter.class, outputKey = "story"),
+ *                 @SubAgent(type = StyleReviewLoopAgent.class, outputKey = "story")
  *         })
  *         String write(@V("topic") String topic, @V("style") String style);
  *
@@ -30,5 +30,4 @@ import java.lang.annotation.Target;
  */
 @Retention(RUNTIME)
 @Target({METHOD})
-public @interface SupervisorRequest {
-}
+public @interface SupervisorRequest {}

@@ -3,12 +3,18 @@ package dev.langchain4j.service;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.PartialResponse;
+import dev.langchain4j.model.chat.response.PartialResponseContext;
 import dev.langchain4j.model.chat.response.PartialThinking;
+import dev.langchain4j.model.chat.response.PartialThinkingContext;
+import dev.langchain4j.model.chat.response.PartialToolCall;
+import dev.langchain4j.model.chat.response.PartialToolCallContext;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolExecution;
 import java.util.List;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
@@ -22,22 +28,98 @@ public interface TokenStream {
     /**
      * The provided consumer will be invoked every time a new partial textual response (usually a single token)
      * from a language model is available.
+     * <p>
+     * Either this or the {@link #onPartialResponseWithContext(BiConsumer)} callback can be used
+     * if you want to consume tokens as soon as they become available.
      *
      * @param partialResponseHandler lambda that will be invoked when a model generates a new partial textual response
      * @return token stream instance used to configure or start stream processing
+     * @see #onPartialResponseWithContext(BiConsumer)
      */
     TokenStream onPartialResponse(Consumer<String> partialResponseHandler);
 
     /**
+     * The provided consumer will be invoked every time a new partial textual response (usually a single token)
+     * from a language model is available.
+     * <p>
+     * Either this or the {@link #onPartialResponse(Consumer)} callback can be used
+     * if you want to consume tokens as soon as they become available.
+     *
+     * @param handler lambda that will be invoked when a model generates a new partial textual response
+     * @return token stream instance used to configure or start stream processing
+     * @see #onPartialResponse(Consumer)
+     * @since 1.8.0
+     */
+    @Experimental
+    default TokenStream onPartialResponseWithContext(BiConsumer<PartialResponse, PartialResponseContext> handler) {
+        throw new UnsupportedOperationException("not implemented");
+    }
+
+    /**
      * The provided consumer will be invoked every time a new partial thinking/reasoning text (usually a single token)
      * from a language model is available.
+     * <p>
+     * Either this or the {@link #onPartialThinkingWithContext(BiConsumer)} callback can be used
+     * if you want to consume thinking tokens as soon as they become available.
      *
      * @param partialThinkingHandler lambda that will be invoked when a model generates a new partial thinking/reasoning text
      * @return token stream instance used to configure or start stream processing
+     * @see #onPartialThinkingWithContext(BiConsumer)
      * @since 1.2.0
      */
     @Experimental
     default TokenStream onPartialThinking(Consumer<PartialThinking> partialThinkingHandler) {
+        throw new UnsupportedOperationException("not implemented");
+    }
+
+    /**
+     * The provided consumer will be invoked every time a new partial thinking/reasoning text (usually a single token)
+     * from a language model is available.
+     * <p>
+     * Either this or the {@link #onPartialThinking(Consumer)} callback can be used
+     * if you want to consume thinking tokens as soon as they become available.
+     *
+     * @param handler lambda that will be invoked when a model generates a new partial thinking/reasoning text
+     * @return token stream instance used to configure or start stream processing
+     * @see #onPartialThinking(Consumer)
+     * @since 1.8.0
+     */
+    @Experimental
+    default TokenStream onPartialThinkingWithContext(BiConsumer<PartialThinking, PartialThinkingContext> handler) {
+        throw new UnsupportedOperationException("not implemented");
+    }
+
+    /**
+     * The provided consumer will be invoked every time a new partial tool call
+     * (usually containing a single token of the tool's arguments) from a language model is available.
+     * <p>
+     * Either this or the {@link #onPartialToolCallWithContext(BiConsumer)} callback can be used
+     * if you want to consume partial tool calls as soon as they become available.
+     *
+     * @param partialToolCallHandler lambda that will be invoked when a model generates a new partial tool call
+     * @return token stream instance used to configure or start stream processing
+     * @see #onPartialToolCallWithContext(BiConsumer)
+     * @since 1.11.0
+     */
+    @Experimental
+    default TokenStream onPartialToolCall(Consumer<PartialToolCall> partialToolCallHandler) {
+        throw new UnsupportedOperationException("not implemented");
+    }
+
+    /**
+     * The provided consumer will be invoked every time a new partial tool call
+     * (usually containing a single token of the tool's arguments) from a language model is available.
+     * <p>
+     * Either this or the {@link #onPartialToolCall(Consumer)} callback can be used
+     * if you want to consume partial tool calls as soon as they become available.
+     *
+     * @param handler lambda that will be invoked when a model generates a new partial tool call
+     * @return token stream instance used to configure or start stream processing
+     * @see #onPartialToolCall(Consumer)
+     * @since 1.11.0
+     */
+    @Experimental
+    default TokenStream onPartialToolCallWithContext(BiConsumer<PartialToolCall, PartialToolCallContext> handler) {
         throw new UnsupportedOperationException("not implemented");
     }
 

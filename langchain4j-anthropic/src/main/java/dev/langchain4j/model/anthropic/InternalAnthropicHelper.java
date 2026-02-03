@@ -5,18 +5,25 @@ import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.to
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSystemPrompt;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicToolChoice;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicTools;
+import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
+import static dev.langchain4j.model.chat.request.ResponseFormatType.TEXT;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicFormat;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicMetadata;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicOutputConfig;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicThinking;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicTool;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ResponseFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Internal
 class InternalAnthropicHelper {
@@ -25,14 +32,15 @@ class InternalAnthropicHelper {
 
     static void validate(ChatRequestParameters parameters) {
         List<String> unsupportedFeatures = new ArrayList<>();
-        if (parameters.responseFormat() != null) {
-            unsupportedFeatures.add("JSON response format");
-        }
         if (parameters.frequencyPenalty() != null) {
             unsupportedFeatures.add("Frequency Penalty");
         }
         if (parameters.presencePenalty() != null) {
             unsupportedFeatures.add("Presence Penalty");
+        }
+        if (parameters.responseFormat() != null && parameters.responseFormat().type() == JSON
+                && parameters.responseFormat().jsonSchema() == null) {
+            unsupportedFeatures.add("Schemaless JSON response format");
         }
 
         if (!unsupportedFeatures.isEmpty()) {
@@ -53,8 +61,11 @@ class InternalAnthropicHelper {
             boolean stream,
             String toolChoiceName,
             Boolean disableParallelToolUse,
+            List<AnthropicServerTool> serverTools,
+            Set<String> toolMetadataKeysToSend,
             String userId,
-            Map<String, Object> customParameters) {
+            Map<String, Object> customParameters,
+            Boolean strictTools) {
 
         AnthropicCreateMessageRequest.Builder requestBuilder = AnthropicCreateMessageRequest.builder().stream(stream)
                 .model(chatRequest.modelName())
@@ -66,11 +77,20 @@ class InternalAnthropicHelper {
                 .topP(chatRequest.topP())
                 .topK(chatRequest.topK())
                 .thinking(thinking)
+                .outputConfig(toAnthropicOutputConfig(chatRequest.responseFormat()))
                 .customParameters(customParameters);
 
-        if (!isNullOrEmpty(chatRequest.toolSpecifications())) {
-            requestBuilder.tools(toAnthropicTools(chatRequest.toolSpecifications(), toolsCacheType));
+        List<AnthropicTool> tools = new ArrayList<>();
+        if (!isNullOrEmpty(serverTools)) {
+            tools.addAll(toAnthropicTools(serverTools));
         }
+        if (!isNullOrEmpty(chatRequest.toolSpecifications())) {
+            tools.addAll(toAnthropicTools(chatRequest.toolSpecifications(), toolsCacheType, toolMetadataKeysToSend, strictTools));
+        }
+        if (!tools.isEmpty()) {
+            requestBuilder.tools(tools);
+        }
+
         if (chatRequest.toolChoice() != null) {
             requestBuilder.toolChoice(
                     toAnthropicToolChoice(chatRequest.toolChoice(), toolChoiceName, disableParallelToolUse));
@@ -81,5 +101,15 @@ class InternalAnthropicHelper {
         }
 
         return requestBuilder.build();
+    }
+
+    public static AnthropicOutputConfig toAnthropicOutputConfig(ResponseFormat responseFormat) {
+        if (responseFormat == null || responseFormat.type() == TEXT || responseFormat.jsonSchema() == null) {
+            return null;
+        }
+
+        return AnthropicOutputConfig.builder()
+                .format(AnthropicFormat.fromJsonSchema(responseFormat.jsonSchema()))
+                .build();
     }
 }

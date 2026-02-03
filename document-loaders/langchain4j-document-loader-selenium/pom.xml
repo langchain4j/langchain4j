@@ -4,7 +4,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.8.0-beta15-SNAPSHOT</version>
+        <version>1.11.0-beta19-SNAPSHOT</version>
         <relativePath>../../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -15,12 +15,16 @@
         Integration with LangChain4j adds web document loading through browser automation.
         https://www.selenium.dev/documentation/about/copyright</description>
 
+    <properties>
+        <selenium.webdriver.version>4.33.0</selenium.webdriver.version>
+    </properties>
+
     <dependencies>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.8.0-SNAPSHOT</version>
+            <version>1.11.0-SNAPSHOT</version>
         </dependency>
 
         <dependency>
@@ -39,13 +43,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
-            <version>1.8.0-SNAPSHOT</version>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-engine</artifactId>
+            <version>1.11.0-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
 

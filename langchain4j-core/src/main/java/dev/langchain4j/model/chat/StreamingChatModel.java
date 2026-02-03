@@ -13,8 +13,12 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
+import dev.langchain4j.model.chat.response.PartialResponse;
+import dev.langchain4j.model.chat.response.PartialResponseContext;
 import dev.langchain4j.model.chat.response.PartialThinking;
+import dev.langchain4j.model.chat.response.PartialThinkingContext;
 import dev.langchain4j.model.chat.response.PartialToolCall;
+import dev.langchain4j.model.chat.response.PartialToolCallContext;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.util.List;
 import java.util.Map;
@@ -52,13 +56,28 @@ public interface StreamingChatModel {
             }
 
             @Override
+            public void onPartialResponse(PartialResponse partialResponse, PartialResponseContext context) {
+                handler.onPartialResponse(partialResponse, context);
+            }
+
+            @Override
             public void onPartialThinking(PartialThinking partialThinking) {
                 handler.onPartialThinking(partialThinking);
             }
 
             @Override
+            public void onPartialThinking(PartialThinking partialThinking, PartialThinkingContext context) {
+                handler.onPartialThinking(partialThinking, context);
+            }
+
+            @Override
             public void onPartialToolCall(PartialToolCall partialToolCall) {
                 handler.onPartialToolCall(partialToolCall);
+            }
+
+            @Override
+            public void onPartialToolCall(PartialToolCall partialToolCall, PartialToolCallContext context) {
+                handler.onPartialToolCall(partialToolCall, context);
             }
 
             @Override

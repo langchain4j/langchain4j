@@ -1,10 +1,10 @@
 package dev.langchain4j.model.anthropic;
 
 import static dev.langchain4j.JsonTestUtils.jsonify;
-import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_7_SONNET_20250219;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_OPUS_4_20250514;
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_SONNET_4_5_20250929;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.params.provider.EnumSource.Mode.INCLUDE;
+import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 
 import java.util.List;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -34,10 +34,9 @@ class AnthropicChatModelThinkingIT {
     private final SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
 
     @ParameterizedTest
-    @EnumSource(value = AnthropicChatModelName.class, mode = INCLUDE, names = {
-            "CLAUDE_OPUS_4_20250514",
-            "CLAUDE_SONNET_4_20250514",
-            "CLAUDE_3_7_SONNET_20250219"
+    @EnumSource(value = AnthropicChatModelName.class, mode = EXCLUDE, names = {
+            "CLAUDE_3_5_HAIKU_20241022",
+            "CLAUDE_3_HAIKU_20240307",
     })
     void should_return_and_send_thinking(AnthropicChatModelName modelName) {
 
@@ -93,10 +92,9 @@ class AnthropicChatModelThinkingIT {
     }
 
     @ParameterizedTest
-    @EnumSource(value = AnthropicChatModelName.class, mode = INCLUDE, names = {
-            "CLAUDE_OPUS_4_20250514",
-            "CLAUDE_SONNET_4_20250514",
-            "CLAUDE_3_7_SONNET_20250219"
+    @EnumSource(value = AnthropicChatModelName.class, mode = EXCLUDE, names = {
+            "CLAUDE_3_5_HAIKU_20241022",
+            "CLAUDE_3_HAIKU_20240307",
     })
     void should_return_and_NOT_send_thinking(AnthropicChatModelName modelName) {
 
@@ -153,10 +151,9 @@ class AnthropicChatModelThinkingIT {
     }
 
     @ParameterizedTest
-    @EnumSource(value = AnthropicChatModelName.class, mode = INCLUDE, names = {
-            "CLAUDE_OPUS_4_20250514",
-            "CLAUDE_SONNET_4_20250514",
-            "CLAUDE_3_7_SONNET_20250219"
+    @EnumSource(value = AnthropicChatModelName.class, mode = EXCLUDE, names = {
+            "CLAUDE_3_5_HAIKU_20241022",
+            "CLAUDE_3_HAIKU_20240307",
     })
     void should_return_and_send_thinking_with_tools(AnthropicChatModelName modelName) {
 
@@ -380,59 +377,6 @@ class AnthropicChatModelThinkingIT {
                 .contains(jsonify(signature3));
     }
 
-    @Test
-    void test_redacted_thinking() {
-
-        // given
-        boolean returnThinking = true;
-        // sendThinking = true by default
-
-        ChatModel model = AnthropicChatModel.builder()
-                .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
-                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .modelName(CLAUDE_3_7_SONNET_20250219)
-
-                .thinkingType("enabled")
-                .thinkingBudgetTokens(THINKING_BUDGET_TOKENS)
-                .maxTokens(THINKING_BUDGET_TOKENS + 100)
-                .returnThinking(returnThinking)
-
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-
-        UserMessage userMessage1 = UserMessage.from("ANTHROPIC_MAGIC_STRING_TRIGGER_REDACTED_THINKING_46C9A13E193C177646C7398A98432ECCCE4C1253D5E2D82641AC0E52CC2876CB");
-
-        // when
-        ChatResponse chatResponse1 = model.chat(userMessage1);
-
-        // then
-        AiMessage aiMessage1 = chatResponse1.aiMessage();
-        assertThat(aiMessage1.text()).isNotBlank();
-        assertThat(aiMessage1.thinking()).isNull();
-        assertThat(aiMessage1.attributes()).hasSize(1);
-        List<String> redactedThinkings = aiMessage1.attribute("redacted_thinking", List.class);
-        assertThat(redactedThinkings).hasSize(1);
-        assertThat(redactedThinkings.get(0)).isNotBlank();
-
-        // given
-        UserMessage userMessage2 = UserMessage.from("What is the capital of Germany?");
-
-        // when
-        ChatResponse chatResponse2 = model.chat(userMessage1, aiMessage1, userMessage2);
-
-        // then
-        AiMessage aiMessage2 = chatResponse2.aiMessage();
-        assertThat(aiMessage2.text()).contains("Berlin");
-
-        // should send redacted thinking in the follow-up requests
-        List<HttpRequest> httpRequests = spyingHttpClient.requests();
-        assertThat(httpRequests).hasSize(2);
-        assertThat(httpRequests.get(1).body())
-                .contains(jsonify(aiMessage1.text()))
-                .contains(jsonify(redactedThinkings.get(0)));
-    }
-
     @ParameterizedTest
     @NullSource
     @ValueSource(booleans = false)
@@ -441,7 +385,7 @@ class AnthropicChatModelThinkingIT {
         // given
         ChatModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .modelName(CLAUDE_3_7_SONNET_20250219)
+                .modelName(CLAUDE_SONNET_4_5_20250929)
 
                 .thinkingType("enabled")
                 .thinkingBudgetTokens(THINKING_BUDGET_TOKENS)

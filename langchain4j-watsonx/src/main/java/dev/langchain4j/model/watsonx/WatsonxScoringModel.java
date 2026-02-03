@@ -3,8 +3,6 @@ package dev.langchain4j.model.watsonx;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
-import com.ibm.watsonx.ai.CloudRegion;
-import com.ibm.watsonx.ai.core.auth.iam.IAMAuthenticator;
 import com.ibm.watsonx.ai.rerank.RerankParameters;
 import com.ibm.watsonx.ai.rerank.RerankResponse;
 import com.ibm.watsonx.ai.rerank.RerankResponse.RerankResult;
@@ -13,7 +11,6 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.scoring.ScoringModel;
-import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 
@@ -24,7 +21,7 @@ import java.util.List;
  *
  * <pre>{@code
  * ScoringModel scoringModel = new WatsonxScoringModel.builder()
- *     .url("https://...") // or use CloudRegion
+ *     .baseUrl("https://...") // or use CloudRegion
  *     .apiKey("...")
  *     .projectId("...")
  *     .modelId("cross-encoder/ms-marco-minilm-l-12-v2")
@@ -37,16 +34,13 @@ public class WatsonxScoringModel implements ScoringModel {
     private final RerankService rerankService;
 
     private WatsonxScoringModel(Builder builder) {
-        var rerankServiceBuilder = RerankService.builder();
-        if (nonNull(builder.authenticationProvider)) {
-            rerankServiceBuilder.authenticationProvider(builder.authenticationProvider);
-        } else {
-            rerankServiceBuilder.authenticationProvider(
-                    IAMAuthenticator.builder().apiKey(builder.apiKey).build());
-        }
+
+        var rerankServiceBuilder = nonNull(builder.authenticator)
+                ? RerankService.builder().authenticator(builder.authenticator)
+                : RerankService.builder().apiKey(builder.apiKey);
 
         rerankService = rerankServiceBuilder
-                .url(builder.url)
+                .baseUrl(builder.baseUrl)
                 .modelId(builder.modelName)
                 .version(builder.version)
                 .projectId(builder.projectId)
@@ -54,6 +48,8 @@ public class WatsonxScoringModel implements ScoringModel {
                 .timeout(builder.timeout)
                 .logRequests(builder.logRequests)
                 .logResponses(builder.logResponses)
+                .httpClient(builder.httpClient)
+                .verifySsl(builder.verifySsl)
                 .build();
     }
 
@@ -94,7 +90,7 @@ public class WatsonxScoringModel implements ScoringModel {
      *
      * <pre>{@code
      * ScoringModel scoringModel = new WatsonxScoringModel.builder()
-     *     .url("https://...") // or use CloudRegion
+     *     .baseUrl("https://...") // or use CloudRegion
      *     .apiKey("...")
      *     .projectId("...")
      *     .modelId("cross-encoder/ms-marco-minilm-l-12-v2")
@@ -111,33 +107,11 @@ public class WatsonxScoringModel implements ScoringModel {
      */
     public static class Builder extends WatsonxBuilder<Builder> {
         private String modelName;
-        private String projectId;
-        private String spaceId;
-        private Duration timeout;
 
         private Builder() {}
 
-        public Builder url(CloudRegion cloudRegion) {
-            return super.url(cloudRegion.getMlEndpoint());
-        }
-
         public Builder modelName(String modelName) {
             this.modelName = modelName;
-            return this;
-        }
-
-        public Builder projectId(String projectId) {
-            this.projectId = projectId;
-            return this;
-        }
-
-        public Builder spaceId(String spaceId) {
-            this.spaceId = spaceId;
-            return this;
-        }
-
-        public Builder timeout(Duration timeout) {
-            this.timeout = timeout;
             return this;
         }
 

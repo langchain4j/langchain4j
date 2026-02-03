@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
@@ -19,13 +20,12 @@ import com.ibm.watsonx.ai.chat.ChatService;
 import com.ibm.watsonx.ai.chat.model.AssistantMessage;
 import com.ibm.watsonx.ai.chat.model.ChatMessage;
 import com.ibm.watsonx.ai.chat.model.ChatUsage;
-import com.ibm.watsonx.ai.chat.model.ControlMessage;
 import com.ibm.watsonx.ai.chat.model.ExtractionTags;
 import com.ibm.watsonx.ai.chat.model.FunctionCall;
 import com.ibm.watsonx.ai.chat.model.ResultMessage;
+import com.ibm.watsonx.ai.chat.model.ThinkingEffort;
 import com.ibm.watsonx.ai.chat.model.ToolCall;
 import com.ibm.watsonx.ai.chat.model.UserMessage;
-import com.ibm.watsonx.ai.core.auth.iam.IAMAuthenticator;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.exception.LangChain4jException;
@@ -43,6 +43,7 @@ import java.net.URI;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -67,43 +68,42 @@ public class WatsonxChatModelTest {
     @Captor
     ArgumentCaptor<com.ibm.watsonx.ai.chat.ChatRequest> chatRequestCaptor;
 
-    static ChatResponse chatResponse;
+    static ChatResponse.Builder chatResponse;
 
     @BeforeEach
     void setUp() {
 
         when(mockChatServiceBuilder.modelId(any())).thenReturn(mockChatServiceBuilder);
-        when(mockChatServiceBuilder.url(any(URI.class))).thenReturn(mockChatServiceBuilder);
+        when(mockChatServiceBuilder.baseUrl(any(URI.class))).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.projectId(any())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.spaceId(any())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.timeout(any())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.version(any())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.logRequests(any())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.logResponses(any())).thenReturn(mockChatServiceBuilder);
+        when(mockChatServiceBuilder.authenticator(any())).thenReturn(mockChatServiceBuilder);
+        when(mockChatServiceBuilder.apiKey(any())).thenReturn(mockChatServiceBuilder);
+        when(mockChatServiceBuilder.httpClient(any())).thenReturn(mockChatServiceBuilder);
+        when(mockChatServiceBuilder.verifySsl(anyBoolean())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.build()).thenReturn(mockChatService);
 
-        chatResponse = new ChatResponse();
-        var chatUsage = new ChatUsage();
-
-        chatUsage.setCompletionTokens(10);
-        chatUsage.setPromptTokens(10);
-        chatUsage.setTotalTokens(20);
-
-        chatResponse.setId("id");
-        chatResponse.setModelId("modelId");
-        chatResponse.setModel("model");
-        chatResponse.setModelVersion("modelVersion");
-        chatResponse.setObject("object");
-        chatResponse.setUsage(chatUsage);
-        chatResponse.setCreatedAt("createdAt");
-        chatResponse.setCreated(1L);
+        var chatUsage = new ChatUsage(10, 10, 20);
+        chatResponse = ChatResponse.build()
+                .id("id")
+                .modelId("modelId")
+                .model("model")
+                .modelVersion("modelVersion")
+                .object("object")
+                .usage(chatUsage)
+                .createdAt("createdAt")
+                .created(1L);
     }
 
     @Test
     void testWatsonxChatModelBuilder() {
 
         var chatModel = WatsonxChatModel.builder()
-                .url(CloudRegion.FRANKFURT)
+                .baseUrl(CloudRegion.FRANKFURT)
                 .modelName("model-name")
                 .apiKey("api-key-test")
                 .projectId("project-id")
@@ -127,19 +127,23 @@ public class WatsonxChatModelTest {
         assertEquals("space-id", defaultRequestParameters.spaceId());
         assertEquals(List.of(), defaultRequestParameters.stopSequences());
         assertNull(defaultRequestParameters.temperature());
-        assertNull(defaultRequestParameters.timeLimit());
+        assertNull(defaultRequestParameters.timeout());
         assertNull(defaultRequestParameters.toolChoice());
         assertNull(defaultRequestParameters.toolChoiceName());
         assertEquals(List.of(), defaultRequestParameters.toolSpecifications());
         assertNull(defaultRequestParameters.topK());
         assertNull(defaultRequestParameters.topLogprobs());
         assertNull(defaultRequestParameters.topP());
+        assertNull(defaultRequestParameters.guidedChoice());
+        assertNull(defaultRequestParameters.guidedGrammar());
+        assertNull(defaultRequestParameters.guidedRegex());
+        assertNull(defaultRequestParameters.repetitionPenalty());
+        assertNull(defaultRequestParameters.lengthPenalty());
 
         assertDoesNotThrow(() -> WatsonxChatModel.builder()
-                .url("https://test.com")
+                .baseUrl("https://test.com")
                 .modelName("model-name")
-                .authenticationProvider(
-                        IAMAuthenticator.builder().apiKey("api-key").build())
+                .apiKey("api-key")
                 .projectId("project-id")
                 .spaceId("space-id")
                 .build());
@@ -148,15 +152,15 @@ public class WatsonxChatModelTest {
     @Test
     void testDoChat() {
 
-        var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello", null, null);
+        var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello", null, null, null);
         var resultChoice = new ResultChoice(0, resultMessage, "stop");
-        chatResponse.setChoices(List.of(resultChoice));
+        chatResponse.choices(List.of(resultChoice));
 
-        when(mockChatService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse);
+        when(mockChatService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse.build());
 
         withChatServiceMock(() -> {
             var chatModel = WatsonxChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelId")
                     .projectId("project-id")
                     .apiKey("api-key")
@@ -165,22 +169,22 @@ public class WatsonxChatModelTest {
             assertEquals("Hello", chatModel.chat("hello"));
             assertEquals(
                     List.of(UserMessage.text("hello")),
-                    chatRequestCaptor.getValue().getMessages());
+                    chatRequestCaptor.getValue().messages());
         });
     }
 
     @Test
     void testDoChatWithRefusal() {
 
-        var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello", "refusal", null);
+        var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello", null, "refusal", null);
         var resultChoice = new ResultChoice(0, resultMessage, "stop");
-        chatResponse.setChoices(List.of(resultChoice));
+        chatResponse.choices(List.of(resultChoice));
 
-        when(mockChatService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse);
+        when(mockChatService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse.build());
 
         withChatServiceMock(() -> {
             var chatModel = WatsonxChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelId")
                     .projectId("project-id")
                     .apiKey("api-key")
@@ -191,25 +195,27 @@ public class WatsonxChatModelTest {
     }
 
     @Test
-    void testDoChatWithThinking() throws Exception {
-
-        // --- TEST 1 ---
+    void shouldExtractThinkingWhenConfiguredInModelBuilder() throws Exception {
 
         var extractionTags = ExtractionTags.of("think", "response");
         var resultMessage = new ResultMessage(
-                AssistantMessage.ROLE, "<think>I'm thinking</think><response>Hello</response>", null, null);
+                AssistantMessage.ROLE,
+                "<think>I'm thinking</think><response>Hello</response>",
+                "I'm thinking",
+                null,
+                null);
         var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
-
+        chatResponse.choices(List.of(resultChoice));
+        var cr = chatResponse.build();
         var field = ChatResponse.class.getDeclaredField("extractionTags");
         field.setAccessible(true);
-        field.set(chatResponse, extractionTags);
-        chatResponse.setChoices(List.of(resultChoice));
+        field.set(cr, extractionTags);
 
-        when(mockChatService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse);
+        when(mockChatService.chat(chatRequestCaptor.capture())).thenReturn(cr);
 
         withChatServiceMock(() -> {
             var chatModel = WatsonxChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelId")
                     .projectId("project-id")
                     .apiKey("api-key")
@@ -223,18 +229,178 @@ public class WatsonxChatModelTest {
             assertEquals("I'm thinking", result.aiMessage().thinking());
             assertEquals(
                     UserMessage.text("Hello"),
-                    chatRequestCaptor.getValue().getMessages().get(0));
-            assertEquals(
-                    ControlMessage.of("thinking"),
-                    chatRequestCaptor.getValue().getMessages().get(1));
+                    chatRequestCaptor.getValue().messages().get(0));
+            assertNotNull(chatRequestCaptor.getValue().thinking());
         });
-        // --------------
 
-        // --- TEST 2 ---
         withChatServiceMock(() -> {
             var chatModel = WatsonxChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelId")
+                    .projectId("project-id")
+                    .apiKey("api-key")
+                    .thinking(ThinkingEffort.LOW)
+                    .build();
+
+            chatModel.chat(ChatRequest.builder()
+                    .messages(dev.langchain4j.data.message.UserMessage.from("Hello"))
+                    .build());
+
+            assertEquals(
+                    UserMessage.text("Hello"),
+                    chatRequestCaptor.getValue().messages().get(0));
+            assertNotNull(chatRequestCaptor.getValue().thinking());
+        });
+
+        withChatServiceMock(() -> {
+            var chatModel = WatsonxChatModel.builder()
+                    .baseUrl("https://test.com")
+                    .modelName("modelId")
+                    .projectId("project-id")
+                    .apiKey("api-key")
+                    .thinking(true)
+                    .build();
+
+            chatModel.chat(ChatRequest.builder()
+                    .messages(dev.langchain4j.data.message.UserMessage.from("Hello"))
+                    .build());
+
+            assertEquals(
+                    UserMessage.text("Hello"),
+                    chatRequestCaptor.getValue().messages().get(0));
+            assertNotNull(chatRequestCaptor.getValue().thinking());
+        });
+
+        withChatServiceMock(() -> {
+            var chatModel = WatsonxChatModel.builder()
+                    .baseUrl("https://test.com")
+                    .modelName("modelId")
+                    .projectId("project-id")
+                    .apiKey("api-key")
+                    .thinking(false)
+                    .build();
+
+            chatModel.chat(ChatRequest.builder()
+                    .messages(dev.langchain4j.data.message.UserMessage.from("Hello"))
+                    .build());
+
+            assertEquals(
+                    UserMessage.text("Hello"),
+                    chatRequestCaptor.getValue().messages().get(0));
+            assertFalse(chatRequestCaptor.getValue().thinking().enabled());
+        });
+    }
+
+    @Test
+    void shouldExtractThinkingWhenConfiguredInRequestParameters() throws Exception {
+
+        var extractionTags = ExtractionTags.of("think", "response");
+        var resultMessage = new ResultMessage(
+                AssistantMessage.ROLE,
+                "<think>I'm thinking</think><response>Hello</response>",
+                "I'm thinking",
+                null,
+                null);
+
+        var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
+        chatResponse.choices(List.of(resultChoice));
+        var field = ChatResponse.class.getDeclaredField("extractionTags");
+        var cr = chatResponse.build();
+        field.setAccessible(true);
+        field.set(cr, extractionTags);
+
+        when(mockChatService.chat(chatRequestCaptor.capture())).thenReturn(cr);
+
+        withChatServiceMock(() -> {
+            var chatModel = WatsonxChatModel.builder()
+                    .baseUrl("https://test.com")
+                    .modelName("modelId")
+                    .projectId("project-id")
+                    .apiKey("api-key")
+                    .build();
+
+            var result = chatModel.chat(ChatRequest.builder()
+                    .messages(dev.langchain4j.data.message.UserMessage.from("Hello"))
+                    .parameters(WatsonxChatRequestParameters.builder()
+                            .thinking(extractionTags)
+                            .build())
+                    .build());
+            assertEquals("Hello", result.aiMessage().text());
+            assertEquals("I'm thinking", result.aiMessage().thinking());
+            assertEquals(
+                    UserMessage.text("Hello"),
+                    chatRequestCaptor.getValue().messages().get(0));
+            assertNotNull(chatRequestCaptor.getValue().thinking());
+        });
+
+        withChatServiceMock(() -> {
+            var chatModel = WatsonxChatModel.builder()
+                    .baseUrl("https://test.com")
+                    .modelName("modelId")
+                    .projectId("project-id")
+                    .apiKey("api-key")
+                    .build();
+
+            chatModel.chat(ChatRequest.builder()
+                    .messages(dev.langchain4j.data.message.UserMessage.from("Hello"))
+                    .parameters(WatsonxChatRequestParameters.builder()
+                            .thinking(ThinkingEffort.LOW)
+                            .build())
+                    .build());
+            assertEquals(
+                    UserMessage.text("Hello"),
+                    chatRequestCaptor.getValue().messages().get(0));
+            assertNotNull(chatRequestCaptor.getValue().thinking());
+        });
+
+        withChatServiceMock(() -> {
+            var chatModel = WatsonxChatModel.builder()
+                    .baseUrl("https://test.com")
+                    .modelName("modelId")
+                    .projectId("project-id")
+                    .apiKey("api-key")
+                    .build();
+
+            chatModel.chat(ChatRequest.builder()
+                    .messages(dev.langchain4j.data.message.UserMessage.from("Hello"))
+                    .parameters(WatsonxChatRequestParameters.builder()
+                            .thinking(true)
+                            .build())
+                    .build());
+            assertEquals(
+                    UserMessage.text("Hello"),
+                    chatRequestCaptor.getValue().messages().get(0));
+            assertNotNull(chatRequestCaptor.getValue().thinking());
+        });
+
+        withChatServiceMock(() -> {
+            var chatModel = WatsonxChatModel.builder()
+                    .baseUrl("https://test.com")
+                    .modelName("modelId")
+                    .projectId("project-id")
+                    .apiKey("api-key")
+                    .build();
+
+            chatModel.chat(ChatRequest.builder()
+                    .messages(dev.langchain4j.data.message.UserMessage.from("Hello"))
+                    .parameters(WatsonxChatRequestParameters.builder()
+                            .thinking(false)
+                            .build())
+                    .build());
+            assertEquals(
+                    UserMessage.text("Hello"),
+                    chatRequestCaptor.getValue().messages().get(0));
+            assertFalse(chatRequestCaptor.getValue().thinking().enabled());
+        });
+    }
+
+    @Test
+    void shouldThrowExceptionWhenThinkingUsedWithSystemMessage() {
+
+        withChatServiceMock(() -> {
+            var chatModel = WatsonxChatModel.builder()
+                    .baseUrl("https://test.com")
+                    .modelName("ibm/granite-3-3-8b-instruct")
                     .projectId("project-id")
                     .apiKey("api-key")
                     .thinking(ExtractionTags.of("think"))
@@ -249,13 +415,15 @@ public class WatsonxChatModelTest {
                             .build()),
                     "The thinking/reasoning cannot be activated when a system message is present");
         });
-        // --------------
+    }
 
-        // --- TEST 3 ---
+    @Test
+    void shouldThrowExceptionWhenThinkingUsedWithTools() {
+
         withChatServiceMock(() -> {
             var chatModel = WatsonxChatModel.builder()
-                    .url("https://test.com")
-                    .modelName("modelId")
+                    .baseUrl("https://test.com")
+                    .modelName("ibm/granite-3-3-8b-instruct")
                     .projectId("project-id")
                     .apiKey("api-key")
                     .thinking(ExtractionTags.of("think"))
@@ -269,21 +437,56 @@ public class WatsonxChatModelTest {
                             .build()),
                     "The thinking/reasoning cannot be activated when tools are used");
         });
-        // --------------
+    }
+
+    @Test
+    void shouldReturnRawTextWhenThinkingIsNotEnabled() {
+
+        var resultMessage = new ResultMessage(
+                AssistantMessage.ROLE,
+                "<think>I'm thinking</think><response>Hello</response>",
+                "I'm thinking",
+                null,
+                null);
+
+        var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
+        chatResponse.choices(List.of(resultChoice));
+        when(mockChatService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse.build());
+
+        withChatServiceMock(() -> {
+            var chatModel = WatsonxChatModel.builder()
+                    .baseUrl("https://test.com")
+                    .modelName("modelId")
+                    .projectId("project-id")
+                    .apiKey("api-key")
+                    .build();
+
+            var result = chatModel.chat(ChatRequest.builder()
+                    .messages(dev.langchain4j.data.message.UserMessage.from("Hello"))
+                    .build());
+            assertEquals(
+                    "<think>I'm thinking</think><response>Hello</response>",
+                    result.aiMessage().text());
+            assertNull(result.aiMessage().thinking());
+            assertEquals(1, chatRequestCaptor.getValue().messages().size());
+            assertEquals(
+                    UserMessage.text("Hello"),
+                    chatRequestCaptor.getValue().messages().get(0));
+        });
     }
 
     @Test
     void testDoChatWithTool() {
 
         var toolCall = new ToolCall(0, "id", "function", new FunctionCall("name", "{}"));
-        var resultMessage = new ResultMessage(AssistantMessage.ROLE, null, null, List.of(toolCall));
+        var resultMessage = new ResultMessage(AssistantMessage.ROLE, null, null, null, List.of(toolCall));
         var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
-        chatResponse.setChoices(List.of(resultChoice));
-        when(mockChatService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse);
+        chatResponse.choices(List.of(resultChoice));
+        when(mockChatService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse.build());
 
         withChatServiceMock(() -> {
             var chatModel = WatsonxChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelId")
                     .projectId("project-id")
                     .apiKey("api-key")
@@ -325,15 +528,15 @@ public class WatsonxChatModelTest {
     @Test
     void testChatRequest() {
 
-        var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello", null, null);
+        var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello", null, null, null);
         var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
-        chatResponse.setChoices(List.of(resultChoice));
+        chatResponse.choices(List.of(resultChoice));
 
-        when(mockChatService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse);
+        when(mockChatService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse.build());
 
         withChatServiceMock(() -> {
             var chatModel = WatsonxChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelId")
                     .projectId("project-id")
                     .apiKey("api-key")
@@ -341,51 +544,64 @@ public class WatsonxChatModelTest {
                     .build();
 
             var chatRequest = ChatRequest.builder()
-                    .modelName("customModelName")
-                    .frequencyPenalty(0.10)
-                    .maxOutputTokens(10)
                     .messages(dev.langchain4j.data.message.UserMessage.from("Hello"))
-                    .presencePenalty(0.10)
-                    .responseFormat(ResponseFormat.JSON)
-                    .stopSequences(List.of("stop"))
-                    .temperature(0.10)
-                    .toolChoice(ToolChoice.REQUIRED)
-                    .toolSpecifications(ToolSpecification.builder().name("name").build())
-                    .topP(0.10)
+                    .parameters(WatsonxChatRequestParameters.builder()
+                            .modelName("customModelName")
+                            .frequencyPenalty(0.10)
+                            .maxOutputTokens(10)
+                            .presencePenalty(0.10)
+                            .responseFormat(ResponseFormat.JSON)
+                            .stopSequences(List.of("stop"))
+                            .temperature(0.10)
+                            .toolChoice(ToolChoice.REQUIRED)
+                            .toolSpecifications(
+                                    ToolSpecification.builder().name("name").build())
+                            .topP(0.10)
+                            .guidedChoice("a", "b")
+                            .guidedGrammar("guidedGrammar")
+                            .guidedRegex("guidedRegex")
+                            .repetitionPenalty(1.1)
+                            .lengthPenalty(1.2)
+                            .build())
                     .build();
 
             chatModel.chat(chatRequest);
             assertEquals(
                     List.<ChatMessage>of(UserMessage.text("Hello")),
-                    chatRequestCaptor.getValue().getMessages());
+                    chatRequestCaptor.getValue().messages());
 
-            var parameters = chatRequestCaptor.getValue().getParameters();
+            var parameters = chatRequestCaptor.getValue().parameters();
             assertEquals(1, chatModel.listeners().size());
             assertNotNull(chatModel.listeners().get(0));
-            assertEquals("customModelName", parameters.getModelId());
-            assertEquals(0.10, parameters.getFrequencyPenalty());
-            assertEquals(10, parameters.getMaxCompletionTokens());
-            assertEquals(0.10, parameters.getPresencePenalty());
-            assertEquals("json_object", parameters.getResponseFormat());
-            assertEquals(List.of("stop"), parameters.getStop());
-            assertEquals(0.10, parameters.getTemperature());
-            assertEquals("required", parameters.getToolChoiceOption());
-            assertEquals(0.10, parameters.getTopP());
+            assertEquals("customModelName", parameters.modelId());
+            assertEquals(0.10, parameters.frequencyPenalty());
+            assertEquals(10, parameters.maxCompletionTokens());
+            assertEquals(0.10, parameters.presencePenalty());
+            assertEquals("json_object", parameters.responseFormat());
+            assertEquals(List.of("stop"), parameters.stop());
+            assertEquals(0.10, parameters.temperature());
+            assertEquals("required", parameters.toolChoiceOption());
+            assertEquals(0.10, parameters.topP());
+            assertEquals(Set.of("a", "b"), parameters.guidedChoice());
+            assertEquals("guidedGrammar", parameters.guidedGrammar());
+            assertEquals("guidedRegex", parameters.guidedRegex());
+            assertEquals(1.1, parameters.repetitionPenalty());
+            assertEquals(1.2, parameters.lengthPenalty());
         });
     }
 
     @Test
     void testChatRequestParameter() {
 
-        var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello", null, null);
+        var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello", null, null, null);
         var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
-        chatResponse.setChoices(List.of(resultChoice));
+        chatResponse.choices(List.of(resultChoice));
 
-        when(mockChatService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse);
+        when(mockChatService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse.build());
 
         withChatServiceMock(() -> {
             var chatModel = WatsonxChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelName")
                     .projectId("projectId")
                     .spaceId("spaceId")
@@ -397,7 +613,7 @@ public class WatsonxChatModelTest {
                     .temperature(0.3)
                     .toolChoice(ToolChoice.REQUIRED)
                     .responseFormat(ResponseFormat.TEXT)
-                    .timeLimit(Duration.ofMillis(30))
+                    .timeout(Duration.ofMillis(30))
                     .topP(0.4)
                     .logitBias(Map.of("test", 10))
                     .logprobs(true)
@@ -406,6 +622,11 @@ public class WatsonxChatModelTest {
                     .topLogprobs(10)
                     .toolSpecifications(
                             ToolSpecification.builder().name("toolChoiceName").build())
+                    .guidedChoice("a", "b")
+                    .guidedGrammar("guidedGrammar")
+                    .guidedRegex("guidedRegex")
+                    .repetitionPenalty(1.1)
+                    .lengthPenalty(1.2)
                     .build();
 
             var chatRequest = ChatRequest.builder()
@@ -413,32 +634,36 @@ public class WatsonxChatModelTest {
                     .build();
 
             chatModel.chat(chatRequest);
-            var parameters = chatRequestCaptor.getValue().getParameters();
+            var parameters = chatRequestCaptor.getValue().parameters();
 
-            assertEquals(0.1, parameters.getFrequencyPenalty());
-            assertEquals(0, parameters.getMaxCompletionTokens());
-            assertEquals("modelName", parameters.getModelId());
-            assertEquals(0.2, parameters.getPresencePenalty());
-            assertEquals(List.of("["), parameters.getStop());
-            assertEquals(0.3, parameters.getTemperature());
-            assertEquals(null, parameters.getToolChoiceOption());
-            assertEquals(null, parameters.getResponseFormat());
-            assertEquals(30, parameters.getTimeLimit());
-            assertEquals(0.4, parameters.getTopP());
-            assertEquals("projectId", parameters.getProjectId());
-            assertEquals(Map.of("test", 10), parameters.getLogitBias());
-            assertTrue(parameters.getLogprobs());
-            assertEquals(5, parameters.getSeed());
-            assertEquals("spaceId", parameters.getSpaceId());
+            assertEquals(0.1, parameters.frequencyPenalty());
+            assertEquals(0, parameters.maxCompletionTokens());
+            assertEquals("modelName", parameters.modelId());
+            assertEquals(0.2, parameters.presencePenalty());
+            assertEquals(List.of("["), parameters.stop());
+            assertEquals(0.3, parameters.temperature());
+            assertEquals(null, parameters.toolChoiceOption());
+            assertEquals(null, parameters.responseFormat());
+            assertEquals(30, parameters.timeLimit());
+            assertEquals(0.4, parameters.topP());
+            assertEquals("projectId", parameters.projectId());
+            assertEquals(Map.of("test", 10), parameters.logitBias());
+            assertTrue(parameters.logprobs());
+            assertEquals(5, parameters.seed());
+            assertEquals("spaceId", parameters.spaceId());
             assertEquals(
-                    Map.of("type", "function", "function", Map.of("name", "toolChoiceName")),
-                    parameters.getToolChoice());
-            assertEquals(10, parameters.getTopLogprobs());
+                    Map.of("type", "function", "function", Map.of("name", "toolChoiceName")), parameters.toolChoice());
+            assertEquals(10, parameters.topLogprobs());
+            assertEquals(Set.of("a", "b"), parameters.guidedChoice());
+            assertEquals("guidedGrammar", parameters.guidedGrammar());
+            assertEquals("guidedRegex", parameters.guidedRegex());
+            assertEquals(1.1, parameters.repetitionPenalty());
+            assertEquals(1.2, parameters.lengthPenalty());
         });
 
         withChatServiceMock(() -> {
             var chatModel = WatsonxChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .apiKey("api-key")
                     .defaultRequestParameters(WatsonxChatRequestParameters.builder()
                             .frequencyPenalty(0.1)
@@ -449,7 +674,7 @@ public class WatsonxChatModelTest {
                             .temperature(0.3)
                             .toolChoice(ToolChoice.REQUIRED)
                             .responseFormat(ResponseFormat.TEXT)
-                            .timeLimit(Duration.ofMillis(30))
+                            .timeout(Duration.ofMillis(30))
                             .topP(0.4)
                             .projectId("default-project-id")
                             .logitBias(Map.of("test", 10))
@@ -460,6 +685,11 @@ public class WatsonxChatModelTest {
                             .toolSpecifications(
                                     ToolSpecification.builder().name("test").build())
                             .topLogprobs(10)
+                            .guidedChoice("a", "b")
+                            .guidedGrammar("guidedGrammar")
+                            .guidedRegex("guidedRegex")
+                            .repetitionPenalty(1.1)
+                            .lengthPenalty(1.2)
                             .build())
                     .supportedCapabilities(Capability.RESPONSE_FORMAT_JSON_SCHEMA)
                     .build();
@@ -471,35 +701,39 @@ public class WatsonxChatModelTest {
                     .build();
 
             chatModel.chat(chatRequest);
-            var parameters = chatRequestCaptor.getValue().getParameters();
+            var parameters = chatRequestCaptor.getValue().parameters();
 
-            assertEquals(0.1, parameters.getFrequencyPenalty());
-            assertEquals(0, parameters.getMaxCompletionTokens());
-            assertEquals("default-model-name", parameters.getModelId());
-            assertEquals(0.2, parameters.getPresencePenalty());
-            assertEquals(List.of("["), parameters.getStop());
-            assertEquals(0.3, parameters.getTemperature());
-            assertEquals(null, parameters.getToolChoiceOption());
-            assertEquals(null, parameters.getResponseFormat());
-            assertEquals(30, parameters.getTimeLimit());
-            assertEquals(0.4, parameters.getTopP());
-            assertEquals("default-project-id", parameters.getProjectId());
-            assertEquals(Map.of("test", 10), parameters.getLogitBias());
-            assertTrue(parameters.getLogprobs());
-            assertEquals(5, parameters.getSeed());
-            assertEquals("default-space-id", parameters.getSpaceId());
+            assertEquals(0.1, parameters.frequencyPenalty());
+            assertEquals(0, parameters.maxCompletionTokens());
+            assertEquals("default-model-name", parameters.modelId());
+            assertEquals(0.2, parameters.presencePenalty());
+            assertEquals(List.of("["), parameters.stop());
+            assertEquals(0.3, parameters.temperature());
+            assertEquals(null, parameters.toolChoiceOption());
+            assertEquals(null, parameters.responseFormat());
+            assertEquals(30, parameters.timeLimit());
+            assertEquals(0.4, parameters.topP());
+            assertEquals("default-project-id", parameters.projectId());
+            assertEquals(Map.of("test", 10), parameters.logitBias());
+            assertTrue(parameters.logprobs());
+            assertEquals(5, parameters.seed());
+            assertEquals("default-space-id", parameters.spaceId());
             assertEquals(
-                    Map.of("type", "function", "function", Map.of("name", "toolChoiceName")),
-                    parameters.getToolChoice());
-            assertEquals(10, parameters.getTopLogprobs());
-            assertNull(parameters.getToolChoiceOption());
+                    Map.of("type", "function", "function", Map.of("name", "toolChoiceName")), parameters.toolChoice());
+            assertEquals(10, parameters.topLogprobs());
+            assertNull(parameters.toolChoiceOption());
+            assertEquals(Set.of("a", "b"), parameters.guidedChoice());
+            assertEquals("guidedGrammar", parameters.guidedGrammar());
+            assertEquals("guidedRegex", parameters.guidedRegex());
+            assertEquals(1.1, parameters.repetitionPenalty());
+            assertEquals(1.2, parameters.lengthPenalty());
         });
 
         withChatServiceMock(() -> {
 
             // TEST 1: Override paramaters
             var chatModel = WatsonxChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .apiKey("api-key")
                     .defaultRequestParameters(WatsonxChatRequestParameters.builder()
                             .modelName("modelId")
@@ -513,7 +747,7 @@ public class WatsonxChatModelTest {
                             .temperature(0.3)
                             .toolChoice(ToolChoice.REQUIRED)
                             .responseFormat(ResponseFormat.TEXT)
-                            .timeLimit(Duration.ofMillis(30))
+                            .timeout(Duration.ofMillis(30))
                             .topP(0.4)
                             .projectId("default-project-id")
                             .logitBias(Map.of("test", 10))
@@ -544,17 +778,17 @@ public class WatsonxChatModelTest {
                     .build();
 
             chatModel.chat(chatRequest);
-            var parameters = chatRequestCaptor.getValue().getParameters();
+            var parameters = chatRequestCaptor.getValue().parameters();
 
-            assertEquals("customModelName", parameters.getModelId());
-            assertEquals(0.10, parameters.getFrequencyPenalty());
-            assertEquals(10, parameters.getMaxCompletionTokens());
-            assertEquals(0.10, parameters.getPresencePenalty());
-            assertEquals("json_object", parameters.getResponseFormat());
-            assertEquals(List.of("stop"), parameters.getStop());
-            assertEquals(0.10, parameters.getTemperature());
-            assertEquals(null, parameters.getToolChoiceOption());
-            assertEquals(0.10, parameters.getTopP());
+            assertEquals("customModelName", parameters.modelId());
+            assertEquals(0.10, parameters.frequencyPenalty());
+            assertEquals(10, parameters.maxCompletionTokens());
+            assertEquals(0.10, parameters.presencePenalty());
+            assertEquals("json_object", parameters.responseFormat());
+            assertEquals(List.of("stop"), parameters.stop());
+            assertEquals(0.10, parameters.temperature());
+            assertEquals(null, parameters.toolChoiceOption());
+            assertEquals(0.10, parameters.topP());
             // ----------------
         });
 
@@ -562,7 +796,7 @@ public class WatsonxChatModelTest {
 
             // TEST 2: Override parameters
             var chatModel = WatsonxChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelId")
                     .projectId("project-id")
                     .spaceId("space-id")
@@ -575,7 +809,7 @@ public class WatsonxChatModelTest {
                     .temperature(0.3)
                     .toolChoice(ToolChoice.REQUIRED)
                     .responseFormat(ResponseFormat.TEXT)
-                    .timeLimit(Duration.ofMillis(30))
+                    .timeout(Duration.ofMillis(30))
                     .topP(0.4)
                     .projectId("default-project-id")
                     .logitBias(Map.of("test", 10))
@@ -586,6 +820,11 @@ public class WatsonxChatModelTest {
                     .toolSpecifications(ToolSpecification.builder().name("test").build())
                     .topLogprobs(10)
                     .supportedCapabilities(Capability.RESPONSE_FORMAT_JSON_SCHEMA)
+                    .guidedChoice("defaultValue1", "defaultValue2")
+                    .guidedGrammar("defaultGuidedGrammar")
+                    .guidedRegex("defaultGuidedRegex")
+                    .repetitionPenalty(1.0)
+                    .lengthPenalty(1.0)
                     .build();
 
             var chatRequest = ChatRequest.builder()
@@ -604,7 +843,7 @@ public class WatsonxChatModelTest {
                                             .addStringProperty("city")
                                             .build())
                                     .build())
-                            .timeLimit(Duration.ofMillis(40))
+                            .timeout(Duration.ofMillis(40))
                             .topP(0.5)
                             .projectId("projectIds")
                             .logitBias(Map.of("tests", 11))
@@ -616,31 +855,41 @@ public class WatsonxChatModelTest {
                                     .name("toolChoiceName")
                                     .build())
                             .topLogprobs(11)
+                            .guidedChoice("value1", "value2")
+                            .guidedGrammar("guidedGrammar")
+                            .guidedRegex("guidedRegex")
+                            .repetitionPenalty(1.1)
+                            .lengthPenalty(1.2)
                             .build())
                     .build();
 
             chatModel.chat(chatRequest);
-            var parameters = chatRequestCaptor.getValue().getParameters();
+            var parameters = chatRequestCaptor.getValue().parameters();
 
-            assertEquals(0.2, parameters.getFrequencyPenalty());
-            assertEquals(10, parameters.getMaxCompletionTokens());
-            assertEquals("modelNames", parameters.getModelId());
-            assertEquals(0.3, parameters.getPresencePenalty());
-            assertEquals(List.of("[]"), parameters.getStop());
-            assertEquals(0.4, parameters.getTemperature());
-            assertEquals(null, parameters.getToolChoiceOption());
-            assertEquals("json_schema", parameters.getResponseFormat());
-            assertNotNull(parameters.getJsonSchema());
-            assertEquals(40, parameters.getTimeLimit());
-            assertEquals(0.5, parameters.getTopP());
-            assertEquals("projectIds", parameters.getProjectId());
-            assertEquals(Map.of("tests", 11), parameters.getLogitBias());
-            assertFalse(parameters.getLogprobs());
-            assertEquals(15, parameters.getSeed());
-            assertEquals("spaceIds", parameters.getSpaceId());
-            assertNotNull(parameters.getToolChoice());
-            assertEquals(11, parameters.getTopLogprobs());
-            assertNull(parameters.getToolChoiceOption());
+            assertEquals(0.2, parameters.frequencyPenalty());
+            assertEquals(10, parameters.maxCompletionTokens());
+            assertEquals("modelNames", parameters.modelId());
+            assertEquals(0.3, parameters.presencePenalty());
+            assertEquals(List.of("[]"), parameters.stop());
+            assertEquals(0.4, parameters.temperature());
+            assertEquals(null, parameters.toolChoiceOption());
+            assertEquals("json_schema", parameters.responseFormat());
+            assertNotNull(parameters.jsonSchema());
+            assertEquals(40, parameters.timeLimit());
+            assertEquals(0.5, parameters.topP());
+            assertEquals("projectIds", parameters.projectId());
+            assertEquals(Map.of("tests", 11), parameters.logitBias());
+            assertFalse(parameters.logprobs());
+            assertEquals(15, parameters.seed());
+            assertEquals("spaceIds", parameters.spaceId());
+            assertNotNull(parameters.toolChoice());
+            assertEquals(11, parameters.topLogprobs());
+            assertNull(parameters.toolChoiceOption());
+            assertEquals(Set.of("value1", "value2"), parameters.guidedChoice());
+            assertEquals("guidedGrammar", parameters.guidedGrammar());
+            assertEquals("guidedRegex", parameters.guidedRegex());
+            assertEquals(1.1, parameters.repetitionPenalty());
+            assertEquals(1.2, parameters.lengthPenalty());
             // ----------------
         });
     }
@@ -649,7 +898,7 @@ public class WatsonxChatModelTest {
     void testChatRequestWithTopK() {
 
         var chatModel = WatsonxChatModel.builder()
-                .url("https://test.com")
+                .baseUrl("https://test.com")
                 .modelName("modelId")
                 .projectId("project-id")
                 .spaceId("space-id")
@@ -664,7 +913,7 @@ public class WatsonxChatModelTest {
                         .build()));
 
         assertThrows(UnsupportedFeatureException.class, () -> WatsonxChatModel.builder()
-                .url("https://test.com")
+                .baseUrl("https://test.com")
                 .modelName("modelId")
                 .projectId("project-id")
                 .spaceId("space-id")
@@ -678,7 +927,7 @@ public class WatsonxChatModelTest {
     void testSupportCapabilities() {
 
         var chatModel = WatsonxChatModel.builder()
-                .url("https://test.com")
+                .baseUrl("https://test.com")
                 .modelName("modelId")
                 .projectId("project-id")
                 .spaceId("space-id")

@@ -1,12 +1,13 @@
 package dev.langchain4j.agentic.declarative;
 
+import static java.lang.annotation.ElementType.METHOD;
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
+
+import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.supervisor.SupervisorContextStrategy;
 import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
-
-import static java.lang.annotation.ElementType.METHOD;
-import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
  * Marks a method as a supervisor agent that can autonomously coordinate and invoke multiple sub-agents.
@@ -16,10 +17,8 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  * {@code
  *     public interface SupervisorBanker {
  *
- *         @SupervisorAgent(responseStrategy = SupervisorResponseStrategy.SUMMARY, subAgents = {
- *                 @SubAgent(type = WithdrawAgent.class),
- *                 @SubAgent(type = CreditAgent.class)
- *         })
+ *         @SupervisorAgent( responseStrategy = SupervisorResponseStrategy.SUMMARY,
+ *                 subAgents = { WithdrawAgent.class, CreditAgent.class })
  *         String invoke(@V("request") String request);
  *
  *         @ChatModelSupplier
@@ -50,18 +49,27 @@ public @interface SupervisorAgent {
     String description() default "";
 
     /**
-     * Name of the output variable that will hold the result of the agent invocation.
+     * Key of the output variable that will be used to store the result of the agent's invocation.
      *
      * @return name of the output variable.
      */
-    String outputName() default "";
+    String outputKey() default "";
+
+    /**
+     * Strongly typed key of the output variable that will be used to store the result of the agent's invocation.
+     * It enforces type safety when retrieving the output from the agent's state and can be used in alternative
+     * to the {@code outputKey()} attribute. Note that only one of those two attributes can be used at a time.
+     *
+     * @return class representing the typed output variable.
+     */
+    Class<? extends TypedKey<?>> typedOutputKey() default Agent.NoTypedKey.class;
 
     /**
      * Array of sub-agents that can be invoked by the supervisor agent.
      *
      * @return array of sub-agents.
      */
-    SubAgent[] subAgents();
+    Class<?>[] subAgents();
 
     /**
      * Maximum number of sub-agent invocations allowed during a single supervisor agent execution.

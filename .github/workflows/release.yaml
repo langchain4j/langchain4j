@@ -1,8 +1,6 @@
 name: release
 
 on:
-  repository_dispatch:
-    types: [ trigger-release ]
   workflow_dispatch:
     inputs:
       stableVersion:
@@ -25,12 +23,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Check out existing release branch
-        run: |
-          git fetch origin release-${{ env.STABLE_VERSION }}
-          git checkout release-${{ env.STABLE_VERSION }}
-          echo "Checked out release-${{ env.STABLE_VERSION }} branch."
-
       - name: Set up JDK 25
         uses: actions/setup-java@v4
         with:
@@ -43,64 +35,104 @@ jobs:
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg-passphrase: GPG_PASSPHRASE
 
-      - name: Authenticate to Google Cloud
-        uses: 'google-github-actions/auth@v2'
-        with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
-          credentials_json: ${{ secrets.GCP_CREDENTIALS_JSON }}
-
-      - name: Setup Testcontainers Cloud Client
-        uses: atomicjar/testcontainers-cloud-setup-action@v1
-        with:
-          token: ${{ secrets.TC_CLOUD_TOKEN }}
-
-      - name: release
+      - name: Show inputs
         run: |
-          mvn -B -U --fail-at-end \
-            -DskipTests -DskipITs -DskipAnthropicITs \
-            -DskipLocalAiITs -DskipMilvusITs -DskipMongoDbAtlasITs \
-            -DskipOllamaITs -DskipVearchITs -DskipVertexAiGeminiITs \
-            -pl !langchain4j-core,!langchain4j-parent,!internal/langchain4j-docu-chatbot-updater \
-            -Psign clean deploy
+          echo "Stable version: ${{ env.STABLE_VERSION }}"
+          echo "Beta version: ${{ env.BETA_VERSION }}"
+
+      - name: Create release branch
+        run: |
+          git checkout -b release-${{ env.STABLE_VERSION }}
+
+      - name: Extract current stable SNAPSHOT version from POM property
+        id: extract-stable-snapshot-version
+        run: |
+          REVISION=$(mvn help:evaluate -Dexpression=langchain4j.stable.version -q -DforceStdout)
+          echo "stableVersionSnapshot=$REVISION" >> $GITHUB_OUTPUT
+
+      - name: Update stable versions
+        run: mvn versions:set -DnewVersion=${{ env.STABLE_VERSION }} -DoldVersion=${{ steps.extract-stable-snapshot-version.outputs.stableVersionSnapshot }} -DgroupId=* -DartifactId=* -DgenerateBackupPoms=false
+
+      - name: Update stable version property
+        run: mvn versions:set-property -Dproperty=langchain4j.stable.version -DnewVersion=${{ env.STABLE_VERSION }} -DgenerateBackupPoms=false
+
+      - name: Extract current beta SNAPSHOT version from POM property
+        id: extract-beta-snapshot-version
+        run: |
+          REVISION=$(mvn help:evaluate -Dexpression=langchain4j.beta.version -q -DforceStdout)
+          echo "betaVersionSnapshot=$REVISION" >> $GITHUB_OUTPUT
+
+      - name: Update beta versions
+        run: mvn versions:set -DnewVersion=${{ env.BETA_VERSION }} -DoldVersion=${{ steps.extract-beta-snapshot-version.outputs.betaVersionSnapshot }} -DgroupId=* -DartifactId=* -DgenerateBackupPoms=false
+
+      - name: Update beta version property
+        run: mvn versions:set-property -Dproperty=langchain4j.beta.version -DnewVersion=${{ env.BETA_VERSION }} -DgenerateBackupPoms=false
+
+      - name: Remove integration-tests module from root POM
+        run: sed -i '/<module>integration-tests<\/module>/d' pom.xml
+
+      - name: Remove langchain4j-docu-chatbot-updater module from root POM
+        run: sed -i '/<module>internal\/langchain4j-docu-chatbot-updater<\/module>/d' pom.xml
+
+      - name: release_core_and_parent
+        run: mvn -B -U -pl langchain4j-core,langchain4j-parent -Psign clean deploy
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AZURE_OPENAI_AUDIO_DEPLOYMENT_NAME: ${{ secrets.AZURE_OPENAI_AUDIO_DEPLOYMENT_NAME }}
-          AZURE_OPENAI_AUDIO_ENDPOINT: ${{ secrets.AZURE_OPENAI_AUDIO_ENDPOINT }}
-          AZURE_OPENAI_AUDIO_KEY: ${{ secrets.AZURE_OPENAI_AUDIO_KEY }}
-          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
-          AZURE_OPENAI_KEY: ${{ secrets.AZURE_OPENAI_KEY }}
-          AZURE_SEARCH_ENDPOINT: ${{ secrets.AZURE_SEARCH_ENDPOINT }}
-          AZURE_SEARCH_KEY: ${{ secrets.AZURE_SEARCH_KEY }}
-          COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
-          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-          ELASTICSEARCH_CLOUD_API_KEY: ${{ secrets.ELASTICSEARCH_CLOUD_API_KEY }}
-          ELASTICSEARCH_CLOUD_URL: ${{ secrets.ELASTICSEARCH_CLOUD_URL }}
-          GCP_CREDENTIALS_JSON: ${{ secrets.GCP_CREDENTIALS_JSON }}
-          GCP_LOCATION: ${{ secrets.GCP_LOCATION }}
-          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-          GCP_PROJECT_NUM: ${{ secrets.GCP_PROJECT_NUM }}
-          GCP_VERTEXAI_ENDPOINT: ${{ secrets.GCP_VERTEXAI_ENDPOINT }}
-          GOOGLE_AI_GEMINI_API_KEY: ${{ secrets.GOOGLE_AI_GEMINI_API_KEY }}
-          HF_API_KEY: ${{ secrets.HF_API_KEY }}
-          JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
-          MILVUS_API_KEY: ${{ secrets.MILVUS_API_KEY }}
-          MILVUS_URI: ${{ secrets.MILVUS_URI }}
-          MISTRAL_AI_API_KEY: ${{ secrets.MISTRAL_AI_API_KEY }}
-          NOMIC_API_KEY: ${{ secrets.NOMIC_API_KEY }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
-          OVHAI_AI_API_KEY: ${{ secrets.OVHAI_AI_API_KEY }}
-          PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
-          RAPID_API_KEY: ${{ secrets.RAPID_API_KEY }}
-          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
-          VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}
-          WEAVIATE_API_KEY: ${{ secrets.WEAVIATE_API_KEY }}
-          WEAVIATE_HOST: ${{ secrets.WEAVIATE_HOST }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+
+      - name: release_embeddings
+        run: |
+          EMBEDDING_MODULES=$(find embeddings -mindepth 1 -maxdepth 1 -type d -exec test -f "{}/pom.xml" \; -print | paste -sd , -)
+          
+          mvn -B -U --fail-at-end \
+            -DskipTests -DskipITs \
+            -pl "$EMBEDDING_MODULES" \
+            -Psign clean deploy
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+
+      - name: release_the_rest_of_modules
+        run: |
+          EMBEDDING_MODULES=$(find embeddings -mindepth 1 -maxdepth 1 -type d -exec test -f "{}/pom.xml" \; -print | paste -sd , -)
+          
+          EXCLUDES="!langchain4j-core,!langchain4j-parent"
+
+          # Append embeddings exclusions (converted to !path syntax)
+          if [ -n "$EMBEDDING_MODULES" ]; then
+            # Turn "embeddings/a,embeddings/b" into "!embeddings/a,!embeddings/b"
+            EMBEDDING_MODULES_EXCLUDES=$(echo "$EMBEDDING_MODULES" | sed 's/[^,]*/!\0/g')
+            EXCLUDES="$EXCLUDES,$EMBEDDING_MODULES_EXCLUDES"
+          fi
+
+          echo "Excluding modules: $EXCLUDES"
+    
+          mvn -B -U --fail-at-end \
+            -DskipTests -DskipITs \
+            -pl "$EXCLUDES" \
+            -Psign clean deploy
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+
+      - name: Commit version changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Release versions ${{ env.STABLE_VERSION }} and ${{ env.BETA_VERSION }}"
+
+      - name: Push release branch
+        run: |
+          git push origin release-${{ env.STABLE_VERSION }}
+
+      - name: Tag release
+        run: |
+          git tag ${{ env.STABLE_VERSION }}
+          git push origin ${{ env.STABLE_VERSION }}
 
       - name: Trigger release in the langchain4j/langchain4j-spring repo
         uses: peter-evans/repository-dispatch@v4

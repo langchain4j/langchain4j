@@ -1,5 +1,12 @@
 package dev.langchain4j.model.openai;
 
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_OPENAI_URL;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_USER_AGENT;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.time.Duration.ofSeconds;
+
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.image.ImageModel;
@@ -9,19 +16,12 @@ import dev.langchain4j.model.openai.internal.image.GenerateImagesResponse;
 import dev.langchain4j.model.openai.internal.image.ImageData;
 import dev.langchain4j.model.openai.spi.OpenAiImageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
-import org.slf4j.Logger;
-
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
-
-import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_OPENAI_URL;
-import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_USER_AGENT;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.time.Duration.ofSeconds;
+import org.slf4j.Logger;
 
 /**
  * Represents an OpenAI DALL·E models to generate artistic images. Versions 2 and 3 (default) are supported.
@@ -53,7 +53,8 @@ public class OpenAiImageModel implements ImageModel {
                 .logResponses(getOrDefault(builder.logResponses, false))
                 .logger(builder.logger)
                 .userAgent(DEFAULT_USER_AGENT)
-                .customHeaders(builder.customHeaders);
+                .customHeaders(builder.customHeadersSupplier)
+                .customQueryParams(builder.customQueryParams);
 
         this.client = cBuilder.build();
 
@@ -74,7 +75,8 @@ public class OpenAiImageModel implements ImageModel {
     public Response<Image> generate(String prompt) {
         GenerateImagesRequest request = requestBuilder(prompt).build();
 
-        GenerateImagesResponse response = withRetryMappingExceptions(() -> client.imagesGeneration(request), maxRetries).execute();
+        GenerateImagesResponse response = withRetryMappingExceptions(() -> client.imagesGeneration(request), maxRetries)
+                .execute();
 
         return Response.from(fromImageData(response.data().get(0)));
     }
@@ -83,11 +85,11 @@ public class OpenAiImageModel implements ImageModel {
     public Response<List<Image>> generate(String prompt, int n) {
         GenerateImagesRequest request = requestBuilder(prompt).n(n).build();
 
-        GenerateImagesResponse response = withRetryMappingExceptions(() -> client.imagesGeneration(request), maxRetries).execute();
+        GenerateImagesResponse response = withRetryMappingExceptions(() -> client.imagesGeneration(request), maxRetries)
+                .execute();
 
         return Response.from(
-                response.data().stream().map(OpenAiImageModel::fromImageData).collect(Collectors.toList())
-        );
+                response.data().stream().map(OpenAiImageModel::fromImageData).collect(Collectors.toList()));
     }
 
     public static OpenAiImageModelBuilder builder() {
@@ -116,7 +118,8 @@ public class OpenAiImageModel implements ImageModel {
         private Boolean logRequests;
         private Boolean logResponses;
         private Logger logger;
-        private Map<String, String> customHeaders;
+        private Supplier<Map<String, String>> customHeadersSupplier;
+        private Map<String, String> customQueryParams;
 
         public OpenAiImageModelBuilder() {
             // This is public so it can be extended
@@ -211,8 +214,26 @@ public class OpenAiImageModel implements ImageModel {
             return this;
         }
 
+        /**
+         * Sets custom HTTP headers.
+         */
         public OpenAiImageModelBuilder customHeaders(Map<String, String> customHeaders) {
-            this.customHeaders = customHeaders;
+            this.customHeadersSupplier = () -> customHeaders;
+            return this;
+        }
+
+        /**
+         * Sets a supplier for custom HTTP headers.
+         * The supplier is called before each request, allowing dynamic header values.
+         * For example, this is useful for OAuth2 tokens that expire and need refreshing.
+         */
+        public OpenAiImageModelBuilder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
+            return this;
+        }
+
+        public OpenAiImageModelBuilder customQueryParams(Map<String, String> customQueryParams) {
+            this.customQueryParams = customQueryParams;
             return this;
         }
 
@@ -222,7 +243,11 @@ public class OpenAiImageModel implements ImageModel {
     }
 
     private static Image fromImageData(ImageData data) {
-        return Image.builder().url(data.url()).base64Data(data.b64Json()).revisedPrompt(data.revisedPrompt()).build();
+        return Image.builder()
+                .url(data.url())
+                .base64Data(data.b64Json())
+                .revisedPrompt(data.revisedPrompt())
+                .build();
     }
 
     private GenerateImagesRequest.Builder requestBuilder(String prompt) {

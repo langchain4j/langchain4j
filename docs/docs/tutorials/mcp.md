@@ -5,6 +5,11 @@ MCP compliant servers that can provide and execute tools. General
 information about the protocol can be found at the [MCP
 website](https://modelcontextprotocol.io/).
 
+:::note
+Looking to build an MCP **stdio server** in Java?
+The server implementation lives in LangChain4j Community. See [Building a Java MCP stdio server](./mcp-stdio-server).
+:::
+
 The protocol specifies two types of transport, both of these are supported:
 
 - [Streamable HTTP](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#streamable-http):
@@ -13,6 +18,12 @@ The protocol specifies two types of transport, both of these are supported:
 - [stdio](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#stdio): The client 
   can run an MCP server as a local subprocess and
   communicate with it directly via standard input/output.
+
+On top of the spec, LangChain4j implements the `WebSocket` transport. This transport is not
+standardized and currently, the client side is developed in a way that it is compatible
+with the WebSocket transport as implemented by the 
+[Quarkus MCP Server extension](https://docs.quarkiverse.io/quarkus-mcp-server/dev). For MCP servers exposing WebSockets but
+built using other frameworks, compatibility is not guaranteed.
 
 Additionally, LangChain4J supports a Docker stdio transport that can use a stdio MCP server distributed as a 
 container image.
@@ -33,7 +44,7 @@ First, you need an instance of an MCP Transport.
 For stdio - this example shows how to start a server from a NPM package as a subprocess:
 
 ```java
-McpTransport transport = new StdioMcpTransport.Builder()
+McpTransport transport = StdioMcpTransport.builder()
     .command(List.of("/usr/bin/npm", "exec", "@modelcontextprotocol/server-everything@0.6.2"))
     .logEvents(true) // only if you want to see the traffic in the log
     .build();
@@ -42,7 +53,7 @@ McpTransport transport = new StdioMcpTransport.Builder()
 For the Streamable HTTP transport, you need to provide a URL to the server's `POST` endpoint:
 
 ```java
-McpTransport transport = new StreamableHttpMcpTransport.Builder()
+McpTransport transport = StreamableHttpMcpTransport.builder()
         .url("http://localhost:3001/mcp")
         .logRequests(true) // if you want to see the traffic in the log
         .logResponses(true)
@@ -52,13 +63,22 @@ McpTransport transport = new StreamableHttpMcpTransport.Builder()
 **_NOTE:_** The Streamable HTTP transport currently does not create a global SSE stream
 (as described in the [spec](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#listening-for-messages-from-the-server)).
 Depending on the MCP server implementation, this may mean features that require server-initiated requests and notifications may or may not work.
-If the server piggybacks requests and notifications over SSE streams created for client-initiated operations, these will work. 
+If the server piggybacks requests and notifications over SSE streams created for client-initiated operations, these will work.
+
+For the WebSocket transport:
+```java
+McpTransport transport = WebSocketMcpTransport.builder()
+        .url("ws://localhost:3001/mcp/ws")
+        .logResponses(true)
+        .logRequests(true)
+        .build();
+```
 
 For the legacy HTTP transport, there are two URLs, one for starting the SSE channel and one for submitting commands via `POST`.
 The latter is provided by the server dynamically, the former needs to be specified using the `sseUrl` method:
 
 ```java
-McpTransport transport = new HttpMcpTransport.Builder()
+McpTransport transport = HttpMcpTransport.builder()
     .sseUrl("http://localhost:3001/sse")
     .logRequests(true) // if you want to see the traffic in the log
     .logResponses(true)
@@ -77,7 +97,7 @@ For the Docker stdio transport, you first need to add a module to your pom.xml:
 Then you need to create a Docker transport:
 
 ```java
-McpTransport transport = new DockerMcpTransport.Builder()
+McpTransport transport = DockerMcpTransport.builder()
     .image("mcp/time")
     .dockerHost("unix:///var/run/docker.sock")
     .logEvents(true) // if you want to see the traffic in the log
@@ -89,7 +109,7 @@ McpTransport transport = new DockerMcpTransport.Builder()
 To create an MCP client from the transport:
 
 ```java
-McpClient mcpClient = new DefaultMcpClient.Builder()
+McpClient mcpClient = DefaultMcpClient.builder()
     .key("MyMCPClient")
     .transport(transport)
     .build();
@@ -219,6 +239,20 @@ McpToolProvider toolProvider = McpToolProvider.builder()
         .build();
 ```
 
+### MCP tool metadata
+
+The MCP protocol allows servers to provide additional metadata for each tool either in the form of annotations,
+or in the `_meta` field of a tool definition.
+LangChain4j exposes all of this metadata through the map stored inside `ToolSpecification.metadata()` method.
+Annotations are stored in the map using keys that can be found as 
+constants in the `dev.langchain4j.mcp.client.McpToolMetadataKeys` class.
+Contents of the `_meta` field are stored using their original keys, the JSON values are serialized
+as nested maps.
+
+The `title` field that exists directly in the MCP tool definition is exposed under 
+`McpToolMetadataKeys.TITLE` key in the metadata map to distinguish it from the title
+that is retrieved from annotations - that one is exposed under the `McpToolMetadataKeys.ANNOTATION_TITLE` key.
+
 ## Logging
 
 The MCP protocol also defines a way for the server to send log messages to
@@ -235,6 +269,18 @@ McpClient mcpClient = new DefaultMcpClient.Builder()
     .logMessageHandler(new MyLogMessageHandler())
     .build();
 ```
+
+## MCP listeners
+
+The MCP client supports listeners that can listen to events happening
+during the lifetime of the client. The interface
+`dev.langchain4j.mcp.client.McpClientListener` serves as the base
+for listener implementations. The listener will
+be invoked before and after every tool call, prompt rendering
+and resource access. The respective `McpCallContext` is injected when calling
+the listeners. This object contains the actual MCP message being sent to the
+server and an instance of `InvocationContext` when applicable (only when this
+call happens as part of an AI service invocation).
 
 ## Resources
 

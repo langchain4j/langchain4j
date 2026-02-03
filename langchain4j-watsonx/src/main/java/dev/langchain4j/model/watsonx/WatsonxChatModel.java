@@ -7,9 +7,11 @@ import static java.util.Objects.nonNull;
 import static java.util.stream.Collectors.toCollection;
 
 import com.ibm.watsonx.ai.chat.ChatResponse.ResultChoice;
+import com.ibm.watsonx.ai.chat.model.AssistantMessage;
 import com.ibm.watsonx.ai.chat.model.ChatMessage;
 import com.ibm.watsonx.ai.chat.model.ChatParameters;
 import com.ibm.watsonx.ai.chat.model.ChatUsage;
+import com.ibm.watsonx.ai.chat.model.ExtractionTags;
 import com.ibm.watsonx.ai.chat.model.ResultMessage;
 import com.ibm.watsonx.ai.chat.model.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -35,10 +37,10 @@ import java.util.Set;
  *
  * <pre>{@code
  * ChatModel chatModel = WatsonxChatModel.builder()
- *     .url("https://...") // or use CloudRegion
+ *     .baseUrl("https://...") // or use CloudRegion
  *     .apiKey("...")
  *     .projectId("...")
- *     .modelName("ibm/granite-3-8b-instruct")
+ *     .modelName("ibm/granite-3-3-8b-instruct")
  *     .maxOutputTokens(0)
  *     .temperature(0.7)
  *     .build();
@@ -62,15 +64,17 @@ public class WatsonxChatModel extends WatsonxChat implements ChatModel {
         List<ChatMessage> messages =
                 chatRequest.messages().stream().map(Converter::toChatMessage).collect(toCollection(ArrayList::new));
 
-        List<Tool> tools = nonNull(toolSpecifications) && toolSpecifications.size() > 0
+        List<Tool> tools = nonNull(toolSpecifications) && !toolSpecifications.isEmpty()
                 ? toolSpecifications.stream().map(Converter::toTool).toList()
                 : null;
 
         var watsonxChatRequest = com.ibm.watsonx.ai.chat.ChatRequest.builder();
+        ExtractionTags tags = null;
 
-        if (isThinkingActivable(chatRequest.messages(), toolSpecifications)) {
-            messages.add(THINKING);
-            watsonxChatRequest.thinking(tags);
+        if (chatRequest.parameters() instanceof WatsonxChatRequestParameters wcrp && nonNull(wcrp.thinking())) {
+            validateThinkingIsAllowedForGraniteModel(wcrp.modelName(), chatRequest.messages(), toolSpecifications);
+            watsonxChatRequest.thinking(wcrp.thinking());
+            tags = wcrp.thinking().extractionTags();
         }
 
         ChatParameters parameters = Converter.toChatParameters(chatRequest.parameters());
@@ -82,9 +86,9 @@ public class WatsonxChatModel extends WatsonxChat implements ChatModel {
                         .parameters(parameters)
                         .build()));
 
-        ResultChoice choice = chatResponse.getChoices().get(0);
-        ChatUsage usage = chatResponse.getUsage();
-        ResultMessage message = choice.getMessage();
+        ResultChoice choice = chatResponse.choices().get(0);
+        ChatUsage usage = chatResponse.usage();
+        ResultMessage message = choice.message();
 
         if (isNotNullOrBlank(message.refusal())) throw new ContentFilteredException(message.refusal());
 
@@ -95,24 +99,24 @@ public class WatsonxChatModel extends WatsonxChat implements ChatModel {
                     .map(Converter::toToolExecutionRequest)
                     .toList());
         } else if (nonNull(tags)) {
-            aiMessage.thinking(chatResponse.extractThinking());
-            aiMessage.text(chatResponse.extractContent());
+            AssistantMessage assistantMessage = chatResponse.toAssistantMessage();
+            aiMessage.thinking(assistantMessage.thinking());
+            aiMessage.text(assistantMessage.content());
         } else {
             aiMessage.text(message.content());
         }
 
-        FinishReason finishReason = Converter.toFinishReason(choice.getFinishReason());
-        TokenUsage tokenUsage =
-                new TokenUsage(usage.getPromptTokens(), usage.getCompletionTokens(), usage.getTotalTokens());
+        FinishReason finishReason = Converter.toFinishReason(choice.finishReason());
+        TokenUsage tokenUsage = new TokenUsage(usage.promptTokens(), usage.completionTokens(), usage.totalTokens());
 
         return ChatResponse.builder()
                 .aiMessage(aiMessage.build())
                 .metadata(WatsonxChatResponseMetadata.builder()
-                        .created(chatResponse.getCreated())
-                        .modelVersion(chatResponse.getModelVersion())
+                        .created(chatResponse.created())
+                        .modelVersion(chatResponse.modelVersion())
                         .finishReason(finishReason)
-                        .id(chatResponse.getId())
-                        .modelName(chatResponse.getModelId())
+                        .id(chatResponse.id())
+                        .modelName(chatResponse.modelId())
                         .tokenUsage(tokenUsage)
                         .build())
                 .build();
@@ -145,7 +149,7 @@ public class WatsonxChatModel extends WatsonxChat implements ChatModel {
      *
      * <pre>{@code
      * ChatModel chatModel = WatsonxChatModel.builder()
-     *     .url("https://...") // or use CloudRegion
+     *     .baseUrl("https://...") // or use CloudRegion
      *     .apiKey("...")
      *     .projectId("...")
      *     .modelName("ibm/granite-3-8b-instruct")

@@ -12,6 +12,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.AudioContent;
+import dev.langchain4j.data.message.CustomMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.ImageContent.DetailLevel;
 import dev.langchain4j.data.message.PdfFileContent;
@@ -34,6 +35,7 @@ import java.net.URI;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.skyscreamer.jsonassert.JSONAssert;
 
@@ -170,6 +172,11 @@ public class ConverterTest {
     }
 
     @Test
+    void testToCustomMessage() {
+        assertThrows(UnsupportedOperationException.class, () -> Converter.toChatMessage(CustomMessage.from(Map.of())));
+    }
+
+    @Test
     void testToTool() {
 
         var toolSpecification = ToolSpecification.builder()
@@ -253,15 +260,12 @@ public class ConverterTest {
                 .build();
 
         var toConvert = new com.ibm.watsonx.ai.chat.model.PartialToolCall(
-                "completion-id", 10, "id", "name", "{\"name\":\"Klaus\"");
+                "completion-id", 0, 10, "id", "name", "{\"name\":\"Klaus\"");
         assertEquals(EXPECTED, Converter.toPartialToolCall(toConvert));
     }
 
     @Test
-    @SuppressWarnings("rawtypes")
-    void testToChatParameters() {
-
-        // --- TEST 1 ---
+    void testToChatParameters_withAllFieldsSet() {
         var parameters = WatsonxChatRequestParameters.builder()
                 .frequencyPenalty(0.1)
                 .maxOutputTokens(0)
@@ -271,7 +275,7 @@ public class ConverterTest {
                 .temperature(0.3)
                 .toolChoice(ToolChoice.AUTO)
                 .responseFormat(ResponseFormat.TEXT)
-                .timeLimit(Duration.ofMillis(30))
+                .timeout(Duration.ofMillis(30))
                 .topK(1)
                 .topP(0.4)
                 .projectId("projectId")
@@ -282,36 +286,48 @@ public class ConverterTest {
                 .toolChoiceName("toolChoiceName")
                 .toolSpecifications(ToolSpecification.builder().name("test").build())
                 .topLogprobs(10)
+                .guidedChoice("a", "b")
+                .guidedGrammar("guidedGrammar")
+                .guidedRegex("guidedRegex")
+                .lengthPenalty(1.1)
+                .repetitionPenalty(1.2)
                 .build();
 
         var p = Converter.toChatParameters(parameters);
-        assertEquals(0.1, p.getFrequencyPenalty());
-        assertEquals(0, p.getMaxCompletionTokens());
-        assertEquals("modelName", p.getModelId());
-        assertEquals(0.2, p.getPresencePenalty());
-        assertEquals(List.of("["), p.getStop());
-        assertEquals(0.3, p.getTemperature());
-        assertEquals("auto", p.getToolChoiceOption());
-        assertEquals(0.4, p.getTopP());
-        assertEquals(30, p.getTimeLimit());
-        assertEquals("projectId", p.getProjectId());
-        assertEquals(Map.of("test", 10), p.getLogitBias());
-        assertEquals(true, p.getLogprobs());
-        assertEquals(5, p.getSeed());
-        assertEquals("spaceId", p.getSpaceId());
-        assertEquals(10, p.getTopLogprobs());
-        assertNull(p.getResponseFormat());
-        // --------------
+        assertEquals(0.1, p.frequencyPenalty());
+        assertEquals(0, p.maxCompletionTokens());
+        assertEquals("modelName", p.modelId());
+        assertEquals(0.2, p.presencePenalty());
+        assertEquals(List.of("["), p.stop());
+        assertEquals(0.3, p.temperature());
+        assertEquals("auto", p.toolChoiceOption());
+        assertEquals(0.4, p.topP());
+        assertEquals(30, p.timeLimit());
+        assertEquals("projectId", p.projectId());
+        assertEquals(Map.of("test", 10), p.logitBias());
+        assertEquals(true, p.logprobs());
+        assertEquals(5, p.seed());
+        assertEquals("spaceId", p.spaceId());
+        assertEquals(10, p.topLogprobs());
+        assertEquals(Set.of("a", "b"), p.guidedChoice());
+        assertEquals("guidedGrammar", p.guidedGrammar());
+        assertEquals("guidedRegex", p.guidedRegex());
+        assertEquals(1.1, p.lengthPenalty());
+        assertEquals(1.2, p.repetitionPenalty());
+        assertNull(p.responseFormat());
+    }
 
-        // --- TEST 2 ---
-        parameters = WatsonxChatRequestParameters.builder()
+    @Test
+    @SuppressWarnings("rawtypes")
+    void testToChatParameters_withToolChoiceRequiredAndMatchingTool() {
+        var parameters = WatsonxChatRequestParameters.builder()
                 .toolChoice(ToolChoice.REQUIRED)
                 .toolSpecifications(
                         ToolSpecification.builder().name("toolChoiceName").build())
                 .build();
 
-        p = Converter.toChatParameters(parameters);
-        assertEquals("required", p.getToolChoiceOption());
+        var p = Converter.toChatParameters(parameters);
+        assertEquals("required", p.toolChoiceOption());
 
         parameters = WatsonxChatRequestParameters.builder()
                 .toolChoice(ToolChoice.REQUIRED)
@@ -321,12 +337,23 @@ public class ConverterTest {
                 .build();
 
         p = Converter.toChatParameters(parameters);
-        assertNull(p.getToolChoiceOption());
-        assertEquals("function", p.getToolChoice().get("type"));
-        assertEquals("toolChoiceName", ((Map) p.getToolChoice().get("function")).get("name"));
-        // --------------
+        assertNull(p.toolChoiceOption());
+        assertEquals("function", p.toolChoice().get("type"));
+        assertEquals("toolChoiceName", ((Map) p.toolChoice().get("function")).get("name"));
+    }
 
-        // --- TEST 3 ---
+    @Test
+    void testToChatParameters_withToolChoiceNone() {
+        var parameters = WatsonxChatRequestParameters.builder()
+                .toolChoice(ToolChoice.NONE)
+                .build();
+
+        var p = Converter.toChatParameters(parameters);
+        assertEquals("none", p.toolChoiceOption());
+    }
+
+    @Test
+    void testToChatParameters_withInvalidToolChoice() {
         assertThrows(
                 IllegalArgumentException.class,
                 () -> Converter.toChatParameters(WatsonxChatRequestParameters.builder()
@@ -356,15 +383,16 @@ public class ConverterTest {
                         .toolSpecifications(
                                 ToolSpecification.builder().name("notMatch").build())
                         .build()));
-        // --------------
+    }
 
-        // --- TEST 4 ---
-        parameters = WatsonxChatRequestParameters.builder()
+    @Test
+    void testToChatParameters_withResponseFormat() throws Exception {
+        var parameters = WatsonxChatRequestParameters.builder()
                 .responseFormat(ResponseFormat.JSON)
                 .build();
 
-        p = Converter.toChatParameters(parameters);
-        assertEquals("json_object", p.getResponseFormat());
+        var p = Converter.toChatParameters(parameters);
+        assertEquals("json_object", p.responseFormat());
 
         parameters = WatsonxChatRequestParameters.builder()
                 .responseFormat(JsonSchema.builder()
@@ -376,9 +404,9 @@ public class ConverterTest {
                 .build();
 
         p = Converter.toChatParameters(parameters);
-        assertEquals("json_schema", p.getResponseFormat());
-        assertEquals("test", p.getJsonSchema().name());
-        assertEquals(true, p.getJsonSchema().strict());
+        assertEquals("json_schema", p.responseFormat());
+        assertEquals("test", p.jsonSchema().name());
+        assertEquals(true, p.jsonSchema().strict());
         JSONAssert.assertEquals(
                 """
                                 {
@@ -390,8 +418,7 @@ public class ConverterTest {
                                     },
                                     required : [ ]
                                 }""",
-                Json.toJson(p.getJsonSchema().schema()),
+                Json.toJson(p.jsonSchema().schema()),
                 true);
-        // --------------
     }
 }

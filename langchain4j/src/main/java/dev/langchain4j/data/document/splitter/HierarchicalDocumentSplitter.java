@@ -1,21 +1,21 @@
 package dev.langchain4j.data.document.splitter;
 
+import static dev.langchain4j.internal.Utils.firstChars;
+import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.TokenCountEstimator;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import static dev.langchain4j.internal.Utils.firstChars;
-import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
-import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * Base class for hierarchical document splitters.
@@ -57,9 +57,8 @@ public abstract class HierarchicalDocumentSplitter implements DocumentSplitter {
      * @param maxOverlapSizeInChars The maximum size of the overlap between segments in characters.
      * @param subSplitter           The sub-splitter to use when a single segment is too long.
      */
-    protected HierarchicalDocumentSplitter(int maxSegmentSizeInChars,
-                                           int maxOverlapSizeInChars,
-                                           HierarchicalDocumentSplitter subSplitter) {
+    protected HierarchicalDocumentSplitter(
+            int maxSegmentSizeInChars, int maxOverlapSizeInChars, HierarchicalDocumentSplitter subSplitter) {
         this(maxSegmentSizeInChars, maxOverlapSizeInChars, null, subSplitter);
     }
 
@@ -70,9 +69,8 @@ public abstract class HierarchicalDocumentSplitter implements DocumentSplitter {
      * @param maxOverlapSizeInTokens The maximum size of the overlap between segments in tokens.
      * @param tokenCountEstimator    The {@code TokenCountEstimator} to use to estimate the number of tokens in a text.
      */
-    protected HierarchicalDocumentSplitter(int maxSegmentSizeInTokens,
-                                           int maxOverlapSizeInTokens,
-                                           TokenCountEstimator tokenCountEstimator) {
+    protected HierarchicalDocumentSplitter(
+            int maxSegmentSizeInTokens, int maxOverlapSizeInTokens, TokenCountEstimator tokenCountEstimator) {
         this(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenCountEstimator, null);
     }
 
@@ -84,10 +82,11 @@ public abstract class HierarchicalDocumentSplitter implements DocumentSplitter {
      * @param tokenCountEstimator    The {@code TokenCountEstimator} to use to estimate the number of tokens in a text.
      * @param subSplitter            The sub-splitter to use when a single segment is too long.
      */
-    protected HierarchicalDocumentSplitter(int maxSegmentSizeInTokens,
-                                           int maxOverlapSizeInTokens,
-                                           TokenCountEstimator tokenCountEstimator,
-                                           DocumentSplitter subSplitter) {
+    protected HierarchicalDocumentSplitter(
+            int maxSegmentSizeInTokens,
+            int maxOverlapSizeInTokens,
+            TokenCountEstimator tokenCountEstimator,
+            DocumentSplitter subSplitter) {
         this.maxSegmentSize = ensureGreaterThanZero(maxSegmentSizeInTokens, "maxSegmentSize");
         this.maxOverlapSize = ensureBetween(maxOverlapSizeInTokens, 0, maxSegmentSize, "maxOverlapSize");
         this.tokenCountEstimator = tokenCountEstimator;
@@ -158,13 +157,13 @@ public abstract class HierarchicalDocumentSplitter implements DocumentSplitter {
             // Enforce that we have a sub-splitter defined.
             if (subSplitter == null) {
                 throw new RuntimeException(String.format(
-                        "The text \"%s...\" (%s %s long) doesn't fit into the maximum segment size (%s %s), " +
-                                "and there is no subSplitter defined to split it further.",
+                        "The text \"%s...\" (%s %s long) doesn't fit into the maximum segment size (%s %s), "
+                                + "and there is no subSplitter defined to split it further.",
                         firstChars(part, 30),
-                        estimateSize(part), tokenCountEstimator == null ? "characters" : "tokens",
-                        maxSegmentSize, tokenCountEstimator == null ? "characters" : "tokens"
-
-                ));
+                        estimateSize(part),
+                        tokenCountEstimator == null ? "characters" : "tokens",
+                        maxSegmentSize,
+                        tokenCountEstimator == null ? "characters" : "tokens"));
             }
 
             // Delegate the splitting of the part to the sub-splitter.
@@ -223,11 +222,10 @@ public abstract class HierarchicalDocumentSplitter implements DocumentSplitter {
      * @return The estimated number of tokens.
      */
     int estimateSize(String text) {
-        if (tokenCountEstimator != null) {
+        if (tokenCountEstimator != null && !Utils.isNullOrBlank(text)) {
             return tokenCountEstimator.estimateTokenCountInText(text);
-        } else {
-            return text.length();
         }
+        return text == null ? 0 : text.length();
     }
 
     /**

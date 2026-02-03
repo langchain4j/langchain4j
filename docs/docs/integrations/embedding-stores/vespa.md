@@ -1,5 +1,5 @@
 ---
-sidebar_position: 25
+sidebar_position: 26
 ---
 
 # Vespa
@@ -13,7 +13,7 @@ https://vespa.ai/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-vespa</artifactId>
-    <version>1.7.1-beta14</version>
+    <version>1.10.0-beta18</version>
 </dependency>
 ```
 

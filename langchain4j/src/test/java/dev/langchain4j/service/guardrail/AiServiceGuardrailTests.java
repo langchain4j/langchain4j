@@ -247,7 +247,8 @@ class AiServiceGuardrailTests {
     public static class OutputGuardrailSuccess implements OutputGuardrail {
         @Override
         public OutputGuardrailResult validate(AiMessage responseFromLLM) {
-            return successWith(responseFromLLM.text() + " from " + getClass().getSimpleName());
+            String successText = responseFromLLM.text() + " from " + getClass().getSimpleName();
+            return successWith(responseFromLLM.withText(successText));
         }
     }
 

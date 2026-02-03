@@ -16,4 +16,12 @@ public class McpRegistryHealth {
     public String getStatus() {
         return status;
     }
+
+    @Override
+    public String toString() {
+        return "McpRegistryHealth{" +
+                "githubClientId='" + githubClientId + '\'' +
+                ", status='" + status + '\'' +
+                '}';
+    }
 }
