@@ -756,7 +756,10 @@ public abstract class HttpClientIT {
         for (HttpClient client : clients()) {
 
             // given
-            String incorrectUrl = "http://banana";
+            // if the URL of the ip cannot be found or there is other verification logic that cannot pass the initial
+            // verification.(The request has not been submitted to the I/O thread yet.) (e.g., https://banana)
+            // Apache HttpClient will execute `callback.failed(ex)` in main thread.
+            String incorrectUrl = "https://example.com";
 
             HttpRequest request = HttpRequest.builder()
                     .method(POST)
