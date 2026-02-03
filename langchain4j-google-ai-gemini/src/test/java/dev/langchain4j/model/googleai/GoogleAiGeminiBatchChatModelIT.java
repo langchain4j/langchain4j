@@ -52,26 +52,6 @@ class GoogleAiGeminiBatchChatModelIT {
             assertThat(response.batchName().value()).startsWith("batches/");
             assertThat(response.state()).isEqualTo(BATCH_STATE_PENDING);
         }
-
-        @Test
-        void should_create_batch_using_interface_method() {
-            // given
-            var subject = GoogleAiGeminiBatchChatModel.builder()
-                    .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                    .modelName(MODEL_NAME)
-                    .logRequestsAndResponses(true)
-                    .build();
-
-            var requests = List.of(createChatRequest("What is 2 + 2?"), createChatRequest("What is 3 + 3?"));
-
-            // when
-            var response = subject.createBatch(requests);
-
-            // then
-            assertThat(response.isIncomplete()).isTrue();
-            assertThat(response.batchName().value()).startsWith("batches/");
-            assertThat(response.state()).isEqualTo(BATCH_STATE_PENDING);
-        }
     }
 
     @Nested

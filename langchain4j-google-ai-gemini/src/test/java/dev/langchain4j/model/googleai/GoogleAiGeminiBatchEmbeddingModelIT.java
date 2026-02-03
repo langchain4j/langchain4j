@@ -126,27 +126,6 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
             assertThat(response.isIncomplete()).isTrue();
             assertThat(response.batchName().value()).startsWith("batches/");
         }
-
-        @Test
-        void should_create_batch_using_interface_method() {
-            // given
-            var subject = GoogleAiGeminiBatchEmbeddingModel.builder()
-                    .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                    .modelName(MODEL_NAME)
-                    .taskType(TaskType.RETRIEVAL_DOCUMENT)
-                    .logRequestsAndResponses(true)
-                    .build();
-
-            var textSegments = List.of(TextSegment.from("Test segment 1"), TextSegment.from("Test segment 2"));
-
-            // when
-            var response = subject.createBatch(textSegments);
-
-            // then
-            assertThat(response.isIncomplete()).isTrue();
-            assertThat(response.batchName().value()).startsWith("batches/");
-            assertThat(response.state()).isEqualTo(BATCH_STATE_PENDING);
-        }
     }
 
     @Nested

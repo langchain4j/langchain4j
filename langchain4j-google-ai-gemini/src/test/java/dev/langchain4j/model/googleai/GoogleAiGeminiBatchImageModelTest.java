@@ -657,6 +657,62 @@ class GoogleAiGeminiBatchImageModelTest {
                 """;
 
         @Test
+        void should_deserialize_pending_image_batch_response() {
+            // given
+            var mockHttpClient = MockHttpClient.thatAlwaysResponds(SuccessfulHttpResponse.builder()
+                    .statusCode(200)
+                    .body(IMAGE_PENDING_RESPONSE)
+                    .build());
+            var subject = GoogleAiGeminiBatchImageModel.builder()
+                    .apiKey(API_KEY)
+                    .modelName("gemini-2.5-flash-preview-image-generation")
+                    .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                    .build();
+
+            var prompts = List.of("A sunset over mountains", "A cat wearing a hat");
+
+            // when
+            var result = subject.createBatch("images-batch", 0L, prompts);
+
+            // then
+            assertThat(result.isIncomplete()).isTrue();
+            assertThat(result.batchName().value()).isEqualTo("batches/image-test-123");
+            assertThat(result.state()).isEqualTo(BATCH_STATE_PENDING);
+        }
+
+        @Test
+        void should_deserialize_succeeded_image_batch_response() {
+            // given
+            var mockHttpClient = MockHttpClient.thatAlwaysResponds(SuccessfulHttpResponse.builder()
+                    .statusCode(200)
+                    .body(IMAGE_SUCCEEDED_RESPONSE)
+                    .build());
+            var subject = GoogleAiGeminiBatchImageModel.builder()
+                    .apiKey(API_KEY)
+                    .modelName("gemini-2.5-flash-preview-image-generation")
+                    .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                    .build();
+
+            var batchName = new BatchName("batches/image-test-123");
+
+            // when
+            var result = subject.retrieveBatchResults(batchName);
+
+            // then
+            assertThat(result.isSuccess()).isTrue();
+            assertThat(result.batchName().value()).isEqualTo("batches/image-test-123");
+
+            var results = result.responses();
+            assertThat(results).hasSize(2);
+
+            assertThat(results.get(0).content().base64Data()).isEqualTo("aW1hZ2UxYmFzZTY0ZGF0YQ==");
+            assertThat(results.get(0).content().mimeType()).isEqualTo("image/png");
+
+            assertThat(results.get(1).content().base64Data()).isEqualTo("aW1hZ2UyYmFzZTY0ZGF0YQ==");
+            assertThat(results.get(1).content().mimeType()).isEqualTo("image/jpeg");
+        }
+
+        @Test
         void should_deserialize_image_batch_response_with_error() {
             // given
             String IMAGE_ERROR_RESPONSE =
@@ -771,62 +827,6 @@ class GoogleAiGeminiBatchImageModelTest {
             assertThat(result.errors()).hasSize(1);
             assertThat(result.errors().get(0).code()).isEqualTo(4);
             assertThat(result.errors().get(0).message()).isEqualTo("Deadline expired before operation could complete.");
-        }
-
-        @Test
-        void should_deserialize_pending_image_batch_response() {
-            // given
-            var mockHttpClient = MockHttpClient.thatAlwaysResponds(SuccessfulHttpResponse.builder()
-                    .statusCode(200)
-                    .body(IMAGE_PENDING_RESPONSE)
-                    .build());
-            var subject = GoogleAiGeminiBatchImageModel.builder()
-                    .apiKey(API_KEY)
-                    .modelName("gemini-2.5-flash-preview-image-generation")
-                    .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
-                    .build();
-
-            var prompts = List.of("A sunset over mountains", "A cat wearing a hat");
-
-            // when
-            var result = subject.createBatch("images-batch", 0L, prompts);
-
-            // then
-            assertThat(result.isIncomplete()).isTrue();
-            assertThat(result.batchName().value()).isEqualTo("batches/image-test-123");
-            assertThat(result.state()).isEqualTo(BATCH_STATE_PENDING);
-        }
-
-        @Test
-        void should_deserialize_succeeded_image_batch_response() {
-            // given
-            var mockHttpClient = MockHttpClient.thatAlwaysResponds(SuccessfulHttpResponse.builder()
-                    .statusCode(200)
-                    .body(IMAGE_SUCCEEDED_RESPONSE)
-                    .build());
-            var subject = GoogleAiGeminiBatchImageModel.builder()
-                    .apiKey(API_KEY)
-                    .modelName("gemini-2.5-flash-preview-image-generation")
-                    .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
-                    .build();
-
-            var batchName = new BatchName("batches/image-test-123");
-
-            // when
-            var result = subject.retrieveBatchResults(batchName);
-
-            // then
-            assertThat(result.isSuccess()).isTrue();
-            assertThat(result.batchName().value()).isEqualTo("batches/image-test-123");
-
-            var results = result.responses();
-            assertThat(results).hasSize(2);
-
-            assertThat(results.get(0).content().base64Data()).isEqualTo("aW1hZ2UxYmFzZTY0ZGF0YQ==");
-            assertThat(results.get(0).content().mimeType()).isEqualTo("image/png");
-
-            assertThat(results.get(1).content().base64Data()).isEqualTo("aW1hZ2UyYmFzZTY0ZGF0YQ==");
-            assertThat(results.get(1).content().mimeType()).isEqualTo("image/jpeg");
         }
     }
 

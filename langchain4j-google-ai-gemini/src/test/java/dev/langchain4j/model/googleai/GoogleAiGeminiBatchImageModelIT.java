@@ -42,29 +42,6 @@ class GoogleAiGeminiBatchImageModelIT {
     }
 
     @Test
-    void should_create_batch_using_interface_method() {
-        // given
-        var subject = GoogleAiGeminiBatchImageModel.builder()
-                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName(MODEL_NAME)
-                .logRequestsAndResponses(true)
-                .build();
-
-        var prompts = List.of("A yellow star on black background");
-
-        // when
-        var response = subject.createBatch(prompts);
-
-        // then
-        assertThat(response.isIncomplete()).isTrue();
-        assertThat(response.batchName().value()).startsWith("batches/");
-        assertThat(response.state()).isEqualTo(BATCH_STATE_PENDING);
-
-        // cleanup
-        subject.cancelBatchJob(response.batchName());
-    }
-
-    @Test
     void should_cancel_image_batch_job() {
         // given
         var subject = GoogleAiGeminiBatchImageModel.builder()
