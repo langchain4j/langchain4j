@@ -29,6 +29,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.mockito.InOrder;
@@ -756,10 +757,7 @@ public abstract class HttpClientIT {
         for (HttpClient client : clients()) {
 
             // given
-            // if the URL of the ip cannot be found or there is other verification logic that cannot pass the initial
-            // verification.(The request has not been submitted to the I/O thread yet.) (e.g., https://banana)
-            // Apache HttpClient will execute `callback.failed(ex)` in main thread.
-            String incorrectUrl = "https://example.com";
+            String incorrectUrl = incorrectUrl();
 
             HttpRequest request = HttpRequest.builder()
                     .method(POST)
@@ -827,6 +825,10 @@ public abstract class HttpClientIT {
             verify(spyListener).onError(any());
             verifyNoMoreInteractions(spyListener);
         }
+    }
+
+    protected String incorrectUrl() {
+        return "http://banana";
     }
 
     @Test

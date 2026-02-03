@@ -36,16 +36,16 @@ public abstract class HttpClientTimeoutIT {
 
     private WireMockServer wireMockServer;
 
+    protected int readTimeoutMillis() {
+        return 250;
+    }
+
     protected String[] readAsyncMessageKeywords() {
         return new String[] {"time", "out"};
     }
 
     protected String[] readSyncMessageKeywords() {
         return readAsyncMessageKeywords();
-    }
-
-    protected int readTimeoutMillis() {
-        return 250;
     }
 
     @BeforeEach

@@ -9,11 +9,6 @@ import java.util.List;
 class ApacheHttpClientTimeoutIT extends HttpClientTimeoutIT {
 
     @Override
-    protected int readTimeoutMillis() {
-        return 1000;
-    }
-
-    @Override
     protected List<HttpClient> clients(Duration readTimeout) {
         return List.of(ApacheHttpClient.builder().readTimeout(readTimeout).build());
     }
@@ -21,6 +16,11 @@ class ApacheHttpClientTimeoutIT extends HttpClientTimeoutIT {
     @Override
     protected Class<? extends Exception> expectedReadTimeoutRootCauseExceptionType() {
         return SocketTimeoutException.class;
+    }
+
+    @Override
+    protected int readTimeoutMillis() {
+        return 1000;
     }
 
     @Override

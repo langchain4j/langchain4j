@@ -12,4 +12,9 @@ class ApacheHttpClientIT extends HttpClientIT {
     protected List<HttpClient> clients() {
         return List.of(ApacheHttpClient.builder().build());
     }
+
+    @Override
+    protected String incorrectUrl() {
+        return "https://example.com";
+    }
 }

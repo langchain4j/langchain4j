@@ -14,7 +14,7 @@ import org.apache.hc.core5.http.io.entity.ByteArrayEntity;
 import org.apache.hc.core5.http.message.BasicNameValuePair;
 
 @Experimental
-public class MultipartBodyPublisher {
+class MultipartBodyPublisher {
 
     private static final String BOUNDARY = "----LangChain4j";
     private static final String CRLF = "\r\n";
