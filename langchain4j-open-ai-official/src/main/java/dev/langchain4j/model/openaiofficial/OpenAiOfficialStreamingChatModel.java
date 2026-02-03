@@ -315,6 +315,15 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
             return this;
         }
 
+        /**
+         * @deprecated Use {@link #microsoftFoundryDeploymentName(String)} instead
+         */
+        @Deprecated
+        public Builder azureDeploymentName(String azureDeploymentName) {
+            this.microsoftFoundryDeploymentName = azureDeploymentName;
+            return this;
+        }
+
         public Builder microsoftFoundryDeploymentName(String microsoftFoundryDeploymentName) {
             this.microsoftFoundryDeploymentName = microsoftFoundryDeploymentName;
             return this;
@@ -327,6 +336,15 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
 
         public Builder organizationId(String organizationId) {
             this.organizationId = organizationId;
+            return this;
+        }
+
+        /**
+         * @deprecated Use {@link #isMicrosoftFoundry(boolean)} instead
+         */
+        @Deprecated
+        public Builder isAzure(boolean isAzure) {
+            this.isMicrosoftFoundry = isAzure;
             return this;
         }
 

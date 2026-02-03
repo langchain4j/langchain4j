@@ -212,6 +212,15 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
             return this;
         }
 
+        /**
+         * @deprecated Use {@link #microsoftFoundryDeploymentName(String)} instead
+         */
+        @Deprecated
+        public Builder azureDeploymentName(String azureDeploymentName) {
+            this.microsoftFoundryDeploymentName = azureDeploymentName;
+            return this;
+        }
+
         public Builder microsoftFoundryDeploymentName(String microsoftFoundryDeploymentName) {
             this.microsoftFoundryDeploymentName = microsoftFoundryDeploymentName;
             return this;
@@ -229,6 +238,15 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
 
         public Builder isGitHubModels(boolean isGitHubModels) {
             this.isGitHubModels = isGitHubModels;
+            return this;
+        }
+
+        /**
+         * @deprecated Use {@link #isMicrosoftFoundry(boolean)} instead
+         */
+        @Deprecated
+        public Builder isAzure(boolean isAzure) {
+            this.isMicrosoftFoundry = isAzure;
             return this;
         }
 

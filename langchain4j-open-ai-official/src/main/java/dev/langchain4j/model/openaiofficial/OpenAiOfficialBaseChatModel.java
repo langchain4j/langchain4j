@@ -43,7 +43,7 @@ abstract class OpenAiOfficialBaseChatModel {
             String baseUrl,
             String apiKey,
             Credential credential,
-            String azureDeploymentName,
+            String microsoftFoundryDeploymentName,
             AzureOpenAIServiceVersion azureOpenAIServiceVersion,
             String organizationId,
             boolean isAzure,
@@ -80,7 +80,7 @@ abstract class OpenAiOfficialBaseChatModel {
                     baseUrl,
                     apiKey,
                     credential,
-                    azureDeploymentName,
+                    microsoftFoundryDeploymentName,
                     azureOpenAIServiceVersion,
                     organizationId,
                     isAzure,
@@ -95,7 +95,7 @@ abstract class OpenAiOfficialBaseChatModel {
                     baseUrl,
                     apiKey,
                     credential,
-                    azureDeploymentName,
+                    microsoftFoundryDeploymentName,
                     azureOpenAIServiceVersion,
                     organizationId,
                     isAzure,
@@ -148,7 +148,7 @@ abstract class OpenAiOfficialBaseChatModel {
                 .build();
 
         this.modelProvider =
-                detectModelProvider(isAzure, isGitHubModels, baseUrl, azureDeploymentName, azureOpenAIServiceVersion);
+                detectModelProvider(isAzure, isGitHubModels, baseUrl, microsoftFoundryDeploymentName, azureOpenAIServiceVersion);
 
         if (this.modelProvider.equals(ModelProvider.MICROSOFT_FOUNDRY)
                 || this.modelProvider.equals(ModelProvider.GITHUB_MODELS)) {
