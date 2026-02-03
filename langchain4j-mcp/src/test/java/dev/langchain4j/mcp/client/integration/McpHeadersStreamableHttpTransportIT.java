@@ -19,7 +19,7 @@ class McpHeadersStreamableHttpTransportIT extends McpHeadersTestBase {
         process = startProcess();
         StreamableHttpMcpTransport transport = new StreamableHttpMcpTransport.Builder()
                 .url("http://localhost:8080/mcp")
-                .customHeaders(() -> customHeaders)
+                .customHeaders(customHeaders)
                 .logRequests(true)
                 .logResponses(true)
                 .build();

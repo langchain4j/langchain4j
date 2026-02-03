@@ -15,6 +15,7 @@ import static java.util.Collections.emptyList;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.CancellationUnsupportedHandle;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
@@ -25,6 +26,7 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
+import dev.langchain4j.model.mistralai.MistralAiChatResponseMetadata;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionChoice;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionResponse;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiMessageContent;
@@ -36,6 +38,10 @@ import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiFunction;
 
 @Internal
 class MistralAiServerSentEventListener implements ServerSentEventListener {
@@ -54,12 +60,20 @@ class MistralAiServerSentEventListener implements ServerSentEventListener {
     private String modelName;
     private String id;
     private volatile StreamingHandle streamingHandle;
+  
+    final AtomicReference<SuccessfulHttpResponse> rawHttpResponse = new AtomicReference<>();
+    final Queue<ServerSentEvent> rawServerSentEvents = new ConcurrentLinkedQueue<>();
 
     public MistralAiServerSentEventListener(StreamingChatResponseHandler handler, boolean returnThinking) {
         this.contentBuilder = new StringBuffer();
         this.thinkingBuilder = returnThinking ? new StringBuffer() : null;
         this.returnThinking = returnThinking;
         this.handler = handler;
+    }
+
+    @Override
+    public void onOpen(SuccessfulHttpResponse response) {
+        rawHttpResponse.set(response);
     }
 
     @Override
@@ -72,6 +86,8 @@ class MistralAiServerSentEventListener implements ServerSentEventListener {
         if (streamingHandle == null) {
             streamingHandle = toStreamingHandle(context.parsingHandle());
         }
+
+        rawServerSentEvents.add(event);
 
         String data = event.data();
         if ("[DONE]".equals(data)) {
@@ -87,12 +103,7 @@ class MistralAiServerSentEventListener implements ServerSentEventListener {
 
             ChatResponse response = ChatResponse.builder()
                     .aiMessage(responseBuilder.build())
-                    .metadata(ChatResponseMetadata.builder()
-                            .tokenUsage(tokenUsage)
-                            .finishReason(finishReason)
-                            .modelName(modelName)
-                            .id(id)
-                            .build())
+                    .metadata(createMetadata())
                     .build();
             onCompleteResponse(handler, response);
         } else {
@@ -161,6 +172,25 @@ class MistralAiServerSentEventListener implements ServerSentEventListener {
             }
         }
         return thinkingChunks;
+    }
+
+    private MistralAiChatResponseMetadata createMetadata() {
+        var metadataBuilder = MistralAiChatResponseMetadata.builder();
+
+        metadataBuilder
+                .tokenUsage(tokenUsage)
+                .finishReason(finishReason)
+                .modelName(modelName)
+                .id(id);
+
+        if (rawHttpResponse.get() != null) {
+            metadataBuilder.rawHttpResponse(rawHttpResponse.get());
+        }
+        if (!rawServerSentEvents.isEmpty()) {
+            metadataBuilder.rawServerSentEvents(new ArrayList<>(rawServerSentEvents));
+        }
+
+        return metadataBuilder.build();
     }
 
     @Override

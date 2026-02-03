@@ -5,6 +5,8 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
+
 import java.util.Objects;
 
 @JsonInclude(NON_NULL)
@@ -65,6 +67,7 @@ public class OpenAiModelInfo {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof OpenAiModelInfo)) return false;
@@ -76,11 +79,13 @@ public class OpenAiModelInfo {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         return Objects.hash(id, object, created, ownedBy);
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public String toString() {
         return "OpenAiModelInfo{" + "id='"
                 + id + '\'' + ", object='"

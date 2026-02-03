@@ -1,18 +1,14 @@
 package dev.langchain4j.mcp.protocol;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import dev.langchain4j.Internal;
 
 @Internal
-public class McpInitializeRequest extends McpJsonRpcMessage {
-
-    @JsonInclude
-    public final McpClientMethod method = McpClientMethod.INITIALIZE;
+public class McpInitializeRequest extends McpClientMessage {
 
     private McpInitializeParams params;
 
-    public McpInitializeRequest(final Long id) {
-        super(id);
+    public McpInitializeRequest(Long id) {
+        super(id, McpClientMethod.INITIALIZE);
     }
 
     public McpInitializeParams getParams() {

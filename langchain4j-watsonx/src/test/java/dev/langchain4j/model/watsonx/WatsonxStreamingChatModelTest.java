@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -86,6 +87,7 @@ public class WatsonxStreamingChatModelTest {
         when(mockChatServiceBuilder.authenticator(any())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.apiKey(any())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.httpClient(any())).thenReturn(mockChatServiceBuilder);
+        when(mockChatServiceBuilder.verifySsl(anyBoolean())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.build()).thenReturn(mockChatService);
 
         var chatUsage = new ChatUsage(10, 10, 20);
@@ -456,11 +458,11 @@ public class WatsonxStreamingChatModelTest {
 
         doAnswer(invocation -> {
                     ChatHandler handler = invocation.getArgument(1);
-                    handler.onPartialToolCall(
-                            new com.ibm.watsonx.ai.chat.model.PartialToolCall("completion-id", 0, null, "name", "{"));
-                    handler.onPartialToolCall(
-                            new com.ibm.watsonx.ai.chat.model.PartialToolCall("completion-id", 0, "id", "name", "}"));
-                    handler.onCompleteToolCall(new CompletedToolCall("completion-id", toolCall));
+                    handler.onPartialToolCall(new com.ibm.watsonx.ai.chat.model.PartialToolCall(
+                            "completion-id", 0, 0, null, "name", "{"));
+                    handler.onPartialToolCall(new com.ibm.watsonx.ai.chat.model.PartialToolCall(
+                            "completion-id", 0, 0, "id", "name", "}"));
+                    handler.onCompleteToolCall(new CompletedToolCall("completion-id", 0, toolCall));
                     handler.onCompleteResponse(chatResponse.build());
                     return CompletableFuture.completedFuture(null);
                 })

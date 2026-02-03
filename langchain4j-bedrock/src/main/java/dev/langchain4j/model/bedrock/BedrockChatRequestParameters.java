@@ -66,8 +66,14 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
         public Builder overrideWith(ChatRequestParameters parameters) {
             super.overrideWith(parameters);
             if (parameters instanceof BedrockChatRequestParameters bedrockRequestParameters) {
-                additionalModelRequestFields(getOrDefault(
-                        bedrockRequestParameters.additionalModelRequestFields, additionalModelRequestFields));
+                // Merge additional model request fields instead of replacing
+                if (bedrockRequestParameters.additionalModelRequestFields != null
+                        && !bedrockRequestParameters.additionalModelRequestFields.isEmpty()) {
+                    if (additionalModelRequestFields == null) {
+                        additionalModelRequestFields = new HashMap<>();
+                    }
+                    additionalModelRequestFields.putAll(bedrockRequestParameters.additionalModelRequestFields);
+                }
                 this.cachePointPlacement =
                         getOrDefault(bedrockRequestParameters.cachePointPlacement, cachePointPlacement);
                 this.bedrockGuardrailConfiguration = getOrDefault(
