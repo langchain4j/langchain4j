@@ -64,7 +64,7 @@ public class WatsonxChatModel extends WatsonxChat implements ChatModel {
         List<ChatMessage> messages =
                 chatRequest.messages().stream().map(Converter::toChatMessage).collect(toCollection(ArrayList::new));
 
-        List<Tool> tools = nonNull(toolSpecifications) && toolSpecifications.size() > 0
+        List<Tool> tools = nonNull(toolSpecifications) && !toolSpecifications.isEmpty()
                 ? toolSpecifications.stream().map(Converter::toTool).toList()
                 : null;
 

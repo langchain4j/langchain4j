@@ -59,13 +59,19 @@ public class OpenAiStreamingResponseBuilder {
     private final Queue<ServerSentEvent> rawServerSentEvents = new ConcurrentLinkedQueue<>();
 
     private final boolean returnThinking;
+    private final boolean accumulateToolCallId;
 
     public OpenAiStreamingResponseBuilder() {
-        this(false);
+        this(false, true);
     }
 
     public OpenAiStreamingResponseBuilder(boolean returnThinking) {
+        this(returnThinking, true);
+    }
+
+    public OpenAiStreamingResponseBuilder(boolean returnThinking, boolean accumulateToolCallId) {
         this.returnThinking = returnThinking;
+        this.accumulateToolCallId = accumulateToolCallId;
         if (returnThinking) {
             this.reasoningContentBuilder = new StringBuffer();
         } else {
@@ -161,7 +167,12 @@ public class OpenAiStreamingResponseBuilder {
                     toolCall.index(), idx -> new ToolExecutionRequestBuilder());
 
             if (toolCall.id() != null) {
-                builder.idBuilder.append(toolCall.id());
+                if (accumulateToolCallId) {
+                    builder.idBuilder.append(toolCall.id());
+                } else {
+                    builder.idBuilder.setLength(0);
+                    builder.idBuilder.append(toolCall.id());
+                }
             }
 
             FunctionCall functionCall = toolCall.function();
