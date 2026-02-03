@@ -1,5 +1,6 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.model.batch.BatchJobState.BATCH_STATE_CANCELLED;
 import static dev.langchain4j.model.batch.BatchJobState.BATCH_STATE_FAILED;
 import static dev.langchain4j.model.batch.BatchJobState.BATCH_STATE_PENDING;
 import static dev.langchain4j.model.batch.BatchJobState.BATCH_STATE_RUNNING;
@@ -21,6 +22,7 @@ import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.model.batch.BatchJobState;
 import dev.langchain4j.model.batch.BatchList;
 import dev.langchain4j.model.batch.BatchName;
+import dev.langchain4j.model.batch.ExtractedBatchResults;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateFileRequest;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateRequest;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateResponse;
@@ -484,6 +486,49 @@ class GoogleAiGeminiBatchImageModelTest {
         }
 
         @Test
+        void should_return_success_with_errors_when_batch_processing_has_individual_failures() {
+            // given
+            var batchName = new BatchName("batches/test-partial-success");
+            var imageResponses = List.of(
+                    createImageResponse(TEST_IMAGE_BASE64, TEST_MIME_TYPE),
+                    createImageResponse("secondImageData", TEST_MIME_TYPE));
+            var error = new BatchRequestResponse.Operation.Status(
+                    4, "Deadline expired before operation could complete.", null);
+            var successOperation =
+                    createSuccessOperationWithError("batches/test-partial-success", imageResponses, error);
+            when(mockGeminiService.<GeminiGenerateContentResponse>batchRetrieveBatch(batchName.value()))
+                    .thenReturn(successOperation);
+
+            // when
+            var result = subject.retrieveBatchResults(batchName);
+            assertThat(result.batchName()).isEqualTo(batchName);
+            assertThat(result.responses()).hasSize(2);
+            assertThat(result.responses().get(0).content().base64Data()).isEqualTo(TEST_IMAGE_BASE64);
+            assertThat(result.responses().get(1).content().base64Data()).isEqualTo("secondImageData");
+
+            assertThat(result.errors()).hasSize(1);
+            assertThat(result.errors().get(0).code()).isEqualTo(4);
+            assertThat(result.errors().get(0).message()).isEqualTo("Deadline expired before operation could complete.");
+        }
+
+        @Test
+        void should_return_error_when_batch_processing_is_cancelled() {
+            // given
+            var batchName = new BatchName("batches/test-cancelled");
+            var cancelledOperation = createCancelledOperation("batches/test-cancelled", "Batch was cancelled");
+            when(mockGeminiService.<GeminiGenerateContentResponse>batchRetrieveBatch(batchName.value()))
+                    .thenReturn(cancelledOperation);
+
+            // when
+            var result = subject.retrieveBatchResults(batchName);
+
+            // then
+            assertThat(result.isError()).isTrue();
+            assertThat(result.errors())
+                    .containsExactly(new ExtractedBatchResults.Status(13, "Batch was cancelled", List.of()));
+        }
+
+        @Test
         void should_return_success_with_empty_responses_when_response_is_null() {
             // given
             var batchName = new BatchName("batches/test-empty");
@@ -610,6 +655,123 @@ class GoogleAiGeminiBatchImageModelTest {
                   }
                 }
                 """;
+
+        @Test
+        void should_deserialize_image_batch_response_with_error() {
+            // given
+            String IMAGE_ERROR_RESPONSE =
+                    """
+            {
+              "name": "batches/image-test-123",
+              "metadata": {
+                "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.GenerateContentBatch",
+                "model": "models/gemini-2.5-flash-preview-image-generation",
+                "displayName": "images-batch",
+                "state": "BATCH_STATE_SUCCEEDED",
+                "name": "batches/image-test-123"
+              },
+              "done": true,
+              "response": {
+                "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.GenerateContentBatchOutput",
+                "inlinedResponses": {
+                  "inlinedResponses": [
+                    {
+                      "response": {
+                        "candidates": [
+                          {
+                            "content": {
+                              "parts": [
+                                {
+                                  "inlineData": {
+                                    "mimeType": "image/png",
+                                    "data": "aW1hZ2UxYmFzZTY0ZGF0YQ=="
+                                  }
+                                }
+                              ],
+                              "role": "model"
+                            },
+                            "finishReason": "STOP",
+                            "index": 0
+                          }
+                        ],
+                        "usageMetadata": {
+                          "promptTokenCount": 10,
+                          "candidatesTokenCount": 256,
+                          "totalTokenCount": 266
+                        },
+                        "modelVersion": "gemini-2.5-flash-preview-image-generation"
+                      }
+                    },
+                    {
+                      "error": {
+                        "code": 4,
+                        "message": "Deadline expired before operation could complete."
+                      }
+                    },
+                    {
+                      "response": {
+                        "candidates": [
+                          {
+                            "content": {
+                              "parts": [
+                                {
+                                  "inlineData": {
+                                    "mimeType": "image/jpeg",
+                                    "data": "aW1hZ2UyYmFzZTY0ZGF0YQ=="
+                                  }
+                                }
+                              ],
+                              "role": "model"
+                            },
+                            "finishReason": "STOP",
+                            "index": 0
+                          }
+                        ],
+                        "usageMetadata": {
+                          "promptTokenCount": 12,
+                          "candidatesTokenCount": 300,
+                          "totalTokenCount": 312
+                        },
+                        "modelVersion": "gemini-2.5-flash-preview-image-generation"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+            """;
+
+            var mockHttpClient = MockHttpClient.thatAlwaysResponds(SuccessfulHttpResponse.builder()
+                    .statusCode(200)
+                    .body(IMAGE_ERROR_RESPONSE)
+                    .build());
+            var subject = GoogleAiGeminiBatchImageModel.builder()
+                    .apiKey(API_KEY)
+                    .modelName("gemini-2.5-flash-preview-image-generation")
+                    .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                    .build();
+
+            var batchName = new BatchName("batches/image-test-123");
+
+            // when
+            var result = subject.retrieveBatchResults(batchName);
+
+            // then
+            assertThat(result.batchName().value()).isEqualTo("batches/image-test-123");
+
+            var results = result.responses();
+            assertThat(results).hasSize(2);
+
+            assertThat(results.get(0).content().base64Data()).isEqualTo("aW1hZ2UxYmFzZTY0ZGF0YQ==");
+            assertThat(results.get(0).content().mimeType()).isEqualTo("image/png");
+
+            assertThat(results.get(1).content().base64Data()).isEqualTo("aW1hZ2UyYmFzZTY0ZGF0YQ==");
+            assertThat(results.get(1).content().mimeType()).isEqualTo("image/jpeg");
+
+            assertThat(result.errors()).hasSize(1);
+            assertThat(result.errors().get(0).code()).isEqualTo(4);
+            assertThat(result.errors().get(0).message()).isEqualTo("Deadline expired before operation could complete.");
+        }
 
         @Test
         void should_deserialize_pending_image_batch_response() {
@@ -798,6 +960,32 @@ class GoogleAiGeminiBatchImageModelTest {
             // The model should be created successfully with default model name
             assertThat(model).isNotNull();
         }
+
+        private static Operation<GeminiGenerateContentResponse> createSuccessOperationWithError(
+                String operationName,
+                List<GeminiGenerateContentResponse> imageResponses,
+                BatchRequestResponse.Operation.Status error) {
+            List<InlinedResponseWrapper<GeminiGenerateContentResponse>> inlinedResponses = new ArrayList<>();
+
+            // Add first successful response
+            if (!imageResponses.isEmpty()) {
+                inlinedResponses.add(new InlinedResponseWrapper<>(imageResponses.get(0), null));
+            }
+
+            // Add error
+            inlinedResponses.add(new InlinedResponseWrapper<>(null, error));
+
+            // Add remaining successful responses
+            for (int i = 1; i < imageResponses.size(); i++) {
+                inlinedResponses.add(new InlinedResponseWrapper<>(imageResponses.get(i), null));
+            }
+
+            var response = new BatchCreateResponse<>(
+                    "type.googleapis.com/google.ai.generativelanguage.v1main.GenerateContentBatchOutput",
+                    new BatchCreateResponse.InlinedResponses<>(inlinedResponses));
+
+            return new Operation<>(operationName, Map.of("state", BATCH_STATE_SUCCEEDED.name()), true, null, response);
+        }
     }
 
     private GoogleAiGeminiBatchImageModel createSubject() {
@@ -842,5 +1030,37 @@ class GoogleAiGeminiBatchImageModelTest {
             String operationName, int errorCode, String errorMessage, List<Map<String, Object>> errorDetails) {
         var errorStatus = new Operation.Status(errorCode, errorMessage, errorDetails);
         return new Operation<>(operationName, Map.of("state", BATCH_STATE_FAILED.name()), true, errorStatus, null);
+    }
+
+    private static Operation<GeminiGenerateContentResponse> createSuccessOperationWithError(
+            String operationName,
+            List<GeminiGenerateContentResponse> imageResponses,
+            BatchRequestResponse.Operation.Status error) {
+        List<InlinedResponseWrapper<GeminiGenerateContentResponse>> inlinedResponses = new ArrayList<>();
+
+        // Add first successful response
+        if (!imageResponses.isEmpty()) {
+            inlinedResponses.add(new InlinedResponseWrapper<>(imageResponses.get(0), null));
+        }
+
+        // Add error
+        inlinedResponses.add(new InlinedResponseWrapper<>(null, error));
+
+        // Add remaining successful responses
+        for (int i = 1; i < imageResponses.size(); i++) {
+            inlinedResponses.add(new InlinedResponseWrapper<>(imageResponses.get(i), null));
+        }
+
+        var response = new BatchCreateResponse<>(
+                "type.googleapis.com/google.ai.generativelanguage.v1main.GenerateContentBatchOutput",
+                new BatchCreateResponse.InlinedResponses<>(inlinedResponses));
+
+        return new Operation<>(operationName, Map.of("state", BATCH_STATE_SUCCEEDED.name()), true, null, response);
+    }
+
+    private static Operation<GeminiGenerateContentResponse> createCancelledOperation(
+            String operationName, String errorMessage) {
+        var errorStatus = new Operation.Status(13, errorMessage, List.of());
+        return new Operation<>(operationName, Map.of("state", BATCH_STATE_CANCELLED.name()), true, errorStatus, null);
     }
 }

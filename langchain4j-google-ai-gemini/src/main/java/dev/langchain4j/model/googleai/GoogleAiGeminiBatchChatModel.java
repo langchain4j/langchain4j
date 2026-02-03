@@ -284,7 +284,6 @@ public final class GoogleAiGeminiBatchChatModel implements BatchChatModel {
 
             List<ChatResponse> responses = new ArrayList<>();
             List<ExtractedBatchResults.Status> errors = new ArrayList<>();
-
             for (Object wrapper : response.inlinedResponses().inlinedResponses()) {
                 var typed = Json.convertValue(wrapper, responseWrapperType);
                 var typedResponse = typed.response();
@@ -293,7 +292,7 @@ public final class GoogleAiGeminiBatchChatModel implements BatchChatModel {
                 }
                 var error = typed.error();
                 if (error != null) {
-                    errors.add(new ExtractedBatchResults.Status(error.code(), error.message(), error.details()));
+                    errors.add(error.toGenericStatus());
                 }
             }
 

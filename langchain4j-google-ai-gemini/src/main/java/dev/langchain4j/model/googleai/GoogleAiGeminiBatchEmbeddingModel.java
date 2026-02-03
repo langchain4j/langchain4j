@@ -280,7 +280,7 @@ public final class GoogleAiGeminiBatchEmbeddingModel implements BatchEmbeddingMo
                 }
                 var error = typed.error();
                 if (error != null) {
-                    errors.add(new ExtractedBatchResults.Status(error.code(), error.message(), error.details()));
+                    errors.add(error.toGenericStatus());
                 }
             }
 

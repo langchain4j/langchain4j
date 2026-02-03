@@ -81,6 +81,7 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
     @SuppressWarnings("unchecked")
     BatchResponse<RESPONSE> retrieveBatchResults(BatchName name) {
         var operation = geminiService.batchRetrieveBatch(name.value());
+        System.out.println("GOT " + operation);
         return processResponse((Operation<API_RESPONSE>) operation);
     }
 
@@ -120,8 +121,10 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
         var batchName = new BatchName(operation.name());
 
         if (operation.done()) {
+            var error = operation.error();
             if (operation.error() != null) {
-                return new BatchResponse<>(batchName, BatchJobState.BATCH_STATE_FAILED, List.of(), null);
+                return new BatchResponse<>(
+                        batchName, BatchJobState.BATCH_STATE_FAILED, List.of(), List.of(error.toGenericStatus()));
             } else {
                 var responses = preparer.extractResults(operation.response());
                 return new BatchResponse<>(

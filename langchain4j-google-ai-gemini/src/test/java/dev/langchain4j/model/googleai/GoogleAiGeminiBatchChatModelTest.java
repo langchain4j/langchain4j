@@ -1,5 +1,6 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.model.batch.BatchJobState.BATCH_STATE_CANCELLED;
 import static dev.langchain4j.model.batch.BatchJobState.BATCH_STATE_FAILED;
 import static dev.langchain4j.model.batch.BatchJobState.BATCH_STATE_PENDING;
 import static dev.langchain4j.model.batch.BatchJobState.BATCH_STATE_RUNNING;
@@ -22,6 +23,7 @@ import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.model.batch.BatchJobState;
 import dev.langchain4j.model.batch.BatchList;
 import dev.langchain4j.model.batch.BatchName;
+import dev.langchain4j.model.batch.ExtractedBatchResults;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateFileRequest;
@@ -650,6 +652,25 @@ class GoogleAiGeminiBatchChatModelTest {
         }
 
         @Test
+        void should_return_error_when_batch_processing_is_cancelled() {
+            // given
+            var batchName = new BatchName("batches/test-error");
+            var errorOperation =
+                    createCancelledOperation("batches/test-error", "batches/test-error failed without error");
+            when(mockGeminiService.<GeminiGenerateContentResponse>batchRetrieveBatch(batchName.value()))
+                    .thenReturn(errorOperation);
+
+            // when
+            var result = subject.retrieveBatchResults(batchName);
+
+            // then
+            assertThat(result.isError()).isTrue();
+            assertThat(result.errors())
+                    .containsExactly(
+                            new ExtractedBatchResults.Status(13, "batches/test-error failed without error", List.of()));
+        }
+
+        @Test
         void should_return_error_when_batch_processing_fails() {
             // given
             var batchName = new BatchName("batches/test-error");
@@ -664,6 +685,26 @@ class GoogleAiGeminiBatchChatModelTest {
             assertThat(result.isError()).isTrue();
             assertThat(result.batchName()).isEqualTo(batchName);
             assertThat(result.state()).isEqualTo(BATCH_STATE_FAILED);
+        }
+
+        @Test
+        void should_return_error_with_details_when_batch_processing_fails_with_details() {
+            // given
+            var batchName = new BatchName("batches/test-error-details");
+            List<Map<String, Object>> errorDetails = List.of(
+                    Map.of("@type", "type.googleapis.com/google.rpc.ErrorInfo", "reason", "INVALID_ARGUMENT"),
+                    Map.of("@type", "type.googleapis.com/google.rpc.BadRequest", "field", "model"));
+            var errorOperation = createErrorOperation("batches/test-error-details", 400, "Bad Request", errorDetails);
+            when(mockGeminiService.<GeminiGenerateContentResponse>batchRetrieveBatch(batchName.value()))
+                    .thenReturn(errorOperation);
+
+            // when
+            var result = subject.retrieveBatchResults(batchName);
+
+            // then
+            assertThat(result.isError()).isTrue();
+            assertThat(result.errors())
+                    .containsExactly(new ExtractedBatchResults.Status(400, "Bad Request", errorDetails));
         }
 
         @Test
@@ -931,7 +972,7 @@ class GoogleAiGeminiBatchChatModelTest {
             // given
             var operation1 = createMockOperation("batches/batch-1", BatchJobState.BATCH_STATE_SUCCEEDED);
             var operation2 = createMockOperation("batches/batch-2", BatchJobState.BATCH_STATE_FAILED);
-            var operation3 = createMockOperation("batches/batch-3", BatchJobState.BATCH_STATE_CANCELLED);
+            var operation3 = createMockOperation("batches/batch-3", BATCH_STATE_CANCELLED);
             var listResponse = new ListOperationsResponse<>(List.of(operation1, operation2, operation3), null);
 
             when(mockGeminiService.<GeminiGenerateContentResponse>batchListBatches(null, null))
@@ -1113,87 +1154,87 @@ class GoogleAiGeminiBatchChatModelTest {
 
         private String ERROR_RESPONSE =
                 """
-                {
-                  "name": "batches/tti3ik8qob66dxcvynlg5swnutyntbi926ac",
-                  "metadata": {
-                    "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.GenerateContentBatch",
-                    "model": "models/gemini-3-flash-preview",
-                    "displayName": "error-batch",
-                    "createTime": "2025-12-03T17:23:06.004734302Z",
-                    "endTime": "2025-12-03T17:24:41.850709659Z",
-                    "updateTime": "2025-12-03T17:24:41.850709619Z",
-                    "batchStats": {
-                      "requestCount": "3",
-                      "successfulRequestCount": "2",
-                      "failedRequestCount": "1"
-                    },
-                    "state": "BATCH_STATE_SUCCEEDED",
-                    "name": "batches/tti3ik8qob66dxcvynlg5swnutyntbi926ac"
-                  },
-                  "done": true,
-                  "response": {
-                    "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.GenerateContentBatchOutput",
-                    "inlinedResponses": {
-                      "inlinedResponses": [
                         {
-                          "response": {
-                            "candidates": [
-                              {
-                                "content": {
-                                  "parts": [
-                                    {
-                                      "text": "{some json}"
-                                    }
-                                  ],
-                                  "role": "model"
-                                },
-                                "finishReason": "STOP",
-                                "index": 0
-                              }
-                            ],
-                            "usageMetadata": {
-                              "promptTokenCount": 13469,
-                              "candidatesTokenCount": 281,
-                              "totalTokenCount": 16109
+                          "name": "batches/tti3ik8qob66dxcvynlg5swnutyntbi926ac",
+                          "metadata": {
+                            "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.GenerateContentBatch",
+                            "model": "models/gemini-3-flash-preview",
+                            "displayName": "error-batch",
+                            "createTime": "2025-12-03T17:23:06.004734302Z",
+                            "endTime": "2025-12-03T17:24:41.850709659Z",
+                            "updateTime": "2025-12-03T17:24:41.850709619Z",
+                            "batchStats": {
+                              "requestCount": "3",
+                              "successfulRequestCount": "2",
+                              "failedRequestCount": "1"
                             },
-                            "modelVersion": "gemini-3-flash-preview"
-                          }
-                        },
-                        {
-                          "error": {
-                            "code": 4,
-                            "message": "Deadline expired before operation could complete."
-                          }
-                        },
-                        {
+                            "state": "BATCH_STATE_SUCCEEDED",
+                            "name": "batches/tti3ik8qob66dxcvynlg5swnutyntbi926ac"
+                          },
+                          "done": true,
                           "response": {
-                            "candidates": [
-                              {
-                                "content": {
-                                  "parts": [
-                                    {
-                                      "text": "{...}"
-                                    }
-                                  ],
-                                  "role": "model"
+                            "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.GenerateContentBatchOutput",
+                            "inlinedResponses": {
+                              "inlinedResponses": [
+                                {
+                                  "response": {
+                                    "candidates": [
+                                      {
+                                        "content": {
+                                          "parts": [
+                                            {
+                                              "text": "{some json}"
+                                            }
+                                          ],
+                                          "role": "model"
+                                        },
+                                        "finishReason": "STOP",
+                                        "index": 0
+                                      }
+                                    ],
+                                    "usageMetadata": {
+                                      "promptTokenCount": 13469,
+                                      "candidatesTokenCount": 281,
+                                      "totalTokenCount": 16109
+                                    },
+                                    "modelVersion": "gemini-3-flash-preview"
+                                  }
                                 },
-                                "finishReason": "STOP",
-                                "index": 0
-                              }
-                            ],
-                            "usageMetadata": {
-                              "promptTokenCount": 6021,
-                              "candidatesTokenCount": 449,
-                              "totalTokenCount": 9070
-                            },
-                            "modelVersion": "gemini-3-flash-preview"
+                                {
+                                  "error": {
+                                    "code": 4,
+                                    "message": "Deadline expired before operation could complete."
+                                  }
+                                },
+                                {
+                                  "response": {
+                                    "candidates": [
+                                      {
+                                        "content": {
+                                          "parts": [
+                                            {
+                                              "text": "{...}"
+                                            }
+                                          ],
+                                          "role": "model"
+                                        },
+                                        "finishReason": "STOP",
+                                        "index": 0
+                                      }
+                                    ],
+                                    "usageMetadata": {
+                                      "promptTokenCount": 6021,
+                                      "candidatesTokenCount": 449,
+                                      "totalTokenCount": 9070
+                                    },
+                                    "modelVersion": "gemini-3-flash-preview"
+                                  }
+                                }
+                              ]
+                            }
                           }
                         }
-                      ]
-                    }
-                  }
-                }
-                """;
+                        """;
 
         @Test
         void should_deserialize_batch_response_with_error() {
@@ -1376,6 +1417,12 @@ class GoogleAiGeminiBatchChatModelTest {
                 .modelName(modelName)
                 .messages(UserMessage.from(message))
                 .build();
+    }
+
+    private static Operation<GeminiGenerateContentResponse> createCancelledOperation(
+            String operationName, String errorMessage) {
+        var errorStatus = new Operation.Status(13, errorMessage, List.of());
+        return new Operation<>(operationName, Map.of("state", BATCH_STATE_CANCELLED.name()), true, errorStatus, null);
     }
 
     private static Operation<GeminiGenerateContentResponse> createPendingOperation(

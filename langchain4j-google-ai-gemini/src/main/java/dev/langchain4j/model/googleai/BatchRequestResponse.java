@@ -2,6 +2,7 @@ package dev.langchain4j.model.googleai;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import dev.langchain4j.model.batch.ExtractedBatchResults;
 import dev.langchain4j.model.googleai.BatchRequestResponse.Operation.Status;
 import java.util.List;
 import java.util.Map;
@@ -106,7 +107,11 @@ public final class BatchRequestResponse {
          * @param details A list of messages that carry the error details.
          */
         @JsonIgnoreProperties(ignoreUnknown = true)
-        public record Status(int code, String message, @Nullable List<Map<String, Object>> details) {}
+        public record Status(int code, String message, @Nullable List<Map<String, Object>> details) {
+            ExtractedBatchResults.Status toGenericStatus() {
+                return new ExtractedBatchResults.Status(code, message, details);
+            }
+        }
     }
 
     /**
