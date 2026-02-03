@@ -51,8 +51,7 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
                 .build();
 
         OpenAiOfficialResponsesStreamingChatModel.Builder modelBuilder =
-                OpenAiOfficialResponsesStreamingChatModel.builder()
-                        .client(client);
+                OpenAiOfficialResponsesStreamingChatModel.builder().client(client);
 
         if (parameters.modelName() != null) {
             modelBuilder.modelName(parameters.modelName());

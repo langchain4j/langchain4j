@@ -138,7 +138,8 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                         builder.maxRetries,
                         builder.proxy,
                         builder.customHeaders);
-        this.executorService = getOrDefault(builder.executorService, DefaultExecutorProvider::getDefaultExecutorService);
+        this.executorService =
+                getOrDefault(builder.executorService, DefaultExecutorProvider::getDefaultExecutorService);
         this.modelName = ensureNotNull(builder.modelName, "modelName");
         this.temperature = builder.temperature;
         this.topP = builder.topP;

@@ -69,7 +69,8 @@ public class OpenAiOfficialSetup {
         } else {
             if (credential != null) {
                 builder.credential(credential);
-            } else if (modelProvider == ModelProvider.MICROSOFT_FOUNDRY || modelProvider == ModelProvider.AZURE_OPEN_AI) {
+            } else if (modelProvider == ModelProvider.MICROSOFT_FOUNDRY
+                    || modelProvider == ModelProvider.AZURE_OPEN_AI) {
                 // If no API key is provided for Microsoft Foundry, we try to use passwordless
                 // authentication
                 builder.credential(azureAuthentication());
@@ -134,7 +135,8 @@ public class OpenAiOfficialSetup {
         } else {
             if (credential != null) {
                 builder.credential(credential);
-            } else if (modelProvider == ModelProvider.MICROSOFT_FOUNDRY || modelProvider == ModelProvider.AZURE_OPEN_AI) {
+            } else if (modelProvider == ModelProvider.MICROSOFT_FOUNDRY
+                    || modelProvider == ModelProvider.AZURE_OPEN_AI) {
                 // If no API key is provided for Microsoft Foundry, we try to use passwordless
                 // authentication
                 builder.credential(azureAuthentication());

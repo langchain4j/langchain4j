@@ -147,8 +147,8 @@ abstract class OpenAiOfficialBaseChatModel {
                 .reasoningEffort(openAiParameters.reasoningEffort())
                 .build();
 
-        this.modelProvider =
-                detectModelProvider(isAzure, isGitHubModels, baseUrl, microsoftFoundryDeploymentName, azureOpenAIServiceVersion);
+        this.modelProvider = detectModelProvider(
+                isAzure, isGitHubModels, baseUrl, microsoftFoundryDeploymentName, azureOpenAIServiceVersion);
 
         if (this.modelProvider.equals(ModelProvider.MICROSOFT_FOUNDRY)
                 || this.modelProvider.equals(ModelProvider.GITHUB_MODELS)) {
