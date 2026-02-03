@@ -17,7 +17,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 @Testcontainers
-class PgVectorHybridFilteringIT extends EmbeddingStoreWithFilteringIT {
+class PgVectorHybridSearchIT extends EmbeddingStoreWithFilteringIT {
 
     @Container
     static PostgreSQLContainer<?> pgVector = new PostgreSQLContainer<>("pgvector/pgvector:pg15");
