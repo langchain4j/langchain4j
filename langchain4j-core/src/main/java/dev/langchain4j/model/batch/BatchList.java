@@ -1,9 +1,8 @@
 package dev.langchain4j.model.batch;
 
 import dev.langchain4j.Experimental;
-import org.jspecify.annotations.Nullable;
-
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Represents a paginated list of batch operations.
@@ -21,8 +20,4 @@ import java.util.List;
  * @see BatchResponse
  */
 @Experimental
-public record BatchList<T>(
-        List<BatchResponse<T>> batches,
-        @Nullable String nextPageToken
-) {
-}
+public record BatchList<T>(List<BatchResponse<T>> batches, @Nullable String nextPageToken) {}

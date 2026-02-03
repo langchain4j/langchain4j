@@ -1,8 +1,8 @@
 package dev.langchain4j.model.batch;
 
 import dev.langchain4j.Experimental;
-import org.jspecify.annotations.Nullable;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A unified interface for batch models that process multiple requests asynchronously.

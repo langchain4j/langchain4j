@@ -1,11 +1,10 @@
 package dev.langchain4j.model.batch;
 
-import org.junit.jupiter.api.Test;
-
-import java.util.List;
-
 import static dev.langchain4j.model.batch.BatchJobState.*;
 import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.List;
+import org.junit.jupiter.api.Test;
 
 class BatchResponseTest {
     private static final BatchName BATCH_NAME = new BatchName("batches/test-batch");

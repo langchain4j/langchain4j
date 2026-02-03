@@ -4,8 +4,8 @@ import static dev.langchain4j.model.batch.BatchJobState.BATCH_STATE_EXPIRED;
 import static dev.langchain4j.model.batch.BatchJobState.BATCH_STATE_FAILED;
 import static dev.langchain4j.model.batch.BatchJobState.BATCH_STATE_SUCCEEDED;
 
-import java.util.List;
 import dev.langchain4j.Experimental;
+import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -20,13 +20,13 @@ import org.jspecify.annotations.Nullable;
  * @param responses  the batch results, or {@code null} if the batch has not completed successfully
  */
 @Experimental
-public record BatchResponse<T>(BatchName batchName,
-                               BatchJobState state,
-                               List<T> responses,
-                               @Nullable List<ExtractedBatchResults.Status> errors) {
-    private static final List<BatchJobState> TERMINAL_BATCH_STATES = List.of(
-            BATCH_STATE_EXPIRED, BATCH_STATE_FAILED, BATCH_STATE_SUCCEEDED
-    );
+public record BatchResponse<T>(
+        BatchName batchName,
+        BatchJobState state,
+        List<T> responses,
+        @Nullable List<ExtractedBatchResults.Status> errors) {
+    private static final List<BatchJobState> TERMINAL_BATCH_STATES =
+            List.of(BATCH_STATE_EXPIRED, BATCH_STATE_FAILED, BATCH_STATE_SUCCEEDED);
 
     /**
      * Returns {@code true} if the batch is still processing (not in a terminal state).

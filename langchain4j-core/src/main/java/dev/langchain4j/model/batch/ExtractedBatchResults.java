@@ -1,9 +1,8 @@
 package dev.langchain4j.model.batch;
 
-import org.jspecify.annotations.Nullable;
-
 import java.util.List;
 import java.util.Map;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Contains the extracted results from a batch operation, separating successful responses from errors.
@@ -26,6 +25,5 @@ public record ExtractedBatchResults<T>(List<T> responses, List<Status> errors) {
      * @param details optional additional details about the error, typically containing
      *                provider-specific diagnostic information
      */
-    public record Status(int code, String message, @Nullable List<Map<String, Object>> details) {
-    }
+    public record Status(int code, String message, @Nullable List<Map<String, Object>> details) {}
 }

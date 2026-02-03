@@ -8,5 +8,4 @@ import dev.langchain4j.model.chat.response.ChatResponse;
  * A batch model for processing multiple chat requests asynchronously.
  */
 @Experimental
-public interface BatchChatModel extends BatchModel<ChatRequest, ChatResponse> {
-}
+public interface BatchChatModel extends BatchModel<ChatRequest, ChatResponse> {}
