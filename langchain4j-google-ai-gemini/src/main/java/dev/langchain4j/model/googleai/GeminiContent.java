@@ -133,12 +133,6 @@ record GeminiContent(List<GeminiPart> parts, String role) {
         @JsonIgnoreProperties(ignoreUnknown = true)
         record GeminiFileData(String mimeType, String fileUri) {}
 
-        /**
-         * Wrapper for per-part media resolution setting (Currently Gemini 3 only).
-         */
-        @JsonIgnoreProperties(ignoreUnknown = true)
-        record GeminiMediaResolution(GeminiMediaResolutionLevel level) {}
-
         @JsonIgnoreProperties(ignoreUnknown = true)
         record GeminiExecutableCode(GeminiLanguage programmingLanguage, String code) {
             enum GeminiLanguage {

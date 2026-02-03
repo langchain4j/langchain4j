@@ -5,8 +5,6 @@ import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.model.googleai.GeminiHarmBlockThreshold.BLOCK_LOW_AND_ABOVE;
 import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HARASSMENT;
 import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HATE_SPEECH;
-import static dev.langchain4j.model.googleai.GeneratedImageHelper.getGeneratedImages;
-import static dev.langchain4j.model.googleai.GeneratedImageHelper.hasGeneratedImages;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -470,11 +468,12 @@ class GoogleAiGeminiStreamingChatModelIT {
         assertThat(error).isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class);
     }
 
+    @Test
     void should_generate_image_streaming() {
         // given
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-2.5-flash-image-preview")
+                .modelName("gemini-2.5-flash-image")
                 .timeout(Duration.ofMinutes(1))
                 .build();
 
@@ -487,17 +486,15 @@ class GoogleAiGeminiStreamingChatModelIT {
         AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage).isNotNull();
 
-        if (hasGeneratedImages(aiMessage)) {
-            List<dev.langchain4j.data.image.Image> generatedImages = getGeneratedImages(aiMessage);
-            assertThat(generatedImages).isNotEmpty();
-
+        List<dev.langchain4j.data.image.Image> generatedImages = aiMessage.images();
+        if (!generatedImages.isEmpty()) {
             for (dev.langchain4j.data.image.Image image : generatedImages) {
                 assertThat(image.base64Data()).isNotEmpty();
                 assertThat(image.mimeType()).startsWith("image/");
             }
         }
 
-        assertThat(aiMessage.text() != null || hasGeneratedImages(aiMessage)).isTrue();
+        assertThat(aiMessage.text() != null || !aiMessage.images().isEmpty()).isTrue();
     }
 
     @AfterEach

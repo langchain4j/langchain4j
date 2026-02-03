@@ -260,11 +260,11 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         return chat(chatModel, chatRequest, ignored -> {}, 120, true);
     }
 
-    private ChatResponseAndStreamingMetadata chat(StreamingChatModel chatModel,
-                                                  ChatRequest chatRequest,
-                                                  Consumer<StreamingHandle> streamingHandleConsumer,
-                                                  int timeoutSeconds,
-                                                  boolean failOnTimeout) {
+    public static ChatResponseAndStreamingMetadata chat(StreamingChatModel chatModel,
+                                                        ChatRequest chatRequest,
+                                                        Consumer<StreamingHandle> streamingHandleConsumer,
+                                                        int timeoutSeconds,
+                                                        boolean failOnTimeout) {
 
         CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();
         StringBuffer concatenatedPartialResponsesBuilder = new StringBuffer();

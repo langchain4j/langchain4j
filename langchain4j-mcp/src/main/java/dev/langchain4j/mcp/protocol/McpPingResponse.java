@@ -6,14 +6,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Internal
-public class McpPingResponse extends McpJsonRpcMessage {
+public class McpPingResponse extends McpClientMessage {
 
     // has to be an empty object
     @JsonInclude(JsonInclude.Include.ALWAYS)
     private final Map<String, Object> result = new HashMap<>();
 
-    public McpPingResponse(final Long id) {
-        super(id);
+    public McpPingResponse(Long id) {
+        super(id, null);
     }
 
     public Map<String, Object> getResult() {

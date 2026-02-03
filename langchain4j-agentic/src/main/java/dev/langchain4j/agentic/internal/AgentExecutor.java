@@ -6,6 +6,7 @@ import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
+import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.service.TokenStream;
@@ -87,6 +88,11 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
     }
 
     @Override
+    public Class<? extends Planner> plannerType() {
+        return agentInvoker.plannerType();
+    }
+
+    @Override
     public String name() {
         return agentInvoker.name();
     }
@@ -149,6 +155,11 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
     @Override
     public AgentListener listener() {
         return agentInvoker.listener();
+    }
+
+    @Override
+    public <T extends AgentInstance> T as(Class<T> agentInstanceClass) {
+        return agentInvoker.as(agentInstanceClass);
     }
 
     void setParent(InternalAgent parent, int index) {

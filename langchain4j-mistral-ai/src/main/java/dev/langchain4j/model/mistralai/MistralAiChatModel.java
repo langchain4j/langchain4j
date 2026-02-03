@@ -9,6 +9,7 @@ import static dev.langchain4j.model.mistralai.InternalMistralAIHelper.validate;
 import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
@@ -19,18 +20,17 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionRequest;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionResponse;
 import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
+import dev.langchain4j.model.mistralai.internal.client.ParsedAndRawResponse;
 import dev.langchain4j.model.mistralai.spi.MistralAiChatModelBuilderFactory;
-import org.slf4j.Logger;
-
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
 
 /**
  * Represents a Mistral AI Chat Model with a chat completion interface, such as open-mistral-7b and open-mixtral-8x7b
@@ -43,6 +43,8 @@ public class MistralAiChatModel implements ChatModel {
     private final MistralAiClient client;
     private final Boolean safePrompt;
     private final Integer randomSeed;
+    private final boolean returnThinking;
+    private final boolean sendThinking;
     private final Integer maxRetries;
     private final List<ChatModelListener> listeners;
     private final Set<Capability> supportedCapabilities;
@@ -61,6 +63,8 @@ public class MistralAiChatModel implements ChatModel {
 
         this.safePrompt = builder.safePrompt;
         this.randomSeed = builder.randomSeed;
+        this.returnThinking = getOrDefault(builder.returnThinking, false);
+        this.sendThinking = getOrDefault(builder.sendThinking, false);
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.listeners = copy(builder.listeners);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
@@ -94,18 +98,23 @@ public class MistralAiChatModel implements ChatModel {
     public ChatResponse doChat(ChatRequest chatRequest) {
         validate(chatRequest.parameters());
 
-        MistralAiChatCompletionRequest request = createMistralAiRequest(chatRequest, safePrompt, randomSeed, false);
+        MistralAiChatCompletionRequest request =
+                createMistralAiRequest(chatRequest, safePrompt, randomSeed, false, sendThinking);
 
-        MistralAiChatCompletionResponse mistralAiResponse =
-                withRetryMappingExceptions(() -> client.chatCompletion(request), maxRetries);
+        ParsedAndRawResponse<MistralAiChatCompletionResponse> response =
+                withRetryMappingExceptions(() -> client.chatCompletionWithRawResponse(request), maxRetries);
 
-         return ChatResponse.builder()
-                .aiMessage(aiMessageFrom(mistralAiResponse))
-                .metadata(ChatResponseMetadata.builder()
+        MistralAiChatCompletionResponse mistralAiResponse = response.parsedResponse();
+
+        return ChatResponse.builder()
+                .aiMessage(aiMessageFrom(mistralAiResponse, returnThinking))
+                .metadata(MistralAiChatResponseMetadata.builder()
                         .id(mistralAiResponse.getId())
                         .modelName(mistralAiResponse.getModel())
                         .tokenUsage(tokenUsageFrom(mistralAiResponse.getUsage()))
-                        .finishReason(finishReasonFrom(mistralAiResponse.getChoices().get(0).getFinishReason()))
+                        .finishReason(finishReasonFrom(
+                                mistralAiResponse.getChoices().get(0).getFinishReason()))
+                        .rawHttpResponse(response.rawResponse())
                         .build())
                 .build();
     }
@@ -148,6 +157,8 @@ public class MistralAiChatModel implements ChatModel {
         private Integer maxTokens;
         private Boolean safePrompt;
         private Integer randomSeed;
+        private Boolean returnThinking;
+        private Boolean sendThinking;
         private ResponseFormat responseFormat;
         private List<String> stopSequences;
         private Double frequencyPenalty;
@@ -243,6 +254,35 @@ public class MistralAiChatModel implements ChatModel {
          */
         public MistralAiChatModelBuilder randomSeed(Integer randomSeed) {
             this.randomSeed = randomSeed;
+            return this;
+        }
+
+        /**
+         * Controls whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}.
+         * Please note that this does not enable thinking/reasoning for the LLM;
+         * it only controls whether to parse the {@code thinking} content from the API response
+         * and return it inside the {@link AiMessage}.
+         * <p>
+         * Disabled by default.
+         * If enabled, the thinking text will be stored within the {@link AiMessage} and may be persisted.
+         *
+         * @see #sendThinking(Boolean)
+         */
+        public MistralAiChatModelBuilder returnThinking(Boolean returnThinking) {
+            this.returnThinking = returnThinking;
+            return this;
+        }
+
+        /**
+         * Controls whether to send thinking/reasoning text to the LLM in follow-up requests.
+         * <p>
+         * Disabled by default.
+         * If enabled, the contents of {@link AiMessage#thinking()} will be sent in the API request.
+         *
+         * @see #returnThinking(Boolean)
+         */
+        public MistralAiChatModelBuilder sendThinking(Boolean sendThinking) {
+            this.sendThinking = sendThinking;
             return this;
         }
 

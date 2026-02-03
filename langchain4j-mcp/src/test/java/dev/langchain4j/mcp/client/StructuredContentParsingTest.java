@@ -36,7 +36,7 @@ public class StructuredContentParsingTest {
                 }
                 """;
         JsonNode responseNode = objectMapper.readTree(response);
-        ToolExecutionResult toolExecutionResult = ToolExecutionHelper.extractResult(responseNode);
+        ToolExecutionResult toolExecutionResult = ToolExecutionHelper.extractResult(responseNode, false);
         assertThat(toolExecutionResult.result()).isInstanceOf(Map.class);
         Map<String, Object> map = (Map<String, Object>) toolExecutionResult.result();
         assertThat(map).hasSize(4);

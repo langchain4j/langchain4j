@@ -15,11 +15,13 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
 
     private final Map<String, Object> additionalModelRequestFields;
     private final BedrockCachePointPlacement cachePointPlacement;
+    private final BedrockGuardrailConfiguration bedrockGuardrailConfiguration;
 
     private BedrockChatRequestParameters(Builder builder) {
         super(builder);
         this.additionalModelRequestFields = copy(builder.additionalModelRequestFields);
         this.cachePointPlacement = builder.cachePointPlacement;
+        this.bedrockGuardrailConfiguration = builder.bedrockGuardrailConfiguration;
     }
 
     @Override
@@ -50,19 +52,32 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
         return cachePointPlacement;
     }
 
+    public BedrockGuardrailConfiguration bedrockGuardrailConfiguration() {
+        return bedrockGuardrailConfiguration;
+    }
+
     public static class Builder extends DefaultChatRequestParameters.Builder<Builder> {
 
         private Map<String, Object> additionalModelRequestFields;
         private BedrockCachePointPlacement cachePointPlacement;
+        private BedrockGuardrailConfiguration bedrockGuardrailConfiguration;
 
         @Override
         public Builder overrideWith(ChatRequestParameters parameters) {
             super.overrideWith(parameters);
             if (parameters instanceof BedrockChatRequestParameters bedrockRequestParameters) {
-                additionalModelRequestFields(getOrDefault(
-                        bedrockRequestParameters.additionalModelRequestFields, additionalModelRequestFields));
+                // Merge additional model request fields instead of replacing
+                if (bedrockRequestParameters.additionalModelRequestFields != null
+                        && !bedrockRequestParameters.additionalModelRequestFields.isEmpty()) {
+                    if (additionalModelRequestFields == null) {
+                        additionalModelRequestFields = new HashMap<>();
+                    }
+                    additionalModelRequestFields.putAll(bedrockRequestParameters.additionalModelRequestFields);
+                }
                 this.cachePointPlacement =
                         getOrDefault(bedrockRequestParameters.cachePointPlacement, cachePointPlacement);
+                this.bedrockGuardrailConfiguration = getOrDefault(
+                        bedrockRequestParameters.bedrockGuardrailConfiguration, bedrockGuardrailConfiguration);
             }
             return this;
         }
@@ -111,6 +126,18 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
          */
         public Builder promptCaching(BedrockCachePointPlacement placement) {
             this.cachePointPlacement = placement;
+            return this;
+        }
+
+        /**
+         * Configuration information for a <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails.html">guardrail</a>
+         * that you want to use in the request.
+         *
+         * @param bedrockGuardrailConfiguration the configuration details for the guardrail
+         * @return this builder
+         */
+        public Builder guardrailConfiguration(BedrockGuardrailConfiguration bedrockGuardrailConfiguration) {
+            this.bedrockGuardrailConfiguration = bedrockGuardrailConfiguration;
             return this;
         }
 

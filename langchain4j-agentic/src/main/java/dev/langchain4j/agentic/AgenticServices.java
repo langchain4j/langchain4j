@@ -14,6 +14,7 @@ import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import dev.langchain4j.agentic.agent.AgentBuilder;
+import dev.langchain4j.agentic.agent.UntypedAgentBuilder;
 import dev.langchain4j.agentic.declarative.AgentListenerSupplier;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.observability.AgentListener;
@@ -120,13 +121,22 @@ public class AgenticServices {
     }
 
     /**
+     * Creates an agent builder for untyped agents.
+     *
+     * @return a new UntypedAgentBuilder instance
+     */
+    public static UntypedAgentBuilder agentBuilder() {
+        return new UntypedAgentBuilder();
+    }
+
+    /**
      * Creates an agent builder for the given agent service class.
      *
      * @param agentServiceClass the class of the agent service
      * @return a new AgentBuilder instance
      */
-    public static <T> AgentBuilder<T> agentBuilder(Class<T> agentServiceClass) {
-        return new AgentBuilder<>(agentServiceClass, validateAgentClass(agentServiceClass));
+    public static <T> AgentBuilder<T, AgentBuilder<T, ?>> agentBuilder(Class<T> agentServiceClass) {
+        return new AgentBuilder<>(agentServiceClass);
     }
 
     /**
@@ -264,10 +274,10 @@ public class AgenticServices {
     public interface DeclarativeAgentCreationContext<T> {
         Class<T> agentServiceClass();
 
-        AgentBuilder<T> agentBuilder();
+        AgentBuilder<T, ?> agentBuilder();
     }
 
-    public record DefaultDeclarativeAgentCreationContext<T>(Class<T> agentServiceClass, AgentBuilder<T> agentBuilder)
+    public record DefaultDeclarativeAgentCreationContext<T>(Class<T> agentServiceClass, AgentBuilder<T, ?> agentBuilder)
             implements DeclarativeAgentCreationContext<T> {}
 
     /**
@@ -380,7 +390,7 @@ public class AgenticServices {
             ChatModel chatModel,
             Consumer<DeclarativeAgentCreationContext> agentConfigurator) {
         SequenceAgent sequenceAgent = agentMethod.getAnnotation(SequenceAgent.class);
-        var builder = new SequentialAgentServiceImpl<>(agentServiceClass, agentMethod)
+        var builder = sequenceBuilder(agentServiceClass)
                 .subAgents(createSubagents(sequenceAgent.subAgents(), chatModel, agentConfigurator));
 
         buildAgentSpecs(
@@ -400,7 +410,7 @@ public class AgenticServices {
             ChatModel chatModel,
             Consumer<DeclarativeAgentCreationContext> agentConfigurator) {
         LoopAgent loopAgent = agentMethod.getAnnotation(LoopAgent.class);
-        var builder = new LoopAgentServiceImpl<>(agentServiceClass, agentMethod)
+        var builder = loopBuilder(agentServiceClass)
                 .subAgents(createSubagents(loopAgent.subAgents(), chatModel, agentConfigurator))
                 .maxIterations(loopAgent.maxIterations());
 
@@ -418,8 +428,8 @@ public class AgenticServices {
                             method.getAnnotation(ExitCondition.class).testExitAtLoopEnd());
                     return method;
                 })
-                .map(AgenticServices::loopExitConditionPredicate)
-                .ifPresent(builder::exitCondition);
+                .ifPresent(method -> builder.exitCondition(
+                        method.getAnnotation(ExitCondition.class).description(), loopExitConditionPredicate(method)));
 
         return builder.build();
     }
@@ -430,7 +440,7 @@ public class AgenticServices {
             ChatModel chatModel,
             Consumer<DeclarativeAgentCreationContext> agentConfigurator) {
         ConditionalAgent conditionalAgent = agentMethod.getAnnotation(ConditionalAgent.class);
-        var builder = new ConditionalAgentServiceImpl<>(agentServiceClass, agentMethod);
+        var builder = conditionalBuilder(agentServiceClass);
 
         buildAgentSpecs(
                 agentServiceClass,
@@ -446,9 +456,10 @@ public class AgenticServices {
                         return activationCondition != null
                                 && Arrays.asList(activationCondition.value()).contains(subagent);
                     })
-                    .map(AgenticServices::agenticScopePredicate)
-                    .ifPresent(condition ->
-                            builder.subAgent(condition, createSubagent(subagent, chatModel, agentConfigurator)));
+                    .ifPresent(method ->
+                            builder.subAgent(method.getAnnotation(ActivationCondition.class).description(),
+                                    agenticScopePredicate(method),
+                                    createSubagent(subagent, chatModel, agentConfigurator)));
         }
 
         return builder.build();
@@ -460,7 +471,7 @@ public class AgenticServices {
             ChatModel chatModel,
             Consumer<DeclarativeAgentCreationContext> agentConfigurator) {
         ParallelAgent parallelAgent = agentMethod.getAnnotation(ParallelAgent.class);
-        var builder = new ParallelAgentServiceImpl<>(agentServiceClass, agentMethod)
+        var builder = parallelBuilder(agentServiceClass)
                 .subAgents(createSubagents(parallelAgent.subAgents(), chatModel, agentConfigurator));
 
         buildAgentSpecs(
@@ -653,7 +664,7 @@ public class AgenticServices {
                         .positionalArgs();
                 return (boolean) predicateMethod.invoke(null, args);
             } catch (Exception e) {
-                throw new RuntimeException("Error invoking exit condition method: " + predicateMethod.getName(), e);
+                throw new RuntimeException("Error invoking exit predicate method: " + predicateMethod.getName(), e);
             }
         };
     }
@@ -691,7 +702,7 @@ public class AgenticServices {
             return agentExecutor;
         }
 
-        AgentBuilder<?> agentBuilder = agentBuilder(subgentClass);
+        AgentBuilder<?, ?> agentBuilder = agentBuilder(subgentClass);
         configureAgent(subgentClass, chatModel, agentBuilder, agentConfigurator);
 
         return agentToExecutor(agentBuilder.build());
