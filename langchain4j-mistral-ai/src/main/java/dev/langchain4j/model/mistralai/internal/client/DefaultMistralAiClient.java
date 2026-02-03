@@ -86,6 +86,12 @@ public class DefaultMistralAiClient extends MistralAiClient {
 
     @Override
     public void streamingChatCompletion(
+            MistralAiChatCompletionRequest request, StreamingChatResponseHandler handler) {
+        streamingChatCompletion(request, handler, false);
+    }
+
+    @Override
+    public void streamingChatCompletion(
             MistralAiChatCompletionRequest request, StreamingChatResponseHandler handler, boolean returnThinking) {
         ensureNotEmpty(request.getMessages(), "messages");
 

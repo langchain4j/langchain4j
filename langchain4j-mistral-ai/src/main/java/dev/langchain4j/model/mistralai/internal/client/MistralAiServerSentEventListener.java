@@ -22,7 +22,6 @@ import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
@@ -41,12 +40,11 @@ import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BiFunction;
 
 @Internal
 class MistralAiServerSentEventListener implements ServerSentEventListener {
 
-    private final StringBuffer contentBuilder;
+    private final StringBuffer textBuilder;
 
     private final StringBuffer thinkingBuilder;
     private final boolean returnThinking;
@@ -60,12 +58,12 @@ class MistralAiServerSentEventListener implements ServerSentEventListener {
     private String modelName;
     private String id;
     private volatile StreamingHandle streamingHandle;
-  
+
     final AtomicReference<SuccessfulHttpResponse> rawHttpResponse = new AtomicReference<>();
     final Queue<ServerSentEvent> rawServerSentEvents = new ConcurrentLinkedQueue<>();
 
     public MistralAiServerSentEventListener(StreamingChatResponseHandler handler, boolean returnThinking) {
-        this.contentBuilder = new StringBuffer();
+        this.textBuilder = new StringBuffer();
         this.thinkingBuilder = returnThinking ? new StringBuffer() : null;
         this.returnThinking = returnThinking;
         this.handler = handler;
@@ -91,18 +89,8 @@ class MistralAiServerSentEventListener implements ServerSentEventListener {
 
         String data = event.data();
         if ("[DONE]".equals(data)) {
-            AiMessage.Builder responseBuilder = AiMessage.builder();
-            if (isNotNullOrEmpty(toolExecutionRequests)) {
-                responseBuilder.toolExecutionRequests(toolExecutionRequests);
-            } else {
-                responseBuilder.text(contentBuilder.toString());
-            }
-            if (returnThinking && !thinkingBuilder.isEmpty()) {
-                responseBuilder.thinking(thinkingBuilder.toString());
-            }
-
             ChatResponse response = ChatResponse.builder()
-                    .aiMessage(responseBuilder.build())
+                    .aiMessage(createAiMessage())
                     .metadata(createMetadata())
                     .build();
             onCompleteResponse(handler, response);
@@ -128,7 +116,7 @@ class MistralAiServerSentEventListener implements ServerSentEventListener {
                     if (chunk instanceof MistralAiTextContent textContent) {
                         String text = textContent.getText();
                         if (isNotNullOrEmpty(text)) {
-                            contentBuilder.append(text);
+                            textBuilder.append(text);
                             onPartialResponse(handler, text, streamingHandle);
                         }
                     }
@@ -172,6 +160,20 @@ class MistralAiServerSentEventListener implements ServerSentEventListener {
             }
         }
         return thinkingChunks;
+    }
+
+    private AiMessage createAiMessage() {
+        AiMessage.Builder aiMessageBuilder = AiMessage.builder();
+        if (!textBuilder.toString().isEmpty()) {
+            aiMessageBuilder.text(textBuilder.toString());
+        }
+        if (returnThinking && !thinkingBuilder.isEmpty()) {
+            aiMessageBuilder.thinking(thinkingBuilder.toString());
+        }
+        if (isNotNullOrEmpty(toolExecutionRequests)) {
+            aiMessageBuilder.toolExecutionRequests(toolExecutionRequests);
+        }
+        return aiMessageBuilder.build();
     }
 
     private MistralAiChatResponseMetadata createMetadata() {
