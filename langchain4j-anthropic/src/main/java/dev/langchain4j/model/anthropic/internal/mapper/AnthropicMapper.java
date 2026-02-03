@@ -74,6 +74,7 @@ public class AnthropicMapper {
             "redacted_thinking"; // do not change, will break backward compatibility!
     public static final String SERVER_TOOL_RESULTS_KEY =
             "server_tool_results"; // do not change, will break backward compatibility!
+    public static final String CACHE_CONTROL = "cache_control";
 
     public static List<AnthropicMessage> toAnthropicMessages(List<ChatMessage> messages) {
         return toAnthropicMessages(messages, false);
@@ -114,34 +115,57 @@ public class AnthropicMapper {
     }
 
     private static AnthropicToolResultContent toAnthropicToolResultContent(ToolExecutionResultMessage message) {
-        return new AnthropicToolResultContent(message.id(), message.text(), null); // TODO propagate isError
+        return new AnthropicToolResultContent(
+                message.id(), message.text(), Boolean.TRUE.equals(message.isError()) ? true : null);
     }
 
     private static List<AnthropicMessageContent> toAnthropicMessageContents(UserMessage message) {
-        return message.contents().stream()
-                .map(content -> {
-                    if (content instanceof TextContent textContent) {
-                        return new AnthropicTextContent(textContent.text());
-                    } else if (content instanceof ImageContent imageContent) {
-                        Image image = imageContent.image();
-                        if (image.url() != null) {
-                            return AnthropicImageContent.fromUrl(image.url().toString());
-                        }
-                        return AnthropicImageContent.fromBase64(
-                                ensureNotBlank(image.mimeType(), "mimeType"),
-                                ensureNotBlank(image.base64Data(), "base64Data"));
-                    } else if (content instanceof PdfFileContent pdfFileContent) {
-                        PdfFile pdfFile = pdfFileContent.pdfFile();
-                        if (pdfFile.url() != null) {
-                            return AnthropicPdfContent.fromUrl(pdfFile.url().toString());
-                        }
-                        return AnthropicPdfContent.fromBase64(
-                                pdfFile.mimeType(), ensureNotBlank(pdfFile.base64Data(), "base64Data"));
-                    } else {
-                        throw illegalArgument("Unknown content type: " + content);
-                    }
-                })
-                .toList();
+        boolean shouldCache = message.attributes() != null
+                && "ephemeral".equals(message.attributes().get(CACHE_CONTROL));
+
+        List<dev.langchain4j.data.message.Content> contents = message.contents();
+        List<AnthropicMessageContent> anthropicContents = new ArrayList<>();
+
+        for (int i = 0; i < contents.size(); i++) {
+            dev.langchain4j.data.message.Content content = contents.get(i);
+            // Anthropic Prompt Caching is prefix-based. When a user marks a UserMessage for caching,
+            // we apply the cache_control to the last content item to ensure the cache checkpoint
+            // includes the entire message content up to that point.
+
+            boolean isLastItem = (i == contents.size() - 1);
+            boolean applyCache = shouldCache && isLastItem;
+
+            if (content instanceof TextContent textContent) {
+                if (applyCache) {
+                    anthropicContents.add(
+                            new AnthropicTextContent(textContent.text(), AnthropicCacheType.EPHEMERAL.cacheControl()));
+                } else {
+                    anthropicContents.add(new AnthropicTextContent(textContent.text()));
+                }
+            } else if (content instanceof ImageContent imageContent) {
+                Image image = imageContent.image();
+                if (image.url() != null) {
+                    anthropicContents.add(
+                            AnthropicImageContent.fromUrl(image.url().toString()));
+                } else {
+                    anthropicContents.add(AnthropicImageContent.fromBase64(
+                            ensureNotBlank(image.mimeType(), "mimeType"),
+                            ensureNotBlank(image.base64Data(), "base64Data")));
+                }
+            } else if (content instanceof PdfFileContent pdfFileContent) {
+                PdfFile pdfFile = pdfFileContent.pdfFile();
+                if (pdfFile.url() != null) {
+                    anthropicContents.add(
+                            AnthropicPdfContent.fromUrl(pdfFile.url().toString()));
+                } else {
+                    anthropicContents.add(AnthropicPdfContent.fromBase64(
+                            pdfFile.mimeType(), ensureNotBlank(pdfFile.base64Data(), "base64Data")));
+                }
+            } else {
+                throw illegalArgument("Unknown content type: " + content);
+            }
+        }
+        return anthropicContents;
     }
 
     private static List<AnthropicMessageContent> toAnthropicMessageContents(AiMessage message, boolean sendThinking) {

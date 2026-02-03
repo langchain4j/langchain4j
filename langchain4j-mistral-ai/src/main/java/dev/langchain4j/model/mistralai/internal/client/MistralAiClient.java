@@ -14,16 +14,34 @@ public abstract class MistralAiClient {
 
     public abstract MistralAiChatCompletionResponse chatCompletion(MistralAiChatCompletionRequest request);
 
+    public ParsedAndRawResponse<MistralAiChatCompletionResponse> chatCompletionWithRawResponse(
+            MistralAiChatCompletionRequest request) {
+        MistralAiChatCompletionResponse parsedResponse = chatCompletion(request);
+        return new ParsedAndRawResponse<>(parsedResponse, null);
+    }
+
     public abstract void streamingChatCompletion(
             MistralAiChatCompletionRequest request, StreamingChatResponseHandler handler);
 
     public abstract MistralAiEmbeddingResponse embedding(MistralAiEmbeddingRequest request);
+
+    public ParsedAndRawResponse<MistralAiEmbeddingResponse> embeddingWithRawResponse(
+            MistralAiEmbeddingRequest request) {
+        MistralAiEmbeddingResponse parsedResponse = embedding(request);
+        return new ParsedAndRawResponse<>(parsedResponse, null);
+    }
 
     public abstract MistralAiModerationResponse moderation(MistralAiModerationRequest request);
 
     public abstract MistralAiModelResponse listModels();
 
     public abstract MistralAiChatCompletionResponse fimCompletion(MistralAiFimCompletionRequest request);
+
+    public ParsedAndRawResponse<MistralAiChatCompletionResponse> fimCompletionWithRawResponse(
+            MistralAiFimCompletionRequest request) {
+        MistralAiChatCompletionResponse parsedResponse = fimCompletion(request);
+        return new ParsedAndRawResponse<>(parsedResponse, null);
+    }
 
     public abstract void streamingFimCompletion(
             MistralAiFimCompletionRequest request, StreamingResponseHandler<String> handler);

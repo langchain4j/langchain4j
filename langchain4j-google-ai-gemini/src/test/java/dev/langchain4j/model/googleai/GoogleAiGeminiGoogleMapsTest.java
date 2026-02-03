@@ -196,6 +196,7 @@ class GoogleAiGeminiGoogleMapsTest {
                                     .build()),
                             "model"),
                     GeminiFinishReason.STOP,
+                    null,
                     null);
 
             var usageMetadata = new GeminiGenerateContentResponse.GeminiUsageMetadata(10, 10, 20);
@@ -232,6 +233,7 @@ class GoogleAiGeminiGoogleMapsTest {
                 new GeminiContent(
                         List.of(GeminiContent.GeminiPart.builder().text(text).build()), "model"),
                 GeminiFinishReason.STOP,
+                null,
                 null);
         var usageMetadata = new GeminiGenerateContentResponse.GeminiUsageMetadata(0, 0, 0);
         return new GeminiGenerateContentResponse("id", "model", List.of(candidate), usageMetadata, null);
