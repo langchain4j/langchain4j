@@ -49,7 +49,7 @@ public class ToolServiceContext {
      * and included in the next {@link ChatRequest}.
      *
      * @see #toolSpecifications()
-     * @since 1.10.0
+     * @since 1.12.0
      */
     public List<ToolSpecification> availableToolSpecifications() { // TODO name
         return availableToolSpecifications;
@@ -115,7 +115,7 @@ public class ToolServiceContext {
          * and included in the next {@link ChatRequest}.
          *
          * @see #toolSpecifications()
-         * @since 1.10.0
+         * @since 1.12.0
          */
         public Builder availableToolSpecifications(List<ToolSpecification> availableToolSpecifications) { // TODO name
             this.availableToolSpecifications = availableToolSpecifications;

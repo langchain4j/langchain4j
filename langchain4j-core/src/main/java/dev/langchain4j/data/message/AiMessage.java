@@ -203,7 +203,7 @@ public class AiMessage implements ChatMessage {
     }
 
     /**
-     * @since 1.10.0
+     * @since 1.12.0
      */
     public Builder toBuilder() { // TODO remove?
         return builder()

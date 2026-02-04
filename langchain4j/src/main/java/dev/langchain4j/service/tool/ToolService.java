@@ -223,7 +223,7 @@ public class ToolService {
     }
 
     /**
-     * @since 1.10.0
+     * @since 1.12.0
      */
     public void toolSearchStrategy(ToolSearchStrategy toolSearchStrategy) {
         this.toolSearchStrategy = toolSearchStrategy;

@@ -24,7 +24,7 @@ public class ToolExecutionResultMessage implements ChatMessage {
     /**
      * Creates a {@link ToolExecutionResultMessage} from a builder.
      *
-     * @since 1.11.0
+     * @since 1.12.0
      */
     public ToolExecutionResultMessage(Builder builder) {
         this.id = builder.id;
@@ -83,7 +83,7 @@ public class ToolExecutionResultMessage implements ChatMessage {
     /**
      * TODO
      *
-     * @since 1.11.0
+     * @since 1.12.0
      */
     public Map<String, Object> attributes() {
         return attributes;

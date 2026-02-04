@@ -78,7 +78,7 @@ public class ToolExecutionResult {
     /**
      * TODO
      *
-     * @since 1.11.0
+     * @since 1.12.0
      */
     public Map<String, Object> attributes() {
         return attributes;
@@ -155,7 +155,7 @@ public class ToolExecutionResult {
         /**
          * TODO
          *
-         * @since 1.11.0
+         * @since 1.12.0
          */
         public Builder attributes(Map<String, Object> attributes) {
             this.attributes = attributes;

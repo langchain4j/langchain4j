@@ -7,7 +7,7 @@ import static dev.langchain4j.internal.Utils.copy;
 /**
  * TODO
  *
- * @since 1.10.0
+ * @since 1.12.0
  */
 public class ToolSearchResult {
 

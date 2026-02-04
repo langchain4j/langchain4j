@@ -5,6 +5,10 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import java.util.List;
 
 // TODO name, location
+
+/**
+ * @since 1.12.0
+ */
 public interface ToolSearchStrategy {
 
     // TODO accept request, return result
