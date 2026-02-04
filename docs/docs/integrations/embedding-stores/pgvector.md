@@ -45,6 +45,7 @@ RAG, and more.
 | `dropTableFirst`        | Specifies whether to drop the table before recreating it (useful for tests).                                                                                                                                                                                                                                                                                                                                                                                   | `false`         | Optional                                                                                                                                                                                                                                                                          |
 | `searchMode`            | Search mode to use. Options: <ul><li>**VECTOR**: Standard vector similarity search using cosine distance.</li><li>**HYBRID**: Combines vector search with full-text keyword search using Reciprocal Rank Fusion (RRF).</li></ul>                                                                                                                                                                                                                               | `VECTOR`        | Optional                                                                                                                                                                                                                                                                          |
 | `rrfK`                  | The constant `k` used in the RRF (Reciprocal Rank Fusion) algorithm: `Score = 1/(k + rank_vector) + 1/(k + rank_keyword)`. Lower values (20-40) emphasize top results more; higher values (80-100) create more balanced rankings. Only relevant when `searchMode` is set to `HYBRID`.                                                                                                                                                                          | `60`            | Optional. Only used in HYBRID search mode.                                                                                                                                                                                                                                        |
+| `textSearchConfig`      | PostgreSQL text search configuration name used for keyword search (e.g., `simple`, `english`, `german`). Only applies when `searchMode` is `HYBRID`.                                                                                                                                                                                                                                                                                                  | `simple`        | Optional. Only used in HYBRID search mode.                                                                                                                                                                                                                                        |
 | `metadataStorageConfig` | Configuration object for handling metadata associated with embeddings. Supports three storage modes: <ul><li>**COLUMN_PER_KEY**: For static metadata when you know the metadata keys in advance.</li><li>**COMBINED_JSON**: For dynamic metadata when you don't know the metadata keys in advance. Stores data as JSON. (Default)</li><li>**COMBINED_JSONB**: Similar to JSON, but stored in binary format for optimized querying on large datasets.</li></ul> | `COMBINED_JSON` | Optional. If not set, a default configuration is used with `COMBINED_JSON`.                                                                                                                                                                                                       |
 
 ## Examples
@@ -330,7 +331,8 @@ EmbeddingStore<TextSegment> embeddingStore = PgVectorEmbeddingStore.builder()
         .table("document_embeddings")
         .dimension(embeddingModel.dimension())
         .searchMode(SearchMode.HYBRID)  // Enable hybrid search (default: SearchMode.VECTOR)
-        .rrfK(60)                       // Optional: RRF algorithm parameter (default: 60)
+        .textSearchConfig("english")    // Optional: PostgreSQL text search config (default: "simple")
+        .rrfK(60)                        // Optional: RRF algorithm parameter (default: 60)
         .build();
 ```
 
@@ -373,23 +375,26 @@ Where:
 - `rank_vector` is the ranking position from vector search (1 = best match)
 - `rank_keyword` is the ranking position from keyword search (1 = best match)
 
-**Example Score Calculation** (with k=80):
+**Example Score Calculation** (k = 80 as used in tests):
 
 If a document ranks 1st in both vector and keyword search:
 ```
 Score = 1/(80+1) + 1/(80+1)
       = 1/81 + 1/81
-      = 0.0247
+      ≈ 0.0247
 ```
 
-**Important**: RRF scores are rank-based and typically range from ~0.02 to ~1.0. This is different from cosine similarity scores (0.0 to 1.0) used in vector-only search.
+**Score range notes**
+- Maximum score is `2/(k+1)` when a result ranks first in both searches (e.g., k=60 → ~0.0328; k=80 → ~0.0247).
+- Scores decay toward 0 as ranks increase; they do **not** reach 1.0.
+- RRF scores are rank-based and not directly comparable to cosine similarity (0.0–1.0) from vector-only search.
 
 #### Key Differences from Vector-Only Search
 
 | Aspect | Vector Search | Hybrid Search |
 |--------|--------------|---------------|
 | **Query Input** | Only `queryEmbedding` | Both `queryEmbedding` AND `query` text |
-| **Score Type** | Cosine similarity (0.0-1.0) | RRF rank-based score (~0.02-1.0) |
+| **Score Type** | Cosine similarity (0.0-1.0) | RRF rank-based score (max `≈ 2/(k+1)`; ~0.033 with k=60) |
 | **Best For** | Semantic similarity, paraphrasing | Exact keywords + semantic meaning |
 
 #### Tuning RRF Parameter
