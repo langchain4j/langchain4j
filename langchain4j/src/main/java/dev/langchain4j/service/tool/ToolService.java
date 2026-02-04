@@ -331,7 +331,7 @@ public class ToolService {
                     ToolSearchResult toolSearchResult = toolSearchStrategy.search(toolSearchRequest);
 
                     return ToolExecutionResult.builder()
-                            .result(toolSearchResult) // TODO?
+                            .result(toolSearchResult)
                             .resultText("Found tools: " + String.join(", ", toolSearchResult.foundToolNames()))
                             .attributes(Map.of(FOUND_TOOLS_ATTRIBUTE, toolSearchResult.foundToolNames()))
                             .build();
@@ -339,11 +339,7 @@ public class ToolService {
 
                 @Override
                 public String execute(ToolExecutionRequest request, Object memoryId) {
-                    // TODO
-                    InvocationContext invocationContext =
-                            InvocationContext.builder().chatMemoryId(memoryId).build();
-                    ToolExecutionResult result = executeWithContext(request, invocationContext);
-                    return result.resultText();
+                    throw new IllegalStateException("executeWithContext must be called instead");
                 }
             };
             result.put(toolSearchTool.name(), toolExecutor);
