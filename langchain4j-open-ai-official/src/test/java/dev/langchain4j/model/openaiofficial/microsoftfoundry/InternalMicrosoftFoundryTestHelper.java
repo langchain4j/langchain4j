@@ -20,7 +20,7 @@ import org.slf4j.LoggerFactory;
  * Helper class for testing Microsoft Foundry models.
  * <p>
  * Tests will run depending on the available environment variables:
- * - AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_KEY: Microsoft Foundry models will be tested
+ * - MICROSOFT_FOUNDRY_ENDPOINT and MICROSOFT_FOUNDRY_API_KEY: Microsoft Foundry models will be tested
  * <p>
  */
 public class InternalMicrosoftFoundryTestHelper {
@@ -52,73 +52,83 @@ public class InternalMicrosoftFoundryTestHelper {
 
     static {
         // Set up Microsoft Foundry models if the environment variables are set
+        String endpoint = null;
+        String apiKey = null;
         if (System.getenv("AZURE_OPENAI_ENDPOINT") != null || System.getenv("AZURE_OPENAI_KEY") != null) {
+            endpoint = System.getenv("AZURE_OPENAI_ENDPOINT");
+            apiKey = System.getenv("AZURE_OPENAI_KEY");
+        }
+        if (System.getenv("MICROSOFT_FOUNDRY_ENDPOINT") != null || System.getenv("MICROSOFT_FOUNDRY_API_KEY") != null) {
+            endpoint = System.getenv("MICROSOFT_FOUNDRY_ENDPOINT");
+            apiKey = System.getenv("MICROSOFT_FOUNDRY_API_KEY");
+        }
+        if (endpoint != null || apiKey != null) {
             AZURE_OPEN_AI_CHAT_MODEL = OpenAiOfficialChatModel.builder()
-                    .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                    .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                    .baseUrl(endpoint)
+                    .apiKey(apiKey)
                     .modelName(CHAT_MODEL_NAME)
                     .build();
 
             AZURE_OPEN_AI_CHAT_MODEL_WITH_STRICT_TOOLS = OpenAiOfficialChatModel.builder()
-                    .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                    .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                    .baseUrl(endpoint)
+                    .apiKey(apiKey)
                     .modelName(CHAT_MODEL_NAME)
                     .strictTools(true)
                     .build();
 
             AZURE_OPEN_AI_CHAT_MODEL_JSON_WITHOUT_STRICT_SCHEMA = OpenAiOfficialChatModel.builder()
-                    .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                    .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                    .baseUrl(endpoint)
+                    .apiKey(apiKey)
                     .modelName(CHAT_MODEL_NAME)
                     .supportedCapabilities(Set.of(RESPONSE_FORMAT_JSON_SCHEMA))
                     .strictJsonSchema(false)
                     .build();
 
             AZURE_OPEN_AI_CHAT_MODEL_JSON_WITH_STRICT_SCHEMA = OpenAiOfficialChatModel.builder()
-                    .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                    .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                    .baseUrl(endpoint)
+                    .apiKey(apiKey)
                     .modelName(CHAT_MODEL_NAME)
                     .supportedCapabilities(Set.of(RESPONSE_FORMAT_JSON_SCHEMA))
                     .strictJsonSchema(true)
                     .build();
 
             AZURE_OPEN_AI_STREAMING_CHAT_MODEL = OpenAiOfficialStreamingChatModel.builder()
-                    .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                    .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                    .baseUrl(endpoint)
+                    .apiKey(apiKey)
                     .modelName(CHAT_MODEL_NAME)
                     .build();
 
             AZURE_OPEN_AI_CHAT_MODEL_STREAMING_WITH_STRICT_TOOLS = OpenAiOfficialStreamingChatModel.builder()
-                    .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                    .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                    .baseUrl(endpoint)
+                    .apiKey(apiKey)
                     .modelName(CHAT_MODEL_NAME)
                     .strictTools(true)
                     .build();
 
             AZURE_OPEN_AI_STREAMING_CHAT_MODEL_JSON_WITH_STRICT_SCHEMA = OpenAiOfficialStreamingChatModel.builder()
-                    .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                    .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                    .baseUrl(endpoint)
+                    .apiKey(apiKey)
                     .modelName(CHAT_MODEL_NAME)
                     .supportedCapabilities(Set.of(RESPONSE_FORMAT_JSON_SCHEMA))
                     .strictJsonSchema(true)
                     .build();
 
             AZURE_OPEN_AI_EMBEDDING_MODEL = OpenAiOfficialEmbeddingModel.builder()
-                    .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                    .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                    .baseUrl(endpoint)
+                    .apiKey(apiKey)
                     .modelName(EMBEDDING_MODEL_NAME)
                     .build();
 
             AZURE_OPEN_AI_IMAGE_MODEL = OpenAiOfficialImageModel.builder()
-                    .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                    .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                    .baseUrl(endpoint)
+                    .apiKey(apiKey)
                     .size(ImageGenerateParams.Size._1024X1024)
                     .modelName(IMAGE_MODEL_NAME)
                     .build();
 
             AZURE_OPEN_AI_IMAGE_MODEL_BASE64 = OpenAiOfficialImageModel.builder()
-                    .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                    .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                    .baseUrl(endpoint)
+                    .apiKey(apiKey)
                     .modelName(IMAGE_MODEL_NAME)
                     .responseFormat(ImageGenerateParams.ResponseFormat.B64_JSON)
                     .build();

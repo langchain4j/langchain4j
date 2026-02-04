@@ -133,12 +133,15 @@ public class WebSocketMcpTransport implements McpTransport {
         // if the initialize method was already called and we know the necessary data for initialization, schedule
         // a new initialization right away
         if (this.initializeRequest != null) {
-            newWebSocketFuture = newWebSocketFuture.thenCompose(
-                    webSocket -> execute(new McpCallContext(null, this.initializeRequest), Optional.of(webSocket))
-                            .thenCompose(originalResponse -> execute(
-                                            new McpCallContext(null, new McpInitializationNotification()),
-                                            Optional.of(webSocket))
-                                    .thenCompose(nullNode -> CompletableFuture.completedFuture(webSocket))));
+            newWebSocketFuture = newWebSocketFuture.thenCompose(webSocket -> execute(
+                            new McpCallContext(null, this.initializeRequest),
+                            Optional.of(webSocket),
+                            this.initializeRequest.getId())
+                    .thenCompose(originalResponse -> execute(
+                                    new McpCallContext(null, new McpInitializationNotification()),
+                                    Optional.of(webSocket),
+                                    null)
+                            .thenCompose(nullNode -> CompletableFuture.completedFuture(webSocket))));
         }
         this.webSocketRef.set(newWebSocketFuture);
         return newWebSocketFuture;
@@ -147,13 +150,14 @@ public class WebSocketMcpTransport implements McpTransport {
     @Override
     public CompletableFuture<JsonNode> initialize(McpInitializeRequest operation) {
         this.initializeRequest = operation;
-        CompletableFuture<JsonNode> completableFuture = execute(new McpCallContext(null, operation), Optional.empty());
+        CompletableFuture<JsonNode> completableFuture =
+                execute(new McpCallContext(null, operation), Optional.empty(), operation.getId());
         return completableFuture
                 .thenCompose(originalResponse -> {
                     return CompletableFuture.completedFuture(originalResponse);
                 })
                 .thenCompose(originalResponse -> execute(
-                                new McpCallContext(null, new McpInitializationNotification()), Optional.empty())
+                                new McpCallContext(null, new McpInitializationNotification()), Optional.empty(), null)
                         .thenCompose(nullNode -> CompletableFuture.completedFuture(originalResponse)));
     }
 
@@ -164,7 +168,7 @@ public class WebSocketMcpTransport implements McpTransport {
 
     @Override
     public CompletableFuture<JsonNode> executeOperationWithResponse(McpCallContext context) {
-        return execute(context, Optional.empty());
+        return execute(context, Optional.empty(), context.message().getId());
     }
 
     @Override
@@ -174,7 +178,7 @@ public class WebSocketMcpTransport implements McpTransport {
 
     @Override
     public void executeOperationWithoutResponse(McpCallContext context) {
-        execute(context, Optional.empty());
+        execute(context, Optional.empty(), null);
     }
 
     @Override
@@ -218,13 +222,12 @@ public class WebSocketMcpTransport implements McpTransport {
         }
     }
 
-    private CompletableFuture<JsonNode> execute(McpCallContext context, Optional<WebSocket> webSocket) {
+    private CompletableFuture<JsonNode> execute(McpCallContext context, Optional<WebSocket> webSocket, Long id) {
         CompletableFuture<JsonNode> future = new CompletableFuture<>();
         if (closed) {
             future.completeExceptionally(new IllegalStateException("Transport is closed"));
             return future;
         }
-        Long id = context.message().getId();
         if (id != null) {
             operationHandler.startOperation(id, future);
         }

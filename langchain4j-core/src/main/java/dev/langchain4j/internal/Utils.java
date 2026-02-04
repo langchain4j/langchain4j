@@ -185,6 +185,16 @@ public class Utils {
     }
 
     /**
+     * Is the collection not {@code null} and not empty?
+     *
+     * @param collection The collection to check.
+     * @return {@code true} if the collection is not {@code null} and not {@link Collection#isEmpty()}, otherwise {@code false}.
+     */
+    public static boolean isNotNullOrEmpty(Collection<?> collection) {
+        return !isNullOrEmpty(collection);
+    }
+
+    /**
      * Is the iterable object {@code null} or empty?
      *
      * @param iterable The iterable object to check.
