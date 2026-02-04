@@ -8,6 +8,7 @@ sidebar_position: 0
 |---------------------------------------------------------------------------------------|------------------|----------------------------|---------------------|
 | [In-memory](/integrations/embedding-stores/in-memory)                                 | ✅                | ✅                          | ✅                   |
 | [AlloyDB for Postgres](/integrations/embedding-stores/alloydb)                                     | ✅               | ✅                         | ✅                  |
+| [Amazon S3 Vectors](/integrations/embedding-stores/amazon-s3-vectors)                 | ✅                | ✅                          | ✅                   |
 | [Astra DB](/integrations/embedding-stores/astra-db)                                   | ✅                |                            |                     |
 | [Azure AI Search](/integrations/embedding-stores/azure-ai-search)                     | ✅                | ✅                          | ✅                   |
 | [Azure CosmosDB Mongo vCore](/integrations/embedding-stores/azure-cosmos-mongo-vcore) | ✅                |                            |                     |
@@ -21,16 +22,19 @@ sidebar_position: 0
 | [DuckDB](/integrations/embedding-stores/duckdb)                                       | ✅                | ✅                          | ✅                   |
 | [Elasticsearch](/integrations/embedding-stores/elasticsearch)                         | ✅                | ✅                          | ✅                   |
 | [Infinispan](/integrations/embedding-stores/infinispan)                               | ✅                | ✅                            | ✅                     |
-| [Mariadb](/integrations/embedding-stores/mariadb)                                       | ✅                | ✅                          | ✅                   |
+| [JVector](/integrations/embedding-stores/jvector)                                     |                   |                             | ✅                   |
+| [Mariadb](/integrations/embedding-stores/mariadb)                                     | ✅                | ✅                          | ✅                   |
 | [Milvus](/integrations/embedding-stores/milvus)                                       | ✅                | ✅                          | ✅                   |
 | [MongoDB Atlas](/integrations/embedding-stores/mongodb-atlas)                         | ✅                | ✅                          | ✅                   |
 | [Neo4j](/integrations/embedding-stores/neo4j)                                         | ✅                |                            |                     |
-| [OpenSearch](/integrations/embedding-stores/opensearch)                               | ✅                |                            |                     |
+| [OceanBase](/integrations/embedding-stores/oceanbase)                                 | ✅                | ✅                          | ✅                   |
+| [OpenSearch](/integrations/embedding-stores/opensearch)                               | ✅                | ✅                          | ✅                   |
 | [Oracle](/integrations/embedding-stores/oracle)                                       | ✅                | ✅                          | ✅                   |
 | [PGVector](/integrations/embedding-stores/pgvector)                                   | ✅                | ✅                          | ✅                   |
 | [Pinecone](/integrations/embedding-stores/pinecone)                                   | ✅                | ✅                          | ✅                   |
 | [Qdrant](/integrations/embedding-stores/qdrant)                                       | ✅                | ✅                          | ✅                   |
-| [Redis](/integrations/embedding-stores/redis)                                         | ✅                |                            |                     |
+| [Redis](/integrations/embedding-stores/redis)                                         | ✅                |                              | ✅                   |
+| [SQL Server](/integrations/embedding-stores/sqlserver)                                | ✅                | ✅                          | ✅                    |
 | [Tablestore](/integrations/embedding-stores/tablestore)                               | ✅                | ✅                          | ✅                   |
 | [Vearch](/integrations/embedding-stores/vearch)                                       | ✅                |                            |                     |
 | [Vespa](/integrations/embedding-stores/vespa)                                         |                  |                            |                     |

@@ -1,5 +1,7 @@
 package dev.langchain4j.agentic.declarative;
 
+import dev.langchain4j.agentic.Agent;
+
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
@@ -8,9 +10,7 @@ import java.lang.annotation.Target;
 
 /**
  * Marks a method as a definition of a loop agent, used to orchestrate the agentic workflow
- * by invoking a series of sub-agents in a loop until a certain condition is met or a maximum number of iterations is reached.
- * Each sub-agent is defined using the {@link SubAgent} annotation, which specifies the sub-agent's type
- * and its output variable name.
+ * by invoking a series of sub-agents in a loop until a certain predicate is met or a maximum number of iterations is reached.
  * <p>
  * Example:
  * <pre>
@@ -20,10 +20,7 @@ import java.lang.annotation.Target;
  *         @LoopAgent(
  *                 description = "Review the given story to ensure it aligns with the specified style",
  *                 outputKey = "story", maxIterations = 5,
- *                 subAgents = {
- *                     @SubAgent(type = StyleScorer.class, outputKey = "score"),
- *                     @SubAgent(type = StyleEditor.class, outputKey = "story")
- *             }
+ *                 subAgents = { StyleScorer.class, StyleEditor.class }
  *         )
  *         String write(@V("story") String story);
  *     }
@@ -57,15 +54,24 @@ public @interface LoopAgent {
     String outputKey() default "";
 
     /**
+     * Strongly typed key of the output variable that will be used to store the result of the agent's invocation.
+     * It enforces type safety when retrieving the output from the agent's state and can be used in alternative
+     * to the {@code outputKey()} attribute. Note that only one of those two attributes can be used at a time.
+     *
+     * @return class representing the typed output variable.
+     */
+    Class<? extends TypedKey<?>> typedOutputKey() default Agent.NoTypedKey.class;
+
+    /**
      * Array of sub-agents that will be invoked in parallel.
      *
      * @return array of sub-agents.
      */
-    SubAgent[] subAgents();
+    Class<?>[] subAgents();
 
     /**
      * Maximum number of iterations the loop will execute.
-     * If the exit condition is not met within this number of iterations, the loop will terminate.
+     * If the exit predicate is not met within this number of iterations, the loop will terminate.
      *
      * @return maximum number of iterations.
      */

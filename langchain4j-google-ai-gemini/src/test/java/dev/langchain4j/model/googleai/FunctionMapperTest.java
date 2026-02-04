@@ -9,6 +9,7 @@ import dev.langchain4j.agent.tool.ToolSpecifications;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
+import dev.langchain4j.model.googleai.GeminiGenerateContentRequest.GeminiTool;
 import dev.langchain4j.model.output.structured.Description;
 import java.util.Arrays;
 import java.util.List;
@@ -63,18 +64,19 @@ class FunctionMapperTest {
         assertThat(toolSpecification.description()).isEqualTo("Get the distance between the user and the ISS.");
 
         // when
-        GeminiTool geminiTool = FunctionMapper.fromToolSepcsToGTool(toolSpecifications, false);
+        GeminiTool geminiTool =
+                FunctionMapper.fromToolSepcsToGTool(toolSpecifications, false, false, false, false, false);
         System.out.println("\ngeminiTool = " + withoutNullValues(geminiTool.toString()));
 
         // then
-        List<GeminiFunctionDeclaration> allGFnDecl = geminiTool.getFunctionDeclarations();
+        List<GeminiFunctionDeclaration> allGFnDecl = geminiTool.functionDeclarations();
         assertThat(allGFnDecl).hasSize(1);
 
         GeminiFunctionDeclaration gFnDecl = allGFnDecl.get(0);
-        assertThat(gFnDecl.getName()).isEqualTo("distanceBetween");
+        assertThat(gFnDecl.name()).isEqualTo("distanceBetween");
 
-        assertThat(gFnDecl.getParameters().getType()).isEqualTo(GeminiType.OBJECT);
-        Map<String, GeminiSchema> props = gFnDecl.getParameters().getProperties();
+        assertThat(gFnDecl.parameters().getType()).isEqualTo(GeminiType.OBJECT);
+        Map<String, GeminiSchema> props = gFnDecl.parameters().getProperties();
 
         assertThat(props).hasSize(2);
         assertThat(props.keySet()).containsAll(Arrays.asList("userCoordinates", "issCoordinates"));
@@ -170,18 +172,19 @@ class FunctionMapperTest {
         System.out.println("\ntoolSpecifications = " + toolSpecifications);
 
         // when
-        GeminiTool geminiTool = FunctionMapper.fromToolSepcsToGTool(toolSpecifications, false);
+        GeminiTool geminiTool =
+                FunctionMapper.fromToolSepcsToGTool(toolSpecifications, false, false, false, false, false);
         System.out.println("\ngeminiTool = " + withoutNullValues(geminiTool.toString()));
 
         // then
-        List<GeminiFunctionDeclaration> allGFnDecl = geminiTool.getFunctionDeclarations();
+        List<GeminiFunctionDeclaration> allGFnDecl = geminiTool.functionDeclarations();
         assertThat(allGFnDecl).hasSize(1);
 
         GeminiFunctionDeclaration gFnDecl = allGFnDecl.get(0);
-        assertThat(gFnDecl.getName()).isEqualTo("makeOrder");
-        assertThat(gFnDecl.getParameters().getType()).isEqualTo(GeminiType.OBJECT);
+        assertThat(gFnDecl.name()).isEqualTo("makeOrder");
+        assertThat(gFnDecl.parameters().getType()).isEqualTo(GeminiType.OBJECT);
 
-        Map<String, GeminiSchema> props = gFnDecl.getParameters().getProperties();
+        Map<String, GeminiSchema> props = gFnDecl.parameters().getProperties();
         assertThat(props).hasSize(1);
         assertThat(props.keySet()).containsExactly("order");
 
@@ -226,10 +229,12 @@ class FunctionMapperTest {
                 .name("toolName")
                 .description("tool description")
                 .parameters(JsonObjectSchema.builder()
-                        .addProperty("arrayParameter", JsonArraySchema.builder()
-                                .items(new JsonStringSchema())
-                                .description("an array")
-                                .build())
+                        .addProperty(
+                                "arrayParameter",
+                                JsonArraySchema.builder()
+                                        .items(new JsonStringSchema())
+                                        .description("an array")
+                                        .build())
                         .required("arrayParameter")
                         .build())
                 .build();
@@ -237,17 +242,18 @@ class FunctionMapperTest {
         System.out.println("\nspec = " + spec);
 
         // when
-        GeminiTool geminiTool = FunctionMapper.fromToolSepcsToGTool(Arrays.asList(spec), false);
+        GeminiTool geminiTool =
+                FunctionMapper.fromToolSepcsToGTool(Arrays.asList(spec), false, false, false, false, false);
         System.out.println("\ngeminiTool = " + withoutNullValues(geminiTool.toString()));
 
         // then
-        List<GeminiFunctionDeclaration> allGFnDecl = geminiTool.getFunctionDeclarations();
+        List<GeminiFunctionDeclaration> allGFnDecl = geminiTool.functionDeclarations();
         assertThat(allGFnDecl).hasSize(1);
         GeminiFunctionDeclaration gFnDecl = allGFnDecl.get(0);
-        assertThat(gFnDecl.getName()).isEqualTo("toolName");
-        assertThat(gFnDecl.getParameters().getType()).isEqualTo(GeminiType.OBJECT);
+        assertThat(gFnDecl.name()).isEqualTo("toolName");
+        assertThat(gFnDecl.parameters().getType()).isEqualTo(GeminiType.OBJECT);
 
-        Map<String, GeminiSchema> props = gFnDecl.getParameters().getProperties();
+        Map<String, GeminiSchema> props = gFnDecl.parameters().getProperties();
         System.out.println("props = " + withoutNullValues(props.toString()));
         assertThat(props).hasSize(1);
         assertThat(props.keySet()).containsExactly("arrayParameter");
@@ -258,6 +264,73 @@ class FunctionMapperTest {
         assertThat(arrayParameter.getItems().getType()).isEqualTo(GeminiType.STRING);
         assertThat(arrayParameter.getItems().getItems()).isNull();
         assertThat(arrayParameter.getItems().getProperties()).isNull();
+    }
+
+    @Test
+    void should_include_url_context_tool() {
+        // given
+        boolean allowUrlContext = true;
+
+        // when
+        GeminiTool geminiTool = FunctionMapper.fromToolSepcsToGTool(null, false, false, allowUrlContext, false, false);
+
+        // then
+        assertThat(geminiTool).isNotNull();
+        assertThat(geminiTool.functionDeclarations()).isNull();
+        assertThat(geminiTool.codeExecution()).isNull();
+        assertThat(geminiTool.urlContext()).isNotNull();
+    }
+
+    @Test
+    void should_include_google_search_retrieval() {
+        // given
+        boolean allowGoogleSearch = true;
+
+        // when
+        GeminiTool geminiTool =
+                FunctionMapper.fromToolSepcsToGTool(null, false, allowGoogleSearch, false, false, false);
+
+        // then
+        assertThat(geminiTool).isNotNull();
+        assertThat(geminiTool.functionDeclarations()).isNull();
+        assertThat(geminiTool.codeExecution()).isNull();
+        assertThat(geminiTool.googleSearch()).isNotNull();
+    }
+
+    @Test
+    void should_include_google_maps_tool() {
+        // given
+        boolean allowGoogleMaps = true;
+        boolean allowGoogleMapsWidget = false;
+
+        // when
+        GeminiTool geminiTool =
+                FunctionMapper.fromToolSepcsToGTool(null, false, false, false, allowGoogleMaps, allowGoogleMapsWidget);
+
+        // then
+        assertThat(geminiTool).isNotNull();
+        assertThat(geminiTool.functionDeclarations()).isNull();
+        assertThat(geminiTool.codeExecution()).isNull();
+        assertThat(geminiTool.googleMaps()).isNotNull();
+        assertThat(geminiTool.googleMaps().enableWidget()).isFalse();
+    }
+
+    @Test
+    void should_include_google_maps_tool_with_widget() {
+        // given
+        boolean allowGoogleMaps = true;
+        boolean allowGoogleMapsWidget = true;
+
+        // when
+        GeminiTool geminiTool =
+                FunctionMapper.fromToolSepcsToGTool(null, false, false, false, allowGoogleMaps, allowGoogleMapsWidget);
+
+        // then
+        assertThat(geminiTool).isNotNull();
+        assertThat(geminiTool.functionDeclarations()).isNull();
+        assertThat(geminiTool.codeExecution()).isNull();
+        assertThat(geminiTool.googleMaps()).isNotNull();
+        assertThat(geminiTool.googleMaps().enableWidget()).isTrue();
     }
 
     private static String withoutNullValues(String toString) {

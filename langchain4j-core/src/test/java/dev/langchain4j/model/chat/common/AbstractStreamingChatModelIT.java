@@ -60,8 +60,11 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         AtomicInteger partialResponsesCounter = new AtomicInteger();
         AtomicReference<StreamingHandle> streamingHandleReference = new AtomicReference<>();
         Consumer<StreamingHandle> streamingHandleConsumer = streamingHandle -> {
+            assertThat(streamingHandle.isCancelled()).isFalse();
             streamingHandleReference.set(streamingHandle);
-            if (partialResponsesCounter.incrementAndGet() >= partialResponsesBeforeCancellation) {
+
+            assertThat(partialResponsesCounter).hasValueLessThan(partialResponsesBeforeCancellation);
+            if (partialResponsesCounter.incrementAndGet() == partialResponsesBeforeCancellation) {
                 streamingHandle.cancel();
             }
         };
@@ -72,7 +75,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
 
         // when
         ChatResponseAndStreamingMetadata responseAndStreamingMetadata =
-                chat(model, chatRequest, streamingHandleConsumer, 5, false);
+                chat(model, chatRequest, streamingHandleConsumer, 30, false);
 
         // then
         assertThat(responseAndStreamingMetadata.chatResponse()).isNull();
@@ -257,11 +260,11 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         return chat(chatModel, chatRequest, ignored -> {}, 120, true);
     }
 
-    private ChatResponseAndStreamingMetadata chat(StreamingChatModel chatModel,
-                                                  ChatRequest chatRequest,
-                                                  Consumer<StreamingHandle> streamingHandleConsumer,
-                                                  int timeoutSeconds,
-                                                  boolean failOnTimeout) {
+    public static ChatResponseAndStreamingMetadata chat(StreamingChatModel chatModel,
+                                                        ChatRequest chatRequest,
+                                                        Consumer<StreamingHandle> streamingHandleConsumer,
+                                                        int timeoutSeconds,
+                                                        boolean failOnTimeout) {
 
         CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();
         StringBuffer concatenatedPartialResponsesBuilder = new StringBuffer();

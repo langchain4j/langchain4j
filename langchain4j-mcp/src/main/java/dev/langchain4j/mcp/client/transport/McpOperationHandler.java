@@ -3,8 +3,8 @@ package dev.langchain4j.mcp.client.transport;
 import com.fasterxml.jackson.databind.JsonNode;
 import dev.langchain4j.mcp.client.McpRoot;
 import dev.langchain4j.mcp.client.logging.McpLogMessage;
-import dev.langchain4j.mcp.client.protocol.McpPingResponse;
-import dev.langchain4j.mcp.client.protocol.McpRootsListResponse;
+import dev.langchain4j.mcp.protocol.McpPingResponse;
+import dev.langchain4j.mcp.protocol.McpRootsListResponse;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -87,5 +87,13 @@ public class McpOperationHandler {
 
     public void startOperation(Long id, CompletableFuture<JsonNode> future) {
         pendingOperations.put(id, future);
+    }
+
+    public synchronized void cancelAllPendingOperations(String reason) {
+        for (CompletableFuture<JsonNode> future : pendingOperations.values()) {
+            future.completeExceptionally(
+                    new IllegalStateException("Operation cancelled due to transport failure: " + reason));
+        }
+        pendingOperations.clear();
     }
 }

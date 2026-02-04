@@ -1,11 +1,9 @@
 package dev.langchain4j.memory.chat;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Optional;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -14,17 +12,32 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Optional;
+import java.util.function.Function;
 
 /**
- * This chat memory operates as a sliding window of {@link #maxMessages} messages.
+ * This chat memory operates as a sliding window whose size is controlled by a {@link #maxMessagesProvider}.
  * It retains as many of the most recent messages as can fit into the window.
  * If there isn't enough space for a new message, the oldest one is evicted.
  * <p>
- * Once added, a {@link SystemMessage} is always retained.
- * Only one {@code SystemMessage} can be held at a time.
- * If a new {@code SystemMessage} with the same content is added, it is ignored.
- * If a new {@code SystemMessage} with different content is added, the previous {@code SystemMessage} is removed.
+ * The maximum number of messages can be provided either statically or dynamically
+ * through the {@code maxMessagesProvider}. When supplied dynamically, the effective
+ * window size can change at runtime, and the sliding-window behavior always respects
+ * the most recent value returned by the provider.
  * <p>
+ * The rules for {@link SystemMessage}:
+ * <ul>
+ * <li>Once added, a {@code SystemMessage} is always retained, it cannot be removed.</li>
+ * <li>Only one {@code SystemMessage} can be held at a time.</li>
+ * <li>If a new {@code SystemMessage} with the same content is added, it is ignored.</li>
+ * <li>If a new {@code SystemMessage} with different content is added, the previous {@code SystemMessage} is removed.
+ * Unless {@link Builder#alwaysKeepSystemMessageFirst(Boolean)} is set to {@code true},
+ * the new {@code SystemMessage} is added to the end of the message list.</li>
+ * </ul>
  * If an {@link AiMessage} containing {@link ToolExecutionRequest}(s) is evicted,
  * the following orphan {@link ToolExecutionResultMessage}(s) are also automatically evicted
  * to avoid problems with some LLM providers (such as OpenAI)
@@ -35,13 +48,16 @@ import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 public class MessageWindowChatMemory implements ChatMemory {
 
     private final Object id;
-    private final Integer maxMessages;
+    private final Function<Object, Integer> maxMessagesProvider;
     private final ChatMemoryStore store;
+    private final boolean alwaysKeepSystemMessageFirst;
 
     private MessageWindowChatMemory(Builder builder) {
         this.id = ensureNotNull(builder.id, "id");
-        this.maxMessages = ensureGreaterThanZero(builder.maxMessages, "maxMessages");
+        this.maxMessagesProvider = ensureNotNull(builder.maxMessagesProvider, "maxMessagesProvider");
+        ensureGreaterThanZero(this.maxMessagesProvider.apply(this.id), "maxMessages");
         this.store = ensureNotNull(builder.store(), "store");
+        this.alwaysKeepSystemMessageFirst = getOrDefault(builder.alwaysKeepSystemMessageFirst, false);
     }
 
     @Override
@@ -52,6 +68,7 @@ public class MessageWindowChatMemory implements ChatMemory {
     @Override
     public void add(ChatMessage message) {
         List<ChatMessage> messages = messages();
+
         if (message instanceof SystemMessage) {
             Optional<SystemMessage> systemMessage = SystemMessage.findFirst(messages);
             if (systemMessage.isPresent()) {
@@ -62,13 +79,42 @@ public class MessageWindowChatMemory implements ChatMemory {
                 }
             }
         }
-        messages.add(message);
+
+        if (message instanceof SystemMessage && this.alwaysKeepSystemMessageFirst) {
+            messages.add(0, message);
+        } else {
+            messages.add(message);
+        }
+
+        Integer maxMessages = this.maxMessagesProvider.apply(this.id);
+        ensureGreaterThanZero(maxMessages, "maxMessages");
+        ensureCapacity(messages, maxMessages);
+
+        store.updateMessages(id, messages);
+    }
+
+    @Override
+    public void set(Iterable<ChatMessage> iter) {
+        if (iter instanceof List) {
+            set((List<ChatMessage>) iter);
+        } else {
+            List<ChatMessage> list = new ArrayList<>();
+            iter.forEach(list::add);
+            set(list);
+        }
+    }
+
+    private void set(List<ChatMessage> messages) {
+        Integer maxMessages = this.maxMessagesProvider.apply(this.id);
+        ensureGreaterThanZero(maxMessages, "maxMessages");
         ensureCapacity(messages, maxMessages);
         store.updateMessages(id, messages);
     }
 
     @Override
     public List<ChatMessage> messages() {
+        Integer maxMessages = this.maxMessagesProvider.apply(this.id);
+        ensureGreaterThanZero(maxMessages, "maxMessages");
         List<ChatMessage> messages = new LinkedList<>(store.getMessages(id));
         ensureCapacity(messages, maxMessages);
         return messages;
@@ -106,8 +152,9 @@ public class MessageWindowChatMemory implements ChatMemory {
     public static class Builder {
 
         private Object id = ChatMemoryService.DEFAULT;
-        private Integer maxMessages;
+        private Function<Object, Integer> maxMessagesProvider;
         private ChatMemoryStore store;
+        private Boolean alwaysKeepSystemMessageFirst;
 
         /**
          * @param id The ID of the {@link ChatMemory}.
@@ -125,7 +172,19 @@ public class MessageWindowChatMemory implements ChatMemory {
          * @return builder
          */
         public Builder maxMessages(Integer maxMessages) {
-            this.maxMessages = maxMessages;
+            this.maxMessagesProvider = (id) -> maxMessages;
+            return this;
+        }
+
+        /**
+         * @param maxMessagesProvider A provider that provides the maximum number of messages to retain.
+         *                                   The returned value may change dynamically at runtime.
+         *                                   If there isn't enough space for a new message under the current limit,
+         *                                   the oldest one is evicted.
+         * @return builder
+         */
+        public Builder dynamicMaxMessages(Function<Object, Integer> maxMessagesProvider) {
+            this.maxMessagesProvider = maxMessagesProvider;
             return this;
         }
 
@@ -141,6 +200,14 @@ public class MessageWindowChatMemory implements ChatMemory {
 
         private ChatMemoryStore store() {
             return store != null ? store : new SingleSlotChatMemoryStore(id);
+        }
+
+        /**
+         * Specifies whether the system message is always stored at position 0 in the messages list.
+         */
+        public Builder alwaysKeepSystemMessageFirst(Boolean alwaysKeepSystemMessageFirst) {
+            this.alwaysKeepSystemMessageFirst = alwaysKeepSystemMessageFirst;
+            return this;
         }
 
         public MessageWindowChatMemory build() {

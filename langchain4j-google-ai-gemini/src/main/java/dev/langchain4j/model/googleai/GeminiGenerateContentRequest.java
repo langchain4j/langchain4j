@@ -6,28 +6,33 @@ import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 record GeminiGenerateContentRequest(
-        @JsonProperty List<GeminiContent> contents,
-        @JsonProperty GeminiTool tools,
-        @JsonProperty GeminiToolConfig toolConfig,
-        @JsonProperty List<GeminiSafetySetting> safetySettings,
-        @JsonProperty GeminiContent systemInstruction,
-        @JsonProperty GeminiGenerationConfig generationConfig,
-        @JsonProperty String cachedContent) {
+        String model,
+        List<GeminiContent> contents,
+        GeminiTool tools,
+        GeminiToolConfig toolConfig,
+        List<GeminiSafetySetting> safetySettings,
+        GeminiContent systemInstruction,
+        GeminiGenerationConfig generationConfig) {
 
     static GeminiGenerateContentRequestBuilder builder() {
         return new GeminiGenerateContentRequestBuilder();
     }
 
     static class GeminiGenerateContentRequestBuilder {
+        private String model;
         private List<GeminiContent> contents;
         private GeminiTool tools;
         private GeminiToolConfig toolConfig;
         private List<GeminiSafetySetting> safetySettings;
         private GeminiContent systemInstruction;
         private GeminiGenerationConfig generationConfig;
-        private String cachedContent;
 
         GeminiGenerateContentRequestBuilder() {}
+
+        GeminiGenerateContentRequestBuilder model(String model) {
+            this.model = model;
+            return this;
+        }
 
         GeminiGenerateContentRequestBuilder contents(List<GeminiContent> contents) {
             this.contents = contents;
@@ -59,20 +64,39 @@ record GeminiGenerateContentRequest(
             return this;
         }
 
-        GeminiGenerateContentRequestBuilder cachedContent(String cachedContent) {
-            this.cachedContent = cachedContent;
-            return this;
-        }
-
         public GeminiGenerateContentRequest build() {
             return new GeminiGenerateContentRequest(
+                    this.model,
                     this.contents,
                     this.tools,
                     this.toolConfig,
                     this.safetySettings,
                     this.systemInstruction,
-                    this.generationConfig,
-                    this.cachedContent);
+                    this.generationConfig);
         }
     }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record GeminiTool(
+            List<GeminiFunctionDeclaration> functionDeclarations,
+            GeminiCodeExecution codeExecution,
+            @JsonProperty("google_search") GeminiGoogleSearchRetrieval googleSearch,
+            GeminiUrlContext urlContext,
+            GeminiGoogleMaps googleMaps) {
+
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        record GeminiCodeExecution() {}
+
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        record GeminiUrlContext() {}
+
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        record GeminiGoogleSearchRetrieval() {}
+
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        record GeminiGoogleMaps(Boolean enableWidget) {}
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record GeminiToolConfig(GeminiFunctionCallingConfig functionCallingConfig) {}
 }

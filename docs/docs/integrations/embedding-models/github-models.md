@@ -2,7 +2,9 @@
 sidebar_position: 6
 ---
 
-# GitHub Models
+# GitHub Models [Deprecated]
+
+This module is deprecated, please use the [OpenAI Official SDK module](/integrations/language-models/open-ai-official) instead.
 
 :::note
 
@@ -33,7 +35,7 @@ Once you are ready to bring your application to production, you can switch to a 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-github-models</artifactId>
-    <version>1.8.0-beta15</version>
+    <version>1.11.0-beta19</version>
 </dependency>
 ```
 

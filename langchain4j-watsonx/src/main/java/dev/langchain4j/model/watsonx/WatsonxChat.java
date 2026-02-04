@@ -7,12 +7,10 @@ import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static java.util.Arrays.asList;
 import static java.util.Objects.nonNull;
 
-import com.ibm.watsonx.ai.CloudRegion;
 import com.ibm.watsonx.ai.chat.ChatService;
 import com.ibm.watsonx.ai.chat.model.ExtractionTags;
 import com.ibm.watsonx.ai.chat.model.Thinking;
 import com.ibm.watsonx.ai.chat.model.ThinkingEffort;
-import com.ibm.watsonx.ai.core.auth.iam.IAMAuthenticator;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
@@ -25,7 +23,6 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
-import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -59,7 +56,7 @@ abstract class WatsonxChat {
         var modelName = getOrDefault(builder.modelName, commonParameters.modelName());
         var projectId = getOrDefault(builder.projectId, watsonxParameters.projectId());
         var spaceId = getOrDefault(builder.spaceId, watsonxParameters.spaceId());
-        var timeLimit = getOrDefault(builder.timeLimit, watsonxParameters.timeLimit());
+        var timeout = getOrDefault(builder.timeout, watsonxParameters.timeout());
         var thinking = getOrDefault(builder.thinking, watsonxParameters.thinking());
 
         defaultRequestParameters = WatsonxChatRequestParameters.builder()
@@ -82,31 +79,34 @@ abstract class WatsonxChat {
                 .topLogprobs(getOrDefault(builder.topLogprobs, watsonxParameters.topLogprobs()))
                 .seed(getOrDefault(builder.seed, watsonxParameters.seed()))
                 .toolChoiceName(getOrDefault(builder.toolChoiceName, watsonxParameters.toolChoiceName()))
-                .timeLimit(timeLimit)
+                .timeout(timeout)
                 .thinking(thinking)
+                .guidedChoice(getOrDefault(builder.guidedChoice, watsonxParameters.guidedChoice()))
+                .guidedGrammar(getOrDefault(builder.guidedGrammar, watsonxParameters.guidedGrammar()))
+                .guidedRegex(getOrDefault(builder.guidedRegex, watsonxParameters.guidedRegex()))
+                .lengthPenalty(getOrDefault(builder.lengthPenalty, watsonxParameters.lengthPenalty()))
+                .repetitionPenalty(getOrDefault(builder.repetitionPenalty, watsonxParameters.repetitionPenalty()))
                 .build();
 
-        var chatServiceBuilder = ChatService.builder();
-        if (nonNull(builder.authenticationProvider)) {
-            chatServiceBuilder.authenticationProvider(builder.authenticationProvider);
-        } else {
-            chatServiceBuilder.authenticationProvider(
-                    IAMAuthenticator.builder().apiKey(builder.apiKey).build());
-        }
+        var chatServiceBuilder = nonNull(builder.authenticator)
+                ? ChatService.builder().authenticator(builder.authenticator)
+                : ChatService.builder().apiKey(builder.apiKey);
 
         chatService = chatServiceBuilder
-                .baseUrl(builder.url)
+                .baseUrl(builder.baseUrl)
                 .modelId(modelName)
                 .version(builder.version)
                 .projectId(projectId)
                 .spaceId(spaceId)
-                .timeout(timeLimit)
+                .timeout(timeout)
                 .logRequests(builder.logRequests)
                 .logResponses(builder.logResponses)
+                .httpClient(builder.httpClient)
+                .verifySsl(builder.verifySsl)
                 .build();
     }
 
-    void validateThinkingIsAllowedForGraniteModel(
+    final void validateThinkingIsAllowedForGraniteModel(
             String modelName, List<ChatMessage> messages, List<ToolSpecification> tools) throws LangChain4jException {
 
         if (!"ibm/granite-3-3-8b-instruct".equals(modelName)) return;
@@ -121,7 +121,7 @@ abstract class WatsonxChat {
                     "The thinking/reasoning cannot be activated when a system message is present");
     }
 
-    void validate(ChatRequestParameters parameters) {
+    final void validate(ChatRequestParameters parameters) {
         if (nonNull(parameters.topK()))
             throw new UnsupportedFeatureException("'topK' parameter is not supported by watsonx.ai");
     }
@@ -129,8 +129,6 @@ abstract class WatsonxChat {
     @SuppressWarnings("unchecked")
     abstract static class Builder<T extends Builder<T>> extends WatsonxBuilder<T> {
         private String modelName;
-        private String projectId;
-        private String spaceId;
         private Double temperature;
         private Double topP;
         private Double frequencyPenalty;
@@ -144,29 +142,19 @@ abstract class WatsonxChat {
         private Integer topLogprobs;
         private Integer seed;
         private String toolChoiceName;
-        private Duration timeLimit;
         private List<ToolSpecification> toolSpecifications;
         private List<ChatModelListener> listeners;
         private ChatRequestParameters defaultRequestParameters;
         private Set<Capability> supportedCapabilities;
+        private Set<String> guidedChoice;
+        private String guidedRegex;
+        private String guidedGrammar;
+        private Double repetitionPenalty;
+        private Double lengthPenalty;
         private Thinking thinking;
-
-        public T url(CloudRegion cloudRegion) {
-            return (T) super.url(cloudRegion.getMlEndpoint());
-        }
 
         public T modelName(String modelName) {
             this.modelName = modelName;
-            return (T) this;
-        }
-
-        public T projectId(String projectId) {
-            this.projectId = projectId;
-            return (T) this;
-        }
-
-        public T spaceId(String spaceId) {
-            this.spaceId = spaceId;
             return (T) this;
         }
 
@@ -239,11 +227,6 @@ abstract class WatsonxChat {
             return (T) this;
         }
 
-        public T timeLimit(Duration timeLimit) {
-            this.timeLimit = timeLimit;
-            return (T) this;
-        }
-
         public T supportedCapabilities(Set<Capability> supportedCapabilities) {
             this.supportedCapabilities = supportedCapabilities;
             return (T) this;
@@ -273,23 +256,54 @@ abstract class WatsonxChat {
         }
 
         public T thinking(boolean enabled) {
-            if (enabled) {
-                return thinking(Thinking.builder().build());
-            }
+            return thinking(Thinking.builder().enabled(enabled).build());
+        }
+
+        public T thinking(ExtractionTags tags) {
+            if (nonNull(tags)) return thinking(Thinking.of(tags));
+
             this.thinking = null;
             return (T) this;
         }
 
-        public T thinking(ExtractionTags tags) {
-            return thinking(Thinking.of(tags));
-        }
-
         public T thinking(ThinkingEffort thinkingEffort) {
-            return thinking(Thinking.of(thinkingEffort));
+            if (nonNull(thinkingEffort)) return thinking(Thinking.of(thinkingEffort));
+
+            this.thinking = null;
+            return (T) this;
         }
 
         public T thinking(Thinking thinking) {
             this.thinking = thinking;
+            return (T) this;
+        }
+
+        public T guidedChoice(String... guidedChoice) {
+            return guidedChoice(Set.of(guidedChoice));
+        }
+
+        public T guidedChoice(Set<String> guidedChoices) {
+            this.guidedChoice = guidedChoices;
+            return (T) this;
+        }
+
+        public T guidedRegex(String guidedRegex) {
+            this.guidedRegex = guidedRegex;
+            return (T) this;
+        }
+
+        public T guidedGrammar(String guidedGrammar) {
+            this.guidedGrammar = guidedGrammar;
+            return (T) this;
+        }
+
+        public T repetitionPenalty(Double repetitionPenalty) {
+            this.repetitionPenalty = repetitionPenalty;
+            return (T) this;
+        }
+
+        public T lengthPenalty(Double lengthPenalty) {
+            this.lengthPenalty = lengthPenalty;
             return (T) this;
         }
     }

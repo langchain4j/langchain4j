@@ -12,6 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
@@ -23,9 +24,11 @@ import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+@EnabledIfEnvironmentVariable(named = "MISTRAL_AI_API_KEY", matches = ".+")
 class MistralAiStreamingChatModelIT {
 
     // https://docs.mistral.ai/platform/guardrailing/
@@ -210,5 +213,34 @@ class MistralAiStreamingChatModelIT {
         Throwable error = futureError.get(5, SECONDS);
 
         assertThat(error).isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class);
+    }
+
+    @Test
+    void should_get_raw_response() {
+        // given
+        StreamingChatModel model = MistralAiStreamingChatModel.builder()
+                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .modelName(OPEN_MISTRAL_7B)
+                .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("What is the capital of Germany?"))
+                .build();
+
+        // when
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(chatRequest, handler);
+        ChatResponse response = handler.get();
+
+        // then
+        assertThat(response.aiMessage().text()).contains("Berlin");
+
+        MistralAiChatResponseMetadata metadata = (MistralAiChatResponseMetadata) response.metadata();
+        assertThat(metadata.rawHttpResponse().headers()).containsKey("mistral-correlation-id");
+        assertThat(metadata.rawHttpResponse().body()).isNull();
+        assertThat(metadata.rawServerSentEvents()).isNotEmpty();
     }
 }

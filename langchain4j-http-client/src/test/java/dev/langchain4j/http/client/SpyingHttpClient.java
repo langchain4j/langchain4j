@@ -2,12 +2,12 @@ package dev.langchain4j.http.client;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import dev.langchain4j.Internal;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 @Internal
 public class SpyingHttpClient implements HttpClient {

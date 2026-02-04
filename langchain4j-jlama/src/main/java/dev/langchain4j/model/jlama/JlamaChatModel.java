@@ -185,7 +185,6 @@ public class JlamaChatModel implements ChatModel {
 
         public JlamaChatModelBuilder() {
             // This is public, so it can be extended
-            // By default with Lombok it becomes package private
         }
 
         public JlamaChatModelBuilder modelCachePath(Path modelCachePath) {

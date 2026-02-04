@@ -2,15 +2,16 @@ package dev.langchain4j.observability.api;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import dev.langchain4j.observability.api.event.AiServiceEvent;
-import dev.langchain4j.observability.api.listener.AiServiceListener;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import dev.langchain4j.observability.api.event.AiServiceEvent;
+import dev.langchain4j.observability.api.listener.AiServiceListener;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -23,6 +24,9 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
     private static final Logger LOG = LoggerFactory.getLogger(DefaultAiServiceListenerRegistrar.class);
     private final Map<Class<? extends AiServiceEvent>, EventListeners<? extends AiServiceEvent>> listeners =
             new ConcurrentHashMap<>();
+
+    // Defaults to false to preserve backwards compatibility
+    private final AtomicBoolean shouldThrowExceptionOnEventError = new AtomicBoolean(false);
 
     /**
      * Registers a listener to receive {@link AiServiceEvent} notifications.
@@ -62,6 +66,11 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
                 .ifPresent(l -> l.fireEvent(event));
     }
 
+    @Override
+    public void shouldThrowExceptionOnEventError(boolean shouldThrowExceptionOnEventError) {
+        this.shouldThrowExceptionOnEventError.compareAndSet(!shouldThrowExceptionOnEventError, shouldThrowExceptionOnEventError);
+    }
+
     private <T extends AiServiceEvent> EventListeners<T> addToExistingOrNewList(
             @Nullable EventListeners<? extends AiServiceEvent> listenersList, AiServiceListener<T> listener) {
 
@@ -72,7 +81,7 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
         return list;
     }
 
-    private static class EventListeners<T extends AiServiceEvent> {
+    private class EventListeners<T extends AiServiceEvent> {
         private final Set<@NonNull AiServiceListener<T>> listeners = new LinkedHashSet<>();
         private final ReadWriteLock lock = new ReentrantReadWriteLock(true);
 
@@ -120,6 +129,10 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
                                                 listener.getClass().getName(),
                                                 e.getMessage()),
                                 e);
+
+                        if (shouldThrowExceptionOnEventError.get()) {
+                            throw e;
+                        }
                     }
                 });
             } finally {

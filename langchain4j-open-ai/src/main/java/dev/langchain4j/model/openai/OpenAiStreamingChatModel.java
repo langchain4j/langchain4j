@@ -47,6 +47,7 @@ import dev.langchain4j.model.openai.spi.OpenAiStreamingChatModelBuilderFactory;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 
 /**
@@ -61,6 +62,9 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
     private final boolean strictJsonSchema;
     private final boolean strictTools;
     private final boolean returnThinking;
+    private final boolean sendThinking;
+    private final String thinkingFieldName;
+    private final boolean accumulateToolCallId;
     private final List<ChatModelListener> listeners;
 
     public OpenAiStreamingChatModel(OpenAiStreamingChatModelBuilder builder) {
@@ -76,7 +80,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 .logResponses(getOrDefault(builder.logResponses, false))
                 .logger(builder.logger)
                 .userAgent(DEFAULT_USER_AGENT)
-                .customHeaders(builder.customHeaders)
+                .customHeaders(builder.customHeadersSupplier)
                 .customQueryParams(builder.customQueryParams)
                 .build();
 
@@ -116,12 +120,15 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 .store(getOrDefault(builder.store, openAiParameters.store()))
                 .metadata(getOrDefault(builder.metadata, openAiParameters.metadata()))
                 .serviceTier(getOrDefault(builder.serviceTier, openAiParameters.serviceTier()))
-                .reasoningEffort(openAiParameters.reasoningEffort())
-                .customParameters(openAiParameters.customParameters())
+                .reasoningEffort(getOrDefault(builder.reasoningEffort, openAiParameters.reasoningEffort()))
+                .customParameters(getOrDefault(builder.customParameters, openAiParameters.customParameters()))
                 .build();
         this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
         this.strictTools = getOrDefault(builder.strictTools, false);
         this.returnThinking = getOrDefault(builder.returnThinking, false);
+        this.sendThinking = getOrDefault(builder.sendThinking, false);
+        this.thinkingFieldName = getOrDefault(builder.thinkingFieldName, "reasoning_content");
+        this.accumulateToolCallId = getOrDefault(builder.accumulateToolCallId, true);
         this.listeners = copy(builder.listeners);
     }
 
@@ -137,12 +144,14 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         validate(parameters);
 
         ChatCompletionRequest openAiRequest =
-                toOpenAiChatRequest(chatRequest, parameters, strictTools, strictJsonSchema).stream(true)
+                toOpenAiChatRequest(
+                        chatRequest, parameters, sendThinking, thinkingFieldName, strictTools, strictJsonSchema)
+                        .stream(true)
                         .streamOptions(
                                 StreamOptions.builder().includeUsage(true).build())
                         .build();
 
-        OpenAiStreamingResponseBuilder openAiResponseBuilder = new OpenAiStreamingResponseBuilder(returnThinking);
+        OpenAiStreamingResponseBuilder openAiResponseBuilder = new OpenAiStreamingResponseBuilder(returnThinking, accumulateToolCallId);
         ToolCallBuilder toolCallBuilder = new ToolCallBuilder();
 
         client.chatCompletion(openAiRequest)
@@ -273,13 +282,18 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         private Boolean store;
         private Map<String, String> metadata;
         private String serviceTier;
+        private String reasoningEffort;
         private Boolean returnThinking;
+        private Boolean sendThinking;
+        private String thinkingFieldName;
+        private Boolean accumulateToolCallId;
         private Duration timeout;
         private Boolean logRequests;
         private Boolean logResponses;
         private Logger logger;
-        private Map<String, String> customHeaders;
+        private Supplier<Map<String, String>> customHeadersSupplier;
         private Map<String, String> customQueryParams;
+        private Map<String, Object> customParameters;
         private List<ChatModelListener> listeners;
 
         public OpenAiStreamingChatModelBuilder() {
@@ -425,6 +439,11 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
+        public OpenAiStreamingChatModelBuilder reasoningEffort(String reasoningEffort) {
+            this.reasoningEffort = reasoningEffort;
+            return this;
+        }
+
         /**
          * This setting is intended for <a href="https://api-docs.deepseek.com/guides/reasoning_model">DeepSeek</a>.
          * <p>
@@ -439,6 +458,68 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
          */
         public OpenAiStreamingChatModelBuilder returnThinking(Boolean returnThinking) {
             this.returnThinking = returnThinking;
+            return this;
+        }
+
+        /**
+         * This setting is intended for <a href="https://api-docs.deepseek.com/guides/reasoning_model">DeepSeek</a>.
+         * <p>
+         * Controls whether to include thinking/reasoning text in assistant messages when sending requests to the API.
+         * This is needed for some APIs (like DeepSeek) when using reasoning mode with tool calls.
+         * <p>
+         * Disabled by default.
+         * <p>
+         * When enabled, the reasoning content from previous assistant messages (stored in {@link AiMessage#thinking()})
+         * will be included in the request during message conversion to API format.
+         *
+         * @param sendThinking whether to send reasoning content
+         * @param fieldName the field name for reasoning content
+         * @return {@code this}
+         */
+        public OpenAiStreamingChatModelBuilder sendThinking(Boolean sendThinking, String fieldName) {
+            this.sendThinking = sendThinking;
+            this.thinkingFieldName = fieldName;
+            return this;
+        }
+
+        /**
+         * This setting is intended for <a href="https://api-docs.deepseek.com/guides/reasoning_model">DeepSeek</a>.
+         * <p>
+         * Controls whether to include thinking/reasoning text in assistant messages when sending requests to the API.
+         * This is needed for some APIs (like DeepSeek) when using reasoning mode with tool calls.
+         * Uses the default field name "reasoning_content" for the reasoning content field.
+         * <p>
+         * Disabled by default.
+         * <p>
+         * When enabled, the reasoning content from previous assistant messages (stored in {@link AiMessage#thinking()})
+         * will be included in the request during message conversion to API format.
+         *
+         * @param sendThinking whether to send reasoning content
+         * @return {@code this}
+         */
+        public OpenAiStreamingChatModelBuilder sendThinking(Boolean sendThinking) {
+            this.sendThinking = sendThinking;
+            this.thinkingFieldName = "reasoning_content";
+            return this;
+        }
+
+        /**
+         * Controls whether to accumulate tool call IDs in streaming responses.
+         * <p>
+         * This setting is useful when using OpenAI-compatible APIs (like DeepSeek or Qwen) that send
+         * the complete tool call ID in every streaming chunk, rather than sending it incrementally.
+         * <p>
+         * Enabled by default (true) for standard OpenAI behavior.
+         * Set to false for APIs like DeepSeek/Qwen that repeat the full ID in each chunk.
+         * <p>
+         * When enabled (true): IDs are accumulated across chunks (e.g., "abc" + "def" = "abcdef")
+         * When disabled (false): Each chunk's ID replaces the previous one (e.g., "abc" -> "abc")
+         *
+         * @param accumulateToolCallId whether to accumulate tool call IDs
+         * @return {@code this}
+         */
+        public OpenAiStreamingChatModelBuilder accumulateToolCallId(Boolean accumulateToolCallId) {
+            this.accumulateToolCallId = accumulateToolCallId;
             return this;
         }
 
@@ -466,13 +547,37 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
+        /**
+         * Sets custom HTTP headers.
+         */
         public OpenAiStreamingChatModelBuilder customHeaders(Map<String, String> customHeaders) {
-            this.customHeaders = customHeaders;
+            this.customHeadersSupplier = () -> customHeaders;
             return this;
         }
 
+        /**
+         * Sets a supplier for custom HTTP headers.
+         * The supplier is called before each request, allowing dynamic header values.
+         * For example, this is useful for OAuth2 tokens that expire and need refreshing.
+         */
+        public OpenAiStreamingChatModelBuilder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
+            return this;
+        }
+
+        /**
+         * Sets custom URL query parameters
+         */
         public OpenAiStreamingChatModelBuilder customQueryParams(Map<String, String> customQueryParams) {
             this.customQueryParams = customQueryParams;
+            return this;
+        }
+
+        /**
+         * Sets custom HTTP body parameters
+         */
+        public OpenAiStreamingChatModelBuilder customParameters(Map<String, Object> customParameters) {
+            this.customParameters = customParameters;
             return this;
         }
 

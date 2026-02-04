@@ -2,9 +2,8 @@ package dev.langchain4j.model.openaiofficial;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
-import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.detectModelHost;
-import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.setupSyncClient;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.tokenUsageFrom;
+import static dev.langchain4j.model.openaiofficial.setup.OpenAiOfficialSetup.setupSyncClient;
 import static java.util.stream.Collectors.toList;
 
 import com.openai.azure.AzureOpenAIServiceVersion;
@@ -28,7 +27,6 @@ import java.util.Objects;
 public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     private final OpenAIClient client;
-    private InternalOpenAiOfficialHelper.ModelHost modelHost;
     private final String modelName;
     private final Integer dimensions;
     private final String user;
@@ -36,27 +34,24 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     public OpenAiOfficialEmbeddingModel(Builder builder) {
 
-        this.modelHost = detectModelHost(
-                builder.isAzure,
-                builder.isGitHubModels,
-                builder.baseUrl,
-                builder.azureDeploymentName,
-                builder.azureOpenAIServiceVersion);
-
-        this.client = setupSyncClient(
-                builder.baseUrl,
-                builder.apiKey,
-                builder.credential,
-                builder.azureDeploymentName,
-                builder.azureOpenAIServiceVersion,
-                builder.organizationId,
-                this.modelHost,
-                builder.openAIClient,
-                builder.modelName,
-                builder.timeout,
-                builder.maxRetries,
-                builder.proxy,
-                builder.customHeaders);
+        if (builder.openAIClient != null) {
+            this.client = builder.openAIClient;
+        } else {
+            this.client = setupSyncClient(
+                    builder.baseUrl,
+                    builder.apiKey,
+                    builder.credential,
+                    builder.microsoftFoundryDeploymentName,
+                    builder.azureOpenAIServiceVersion,
+                    builder.organizationId,
+                    builder.isMicrosoftFoundry,
+                    builder.isGitHubModels,
+                    builder.modelName,
+                    builder.timeout,
+                    builder.maxRetries,
+                    builder.proxy,
+                    builder.customHeaders);
+        }
         this.modelName = builder.modelName;
         this.dimensions = getOrDefault(builder.dimensions, knownDimension());
         this.user = builder.user;
@@ -72,6 +67,11 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel {
         List<List<String>> textBatches = partition(texts, maxSegmentsPerBatch);
 
         return embedBatchedTexts(textBatches);
+    }
+
+    @Override
+    public String modelName() {
+        return this.modelName;
     }
 
     private List<List<String>> partition(List<String> inputList, int size) {
@@ -142,10 +142,10 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel {
         private String baseUrl;
         private String apiKey;
         private Credential credential;
-        private String azureDeploymentName;
+        private String microsoftFoundryDeploymentName;
         private AzureOpenAIServiceVersion azureOpenAIServiceVersion;
         private String organizationId;
-        private boolean isAzure;
+        private boolean isMicrosoftFoundry;
         private boolean isGitHubModels;
         private OpenAIClient openAIClient;
         private String modelName;
@@ -172,8 +172,17 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel {
             return this;
         }
 
+        /**
+         * @deprecated Use {@link #microsoftFoundryDeploymentName(String)} instead
+         */
+        @Deprecated
         public Builder azureDeploymentName(String azureDeploymentName) {
-            this.azureDeploymentName = azureDeploymentName;
+            this.microsoftFoundryDeploymentName = azureDeploymentName;
+            return this;
+        }
+
+        public Builder microsoftFoundryDeploymentName(String microsoftFoundryDeploymentName) {
+            this.microsoftFoundryDeploymentName = microsoftFoundryDeploymentName;
             return this;
         }
 
@@ -187,8 +196,17 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel {
             return this;
         }
 
+        /**
+         * @deprecated Use {@link #isMicrosoftFoundry(boolean)} instead
+         */
+        @Deprecated
         public Builder isAzure(boolean isAzure) {
-            this.isAzure = isAzure;
+            this.isMicrosoftFoundry = isAzure;
+            return this;
+        }
+
+        public Builder isMicrosoftFoundry(boolean isMicrosoftFoundry) {
+            this.isMicrosoftFoundry = isMicrosoftFoundry;
             return this;
         }
 

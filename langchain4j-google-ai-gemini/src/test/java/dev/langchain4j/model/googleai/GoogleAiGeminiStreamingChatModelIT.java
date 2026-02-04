@@ -5,8 +5,6 @@ import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.model.googleai.GeminiHarmBlockThreshold.BLOCK_LOW_AND_ABOVE;
 import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HARASSMENT;
 import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HATE_SPEECH;
-import static dev.langchain4j.model.googleai.GeneratedImageHelper.getGeneratedImages;
-import static dev.langchain4j.model.googleai.GeneratedImageHelper.hasGeneratedImages;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -32,6 +30,7 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate.GeminiFinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.output.JsonSchemas;
 import java.time.Duration;
@@ -45,10 +44,11 @@ import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.junitpioneer.jupiter.RetryingTest;
 
+@EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 class GoogleAiGeminiStreamingChatModelIT {
 
     private static final String GOOGLE_AI_GEMINI_API_KEY = System.getenv("GOOGLE_AI_GEMINI_API_KEY");
@@ -139,7 +139,6 @@ class GoogleAiGeminiStreamingChatModelIT {
         // ToDo waiting for the normal GoogleAiGeminiChatModel to implement the test
     }
 
-    @RetryingTest(3)
     void should_execute_python_code() {
         // given
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
@@ -166,7 +165,6 @@ class GoogleAiGeminiStreamingChatModelIT {
     }
 
     @Disabled("TODO fix")
-    @RetryingTest(5)
     void should_support_safety_settings() {
         // given
         Map<GeminiHarmCategory, GeminiHarmBlockThreshold> mapSafetySettings = new HashMap<>();
@@ -246,9 +244,11 @@ class GoogleAiGeminiStreamingChatModelIT {
                         .type(JSON)
                         .jsonSchema(JsonSchema.builder()
                                 .rootElement(JsonObjectSchema.builder()
-                                        .addProperty("sentiment", JsonEnumSchema.builder()
-                                                .enumValues("POSITIVE", "NEGATIVE")
-                                                .build())
+                                        .addProperty(
+                                                "sentiment",
+                                                JsonEnumSchema.builder()
+                                                        .enumValues("POSITIVE", "NEGATIVE")
+                                                        .build())
                                         .required("sentiment")
                                         .additionalProperties(false)
                                         .build())
@@ -468,12 +468,12 @@ class GoogleAiGeminiStreamingChatModelIT {
         assertThat(error).isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class);
     }
 
-    @RetryingTest(3)
+    @Test
     void should_generate_image_streaming() {
         // given
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-2.5-flash-image-preview")
+                .modelName("gemini-2.5-flash-image")
                 .timeout(Duration.ofMinutes(1))
                 .build();
 
@@ -486,17 +486,15 @@ class GoogleAiGeminiStreamingChatModelIT {
         AiMessage aiMessage = response.aiMessage();
         assertThat(aiMessage).isNotNull();
 
-        if (hasGeneratedImages(aiMessage)) {
-            List<dev.langchain4j.data.image.Image> generatedImages = getGeneratedImages(aiMessage);
-            assertThat(generatedImages).isNotEmpty();
-
+        List<dev.langchain4j.data.image.Image> generatedImages = aiMessage.images();
+        if (!generatedImages.isEmpty()) {
             for (dev.langchain4j.data.image.Image image : generatedImages) {
                 assertThat(image.base64Data()).isNotEmpty();
                 assertThat(image.mimeType()).startsWith("image/");
             }
         }
 
-        assertThat(aiMessage.text() != null || hasGeneratedImages(aiMessage)).isTrue();
+        assertThat(aiMessage.text() != null || !aiMessage.images().isEmpty()).isTrue();
     }
 
     @AfterEach

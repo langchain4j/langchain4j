@@ -11,7 +11,7 @@ sidebar_position: 6
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-document-loader-tencent-cos</artifactId>
-    <version>1.8.0-beta15</version>
+    <version>1.11.0-beta19</version>
 </dependency>
 ```
 

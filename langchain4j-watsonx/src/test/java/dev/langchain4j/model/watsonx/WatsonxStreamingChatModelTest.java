@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -70,7 +71,7 @@ public class WatsonxStreamingChatModelTest {
     @Captor
     ArgumentCaptor<com.ibm.watsonx.ai.chat.ChatRequest> chatRequestCaptor;
 
-    static ChatResponse chatResponse;
+    static ChatResponse.Builder chatResponse;
 
     @BeforeEach
     void setUp() {
@@ -83,23 +84,22 @@ public class WatsonxStreamingChatModelTest {
         when(mockChatServiceBuilder.version(any())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.logRequests(any())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.logResponses(any())).thenReturn(mockChatServiceBuilder);
+        when(mockChatServiceBuilder.authenticator(any())).thenReturn(mockChatServiceBuilder);
+        when(mockChatServiceBuilder.apiKey(any())).thenReturn(mockChatServiceBuilder);
+        when(mockChatServiceBuilder.httpClient(any())).thenReturn(mockChatServiceBuilder);
+        when(mockChatServiceBuilder.verifySsl(anyBoolean())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.build()).thenReturn(mockChatService);
 
-        chatResponse = new ChatResponse();
-        var chatUsage = new ChatUsage();
-
-        chatUsage.setCompletionTokens(10);
-        chatUsage.setPromptTokens(10);
-        chatUsage.setTotalTokens(20);
-
-        chatResponse.setId("id");
-        chatResponse.setModelId("modelId");
-        chatResponse.setModel("model");
-        chatResponse.setModelVersion("modelVersion");
-        chatResponse.setObject("object");
-        chatResponse.setUsage(chatUsage);
-        chatResponse.setCreatedAt("createdAt");
-        chatResponse.setCreated(1L);
+        var chatUsage = new ChatUsage(10, 10, 20);
+        chatResponse = ChatResponse.build()
+                .id("id")
+                .modelId("modelId")
+                .model("model")
+                .modelVersion("modelVersion")
+                .object("object")
+                .usage(chatUsage)
+                .createdAt("createdAt")
+                .created(1L);
     }
 
     @Test
@@ -113,8 +113,8 @@ public class WatsonxStreamingChatModelTest {
 
                     var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello World", null, null, null);
                     var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
-                    chatResponse.setChoices(List.of(resultChoice));
-                    handler.onCompleteResponse(chatResponse);
+                    chatResponse.choices(List.of(resultChoice));
+                    handler.onCompleteResponse(chatResponse.build());
 
                     return CompletableFuture.completedFuture(null);
                 })
@@ -123,7 +123,7 @@ public class WatsonxStreamingChatModelTest {
 
         withChatServiceMock(() -> {
             var streamingChatModel = WatsonxStreamingChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelId")
                     .projectId("projectId")
                     .spaceId("spaceId")
@@ -155,32 +155,37 @@ public class WatsonxStreamingChatModelTest {
             };
 
             streamingChatModel.chat(chatRequest, streamingHandler);
-            assertEquals(messages, chatRequestCaptor.getValue().getMessages());
-            var parameters = chatRequestCaptor.getValue().getParameters();
+            assertEquals(messages, chatRequestCaptor.getValue().messages());
+            var parameters = chatRequestCaptor.getValue().parameters();
 
             try {
                 boolean completed = latch.await(2, TimeUnit.SECONDS);
                 assertTrue(completed, "Handler did not complete in time");
                 assertEquals(List.of("Hello", "World"), receivedResponses);
-                assertNull(parameters.getFrequencyPenalty());
-                assertNull(parameters.getJsonSchema());
-                assertNull(parameters.getLogitBias());
-                assertNull(parameters.getLogprobs());
-                assertNull(parameters.getMaxCompletionTokens());
-                assertEquals("modelId", parameters.getModelId());
-                assertNull(parameters.getN());
-                assertNull(parameters.getPresencePenalty());
-                assertEquals("projectId", parameters.getProjectId());
-                assertNull(parameters.getResponseFormat());
-                assertNull(parameters.getSeed());
-                assertEquals("spaceId", parameters.getSpaceId());
-                assertEquals(List.of(), parameters.getStop());
-                assertNull(parameters.getTemperature());
-                assertEquals(10000, parameters.getTimeLimit());
-                assertNull(parameters.getToolChoice());
-                assertNull(parameters.getToolChoiceOption());
-                assertNull(parameters.getTopLogprobs());
-                assertNull(parameters.getTopP());
+                assertNull(parameters.frequencyPenalty());
+                assertNull(parameters.jsonSchema());
+                assertNull(parameters.logitBias());
+                assertNull(parameters.logprobs());
+                assertNull(parameters.maxCompletionTokens());
+                assertEquals("modelId", parameters.modelId());
+                assertNull(parameters.n());
+                assertNull(parameters.presencePenalty());
+                assertEquals("projectId", parameters.projectId());
+                assertNull(parameters.responseFormat());
+                assertNull(parameters.seed());
+                assertEquals("spaceId", parameters.spaceId());
+                assertEquals(List.of(), parameters.stop());
+                assertNull(parameters.temperature());
+                assertNull(parameters.timeLimit());
+                assertNull(parameters.toolChoice());
+                assertNull(parameters.toolChoiceOption());
+                assertNull(parameters.topLogprobs());
+                assertNull(parameters.topP());
+                assertNull(parameters.guidedChoice());
+                assertNull(parameters.guidedGrammar());
+                assertNull(parameters.guidedRegex());
+                assertNull(parameters.repetitionPenalty());
+                assertNull(parameters.lengthPenalty());
             } catch (Exception e) {
                 fail(e);
             }
@@ -199,19 +204,18 @@ public class WatsonxStreamingChatModelTest {
                 null,
                 null);
         var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
-
+        chatResponse.choices(List.of(resultChoice));
+        var cr = chatResponse.build();
         var field = ChatResponse.class.getDeclaredField("extractionTags");
         field.setAccessible(true);
-        field.set(chatResponse, extractionTags);
-
-        chatResponse.setChoices(List.of(resultChoice));
+        field.set(cr, extractionTags);
 
         doAnswer(invocation -> {
                     ChatHandler handler = invocation.getArgument(1);
                     handler.onPartialThinking("I'm thinking", null);
                     handler.onPartialResponse("This is", null);
                     handler.onPartialResponse("the response", null);
-                    handler.onCompleteResponse(chatResponse);
+                    handler.onCompleteResponse(cr);
                     return CompletableFuture.completedFuture(null);
                 })
                 .when(mockChatService)
@@ -219,7 +223,7 @@ public class WatsonxStreamingChatModelTest {
 
         withChatServiceMock(() -> {
             StreamingChatModel streamingChatModel = WatsonxStreamingChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelId")
                     .projectId("projectId")
                     .spaceId("spaceId")
@@ -263,8 +267,8 @@ public class WatsonxStreamingChatModelTest {
                 assertTrue(completed, "Handler did not complete in time");
                 assertEquals(
                         com.ibm.watsonx.ai.chat.model.UserMessage.text("Hello"),
-                        chatRequestCaptor.getValue().getMessages().get(0));
-                assertNotNull(chatRequestCaptor.getValue().getThinking());
+                        chatRequestCaptor.getValue().messages().get(0));
+                assertNotNull(chatRequestCaptor.getValue().thinking());
             } catch (Exception e) {
                 fail(e);
             }
@@ -283,17 +287,18 @@ public class WatsonxStreamingChatModelTest {
                 null);
 
         var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
+        chatResponse.choices(List.of(resultChoice));
+        var cr = chatResponse.build();
         var field = ChatResponse.class.getDeclaredField("extractionTags");
         field.setAccessible(true);
-        field.set(chatResponse, extractionTags);
-        chatResponse.setChoices(List.of(resultChoice));
+        field.set(cr, extractionTags);
 
         doAnswer(invocation -> {
                     ChatHandler handler = invocation.getArgument(1);
                     handler.onPartialThinking("I'm thinking", null);
                     handler.onPartialResponse("This is", null);
                     handler.onPartialResponse("the response", null);
-                    handler.onCompleteResponse(chatResponse);
+                    handler.onCompleteResponse(cr);
                     return CompletableFuture.completedFuture(null);
                 })
                 .when(mockChatService)
@@ -301,7 +306,7 @@ public class WatsonxStreamingChatModelTest {
 
         withChatServiceMock(() -> {
             StreamingChatModel streamingChatModel = WatsonxStreamingChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelId")
                     .projectId("projectId")
                     .spaceId("spaceId")
@@ -348,8 +353,8 @@ public class WatsonxStreamingChatModelTest {
                 assertTrue(completed, "Handler did not complete in time");
                 assertEquals(
                         com.ibm.watsonx.ai.chat.model.UserMessage.text("Hello"),
-                        chatRequestCaptor.getValue().getMessages().get(0));
-                assertNotNull(chatRequestCaptor.getValue().getThinking());
+                        chatRequestCaptor.getValue().messages().get(0));
+                assertNotNull(chatRequestCaptor.getValue().thinking());
             } catch (Exception e) {
                 fail(e);
             }
@@ -367,8 +372,8 @@ public class WatsonxStreamingChatModelTest {
 
                     var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello World", null, "refusal", null);
                     var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
-                    chatResponse.setChoices(List.of(resultChoice));
-                    handler.onCompleteResponse(chatResponse);
+                    chatResponse.choices(List.of(resultChoice));
+                    handler.onCompleteResponse(chatResponse.build());
 
                     return CompletableFuture.completedFuture(null);
                 })
@@ -377,7 +382,7 @@ public class WatsonxStreamingChatModelTest {
 
         withChatServiceMock(() -> {
             var streamingChatModel = WatsonxStreamingChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelId")
                     .projectId("projectId")
                     .spaceId("spaceId")
@@ -411,32 +416,32 @@ public class WatsonxStreamingChatModelTest {
             };
 
             streamingChatModel.chat(chatRequest, streamingHandler);
-            assertEquals(messages, chatRequestCaptor.getValue().getMessages());
-            var parameters = chatRequestCaptor.getValue().getParameters();
+            assertEquals(messages, chatRequestCaptor.getValue().messages());
+            var parameters = chatRequestCaptor.getValue().parameters();
 
             try {
                 boolean completed = latch.await(2, TimeUnit.SECONDS);
                 assertTrue(completed, "Handler did not complete in time");
                 assertEquals(List.of("Hello", "World"), receivedResponses);
-                assertNull(parameters.getFrequencyPenalty());
-                assertNull(parameters.getJsonSchema());
-                assertNull(parameters.getLogitBias());
-                assertNull(parameters.getLogprobs());
-                assertNull(parameters.getMaxCompletionTokens());
-                assertEquals("modelId", parameters.getModelId());
-                assertNull(parameters.getN());
-                assertNull(parameters.getPresencePenalty());
-                assertEquals("projectId", parameters.getProjectId());
-                assertNull(parameters.getResponseFormat());
-                assertNull(parameters.getSeed());
-                assertEquals("spaceId", parameters.getSpaceId());
-                assertEquals(List.of(), parameters.getStop());
-                assertNull(parameters.getTemperature());
-                assertEquals(10000, parameters.getTimeLimit());
-                assertNull(parameters.getToolChoice());
-                assertNull(parameters.getToolChoiceOption());
-                assertNull(parameters.getTopLogprobs());
-                assertNull(parameters.getTopP());
+                assertNull(parameters.frequencyPenalty());
+                assertNull(parameters.jsonSchema());
+                assertNull(parameters.logitBias());
+                assertNull(parameters.logprobs());
+                assertNull(parameters.maxCompletionTokens());
+                assertEquals("modelId", parameters.modelId());
+                assertNull(parameters.n());
+                assertNull(parameters.presencePenalty());
+                assertEquals("projectId", parameters.projectId());
+                assertNull(parameters.responseFormat());
+                assertNull(parameters.seed());
+                assertEquals("spaceId", parameters.spaceId());
+                assertEquals(List.of(), parameters.stop());
+                assertNull(parameters.temperature());
+                assertNull(parameters.timeLimit());
+                assertNull(parameters.toolChoice());
+                assertNull(parameters.toolChoiceOption());
+                assertNull(parameters.topLogprobs());
+                assertNull(parameters.topP());
             } catch (Exception e) {
                 fail(e);
             }
@@ -449,16 +454,16 @@ public class WatsonxStreamingChatModelTest {
         var toolCall = new ToolCall(0, "id", "function", new FunctionCall("name", "{}"));
         var resultMessage = new ResultMessage(AssistantMessage.ROLE, null, null, null, List.of(toolCall));
         var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "tool_calls");
-        chatResponse.setChoices(List.of(resultChoice));
+        chatResponse.choices(List.of(resultChoice));
 
         doAnswer(invocation -> {
                     ChatHandler handler = invocation.getArgument(1);
-                    handler.onPartialToolCall(
-                            new com.ibm.watsonx.ai.chat.model.PartialToolCall("completion-id", 0, null, "name", "{"));
-                    handler.onPartialToolCall(
-                            new com.ibm.watsonx.ai.chat.model.PartialToolCall("completion-id", 0, "id", "name", "}"));
-                    handler.onCompleteToolCall(new CompletedToolCall("completion-id", toolCall));
-                    handler.onCompleteResponse(chatResponse);
+                    handler.onPartialToolCall(new com.ibm.watsonx.ai.chat.model.PartialToolCall(
+                            "completion-id", 0, 0, null, "name", "{"));
+                    handler.onPartialToolCall(new com.ibm.watsonx.ai.chat.model.PartialToolCall(
+                            "completion-id", 0, 0, "id", "name", "}"));
+                    handler.onCompleteToolCall(new CompletedToolCall("completion-id", 0, toolCall));
+                    handler.onCompleteResponse(chatResponse.build());
                     return CompletableFuture.completedFuture(null);
                 })
                 .when(mockChatService)
@@ -466,7 +471,7 @@ public class WatsonxStreamingChatModelTest {
 
         withChatServiceMock(() -> {
             StreamingChatModel streamingChatModel = WatsonxStreamingChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelId")
                     .projectId("projectId")
                     .spaceId("spaceId")
@@ -577,11 +582,11 @@ public class WatsonxStreamingChatModelTest {
 
         var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello", null, null, null);
         var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
-        chatResponse.setChoices(List.of(resultChoice));
+        chatResponse.choices(List.of(resultChoice));
 
         doAnswer(invocation -> {
                     ChatHandler handler = invocation.getArgument(1);
-                    handler.onCompleteResponse(chatResponse);
+                    handler.onCompleteResponse(chatResponse.build());
                     handler.onError(new Exception("test"));
                     return CompletableFuture.completedFuture(null);
                 })
@@ -590,7 +595,7 @@ public class WatsonxStreamingChatModelTest {
 
         withChatServiceMock(() -> {
             var streamingChatModel = WatsonxStreamingChatModel.builder()
-                    .url("https://test.com")
+                    .baseUrl("https://test.com")
                     .modelName("modelId")
                     .projectId("projectId")
                     .spaceId("spaceId")
@@ -626,14 +631,14 @@ public class WatsonxStreamingChatModelTest {
             };
 
             streamingChatModel.chat("Hello", streamingHandler);
-            var parameters = chatRequestCaptor.getValue().getParameters();
+            var parameters = chatRequestCaptor.getValue().parameters();
 
             try {
                 var completed = latch.await(2, TimeUnit.SECONDS);
                 assertTrue(completed, "Handler did not complete in time");
-                assertEquals("json_schema", parameters.getResponseFormat());
-                assertNotNull(parameters.getJsonSchema());
-                assertEquals("required", parameters.getToolChoiceOption());
+                assertEquals("json_schema", parameters.responseFormat());
+                assertNotNull(parameters.jsonSchema());
+                assertEquals("required", parameters.toolChoiceOption());
             } catch (Exception e) {
                 fail(e);
             }
@@ -644,7 +649,7 @@ public class WatsonxStreamingChatModelTest {
     void testChatRequestWithTopK() {
 
         var streamingChatModel = WatsonxStreamingChatModel.builder()
-                .url("https://test.com")
+                .baseUrl("https://test.com")
                 .modelName("modelId")
                 .projectId("project-id")
                 .spaceId("space-id")
@@ -678,7 +683,7 @@ public class WatsonxStreamingChatModelTest {
                         }));
 
         assertThrows(UnsupportedFeatureException.class, () -> WatsonxStreamingChatModel.builder()
-                .url("https://test.com")
+                .baseUrl("https://test.com")
                 .modelName("modelId")
                 .projectId("project-id")
                 .spaceId("space-id")
@@ -692,7 +697,7 @@ public class WatsonxStreamingChatModelTest {
     void testSupportCapabilities() {
 
         var chatModel = WatsonxStreamingChatModel.builder()
-                .url("https://test.com")
+                .baseUrl("https://test.com")
                 .modelName("modelId")
                 .projectId("project-id")
                 .spaceId("space-id")

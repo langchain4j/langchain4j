@@ -22,23 +22,24 @@ jobs:
           echo "Detected modules:"
           echo "$modules"
 
-          # how many groups (jobs) to split into
-          N=7  # adjust this based on desired parallelism
-          count=$(echo "$modules" | wc -l)
-          group_size=$(( (count + N - 1) / N ))
+          # number of parallel groups
+          N=7
 
-          # create JSON array of module groups
-          matrix=$(echo "$modules" | awk -v n="$group_size" '{
-              group = int((NR-1)/n);
-              arr[group] = (arr[group] ? arr[group] "," "\"" $0 "\"" : "\"" $0 "\"");
-          }
-          END {
+          # round-robin grouping
+          matrix=$(echo "$modules" | awk -v N="$N" '
+            {
+              g = (NR - 1) % N
+              arr[g] = (arr[g] ? arr[g] "," "\"" $0 "\"" : "\"" $0 "\"")
+            }
+            END {
               printf("{\"modules\": [");
-              for (i=0; i in arr; i++) {
-                  printf("%s[%s]", (i>0?",":""), arr[i]);
+              for (i = 0; i < N; i++) {
+                if (i > 0) printf(",");
+                printf("[%s]", arr[i])
               }
-              print "]}";
-          }')
+              print "]}"
+            }
+          ')
 
           echo "Generated matrix: $matrix"
           echo "matrix=$matrix" >> $GITHUB_OUTPUT
@@ -61,7 +62,7 @@ jobs:
           cache: 'maven'
 
       - name: Authenticate to Google Cloud
-        # Required for Google modules
+        # Required for Google modules (e.g., langchain4j-vertex-ai)
         uses: google-github-actions/auth@v2
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
@@ -70,26 +71,26 @@ jobs:
       - name: Setup JBang
         # Required for MCP module
         uses: jbangdev/setup-jbang@main
+        continue-on-error: true
 
       - name: Build with JDK 21
         run: |
           modules="${{ join(matrix.modules, ',') }}"
           echo "Building modules: $modules"
           
-          ## compile and verify javadocs
-          mvn -B -U -T8C test javadoc:aggregate \
-            -pl "${modules}" -am \
-            --fail-at-end
+          ## compile and install ALL modules to avoid running integration tests on dependent modules in the step below
+          mvn -B -U -T8C -DskipTests -DskipITs -DembeddingsSkipCache install
 
-          ## run integration tests
           mvn -B -U verify \
-            -pl "${modules}" -am \
-            --fail-at-end \
-            -DskipLocalAiITs -DskipMilvusITs -DskipOllamaITs -DskipJlamaITs \
-            -Dmaven.test.failure.ignore=true \
+            -pl "${modules}" \
+            -DskipAzureAiSearchITs -DskipJlamaITs -DskipLocalAiITs -DskipMilvusITs -DskipOllamaITs -DskipOracleITs -DskipVespaITs \
+            --fail-at-end -Dmaven.test.failure.ignore=true \
+            -Djunit.jupiter.extensions.autodetection.enabled=true \
+            -DembeddingsSkipCache \
             -Dtinylog.writer.level=info
 
         env:
+          LC4J_GLOBAL_TEST_RETRY_ENABLED: true
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -112,6 +113,8 @@ jobs:
           GOOGLE_AI_GEMINI_API_KEY: ${{ secrets.GOOGLE_AI_GEMINI_API_KEY }}
           HF_API_KEY: ${{ secrets.HF_API_KEY }}
           JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
+          MICROSOFT_FOUNDRY_API_KEY: ${{ secrets.MICROSOFT_FOUNDRY_API_KEY }}
+          MICROSOFT_FOUNDRY_ENDPOINT: ${{ secrets.MICROSOFT_FOUNDRY_ENDPOINT }}
           MILVUS_API_KEY: ${{ secrets.MILVUS_API_KEY }}
           MILVUS_URI: ${{ secrets.MILVUS_URI }}
           MISTRAL_AI_API_KEY: ${{ secrets.MISTRAL_AI_API_KEY }}
@@ -126,9 +129,10 @@ jobs:
           WEAVIATE_API_KEY: ${{ secrets.WEAVIATE_API_KEY }}
           WEAVIATE_HOST: ${{ secrets.WEAVIATE_HOST }}
           CI_DELAY_SECONDS_AZURE_AI_SEARCH: 4
-          CI_DELAY_SECONDS_AZURE_OPENAI: 2
+          CI_DELAY_SECONDS_AZURE_OPENAI: 3
           CI_DELAY_SECONDS_BEDROCK: 3
           CI_DELAY_SECONDS_GITHUB_MODELS: 7
+          CI_DELAY_SECONDS_GOOGLE_AI_GEMINI_BATCH: 20
           CI_DELAY_SECONDS_VERTEX_AI_GEMINI: 12
           CI_DELAY_SECONDS_VOYAGE_AI: 22
 
@@ -148,3 +152,17 @@ jobs:
         with:
           report_paths: '**/target/*-reports/TEST-*.xml'
           annotate_only: true
+
+      - name: Upload JaCoCo Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-${{ strategy.job-index }}
+          path: '**/target/site/jacoco/**'
+
+      - name: Upload JaCoCo Execution Data
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-exec-${{ strategy.job-index }}
+          path: '**/target/jacoco.exec'

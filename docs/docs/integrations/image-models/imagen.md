@@ -1,5 +1,5 @@
 ---
-sidebar_position: 3
+sidebar_position: 4
 ---
 
 # Google Imagen
@@ -13,7 +13,7 @@ sidebar_position: 3
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-vertex-ai</artifactId>
-    <version>1.8.0-beta15</version>
+    <version>1.11.0-beta19</version>
 </dependency>
 ```
 

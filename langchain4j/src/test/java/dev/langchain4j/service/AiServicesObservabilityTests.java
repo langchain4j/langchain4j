@@ -20,6 +20,7 @@ import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
 import dev.langchain4j.observability.api.event.AiServiceEvent;
+import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
 import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
 import dev.langchain4j.observability.api.event.GuardrailExecutedEvent;
@@ -29,6 +30,7 @@ import dev.langchain4j.observability.api.event.ToolExecutedEvent;
 import dev.langchain4j.observability.api.listener.AiServiceCompletedListener;
 import dev.langchain4j.observability.api.listener.AiServiceErrorListener;
 import dev.langchain4j.observability.api.listener.AiServiceListener;
+import dev.langchain4j.observability.api.listener.AiServiceRequestIssuedListener;
 import dev.langchain4j.observability.api.listener.AiServiceResponseReceivedListener;
 import dev.langchain4j.observability.api.listener.AiServiceStartedListener;
 import dev.langchain4j.observability.api.listener.InputGuardrailExecutedListener;
@@ -70,11 +72,33 @@ class AiServicesObservabilityTests {
             List<Class<? extends AiServiceEvent>> noEventsReceivedClasses,
             String expectedUserMessage,
             List<Class<? extends AiServiceEvent>> expectedEventsReceivedClasses) {
+        runScenario(
+                assistantCreatorWithoutListeners,
+                assistantCreatorWithListeners,
+                chatAssertion,
+                expectedMethodName,
+                hasTools,
+                noEventsReceivedClasses,
+                expectedUserMessage,
+                expectedEventsReceivedClasses,
+                event -> {});
+    }
+
+    private void runScenario(
+            Supplier<Assistant> assistantCreatorWithoutListeners,
+            Supplier<Assistant> assistantCreatorWithListeners,
+            Consumer<Assistant> chatAssertion,
+            String expectedMethodName,
+            boolean hasTools,
+            List<Class<? extends AiServiceEvent>> noEventsReceivedClasses,
+            String expectedUserMessage,
+            List<Class<? extends AiServiceEvent>> expectedEventsReceivedClasses,
+            Consumer<AiServiceEvent> expectedEventsReceivedAssertion) {
 
         // Invoke the operation without registered listeners
         // No listeners should be fired
         chatAssertion.accept(assistantCreatorWithoutListeners.get());
-        assertNoEventsReceived(7, listeners.values());
+        assertNoEventsReceived(8, listeners.values());
 
         // Let's invoke the operation a few times with the registered listeners
         IntStream.range(0, 5).forEach(i -> chatAssertion.accept(assistantCreatorWithListeners.get()));
@@ -88,7 +112,8 @@ class AiServicesObservabilityTests {
                 expectedEventsReceivedClasses.size(),
                 expectedUserMessage,
                 expectedMethodName,
-                expectedEventsReceivedClasses.stream().map(listeners::get).toList());
+                expectedEventsReceivedClasses.stream().map(listeners::get).toList(),
+                expectedEventsReceivedAssertion);
 
         // No additional events should fire when invoking the operation again
         chatAssertion.accept(assistantCreatorWithoutListeners.get());
@@ -97,7 +122,8 @@ class AiServicesObservabilityTests {
                 expectedEventsReceivedClasses.size(),
                 expectedUserMessage,
                 expectedMethodName,
-                expectedEventsReceivedClasses.stream().map(listeners::get).toList());
+                expectedEventsReceivedClasses.stream().map(listeners::get).toList(),
+                expectedEventsReceivedAssertion);
     }
 
     @Test
@@ -167,7 +193,7 @@ class AiServicesObservabilityTests {
                         AiServiceResponseReceivedEvent.class,
                         ToolExecutedEvent.class),
                 "Hello!",
-                List.of(AiServiceStartedEvent.class, AiServiceErrorEvent.class));
+                List.of(AiServiceStartedEvent.class, AiServiceRequestIssuedEvent.class, AiServiceErrorEvent.class));
     }
 
     @Test
@@ -219,6 +245,7 @@ class AiServicesObservabilityTests {
                 "Hello!",
                 List.of(
                         AiServiceStartedEvent.class,
+                        AiServiceRequestIssuedEvent.class,
                         AiServiceCompletedEvent.class,
                         AiServiceResponseReceivedEvent.class));
     }
@@ -239,6 +266,7 @@ class AiServicesObservabilityTests {
                 "Hello!",
                 List.of(
                         AiServiceStartedEvent.class,
+                        AiServiceRequestIssuedEvent.class,
                         AiServiceCompletedEvent.class,
                         AiServiceResponseReceivedEvent.class));
     }
@@ -258,9 +286,18 @@ class AiServicesObservabilityTests {
                 TOOL_USER_MESSAGE,
                 List.of(
                         AiServiceStartedEvent.class,
+                        AiServiceRequestIssuedEvent.class,
                         AiServiceCompletedEvent.class,
                         AiServiceResponseReceivedEvent.class,
-                        ToolExecutedEvent.class));
+                        ToolExecutedEvent.class),
+                aiServiceEvent -> {
+                    if (aiServiceEvent instanceof AiServiceResponseReceivedEvent aiServiceResponseReceivedEvent) {
+                        assertThat(aiServiceResponseReceivedEvent.response()).isNotNull();
+                        assertThat(aiServiceResponseReceivedEvent.request()).isNotNull();
+                    } else if (aiServiceEvent instanceof AiServiceRequestIssuedEvent aiServiceRequestIssuedEvent) {
+                        assertThat(aiServiceRequestIssuedEvent.request()).isNotNull();
+                    }
+                });
     }
 
     @Test
@@ -314,6 +351,7 @@ class AiServicesObservabilityTests {
                 TOOL_USER_MESSAGE,
                 List.of(
                         AiServiceStartedEvent.class,
+                        AiServiceRequestIssuedEvent.class,
                         AiServiceCompletedEvent.class,
                         AiServiceResponseReceivedEvent.class,
                         ToolExecutedEvent.class));
@@ -335,6 +373,7 @@ class AiServicesObservabilityTests {
                 false,
                 List.of(
                         AiServiceCompletedEvent.class,
+                        AiServiceRequestIssuedEvent.class,
                         OutputGuardrailExecutedEvent.class,
                         ToolExecutedEvent.class,
                         AiServiceResponseReceivedEvent.class),
@@ -358,6 +397,7 @@ class AiServicesObservabilityTests {
                         AiServiceCompletedEvent.class,
                         OutputGuardrailExecutedEvent.class,
                         ToolExecutedEvent.class,
+                        AiServiceRequestIssuedEvent.class,
                         AiServiceResponseReceivedEvent.class),
                 "Hello!",
                 List.of(AiServiceStartedEvent.class, AiServiceErrorEvent.class, InputGuardrailExecutedEvent.class));
@@ -410,6 +450,7 @@ class AiServicesObservabilityTests {
                 "Hello!",
                 List.of(
                         AiServiceStartedEvent.class,
+                        AiServiceRequestIssuedEvent.class,
                         AiServiceErrorEvent.class,
                         OutputGuardrailExecutedEvent.class,
                         AiServiceResponseReceivedEvent.class));
@@ -431,6 +472,7 @@ class AiServicesObservabilityTests {
                 "Hello!",
                 List.of(
                         AiServiceStartedEvent.class,
+                        AiServiceRequestIssuedEvent.class,
                         AiServiceErrorEvent.class,
                         OutputGuardrailExecutedEvent.class,
                         AiServiceResponseReceivedEvent.class));
@@ -449,7 +491,8 @@ class AiServicesObservabilityTests {
             int expectedSize,
             String expectedUserMessage,
             String expectedMethodName,
-            Collection<? extends MyListener<? extends AiServiceEvent>> listeners) {
+            Collection<? extends MyListener<? extends AiServiceEvent>> listeners,
+            Consumer<AiServiceEvent> eventAssertion) {
 
         // All the events have the correct number of invocations & non-null events
         assertThat(listeners).isNotNull().hasSize(expectedSize).allSatisfy(l -> {
@@ -460,6 +503,9 @@ class AiServicesObservabilityTests {
                             (GuardrailExecutedEvent.class.isAssignableFrom(l.getEventClass())
                                             || (hasTools
                                                     && AiServiceResponseReceivedEvent.class.isAssignableFrom(
+                                                            l.getEventClass()))
+                                            || (hasTools
+                                                    && AiServiceRequestIssuedEvent.class.isAssignableFrom(
                                                             l.getEventClass())))
                                     ? 10
                                     : 5);
@@ -496,6 +542,9 @@ class AiServicesObservabilityTests {
 
         assertThat(ic.invocationId()).isNotNull();
         assertThat(ic.timestamp()).isNotNull();
+
+        // run custom assertions
+        assertThat(listeners).map(MyListener::event).allSatisfy(eventAssertion);
     }
 
     private static Map<Class<? extends AiServiceEvent>, MyListener<? extends AiServiceEvent>> createListeners() {
@@ -505,6 +554,7 @@ class AiServicesObservabilityTests {
                         new MyAiServiceCompletedListener(),
                         new MyAiServiceErrorListener(),
                         new MyAiServiceStartedListener(),
+                        new MyAiServiceRequestIssuedListener(),
                         new MyAiServiceResponseReceivedListener(),
                         new MyOutputGuardrailExecutedListener(),
                         new MyToolExecutedListener())
@@ -651,6 +701,9 @@ class AiServicesObservabilityTests {
 
     public static class MyAiServiceResponseReceivedListener extends MyListener<AiServiceResponseReceivedEvent>
             implements AiServiceResponseReceivedListener {}
+
+    public static class MyAiServiceRequestIssuedListener extends MyListener<AiServiceRequestIssuedEvent>
+            implements AiServiceRequestIssuedListener {}
 
     public static class MyAiServiceStartedListener extends MyListener<AiServiceStartedEvent>
             implements AiServiceStartedListener {}

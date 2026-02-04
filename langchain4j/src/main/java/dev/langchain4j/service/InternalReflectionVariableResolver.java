@@ -37,9 +37,13 @@ public class InternalReflectionVariableResolver {
             if (InvocationParameters.class.isAssignableFrom(parameter.getType())) {
                 continue;
             }
-            String variableName = getVariableName(parameter);
             Object variableValue = args[i];
-            variables.put(variableName, variableValue);
+            variables.put(ParameterNameResolver.name(parameter), variableValue);
+            if (variableValue instanceof Map<?, ?> variablesMap) {
+                variablesMap.entrySet().stream()
+                        .filter(e -> e.getKey().getClass() == String.class)
+                        .forEach(e -> variables.put((String) e.getKey(), e.getValue()));
+            }
         }
 
         if (template.contains("{{it}}") && !variables.containsKey("it")) {
@@ -48,15 +52,6 @@ public class InternalReflectionVariableResolver {
         }
 
         return variables;
-    }
-
-    private static String getVariableName(Parameter parameter) {
-        V annotation = parameter.getAnnotation(V.class);
-        if (annotation != null) {
-            return annotation.value();
-        } else {
-            return parameter.getName();
-        }
     }
 
     private static String getValueOfVariableIt(Parameter[] parameters, Object[] args) {

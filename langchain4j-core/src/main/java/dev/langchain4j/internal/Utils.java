@@ -21,6 +21,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HexFormat;
@@ -181,6 +182,16 @@ public class Utils {
      */
     public static boolean isNullOrEmpty(Collection<?> collection) {
         return collection == null || collection.isEmpty();
+    }
+
+    /**
+     * Is the collection not {@code null} and not empty?
+     *
+     * @param collection The collection to check.
+     * @return {@code true} if the collection is not {@code null} and not {@link Collection#isEmpty()}, otherwise {@code false}.
+     */
+    public static boolean isNotNullOrEmpty(Collection<?> collection) {
+        return !isNullOrEmpty(collection);
     }
 
     /**
@@ -419,6 +430,22 @@ public class Utils {
     }
 
     /**
+     * Returns a mutable copy of the provided list.
+     * Returns an empty list if the provided list is <code>null</code>.
+     *
+     * @param list The list to copy.
+     * @param <T>  Generic type of the list.
+     * @return The copy of the provided list or an empty list.
+     */
+    public static <T> List<T> mutableCopy(List<T> list) {
+        if (list == null) {
+            return new ArrayList<>();
+        }
+
+        return new ArrayList<>(list);
+    }
+
+    /**
      * Returns an (unmodifiable) copy of the provided map.
      * Returns <code>null</code> if the provided map is <code>null</code>.
      *
@@ -531,7 +558,7 @@ public class Utils {
      * @return the original value (may be {@code null} or blank)
      */
     public static String warnIfNullOrBlank(String value, String fieldName, Class<?> clazz) {
-        if (isNullOrBlank(fieldName)) {
+        if (isNullOrBlank(value)) {
             log.warn("{}: '{}' is null or blank", clazz.getSimpleName(), fieldName);
         }
         return value;

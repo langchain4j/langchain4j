@@ -101,6 +101,10 @@ public class ChatModelMock implements ChatModel {
         }
     }
 
+    public List<List<ChatMessage>> getRequests() {
+        return requests;
+    }
+
     public static ChatModelMock thatAlwaysResponds(String response) {
         return new ChatModelMock(response);
     }
@@ -112,6 +116,10 @@ public class ChatModelMock implements ChatModel {
     public static ChatModelMock thatAlwaysResponds(AiMessage... aiMessages) {
         Queue<AiMessage> queue = new ConcurrentLinkedQueue<>(asList(aiMessages));
         return new ChatModelMock(ignored -> queue.poll());
+    }
+
+    public static ChatModelMock thatResponds(Function<ChatRequest, AiMessage> aiMessageGenerator) {
+        return new ChatModelMock(aiMessageGenerator);
     }
 
     public static ChatModelMock thatAlwaysThrowsException() {

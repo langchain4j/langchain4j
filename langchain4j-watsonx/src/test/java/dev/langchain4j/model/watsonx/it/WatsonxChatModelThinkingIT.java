@@ -40,12 +40,10 @@ public class WatsonxChatModelThinkingIT {
     void should_return_and_NOT_send_thinking() {
 
         ChatModel chatModel = WatsonxChatModel.builder()
-                .url(URL)
+                .baseUrl(URL)
                 .apiKey(API_KEY)
                 .projectId(PROJECT_ID)
                 .modelName("ibm/granite-3-3-8b-instruct")
-                .logRequests(true)
-                .logResponses(true)
                 .build();
 
         var chatResponse = chatModel.chat(UserMessage.from("Why the sky is blue?"));
@@ -78,14 +76,12 @@ public class WatsonxChatModelThinkingIT {
 
     private WatsonxChatModel.Builder createChatModel(String model) {
         return WatsonxChatModel.builder()
-                .url(URL)
+                .baseUrl(URL)
                 .apiKey(API_KEY)
                 .projectId(PROJECT_ID)
                 .modelName(model)
                 .thinking(ExtractionTags.of("think", "response"))
-                .logRequests(true)
-                .logResponses(true)
                 .maxOutputTokens(0)
-                .timeLimit(Duration.ofSeconds(30));
+                .timeout(Duration.ofSeconds(30));
     }
 }

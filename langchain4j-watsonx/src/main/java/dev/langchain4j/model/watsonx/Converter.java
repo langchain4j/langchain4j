@@ -80,7 +80,7 @@ class Converter {
     public static PartialToolCall toPartialToolCall(com.ibm.watsonx.ai.chat.model.PartialToolCall partialToolCall) {
         return PartialToolCall.builder()
                 .id(partialToolCall.id())
-                .index(partialToolCall.index())
+                .index(partialToolCall.toolIndex())
                 .name(partialToolCall.name())
                 .partialArguments(partialToolCall.arguments())
                 .build();
@@ -106,9 +106,9 @@ class Converter {
                         var name = responseFormat.jsonSchema().name();
                         var jsonSchema = JsonSchemaElementUtils.toMap(
                                 responseFormat.jsonSchema().rootElement());
-                        builder.withJsonSchemaResponse(name, jsonSchema, true);
+                        builder.responseAsJsonSchema(name, jsonSchema, true);
                     } else {
-                        builder.withJsonResponse();
+                        builder.responseAsJson();
                     }
                 }
                 case TEXT -> {
@@ -123,8 +123,13 @@ class Converter {
             builder.logitBias(watsonxParameters.logitBias());
             builder.logprobs(watsonxParameters.logprobs());
             builder.seed(watsonxParameters.seed());
-            builder.timeLimit(watsonxParameters.timeLimit());
+            builder.timeLimit(watsonxParameters.timeout());
             builder.topLogprobs(watsonxParameters.topLogprobs());
+            builder.guidedChoice(watsonxParameters.guidedChoice());
+            builder.guidedGrammar(watsonxParameters.guidedGrammar());
+            builder.guidedRegex(watsonxParameters.guidedRegex());
+            builder.repetitionPenalty(watsonxParameters.repetitionPenalty());
+            builder.lengthPenalty(watsonxParameters.lengthPenalty());
 
             List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
             ToolChoice toolChoice = parameters.toolChoice();
@@ -204,6 +209,7 @@ class Converter {
                             case AUTO -> Detail.AUTO;
                             case HIGH -> Detail.HIGH;
                             case LOW -> Detail.LOW;
+                            default -> throw new UnsupportedFeatureException("Unsupported detail level: " + imageContent.detailLevel());
                         };
                 yield ImageContent.of(mimeType, base64Data, detailLevel);
             }
