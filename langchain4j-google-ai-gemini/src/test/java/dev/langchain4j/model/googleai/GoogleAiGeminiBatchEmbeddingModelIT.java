@@ -1,8 +1,8 @@
 package dev.langchain4j.model.googleai;
 
-import static dev.langchain4j.model.batch.BatchJobState.BATCH_STATE_CANCELLED;
-import static dev.langchain4j.model.batch.BatchJobState.BATCH_STATE_FAILED;
-import static dev.langchain4j.model.batch.BatchJobState.BATCH_STATE_PENDING;
+import static dev.langchain4j.model.batch.BatchJobState.CANCELLED;
+import static dev.langchain4j.model.batch.BatchJobState.FAILED;
+import static dev.langchain4j.model.batch.BatchJobState.PENDING;
 import static java.nio.file.Files.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -53,7 +53,7 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
             // then
             assertThat(response.isIncomplete()).isTrue();
             assertThat(response.batchName().value()).startsWith("batches/");
-            assertThat(response.state()).isEqualTo(BATCH_STATE_PENDING);
+            assertThat(response.state()).isEqualTo(PENDING);
         }
 
         @Test
@@ -167,7 +167,7 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
 
             // then
             assertThat(response.isIncomplete()).isTrue();
-            assertThat(response.state()).isEqualTo(BATCH_STATE_PENDING);
+            assertThat(response.state()).isEqualTo(PENDING);
             batchName = response.batchName();
             assertThat(batchName.value()).startsWith("batches/");
         }
@@ -218,12 +218,12 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
             var response = subject.createBatch(displayName, priority, textSegments);
 
             // when
-            subject.cancelBatchJob(response.batchName());
+            subject.cancelJob(response.batchName());
 
             // then
-            var retrieveResponse = subject.retrieveBatchResults(response.batchName());
+            var retrieveResponse = subject.retrieveResults(response.batchName());
             assertThat(retrieveResponse.isError()).isTrue();
-            assertThat(retrieveResponse.state()).isIn(BATCH_STATE_CANCELLED, BATCH_STATE_FAILED);
+            assertThat(retrieveResponse.state()).isIn(CANCELLED, FAILED);
         }
 
         @Test
@@ -238,7 +238,7 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
 
             // when & then
             var batchName = new BatchName("batches/test-batch");
-            assertThatThrownBy(() -> subject.cancelBatchJob(batchName))
+            assertThatThrownBy(() -> subject.cancelJob(batchName))
                     .isInstanceOf(HttpException.class)
                     .hasMessageContaining("\"message\": \"Could not parse the batch name\"");
         }
@@ -266,7 +266,7 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
             subject.deleteBatchJob(response.batchName());
 
             // then - no longer exists
-            var list = subject.listBatchJobs(null, null);
+            var list = subject.listJobs(null, null);
             var batchNames =
                     list.batches().stream().map(BatchResponse::batchName).toList();
             assertThat(batchNames).doesNotContain(response.batchName());
@@ -309,7 +309,7 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
             var createResponse = subject.createBatch(displayName, priority, textSegments);
 
             // when
-            var list = subject.listBatchJobs(null, null);
+            var list = subject.listJobs(null, null);
             var batches = list.batches();
 
             // then
@@ -334,10 +334,10 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
             subject.createBatch(displayName + "2", priority, textSegments);
 
             // when
-            var list = subject.listBatchJobs(1, null);
+            var list = subject.listJobs(1, null);
             assertThat(list.batches()).hasSize(1);
 
-            var secondList = subject.listBatchJobs(1, list.nextPageToken());
+            var secondList = subject.listJobs(1, list.nextPageToken());
             assertThat(secondList.batches()).hasSize(1);
         }
 
@@ -352,7 +352,7 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
                     .build();
 
             // when
-            var list = subject.listBatchJobs(5, null);
+            var list = subject.listJobs(5, null);
 
             // then
             assertThat(list.batches()).hasSizeLessThanOrEqualTo(5);
@@ -378,7 +378,7 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
             var createResponse = subject.createBatch(displayName, priority, textSegments);
 
             // when
-            var retrieveResponse = subject.retrieveBatchResults(createResponse.batchName());
+            var retrieveResponse = subject.retrieveResults(createResponse.batchName());
 
             // then
             assertThat(retrieveResponse.isIncomplete()).isTrue();

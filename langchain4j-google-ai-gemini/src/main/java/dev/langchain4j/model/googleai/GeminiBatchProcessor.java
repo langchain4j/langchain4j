@@ -124,18 +124,18 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
             var error = operation.error();
             if (operation.error() != null) {
                 return new BatchResponse<>(
-                        batchName, BatchJobState.BATCH_STATE_FAILED, List.of(), List.of(error.toGenericStatus()));
+                        batchName, BatchJobState.FAILED, List.of(), List.of(error.toGenericStatus()));
             } else {
                 var responses = preparer.extractResults(operation.response());
                 return new BatchResponse<>(
-                        batchName, BatchJobState.BATCH_STATE_SUCCEEDED, responses.responses(), responses.errors());
+                        batchName, BatchJobState.SUCCEEDED, responses.responses(), responses.errors());
             }
         } else {
             return new BatchResponse<>(batchName, state, List.of(), null);
         }
     }
 
-    private BatchJobState extractBatchState(Map<String, Object> metadata) {
+    private BatchJobState extractBatchState(@Nullable Map<String, Object> metadata) {
         if (metadata == null) {
             return BatchJobState.UNSPECIFIED;
         }
@@ -146,7 +146,11 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
         }
 
         try {
-            return BatchJobState.valueOf(stateObj.toString());
+            String stateStr = stateObj.toString();
+            if (stateStr.startsWith("BATCH_STATE_")) {
+                stateStr = stateStr.substring("BATCH_STATE_".length());
+            }
+            return BatchJobState.valueOf(stateStr);
         } catch (IllegalArgumentException e) {
             return BatchJobState.UNSPECIFIED;
         }

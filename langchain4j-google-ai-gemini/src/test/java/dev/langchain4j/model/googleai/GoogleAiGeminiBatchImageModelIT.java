@@ -1,8 +1,8 @@
 package dev.langchain4j.model.googleai;
 
-import static dev.langchain4j.model.batch.BatchJobState.BATCH_STATE_CANCELLED;
-import static dev.langchain4j.model.batch.BatchJobState.BATCH_STATE_FAILED;
-import static dev.langchain4j.model.batch.BatchJobState.BATCH_STATE_PENDING;
+import static dev.langchain4j.model.batch.BatchJobState.CANCELLED;
+import static dev.langchain4j.model.batch.BatchJobState.FAILED;
+import static dev.langchain4j.model.batch.BatchJobState.PENDING;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
@@ -35,10 +35,10 @@ class GoogleAiGeminiBatchImageModelIT {
         // then
         assertThat(response.isIncomplete()).isTrue();
         assertThat(response.batchName().value()).startsWith("batches/");
-        assertThat(response.state()).isEqualTo(BATCH_STATE_PENDING);
+        assertThat(response.state()).isEqualTo(PENDING);
 
         // cleanup
-        subject.cancelBatchJob(response.batchName());
+        subject.cancelJob(response.batchName());
     }
 
     @Test
@@ -54,12 +54,12 @@ class GoogleAiGeminiBatchImageModelIT {
         var createResponse = subject.createBatch("Cancel Test", null, prompts);
 
         // when
-        subject.cancelBatchJob(createResponse.batchName());
+        subject.cancelJob(createResponse.batchName());
 
         // then
-        var retrieveResponse = subject.retrieveBatchResults(createResponse.batchName());
+        var retrieveResponse = subject.retrieveResults(createResponse.batchName());
         assertThat(retrieveResponse.isError()).isTrue();
-        assertThat(retrieveResponse.state()).isIn(BATCH_STATE_CANCELLED, BATCH_STATE_FAILED);
+        assertThat(retrieveResponse.state()).isIn(CANCELLED, FAILED);
     }
 
     @AfterEach

@@ -69,7 +69,7 @@ public final class GoogleAiGeminiBatchChatModel implements BatchChatModel {
      * @throws IllegalArgumentException if the requests contain different models
      */
     @Override
-    public BatchResponse<ChatResponse> createBatch(List<ChatRequest> requests) {
+    public BatchResponse<ChatResponse> submit(List<ChatRequest> requests) {
         return createBatch(null, null, requests);
     }
 
@@ -169,11 +169,11 @@ public final class GoogleAiGeminiBatchChatModel implements BatchChatModel {
      * <p>Polls the Gemini API to get the latest state of a previously created batch.
      * Clients should poll this method at intervals to check the operation status until completion.</p>
      *
-     * @param name the batch name obtained from {@link #createBatch(List)} or {@link #createBatchFromFile(String, GeminiFile)}
+     * @param name the batch name obtained from {@link #submit(List)} or {@link #createBatchFromFile(String, GeminiFile)}
      * @return a {@link BatchResponse} representing the current state of the batch operation
      */
     @Override
-    public BatchResponse<ChatResponse> retrieveBatchResults(BatchName name) {
+    public BatchResponse<ChatResponse> retrieveResults(BatchName name) {
         return batchProcessor.retrieveBatchResults(name);
     }
 
@@ -181,7 +181,7 @@ public final class GoogleAiGeminiBatchChatModel implements BatchChatModel {
      * {@inheritDoc}
      *
      * <p>Cancellation is only possible for batches that are in
-     * {@link BatchJobState#BATCH_STATE_PENDING} or {@link BatchJobState#BATCH_STATE_RUNNING} state.
+     * {@link BatchJobState#PENDING} or {@link BatchJobState#RUNNING} state.
      * Batches that have already completed, failed, or been cancelled cannot be cancelled.</p>
      *
      * @param name the batch name to cancel
@@ -189,7 +189,7 @@ public final class GoogleAiGeminiBatchChatModel implements BatchChatModel {
      *                                                 already cancelled, or does not exist)
      */
     @Override
-    public void cancelBatchJob(BatchName name) {
+    public void cancelJob(BatchName name) {
         batchProcessor.cancelBatchJob(name);
     }
 
@@ -197,7 +197,7 @@ public final class GoogleAiGeminiBatchChatModel implements BatchChatModel {
      * Deletes a batch job from the system.
      *
      * <p>This removes the batch job record but does not cancel it if still running.
-     * Use {@link #cancelBatchJob(BatchName)} to cancel a running batch before deletion.</p>
+     * Use {@link #cancelJob(BatchName)} to cancel a running batch before deletion.</p>
      *
      * @param name the batch name to delete
      * @throws RuntimeException if the batch job cannot be deleted or does not exist
@@ -215,7 +215,7 @@ public final class GoogleAiGeminiBatchChatModel implements BatchChatModel {
      * @return a {@link BatchList} containing batch responses and pagination information
      */
     @Override
-    public BatchList<ChatResponse> listBatchJobs(@Nullable Integer pageSize, @Nullable String pageToken) {
+    public BatchList<ChatResponse> listJobs(@Nullable Integer pageSize, @Nullable String pageToken) {
         return batchProcessor.listBatchJobs(pageSize, pageToken);
     }
 

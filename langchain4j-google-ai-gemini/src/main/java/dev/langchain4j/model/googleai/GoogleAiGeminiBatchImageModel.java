@@ -47,8 +47,8 @@ import org.slf4j.Logger;
  *
  * <h2>Workflow</h2>
  * <ol>
- *   <li>Create a batch using {@link #createBatch(List)} or {@link #createBatchFromFile}</li>
- *   <li>Poll for completion using {@link #retrieveBatchResults}</li>
+ *   <li>Create a batch using {@link #submit(List)} or {@link #createBatchFromFile}</li>
+ *   <li>Poll for completion using {@link #retrieveResults}</li>
  *   <li>Process the generated images from the successful {@link BatchResponse}</li>
  *   <li>Optionally cancel or delete the batch job</li>
  * </ol>
@@ -149,7 +149,7 @@ public final class GoogleAiGeminiBatchImageModel implements BatchImageModel {
      * @return a {@link BatchResponse} representing the initial state of the batch operation
      */
     @Override
-    public BatchResponse<Response<Image>> createBatch(List<String> prompts) {
+    public BatchResponse<Response<Image>> submit(List<String> prompts) {
         return createBatch(null, null, prompts);
     }
 
@@ -236,11 +236,11 @@ public final class GoogleAiGeminiBatchImageModel implements BatchImageModel {
      * <p>Polls the Gemini API to get the latest state of a previously created batch.
      * Clients should poll this method at intervals to check the operation status until completion.</p>
      *
-     * @param name the batch name obtained from {@link #createBatch(List)} or {@link #createBatchFromFile}
+     * @param name the batch name obtained from {@link #submit(List)} or {@link #createBatchFromFile}
      * @return a {@link BatchResponse} representing the current state of the batch operation
      */
     @Override
-    public BatchResponse<Response<@NonNull Image>> retrieveBatchResults(BatchName name) {
+    public BatchResponse<Response<@NonNull Image>> retrieveResults(BatchName name) {
         return batchProcessor.retrieveBatchResults(name);
     }
 
@@ -255,7 +255,7 @@ public final class GoogleAiGeminiBatchImageModel implements BatchImageModel {
      *                                                 (e.g., already completed, already cancelled, or does not exist)
      */
     @Override
-    public void cancelBatchJob(BatchName name) {
+    public void cancelJob(BatchName name) {
         batchProcessor.cancelBatchJob(name);
     }
 
@@ -263,7 +263,7 @@ public final class GoogleAiGeminiBatchImageModel implements BatchImageModel {
      * Deletes a batch job from the system.
      *
      * <p>This removes the batch job record but does not cancel it if still running.
-     * Use {@link #cancelBatchJob} to cancel a running batch before deletion.</p>
+     * Use {@link #cancelJob} to cancel a running batch before deletion.</p>
      *
      * @param name the batch name to delete
      * @throws RuntimeException if the batch job cannot be deleted or does not exist
@@ -281,7 +281,7 @@ public final class GoogleAiGeminiBatchImageModel implements BatchImageModel {
      * @return a {@link BatchList} containing batch responses and pagination information
      */
     @Override
-    public BatchList<Response<@NonNull Image>> listBatchJobs(@Nullable Integer pageSize, @Nullable String pageToken) {
+    public BatchList<Response<@NonNull Image>> listJobs(@Nullable Integer pageSize, @Nullable String pageToken) {
         return batchProcessor.listBatchJobs(pageSize, pageToken);
     }
 

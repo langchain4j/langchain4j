@@ -7,16 +7,16 @@ import org.jspecify.annotations.Nullable;
 /**
  * Represents a paginated list of batch operations.
  *
- * <p>This record is returned by {@link BatchModel#listBatchJobs(Integer, String)} and contains
+ * <p>This record is returned by {@link BatchModel#listJobs(Integer, String)} and contains
  * the batch operations for the current page along with pagination information for retrieving
  * additional pages.</p>
  *
  * @param <T> the type of the responses payload in each batch (e.g., {@code List<ChatResponse>})
  * @param batches the list of batch responses for the current page
- * @param nextPageToken token to pass to {@link BatchModel#listBatchJobs(Integer, String)} to
+ * @param nextPageToken token to pass to {@link BatchModel#listJobs(Integer, String)} to
  *                      retrieve the next page; may be {@code null} if no more pages exist
  *
- * @see BatchModel#listBatchJobs(Integer, String)
+ * @see BatchModel#listJobs(Integer, String)
  * @see BatchResponse
  */
 @Experimental

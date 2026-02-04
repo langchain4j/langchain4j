@@ -24,13 +24,13 @@ public interface BatchModel<REQ, RES> {
      * Creates a batch of requests and submits them for asynchronous processing.
      *
      * <p>The returned {@link BatchResponse} typically represents an incomplete state
-     * (e.g., pending or running). Use {@link #retrieveBatchResults(BatchName)} to poll
+     * (e.g., pending or running). Use {@link #retrieveResults(BatchName)} to poll
      * for completion and obtain results.</p>
      *
      * @param requests the list of requests to process in the batch
      * @return a {@link BatchResponse} representing the initial state of the batch operation
      */
-    BatchResponse<RES> createBatch(List<REQ> requests);
+    BatchResponse<RES> submit(List<REQ> requests);
 
     /**
      * Retrieves the current state and results of a batch operation.
@@ -38,10 +38,10 @@ public interface BatchModel<REQ, RES> {
      * <p>The responses indicates whether the batch is still processing, completed successfully,
      * or failed. Clients should poll this method at intervals until the batch completes.</p>
      *
-     * @param name the batch identifier obtained from {@link #createBatch(List)}
+     * @param name the batch identifier obtained from {@link #submit(List)}
      * @return a {@link BatchResponse} representing the current state of the batch operation
      */
-    BatchResponse<RES> retrieveBatchResults(BatchName name);
+    BatchResponse<RES> retrieveResults(BatchName name);
 
     /**
      * Cancels a batch operation that is currently pending or running.
@@ -51,7 +51,7 @@ public interface BatchModel<REQ, RES> {
      *
      * @param name the batch identifier to cancel
      */
-    void cancelBatchJob(BatchName name);
+    void cancelJob(BatchName name);
 
     /**
      * Lists batch jobs with optional pagination.
@@ -60,5 +60,5 @@ public interface BatchModel<REQ, RES> {
      * @param pageToken token for retrieving a specific page; if null, returns the first page
      * @return a {@link BatchList} containing batch responses and pagination information
      */
-    BatchList<RES> listBatchJobs(@Nullable Integer pageSize, @Nullable String pageToken);
+    BatchList<RES> listJobs(@Nullable Integer pageSize, @Nullable String pageToken);
 }

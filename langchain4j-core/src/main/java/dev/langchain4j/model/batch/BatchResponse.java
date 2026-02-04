@@ -1,8 +1,8 @@
 package dev.langchain4j.model.batch;
 
-import static dev.langchain4j.model.batch.BatchJobState.BATCH_STATE_EXPIRED;
-import static dev.langchain4j.model.batch.BatchJobState.BATCH_STATE_FAILED;
-import static dev.langchain4j.model.batch.BatchJobState.BATCH_STATE_SUCCEEDED;
+import static dev.langchain4j.model.batch.BatchJobState.EXPIRED;
+import static dev.langchain4j.model.batch.BatchJobState.FAILED;
+import static dev.langchain4j.model.batch.BatchJobState.SUCCEEDED;
 
 import dev.langchain4j.Experimental;
 import java.util.List;
@@ -25,8 +25,7 @@ public record BatchResponse<T>(
         BatchJobState state,
         List<T> responses,
         @Nullable List<ExtractedBatchResults.Status> errors) {
-    private static final List<BatchJobState> TERMINAL_BATCH_STATES =
-            List.of(BATCH_STATE_EXPIRED, BATCH_STATE_FAILED, BATCH_STATE_SUCCEEDED);
+    private static final List<BatchJobState> TERMINAL_BATCH_STATES = List.of(EXPIRED, FAILED, SUCCEEDED);
 
     /**
      * Returns {@code true} if the batch is still processing (not in a terminal state).
@@ -39,13 +38,13 @@ public record BatchResponse<T>(
      * Returns {@code true} if the batch completed successfully.
      */
     public boolean isSuccess() {
-        return state == BATCH_STATE_SUCCEEDED;
+        return state == SUCCEEDED;
     }
 
     /**
      * Returns {@code true} if the batch failed.
      */
     public boolean isError() {
-        return state == BATCH_STATE_FAILED;
+        return state == FAILED;
     }
 }

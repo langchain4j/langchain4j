@@ -80,7 +80,7 @@ public final class GoogleAiGeminiBatchEmbeddingModel implements BatchEmbeddingMo
      * @return a {@link BatchResponse} representing the initial state of the batch operation
      */
     @Override
-    public BatchResponse<Embedding> createBatch(List<TextSegment> segments) {
+    public BatchResponse<Embedding> submit(List<TextSegment> segments) {
         return createBatch(null, null, segments);
     }
 
@@ -92,7 +92,7 @@ public final class GoogleAiGeminiBatchEmbeddingModel implements BatchEmbeddingMo
      * inline batch creation endpoint, which supports requests up to 20 MB in size.</p>
      *
      * <p>The response contains the initial state of the batch job (usually PENDING). You can monitor
-     * the job's progress using {@link #retrieveBatchResults(BatchName)}.</p>
+     * the job's progress using {@link #retrieveResults(BatchName)}.</p>
      *
      * @param displayName a user-defined name for the batch, used for identification and listing; may be {@code null}
      * @param priority    optional priority for the batch; batches with higher priority values are
@@ -161,11 +161,11 @@ public final class GoogleAiGeminiBatchEmbeddingModel implements BatchEmbeddingMo
      * <p>Polls the Gemini API to get the latest state of a previously created batch.
      * Clients should poll this method at intervals to check the operation status until completion.</p>
      *
-     * @param name the batch name obtained from {@link #createBatch(List)} or {@link #createBatchFromFile(String, GeminiFile)}
+     * @param name the batch name obtained from {@link #submit(List)} or {@link #createBatchFromFile(String, GeminiFile)}
      * @return a {@link BatchResponse} representing the current state of the batch operation
      */
     @Override
-    public BatchResponse<Embedding> retrieveBatchResults(BatchName name) {
+    public BatchResponse<Embedding> retrieveResults(BatchName name) {
         return batchProcessor.retrieveBatchResults(name);
     }
 
@@ -178,7 +178,7 @@ public final class GoogleAiGeminiBatchEmbeddingModel implements BatchEmbeddingMo
      * @param name the batch name to cancel
      */
     @Override
-    public void cancelBatchJob(BatchName name) {
+    public void cancelJob(BatchName name) {
         batchProcessor.cancelBatchJob(name);
     }
 
@@ -186,7 +186,7 @@ public final class GoogleAiGeminiBatchEmbeddingModel implements BatchEmbeddingMo
      * Deletes a batch job from the system.
      *
      * <p>This removes the batch job record but does not cancel it if still running.
-     * Use {@link #cancelBatchJob(BatchName)} to cancel a running batch before deletion.</p>
+     * Use {@link #cancelJob(BatchName)} to cancel a running batch before deletion.</p>
      *
      * @param name the batch name to delete
      * @throws RuntimeException if the batch job cannot be deleted or does not exist
@@ -204,7 +204,7 @@ public final class GoogleAiGeminiBatchEmbeddingModel implements BatchEmbeddingMo
      * @return a {@link BatchList} containing batch responses and pagination information
      */
     @Override
-    public BatchList<Embedding> listBatchJobs(@Nullable Integer pageSize, @Nullable String pageToken) {
+    public BatchList<Embedding> listJobs(@Nullable Integer pageSize, @Nullable String pageToken) {
         return batchProcessor.listBatchJobs(pageSize, pageToken);
     }
 
