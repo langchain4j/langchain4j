@@ -38,6 +38,7 @@ import com.openai.models.responses.ResponseInputContent;
 import com.openai.models.responses.ResponseInputImage;
 import com.openai.models.responses.ResponseInputItem;
 import com.openai.models.responses.ResponseInputText;
+import com.openai.models.responses.ResponseOutputItem;
 import com.openai.models.responses.ResponseOutputItemAddedEvent;
 import com.openai.models.responses.ResponseOutputItemDoneEvent;
 import com.openai.models.responses.ResponseStreamEvent;
@@ -114,6 +115,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
     private final String promptCacheKey;
     private final String promptCacheRetention;
     private final String reasoningEffort;
+    private final String reasoningSummary;
     private final String textVerbosity;
     private final Boolean streamIncludeObfuscation;
     private final Boolean store;
@@ -155,6 +157,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         this.promptCacheKey = builder.promptCacheKey;
         this.promptCacheRetention = builder.promptCacheRetention;
         this.reasoningEffort = builder.reasoningEffort;
+        this.reasoningSummary = builder.reasoningSummary;
         this.textVerbosity = builder.textVerbosity;
         this.streamIncludeObfuscation = builder.streamIncludeObfuscation;
         this.store = getOrDefault(builder.store, false);
@@ -247,10 +250,16 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 paramsBuilder.putAdditionalBodyProperty(
                         PROMPT_CACHE_RETENTION_FIELD, JsonValue.from(promptCacheRetention));
             }
-            if (reasoningEffort != null && !reasoningEffort.isEmpty()) {
-                paramsBuilder.reasoning(Reasoning.builder()
-                        .effort(ReasoningEffort.of(reasoningEffort))
-                        .build());
+            if ((reasoningEffort != null && !reasoningEffort.isEmpty())
+                    || (reasoningSummary != null && !reasoningSummary.isEmpty())) {
+                Reasoning.Builder reasoningBuilder = Reasoning.builder();
+                if (reasoningEffort != null && !reasoningEffort.isEmpty()) {
+                    reasoningBuilder.effort(ReasoningEffort.of(reasoningEffort));
+                }
+                if (reasoningSummary != null && !reasoningSummary.isEmpty()) {
+                    reasoningBuilder.summary(Reasoning.Summary.of(reasoningSummary));
+                }
+                paramsBuilder.reasoning(reasoningBuilder.build());
             }
             if (streamIncludeObfuscation != null) {
                 paramsBuilder.streamOptions(ResponseCreateParams.StreamOptions.builder()
@@ -523,6 +532,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         private String promptCacheKey;
         private String promptCacheRetention;
         private String reasoningEffort;
+        private String reasoningSummary;
         private String textVerbosity;
         private Boolean streamIncludeObfuscation;
         private Boolean store;
@@ -689,6 +699,14 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
         public Builder reasoningEffort(String reasoningEffort) {
             this.reasoningEffort = reasoningEffort;
+            return this;
+        }
+
+        /**
+         * Sets the reasoning summary mode. Accepts values like "auto", "concise", or "detailed".
+         */
+        public Builder reasoningSummary(String reasoningSummary) {
+            this.reasoningSummary = reasoningSummary;
             return this;
         }
 
@@ -952,13 +970,18 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 tokenUsage = builder.build();
             });
 
-            // Build final AI message
-            var text = !textBuilder.isEmpty() ? textBuilder.toString() : null;
-            var aiMessage = !completedToolCalls.isEmpty() && text != null
-                    ? new AiMessage(text, completedToolCalls)
-                    : !completedToolCalls.isEmpty()
-                            ? AiMessage.from(completedToolCalls)
-                            : new AiMessage(textBuilder.toString());
+            // Build final AI message (include reasoning summary if present)
+            String text = !textBuilder.isEmpty()
+                    ? textBuilder.toString()
+                    : (completedToolCalls.isEmpty() ? "" : null);
+            String reasoning = extractReasoningSummary(response);
+
+            AiMessage.Builder aiMessageBuilder = AiMessage.builder()
+                    .text(text)
+                    .thinking(reasoning == null || reasoning.isBlank() ? null : reasoning)
+                    .toolExecutionRequests(completedToolCalls);
+
+            AiMessage aiMessage = aiMessageBuilder.build();
 
             // Build metadata
             var metadataBuilder =
@@ -982,6 +1005,50 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             } catch (Exception e) {
                 withLoggingExceptions(() -> handler.onError(e));
             }
+        }
+
+        private static String extractReasoningSummary(com.openai.models.responses.Response response) {
+            if (response == null) {
+                return null;
+            }
+            List<ResponseOutputItem> outputItems;
+            try {
+                outputItems = response.output();
+            } catch (RuntimeException ex) {
+                return null;
+            }
+            if (outputItems == null || outputItems.isEmpty()) {
+                return null;
+            }
+            StringBuilder builder = new StringBuilder();
+            for (ResponseOutputItem item : outputItems) {
+                if (item == null || item.reasoning().isEmpty()) {
+                    continue;
+                }
+                try {
+                    var reasoningItem = item.reasoning().get();
+                    var summaryParts = reasoningItem.summary();
+                    if (summaryParts == null || summaryParts.isEmpty()) {
+                        continue;
+                    }
+                    for (var summaryPart : summaryParts) {
+                        if (summaryPart == null) {
+                            continue;
+                        }
+                        String text = summaryPart.text();
+                        if (text == null || text.isBlank()) {
+                            continue;
+                        }
+                        if (!builder.isEmpty()) {
+                            builder.append("\n");
+                        }
+                        builder.append(text);
+                    }
+                } catch (RuntimeException ignored) {
+                    // Summary is optional and may be missing or malformed in some responses.
+                }
+            }
+            return builder.isEmpty() ? null : builder.toString();
         }
     }
 
