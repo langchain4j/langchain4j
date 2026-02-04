@@ -6,7 +6,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
+import dev.langchain4j.model.googleai.GoogleAiGeminiChatResponseMetadata;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.List;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -67,5 +69,10 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
     protected void assertOutputTokenCount(TokenUsage tokenUsage, Integer maxOutputTokens) {
         // Sometimes Gemini produces one token less than expected (e.g., 4 instead of 5)
         assertThat(tokenUsage.outputTokenCount()).isBetween(maxOutputTokens - 1, maxOutputTokens);
+    }
+
+    @Override
+    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(ChatModel model) {
+        return GoogleAiGeminiChatResponseMetadata.class;
     }
 }

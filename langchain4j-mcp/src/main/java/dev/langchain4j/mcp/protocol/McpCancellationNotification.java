@@ -7,16 +7,13 @@ import java.util.Map;
 import org.jspecify.annotations.NonNull;
 
 @Internal
-public class McpCancellationNotification extends McpJsonRpcMessage {
-
-    @JsonInclude
-    public final McpClientMethod method = McpClientMethod.NOTIFICATION_CANCELLED;
+public class McpCancellationNotification extends McpClientMessage {
 
     @JsonInclude
     private Map<String, Object> params;
 
     public McpCancellationNotification(@NonNull Long requestId, String reason) {
-        super(null);
+        super(null, McpClientMethod.NOTIFICATION_CANCELLED);
         this.params = new HashMap<>();
         this.params.put("requestId", requestId);
         if (reason != null) {

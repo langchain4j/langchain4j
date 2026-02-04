@@ -2,6 +2,7 @@ package dev.langchain4j.store.embedding.pgvector;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
@@ -49,7 +50,24 @@ import org.slf4j.LoggerFactory;
  */
 // Needed for inherited bean injection validation
 public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
+
+    /**
+     * Search modes for the embedding store.
+     */
+    public enum SearchMode {
+        VECTOR,
+        HYBRID
+    }
+
     private static final Logger log = LoggerFactory.getLogger(PgVectorEmbeddingStore.class);
+
+    private static final String DEFAULT_TEXT_SEARCH_CONFIG = "simple";
+    /**
+     * Default {@code k} parameter used by the Reciprocal Rank Fusion (RRF) algorithm when
+     * combining embedding and full-text search rankings.
+     */
+    private static final int DEFAULT_RRF_K = 60;
+
     /**
      * Datasource used to create the store
      */
@@ -62,6 +80,67 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * Metadata handler
      */
     final MetadataHandler metadataHandler;
+
+    /**
+     * Search mode
+     */
+    private final SearchMode searchMode;
+
+    /**
+     * PostgreSQL text search configuration to use for full-text search operations,
+     * such as determining language-specific parsing and stemming.
+     */
+    private final String textSearchConfig;
+
+    /**
+     * RRF k parameter (instance-level, configurable via builder). If null, DEFAULT_RRF_K used.
+     */
+    private final int rrfK;
+
+    /**
+     * Constructor for PgVectorEmbeddingStore Class
+     *
+     * @param datasource            The datasource to use
+     * @param table                 The database table
+     * @param dimension             The vector dimension
+     * @param useIndex              Should use <a href="https://github.com/pgvector/pgvector#ivfflat">IVFFlat</a> index
+     * @param indexListSize         The IVFFlat number of lists
+     * @param createTable           Should create table automatically
+     * @param dropTableFirst        Should drop table first, usually for testing
+     * @param metadataStorageConfig The {@link MetadataStorageConfig} config.
+     * @param searchMode            The search mode to use (null for default)
+     * @param textSearchConfig      PostgreSQL text search configuration (null for default)
+     * @param rrfK                  RRF k parameter (null for default)
+     */
+    protected PgVectorEmbeddingStore(
+            DataSource datasource,
+            String table,
+            Integer dimension,
+            Boolean useIndex,
+            Integer indexListSize,
+            Boolean createTable,
+            Boolean dropTableFirst,
+            MetadataStorageConfig metadataStorageConfig,
+            SearchMode searchMode,
+            String textSearchConfig,
+            Integer rrfK) {
+        this.datasource = ensureNotNull(datasource, "datasource");
+        this.table = ensureNotBlank(table, "table");
+        MetadataStorageConfig config =
+                getOrDefault(metadataStorageConfig, DefaultMetadataStorageConfig.defaultConfig());
+        this.metadataHandler = MetadataHandlerFactory.get(config);
+        useIndex = getOrDefault(useIndex, false);
+        createTable = getOrDefault(createTable, true);
+        dropTableFirst = getOrDefault(dropTableFirst, false);
+
+        this.searchMode = getOrDefault(searchMode, SearchMode.VECTOR);
+        this.textSearchConfig = getOrDefault(textSearchConfig, DEFAULT_TEXT_SEARCH_CONFIG);
+        this.rrfK = ensureGreaterThanZero(getOrDefault(rrfK, DEFAULT_RRF_K), "rrfK");
+
+        if (useIndex || createTable || dropTableFirst) {
+            initTable(dropTableFirst, createTable, useIndex, dimension, indexListSize);
+        }
+    }
 
     /**
      * Constructor for PgVectorEmbeddingStore Class
@@ -84,18 +163,18 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             Boolean createTable,
             Boolean dropTableFirst,
             MetadataStorageConfig metadataStorageConfig) {
-        this.datasource = ensureNotNull(datasource, "datasource");
-        this.table = ensureNotBlank(table, "table");
-        MetadataStorageConfig config =
-                getOrDefault(metadataStorageConfig, DefaultMetadataStorageConfig.defaultConfig());
-        this.metadataHandler = MetadataHandlerFactory.get(config);
-        useIndex = getOrDefault(useIndex, false);
-        createTable = getOrDefault(createTable, true);
-        dropTableFirst = getOrDefault(dropTableFirst, false);
-
-        if (useIndex || createTable || dropTableFirst) {
-            initTable(dropTableFirst, createTable, useIndex, dimension, indexListSize);
-        }
+        this(
+                datasource,
+                table,
+                dimension,
+                useIndex,
+                indexListSize,
+                createTable,
+                dropTableFirst,
+                metadataStorageConfig,
+                null,
+                null,
+                null);
     }
 
     /**
@@ -140,10 +219,34 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                 metadataStorageConfig);
     }
 
+    /**
+     * New constructor that takes the builder itself.
+     * This is the entry point for enhanced configuration (searchMode, textSearchConfig, rrfK).
+     *
+     * @param builder The builder containing all configuration
+     */
+    protected PgVectorEmbeddingStore(PgVectorEmbeddingStoreBuilder builder) {
+        this(
+                createDataSource(builder.host, builder.port, builder.user, builder.password, builder.database),
+                builder.table,
+                builder.dimension,
+                builder.useIndex,
+                builder.indexListSize,
+                builder.createTable,
+                builder.dropTableFirst,
+                builder.metadataStorageConfig,
+                builder.searchMode,
+                builder.textSearchConfig,
+                builder.rrfK);
+    }
+
     public PgVectorEmbeddingStore() {
         this.datasource = null;
         this.table = null;
         this.metadataHandler = null;
+        this.searchMode = SearchMode.VECTOR;
+        this.textSearchConfig = DEFAULT_TEXT_SEARCH_CONFIG;
+        this.rrfK = DEFAULT_RRF_K;
     }
 
     private static DataSource createDataSource(
@@ -198,6 +301,14 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                         metadataHandler.columnDefinitionsString());
                 statement.executeUpdate(query);
                 metadataHandler.createMetadataIndexes(statement, table);
+            }
+
+            if (searchMode == SearchMode.HYBRID) {
+                String ftsIndexName = table + "_text_fts_gin_index";
+                query = String.format(
+                        "CREATE INDEX IF NOT EXISTS %s ON %s " + "USING gin (to_tsvector('%s', coalesce(text, '')))",
+                        ftsIndexName, table, textSearchConfig);
+                statement.executeUpdate(query);
             }
             if (useIndex) {
                 final String indexName = table + "_ivfflat_index";
@@ -313,6 +424,15 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     @Override
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
+        SearchMode mode = getOrDefault(searchMode, SearchMode.VECTOR);
+
+        return switch (mode) {
+            case VECTOR -> embeddingOnlySearch(request);
+            case HYBRID -> hybridSearch(request);
+        };
+    }
+
+    private EmbeddingSearchResult<TextSegment> embeddingOnlySearch(EmbeddingSearchRequest request) {
         Embedding referenceEmbedding = request.queryEmbedding();
         int maxResults = request.maxResults();
         double minScore = request.minScore();
@@ -357,6 +477,115 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
+        return new EmbeddingSearchResult<>(result);
+    }
+
+    private EmbeddingSearchResult<TextSegment> hybridSearch(EmbeddingSearchRequest request) {
+        Embedding referenceEmbedding = request.queryEmbedding();
+        String keywordQuery = request.query();
+
+        if (isNullOrBlank(keywordQuery)) {
+            throw new RuntimeException(
+                    "For HYBRID search mode, the query must be provided in the EmbeddingSearchRequest");
+        }
+
+        int maxResults = request.maxResults();
+        double minScore = request.minScore();
+        Filter filter = request.filter();
+
+        List<EmbeddingMatch<TextSegment>> result = new ArrayList<>();
+
+        try (Connection connection = getConnection()) {
+            String referenceVector = Arrays.toString(referenceEmbedding.vector());
+
+            String filterCondition = (filter == null) ? "" : metadataHandler.whereClause(filter);
+            String vectorWhere = filterCondition.isEmpty() ? "" : "WHERE " + filterCondition;
+            String keywordWhere = filterCondition.isEmpty() ? "" : " AND " + filterCondition;
+
+            List<String> metadataCols = metadataHandler.columnsNames();
+            String rawMetadataCols = metadataCols.isEmpty() ? "" : ", " + String.join(", ", metadataCols);
+
+            String coalescedMetadataCols = "";
+            if (!metadataCols.isEmpty()) {
+                coalescedMetadataCols = ", "
+                        + metadataCols.stream()
+                                .map(col -> String.format("COALESCE(v.%1$s, k.%1$s) AS %1$s", col))
+                                .collect(java.util.stream.Collectors.joining(", "));
+            }
+
+            String sql = String.format(
+                    """
+                     WITH vector_search AS (
+                       SELECT
+                         embedding_id, embedding, text %1$s,
+                         RANK() OVER (ORDER BY embedding <=> '%2$s') AS rnk
+                       FROM %3$s
+                       %4$s
+                       ORDER BY embedding <=> '%2$s'
+                       LIMIT %5$d
+                     ), keyword_search AS (
+                       SELECT
+                         embedding_id, embedding, text %1$s,
+                         RANK() OVER (ORDER BY ts_rank(to_tsvector('%6$s', coalesce(text, '')), plainto_tsquery('%6$s', ?)) DESC) AS rnk
+                       FROM %3$s
+                       WHERE to_tsvector('%6$s', coalesce(text, '')) @@ plainto_tsquery('%6$s', ?)
+                         %7$s
+                       ORDER BY ts_rank(to_tsvector('%6$s', coalesce(text, '')), plainto_tsquery('%6$s', ?)) DESC
+                       LIMIT %5$d
+                     )
+                     SELECT * FROM (
+                       SELECT
+                         COALESCE(v.embedding_id, k.embedding_id) AS embedding_id,
+                         COALESCE(v.embedding, k.embedding) AS embedding,
+                         COALESCE(v.text, k.text) AS text
+                         %8$s,
+                         COALESCE(1.0 / (%9$d + v.rnk), 0.0) + COALESCE(1.0 / (%9$d + k.rnk), 0.0) AS score
+                       FROM vector_search v
+                       FULL OUTER JOIN keyword_search k ON v.embedding_id = k.embedding_id
+                     ) ranked
+                     WHERE ranked.score >= ?
+                     ORDER BY ranked.score DESC
+                     LIMIT %10$d;
+                     """,
+                    rawMetadataCols,
+                    referenceVector,
+                    table,
+                    vectorWhere,
+                    Math.max(maxResults, rrfK),
+                    textSearchConfig,
+                    keywordWhere,
+                    coalescedMetadataCols,
+                    rrfK,
+                    maxResults);
+
+            try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+                stmt.setString(1, keywordQuery);
+                stmt.setString(2, keywordQuery);
+                stmt.setString(3, keywordQuery);
+                stmt.setDouble(4, minScore);
+
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        double score = rs.getDouble("score");
+                        String embeddingId = rs.getString("embedding_id");
+
+                        PGvector vector = (PGvector) rs.getObject("embedding");
+                        Embedding embedding = new Embedding(vector.toArray());
+
+                        String text = rs.getString("text");
+                        TextSegment textSegment = null;
+                        if (isNotNullOrBlank(text)) {
+                            Metadata metadata = metadataHandler.fromResultSet(rs);
+                            textSegment = TextSegment.from(text, metadata);
+                        }
+                        result.add(new EmbeddingMatch<>(score, embeddingId, embedding, textSegment));
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
         return new EmbeddingSearchResult<>(result);
     }
 
@@ -444,6 +673,9 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         private Boolean createTable;
         private Boolean dropTableFirst;
         private MetadataStorageConfig metadataStorageConfig;
+        private SearchMode searchMode;
+        private String textSearchConfig;
+        private Integer rrfK;
 
         DatasourceBuilder() {}
 
@@ -487,6 +719,21 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        public DatasourceBuilder searchMode(SearchMode searchMode) {
+            this.searchMode = searchMode;
+            return this;
+        }
+
+        public DatasourceBuilder textSearchConfig(String textSearchConfig) {
+            this.textSearchConfig = textSearchConfig;
+            return this;
+        }
+
+        public DatasourceBuilder rrfK(Integer rrfK) {
+            this.rrfK = rrfK;
+            return this;
+        }
+
         public PgVectorEmbeddingStore build() {
             return new PgVectorEmbeddingStore(
                     this.datasource,
@@ -496,14 +743,18 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                     this.indexListSize,
                     this.createTable,
                     this.dropTableFirst,
-                    this.metadataStorageConfig);
+                    this.metadataStorageConfig,
+                    this.searchMode,
+                    this.textSearchConfig,
+                    this.rrfK);
         }
 
         public String toString() {
             return "PgVectorEmbeddingStore.DatasourceBuilder(datasource=" + this.datasource + ", table=" + this.table
                     + ", dimension=" + this.dimension + ", useIndex=" + this.useIndex + ", indexListSize="
                     + this.indexListSize + ", createTable=" + this.createTable + ", dropTableFirst="
-                    + this.dropTableFirst + ", metadataStorageConfig=" + this.metadataStorageConfig + ")";
+                    + this.dropTableFirst + ", metadataStorageConfig=" + this.metadataStorageConfig + ", searchMode="
+                    + this.searchMode + ", textSearchConfig=" + this.textSearchConfig + ", rrfK=" + this.rrfK + ")";
         }
     }
 
@@ -520,6 +771,9 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         private Boolean createTable;
         private Boolean dropTableFirst;
         private MetadataStorageConfig metadataStorageConfig;
+        private SearchMode searchMode;
+        private String textSearchConfig;
+        private Integer rrfK;
 
         PgVectorEmbeddingStoreBuilder() {}
 
@@ -583,20 +837,23 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        public PgVectorEmbeddingStoreBuilder searchMode(SearchMode searchMode) {
+            this.searchMode = searchMode;
+            return this;
+        }
+
+        public PgVectorEmbeddingStoreBuilder textSearchConfig(String textSearchConfig) {
+            this.textSearchConfig = textSearchConfig;
+            return this;
+        }
+
+        public PgVectorEmbeddingStoreBuilder rrfK(Integer rrfK) {
+            this.rrfK = rrfK;
+            return this;
+        }
+
         public PgVectorEmbeddingStore build() {
-            return new PgVectorEmbeddingStore(
-                    this.host,
-                    this.port,
-                    this.user,
-                    this.password,
-                    this.database,
-                    this.table,
-                    this.dimension,
-                    this.useIndex,
-                    this.indexListSize,
-                    this.createTable,
-                    this.dropTableFirst,
-                    this.metadataStorageConfig);
+            return new PgVectorEmbeddingStore(this);
         }
 
         public String toString() {
@@ -604,7 +861,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                     + ", user=" + this.user + ", password=" + this.password + ", database=" + this.database + ", table="
                     + this.table + ", dimension=" + this.dimension + ", useIndex=" + this.useIndex + ", indexListSize="
                     + this.indexListSize + ", createTable=" + this.createTable + ", dropTableFirst="
-                    + this.dropTableFirst + ", metadataStorageConfig=" + this.metadataStorageConfig + ")";
+                    + this.dropTableFirst + ", metadataStorageConfig=" + this.metadataStorageConfig + ", searchMode="
+                    + this.searchMode + ", textSearchConfig=" + this.textSearchConfig + ", rrfK=" + this.rrfK + ")";
         }
     }
 }

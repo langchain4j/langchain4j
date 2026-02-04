@@ -7,6 +7,7 @@ import dev.langchain4j.agentic.agent.AgentBuilder;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.service.tool.ToolExecutor;
@@ -87,14 +88,20 @@ public class DeclarativeUtil {
                             checkReturnType(method, ChatModel.class);
                             agentBuilder.chatModel(invokeStatic(method));
                         },
-                        () -> {
-                            if (chatModel == null && !allowNullChatModel) {
-                                throw new IllegalArgumentException("ChatModel not provided for subagent " + agentType.getName() +
-                                        ". Please provide a ChatModel either through the @ChatModelSupplier annotation on a static method " +
-                                        "or through the parent agent's chatModel parameter.");
-                            }
-                            agentBuilder.chatModel(chatModel);
-                        });
+                        () -> getAnnotatedMethodOnClass(agentType, StreamingChatModelSupplier.class)
+                                .ifPresentOrElse(method -> {
+                                            checkArguments(method);
+                                            checkReturnType(method, StreamingChatModel.class);
+                                            agentBuilder.streamingChatModel(invokeStatic(method));
+                                        },
+                                        () -> {
+                                            if (chatModel == null && !allowNullChatModel) {
+                                                throw new IllegalArgumentException("ChatModel not provided for subagent " + agentType.getName() +
+                                                        ". Please provide one either with a static method annotated with @ChatModelSupplier " +
+                                                        "or @StreamingChatModelSupplier or through the parent agent's chatModel parameter.");
+                                            }
+                                            agentBuilder.chatModel(chatModel);
+                                        }));
 
         getAnnotatedMethodOnClass(agentType, AgentListenerSupplier.class)
                 .ifPresent(listenerMethod -> {

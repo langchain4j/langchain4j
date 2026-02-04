@@ -1,22 +1,21 @@
 package dev.langchain4j.store.embedding.elasticsearch;
 
+import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithRemovalIT;
+import java.io.IOException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import java.io.IOException;
-
-import static dev.langchain4j.internal.Utils.randomUUID;
-import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
-import static org.assertj.core.api.Assertions.assertThat;
 
 class ElasticsearchEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
 
@@ -88,7 +87,12 @@ class ElasticsearchEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
 
         // then
         try {
-            assertThat(elasticsearchClientHelper.client.indices().exists(er -> er.index(indexName)).value()).isFalse();
+            assertThat(elasticsearchClientHelper
+                            .client
+                            .indices()
+                            .exists(er -> er.index(indexName))
+                            .value())
+                    .isFalse();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -101,6 +105,11 @@ class ElasticsearchEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
         embeddingStore.removeAll();
 
         // then
-        assertThat(elasticsearchClientHelper.client.indices().exists(er -> er.index(indexName)).value()).isFalse();
+        assertThat(elasticsearchClientHelper
+                        .client
+                        .indices()
+                        .exists(er -> er.index(indexName))
+                        .value())
+                .isFalse();
     }
 }

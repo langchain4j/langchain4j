@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -72,6 +73,7 @@ public class WatsonxTokenCountEstimatorTest {
         when(mockTokenizationServiceBuilder.authenticator(any())).thenReturn(mockTokenizationServiceBuilder);
         when(mockTokenizationServiceBuilder.apiKey(any())).thenReturn(mockTokenizationServiceBuilder);
         when(mockTokenizationServiceBuilder.httpClient(any())).thenReturn(mockTokenizationServiceBuilder);
+        when(mockTokenizationServiceBuilder.verifySsl(anyBoolean())).thenReturn(mockTokenizationServiceBuilder);
         when(mockTokenizationServiceBuilder.build()).thenReturn(mockTokenizationService);
     }
 
@@ -94,7 +96,7 @@ public class WatsonxTokenCountEstimatorTest {
                 .thenReturn(mockHttpResponse);
 
         try (MockedStatic<HttpClientProvider> httpClientProvider = mockStatic(HttpClientProvider.class)) {
-            httpClientProvider.when(HttpClientProvider::httpClient).thenReturn(mockHttpClient);
+            httpClientProvider.when(() -> HttpClientProvider.httpClient(true)).thenReturn(mockHttpClient);
             var tokenCountEstimator = WatsonxTokenCountEstimator.builder()
                     .baseUrl(CloudRegion.FRANKFURT)
                     .modelName("model-name")

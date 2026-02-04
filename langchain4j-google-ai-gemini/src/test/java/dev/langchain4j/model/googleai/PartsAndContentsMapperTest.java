@@ -154,7 +154,7 @@ class PartsAndContentsMapperTest {
         assertThat(result.toolExecutionRequests()).isEmpty();
 
         // Verify generated images are stored in attributes
-        List<Image> generatedImages = GeneratedImageHelper.getGeneratedImages(result);
+        List<Image> generatedImages = result.images();
         assertThat(generatedImages).hasSize(1);
         assertThat(generatedImages.get(0).base64Data()).isEqualTo(imageBlob.data());
         assertThat(generatedImages.get(0).mimeType()).isEqualTo("image/png");
@@ -173,7 +173,7 @@ class PartsAndContentsMapperTest {
 
         // Then
         assertThat(result).isNotNull();
-        List<Image> generatedImages = GeneratedImageHelper.getGeneratedImages(result);
+        List<Image> generatedImages = result.images();
         assertThat(generatedImages).isEmpty(); // Should ignore non-image data
     }
 
@@ -472,5 +472,97 @@ class PartsAndContentsMapperTest {
                 Video.builder().url("data:video/mpeg;base64," + base64Data).build();
         GeminiContent.GeminiPart mpegResult = PartsAndContentsMapper.fromContentToGPart(new VideoContent(mpegVideo));
         assertThat(mpegResult.inlineData().mimeType()).isEqualTo("video/mpeg");
+    }
+
+    @Test
+    void fromContentToGPart_mapsDetailLevelToMediaResolution_whenPerPartEnabled() {
+        // Given
+        String base64Image =
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
+
+        // Test LOW -> MEDIA_RESOLUTION_LOW
+        ImageContent lowContent = ImageContent.from(base64Image, "image/png", ImageContent.DetailLevel.LOW);
+        GeminiContent.GeminiPart lowResult = PartsAndContentsMapper.fromContentToGPart(lowContent, true);
+        assertThat(lowResult.mediaResolution()).isNotNull();
+        assertThat(lowResult.mediaResolution().level()).isEqualTo(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_LOW);
+
+        // Test MEDIUM -> MEDIA_RESOLUTION_MEDIUM
+        ImageContent mediumContent = ImageContent.from(base64Image, "image/png", ImageContent.DetailLevel.MEDIUM);
+        GeminiContent.GeminiPart mediumResult = PartsAndContentsMapper.fromContentToGPart(mediumContent, true);
+        assertThat(mediumResult.mediaResolution()).isNotNull();
+        assertThat(mediumResult.mediaResolution().level())
+                .isEqualTo(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_MEDIUM);
+
+        // Test HIGH -> MEDIA_RESOLUTION_HIGH
+        ImageContent highContent = ImageContent.from(base64Image, "image/png", ImageContent.DetailLevel.HIGH);
+        GeminiContent.GeminiPart highResult = PartsAndContentsMapper.fromContentToGPart(highContent, true);
+        assertThat(highResult.mediaResolution()).isNotNull();
+        assertThat(highResult.mediaResolution().level()).isEqualTo(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_HIGH);
+
+        // Test ULTRA_HIGH -> MEDIA_RESOLUTION_ULTRA_HIGH
+        ImageContent ultraHighContent =
+                ImageContent.from(base64Image, "image/png", ImageContent.DetailLevel.ULTRA_HIGH);
+        GeminiContent.GeminiPart ultraHighResult = PartsAndContentsMapper.fromContentToGPart(ultraHighContent, true);
+        assertThat(ultraHighResult.mediaResolution()).isNotNull();
+        assertThat(ultraHighResult.mediaResolution().level())
+                .isEqualTo(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_ULTRA_HIGH);
+
+        // Test AUTO -> MEDIA_RESOLUTION_UNSPECIFIED
+        ImageContent autoContent = ImageContent.from(base64Image, "image/png", ImageContent.DetailLevel.AUTO);
+        GeminiContent.GeminiPart autoResult = PartsAndContentsMapper.fromContentToGPart(autoContent, true);
+        assertThat(autoResult.mediaResolution()).isNotNull();
+        assertThat(autoResult.mediaResolution().level())
+                .isEqualTo(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_UNSPECIFIED);
+    }
+
+    @Test
+    void fromContentToGPart_doesNotMapMediaResolution_whenPerPartDisabled() {
+        // Given
+        String base64Image =
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
+        ImageContent highContent = ImageContent.from(base64Image, "image/png", ImageContent.DetailLevel.HIGH);
+
+        // When - mediaResolutionPerPartEnabled is false (default)
+        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(highContent, false);
+
+        // Then
+        assertThat(result.mediaResolution()).isNull();
+    }
+
+    @Test
+    void fromContentToGPart_preservesMediaResolution_forDataUriWithDetailLevel() {
+        // Given
+        String base64Image =
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
+        String dataUri = "data:image/png;base64," + base64Image;
+        ImageContent imageContent = new ImageContent(dataUri, ImageContent.DetailLevel.ULTRA_HIGH);
+
+        // When
+        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(imageContent, true);
+
+        // Then
+        assertThat(result.inlineData()).isNotNull();
+        assertThat(result.mediaResolution()).isNotNull();
+        assertThat(result.mediaResolution().level()).isEqualTo(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_ULTRA_HIGH);
+    }
+
+    @Test
+    void fromMessageToGContent_propagatesMediaResolutionPerPartEnabled() {
+        // Given
+        String base64Image =
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
+        ImageContent imageContent = ImageContent.from(base64Image, "image/png", ImageContent.DetailLevel.HIGH);
+        UserMessage userMessage = UserMessage.from(imageContent);
+
+        // When
+        List<GeminiContent> result =
+                PartsAndContentsMapper.fromMessageToGContent(List.of(userMessage), null, false, true);
+
+        // Then
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).parts()).hasSize(1);
+        assertThat(result.get(0).parts().get(0).mediaResolution()).isNotNull();
+        assertThat(result.get(0).parts().get(0).mediaResolution().level())
+                .isEqualTo(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_HIGH);
     }
 }
