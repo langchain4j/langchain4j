@@ -280,9 +280,13 @@ public class ToolService {
     }
 
     // TODO extract TST logic in a separate class
-    private static List<ToolSpecification> findEffectiveToolSpecs(ChatMemory chatMemory,
+    private List<ToolSpecification> findEffectiveToolSpecs(ChatMemory chatMemory,
                                                            List<ToolSpecification> availableTools,
                                                            List<ToolSpecification> toolSearchTools) { // TODO name
+        if (this.toolSearchStrategy == null) {
+            return availableTools;
+        }
+
         if (chatMemory == null) {
             return toolSearchTools;
         }
