@@ -2,7 +2,6 @@ package dev.langchain4j.data.message;
 
 import static dev.langchain4j.data.message.ChatMessageType.TOOL_EXECUTION_RESULT;
 import static dev.langchain4j.internal.Utils.copy;
-import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -114,11 +113,13 @@ public class ToolExecutionResultMessage implements ChatMessage {
 
     @Override
     public String toString() {
-        return "ToolExecutionResultMessage {" + " id = "
-                + quoted(id) + " toolName = "
-                + quoted(toolName) + " text = "
-                + quoted(text) + " isError = "
-                + isError + " }"; // TODO
+        return "ToolExecutionResultMessage{" +
+                "id='" + id + '\'' +
+                ", toolName='" + toolName + '\'' +
+                ", text='" + text + '\'' +
+                ", isError=" + isError +
+                ", attributes=" + attributes +
+                '}';
     }
 
     /**
@@ -142,7 +143,6 @@ public class ToolExecutionResultMessage implements ChatMessage {
          * @param id the id of the tool.
          * @return the builder.
          */
-        @JsonProperty("id")
         public Builder id(String id) {
             this.id = id;
             return this;
@@ -153,7 +153,6 @@ public class ToolExecutionResultMessage implements ChatMessage {
          * @param toolName the name of the tool.
          * @return the builder.
          */
-        @JsonProperty("toolName")
         public Builder toolName(String toolName) {
             this.toolName = toolName;
             return this;
@@ -164,7 +163,6 @@ public class ToolExecutionResultMessage implements ChatMessage {
          * @param text the result of the tool execution.
          * @return the builder.
          */
-        @JsonProperty("text")
         public Builder text(String text) {
             this.text = text;
             return this;
@@ -175,7 +173,6 @@ public class ToolExecutionResultMessage implements ChatMessage {
          * @param isError whether the tool execution resulted in an error.
          * @return the builder.
          */
-        @JsonProperty("isError") // TODO ?
         public Builder isError(Boolean isError) {
             this.isError = isError;
             return this;
