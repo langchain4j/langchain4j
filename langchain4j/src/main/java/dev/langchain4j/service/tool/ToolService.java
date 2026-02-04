@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
+import static java.util.stream.Collectors.toSet;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ReturnBehavior;
@@ -292,14 +293,14 @@ public class ToolService {
         }
 
         List<ToolSpecification> result = new ArrayList<>(toolSearchTools);
-        List<String> previouslyFoundToolNames = chatMemory.messages().stream() // TODO Set instead? same tool could be found multiple times
+        Set<String> previouslyFoundToolNames = chatMemory.messages().stream()
                 .filter(it -> it instanceof ToolExecutionResultMessage)
                 .map(it -> (ToolExecutionResultMessage) it)
                 .map(it -> it.attributes().get(FOUND_TOOLS_ATTRIBUTE))
                 .filter(it -> it != null)
                 .map(it -> (List<String>) it)
                 .flatMap(List::stream)
-                .toList();// TODO unit test, optimize
+                .collect(toSet());// TODO unit test, optimize
         if (!previouslyFoundToolNames.isEmpty()) {
             Map<String, ToolSpecification> toolSpecsByName = new HashMap<>(availableTools.size());
             availableTools.forEach(spec -> toolSpecsByName.put(spec.name(), spec));
@@ -443,15 +444,15 @@ public class ToolService {
             }
 
             // TODO extract?
-            Set<String> foundToolNames = new LinkedHashSet<>();
+            Set<String> newFoundToolNames = new LinkedHashSet<>();
             for (ToolExecutionResult toolResult : toolResults.values()) {
                 Map<String, Object> attributes = toolResult.attributes();
                 if (attributes.containsKey(FOUND_TOOLS_ATTRIBUTE)) {
-                    foundToolNames.addAll((List<String>) attributes.get(FOUND_TOOLS_ATTRIBUTE));
+                    newFoundToolNames.addAll((List<String>) attributes.get(FOUND_TOOLS_ATTRIBUTE));
                 }
             }
-            List<ToolSpecification> foundTools = new ArrayList<>();
-            for (String foundToolName : foundToolNames) {
+            List<ToolSpecification> newFoundTools = new ArrayList<>();
+            for (String foundToolName : newFoundToolNames) {
                 // TODO optimize
                 if (parameters.toolSpecifications().stream().anyMatch(it -> foundToolName.equals(it.name()))) {
                     // this tool was already found previously
@@ -461,14 +462,13 @@ public class ToolService {
                         .filter(it -> it.name().equals(foundToolName))
                         .findFirst()
                         .orElseThrow(() -> new IllegalArgumentException("No tool with name '%s' exists".formatted(foundToolName)));
-                foundTools.add(foundTool);
+                newFoundTools.add(foundTool);
             }
-            if (!foundTools.isEmpty()) {
+            if (!newFoundTools.isEmpty()) {
                 List<ToolSpecification> allTools = new ArrayList<>();
-                // TODO check for duplication/overlap
-                allTools.addAll(parameters.toolSpecifications()); // TODO?
-                allTools.addAll(foundTools);
-                parameters = parameters.overrideWith(ChatRequestParameters.builder() // TODO toBuilder instead?
+                allTools.addAll(parameters.toolSpecifications());
+                allTools.addAll(newFoundTools);
+                parameters = parameters.overrideWith(ChatRequestParameters.builder()
                         .toolSpecifications(allTools)
                         .build());
             }
