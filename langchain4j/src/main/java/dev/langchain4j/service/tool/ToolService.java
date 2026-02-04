@@ -394,6 +394,7 @@ public class ToolService {
                         .id(request.id())
                         .toolName(request.name())
                         .text(result.resultText())
+                        .isError(result.isError())
                         .attributes(result.attributes())
                         .build();
 

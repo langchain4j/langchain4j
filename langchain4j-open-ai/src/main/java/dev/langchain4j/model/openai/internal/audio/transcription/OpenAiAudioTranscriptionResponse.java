@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 
 import java.util.Objects;
 
@@ -35,17 +36,20 @@ public final class OpenAiAudioTranscriptionResponse {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
         return another instanceof OpenAiAudioTranscriptionResponse openAiAudioTranscriptionResponse
                 && equalTo(openAiAudioTranscriptionResponse);
     }
 
+    @JacocoIgnoreCoverageGenerated
     private boolean equalTo(OpenAiAudioTranscriptionResponse another) {
         return Objects.equals(text, another.text) && Objects.equals(usage, another.usage);
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         int h = 5381;
         h += (h << 5) + Objects.hashCode(text);
@@ -54,6 +58,7 @@ public final class OpenAiAudioTranscriptionResponse {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public String toString() {
         return "OpenAiAudioTranscriptionResponse{" + "text=" + text + ", usage=" + usage + "}";
     }
