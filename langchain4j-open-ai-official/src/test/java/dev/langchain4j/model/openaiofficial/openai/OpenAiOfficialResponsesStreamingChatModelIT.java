@@ -393,6 +393,28 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
     }
 
     @Test
+    void should_not_return_reasoning_summary_when_not_requested() {
+
+        // given
+        var client = OpenAIOkHttpClient.builder()
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .build();
+
+        StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
+                .client(client)
+                .modelName(InternalOpenAiOfficialTestHelper.CHAT_MODEL_NAME.toString())
+                .build();
+
+        // when
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat("What is 2+2?", handler);
+
+        // then
+        assertThat(handler.get().aiMessage().text()).isNotBlank();
+        assertThat(handler.get().aiMessage().thinking()).isNull();
+    }
+
+    @Test
     void should_support_max_tool_calls() {
 
         // given
