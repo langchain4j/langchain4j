@@ -368,6 +368,31 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
     }
 
     @Test
+    void should_support_reasoning_summary() {
+
+        // given
+        var client = OpenAIOkHttpClient.builder()
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .build();
+
+        StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
+                .client(client)
+                .modelName("o4-mini")
+                .reasoningEffort("medium")
+                .reasoningSummary("auto")
+                .build();
+
+        // when
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(
+                "Do 2 plus 12, then 14 divided by 2, then multiply those results by 3. Think step by step.", handler);
+
+        // then
+        assertThat(handler.get().aiMessage().text()).isNotBlank();
+        assertThat(handler.get().aiMessage().thinking()).isNotBlank();
+    }
+
+    @Test
     void should_support_max_tool_calls() {
 
         // given
@@ -443,6 +468,5 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
 
     @Override
     @Disabled("Can't do it reliably")
-    protected void should_execute_multiple_tools_in_parallel_then_answer(StreamingChatModel model) {
-    }
+    protected void should_execute_multiple_tools_in_parallel_then_answer(StreamingChatModel model) {}
 }

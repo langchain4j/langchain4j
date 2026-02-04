@@ -971,9 +971,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             });
 
             // Build final AI message (include reasoning summary if present)
-            String text = !textBuilder.isEmpty()
-                    ? textBuilder.toString()
-                    : (completedToolCalls.isEmpty() ? "" : null);
+            String text = !textBuilder.isEmpty() ? textBuilder.toString() : (completedToolCalls.isEmpty() ? "" : null);
             String reasoning = extractReasoningSummary(response);
 
             AiMessage.Builder aiMessageBuilder = AiMessage.builder()
