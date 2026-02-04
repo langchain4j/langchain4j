@@ -20,8 +20,8 @@ import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
-import java.nio.file.Files;
-import java.nio.file.Path;
+
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -845,8 +845,10 @@ public abstract class HttpClientIT {
 
     @Test
     protected void should_return_successful_http_response_sync_form_data() throws Exception {
-        Path audioPath =
-                Path.of(getClass().getClassLoader().getResource("sample.wav").toURI());
+        byte[] audioBytes;
+        try (InputStream is = getClass().getClassLoader().getResourceAsStream("sample.wav")) {
+            audioBytes = is.readAllBytes();
+        }
 
         for (HttpClient client : clients()) {
 
@@ -858,7 +860,7 @@ public abstract class HttpClientIT {
                     .addHeader("Content-Type", "multipart/form-data; boundary=----LangChain4j")
                     .addFormDataField("model", "gpt-4o-transcribe")
                     .addFormDataField("response_format", "text")
-                    .addFormDataFile("file", "audio.wav", "", Files.readAllBytes(audioPath))
+                    .addFormDataFile("file", "audio.wav", "", audioBytes)
                     .build();
 
             // when
