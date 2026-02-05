@@ -18,7 +18,7 @@
             <dependency>
                 <groupId>io.netty</groupId>
                 <artifactId>netty-bom</artifactId>
-                <version>4.1.127.Final</version>
+                <version>4.1.130.Final</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -30,7 +30,7 @@
             <dependency>
                 <groupId>io.projectreactor</groupId>
                 <artifactId>reactor-core</artifactId>
-                <version>3.7.11</version>
+                <version>3.7.14</version>
             </dependency>
             <dependency>
                 <groupId>io.projectreactor.netty</groupId>
