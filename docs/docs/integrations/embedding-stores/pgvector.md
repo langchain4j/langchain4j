@@ -332,7 +332,7 @@ EmbeddingStore<TextSegment> embeddingStore = PgVectorEmbeddingStore.builder()
         .dimension(embeddingModel.dimension())
         .searchMode(SearchMode.HYBRID)  // Enable hybrid search (default: SearchMode.VECTOR)
         .textSearchConfig("english")    // Optional: PostgreSQL text search config (default: "simple")
-        .rrfK(60)                        // Optional: RRF algorithm parameter (default: 60)
+        .rrfK(60)    // Optional: RRF algorithm parameter (default: 60)
         .build();
 ```
 
