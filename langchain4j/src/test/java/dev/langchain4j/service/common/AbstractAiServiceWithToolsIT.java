@@ -1206,12 +1206,10 @@ public abstract class AbstractAiServiceWithToolsIT {
         ));
     }
 
-    // TODO implement for streaming as well + check streaming tool callbacks
-
-    class LazyTools {
+    public static class LazyTools {
 
         @Tool
-        String getWeather(String city) {
+        public String getWeather(String city) {
             if (city.equals("London")) {
                 return "sunny";
             } else {
@@ -1220,7 +1218,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         }
 
         @Tool
-        String getTime(String city) {
+        public String getTime(String city) {
             return "12:34:56";
         }
 
@@ -1229,7 +1227,7 @@ public abstract class AbstractAiServiceWithToolsIT {
             return a + b;
         }
 
-        static ToolProvider TOOL_PROVIDER = new ToolProvider() {
+        public static ToolProvider TOOL_PROVIDER = new ToolProvider() {
 
             @Override
             public ToolProviderResult provideTools(ToolProviderRequest request) {
@@ -1269,11 +1267,11 @@ public abstract class AbstractAiServiceWithToolsIT {
         };
     }
 
-    class CustomToolSearchStrategy implements ToolSearchStrategy {
+    public static class CustomToolSearchStrategy implements ToolSearchStrategy {
 
-        static String TOOL_SEARCH_TOOL_NAME = "search_tools";
+        public static String TOOL_SEARCH_TOOL_NAME = "search_tools";
 
-        static ToolSpecification TOOL_SEARCH_TOOL = ToolSpecification.builder()
+        public static ToolSpecification TOOL_SEARCH_TOOL = ToolSpecification.builder()
                 .name(TOOL_SEARCH_TOOL_NAME)
                 .description("Searches for relevant tools for the given search query")
                 .parameters(JsonObjectSchema.builder()
@@ -1309,14 +1307,14 @@ public abstract class AbstractAiServiceWithToolsIT {
         }
     }
 
-    static class BeforeToolExecutionCallback implements Consumer<BeforeToolExecution> {
-        @Override
-        public void accept(BeforeToolExecution ignored) {}
+    public static class BeforeToolExecutionCallback implements Consumer<BeforeToolExecution> {
+        public void accept(BeforeToolExecution ignored) {
+        }
     }
 
-    static class AfterToolExecutionCallback implements Consumer<ToolExecution> {
-        @Override
-        public void accept(ToolExecution ignored) {}
+    public static class AfterToolExecutionCallback implements Consumer<ToolExecution> {
+        public void accept(ToolExecution ignored) {
+        }
     }
 
     @ParameterizedTest
@@ -1364,7 +1362,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         ));
 
         inOrder.verify(spyToolSearchStrategy).search(argThat(request ->
-                        hasToolSearch(request, TOOL_SEARCH_TOOL, "weather")
+                hasToolSearch(request, TOOL_SEARCH_TOOL, "weather")
         ));
 
         inOrder.verify(spyAfterToolExecution).accept(argThat(te ->
@@ -1938,7 +1936,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         ));
         inOrder.verify(spyTools).getWeather("Paris");
 
-          inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 3
                         && containsTool(request, TOOL_SEARCH_TOOL)
                         && containsTool(request, "getWeather")
@@ -2081,17 +2079,17 @@ public abstract class AbstractAiServiceWithToolsIT {
         verifyNoMoreInteractions(spyToolSearchStrategy);
     }
 
-    private static boolean containsTool(ChatRequest chatRequest, ToolSpecification toolSpecification) {
+    public static boolean containsTool(ChatRequest chatRequest, ToolSpecification toolSpecification) {
         return chatRequest.toolSpecifications().stream().anyMatch(t -> t.equals(toolSpecification));
     }
 
-    private static boolean containsTool(ChatRequest chatRequest, String toolName) {
+    public static boolean containsTool(ChatRequest chatRequest, String toolName) {
         return chatRequest.toolSpecifications().stream().anyMatch(t -> t.name().equals(toolName));
     }
 
-    private static boolean hasToolSearch(ToolSearchRequest request,
-                                         ToolSpecification toolSearchTool,
-                                         String queryTerm) {
+    public static boolean hasToolSearch(ToolSearchRequest request,
+                                        ToolSpecification toolSearchTool,
+                                        String queryTerm) {
         return request.toolSearchRequest().name().equals(toolSearchTool.name())
                 && request.toolSearchRequest().arguments().toLowerCase().contains(queryTerm.toLowerCase());
     }

@@ -242,8 +242,8 @@ public class ToolService {
             return this.toolSpecifications.isEmpty()
                     ? ToolServiceContext.Empty.INSTANCE
                     : ToolServiceContext.builder()
-                            .toolSpecifications(findEffectiveToolSpecs(chatMemory, this.toolSpecifications, toolSearchTools))
-                            .availableToolSpecifications(this.toolSpecifications)
+                            .effectiveTools(findEffectiveTools(chatMemory, this.toolSpecifications, toolSearchTools))
+                            .availableTools(this.toolSpecifications)
                             .toolExecutors(getToolExecutors(this.toolExecutors, toolSearchTools, this.toolSpecifications))
                             .immediateReturnTools(this.immediateReturnTools)
                             .build();
@@ -273,17 +273,17 @@ public class ToolService {
             }
         }
         return ToolServiceContext.builder()
-                .toolSpecifications(findEffectiveToolSpecs(chatMemory, toolSpecifications, toolSearchTools))
-                .availableToolSpecifications(toolSpecifications)
+                .effectiveTools(findEffectiveTools(chatMemory, toolSpecifications, toolSearchTools))
+                .availableTools(toolSpecifications)
                 .toolExecutors(getToolExecutors(toolExecutors, toolSearchTools, toolSpecifications))
                 .immediateReturnTools(immediateReturnTools)
                 .build();
     }
 
     // TODO extract TST logic in a separate class
-    private List<ToolSpecification> findEffectiveToolSpecs(ChatMemory chatMemory,
-                                                           List<ToolSpecification> availableTools,
-                                                           List<ToolSpecification> toolSearchTools) { // TODO name
+    private List<ToolSpecification> findEffectiveTools(ChatMemory chatMemory,
+                                                       List<ToolSpecification> availableTools,
+                                                       List<ToolSpecification> toolSearchTools) { // TODO name
         if (this.toolSearchStrategy == null) {
             return availableTools;
         }
@@ -439,35 +439,7 @@ public class ToolService {
                 messages = chatMemory.messages();
             }
 
-            // TODO extract?
-            Set<String> newFoundToolNames = new LinkedHashSet<>();
-            for (ToolExecutionResult toolResult : toolResults.values()) {
-                Map<String, Object> attributes = toolResult.attributes();
-                if (attributes.containsKey(FOUND_TOOLS_ATTRIBUTE)) {
-                    newFoundToolNames.addAll((List<String>) attributes.get(FOUND_TOOLS_ATTRIBUTE));
-                }
-            }
-            List<ToolSpecification> newFoundTools = new ArrayList<>();
-            for (String foundToolName : newFoundToolNames) {
-                // TODO optimize
-                if (parameters.toolSpecifications().stream().anyMatch(it -> foundToolName.equals(it.name()))) {
-                    // this tool was already found previously
-                    continue;
-                }
-                ToolSpecification foundTool = toolServiceContext.availableToolSpecifications().stream()
-                        .filter(it -> it.name().equals(foundToolName))
-                        .findFirst()
-                        .orElseThrow(() -> new IllegalArgumentException("No tool with name '%s' exists".formatted(foundToolName)));
-                newFoundTools.add(foundTool);
-            }
-            if (!newFoundTools.isEmpty()) {
-                List<ToolSpecification> allTools = new ArrayList<>();
-                allTools.addAll(parameters.toolSpecifications());
-                allTools.addAll(newFoundTools);
-                parameters = parameters.overrideWith(ChatRequestParameters.builder()
-                        .toolSpecifications(allTools)
-                        .build());
-            }
+            parameters = addNewFoundTools(parameters, toolResults.values(), toolServiceContext.availableTools());
 
             ChatRequest chatRequest = context.chatRequestTransformer.apply(
                     ChatRequest.builder()
@@ -489,6 +461,41 @@ public class ToolService {
                 .toolExecutions(toolExecutions)
                 .aggregateTokenUsage(aggregateTokenUsage)
                 .build();
+    }
+
+    public static ChatRequestParameters addNewFoundTools(ChatRequestParameters parameters,
+                                                         Collection<ToolExecutionResult> toolResults,
+                                                         List<ToolSpecification> availableTools) {
+        // TODO extract?
+        Set<String> newFoundToolNames = new LinkedHashSet<>();
+        for (ToolExecutionResult toolResult : toolResults) {
+            Map<String, Object> attributes = toolResult.attributes();
+            if (attributes.containsKey(FOUND_TOOLS_ATTRIBUTE)) {
+                newFoundToolNames.addAll((List<String>) attributes.get(FOUND_TOOLS_ATTRIBUTE));
+            }
+        }
+        List<ToolSpecification> newFoundTools = new ArrayList<>();
+        for (String foundToolName : newFoundToolNames) {
+            // TODO optimize
+            if (parameters.toolSpecifications().stream().anyMatch(it -> foundToolName.equals(it.name()))) {
+                // this tool was already found previously
+                continue;
+            }
+            ToolSpecification foundTool = availableTools.stream()
+                    .filter(it -> it.name().equals(foundToolName))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("No tool with name '%s' exists".formatted(foundToolName)));
+            newFoundTools.add(foundTool);
+        }
+        if (!newFoundTools.isEmpty()) {
+            List<ToolSpecification> allTools = new ArrayList<>();
+            allTools.addAll(parameters.toolSpecifications());
+            allTools.addAll(newFoundTools);
+            parameters = parameters.overrideWith(ChatRequestParameters.builder()
+                    .toolSpecifications(allTools)
+                    .build());
+        }
+        return parameters;
     }
 
     private void fireToolExecutedEvent(

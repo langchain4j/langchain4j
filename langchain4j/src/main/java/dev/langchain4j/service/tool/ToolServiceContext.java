@@ -15,21 +15,21 @@ import static dev.langchain4j.internal.Utils.copy;
 @Internal
 public class ToolServiceContext {
 
-    private final List<ToolSpecification> toolSpecifications;
-    private final List<ToolSpecification> availableToolSpecifications;
+    private final List<ToolSpecification> effectiveTools;
+    private final List<ToolSpecification> availableTools;
     private final Map<String, ToolExecutor> toolExecutors;
     private final Set<String> immediateReturnTools;
 
     public ToolServiceContext(Builder builder) {
-        this.toolSpecifications = copy(builder.toolSpecifications);
-        this.availableToolSpecifications = copy(builder.availableToolSpecifications);
+        this.effectiveTools = copy(builder.effectiveTools);
+        this.availableTools = copy(builder.availableTools);
         this.toolExecutors = copy(builder.toolExecutors);
         this.immediateReturnTools = copy(builder.immediateReturnTools);
     }
 
-    public ToolServiceContext(List<ToolSpecification> toolSpecifications, Map<String, ToolExecutor> toolExecutors) {
-        this.toolSpecifications = copy(toolSpecifications);
-        this.availableToolSpecifications = copy(toolSpecifications);
+    public ToolServiceContext(List<ToolSpecification> effectiveTools, Map<String, ToolExecutor> toolExecutors) {
+        this.effectiveTools = copy(effectiveTools);
+        this.availableTools = copy(effectiveTools);
         this.toolExecutors = copy(toolExecutors);
         this.immediateReturnTools = Set.of();
     }
@@ -37,10 +37,21 @@ public class ToolServiceContext {
     /**
      * Returns <b>effective</b> tool specifications that should be included in the next {@link ChatRequest}.
      *
-     * @see #availableToolSpecifications()
+     * @see #availableTools()
      */
-    public List<ToolSpecification> toolSpecifications() { // TODO deprecate and rename into effectiveToolSpecifications?
-        return toolSpecifications;
+    public List<ToolSpecification> effectiveTools() {
+        return effectiveTools;
+    }
+
+    /**
+     * Returns <b>effective</b> tool specifications that should be included in the next {@link ChatRequest}.
+     *
+     * @see #availableTools()
+     * @deprecated use {@link #effectiveTools()} instead
+     */
+    @Deprecated(since = "1.12.0")
+    public List<ToolSpecification> toolSpecifications() {
+        return effectiveTools;
     }
 
     /**
@@ -48,11 +59,11 @@ public class ToolServiceContext {
      * These tool specifications can be discovered/found by the LLM (see {@link ToolSearchStrategy})
      * and included in the next {@link ChatRequest}.
      *
-     * @see #toolSpecifications()
+     * @see #effectiveTools()
      * @since 1.12.0
      */
-    public List<ToolSpecification> availableToolSpecifications() { // TODO name
-        return availableToolSpecifications;
+    public List<ToolSpecification> availableTools() {
+        return availableTools;
     }
 
     public Map<String, ToolExecutor> toolExecutors() {
@@ -67,22 +78,22 @@ public class ToolServiceContext {
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
         ToolServiceContext that = (ToolServiceContext) o;
-        return Objects.equals(toolSpecifications, that.toolSpecifications)
-                && Objects.equals(availableToolSpecifications, that.availableToolSpecifications)
+        return Objects.equals(effectiveTools, that.effectiveTools)
+                && Objects.equals(availableTools, that.availableTools)
                 && Objects.equals(toolExecutors, that.toolExecutors)
                 && Objects.equals(immediateReturnTools, that.immediateReturnTools);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(toolSpecifications, availableToolSpecifications, toolExecutors, immediateReturnTools);
+        return Objects.hash(effectiveTools, availableTools, toolExecutors, immediateReturnTools);
     }
 
     @Override
     public String toString() {
         return "ToolServiceContext{" +
-                "toolSpecifications=" + toolSpecifications +
-                ", availableToolSpecifications=" + availableToolSpecifications +
+                "effectiveTools=" + effectiveTools +
+                ", availableTools=" + availableTools +
                 ", toolExecutors=" + toolExecutors +
                 ", immediateReturnTools=" + immediateReturnTools +
                 '}';
@@ -94,18 +105,30 @@ public class ToolServiceContext {
 
     public static class Builder {
 
-        private List<ToolSpecification> toolSpecifications;
-        private List<ToolSpecification> availableToolSpecifications;
+        private List<ToolSpecification> effectiveTools;
+        private List<ToolSpecification> availableTools;
         private Map<String, ToolExecutor> toolExecutors;
         private Set<String> immediateReturnTools;
 
         /**
          * Sets <b>effective</b> tool specifications that should be included in the next {@link ChatRequest}.
          *
-         * @see #availableToolSpecifications()
+         * @see #availableTools()
          */
+        public Builder effectiveTools(List<ToolSpecification> effectiveTools) {
+            this.effectiveTools = effectiveTools;
+            return this;
+        }
+
+        /**
+         * Sets <b>effective</b> tool specifications that should be included in the next {@link ChatRequest}.
+         *
+         * @see #availableTools()
+         * @deprecated use {@link #effectiveTools(List)} instead
+         */
+        @Deprecated(since = "1.12.0")
         public Builder toolSpecifications(List<ToolSpecification> toolSpecifications) {
-            this.toolSpecifications = toolSpecifications;
+            this.effectiveTools = toolSpecifications;
             return this;
         }
 
@@ -114,11 +137,11 @@ public class ToolServiceContext {
          * These tool specifications can be discovered/found by the LLM (see {@link ToolSearchStrategy})
          * and included in the next {@link ChatRequest}.
          *
-         * @see #toolSpecifications()
+         * @see #effectiveTools(List)
          * @since 1.12.0
          */
-        public Builder availableToolSpecifications(List<ToolSpecification> availableToolSpecifications) { // TODO name
-            this.availableToolSpecifications = availableToolSpecifications;
+        public Builder availableTools(List<ToolSpecification> availableTools) {
+            this.availableTools = availableTools;
             return this;
         }
 

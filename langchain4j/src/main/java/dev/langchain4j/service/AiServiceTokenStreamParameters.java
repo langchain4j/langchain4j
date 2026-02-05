@@ -20,7 +20,8 @@ import java.util.concurrent.Executor;
 public class AiServiceTokenStreamParameters {
 
     private final List<ChatMessage> messages;
-    private final List<ToolSpecification> toolSpecifications;
+    private final List<ToolSpecification> effectiveTools;
+    private final List<ToolSpecification> availableTools;
     private final Map<String, ToolExecutor> toolExecutors;
     private final ToolArgumentsErrorHandler toolArgumentsErrorHandler;
     private final ToolExecutionErrorHandler toolExecutionErrorHandler;
@@ -33,7 +34,8 @@ public class AiServiceTokenStreamParameters {
 
     protected AiServiceTokenStreamParameters(Builder builder) {
         this.messages = builder.messages;
-        this.toolSpecifications = builder.toolSpecifications;
+        this.effectiveTools = builder.effectiveTools;
+        this.availableTools = builder.availableTools;
         this.toolExecutors = builder.toolExecutors;
         this.toolArgumentsErrorHandler = builder.toolArgumentsErrorHandler;
         this.toolExecutionErrorHandler = builder.toolExecutionErrorHandler;
@@ -53,10 +55,33 @@ public class AiServiceTokenStreamParameters {
     }
 
     /**
-     * @return the tool specifications
+     * @return effective tool specifications
+     * @see #availableTools()
      */
+    public List<ToolSpecification> effectiveTools() {
+        return effectiveTools;
+    }
+
+    /**
+     * @return effective tool specifications
+     * @see #effectiveTools()
+     * @deprecated use {@link #effectiveTools()} instead
+     */
+    @Deprecated(since = "1.12.0")
     public List<ToolSpecification> toolSpecifications() {
-        return toolSpecifications;
+        return effectiveTools;
+    }
+
+    /**
+     * Returns all tool specifications available in the AI Service context.
+     * All of these tools can become effective (see {@link #effectiveTools()}) when tool search tool TODO
+     * finds them. TODO
+     *
+     * @see #effectiveTools()
+     * @since 1.12.0
+     */
+    public List<ToolSpecification> availableTools() {
+        return availableTools;
     }
 
     /**
@@ -143,7 +168,8 @@ public class AiServiceTokenStreamParameters {
     public static class Builder {
 
         private List<ChatMessage> messages;
-        private List<ToolSpecification> toolSpecifications;
+        private List<ToolSpecification> effectiveTools;
+        private List<ToolSpecification> availableTools;
         private Map<String, ToolExecutor> toolExecutors;
         private ToolArgumentsErrorHandler toolArgumentsErrorHandler;
         private ToolExecutionErrorHandler toolExecutionErrorHandler;
@@ -168,13 +194,35 @@ public class AiServiceTokenStreamParameters {
         }
 
         /**
-         * Sets the tool specifications.
+         * Sets effective tool specifications. TODO
          *
-         * @param toolSpecifications the tool specifications
-         * @return this builder
+         * @see #availableTools(List)
          */
-        public Builder toolSpecifications(List<ToolSpecification> toolSpecifications) {
-            this.toolSpecifications = toolSpecifications;
+        public Builder effectiveTools(List<ToolSpecification> effectiveTools) {
+            this.effectiveTools = effectiveTools;
+            return this;
+        }
+
+        /**
+         * Sets effective tool specifications. TODO
+         *
+         * @see #availableTools(List)
+         * @deprecated use {@link #effectiveTools(List)} instead
+         */
+        @Deprecated(since = "1.12.0")
+        public Builder toolSpecifications(List<ToolSpecification> effectiveTools) { // TODO deprecate, rename
+            this.effectiveTools = effectiveTools;
+            return this;
+        }
+
+        /**
+         * TODO
+         *
+         * @see #effectiveTools(List)
+         * @since 1.12.0
+         */
+        public Builder availableTools(List<ToolSpecification> availableTools) {
+            this.availableTools = availableTools;
             return this;
         }
 

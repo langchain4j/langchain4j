@@ -262,7 +262,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                         if (streaming) {
                             var tokenStreamParameters = AiServiceTokenStreamParameters.builder()
                                     .messages(messages)
-                                    .toolSpecifications(toolServiceContext.toolSpecifications())
+                                    .effectiveTools(toolServiceContext.effectiveTools())
+                                    .availableTools(toolServiceContext.availableTools())
                                     .toolExecutors(toolServiceContext.toolExecutors())
                                     .toolArgumentsErrorHandler(context.toolService.argumentsErrorHandler())
                                     .toolExecutionErrorHandler(context.toolService.executionErrorHandler())
