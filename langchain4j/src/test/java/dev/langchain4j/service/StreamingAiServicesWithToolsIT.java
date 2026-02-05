@@ -1525,7 +1525,7 @@ class StreamingAiServicesWithToolsIT {
         ), any());
 
         verifyNoMoreInteractionsFor(spyModel);
-        ignoreInteractions(spyToolSearchStrategy).toolSearchTools();
+        ignoreInteractions(spyToolSearchStrategy).toolSearchTools(any());
         verifyNoMoreInteractions(spyToolSearchStrategy);
         verifyNoMoreInteractions(spyTools);
 
@@ -1582,7 +1582,7 @@ class StreamingAiServicesWithToolsIT {
         ), any());
 
         verifyNoMoreInteractionsFor(spyModel);
-        ignoreInteractions(spyToolSearchStrategy).toolSearchTools();
+        ignoreInteractions(spyToolSearchStrategy).toolSearchTools(any());
         verifyNoMoreInteractions(spyToolSearchStrategy);
         verifyNoMoreInteractions(spyTools);
     }
@@ -1669,7 +1669,7 @@ class StreamingAiServicesWithToolsIT {
         ), any());
 
         verifyNoMoreInteractionsFor(spyModel);
-        ignoreInteractions(spyToolSearchStrategy).toolSearchTools();
+        ignoreInteractions(spyToolSearchStrategy).toolSearchTools(any());
         verifyNoMoreInteractions(spyToolSearchStrategy);
 
         // when
@@ -1703,7 +1703,7 @@ class StreamingAiServicesWithToolsIT {
         ), any());
 
         verifyNoMoreInteractionsFor(spyModel);
-        ignoreInteractions(spyToolSearchStrategy).toolSearchTools();
+        ignoreInteractions(spyToolSearchStrategy).toolSearchTools(any());
         verifyNoMoreInteractions(spyToolSearchStrategy);
     }
 
@@ -1781,7 +1781,7 @@ class StreamingAiServicesWithToolsIT {
         ), any());
 
         verifyNoMoreInteractionsFor(spyModel);
-        ignoreInteractions(spyToolSearchStrategy).toolSearchTools();
+        ignoreInteractions(spyToolSearchStrategy).toolSearchTools(any());
         verifyNoMoreInteractions(spyToolSearchStrategy);
         verifyNoMoreInteractions(spyTools);
     }
@@ -1857,7 +1857,7 @@ class StreamingAiServicesWithToolsIT {
         ), any());
 
         verifyNoMoreInteractionsFor(spyModel);
-        ignoreInteractions(spyToolSearchStrategy).toolSearchTools();
+        ignoreInteractions(spyToolSearchStrategy).toolSearchTools(any());
         verifyNoMoreInteractions(spyToolSearchStrategy);
     }
 
@@ -1872,7 +1872,7 @@ class StreamingAiServicesWithToolsIT {
         ToolSearchStrategy spyToolSearchStrategy = spy(new ToolSearchStrategy() {
 
             @Override
-            public List<ToolSpecification> toolSearchTools() {
+            public List<ToolSpecification> toolSearchTools(InvocationContext context) {
                 return List.of(TOOL_SEARCH_TOOL);
             }
 
@@ -1950,7 +1950,7 @@ class StreamingAiServicesWithToolsIT {
         ), any());
 
         verifyNoMoreInteractionsFor(spyModel);
-        ignoreInteractions(spyToolSearchStrategy).toolSearchTools();
+        ignoreInteractions(spyToolSearchStrategy).toolSearchTools(any());
         verifyNoMoreInteractions(spyToolSearchStrategy);
         verifyNoMoreInteractions(spyTools);
 
@@ -1993,7 +1993,7 @@ class StreamingAiServicesWithToolsIT {
         ), any());
 
         verifyNoMoreInteractionsFor(spyModel);
-        ignoreInteractions(spyToolSearchStrategy).toolSearchTools();
+        ignoreInteractions(spyToolSearchStrategy).toolSearchTools(any());
         verifyNoMoreInteractions(spyToolSearchStrategy);
         verifyNoMoreInteractions(spyTools);
     }
@@ -2055,7 +2055,7 @@ class StreamingAiServicesWithToolsIT {
         ), any());
 
         verifyNoMoreInteractionsFor(spyModel);
-        ignoreInteractions(spyToolSearchStrategy).toolSearchTools();
+        ignoreInteractions(spyToolSearchStrategy).toolSearchTools(any());
         verifyNoMoreInteractions(spyToolSearchStrategy);
         verifyNoMoreInteractions(spyTools);
 
@@ -2103,7 +2103,7 @@ class StreamingAiServicesWithToolsIT {
         ), any());
 
         verifyNoMoreInteractionsFor(spyModel);
-        ignoreInteractions(spyToolSearchStrategy).toolSearchTools();
+        ignoreInteractions(spyToolSearchStrategy).toolSearchTools(any());
         verifyNoMoreInteractions(spyToolSearchStrategy);
         verifyNoMoreInteractions(spyTools);
     }
@@ -2163,7 +2163,7 @@ class StreamingAiServicesWithToolsIT {
         ), any());
 
         verifyNoMoreInteractionsFor(spyModel);
-        ignoreInteractions(spyToolSearchStrategy).toolSearchTools();
+        ignoreInteractions(spyToolSearchStrategy).toolSearchTools(any());
         verifyNoMoreInteractions(spyToolSearchStrategy);
 
         // when
@@ -2207,7 +2207,7 @@ class StreamingAiServicesWithToolsIT {
         ), any());
 
         verifyNoMoreInteractionsFor(spyModel);
-        ignoreInteractions(spyToolSearchStrategy).toolSearchTools();
+        ignoreInteractions(spyToolSearchStrategy).toolSearchTools(any());
         verifyNoMoreInteractions(spyToolSearchStrategy);
     }
 

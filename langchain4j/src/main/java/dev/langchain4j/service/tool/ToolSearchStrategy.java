@@ -1,6 +1,7 @@
 package dev.langchain4j.service.tool;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.invocation.InvocationContext;
 
 import java.util.List;
 
@@ -11,8 +12,7 @@ import java.util.List;
  */
 public interface ToolSearchStrategy {
 
-    // TODO accept request, return result
-    List<ToolSpecification> toolSearchTools(); // TODO accept invocation context, etc
+    List<ToolSpecification> toolSearchTools(InvocationContext invocationContext); // TODO name
 
-    ToolSearchResult search(ToolSearchRequest request);
+    ToolSearchResult search(ToolSearchRequest toolSearchRequest); // TODO name
 }

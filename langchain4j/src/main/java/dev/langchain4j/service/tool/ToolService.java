@@ -242,7 +242,7 @@ public class ToolService {
 
         List<ToolSpecification> toolSearchTools = List.of();
         if (toolSearchStrategy != null) {
-            toolSearchTools = toolSearchStrategy.toolSearchTools();
+            toolSearchTools = toolSearchStrategy.toolSearchTools(invocationContext);
         }
 
         if (this.toolProvider == null) {
