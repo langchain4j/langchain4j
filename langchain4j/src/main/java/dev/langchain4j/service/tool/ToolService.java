@@ -230,7 +230,14 @@ public class ToolService {
         this.toolSearchStrategy = toolSearchStrategy;
     }
 
-    // TODO breaking change, avoid
+    /**
+     * @deprecated use {@link #createContext(InvocationContext, UserMessage, ChatMemory)} instead
+     */
+    @Deprecated(since = "1.12.0")
+    public ToolServiceContext createContext(InvocationContext invocationContext, UserMessage userMessage) {
+        return createContext(invocationContext, userMessage, null);
+    }
+
     public ToolServiceContext createContext(InvocationContext invocationContext, UserMessage userMessage, ChatMemory chatMemory) {
 
         List<ToolSpecification> toolSearchTools = List.of();

@@ -5,6 +5,9 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.memory.ChatMemory;
+
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.quoted;
 
@@ -76,7 +79,9 @@ public class ToolExecutionResult {
     }
 
     /**
-     * TODO
+     * Returns attributes associated with tool execution.
+     * These attributes will be propagated into {@link ToolExecutionResultMessage#attributes()}
+     * and can be persisted in a {@link ChatMemory}. They will not be sent to the LLM.
      *
      * @since 1.12.0
      */
@@ -153,7 +158,9 @@ public class ToolExecutionResult {
         }
 
         /**
-         * TODO
+         * Sets attributes associated with tool execution.
+         * These attributes will be propagated into {@link ToolExecutionResultMessage#attributes()}
+         * and can be persisted in a {@link ChatMemory}. They will not be sent to the LLM.
          *
          * @since 1.12.0
          */

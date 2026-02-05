@@ -205,7 +205,7 @@ public class AiMessage implements ChatMessage {
     /**
      * @since 1.12.0
      */
-    public Builder toBuilder() { // TODO remove?
+    public Builder toBuilder() {
         return builder()
                 .text(text)
                 .thinking(thinking)

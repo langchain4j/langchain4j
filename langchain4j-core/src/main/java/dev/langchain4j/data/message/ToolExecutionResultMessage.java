@@ -19,7 +19,7 @@ public class ToolExecutionResultMessage implements ChatMessage {
     private final String toolName;
     private final String text;
     private final Boolean isError;
-    private final Map<String, Object> attributes; // TODO serialization, test backwards compatibility
+    private final Map<String, Object> attributes;
 
     /**
      * Creates a {@link ToolExecutionResultMessage} from a builder.
@@ -81,7 +81,8 @@ public class ToolExecutionResultMessage implements ChatMessage {
     }
 
     /**
-     * TODO
+     * Returns attributes of a message.
+     * These attributes are not sent to the LLM, but can be persisted in a {@link dev.langchain4j.memory.ChatMemory}.
      *
      * @since 1.12.0
      */

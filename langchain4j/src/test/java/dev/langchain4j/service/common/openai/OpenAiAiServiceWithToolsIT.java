@@ -1,6 +1,5 @@
 package dev.langchain4j.service.common.openai;
 
-import dev.langchain4j.LoggingChatModelListener;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceWithToolsIT;
@@ -25,20 +24,19 @@ class OpenAiAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
                         .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                         .modelName(GPT_4_O_MINI)
                         .temperature(0.0)
-                        .listeners(new LoggingChatModelListener())
-//                        .logRequests(true) TODO
-//                        .logResponses(true)
+                        .logRequests(true)
+                        .logResponses(true)
+                        .build(),
+                OpenAiChatModel.builder()
+                        .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                        .apiKey(System.getenv("OPENAI_API_KEY"))
+                        .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                        .modelName(GPT_4_O_MINI)
+                        .strictTools(true)
+                        .temperature(0.0)
+                        .logRequests(true)
+                        .logResponses(true)
                         .build()
-//                OpenAiChatModel.builder() TODO
-//                        .baseUrl(System.getenv("OPENAI_BASE_URL"))
-//                        .apiKey(System.getenv("OPENAI_API_KEY"))
-//                        .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-//                        .modelName(GPT_4_O_MINI)
-//                        .strictTools(true)
-//                        .temperature(0.0)
-//                        .logRequests(true)
-//                        .logResponses(true)
-//                        .build()
         );
     }
 

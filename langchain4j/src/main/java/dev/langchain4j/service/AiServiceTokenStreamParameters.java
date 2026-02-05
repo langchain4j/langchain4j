@@ -5,10 +5,12 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutor;
+import dev.langchain4j.service.tool.ToolSearchStrategy;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
@@ -48,14 +50,15 @@ public class AiServiceTokenStreamParameters {
     }
 
     /**
-     * @return the messages
+     * Returnsmessages that should be included in the next {@link ChatRequest}.
      */
     public List<ChatMessage> messages() {
         return messages;
     }
 
     /**
-     * @return effective tool specifications
+     * Returns <b>effective</b> tool specifications that should be included in the next {@link ChatRequest}.
+     *
      * @see #availableTools()
      */
     public List<ToolSpecification> effectiveTools() {
@@ -63,7 +66,8 @@ public class AiServiceTokenStreamParameters {
     }
 
     /**
-     * @return effective tool specifications
+     * Returns <b>effective</b> tool specifications that should be included in the next {@link ChatRequest}.
+     *
      * @see #effectiveTools()
      * @deprecated use {@link #effectiveTools()} instead
      */
@@ -73,9 +77,9 @@ public class AiServiceTokenStreamParameters {
     }
 
     /**
-     * Returns all tool specifications available in the AI Service context.
-     * All of these tools can become effective (see {@link #effectiveTools()}) when tool search tool TODO
-     * finds them. TODO
+     * Returns <b>all available</b> tool specifications configured for AI service.
+     * These tool specifications can be discovered/found by the LLM (see {@link ToolSearchStrategy})
+     * and included in the next {@link ChatRequest}.
      *
      * @see #effectiveTools()
      * @since 1.12.0
@@ -194,7 +198,7 @@ public class AiServiceTokenStreamParameters {
         }
 
         /**
-         * Sets effective tool specifications. TODO
+         * Sets <b>effective</b> tool specifications that should be included in the next {@link ChatRequest}.
          *
          * @see #availableTools(List)
          */
@@ -204,19 +208,21 @@ public class AiServiceTokenStreamParameters {
         }
 
         /**
-         * Sets effective tool specifications. TODO
+         * Sets <b>effective</b> tool specifications that should be included in the next {@link ChatRequest}.
          *
          * @see #availableTools(List)
          * @deprecated use {@link #effectiveTools(List)} instead
          */
         @Deprecated(since = "1.12.0")
-        public Builder toolSpecifications(List<ToolSpecification> effectiveTools) { // TODO deprecate, rename
+        public Builder toolSpecifications(List<ToolSpecification> effectiveTools) {
             this.effectiveTools = effectiveTools;
             return this;
         }
 
         /**
-         * TODO
+         * Sets <b>all available</b> tool specifications configured for AI service.
+         * These tool specifications can be discovered/found by the LLM (see {@link ToolSearchStrategy})
+         * and included in the next {@link ChatRequest}.
          *
          * @see #effectiveTools(List)
          * @since 1.12.0

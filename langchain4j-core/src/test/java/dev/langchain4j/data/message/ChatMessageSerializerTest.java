@@ -95,7 +95,7 @@ class ChatMessageSerializerTest {
                         "{\"text\":\"test-text\",\"thinking\":\"test-thinking\",\"toolExecutionRequests\":[{\"name\":\"weather\",\"arguments\":\"{\\\"city\\\": \\\"Munich\\\"}\"}],\"attributes\":{\"name\":\"Klaus\",\"age\":42,\"extra\":[\"one\",\"two\"]},\"type\":\"AI\"}"),
                 Arguments.of(
                         ToolExecutionResultMessage.from("12345", "weather", "sunny"),
-                        "{\"id\":\"12345\",\"toolName\":\"weather\",\"text\":\"sunny\",\"type\":\"TOOL_EXECUTION_RESULT\"}"),
+                        "{\"id\":\"12345\",\"toolName\":\"weather\",\"text\":\"sunny\",\"attributes\":{},\"type\":\"TOOL_EXECUTION_RESULT\"}"),
                 Arguments.of(
                         ToolExecutionResultMessage.builder()
                                 .id("12345")
@@ -103,13 +103,13 @@ class ChatMessageSerializerTest {
                                 .text("error occurred")
                                 .isError(true)
                                 .build(),
-                        "{\"id\":\"12345\",\"toolName\":\"weather\",\"text\":\"error occurred\",\"isError\":true,\"type\":\"TOOL_EXECUTION_RESULT\"}"),
+                        "{\"id\":\"12345\",\"toolName\":\"weather\",\"text\":\"error occurred\",\"isError\":true,\"attributes\":{},\"type\":\"TOOL_EXECUTION_RESULT\"}"),
                 Arguments.of(
                         ToolExecutionResultMessage.from(null, null, "sunny"),
-                        "{\"text\":\"sunny\",\"type\":\"TOOL_EXECUTION_RESULT\"}"),
+                        "{\"text\":\"sunny\",\"attributes\":{},\"type\":\"TOOL_EXECUTION_RESULT\"}"),
                 Arguments.of(
                         ToolExecutionResultMessage.from("", "", "sunny"),
-                        "{\"id\":\"\",\"toolName\":\"\",\"text\":\"sunny\",\"type\":\"TOOL_EXECUTION_RESULT\"}"),
+                        "{\"id\":\"\",\"toolName\":\"\",\"text\":\"sunny\",\"attributes\":{},\"type\":\"TOOL_EXECUTION_RESULT\"}"),
                 Arguments.of(
                         ToolExecutionResultMessage.builder()
                                 .id("67890")
@@ -195,5 +195,17 @@ class ChatMessageSerializerTest {
         assertThat(deserialized.toolName()).isEqualTo("weather");
         assertThat(deserialized.text()).isEqualTo("sunny");
         assertThat(deserialized.isError()).isNull();
+    }
+
+    @Test
+    void should_deserialize_ToolExecutionResultMessage_without_attributes() {
+
+        ToolExecutionResultMessage deserialized = (ToolExecutionResultMessage) messageFromJson(
+                "{\"id\":\"12345\",\"toolName\":\"weather\",\"text\":\"sunny\",\"type\":\"TOOL_EXECUTION_RESULT\"}");
+
+        assertThat(deserialized.id()).isEqualTo("12345");
+        assertThat(deserialized.toolName()).isEqualTo("weather");
+        assertThat(deserialized.text()).isEqualTo("sunny");
+        assertThat(deserialized.attributes()).isEmpty();
     }
 }

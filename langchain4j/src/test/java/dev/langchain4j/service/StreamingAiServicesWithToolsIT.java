@@ -2213,7 +2213,8 @@ class StreamingAiServicesWithToolsIT {
 
     // TODO all other tests from sync version
 
-    public static void verifyNoMoreInteractionsFor(StreamingChatModel model) throws Exception { // TODO name
+    // TODO rename verifyNoMoreImportantInteractions
+    public static void verifyNoMoreInteractionsFor(StreamingChatModel model) throws Exception {
         ignoreInteractions(model).doChat(any(), any());
         ignoreInteractions(model).defaultRequestParameters();
         ignoreInteractions(model).supportedCapabilities();

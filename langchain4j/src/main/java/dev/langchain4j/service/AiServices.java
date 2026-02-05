@@ -638,7 +638,12 @@ public abstract class AiServices<T> {
         return this;
     }
 
-    // TODO
+    /**
+     * TODO
+     *
+     * @param toolSearchStrategy
+     * @return
+     */
     public AiServices<T> toolSearchStrategy(ToolSearchStrategy toolSearchStrategy) {
         context.toolService.toolSearchStrategy(toolSearchStrategy);
         return this;

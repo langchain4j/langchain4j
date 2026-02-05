@@ -6,10 +6,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
@@ -33,15 +38,13 @@ public class LoggingChatModelListener implements ChatModelListener {
     private static final ObjectMapper mapper = new ObjectMapper();
 
     @Override
-    public void onRequest(ChatModelRequestContext requestContext) {
-
-    }
+    public void onRequest(ChatModelRequestContext requestContext) { }
 
     private static String print(ChatMessage message) {
         if (message instanceof SystemMessage systemMessage) {
             return "SYSTEM: " + systemMessage.text();
         } else if (message instanceof UserMessage userMessage) {
-            return "USER: " + userMessage.singleText(); // TODO contents
+            return "USER: " + print(userMessage);
         } else if (message instanceof AiMessage aiMessage) {
             return print(aiMessage);
         } else if (message instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
@@ -49,6 +52,28 @@ public class LoggingChatModelListener implements ChatModelListener {
         } else {
             throw new IllegalArgumentException("Unknown message type: " + message.getClass());
         }
+    }
+
+    private static String print(UserMessage userMessage) {
+        if (userMessage.hasSingleText()) {
+            return userMessage.singleText();
+        }
+        return userMessage.contents().stream()
+                .map(content -> {
+                    if (content instanceof TextContent textContent) {
+                        return textContent.text();
+                    } else if (content instanceof ImageContent imageContent) {
+                        return "[IMAGE]";
+                    } else if (content instanceof AudioContent audioContent) {
+                        return "[AUDIO]";
+                    } else if (content instanceof VideoContent videoContent) {
+                        return "[VIDEO]";
+                    } else if (content instanceof PdfFileContent pdfFileContent) {
+                        return "[PDF_FILE]";
+                    } else {
+                        throw new IllegalArgumentException("Unknown content type: " + content.getClass());
+                    }
+                }).collect(joining(" "));
     }
 
     private static String print(AiMessage aiMessage) {
