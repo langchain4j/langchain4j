@@ -9,9 +9,11 @@ import dev.langchain4j.model.googleai.BatchRequestResponse.BatchIncomplete;
 import dev.langchain4j.model.googleai.GoogleAiGeminiBatchImageModel.ImageGenerationRequest;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+@Disabled("Constantly getting 429, see the discussion here: https://github.com/langchain4j/langchain4j/pull/3942")
 @EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 class GoogleAiGeminiBatchImageModelIT {
 
