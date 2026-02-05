@@ -414,6 +414,13 @@ To use caching, please set `beta("prompt-caching-2024-07-31")`.
 contains `cacheCreationInputTokens` and `cacheReadInputTokens`.
 
 More info on caching can be found [here](https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching).
+### Caching User Messages
+
+To enable prompt caching for a `UserMessage`, you need to set the `cache_control` attribute to `ephemeral`. The cache control marker will be automatically applied to the last content block of the message.
+
+```java
+UserMessage userMessage = UserMessage.from("Hello cached world");
+userMessage.attributes().put("cache_control", "ephemeral");
 
 ## Thinking
 
