@@ -60,6 +60,9 @@ public class StdioMcpTransport implements McpTransport {
             process = processBuilder.start();
             log.debug("PID of the started process: {}", process.pid());
             process.onExit().thenRun(() -> {
+                if (messageHandler != null) {
+                    messageHandler.cancelAllPendingOperations("Process has exited");
+                }
                 log.debug("Subprocess has exited with code: {}", process.exitValue());
             });
         } catch (Exception e) {
