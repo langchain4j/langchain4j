@@ -30,8 +30,6 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class RegexToolSearchStrategyIT {
 
-    // TODO unit test error cases
-
     private static OpenAiChatModel.OpenAiChatModelBuilder baseModelBuilder() {
         return OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))

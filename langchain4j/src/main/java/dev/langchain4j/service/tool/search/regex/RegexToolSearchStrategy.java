@@ -27,7 +27,8 @@ import static dev.langchain4j.internal.Utils.toBase64;
  * against tool names and descriptions. Matching tool names are returned,
  * limited by {@link #maxResults}.
  */
-public class RegexToolSearchStrategy implements ToolSearchStrategy {
+public class RegexToolSearchStrategy implements ToolSearchStrategy { // TODO move into a separate module
+    // TODO reimplement with simple "contains"?
 
     private static final String DEFAULT_TOOL_NAME = "tool_search_tool_regex";
     private static final String DEFAULT_TOOL_DESCRIPTION = "Finds available tools whose name or description matches a Java regular expression";
@@ -84,9 +85,10 @@ public class RegexToolSearchStrategy implements ToolSearchStrategy {
         Pattern pattern = compilePattern(regex);
 
         List<String> foundToolNames = request.availableTools().stream()
-                .filter(tool -> matches(pattern, tool))
+                .filter(tool -> matches(pattern, tool)) // TODO ReDoS
                 .map(ToolSpecification::name)
                 .limit(maxResults)
+                // TODO rank
                 .toList();
 
         return new ToolSearchResult(foundToolNames);
