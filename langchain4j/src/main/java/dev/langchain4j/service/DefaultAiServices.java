@@ -277,7 +277,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .build();
 
                             TokenStream tokenStream = new AiServiceTokenStream(tokenStreamParameters);
-                            // TODO moderation
                             if (returnType == TokenStream.class) {
                                 return tokenStream;
                             } else {
