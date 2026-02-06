@@ -116,6 +116,8 @@ If you do not use this functionality, you can leave this method empty.
 - Only one `SystemMessage` can be held at a time.
 - If a new `SystemMessage` with the same content is added, it is ignored.
 - If a new `SystemMessage` with different content is added, it replaces the previous one.
+  By default, the new `SystemMessage` is added to the end of the message list. You can change this by setting
+  `alwaysKeepSystemMessageFirst` property when creating `ChatMemory`.
 
 ## Special treatment of tool messages
 

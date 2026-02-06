@@ -38,8 +38,10 @@ import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
+import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.DefaultToolExecutor;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
+import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
@@ -53,6 +55,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
 
@@ -236,6 +239,21 @@ public abstract class AiServices<T> {
     }
 
     /**
+     * Configures the system message to be used each time an AI service is invoked.
+     * It can be either a complete system message or a system message template containing unresolved template
+     * variables (e.g. "{{name}}"), which will be resolved using the values of method parameters annotated with @{@link V}.
+     * <br>
+     * When both {@code @SystemMessage} and the system message provider are configured,
+     * {@code @SystemMessage} takes precedence.
+     *
+     * @param systemMessage The system message to be used.
+     * @return builder
+     */
+    public AiServices<T> systemMessage(String systemMessage) {
+        return systemMessageProvider(ignore -> systemMessage);
+    }
+
+    /**
      * Configures the system message provider, which provides a system message to be used each time an AI service is invoked.
      * <br>
      * When both {@code @SystemMessage} and the system message provider are configured,
@@ -253,6 +271,42 @@ public abstract class AiServices<T> {
      */
     public AiServices<T> systemMessageProvider(Function<Object, String> systemMessageProvider) {
         context.systemMessageProvider = systemMessageProvider.andThen(Optional::ofNullable);
+        return this;
+    }
+
+    /**
+     * Configures the user message to be used each time an AI service is invoked.
+     * It can be either a complete user message or a user message template containing unresolved template
+     * variables (e.g. "{{name}}"), which will be resolved using the values of method parameters annotated with @{@link V}.
+     * <br>
+     * When both {@code @UserMessage} and the user message provider are configured,
+     * {@code @UserMessage} takes precedence.
+     *
+     * @param userMessage The user message to be used.
+     * @return builder
+     */
+    public AiServices<T> userMessage(String userMessage) {
+        return userMessageProvider(ignore -> userMessage);
+    }
+
+    /**
+     * Configures the user message provider, which provides a user message to be used each time an AI service is invoked.
+     * <br>
+     * When both {@code @UserMessage} and the user message provider are configured,
+     * {@code @UserMessage} takes precedence.
+     *
+     * @param userMessageProvider A {@link Function} that accepts a chat memory ID
+     *                              (a value of a method parameter annotated with @{@link MemoryId})
+     *                              and returns a user message to be used.
+     *                              If there is no parameter annotated with {@code @MemoryId},
+     *                              the value of memory ID is "default".
+     *                              The returned {@link String} can be either a complete user message
+     *                              or a user message template containing unresolved template variables (e.g. "{{name}}"),
+     *                              which will be resolved using the values of method parameters annotated with @{@link V}.
+     * @return builder
+     */
+    public AiServices<T> userMessageProvider(Function<Object, String> userMessageProvider) {
+        context.userMessageProvider = userMessageProvider.andThen(Optional::ofNullable);
         return this;
     }
 
@@ -469,8 +523,49 @@ public abstract class AiServices<T> {
         return this;
     }
 
+    /**
+     * Sets the maximum number of times the LLM may respond with tool calls.
+     * If this limit is exceeded, an exception is thrown and the AI service invocation is terminated.
+     *
+     * <p>
+     * NOTE: This value does not represent the total number of tool calls.
+     * Each LLM response that contains one or more tool calls counts as a single invocation
+     * and reduces this limit by one.
+     *
+     * <p>
+     * The default value is 100.
+     *
+     * @param maxSequentialToolsInvocations the maximum number of LLM responses containing tool calls
+     * @return the builder instance
+     */
     public AiServices<T> maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
         context.toolService.maxSequentialToolsInvocations(maxSequentialToolsInvocations);
+        return this;
+    }
+
+    /**
+     * Configures a callback to be invoked before each tool execution.
+     *
+     * @param beforeToolExecution A {@link Consumer} that accepts a {@link BeforeToolExecution}
+     *                            representing the tool execution request about to be executed.
+     * @return builder
+     * @since 1.11.0
+     */
+    public AiServices<T> beforeToolExecution(Consumer<BeforeToolExecution> beforeToolExecution) {
+        context.toolService.beforeToolExecution(beforeToolExecution);
+        return this;
+    }
+
+    /**
+     * Configures a callback to be invoked after each tool execution.
+     *
+     * @param afterToolExecution A {@link Consumer} that accepts a {@link ToolExecution}
+     *                           containing the tool execution request that was executed and its result.
+     * @return builder
+     * @since 1.11.0
+     */
+    public AiServices<T> afterToolExecution(Consumer<ToolExecution> afterToolExecution) {
+        context.toolService.afterToolExecution(afterToolExecution);
         return this;
     }
 

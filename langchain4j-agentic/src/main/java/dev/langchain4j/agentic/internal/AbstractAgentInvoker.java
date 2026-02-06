@@ -1,17 +1,16 @@
 package dev.langchain4j.agentic.internal;
 
 import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Objects;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.observability.AgentListener;
-import dev.langchain4j.agentic.observability.AgentListenerProvider;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
+import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 
@@ -27,6 +26,11 @@ public abstract class AbstractAgentInvoker implements AgentInvoker, InternalAgen
     @Override
     public Class<?> type() {
         return agent.type();
+    }
+
+    @Override
+    public Class<? extends Planner> plannerType() {
+        return agent.plannerType();
     }
 
     @Override
@@ -81,7 +85,7 @@ public abstract class AbstractAgentInvoker implements AgentInvoker, InternalAgen
 
     @Override
     public AgentListener listener() {
-        return ((AgentListenerProvider) agent).listener();
+        return agent.listener();
     }
 
     @Override
@@ -97,6 +101,11 @@ public abstract class AbstractAgentInvoker implements AgentInvoker, InternalAgen
     @Override
     public AgentInstance parent() {
         return agent.parent();
+    }
+
+    @Override
+    public <T extends AgentInstance> T as(Class<T> agentInstanceClass) {
+        return agent.as(agentInstanceClass);
     }
 
     @Override
@@ -121,7 +130,7 @@ public abstract class AbstractAgentInvoker implements AgentInvoker, InternalAgen
     }
 
     @Override
-    public void setParent(AgentInstance parent) {
+    public void setParent(InternalAgent parent) {
         agent.setParent(parent);
     }
 

@@ -2,27 +2,30 @@ package dev.langchain4j.model.mistralai.internal.api;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
-import java.util.List;
-import java.util.Objects;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import java.util.List;
+import java.util.Objects;
 
 @JsonInclude(NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+@JsonNaming(SnakeCaseStrategy.class)
 public class MistralAiThinkingContent extends MistralAiMessageContent {
 
-    List<MistralAiMessageContent> thinking;
+    private final List<MistralAiTextContent> thinking;
 
-    protected MistralAiThinkingContent() {
-        super("thinking");
-    }
-
-    public MistralAiThinkingContent(List<MistralAiMessageContent> thinking) {
+    @JsonCreator
+    public MistralAiThinkingContent(@JsonProperty("thinking") List<MistralAiTextContent> thinking) {
         super("thinking");
         this.thinking = thinking;
+    }
+
+    public List<MistralAiTextContent> getThinking() {
+        return thinking;
     }
 
     @Override
@@ -40,8 +43,6 @@ public class MistralAiThinkingContent extends MistralAiMessageContent {
 
     @Override
     public String toString() {
-        return "MistralAiThinkingContent{" + "thinking="
-                + thinking + ", type='"
-                + type + '\'' + '}';
+        return "MistralAiThinkingContent{" + "thinking=" + thinking + ", type='" + type + '\'' + '}';
     }
 }

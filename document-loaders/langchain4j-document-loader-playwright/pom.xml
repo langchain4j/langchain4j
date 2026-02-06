@@ -4,7 +4,7 @@
     <parent>
         <groupId>org.thingsboard.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.10.0-beta18-TB</version>
+        <version>1.11.0-beta19-TB</version>
         <relativePath>../../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -16,12 +16,16 @@
         Playwright is built to enable cross-browser web automation that is ever-green, capable, reliable and fast.
         https://playwright.dev/</description>
 
+    <properties>
+        <playwright.version>1.57.0</playwright.version>
+    </properties>
+
     <dependencies>
 
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.10.0-TB</version>
+            <version>1.11.0-TB</version>
         </dependency>
 
         <dependency>
@@ -40,7 +44,7 @@
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
-            <version>1.10.0-TB</version>
+            <version>1.11.0-TB</version>
             <scope>test</scope>
         </dependency>
 

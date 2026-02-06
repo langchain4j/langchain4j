@@ -4,7 +4,7 @@
 
     <groupId>org.thingsboard.langchain4j</groupId>
     <artifactId>langchain4j-aggregator</artifactId>
-    <version>1.10.0-beta18-TB</version>
+    <version>1.11.0-beta19-TB</version>
     <packaging>pom</packaging>
     <name>LangChain4j :: Aggregator</name>
 
@@ -25,6 +25,7 @@
         <!-- http clients -->
         <module>langchain4j-http-client</module>
         <module>http-clients/langchain4j-http-client-jdk</module>
+        <module>http-clients/langchain4j-http-client-apache</module>
 
         <!-- model providers -->
         <module>langchain4j-anthropic</module>
@@ -132,8 +133,8 @@
     </modules>
 
     <properties>
-        <langchain4j.stable.version>1.10.0-TB</langchain4j.stable.version>
-        <langchain4j.beta.version>1.10.0-beta18-TB</langchain4j.beta.version>
+        <langchain4j.stable.version>1.11.0-TB</langchain4j.stable.version>
+        <langchain4j.beta.version>1.11.0-beta19-TB</langchain4j.beta.version>
         <gib.disable>true</gib.disable>
     </properties>
 

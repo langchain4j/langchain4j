@@ -260,7 +260,7 @@ public class ConverterTest {
                 .build();
 
         var toConvert = new com.ibm.watsonx.ai.chat.model.PartialToolCall(
-                "completion-id", 10, "id", "name", "{\"name\":\"Klaus\"");
+                "completion-id", 0, 10, "id", "name", "{\"name\":\"Klaus\"");
         assertEquals(EXPECTED, Converter.toPartialToolCall(toConvert));
     }
 

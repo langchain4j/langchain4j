@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.thingsboard.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.10.0-beta18-TB</version>
+        <version>1.11.0-beta19-TB</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -13,6 +13,7 @@
     <name>LangChain4j :: Integration :: Milvus</name>
 
     <properties>
+        <milvus-sdk-java.version>2.5.9</milvus-sdk-java.version>
         <skipMilvusITs>${skipITs}</skipMilvusITs>
         <!-- TODO: remove enforcer.skipRules -->
         <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
@@ -33,7 +34,7 @@
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.10.0-TB</version>
+            <version>1.11.0-TB</version>
         </dependency>
 
         <dependency>
@@ -45,7 +46,7 @@
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.10.0-TB</version>
+            <version>1.11.0-TB</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>

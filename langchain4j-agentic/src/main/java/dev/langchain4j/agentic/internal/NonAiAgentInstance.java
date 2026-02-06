@@ -1,15 +1,16 @@
 package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.agentic.observability.AgentListener;
-import dev.langchain4j.agentic.observability.AgentListenerProvider;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
+import dev.langchain4j.agentic.planner.Planner;
+import dev.langchain4j.agentic.workflow.HumanInTheLoop;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Objects;
 
-public class NonAiAgentInstance implements AgentInstance, AgentListenerProvider, InternalAgent {
+public class NonAiAgentInstance implements AgentInstance, InternalAgent {
     private final Class<?> type;
     private final String name;
     private final String description;
@@ -19,7 +20,7 @@ public class NonAiAgentInstance implements AgentInstance, AgentListenerProvider,
     private final List<AgentArgument> arguments;
     private final AgentListener listener;
 
-    private AgentInstance parent;
+    private InternalAgent parent;
     private String agentId;
 
     public NonAiAgentInstance(Class<?> type, String name, String description,
@@ -53,12 +54,17 @@ public class NonAiAgentInstance implements AgentInstance, AgentListenerProvider,
 
     @Override
     public AgenticSystemTopology topology() {
-        return AgenticSystemTopology.SINGLE_AGENT;
+        return type == HumanInTheLoop.class ? AgenticSystemTopology.HUMAN_IN_THE_LOOP : AgenticSystemTopology.NON_AI_AGENT;
     }
 
     @Override
     public Class<?> type() {
         return type;
+    }
+
+    @Override
+    public Class<? extends Planner> plannerType() {
+        return null;
     }
 
     @Override
@@ -130,7 +136,7 @@ public class NonAiAgentInstance implements AgentInstance, AgentListenerProvider,
     }
 
     @Override
-    public void setParent(AgentInstance parent) {
+    public void setParent(InternalAgent parent) {
         this.parent = parent;
     }
 
