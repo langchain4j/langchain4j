@@ -1,10 +1,10 @@
 package dev.langchain4j.model.googleai;
 
-import static dev.langchain4j.model.googleai.BatchRequestResponse.BatchJobState.BATCH_STATE_CANCELLED;
-import static dev.langchain4j.model.googleai.BatchRequestResponse.BatchJobState.BATCH_STATE_FAILED;
-import static dev.langchain4j.model.googleai.BatchRequestResponse.BatchJobState.BATCH_STATE_PENDING;
-import static dev.langchain4j.model.googleai.BatchRequestResponse.BatchJobState.BATCH_STATE_RUNNING;
-import static dev.langchain4j.model.googleai.BatchRequestResponse.BatchJobState.BATCH_STATE_SUCCEEDED;
+import static dev.langchain4j.model.batch.BatchJobState.CANCELLED;
+import static dev.langchain4j.model.batch.BatchJobState.FAILED;
+import static dev.langchain4j.model.batch.BatchJobState.PENDING;
+import static dev.langchain4j.model.batch.BatchJobState.RUNNING;
+import static dev.langchain4j.model.batch.BatchJobState.SUCCEEDED;
 import static dev.langchain4j.model.googleai.GeminiService.BatchOperationType.ASYNC_BATCH_EMBED_CONTENT;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -21,18 +21,17 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.http.client.MockHttpClient;
 import dev.langchain4j.http.client.MockHttpClientBuilder;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.model.batch.BatchJobState;
+import dev.langchain4j.model.batch.BatchList;
+import dev.langchain4j.model.batch.BatchName;
+import dev.langchain4j.model.batch.ExtractedBatchResults;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateFileRequest;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateRequest;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateResponse;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateResponse.InlinedResponseWrapper;
-import dev.langchain4j.model.googleai.BatchRequestResponse.BatchError;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchFileRequest;
-import dev.langchain4j.model.googleai.BatchRequestResponse.BatchIncomplete;
-import dev.langchain4j.model.googleai.BatchRequestResponse.BatchJobState;
-import dev.langchain4j.model.googleai.BatchRequestResponse.BatchList;
-import dev.langchain4j.model.googleai.BatchRequestResponse.BatchName;
-import dev.langchain4j.model.googleai.BatchRequestResponse.BatchSuccess;
 import dev.langchain4j.model.googleai.BatchRequestResponse.ListOperationsResponse;
+import dev.langchain4j.model.googleai.BatchRequestResponse.Operation;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingRequest;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingResponse;
 import dev.langchain4j.model.googleai.GeminiFiles.GeminiFile;
@@ -74,7 +73,7 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
     }
 
     @Nested
-    class CreateBatchInline {
+    class CreateBatch {
         @Captor
         private ArgumentCaptor<BatchCreateRequest<GeminiEmbeddingRequest>> batchRequestCaptor;
 
@@ -85,7 +84,7 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
             var priority = 1L;
             var segments =
                     List.of(TextSegment.from("What is machine learning?"), TextSegment.from("Explain neural networks"));
-            var expectedOperation = createPendingOperation("batches/embed-test-123", BATCH_STATE_PENDING);
+            var expectedOperation = createPendingOperation("batches/embed-test-123", PENDING);
             when(mockGeminiService.<GeminiEmbeddingRequest, GeminiEmbeddingResponse>batchCreate(
                             any(),
                             ArgumentMatchers.<BatchCreateRequest<GeminiEmbeddingRequest>>any(),
@@ -93,12 +92,12 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
                     .thenReturn(expectedOperation);
 
             // when
-            var result = subject.createBatchInline(displayName, priority, segments);
+            var result = subject.createBatch(displayName, priority, segments);
 
             // then
-            assertThat(result)
-                    .isInstanceOf(BatchIncomplete.class)
-                    .isEqualTo(new BatchIncomplete<>(new BatchName("batches/embed-test-123"), BATCH_STATE_PENDING));
+            assertThat(result.isIncomplete()).isTrue();
+            assertThat(result.batchName()).isEqualTo(new BatchName("batches/embed-test-123"));
+            assertThat(result.state()).isEqualTo(PENDING);
 
             verify(mockGeminiService)
                     .<GeminiEmbeddingRequest, GeminiEmbeddingResponse>batchCreate(
@@ -116,7 +115,7 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
             // given
             var displayName = "Test Batch";
             var segments = List.of(TextSegment.from("Sample text for embedding"));
-            var expectedOperation = createPendingOperation("batches/embed-test-456", BATCH_STATE_PENDING);
+            var expectedOperation = createPendingOperation("batches/embed-test-456", PENDING);
             when(mockGeminiService.<GeminiEmbeddingRequest, GeminiEmbeddingResponse>batchCreate(
                             any(),
                             ArgumentMatchers.<BatchCreateRequest<GeminiEmbeddingRequest>>any(),
@@ -124,12 +123,12 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
                     .thenReturn(expectedOperation);
 
             // when
-            var result = subject.createBatchInline(displayName, null, segments);
+            var result = subject.createBatch(displayName, null, segments);
 
             // then
-            assertThat(result)
-                    .isInstanceOf(BatchIncomplete.class)
-                    .isEqualTo(new BatchIncomplete<>(new BatchName("batches/embed-test-456"), BATCH_STATE_PENDING));
+            assertThat(result.isIncomplete()).isTrue();
+            assertThat(result.batchName()).isEqualTo(new BatchName("batches/embed-test-456"));
+            assertThat(result.state()).isEqualTo(PENDING);
 
             verify(mockGeminiService)
                     .<GeminiEmbeddingRequest, GeminiEmbeddingResponse>batchCreate(
@@ -146,7 +145,7 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
             var displayName = "Single Segment Batch";
             var priority = 5L;
             var segments = List.of(TextSegment.from("Single text segment"));
-            var expectedOperation = createPendingOperation("batches/embed-test-789", BATCH_STATE_PENDING);
+            var expectedOperation = createPendingOperation("batches/embed-test-789", PENDING);
             when(mockGeminiService.<GeminiEmbeddingRequest, GeminiEmbeddingResponse>batchCreate(
                             any(),
                             ArgumentMatchers.<BatchCreateRequest<GeminiEmbeddingRequest>>any(),
@@ -154,12 +153,12 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
                     .thenReturn(expectedOperation);
 
             // when
-            var result = subject.createBatchInline(displayName, priority, segments);
+            var result = subject.createBatch(displayName, priority, segments);
 
             // then
-            assertThat(result)
-                    .isInstanceOf(BatchIncomplete.class)
-                    .isEqualTo(new BatchIncomplete<>(new BatchName("batches/embed-test-789"), BATCH_STATE_PENDING));
+            assertThat(result.isIncomplete()).isTrue();
+            assertThat(result.batchName()).isEqualTo(new BatchName("batches/embed-test-789"));
+            assertThat(result.state()).isEqualTo(PENDING);
 
             verify(mockGeminiService)
                     .<GeminiEmbeddingRequest, GeminiEmbeddingResponse>batchCreate(
@@ -176,7 +175,7 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
             var displayName = "Low Priority Batch";
             var priority = -10L;
             var segments = List.of(TextSegment.from("Low priority text"));
-            var expectedOperation = createPendingOperation("batches/embed-test-negative", BATCH_STATE_PENDING);
+            var expectedOperation = createPendingOperation("batches/embed-test-negative", PENDING);
             when(mockGeminiService.<GeminiEmbeddingRequest, GeminiEmbeddingResponse>batchCreate(
                             any(),
                             ArgumentMatchers.<BatchCreateRequest<GeminiEmbeddingRequest>>any(),
@@ -184,13 +183,12 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
                     .thenReturn(expectedOperation);
 
             // when
-            var result = subject.createBatchInline(displayName, priority, segments);
+            var result = subject.createBatch(displayName, priority, segments);
 
             // then
-            assertThat(result)
-                    .isInstanceOf(BatchIncomplete.class)
-                    .isEqualTo(
-                            new BatchIncomplete<>(new BatchName("batches/embed-test-negative"), BATCH_STATE_PENDING));
+            assertThat(result.isIncomplete()).isTrue();
+            assertThat(result.batchName()).isEqualTo(new BatchName("batches/embed-test-negative"));
+            assertThat(result.state()).isEqualTo(PENDING);
 
             verify(mockGeminiService)
                     .<GeminiEmbeddingRequest, GeminiEmbeddingResponse>batchCreate(
@@ -206,7 +204,7 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
             var displayName = "Metadata Test";
             var priority = 1L;
             var segments = List.of(TextSegment.from("Test segment"));
-            var expectedOperation = createPendingOperation("batches/embed-test-metadata", BATCH_STATE_PENDING);
+            var expectedOperation = createPendingOperation("batches/embed-test-metadata", PENDING);
             when(mockGeminiService.<GeminiEmbeddingRequest, GeminiEmbeddingResponse>batchCreate(
                             any(),
                             ArgumentMatchers.<BatchCreateRequest<GeminiEmbeddingRequest>>any(),
@@ -214,10 +212,10 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
                     .thenReturn(expectedOperation);
 
             // when
-            var result = subject.createBatchInline(displayName, priority, segments);
+            var result = subject.createBatch(displayName, priority, segments);
 
             // then
-            assertThat(result).isInstanceOf(BatchIncomplete.class);
+            assertThat(result.isIncomplete()).isTrue();
 
             verify(mockGeminiService)
                     .<GeminiEmbeddingRequest, GeminiEmbeddingResponse>batchCreate(
@@ -241,7 +239,7 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
                     TextSegment.from("Segment 3"),
                     TextSegment.from("Segment 4"),
                     TextSegment.from("Segment 5"));
-            var expectedOperation = createPendingOperation("batches/embed-test-multiple", BATCH_STATE_PENDING);
+            var expectedOperation = createPendingOperation("batches/embed-test-multiple", PENDING);
             when(mockGeminiService.<GeminiEmbeddingRequest, GeminiEmbeddingResponse>batchCreate(
                             any(),
                             ArgumentMatchers.<BatchCreateRequest<GeminiEmbeddingRequest>>any(),
@@ -249,13 +247,12 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
                     .thenReturn(expectedOperation);
 
             // when
-            var result = subject.createBatchInline(displayName, priority, segments);
+            var result = subject.createBatch(displayName, priority, segments);
 
             // then
-            assertThat(result)
-                    .isInstanceOf(BatchIncomplete.class)
-                    .isEqualTo(
-                            new BatchIncomplete<>(new BatchName("batches/embed-test-multiple"), BATCH_STATE_PENDING));
+            assertThat(result.isIncomplete()).isTrue();
+            assertThat(result.batchName()).isEqualTo(new BatchName("batches/embed-test-multiple"));
+            assertThat(result.state()).isEqualTo(PENDING);
 
             verify(mockGeminiService)
                     .<GeminiEmbeddingRequest, GeminiEmbeddingResponse>batchCreate(
@@ -274,7 +271,7 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
             var segment1 = TextSegment.from("Document about AI", Metadata.from("title", "AI Introduction"));
             var segment2 = TextSegment.from("Document about ML", Metadata.from("title", "ML Basics"));
             var segments = List.of(segment1, segment2);
-            var expectedOperation = createPendingOperation("batches/embed-test-with-meta", BATCH_STATE_PENDING);
+            var expectedOperation = createPendingOperation("batches/embed-test-with-meta", PENDING);
             when(mockGeminiService.<GeminiEmbeddingRequest, GeminiEmbeddingResponse>batchCreate(
                             any(),
                             ArgumentMatchers.<BatchCreateRequest<GeminiEmbeddingRequest>>any(),
@@ -282,10 +279,10 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
                     .thenReturn(expectedOperation);
 
             // when
-            var result = subject.createBatchInline(displayName, priority, segments);
+            var result = subject.createBatch(displayName, priority, segments);
 
             // then
-            assertThat(result).isInstanceOf(BatchIncomplete.class);
+            assertThat(result.isIncomplete()).isTrue();
 
             verify(mockGeminiService)
                     .<GeminiEmbeddingRequest, GeminiEmbeddingResponse>batchCreate(
@@ -302,7 +299,7 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
             var displayName = "Model Name Test";
             var priority = 1L;
             var segments = List.of(TextSegment.from("Test text"));
-            var expectedOperation = createPendingOperation("batches/embed-test-model", BATCH_STATE_PENDING);
+            var expectedOperation = createPendingOperation("batches/embed-test-model", PENDING);
             when(mockGeminiService.<GeminiEmbeddingRequest, GeminiEmbeddingResponse>batchCreate(
                             any(),
                             ArgumentMatchers.<BatchCreateRequest<GeminiEmbeddingRequest>>any(),
@@ -310,16 +307,42 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
                     .thenReturn(expectedOperation);
 
             // when
-            var result = subject.createBatchInline(displayName, priority, segments);
+            var result = subject.createBatch(displayName, priority, segments);
 
             // then
-            assertThat(result).isInstanceOf(BatchIncomplete.class);
+            assertThat(result.isIncomplete()).isTrue();
 
             verify(mockGeminiService)
                     .<GeminiEmbeddingRequest, GeminiEmbeddingResponse>batchCreate(
                             any(),
                             ArgumentMatchers.<BatchCreateRequest<GeminiEmbeddingRequest>>any(),
                             eq(ASYNC_BATCH_EMBED_CONTENT));
+        }
+
+        @Test
+        void should_create_batch_using_interface_method() {
+            // given
+            var segments = List.of(TextSegment.from("Test text"));
+            var expectedOperation = createPendingOperation("batches/embed-test-interface", PENDING);
+            when(mockGeminiService.<GeminiEmbeddingRequest, GeminiEmbeddingResponse>batchCreate(
+                            any(),
+                            ArgumentMatchers.<BatchCreateRequest<GeminiEmbeddingRequest>>any(),
+                            eq(ASYNC_BATCH_EMBED_CONTENT)))
+                    .thenReturn(expectedOperation);
+
+            // when
+            var result = subject.submit(segments);
+
+            // then
+            assertThat(result.isIncomplete()).isTrue();
+            assertThat(result.batchName()).isEqualTo(new BatchName("batches/embed-test-interface"));
+
+            verify(mockGeminiService)
+                    .<GeminiEmbeddingRequest, GeminiEmbeddingResponse>batchCreate(
+                            eq(MODEL_NAME), batchRequestCaptor.capture(), eq(ASYNC_BATCH_EMBED_CONTENT));
+
+            var capturedRequest = batchRequestCaptor.getValue();
+            assertThat(capturedRequest.batch().priority()).isZero();
         }
     }
 
@@ -336,7 +359,7 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
             // given
             String displayName = "Batch from File";
             when(mockGeminiFile.name()).thenReturn("files/test-file-123");
-            var expectedOperation = createPendingOperation("batches/embed-file-test-123", BATCH_STATE_PENDING);
+            var expectedOperation = createPendingOperation("batches/embed-file-test-123", PENDING);
             when(mockGeminiService.<GeminiEmbeddingRequest, GeminiEmbeddingResponse>batchCreate(
                             eq(MODEL_NAME), any(BatchCreateFileRequest.class), eq(ASYNC_BATCH_EMBED_CONTENT)))
                     .thenReturn(expectedOperation);
@@ -345,10 +368,9 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
             var result = subject.createBatchFromFile(displayName, mockGeminiFile);
 
             // then
-            assertThat(result)
-                    .isInstanceOf(BatchIncomplete.class)
-                    .isEqualTo(
-                            new BatchIncomplete<>(new BatchName("batches/embed-file-test-123"), BATCH_STATE_PENDING));
+            assertThat(result.isIncomplete()).isTrue();
+            assertThat(result.batchName()).isEqualTo(new BatchName("batches/embed-file-test-123"));
+            assertThat(result.state()).isEqualTo(PENDING);
 
             verify(mockGeminiService)
                     .<GeminiEmbeddingRequest, GeminiEmbeddingResponse>batchCreate(
@@ -364,7 +386,7 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
             // given
             String displayName = "Batch from File with Null Priority";
             when(mockGeminiFile.name()).thenReturn("files/test-file-456");
-            var expectedOperation = createPendingOperation("batches/embed-file-test-456", BATCH_STATE_PENDING);
+            var expectedOperation = createPendingOperation("batches/embed-file-test-456", PENDING);
             when(mockGeminiService.<GeminiEmbeddingRequest, GeminiEmbeddingResponse>batchCreate(
                             eq(MODEL_NAME), any(BatchCreateFileRequest.class), eq(ASYNC_BATCH_EMBED_CONTENT)))
                     .thenReturn(expectedOperation);
@@ -373,10 +395,9 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
             var result = subject.createBatchFromFile(displayName, mockGeminiFile);
 
             // then
-            assertThat(result)
-                    .isInstanceOf(BatchIncomplete.class)
-                    .isEqualTo(
-                            new BatchIncomplete<>(new BatchName("batches/embed-file-test-456"), BATCH_STATE_PENDING));
+            assertThat(result.isIncomplete()).isTrue();
+            assertThat(result.batchName()).isEqualTo(new BatchName("batches/embed-file-test-456"));
+            assertThat(result.state()).isEqualTo(PENDING);
 
             verify(mockGeminiService)
                     .<GeminiEmbeddingRequest, GeminiEmbeddingResponse>batchCreate(
@@ -406,9 +427,8 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
         void should_use_correct_model_name_when_creating_batch_from_file() {
             // given
             String displayName = "Model Name Test";
-            Long priority = 1L;
             when(mockGeminiFile.name()).thenReturn("files/test-file-model");
-            var expectedOperation = createPendingOperation("batches/embed-file-model", BATCH_STATE_PENDING);
+            var expectedOperation = createPendingOperation("batches/embed-file-model", PENDING);
             when(mockGeminiService.<GeminiEmbeddingRequest, GeminiEmbeddingResponse>batchCreate(
                             eq(MODEL_NAME), any(BatchCreateFileRequest.class), eq(ASYNC_BATCH_EMBED_CONTENT)))
                     .thenReturn(expectedOperation);
@@ -636,44 +656,37 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
     class RetrieveBatchResults {
 
         @Test
-        void should_throw_when_invalid_batch_name() {
-            assertThatThrownBy(() -> new BatchName("embed-test-pending"))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("Batch name must start with 'batches/'");
-        }
-
-        @Test
-        void should_return_pending_when_batch_is_still_processing() {
+        void should_return_incomplete_when_batch_is_still_processing() {
             // given
             var batchName = new BatchName("batches/embed-test-pending");
-            var pendingOperation = createPendingOperation("batches/embed-test-pending", BATCH_STATE_PENDING);
+            var pendingOperation = createPendingOperation("batches/embed-test-pending", PENDING);
             when(mockGeminiService.<GeminiEmbeddingResponse>batchRetrieveBatch(batchName.value()))
                     .thenReturn(pendingOperation);
 
             // when
-            var result = subject.retrieveBatchResults(batchName);
+            var result = subject.retrieveResults(batchName);
 
             // then
-            assertThat(result)
-                    .isInstanceOf(BatchIncomplete.class)
-                    .isEqualTo(new BatchIncomplete<>(batchName, BATCH_STATE_PENDING));
+            assertThat(result.isIncomplete()).isTrue();
+            assertThat(result.batchName()).isEqualTo(batchName);
+            assertThat(result.state()).isEqualTo(PENDING);
         }
 
         @Test
-        void should_return_pending_when_batch_is_running() {
+        void should_return_incomplete_when_batch_is_running() {
             // given
             var batchName = new BatchName("batches/embed-test-running");
-            var runningOperation = createPendingOperation("batches/embed-test-running", BATCH_STATE_RUNNING);
+            var runningOperation = createPendingOperation("batches/embed-test-running", RUNNING);
             when(mockGeminiService.<GeminiEmbeddingResponse>batchRetrieveBatch(batchName.value()))
                     .thenReturn(runningOperation);
 
             // when
-            var result = subject.retrieveBatchResults(batchName);
+            var result = subject.retrieveResults(batchName);
 
             // then
-            assertThat(result)
-                    .isInstanceOf(BatchIncomplete.class)
-                    .isEqualTo(new BatchIncomplete<>(batchName, BATCH_STATE_RUNNING));
+            assertThat(result.isIncomplete()).isTrue();
+            assertThat(result.batchName()).isEqualTo(batchName);
+            assertThat(result.state()).isEqualTo(RUNNING);
         }
 
         @Test
@@ -687,13 +700,12 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
                     .thenReturn(successOperation);
 
             // when
-            var result = subject.retrieveBatchResults(batchName);
+            var result = subject.retrieveResults(batchName);
 
             // then
-            assertThat(result).isInstanceOf(BatchSuccess.class);
-            var successResult = (BatchSuccess<Embedding>) result;
-            assertThat(successResult.batchName()).isEqualTo(batchName);
-            assertThat(successResult.responses()).isEqualTo(embeddings);
+            assertThat(result.isSuccess()).isTrue();
+            assertThat(result.batchName()).isEqualTo(batchName);
+            assertThat(result.responses()).isEqualTo(embeddings);
         }
 
         @Test
@@ -710,36 +722,15 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
                     .thenReturn(successOperation);
 
             // when
-            var result = subject.retrieveBatchResults(batchName);
+            var result = subject.retrieveResults(batchName);
 
             // then
-            assertThat(result).isInstanceOf(BatchSuccess.class);
-            var successResult = (BatchSuccess<Embedding>) result;
-            assertThat(successResult.batchName()).isEqualTo(batchName);
-            assertThat(successResult.responses()).isEqualTo(embeddings);
+            assertThat(result.batchName()).isEqualTo(batchName);
+            assertThat(result.responses()).isEqualTo(embeddings);
 
-            assertThat(successResult.errors()).hasSize(1);
-            assertThat(successResult.errors().get(0).code()).isEqualTo(4);
-            assertThat(successResult.errors().get(0).message())
-                    .isEqualTo("Deadline expired before operation could complete.");
-        }
-
-        @Test
-        void should_return_success_with_empty_responses_when_response_is_null() {
-            // given
-            var batchName = new BatchName("batches/embed-test-empty");
-            var successOperation = createSuccessOperationWithNullResponse("batches/embed-test-empty");
-            when(mockGeminiService.<GeminiEmbeddingResponse>batchRetrieveBatch(batchName.value()))
-                    .thenReturn(successOperation);
-
-            // when
-            var result = subject.retrieveBatchResults(batchName);
-
-            // then
-            assertThat(result).isInstanceOf(BatchSuccess.class);
-            var successResult = (BatchSuccess<Embedding>) result;
-            assertThat(successResult.batchName()).isEqualTo(batchName);
-            assertThat(successResult.responses()).isEmpty();
+            assertThat(result.errors()).hasSize(1);
+            assertThat(result.errors().get(0).code()).isEqualTo(4);
+            assertThat(result.errors().get(0).message()).isEqualTo("Deadline expired before operation could complete.");
         }
 
         @Test
@@ -752,34 +743,13 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
                     .thenReturn(errorOperation);
 
             // when
-            var result = subject.retrieveBatchResults(batchName);
+            var result = subject.retrieveResults(batchName);
 
             // then
-            assertThat(result)
-                    .isInstanceOf(BatchError.class)
-                    .isEqualTo(new BatchError<>(
-                            batchName,
-                            13,
-                            "batches/embed-test-error failed without error",
-                            BATCH_STATE_CANCELLED,
-                            List.of()));
-        }
-
-        @Test
-        void should_return_error_when_batch_processing_fails() {
-            // given
-            var batchName = new BatchName("batches/embed-test-error");
-            var errorOperation = createErrorOperation("batches/embed-test-error", 404, "Not Found", List.of());
-            when(mockGeminiService.<GeminiEmbeddingResponse>batchRetrieveBatch(batchName.value()))
-                    .thenReturn(errorOperation);
-
-            // when
-            var result = subject.retrieveBatchResults(batchName);
-
-            // then
-            assertThat(result)
-                    .isInstanceOf(BatchError.class)
-                    .isEqualTo(new BatchError<>(batchName, 404, "Not Found", BATCH_STATE_FAILED, List.of()));
+            assertThat(result.isError()).isTrue();
+            assertThat(result.errors())
+                    .containsExactly(new ExtractedBatchResults.Status(
+                            13, "batches/embed-test-error failed without error", List.of()));
         }
 
         @Test
@@ -795,48 +765,82 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
                     .thenReturn(errorOperation);
 
             // when
-            var result = subject.retrieveBatchResults(batchName);
+            var result = subject.retrieveResults(batchName);
 
             // then
-            assertThat(result)
-                    .isInstanceOf(BatchError.class)
-                    .isEqualTo(new BatchError<>(batchName, 400, "Bad Request", BATCH_STATE_FAILED, errorDetails));
+            assertThat(result.isError()).isTrue();
+            assertThat(result.errors())
+                    .containsExactly(new ExtractedBatchResults.Status(400, "Bad Request", errorDetails));
         }
 
         @Test
-        void should_return_pending_with_unspecified_state_when_metadata_is_null() {
+        void should_return_success_with_empty_responses_when_response_is_null() {
+            // given
+            var batchName = new BatchName("batches/embed-test-empty");
+            var successOperation = createSuccessOperationWithNullResponse("batches/embed-test-empty");
+            when(mockGeminiService.<GeminiEmbeddingResponse>batchRetrieveBatch(batchName.value()))
+                    .thenReturn(successOperation);
+
+            // when
+            var result = subject.retrieveResults(batchName);
+
+            // then
+            assertThat(result.isSuccess()).isTrue();
+            assertThat(result.batchName()).isEqualTo(batchName);
+            assertThat(result.responses()).isEmpty();
+        }
+
+        @Test
+        void should_return_error_when_batch_processing_fails() {
+            // given
+            var batchName = new BatchName("batches/embed-test-error");
+            var errorOperation = createErrorOperation("batches/embed-test-error", 404, "Not Found", List.of());
+            when(mockGeminiService.<GeminiEmbeddingResponse>batchRetrieveBatch(batchName.value()))
+                    .thenReturn(errorOperation);
+
+            // when
+            var result = subject.retrieveResults(batchName);
+
+            // then
+            assertThat(result.isError()).isTrue();
+            assertThat(result.batchName()).isEqualTo(batchName);
+            assertThat(result.state()).isEqualTo(FAILED);
+        }
+
+        @Test
+        void should_return_incomplete_with_unspecified_state_when_metadata_is_null() {
             // given
             var batchName = new BatchName("batches/embed-test-no-metadata");
-            var operation = new BatchRequestResponse.Operation<GeminiEmbeddingResponse>(
-                    "batches/embed-test-no-metadata", null, false, null, null);
+            var operation =
+                    new Operation<GeminiEmbeddingResponse>("batches/embed-test-no-metadata", null, false, null, null);
             when(mockGeminiService.<GeminiEmbeddingResponse>batchRetrieveBatch(batchName.value()))
                     .thenReturn(operation);
 
             // when
-            var result = subject.retrieveBatchResults(batchName);
+            var result = subject.retrieveResults(batchName);
 
             // then
-            assertThat(result)
-                    .isInstanceOf(BatchIncomplete.class)
-                    .isEqualTo(new BatchIncomplete<>(batchName, BatchJobState.UNSPECIFIED));
+            assertThat(result.isIncomplete()).isTrue();
+            assertThat(result.batchName()).isEqualTo(batchName);
+            assertThat(result.state()).isEqualTo(BatchJobState.UNSPECIFIED);
         }
 
         @Test
-        void should_return_pending_with_unspecified_state_when_state_is_missing_from_metadata() {
+        void should_return_incomplete_with_unspecified_state_when_state_is_missing_from_metadata() {
             // given
             var batchName = new BatchName("batches/embed-test-no-state");
-            var operation = new BatchRequestResponse.Operation<GeminiEmbeddingResponse>(
+            var operation = new Operation<GeminiEmbeddingResponse>(
                     "batches/embed-test-no-state", Map.of("createTime", "2025-10-23T09:26:30Z"), false, null, null);
             when(mockGeminiService.<GeminiEmbeddingResponse>batchRetrieveBatch(batchName.value()))
                     .thenReturn(operation);
 
             // when
-            var result = subject.retrieveBatchResults(batchName);
+            var result = subject.retrieveResults(batchName);
 
             // then
-            assertThat(result)
-                    .isInstanceOf(BatchIncomplete.class)
-                    .isEqualTo(new BatchIncomplete<>(batchName, BatchJobState.UNSPECIFIED));
+            assertThat(result.isIncomplete()).isTrue();
+            assertThat(result.batchName()).isEqualTo(batchName);
+            assertThat(result.state()).isEqualTo(BatchJobState.UNSPECIFIED);
         }
 
         @Test
@@ -849,13 +853,12 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
                     .thenReturn(successOperation);
 
             // when
-            var result = subject.retrieveBatchResults(batchName);
+            var result = subject.retrieveResults(batchName);
 
             // then
-            assertThat(result).isInstanceOf(BatchSuccess.class);
-            var successResult = (BatchSuccess<Embedding>) result;
-            assertThat(successResult.batchName()).isEqualTo(batchName);
-            assertThat(successResult.responses()).isEqualTo(embeddings);
+            assertThat(result.isSuccess()).isTrue();
+            assertThat(result.batchName()).isEqualTo(batchName);
+            assertThat(result.responses()).isEqualTo(embeddings);
         }
 
         @Test
@@ -873,13 +876,12 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
                     .thenReturn(successOperation);
 
             // when
-            var result = subject.retrieveBatchResults(batchName);
+            var result = subject.retrieveResults(batchName);
 
             // then
-            assertThat(result).isInstanceOf(BatchSuccess.class);
-            var successResult = (BatchSuccess<Embedding>) result;
-            assertThat(successResult.batchName()).isEqualTo(batchName);
-            assertThat(successResult.responses()).isEqualTo(embeddings);
+            assertThat(result.isSuccess()).isTrue();
+            assertThat(result.batchName()).isEqualTo(batchName);
+            assertThat(result.responses()).isEqualTo(embeddings);
         }
     }
 
@@ -897,7 +899,7 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
             when(mockGeminiService.batchCancelBatch(batchName.value())).thenThrow(new RuntimeException(errorMessage));
 
             // when & then
-            assertThatThrownBy(() -> subject.cancelBatchJob(batchName))
+            assertThatThrownBy(() -> subject.cancelJob(batchName))
                     .isInstanceOf(RuntimeException.class)
                     .hasMessageContaining(errorMessage);
         }
@@ -908,7 +910,7 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
             var batchName = new BatchName("batches/embed-test-pending-cancel");
 
             // when
-            subject.cancelBatchJob(batchName);
+            subject.cancelJob(batchName);
 
             // then
             verify(mockGeminiService).batchCancelBatch("batches/embed-test-pending-cancel");
@@ -920,7 +922,7 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
             var batchName = new BatchName("batches/embed-test-running-cancel");
 
             // when
-            subject.cancelBatchJob(batchName);
+            subject.cancelJob(batchName);
 
             // then
             verify(mockGeminiService).batchCancelBatch("batches/embed-test-running-cancel");
@@ -969,27 +971,27 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
                     .thenReturn(new ListOperationsResponse<>(null, null));
 
             // when
-            var result = subject.listBatchJobs(null, null);
+            var result = subject.listJobs(null, null);
 
             // then
-            assertThat(result.responses()).isEmpty();
+            assertThat(result.batches()).isEmpty();
         }
 
         @Test
         void should_list_batch_jobs_with_default_parameters() {
             // given
-            var operation1 = createMockEmbeddingOperation("batches/batch-1", BatchJobState.BATCH_STATE_SUCCEEDED);
-            var operation2 = createMockEmbeddingOperation("batches/batch-2", BatchJobState.BATCH_STATE_RUNNING);
+            var operation1 = createMockEmbeddingOperation("batches/batch-1", BatchJobState.SUCCEEDED);
+            var operation2 = createMockEmbeddingOperation("batches/batch-2", BatchJobState.RUNNING);
             var listResponse = new ListOperationsResponse<>(List.of(operation1, operation2), null);
 
             when(mockGeminiService.<GeminiEmbeddingResponse>batchListBatches(null, null))
                     .thenReturn(listResponse);
 
             // when
-            BatchList<Embedding> result = subject.listBatchJobs(null, null);
+            BatchList<Embedding> result = subject.listJobs(null, null);
 
             // then
-            assertThat(result.responses()).hasSize(2);
+            assertThat(result.batches()).hasSize(2);
             verify(mockGeminiService).batchListBatches(null, null);
         }
 
@@ -997,17 +999,18 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
         void should_list_batch_jobs_with_page_size() {
             // given
             Integer pageSize = 10;
-            var operation = createMockEmbeddingOperation("batches/batch-1", BatchJobState.BATCH_STATE_SUCCEEDED);
+            var operation = createMockEmbeddingOperation("batches/batch-1", BatchJobState.SUCCEEDED);
             var listResponse = new ListOperationsResponse<>(List.of(operation), "next-page-token");
 
             when(mockGeminiService.<GeminiEmbeddingResponse>batchListBatches(pageSize, null))
                     .thenReturn(listResponse);
 
             // when
-            BatchList<Embedding> result = subject.listBatchJobs(pageSize, null);
+            BatchList<Embedding> result = subject.listJobs(pageSize, null);
 
             // then
-            assertThat(result.responses()).hasSize(1);
+            assertThat(result.batches()).hasSize(1);
+            assertThat(result.nextPageToken()).isEqualTo("next-page-token");
             verify(mockGeminiService).batchListBatches(pageSize, null);
         }
 
@@ -1015,17 +1018,17 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
         void should_list_batch_jobs_with_page_token() {
             // given
             String pageToken = "token-123";
-            var operation = createMockEmbeddingOperation("batches/batch-1", BatchJobState.BATCH_STATE_SUCCEEDED);
+            var operation = createMockEmbeddingOperation("batches/batch-1", BatchJobState.SUCCEEDED);
             var listResponse = new ListOperationsResponse<>(List.of(operation), null);
 
             when(mockGeminiService.<GeminiEmbeddingResponse>batchListBatches(null, pageToken))
                     .thenReturn(listResponse);
 
             // when
-            BatchList<Embedding> result = subject.listBatchJobs(null, pageToken);
+            BatchList<Embedding> result = subject.listJobs(null, pageToken);
 
             // then
-            assertThat(result.responses()).hasSize(1);
+            assertThat(result.batches()).hasSize(1);
             verify(mockGeminiService).batchListBatches(null, pageToken);
         }
 
@@ -1034,17 +1037,17 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
             // given
             Integer pageSize = 5;
             String pageToken = "token-456";
-            var operation = createMockEmbeddingOperation("batches/batch-1", BatchJobState.BATCH_STATE_PENDING);
+            var operation = createMockEmbeddingOperation("batches/batch-1", BatchJobState.PENDING);
             var listResponse = new ListOperationsResponse<>(List.of(operation), "next-token");
 
             when(mockGeminiService.<GeminiEmbeddingResponse>batchListBatches(pageSize, pageToken))
                     .thenReturn(listResponse);
 
             // when
-            BatchList<Embedding> result = subject.listBatchJobs(pageSize, pageToken);
+            BatchList<Embedding> result = subject.listJobs(pageSize, pageToken);
 
             // then
-            assertThat(result.responses()).hasSize(1);
+            assertThat(result.batches()).hasSize(1);
             verify(mockGeminiService).batchListBatches(pageSize, pageToken);
         }
 
@@ -1057,29 +1060,29 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
                     .thenReturn(listResponse);
 
             // when
-            BatchList<Embedding> result = subject.listBatchJobs(null, null);
+            BatchList<Embedding> result = subject.listJobs(null, null);
 
             // then
-            assertThat(result.responses()).isEmpty();
+            assertThat(result.batches()).isEmpty();
             verify(mockGeminiService).batchListBatches(null, null);
         }
 
         @Test
         void should_handle_multiple_batch_jobs_with_different_states() {
             // given
-            var operation1 = createMockEmbeddingOperation("batches/batch-1", BatchJobState.BATCH_STATE_SUCCEEDED);
-            var operation2 = createMockEmbeddingOperation("batches/batch-2", BatchJobState.BATCH_STATE_FAILED);
-            var operation3 = createMockEmbeddingOperation("batches/batch-3", BatchJobState.BATCH_STATE_CANCELLED);
+            var operation1 = createMockEmbeddingOperation("batches/batch-1", BatchJobState.SUCCEEDED);
+            var operation2 = createMockEmbeddingOperation("batches/batch-2", BatchJobState.FAILED);
+            var operation3 = createMockEmbeddingOperation("batches/batch-3", CANCELLED);
             var listResponse = new ListOperationsResponse<>(List.of(operation1, operation2, operation3), null);
 
             when(mockGeminiService.<GeminiEmbeddingResponse>batchListBatches(null, null))
                     .thenReturn(listResponse);
 
             // when
-            BatchList<Embedding> result = subject.listBatchJobs(null, null);
+            BatchList<Embedding> result = subject.listJobs(null, null);
 
             // then
-            assertThat(result.responses()).hasSize(3);
+            assertThat(result.batches()).hasSize(3);
             verify(mockGeminiService).batchListBatches(null, null);
         }
 
@@ -1090,7 +1093,7 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
                     .thenThrow(new RuntimeException("Server error"));
 
             // when & then
-            assertThatThrownBy(() -> subject.listBatchJobs(null, null))
+            assertThatThrownBy(() -> subject.listJobs(null, null))
                     .isInstanceOf(RuntimeException.class)
                     .hasMessageContaining("Server error");
         }
@@ -1103,7 +1106,7 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
                     .thenThrow(new RuntimeException(errorMessage));
 
             // when & then
-            assertThatThrownBy(() -> subject.listBatchJobs(pageSize, null))
+            assertThatThrownBy(() -> subject.listJobs(pageSize, null))
                     .isInstanceOf(RuntimeException.class)
                     .hasMessageContaining(errorMessage);
         }
@@ -1116,15 +1119,13 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
                     .thenThrow(new RuntimeException("Invalid page token"));
 
             // when & then
-            assertThatThrownBy(() -> subject.listBatchJobs(null, invalidToken))
+            assertThatThrownBy(() -> subject.listJobs(null, invalidToken))
                     .isInstanceOf(RuntimeException.class)
                     .hasMessageContaining("Invalid page token");
         }
 
-        private BatchRequestResponse.Operation<GeminiEmbeddingResponse> createMockEmbeddingOperation(
-                String name, BatchJobState state) {
-            // Helper method to create mock operations for embedding testing
-            return new BatchRequestResponse.Operation<>(name, Map.of("state", state), false, null, null);
+        private Operation<GeminiEmbeddingResponse> createMockEmbeddingOperation(String name, BatchJobState state) {
+            return new Operation<>(name, Map.of("state", state), false, null, null);
         }
     }
 
@@ -1133,98 +1134,98 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
 
         private static final String EMBEDDING_PENDING_RESPONSE =
                 """
-                {
-                  "name": "batches/embed-test-123",
-                  "metadata": {
-                    "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.EmbedContentBatch",
-                    "model": "models/text-embedding-004",
-                    "displayName": "embeddings-batch",
-                    "state": "BATCH_STATE_PENDING",
-                    "name": "batches/embed-test-123"
-                  }
-                }
-                """;
+                        {
+                          "name": "batches/embed-test-123",
+                          "metadata": {
+                            "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.EmbedContentBatch",
+                            "model": "models/text-embedding-004",
+                            "displayName": "embeddings-batch",
+                            "state": "BATCH_STATE_PENDING",
+                            "name": "batches/embed-test-123"
+                          }
+                        }
+                        """;
 
         private static final String EMBEDDING_SUCCEEDED_RESPONSE =
                 """
-                {
-                  "name": "batches/embed-test-123",
-                  "metadata": {
-                    "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.EmbedContentBatch",
-                    "model": "models/text-embedding-004",
-                    "displayName": "embeddings-batch",
-                    "state": "BATCH_STATE_SUCCEEDED",
-                    "name": "batches/embed-test-123"
-                  },
-                  "done": true,
-                  "response": {
-                    "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.EmbedContentBatchOutput",
-                    "inlinedResponses": {
-                      "inlinedResponses": [
                         {
+                          "name": "batches/embed-test-123",
+                          "metadata": {
+                            "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.EmbedContentBatch",
+                            "model": "models/text-embedding-004",
+                            "displayName": "embeddings-batch",
+                            "state": "BATCH_STATE_SUCCEEDED",
+                            "name": "batches/embed-test-123"
+                          },
+                          "done": true,
                           "response": {
-                            "embedding": {
-                              "values": [0.1, 0.2, 0.3, 0.4, 0.5]
-                            }
-                          }
-                        },
-                        {
-                          "response": {
-                            "embedding": {
-                              "values": [0.6, 0.7, 0.8, 0.9, 1.0]
+                            "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.EmbedContentBatchOutput",
+                            "inlinedResponses": {
+                              "inlinedResponses": [
+                                {
+                                  "response": {
+                                    "embedding": {
+                                      "values": [0.1, 0.2, 0.3, 0.4, 0.5]
+                                    }
+                                  }
+                                },
+                                {
+                                  "response": {
+                                    "embedding": {
+                                      "values": [0.6, 0.7, 0.8, 0.9, 1.0]
+                                    }
+                                  }
+                                }
+                              ]
                             }
                           }
                         }
-                      ]
-                    }
-                  }
-                }
-                """;
+                        """;
 
         @Test
         void should_deserialize_embedding_batch_response_with_error() {
             // given
             String EMBEDDING_ERROR_RESPONSE =
                     """
-            {
-              "name": "batches/embed-test-123",
-              "metadata": {
-                "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.EmbedContentBatch",
-                "model": "models/text-embedding-004",
-                "displayName": "embeddings-batch",
-                "state": "BATCH_STATE_SUCCEEDED",
-                "name": "batches/embed-test-123"
-              },
-              "done": true,
-              "response": {
-                "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.EmbedContentBatchOutput",
-                "inlinedResponses": {
-                  "inlinedResponses": [
-                    {
-                      "response": {
-                        "embedding": {
-                          "values": [0.1, 0.2, 0.3, 0.4, 0.5]
-                        }
-                      }
-                    },
-                    {
-                      "error": {
-                        "code": 4,
-                        "message": "Deadline expired before operation could complete."
-                      }
-                    },
-                    {
-                      "response": {
-                        "embedding": {
-                          "values": [0.6, 0.7, 0.8, 0.9, 1.0]
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-            """;
+                            {
+                              "name": "batches/embed-test-123",
+                              "metadata": {
+                                "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.EmbedContentBatch",
+                                "model": "models/text-embedding-004",
+                                "displayName": "embeddings-batch",
+                                "state": "BATCH_STATE_SUCCEEDED",
+                                "name": "batches/embed-test-123"
+                              },
+                              "done": true,
+                              "response": {
+                                "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.EmbedContentBatchOutput",
+                                "inlinedResponses": {
+                                  "inlinedResponses": [
+                                    {
+                                      "response": {
+                                        "embedding": {
+                                          "values": [0.1, 0.2, 0.3, 0.4, 0.5]
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "error": {
+                                        "code": 4,
+                                        "message": "Deadline expired before operation could complete."
+                                      }
+                                    },
+                                    {
+                                      "response": {
+                                        "embedding": {
+                                          "values": [0.6, 0.7, 0.8, 0.9, 1.0]
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            }
+                            """;
 
             var mockHttpClient = MockHttpClient.thatAlwaysResponds(SuccessfulHttpResponse.builder()
                     .statusCode(200)
@@ -1239,14 +1240,12 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
             var batchName = new BatchName("batches/embed-test-123");
 
             // when
-            var result = subject.retrieveBatchResults(batchName);
+            var result = subject.retrieveResults(batchName);
 
             // then
-            assertThat(result).isInstanceOf(BatchSuccess.class);
-            var success = (BatchSuccess<Embedding>) result;
-            assertThat(success.batchName().value()).isEqualTo("batches/embed-test-123");
+            assertThat(result.batchName().value()).isEqualTo("batches/embed-test-123");
 
-            var results = success.responses();
+            var results = result.responses();
             assertThat(results).hasSize(2);
 
             assertThat(results.get(0).dimension()).isEqualTo(5);
@@ -1255,10 +1254,9 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
             assertThat(results.get(1).dimension()).isEqualTo(5);
             assertThat(results.get(1).vector()).containsExactly(0.6f, 0.7f, 0.8f, 0.9f, 1.0f);
 
-            assertThat(success.errors()).hasSize(1);
-            assertThat(success.errors().get(0).code()).isEqualTo(4);
-            assertThat(success.errors().get(0).message())
-                    .isEqualTo("Deadline expired before operation could complete.");
+            assertThat(result.errors()).hasSize(1);
+            assertThat(result.errors().get(0).code()).isEqualTo(4);
+            assertThat(result.errors().get(0).message()).isEqualTo("Deadline expired before operation could complete.");
         }
 
         @Test
@@ -1277,13 +1275,12 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
             var segments = List.of(TextSegment.from("Test segment 1"), TextSegment.from("Test segment 2"));
 
             // when
-            var result = subject.createBatchInline("embeddings-batch", 0L, segments);
+            var result = subject.createBatch("embeddings-batch", 0L, segments);
 
             // then
-            assertThat(result).isInstanceOf(BatchIncomplete.class);
-            var incomplete = (BatchIncomplete<?>) result;
-            assertThat(incomplete.batchName().value()).isEqualTo("batches/embed-test-123");
-            assertThat(incomplete.state()).isEqualTo(BATCH_STATE_PENDING);
+            assertThat(result.isIncomplete()).isTrue();
+            assertThat(result.batchName().value()).isEqualTo("batches/embed-test-123");
+            assertThat(result.state()).isEqualTo(PENDING);
         }
 
         @Test
@@ -1302,14 +1299,13 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
             var batchName = new BatchName("batches/embed-test-123");
 
             // when
-            var result = subject.retrieveBatchResults(batchName);
+            var result = subject.retrieveResults(batchName);
 
             // then
-            assertThat(result).isInstanceOf(BatchSuccess.class);
-            var success = (BatchSuccess<Embedding>) result;
-            assertThat(success.batchName().value()).isEqualTo("batches/embed-test-123");
+            assertThat(result.isSuccess()).isTrue();
+            assertThat(result.batchName().value()).isEqualTo("batches/embed-test-123");
 
-            var results = success.responses();
+            var results = result.responses();
             assertThat(results).hasSize(2);
 
             assertThat(results.get(0).dimension()).isEqualTo(5);
@@ -1320,7 +1316,7 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
         }
     }
 
-    private static BatchRequestResponse.Operation<GeminiEmbeddingResponse> createSuccessOperation(
+    private static Operation<GeminiEmbeddingResponse> createSuccessOperation(
             String operationName, List<Embedding> embeddings) {
         var inlinedResponses = embeddings.stream()
                 .map(embedding -> new GeminiEmbeddingResponse(
@@ -1332,8 +1328,7 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
                 "type.googleapis.com/google.ai.generativelanguage.v1main.EmbedContentBatchOutput",
                 new BatchCreateResponse.InlinedResponses<>(inlinedResponses));
 
-        return new BatchRequestResponse.Operation<>(
-                operationName, Map.of("state", BATCH_STATE_SUCCEEDED.name()), true, null, response);
+        return new Operation<>(operationName, Map.of("state", SUCCEEDED.name()), true, null, response);
     }
 
     private static BatchRequestResponse.Operation<GeminiEmbeddingResponse> createSuccessOperationWithError(
@@ -1362,27 +1357,17 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
                 new BatchCreateResponse.InlinedResponses<>(inlinedResponses));
 
         return new BatchRequestResponse.Operation<>(
-                operationName, Map.of("state", BATCH_STATE_SUCCEEDED.name()), true, null, response);
+                operationName, Map.of("state", SUCCEEDED.name()), true, null, response);
     }
 
-    private static BatchRequestResponse.Operation<GeminiEmbeddingResponse> createSuccessOperationWithNullResponse(
-            String operationName) {
-        return new BatchRequestResponse.Operation<>(
-                operationName, Map.of("state", BATCH_STATE_SUCCEEDED.name()), true, null, null);
+    private static Operation<GeminiEmbeddingResponse> createSuccessOperationWithNullResponse(String operationName) {
+        return new Operation<>(operationName, Map.of("state", SUCCEEDED.name()), true, null, null);
     }
 
-    private static BatchRequestResponse.Operation<GeminiEmbeddingResponse> createErrorOperation(
+    private static Operation<GeminiEmbeddingResponse> createErrorOperation(
             String operationName, int errorCode, String errorMessage, List<Map<String, Object>> errorDetails) {
-        var errorStatus = new BatchRequestResponse.Operation.Status(errorCode, errorMessage, errorDetails);
-        return new BatchRequestResponse.Operation<>(
-                operationName, Map.of("state", BATCH_STATE_FAILED.name()), true, errorStatus, null);
-    }
-
-    private static BatchRequestResponse.Operation<GeminiEmbeddingResponse> createCancelledOperation(
-            String operationName, String errorMessage) {
-        var errorStatus = new BatchRequestResponse.Operation.Status(13, errorMessage, List.of());
-        return new BatchRequestResponse.Operation<>(
-                operationName, Map.of("state", BATCH_STATE_CANCELLED.name()), true, errorStatus, null);
+        var errorStatus = new Operation.Status(errorCode, errorMessage, errorDetails);
+        return new Operation<>(operationName, Map.of("state", FAILED.name()), true, errorStatus, null);
     }
 
     private GoogleAiGeminiBatchEmbeddingModel createSubject() {
@@ -1394,8 +1379,15 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
                 mockGeminiService);
     }
 
-    private static BatchRequestResponse.Operation<GeminiEmbeddingResponse> createPendingOperation(
+    private static Operation<GeminiEmbeddingResponse> createPendingOperation(
             String operationName, BatchJobState state) {
-        return new BatchRequestResponse.Operation<>(operationName, Map.of("state", state.name()), false, null, null);
+        return new Operation<>(operationName, Map.of("state", state.name()), false, null, null);
+    }
+
+    private static BatchRequestResponse.Operation<GeminiEmbeddingResponse> createCancelledOperation(
+            String operationName, String errorMessage) {
+        var errorStatus = new BatchRequestResponse.Operation.Status(13, errorMessage, List.of());
+        return new BatchRequestResponse.Operation<>(
+                operationName, Map.of("state", CANCELLED.name()), true, errorStatus, null);
     }
 }
