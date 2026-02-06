@@ -88,11 +88,9 @@ public abstract class AbstractAiServiceIT {
             SUNNY, RAINY
         }
 
-        record WeatherReport(String city, Weather weather) {
-        }
+        record WeatherReport(String city, Weather weather) {}
 
         interface WeatherAssistant {
-
             Result<WeatherReport> chat(String city);
         }
 
@@ -111,7 +109,7 @@ public abstract class AbstractAiServiceIT {
                 .tools(weatherTools)
                 .build();
 
-        String userMessage = "What is the weather in Munich?";
+        String userMessage = "What is the weather in Munich? Use 'getWeather' tool";
 
         // when
         Result<WeatherReport> result = weatherAssistant.chat(userMessage);

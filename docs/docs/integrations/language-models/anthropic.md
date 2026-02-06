@@ -13,7 +13,7 @@ sidebar_position: 2
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic</artifactId>
-    <version>1.9.1</version>
+    <version>1.10.0</version>
 </dependency>
 ```
 
@@ -434,7 +434,7 @@ Here is an example of how to configure thinking:
 ```java
 ChatModel model = AnthropicChatModel.builder()
         .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-        .modelName(CLAUDE_3_7_SONNET_20250219)
+        .modelName("claude-sonnet-4-5-20250929")
         .thinkingType("enabled")
         .thinkingBudgetTokens(1024)
         .maxTokens(1024 + 100)
@@ -546,7 +546,7 @@ Import Spring Boot starter for Anthropic:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic-spring-boot-starter</artifactId>
-    <version>1.9.1-beta17</version>
+    <version>1.10.0-beta18</version>
 </dependency>
 ```
 

@@ -2,13 +2,15 @@ package dev.langchain4j.model.mistralai.internal.mapper;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.OTHER;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
+import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 
 import dev.langchain4j.Internal;
@@ -37,6 +39,7 @@ import dev.langchain4j.model.mistralai.internal.api.MistralAiResponseFormat;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiResponseFormatType;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiRole;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiTextContent;
+import dev.langchain4j.model.mistralai.internal.api.MistralAiThinkingContent;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiTool;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiToolCall;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiToolChoiceName;
@@ -44,16 +47,20 @@ import dev.langchain4j.model.mistralai.internal.api.MistralAiToolType;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiUsage;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 @Internal
 public class MistralAiMapper {
 
-    public static List<MistralAiChatMessage> toMistralAiMessages(List<ChatMessage> messages) {
-        return messages.stream().map(MistralAiMapper::toMistralAiMessage).collect(toList());
+    public static List<MistralAiChatMessage> toMistralAiMessages(List<ChatMessage> messages, boolean sendThinking) {
+        return messages.stream()
+                .map(message -> toMistralAiMessage(message, sendThinking))
+                .toList();
     }
 
-    static MistralAiChatMessage toMistralAiMessage(ChatMessage message) {
+    private static MistralAiChatMessage toMistralAiMessage(ChatMessage message, boolean sendThinking) {
         if (message instanceof SystemMessage systemMessage) {
             return MistralAiChatMessage.builder()
                     .role(MistralAiRole.SYSTEM)
@@ -62,27 +69,25 @@ public class MistralAiMapper {
         }
 
         if (message instanceof AiMessage aiMessage) {
-            if (!aiMessage.hasToolExecutionRequests()) {
-                return MistralAiChatMessage.builder()
-                        .role(MistralAiRole.ASSISTANT)
-                        .content(aiMessage.text())
-                        .build();
+            List<MistralAiMessageContent> contents = new ArrayList<>(2);
+            if (sendThinking && aiMessage.thinking() != null) {
+                var thinkingText = new MistralAiTextContent(aiMessage.thinking());
+                contents.add(new MistralAiThinkingContent(singletonList(thinkingText)));
+            }
+            if (isNotNullOrBlank(aiMessage.text())) {
+                contents.add(new MistralAiTextContent(aiMessage.text()));
             }
 
-            List<MistralAiToolCall> toolCalls = aiMessage.toolExecutionRequests().stream()
-                    .map(MistralAiMapper::toMistralAiToolCall)
-                    .collect(toList());
-
-            if (isNullOrBlank(aiMessage.text())) {
-                return MistralAiChatMessage.builder()
-                        .role(MistralAiRole.ASSISTANT)
-                        .toolCalls(toolCalls)
-                        .build();
+            List<MistralAiToolCall> toolCalls = null;
+            if (aiMessage.hasToolExecutionRequests()) {
+                toolCalls = aiMessage.toolExecutionRequests().stream()
+                        .map(MistralAiMapper::toMistralAiToolCall)
+                        .toList();
             }
 
             return MistralAiChatMessage.builder()
                     .role(MistralAiRole.ASSISTANT)
-                    .content(aiMessage.text())
+                    .content(contents.isEmpty() ? null : contents)
                     .toolCalls(toolCalls)
                     .build();
         }
@@ -140,13 +145,40 @@ public class MistralAiMapper {
         };
     }
 
-    public static AiMessage aiMessageFrom(MistralAiChatCompletionResponse response) {
+    public static AiMessage aiMessageFrom(MistralAiChatCompletionResponse response, boolean returnThinking) {
         MistralAiChatMessage aiMistralMessage = response.getChoices().get(0).getMessage();
+
         List<MistralAiToolCall> toolCalls = aiMistralMessage.getToolCalls();
-        if (!isNullOrEmpty(toolCalls)) {
-            return AiMessage.from(toToolExecutionRequests(toolCalls));
+        List<ToolExecutionRequest> toolExecutionRequests = null;
+        if (isNotNullOrEmpty(toolCalls)) {
+            toolExecutionRequests = toToolExecutionRequests(toolCalls);
         }
-        return AiMessage.from(aiMistralMessage.asText());
+
+        String text = aiMistralMessage.getContent().stream()
+                .filter(content -> "text".equals(content.getType()))
+                .map(MistralAiTextContent.class::cast)
+                .map(MistralAiTextContent::getText)
+                .collect(joining("\n"));
+
+        String thinking = null;
+        if (returnThinking) {
+            List<String> thinkingTexts = aiMistralMessage.getContent().stream()
+                    .filter(content -> "thinking".equals(content.getType()))
+                    .map(MistralAiThinkingContent.class::cast)
+                    .map(MistralAiThinkingContent::getThinking)
+                    .flatMap(Collection::stream)
+                    .map(MistralAiTextContent::getText)
+                    .toList();
+            if (!thinkingTexts.isEmpty()) {
+                thinking = String.join("\n", thinkingTexts);
+            }
+        }
+
+        return AiMessage.builder()
+                .text(text)
+                .thinking(thinking)
+                .toolExecutionRequests(toolExecutionRequests)
+                .build();
     }
 
     public static List<ToolExecutionRequest> toToolExecutionRequests(List<MistralAiToolCall> mistralAiToolCalls) {

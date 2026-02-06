@@ -20,7 +20,7 @@ class McpHeadersHttpTransportIT extends McpHeadersTestBase {
         process = startProcess();
         McpTransport transport = new HttpMcpTransport.Builder()
                 .sseUrl("http://localhost:8080/mcp/sse")
-                .customHeaders(() -> customHeaders)
+                .customHeaders(customHeaders)
                 .logRequests(true)
                 .logResponses(true)
                 .build();

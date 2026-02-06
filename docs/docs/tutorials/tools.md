@@ -586,6 +586,26 @@ Data can be passed between AI Service components inside the `InvocationParameter
 (for example, from one tool to another or from a RAG component to a tool)
 during a single invocation of the AI Service.
 
+### `InvocationContext`
+
+Similarly to `InvocationParameters`, `@Tool`-annotated methods
+can accept `InvocationContext` parameter to get access to the information
+about AI Service invocation.
+
+```java
+class Tools {
+    @Tool
+    String getWeather(String city, InvocationContext context) {
+        UUID invocationId = context.invocationId();
+        String aiServiceInterfaceName = context.interfaceName();
+        ...
+    }
+}
+```
+
+In this case, the LLM is not aware of these parameters;
+they are only visible to LangChain4j and user code.
+
 ### `@ToolMemoryId`
 If your AI Service method has a parameter annotated with `@MemoryId`,
 you can also annotate a parameter of a `@Tool` method with `@ToolMemoryId`:

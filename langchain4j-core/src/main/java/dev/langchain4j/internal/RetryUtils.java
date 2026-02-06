@@ -164,12 +164,12 @@ public final class RetryUtils {
          *
          * @param retry The retry number.
          */
-        @JacocoIgnoreCoverageGenerated
         public void sleep(int retry) {
             try {
                 Thread.sleep(jitterDelayMillis(retry));
-            } catch (InterruptedException ignored) {
-                // pass
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException("Interrupted while retrying", e);
             }
         }
 
@@ -205,6 +205,10 @@ public final class RetryUtils {
                 } catch (NonRetriableException e) {
                     throw e;
                 } catch (Exception e) {
+                    if (Thread.currentThread().isInterrupted()) {
+                        throw new RuntimeException("Interrupted during action execution", e);
+                    }
+
                     if (retry >= maxRetries) {
                         throw e instanceof RuntimeException re ? re : new LangChain4jException(e);
                     }

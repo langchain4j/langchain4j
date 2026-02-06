@@ -6,7 +6,7 @@
     <parent>
         <groupId>org.thingsboard.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.10.0-beta18-TB</version>
+        <version>1.11.0-beta19-TB</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -28,7 +28,7 @@
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j-mcp</artifactId>
-            <version>1.10.0-beta18-TB</version>
+            <version>1.11.0-beta19-TB</version>
         </dependency>
 
         <dependency>

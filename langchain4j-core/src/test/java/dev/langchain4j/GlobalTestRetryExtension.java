@@ -48,7 +48,7 @@ public class GlobalTestRetryExtension implements InvocationInterceptor {
                         attempt, MAX_ATTEMPTS,
                         testConstructor.getDeclaringClass().getName(), extensionContext.getDisplayName(),
                         lastThrowable);
-                Thread.sleep(attempt * 1000L);
+                Thread.sleep(attempt * 5000L);
             }
         } while (attempt < MAX_ATTEMPTS);
 
@@ -113,7 +113,7 @@ public class GlobalTestRetryExtension implements InvocationInterceptor {
                         attempt, MAX_ATTEMPTS,
                         testObject.getClass().getName(), testMethod.getName(), extensionContext.getDisplayName(),
                         lastThrowable);
-                Thread.sleep(attempt * 1000L);
+                Thread.sleep(attempt * 5000L);
             }
         } while (attempt < MAX_ATTEMPTS);
 

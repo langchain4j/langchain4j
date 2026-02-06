@@ -2,23 +2,25 @@ package dev.langchain4j.model.mistralai.internal.api;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
-import java.util.Objects;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import java.util.Objects;
 
 @JsonInclude(NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonNaming(SnakeCaseStrategy.class)
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
+@JsonTypeInfo(
+        use = JsonTypeInfo.Id.NAME,
+        include = JsonTypeInfo.As.EXISTING_PROPERTY,
+        property = "type",
+        visible = true)
 @JsonSubTypes({
-        @JsonSubTypes.Type(value = MistralAiTextContent.class, name = "text"),
-        @JsonSubTypes.Type(value = MistralAiThinkingContent.class, name = "thinking"),
-        @JsonSubTypes.Type(value = MistralAiReferenceContent.class, name = "reference"),
-        @JsonSubTypes.Type(value = MistralAiImageUrlContent.class, name = "image_url")
+    @JsonSubTypes.Type(value = MistralAiTextContent.class, name = "text"),
+    @JsonSubTypes.Type(value = MistralAiThinkingContent.class, name = "thinking")
 })
 public abstract class MistralAiMessageContent {
 
@@ -26,6 +28,10 @@ public abstract class MistralAiMessageContent {
 
     public MistralAiMessageContent(String type) {
         this.type = type;
+    }
+
+    public String getType() {
+        return type;
     }
 
     @Override

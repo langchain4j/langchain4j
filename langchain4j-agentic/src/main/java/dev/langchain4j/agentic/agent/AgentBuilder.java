@@ -3,22 +3,23 @@ package dev.langchain4j.agentic.agent;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureAgent;
 import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.keyName;
+import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.observability.AgentListener;
-import dev.langchain4j.agentic.observability.AgentListenerProvider;
 import dev.langchain4j.agentic.observability.ComposedAgentListener;
-import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.internal.AgentUtil;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.internal.Context;
 import dev.langchain4j.agentic.internal.UserMessageRecorder;
 import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -29,6 +30,7 @@ import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.service.AiServiceContext;
@@ -47,7 +49,7 @@ import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.function.Function;
 
-public class AgentBuilder<T> {
+public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     final Class<T> agentServiceClass;
     final Method agenticMethod;
     final Class<?> agentReturnType;
@@ -61,6 +63,7 @@ public class AgentBuilder<T> {
     private final Map<String, Object> defaultValues = new HashMap<>();
 
     private ChatModel model;
+    private StreamingChatModel streamingChatModel;
     private ChatMemory chatMemory;
     private ChatMemoryProvider chatMemoryProvider;
     private Function<AgenticScope, String> contextProvider;
@@ -68,6 +71,7 @@ public class AgentBuilder<T> {
     private ContentRetriever contentRetriever;
     private RetrievalAugmentor retrievalAugmentor;
     private Function<Object, String> systemMessageProvider;
+    private Function<Object, String> userMessageProvider;
 
     private InputGuardrailsConfig inputGuardrailsConfig;
     private OutputGuardrailsConfig outputGuardrailsConfig;
@@ -89,9 +93,9 @@ public class AgentBuilder<T> {
 
     AgentListener agentListener;
 
-    public AgentBuilder(Class<T> agentServiceClass, Method agenticMethod) {
+    public AgentBuilder(Class<T> agentServiceClass) {
         this.agentServiceClass = agentServiceClass;
-        this.agenticMethod = agenticMethod;
+        this.agenticMethod = validateAgentClass(agentServiceClass);
         this.agentReturnType = agenticMethod.getReturnType();
 
         Agent agent = agenticMethod.getAnnotation(Agent.class);
@@ -122,12 +126,21 @@ public class AgentBuilder<T> {
     }
 
     T build(DefaultAgenticScope agenticScope) {
-        this.arguments = argumentsFromMethod(agenticMethod, defaultValues);
+        if (this.arguments == null) {
+            this.arguments = argumentsFromMethod(agenticMethod, defaultValues);
+        }
 
         AiServiceContext context = AiServiceContext.create(agentServiceClass);
         AiServices<T> aiServices = AiServices.builder(context);
+        if (model != null && streamingChatModel != null) {
+            throw new AgenticSystemConfigurationException(
+                    "Both chatModel and streamingChatModel are set for agent '" + this.name + "'. Please set only one of them.");
+        }
         if (model != null) {
             aiServices.chatModel(model);
+        }
+        if (streamingChatModel != null) {
+            aiServices.streamingChatModel(streamingChatModel);
         }
         if (chatMemory != null) {
             aiServices.chatMemory(chatMemory);
@@ -138,11 +151,18 @@ public class AgentBuilder<T> {
         if (systemMessageProvider != null) {
             aiServices.systemMessageProvider(systemMessageProvider);
         }
+        if (userMessageProvider != null) {
+            aiServices.userMessageProvider(userMessageProvider);
+        }
         if (contentRetriever != null) {
             aiServices.contentRetriever(contentRetriever);
         }
         if (retrievalAugmentor != null) {
             aiServices.retrievalAugmentor(retrievalAugmentor);
+        }
+        if (agentListener != null) {
+            aiServices.beforeToolExecution(agentListener::beforeToolExecution);
+            aiServices.afterToolExecution(agentListener::afterToolExecution);
         }
 
         setupGuardrails(aiServices);
@@ -164,16 +184,19 @@ public class AgentBuilder<T> {
             aiServices.chatRequestTransformer(messageRecorder);
         }
 
+        build(agenticScope, context, aiServices);
+
         return (T) Proxy.newProxyInstance(
                 agentServiceClass.getClassLoader(),
                 new Class<?>[] {
                     agentServiceClass,
-                    InternalAgent.class, AgentListenerProvider.class,
-                    ChatMemoryAccess.class, AgenticScopeOwner.class,
-                    ChatMessagesAccess.class
+                    InternalAgent.class, AgenticScopeOwner.class,
+                    ChatMemoryAccess.class, ChatMessagesAccess.class
                 },
                 new AgentInvocationHandler(context, aiServices.build(), this, messageRecorder, agenticScopeDependent));
     }
+
+    protected void build(DefaultAgenticScope agenticScope, AiServiceContext context, AiServices<T> aiServices) { }
 
     private void setupGuardrails(AiServices<T> aiServices) {
         if (inputGuardrailsConfig != null) {
@@ -231,169 +254,187 @@ public class AgentBuilder<T> {
         }
     }
 
-    public AgentBuilder<T> chatModel(ChatModel model) {
+    public B chatModel(ChatModel model) {
         this.model = model;
-        return this;
+        return (B) this;
     }
 
-    public AgentBuilder<T> chatMemory(ChatMemory chatMemory) {
+    public B streamingChatModel(StreamingChatModel streamingChatModel) {
+        this.streamingChatModel = streamingChatModel;
+        return (B) this;
+    }
+
+    public B chatMemory(ChatMemory chatMemory) {
         this.chatMemory = chatMemory;
-        return this;
+        return (B) this;
     }
 
-    public AgentBuilder<T> chatMemoryProvider(ChatMemoryProvider chatMemoryProvider) {
+    public B chatMemoryProvider(ChatMemoryProvider chatMemoryProvider) {
         this.chatMemoryProvider = chatMemoryProvider;
-        return this;
+        return (B) this;
     }
 
     boolean hasNonDefaultChatMemory() {
         return chatMemoryProvider != null;
     }
 
-    public AgentBuilder<T> tools(Object... objectsWithTools) {
+    public B tools(Object... objectsWithTools) {
         this.objectsWithTools = objectsWithTools;
-        return this;
+        return (B) this;
     }
 
-    public AgentBuilder<T> tools(Map<ToolSpecification, ToolExecutor> toolsMap) {
+    public B tools(Map<ToolSpecification, ToolExecutor> toolsMap) {
         this.toolsMap = toolsMap;
-        return this;
+        return (B) this;
     }
 
-    public AgentBuilder<T> tools(Map<ToolSpecification, ToolExecutor> toolsMap, Set<String> immediateReturnToolNames) {
+    public B tools(Map<ToolSpecification, ToolExecutor> toolsMap, Set<String> immediateReturnToolNames) {
         this.toolsMap = toolsMap;
         this.immediateReturnToolNames = immediateReturnToolNames;
-        return this;
+        return (B) this;
     }
 
-    public AgentBuilder<T> toolProvider(ToolProvider toolProvider) {
+    public B toolProvider(ToolProvider toolProvider) {
         this.toolProvider = toolProvider;
-        return this;
+        return (B) this;
     }
 
-    public AgentBuilder<T> maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
+    public B maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
         this.maxSequentialToolsInvocations = maxSequentialToolsInvocations;
-        return this;
+        return (B) this;
     }
 
-    public AgentBuilder<T> hallucinatedToolNameStrategy(
+    public B hallucinatedToolNameStrategy(
             Function<ToolExecutionRequest, ToolExecutionResultMessage> hallucinatedToolNameStrategy) {
         this.hallucinatedToolNameStrategy = hallucinatedToolNameStrategy;
-        return this;
+        return (B) this;
     }
 
-    public AgentBuilder<T> contentRetriever(ContentRetriever contentRetriever) {
+    public B contentRetriever(ContentRetriever contentRetriever) {
         this.contentRetriever = contentRetriever;
-        return this;
+        return (B) this;
     }
 
-    public AgentBuilder<T> retrievalAugmentor(RetrievalAugmentor retrievalAugmentor) {
+    public B retrievalAugmentor(RetrievalAugmentor retrievalAugmentor) {
         this.retrievalAugmentor = retrievalAugmentor;
-        return this;
+        return (B) this;
     }
 
-    public AgentBuilder<T> inputGuardrailsConfig(InputGuardrailsConfig inputGuardrailsConfig) {
+    public B inputGuardrailsConfig(InputGuardrailsConfig inputGuardrailsConfig) {
         this.inputGuardrailsConfig = inputGuardrailsConfig;
-        return this;
+        return (B) this;
     }
 
-    public AgentBuilder<T> outputGuardrailsConfig(OutputGuardrailsConfig outputGuardrailsConfig) {
+    public B outputGuardrailsConfig(OutputGuardrailsConfig outputGuardrailsConfig) {
         this.outputGuardrailsConfig = outputGuardrailsConfig;
-        return this;
+        return (B) this;
     }
 
-    public <I extends InputGuardrail> AgentBuilder<T> inputGuardrailClasses(
+    public <I extends InputGuardrail> B inputGuardrailClasses(
             Class<? extends I>... inputGuardrailClasses) {
         this.inputGuardrailClasses = inputGuardrailClasses;
-        return this;
+        return (B) this;
     }
 
-    public <O extends OutputGuardrail> AgentBuilder<T> outputGuardrailClasses(
+    public <O extends OutputGuardrail> B outputGuardrailClasses(
             Class<? extends O>... outputGuardrailClasses) {
         this.outputGuardrailClasses = outputGuardrailClasses;
-        return this;
+        return (B) this;
     }
 
-    public <I extends InputGuardrail> AgentBuilder<T> inputGuardrails(I... inputGuardrails) {
+    public <I extends InputGuardrail> B inputGuardrails(I... inputGuardrails) {
         this.inputGuardrails = inputGuardrails;
-        return this;
+        return (B) this;
     }
 
-    public <O extends OutputGuardrail> AgentBuilder<T> outputGuardrails(O... outputGuardrails) {
+    public <O extends OutputGuardrail> B outputGuardrails(O... outputGuardrails) {
         this.outputGuardrails = outputGuardrails;
-        return this;
+        return (B) this;
     }
 
-    public AgentBuilder<T> name(String name) {
+    public B name(String name) {
         this.name = name;
-        return this;
+        return (B) this;
     }
 
-    public AgentBuilder<T> description(String description) {
+    public B description(String description) {
         this.description = description;
-        return this;
+        return (B) this;
     }
 
-    public AgentBuilder<T> outputKey(String outputKey) {
+    public B outputKey(String outputKey) {
         this.outputKey = outputKey;
-        return this;
+        return (B) this;
     }
 
-    public AgentBuilder<T> outputKey(Class<? extends TypedKey<?>> outputKey) {
+    public B outputKey(Class<? extends TypedKey<?>> outputKey) {
         return outputKey(keyName(outputKey));
     }
 
-    public AgentBuilder<T> async(boolean async) {
+    public B async(boolean async) {
         this.async = async;
-        return this;
+        return (B) this;
     }
 
-    public AgentBuilder<T> context(Function<AgenticScope, String> contextProvider) {
+    public B context(Function<AgenticScope, String> contextProvider) {
         this.contextProvider = contextProvider;
-        return this;
+        return (B) this;
     }
 
-    public AgentBuilder<T> summarizedContext(String... contextProvidingAgents) {
+    public B summarizedContext(String... contextProvidingAgents) {
         this.contextProvidingAgents = contextProvidingAgents;
-        return this;
+        return (B) this;
     }
 
-    public AgentBuilder<T> systemMessageProvider(Function<Object, String> systemMessageProvider) {
+    public B systemMessage(String systemMessage) {
+        return systemMessageProvider(ignore -> systemMessage);
+    }
+
+    public B systemMessageProvider(Function<Object, String> systemMessageProvider) {
         this.systemMessageProvider = systemMessageProvider;
-        return this;
+        return (B) this;
     }
 
-    public AgentBuilder<T> executeToolsConcurrently() {
+    public B userMessage(String userMessage) {
+        return userMessageProvider(ignore -> userMessage);
+    }
+
+    public B userMessageProvider(Function<Object, String> userMessageProvider) {
+        this.userMessageProvider = userMessageProvider;
+        return (B) this;
+    }
+
+    public B executeToolsConcurrently() {
         this.executeToolsConcurrently = true;
-        return this;
+        return (B) this;
     }
 
-    public AgentBuilder<T> executeToolsConcurrently(Executor executor) {
+    public B executeToolsConcurrently(Executor executor) {
         this.executeToolsConcurrently = true;
         this.concurrentToolsExecutor = executor;
-        return this;
+        return (B) this;
     }
 
-    public AgentBuilder<T> toolArgumentsErrorHandler(ToolArgumentsErrorHandler toolArgumentsErrorHandler) {
+    public B toolArgumentsErrorHandler(ToolArgumentsErrorHandler toolArgumentsErrorHandler) {
         this.toolArgumentsErrorHandler = toolArgumentsErrorHandler;
-        return this;
+        return (B) this;
     }
 
-    public AgentBuilder<T> toolExecutionErrorHandler(ToolExecutionErrorHandler toolExecutionErrorHandler) {
+    public B toolExecutionErrorHandler(ToolExecutionErrorHandler toolExecutionErrorHandler) {
         this.toolExecutionErrorHandler = toolExecutionErrorHandler;
-        return this;
+        return (B) this;
     }
 
-    public AgentBuilder<T> defaultKeyValue(String key, Object value) {
+    public B defaultKeyValue(String key, Object value) {
         this.defaultValues.put(key, value);
-        return this;
+        return (B) this;
     }
 
-    public <K> AgentBuilder<T> defaultKeyValue(Class<? extends TypedKey<K>> key, K value) {
+    public <K> B defaultKeyValue(Class<? extends TypedKey<K>> key, K value) {
         return defaultKeyValue(keyName(key), value);
     }
 
-    public AgentBuilder<T> listener(AgentListener agentListener) {
+    public B listener(AgentListener agentListener) {
         if (this.agentListener == null) {
             this.agentListener = agentListener;
         } else if (this.agentListener instanceof ComposedAgentListener composed) {
@@ -401,7 +442,7 @@ public class AgentBuilder<T> {
         } else {
             this.agentListener = new ComposedAgentListener(this.agentListener, agentListener);
         }
-        return this;
+        return (B) this;
     }
 
 }

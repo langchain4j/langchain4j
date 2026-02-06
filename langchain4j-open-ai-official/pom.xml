@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.thingsboard.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.10.0-beta18-TB</version>
+        <version>1.11.0-beta19-TB</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -13,6 +13,8 @@
     <name>LangChain4j :: Integration :: OpenAI Official</name>
 
     <properties>
+        <openai-java.version>4.13.0</openai-java.version>
+        <httpclient5.version>5.2.1</httpclient5.version>
         <enforcer.skipRules>requireUpperBoundDeps</enforcer.skipRules>
     </properties>
 
@@ -31,7 +33,7 @@
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.10.0-TB</version>
+            <version>1.11.0-TB</version>
         </dependency>
 
         <dependency>
@@ -49,7 +51,7 @@
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.10.0-TB</version>
+            <version>1.11.0-TB</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>
@@ -58,14 +60,14 @@
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
-            <version>1.10.0-TB</version>
+            <version>1.11.0-TB</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
-            <version>1.10.0-TB</version>
+            <version>1.11.0-TB</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>

@@ -5,21 +5,25 @@
     <parent>
         <groupId>org.thingsboard.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.10.0-beta18-TB</version>
+        <version>1.11.0-beta19-TB</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>langchain4j</artifactId>
-    <version>1.10.0-TB</version>
+    <version>1.11.0-TB</version>
     <name>LangChain4j</name>
     <description>Build LLM-powered applications in Java: chatbots, agents, RAG, and much more</description>
+
+    <properties>
+        <opennlp-tools.version>2.5.4</opennlp-tools.version>
+    </properties>
 
     <dependencies>
 
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.10.0-TB</version>
+            <version>1.11.0-TB</version>
         </dependency>
 
         <dependency>
@@ -53,14 +57,14 @@
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j-open-ai</artifactId>
-            <version>1.10.0-TB</version>
+            <version>1.11.0-TB</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.10.0-TB</version>
+            <version>1.11.0-TB</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>
@@ -112,6 +116,11 @@
                         <goals>
                             <goal>test-jar</goal>
                         </goals>
+                        <configuration>
+                            <excludes>
+                                <exclude>junit-platform.properties</exclude>
+                            </excludes>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
@@ -126,6 +135,7 @@
                     </excludes>
                 </configuration>
             </plugin>
+
         </plugins>
     </build>
 </project>

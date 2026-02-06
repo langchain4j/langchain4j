@@ -30,9 +30,6 @@ public enum OpenAiChatModelName {
     O1("o1"), // alias
     O1_2024_12_17("o1-2024-12-17"),
 
-    O1_MINI("o1-mini"), // alias
-    O1_MINI_2024_09_12("o1-mini-2024-09-12"),
-
     O3("o3"), // alias
     O3_2025_04_16("o3-2025-04-16"),
 
