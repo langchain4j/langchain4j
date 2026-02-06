@@ -352,7 +352,7 @@ public class ToolService {
                     if (toolSearchResult.foundToolNames().isEmpty()) {
                         return "No matching tools found";
                     } else {
-                        return "Matching tools found: " + String.join(", ", toolSearchResult.foundToolNames());
+                        return "Tools found: " + String.join(", ", toolSearchResult.foundToolNames());
                     }
                 }
 

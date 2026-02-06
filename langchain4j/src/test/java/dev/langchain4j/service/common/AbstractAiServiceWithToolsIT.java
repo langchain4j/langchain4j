@@ -1369,7 +1369,7 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         inOrder.verify(spyAfterToolExecution).accept(argThat(te ->
                 te.request().name().equals(TOOL_SEARCH_TOOL_NAME)
-                        && te.result().equals("Found tools: getWeather")
+                        && te.result().equals("Tools found: getWeather")
         ));
 
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
@@ -1380,7 +1380,7 @@ public abstract class AbstractAiServiceWithToolsIT {
                         && request.messages().size() == 4
                         && request.messages().get(3) instanceof ToolExecutionResultMessage toolResultMessage
                         && toolResultMessage.toolName().equals(TOOL_SEARCH_TOOL_NAME)
-                        && toolResultMessage.text().equals("Found tools: getWeather")
+                        && toolResultMessage.text().equals("Tools found: getWeather")
                         && toolResultMessage.attributes().get("found_tools").equals(List.of("getWeather"))
         ));
 
@@ -1422,7 +1422,7 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         inOrder.verify(spyAfterToolExecution).accept(argThat(te ->
                 te.request().name().equals(TOOL_SEARCH_TOOL_NAME)
-                        && te.result().equals("Found tools: getTime")
+                        && te.result().equals("Tools found: getTime")
         ));
 
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
@@ -1496,7 +1496,7 @@ public abstract class AbstractAiServiceWithToolsIT {
                         && request.messages().size() == 4
                         && request.messages().get(3) instanceof ToolExecutionResultMessage toolResultMessage
                         && toolResultMessage.toolName().equals(TOOL_SEARCH_TOOL_NAME)
-                        && toolResultMessage.text().equals("Found tools: getWeather")
+                        && toolResultMessage.text().equals("Tools found: getWeather")
                         && toolResultMessage.attributes().get("found_tools").equals(List.of("getWeather"))
         ));
 
@@ -1606,11 +1606,11 @@ public abstract class AbstractAiServiceWithToolsIT {
                         && request.messages().size() == 5
                         && request.messages().get(3) instanceof ToolExecutionResultMessage toolResultMessage
                         && toolResultMessage.toolName().equals(TOOL_SEARCH_TOOL_NAME)
-                        && toolResultMessage.text().equals("Found tools: getWeather")
+                        && toolResultMessage.text().equals("Tools found: getWeather")
                         && toolResultMessage.attributes().get("found_tools").equals(List.of("getWeather"))
                         && request.messages().get(4) instanceof ToolExecutionResultMessage toolResultMessage2
                         && toolResultMessage2.toolName().equals(TOOL_SEARCH_TOOL_NAME)
-                        && toolResultMessage2.text().equals("Found tools: getTime")
+                        && toolResultMessage2.text().equals("Tools found: getTime")
                         && toolResultMessage2.attributes().get("found_tools").equals(List.of("getTime"))
         ));
 
@@ -1689,11 +1689,11 @@ public abstract class AbstractAiServiceWithToolsIT {
                         && request.messages().size() == 5
                         && request.messages().get(3) instanceof ToolExecutionResultMessage toolResultMessage
                         && toolResultMessage.toolName().equals(TOOL_SEARCH_TOOL_NAME)
-                        && toolResultMessage.text().equals("Found tools: getWeather")
+                        && toolResultMessage.text().equals("Tools found: getWeather")
                         && toolResultMessage.attributes().get("found_tools").equals(List.of("getWeather"))
                         && request.messages().get(4) instanceof ToolExecutionResultMessage toolResultMessage2
                         && toolResultMessage2.toolName().equals(TOOL_SEARCH_TOOL_NAME)
-                        && toolResultMessage2.text().equals("Found tools: getTime")
+                        && toolResultMessage2.text().equals("Tools found: getTime")
                         && toolResultMessage2.attributes().get("found_tools").equals(List.of("getTime"))
         ));
 
@@ -1782,11 +1782,11 @@ public abstract class AbstractAiServiceWithToolsIT {
                         && request.messages().size() == 5
                         && request.messages().get(3) instanceof ToolExecutionResultMessage toolResultMessage
                         && toolResultMessage.toolName().equals(TOOL_SEARCH_TOOL_NAME)
-                        && toolResultMessage.text().equals("Found tools: add, getTime, getWeather")
+                        && toolResultMessage.text().equals("Tools found: add, getTime, getWeather")
                         && toolResultMessage.attributes().get("found_tools").equals(List.of("add", "getTime", "getWeather"))
                         && request.messages().get(4) instanceof ToolExecutionResultMessage toolResultMessage2
                         && toolResultMessage2.toolName().equals(TOOL_SEARCH_TOOL_NAME)
-                        && toolResultMessage2.text().equals("Found tools: add, getTime, getWeather")
+                        && toolResultMessage2.text().equals("Tools found: add, getTime, getWeather")
                         && toolResultMessage2.attributes().get("found_tools").equals(List.of("add", "getTime", "getWeather"))
         ));
 
@@ -1834,15 +1834,15 @@ public abstract class AbstractAiServiceWithToolsIT {
                         && request.messages().size() == 12
                         && request.messages().get(3) instanceof ToolExecutionResultMessage toolResultMessage
                         && toolResultMessage.toolName().equals(TOOL_SEARCH_TOOL_NAME)
-                        && toolResultMessage.text().equals("Found tools: add, getTime, getWeather")
+                        && toolResultMessage.text().equals("Tools found: add, getTime, getWeather")
                         && toolResultMessage.attributes().get("found_tools").equals(List.of("add", "getTime", "getWeather"))
                         && request.messages().get(4) instanceof ToolExecutionResultMessage toolResultMessage2
                         && toolResultMessage2.toolName().equals(TOOL_SEARCH_TOOL_NAME)
-                        && toolResultMessage2.text().equals("Found tools: add, getTime, getWeather")
+                        && toolResultMessage2.text().equals("Tools found: add, getTime, getWeather")
                         && toolResultMessage2.attributes().get("found_tools").equals(List.of("add", "getTime", "getWeather"))
                         && request.messages().get(11) instanceof ToolExecutionResultMessage toolResultMessage3
                         && toolResultMessage3.toolName().equals(TOOL_SEARCH_TOOL_NAME)
-                        && toolResultMessage3.text().equals("Found tools: add, getTime, getWeather")
+                        && toolResultMessage3.text().equals("Tools found: add, getTime, getWeather")
                         && toolResultMessage3.attributes().get("found_tools").equals(List.of("add", "getTime", "getWeather"))
         ));
 
@@ -1901,7 +1901,7 @@ public abstract class AbstractAiServiceWithToolsIT {
                         && request.messages().size() == 4
                         && request.messages().get(3) instanceof ToolExecutionResultMessage toolResultMessage
                         && toolResultMessage.toolName().equals(TOOL_SEARCH_TOOL_NAME)
-                        && toolResultMessage.text().equals("Found tools: getWeather")
+                        && toolResultMessage.text().equals("Tools found: getWeather")
                         && toolResultMessage.attributes().get("found_tools").equals(List.of("getWeather"))
         ));
 
@@ -1947,7 +1947,7 @@ public abstract class AbstractAiServiceWithToolsIT {
                         && request.messages().size() == 11
                         && request.messages().get(9) instanceof ToolExecutionResultMessage toolResultMessage
                         && toolResultMessage.toolName().equals(TOOL_SEARCH_TOOL_NAME)
-                        && toolResultMessage.text().equals("Found tools: getTime")
+                        && toolResultMessage.text().equals("Tools found: getTime")
                         && toolResultMessage.attributes().get("found_tools").equals(List.of("getTime"))
                         && request.messages().get(10) instanceof ToolExecutionResultMessage toolResultMessage2
                         && toolResultMessage2.toolName().equals("getWeather")
@@ -2018,7 +2018,7 @@ public abstract class AbstractAiServiceWithToolsIT {
                         && request.messages().size() == 4
                         && request.messages().get(3) instanceof ToolExecutionResultMessage toolResultMessage
                         && toolResultMessage.toolName().equals(TOOL_SEARCH_TOOL_NAME)
-                        && toolResultMessage.text().equals("Found tools: getWeather")
+                        && toolResultMessage.text().equals("Tools found: getWeather")
                         && toolResultMessage.attributes().get("found_tools").equals(List.of("getWeather"))
         ));
 
@@ -2060,7 +2060,7 @@ public abstract class AbstractAiServiceWithToolsIT {
                         && request.messages().size() == 11
                         && request.messages().get(9) instanceof ToolExecutionResultMessage toolResultMessage
                         && toolResultMessage.toolName().equals(TOOL_SEARCH_TOOL_NAME)
-                        && toolResultMessage.text().equals("Found tools: getTime")
+                        && toolResultMessage.text().equals("Tools found: getTime")
                         && toolResultMessage.attributes().get("found_tools").equals(List.of("getTime"))
                         && request.messages().get(10) instanceof ToolExecutionResultMessage toolResultMessage2
                         && toolResultMessage2.toolName().equals("getWeather")

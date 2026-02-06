@@ -114,14 +114,14 @@ class ChatMessageSerializerTest {
                         ToolExecutionResultMessage.builder()
                                 .id("67890")
                                 .toolName("tool_search_tool")
-                                .text("Found tools: weather, time")
+                                .text("Tools found: weather, time")
                                 .attributes(new LinkedHashMap<>() {
                                     {
                                         put("found_tools", List.of("weather", "time"));
                                     }
                                 })
                                 .build(),
-                        "{\"id\":\"67890\",\"toolName\":\"tool_search_tool\",\"text\":\"Found tools: weather, time\",\"attributes\":{\"found_tools\":[\"weather\", \"time\"]},\"type\":\"TOOL_EXECUTION_RESULT\"}"),
+                        "{\"id\":\"67890\",\"toolName\":\"tool_search_tool\",\"text\":\"Tools found: weather, time\",\"attributes\":{\"found_tools\":[\"weather\", \"time\"]},\"type\":\"TOOL_EXECUTION_RESULT\"}"),
                 Arguments.of(
                         CustomMessage.from(new LinkedHashMap<>() {
                             {
