@@ -10,15 +10,17 @@
 
     <artifactId>langchain4j-gpu-llama3</artifactId>
     <name>LangChain4j :: Integration :: GPULlama3.java</name>
-    <description>GPULlama3.java: GPU-enabled LLM Inference Engine for Java based on TornadoVM. Requires Java 21+</description>
+    <description>GPULlama3.java: GPU-enabled LLM Inference Engine for Java based on TornadoVM. Requires Java 21 only (uses preview features)</description>
 
     <properties>
         <maven.compiler.release>21</maven.compiler.release>
-        <tornado.sdk>${env.TORNADO_SDK}</tornado.sdk>
+        <tornado.sdk>${env.TORNADOVM_HOME}</tornado.sdk>
         <maven.test.skip>true</maven.test.skip>
         <maven.compiler.testSkip>true</maven.compiler.testSkip>
         <skipTests>true</skipTests>
         <skipITs>true</skipITs>
+        <!-- Always skip javadoc - preview features break aggregate javadoc -->
+        <maven.javadoc.skip>true</maven.javadoc.skip>
     </properties>
 
     <dependencies>
@@ -26,7 +28,7 @@
         <dependency>
             <groupId>io.github.beehive-lab</groupId>
             <artifactId>gpu-llama3</artifactId>
-            <version>0.2.2</version>
+            <version>0.3.3</version>
         </dependency>
 
         <dependency>
@@ -88,6 +90,15 @@
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.5.0</version>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
                 <executions>
                     <execution>
@@ -116,15 +127,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>default-testCompile</id>
-                        <goals>
-                            <goal>testCompile</goal>
-                        </goals>
-                        <phase>test-compile</phase>
-                    </execution>
-                </executions>
+                <version>3.14.0</version>
             </plugin>
 
             <!-- TornadoVM Test Runner -->
@@ -177,7 +180,7 @@
                         <argument>org.junit.platform.console.ConsoleLauncher</argument>
                         <argument>--scan-classpath</argument>
                         <argument>--include-classname</argument>
-                        <argument>.*IT</argument>
+                        <argument>GPULlama3ChatModelIT</argument>
                     </arguments>
                 </configuration>
             </plugin>
@@ -185,17 +188,71 @@
     </build>
 
     <profiles>
+        <!-- JDK 21: Enable preview features required by gpu-llama3 dependency -->
+        <profile>
+            <id>jdk21-preview</id>
+            <activation>
+                <jdk>21</jdk>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <version>3.14.0</version>
+                        <configuration>
+                            <compilerArgs>
+                                <arg>--enable-preview</arg>
+                            </compilerArgs>
+                            <release>21</release>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- JDK 22+: Skip compilation - preview features are version-locked -->
+        <profile>
+            <id>skip-on-incompatible-jdk</id>
+            <activation>
+                <jdk>[22,)</jdk>
+            </activation>
+            <properties>
+                <maven.install.skip>true</maven.install.skip>
+                <maven.deploy.skip>true</maven.deploy.skip>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <version>3.14.0</version>
+                        <executions>
+                            <execution>
+                                <id>default-compile</id>
+                                <phase>none</phase>
+                            </execution>
+                            <execution>
+                                <id>java-compile</id>
+                                <phase>none</phase>
+                            </execution>
+                            <execution>
+                                <id>default-testCompile</id>
+                                <phase>none</phase>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
         <profile>
             <id>run-tests</id>
             <properties>
                 <maven.test.skip>false</maven.test.skip>
-                <!-- Override to enable -->
                 <maven.compiler.testSkip>false</maven.compiler.testSkip>
-                <!-- Override to enable -->
                 <skipTests>false</skipTests>
-                <!-- Override to enable -->
                 <skipITs>false</skipITs>
-                <!-- Override to enable -->
             </properties>
             <build>
                 <defaultGoal>clean generate-test-resources compile test-compile exec:exec</defaultGoal>
