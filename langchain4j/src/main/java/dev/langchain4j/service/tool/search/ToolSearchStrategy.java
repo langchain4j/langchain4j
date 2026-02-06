@@ -1,4 +1,4 @@
-package dev.langchain4j.service.tool;
+package dev.langchain4j.service.tool.search;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.invocation.InvocationContext;

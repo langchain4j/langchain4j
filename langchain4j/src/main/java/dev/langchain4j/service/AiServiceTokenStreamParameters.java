@@ -10,7 +10,7 @@ import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutor;
-import dev.langchain4j.service.tool.ToolSearchStrategy;
+import dev.langchain4j.service.tool.search.ToolSearchStrategy;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;

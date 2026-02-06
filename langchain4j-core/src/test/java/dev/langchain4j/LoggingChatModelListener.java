@@ -32,7 +32,7 @@ import java.util.stream.StreamSupport;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static java.util.stream.Collectors.joining;
 
-public class LoggingChatModelListener implements ChatModelListener {
+public class LoggingChatModelListener implements ChatModelListener { // TODO move to test sources?
 
     private static final Logger log = LoggerFactory.getLogger(LoggingChatModelListener.class);
     private static final ObjectMapper mapper = new ObjectMapper();
@@ -114,6 +114,7 @@ public class LoggingChatModelListener implements ChatModelListener {
                         ------------------------------------------------------------------------------------------
                         {}
                         <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+                        
                         """,
                 sb,
                 chatRequest.toolSpecifications().stream().map(ToolSpecification::name).collect(joining(", ")),

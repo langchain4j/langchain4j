@@ -9,6 +9,7 @@ import java.util.Objects;
 import java.util.Set;
 
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.service.tool.search.ToolSearchStrategy;
 
 import static dev.langchain4j.internal.Utils.copy;
 

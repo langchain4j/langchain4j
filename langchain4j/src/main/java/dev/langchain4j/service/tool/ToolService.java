@@ -31,6 +31,10 @@ import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.observability.api.event.ToolExecutedEvent;
 import dev.langchain4j.service.AiServiceContext;
 import dev.langchain4j.service.IllegalConfigurationException;
+import dev.langchain4j.service.tool.search.ToolSearchRequest;
+import dev.langchain4j.service.tool.search.ToolSearchResult;
+import dev.langchain4j.service.tool.search.ToolSearchStrategy;
+
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;

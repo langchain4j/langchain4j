@@ -1,4 +1,4 @@
-package dev.langchain4j.service.tool;
+package dev.langchain4j.service.tool.search;
 
 import java.util.List;
 

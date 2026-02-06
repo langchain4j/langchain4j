@@ -68,9 +68,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
-import dev.langchain4j.service.tool.ToolSearchRequest;
-import dev.langchain4j.service.tool.ToolSearchResult;
-import dev.langchain4j.service.tool.ToolSearchStrategy;
+import dev.langchain4j.service.tool.search.ToolSearchRequest;
+import dev.langchain4j.service.tool.search.ToolSearchResult;
+import dev.langchain4j.service.tool.search.ToolSearchStrategy;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -1713,7 +1713,6 @@ class StreamingAiServicesWithToolsIT {
 
         // given
         StreamingChatModel spyModel = spy(model);
-        ;
         AbstractAiServiceWithToolsIT.LazyTools spyTools = spy(new AbstractAiServiceWithToolsIT.LazyTools());
         ToolSearchStrategy spyToolSearchStrategy = spy(new AbstractAiServiceWithToolsIT.CustomToolSearchStrategy());
 
@@ -1793,7 +1792,6 @@ class StreamingAiServicesWithToolsIT {
         // given
         ToolProvider toolProvider = AbstractAiServiceWithToolsIT.LazyTools.TOOL_PROVIDER;
         StreamingChatModel spyModel = spy(model);
-        ;
         ToolSearchStrategy spyToolSearchStrategy = spy(new AbstractAiServiceWithToolsIT.CustomToolSearchStrategy());
 
         String instructions = """
@@ -1867,7 +1865,6 @@ class StreamingAiServicesWithToolsIT {
 
         // given
         StreamingChatModel spyModel = spy(model);
-        ;
         AbstractAiServiceWithToolsIT.LazyTools spyTools = spy(new AbstractAiServiceWithToolsIT.LazyTools());
         ToolSearchStrategy spyToolSearchStrategy = spy(new ToolSearchStrategy() {
 
@@ -2004,7 +2001,6 @@ class StreamingAiServicesWithToolsIT {
 
         // given
         StreamingChatModel spyModel = spy(model);
-        ;
         AbstractAiServiceWithToolsIT.LazyTools spyTools = spy(new AbstractAiServiceWithToolsIT.LazyTools());
         ToolSearchStrategy spyToolSearchStrategy = spy(new AbstractAiServiceWithToolsIT.CustomToolSearchStrategy());
 
@@ -2115,7 +2111,6 @@ class StreamingAiServicesWithToolsIT {
         // given
         ToolProvider toolProvider = AbstractAiServiceWithToolsIT.LazyTools.TOOL_PROVIDER;
         StreamingChatModel spyModel = spy(model);
-        ;
         ToolSearchStrategy spyToolSearchStrategy = spy(new AbstractAiServiceWithToolsIT.CustomToolSearchStrategy());
 
         AssistantWithToolSearch assistant = AiServices.builder(AssistantWithToolSearch.class)
