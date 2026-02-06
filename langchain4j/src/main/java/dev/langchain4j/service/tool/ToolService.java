@@ -329,7 +329,7 @@ public class ToolService {
 
         Map<String, ToolExecutor> result = new HashMap<>(toolExecutors);
         for (ToolSpecification toolSearchTool : toolSearchTools) {
-            ToolExecutor toolExecutor = new ToolExecutor() { // TODO extract into a separate class?
+            ToolExecutor toolExecutor = new ToolExecutor() { // TODO extract into a separate class
 
                 @Override
                 public ToolExecutionResult executeWithContext(ToolExecutionRequest request, InvocationContext context) {
@@ -343,9 +343,17 @@ public class ToolService {
 
                     return ToolExecutionResult.builder()
                             .result(toolSearchResult)
-                            .resultText("Found tools: " + String.join(", ", toolSearchResult.foundToolNames()))
+                            .resultText(formatMessage(toolSearchResult))
                             .attributes(Map.of(FOUND_TOOLS_ATTRIBUTE, toolSearchResult.foundToolNames()))
                             .build();
+                }
+
+                private static String formatMessage(ToolSearchResult toolSearchResult) {
+                    if (toolSearchResult.foundToolNames().isEmpty()) {
+                        return "No matching tools found";
+                    } else {
+                        return "Matching tools found: " + String.join(", ", toolSearchResult.foundToolNames());
+                    }
                 }
 
                 @Override

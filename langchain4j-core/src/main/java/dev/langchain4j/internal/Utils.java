@@ -22,6 +22,7 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HexFormat;
@@ -562,5 +563,12 @@ public class Utils {
             log.warn("{}: '{}' is null or blank", clazz.getSimpleName(), fieldName);
         }
         return value;
+    }
+
+    public static String toBase64(String s) {
+        if (s == null) {
+            return null;
+        }
+        return Base64.getEncoder().encodeToString(s.getBytes(UTF_8));
     }
 }

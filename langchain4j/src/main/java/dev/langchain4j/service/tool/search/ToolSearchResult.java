@@ -14,7 +14,7 @@ public class ToolSearchResult {
     private final List<String> foundToolNames; // TODO names
 
     public ToolSearchResult(List<String> foundToolNames) {
-        this.foundToolNames = copy(foundToolNames); // TODO
+        this.foundToolNames = copy(foundToolNames);
     }
 
     public List<String> foundToolNames() { // TODO name
