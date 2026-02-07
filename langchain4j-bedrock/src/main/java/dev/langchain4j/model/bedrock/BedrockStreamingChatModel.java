@@ -200,6 +200,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                 .toolConfig(extractToolConfigurationFrom(chatRequest, cachePointPlacement))
                 .additionalModelRequestFields(additionalRequestModelFieldsFrom(chatRequest.parameters()))
                 .guardrailConfig(guardrailStreamConfigFrom(bedrockGuardrailConfiguration))
+                .outputConfig(outputConfigFrom(chatRequest.responseFormat()))
                 .build();
     }
 

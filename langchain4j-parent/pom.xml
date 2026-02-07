@@ -52,7 +52,7 @@
         <assertj.version>4.0.0-M1</assertj.version>
         <assertk.version>0.28.1</assertk.version>
         <awaitility.version>4.2.2</awaitility.version>
-        <aws.java.sdk.version>2.33.5</aws.java.sdk.version>
+        <aws.java.sdk.version>2.41.22</aws.java.sdk.version>
         <azure-sdk.version>1.3.4</azure-sdk.version>
         <jackson.version>2.20.1</jackson.version>
         <jspecify.version>1.0.0</jspecify.version>
