@@ -880,7 +880,8 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             }
         }
 
-        private void handleReasoningSummaryTextDelta(com.openai.models.responses.ResponseReasoningSummaryTextDeltaEvent event) {
+        private void handleReasoningSummaryTextDelta(
+                com.openai.models.responses.ResponseReasoningSummaryTextDeltaEvent event) {
             String delta = event.delta();
             if (delta != null && !delta.isEmpty()) {
                 reasoningSummaryBuilder.append(delta);

@@ -24,8 +24,8 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatRequestParameters;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatResponseMetadata;
@@ -131,16 +131,13 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
 
         ToolSpecification weatherTool = ToolSpecification.builder()
                 .name("getWeather")
-                .parameters(JsonObjectSchema.builder()
-                        .addStringProperty("city")
-                        .build())
+                .parameters(JsonObjectSchema.builder().addStringProperty("city").build())
                 .build();
 
         ToolSpecification timeTool = ToolSpecification.builder()
                 .name("getTime")
-                .parameters(JsonObjectSchema.builder()
-                        .addStringProperty("country")
-                        .build())
+                .parameters(
+                        JsonObjectSchema.builder().addStringProperty("country").build())
                 .build();
 
         ChatRequest chatRequest = ChatRequest.builder()
@@ -173,9 +170,7 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
 
         if (assertToolId(model)) {
             assertThat(weatherToolExecutionRequest.id()).isNotBlank();
-            assertThat(timeToolExecutionRequest.id())
-                    .isNotBlank()
-                    .isNotEqualTo(weatherToolExecutionRequest.id());
+            assertThat(timeToolExecutionRequest.id()).isNotBlank().isNotEqualTo(weatherToolExecutionRequest.id());
         }
 
         if (assertTokenUsage()) {
@@ -215,7 +210,10 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
                 .isEqualToIgnoringWhitespace("{\"country\":\"France\"}");
 
         if (assertToolId(model)) {
-            assertThat(completeWeatherToolCall.orElseThrow().toolExecutionRequest().id())
+            assertThat(completeWeatherToolCall
+                            .orElseThrow()
+                            .toolExecutionRequest()
+                            .id())
                     .isEqualTo(weatherToolExecutionRequest.id());
             assertThat(completeTimeToolCall.orElseThrow().toolExecutionRequest().id())
                     .isEqualTo(timeToolExecutionRequest.id());
