@@ -4,16 +4,27 @@ import static dev.langchain4j.model.openaiofficial.openai.InternalOpenAiOfficial
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.openai.models.ChatModel;
+import com.openai.models.Reasoning;
+import com.openai.models.ReasoningEffort;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
+import dev.langchain4j.model.chat.common.ChatResponseAndStreamingMetadata;
+import dev.langchain4j.model.chat.common.StreamingMetadata;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatRequestParameters;
@@ -22,9 +33,13 @@ import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChat
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InOrder;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
@@ -32,26 +47,13 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
 
     @Override
     protected List<StreamingChatModel> models() {
-        var client = OpenAIOkHttpClient.builder()
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .build();
-
-        StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
-                .client(client)
-                .modelName("gpt-5-mini")
-                .build();
-
-        return List.of(model);
+        return InternalOpenAiOfficialTestHelper.chatModelsResponsesStreaming();
     }
 
     @Override
     protected StreamingChatModel createModelWith(ChatRequestParameters parameters) {
-        var client = OpenAIOkHttpClient.builder()
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .build();
-
         OpenAiOfficialResponsesStreamingChatModel.Builder modelBuilder =
-                OpenAiOfficialResponsesStreamingChatModel.builder().client(client);
+                InternalOpenAiOfficialTestHelper.responsesStreamingChatModelBuilder();
 
         if (parameters.modelName() != null) {
             modelBuilder.modelName(parameters.modelName());
@@ -100,13 +102,8 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
 
     @Override
     public StreamingChatModel createModelWith(ChatModelListener listener) {
-        var client = OpenAIOkHttpClient.builder()
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .build();
-
-        return OpenAiOfficialResponsesStreamingChatModel.builder()
-                .client(client)
-                .modelName(InternalOpenAiOfficialTestHelper.CHAT_MODEL_NAME.toString())
+        return InternalOpenAiOfficialTestHelper.responsesStreamingChatModelBuilder()
+                .modelName(InternalOpenAiOfficialTestHelper.CHAT_MODEL_NAME)
                 .listeners(listener)
                 .build();
     }
@@ -120,6 +117,142 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
         io.verify(handler).onCompleteToolCall(complete(0, id1, "getWeather", "{\"city\":\"Munich\"}"));
         io.verify(handler).onCompleteToolCall(complete(1, id2, "getTime", "{\"country\":\"France\"}"));
+    }
+
+    @Override
+    @ParameterizedTest
+    @MethodSource("modelsSupportingTools")
+    @EnabledIf("supportsTools")
+    protected void should_execute_multiple_tools_in_parallel_then_answer(StreamingChatModel model) {
+
+        // given
+        UserMessage userMessage = UserMessage.from(
+                "What is the weather in Munich and time in France? Call tools simultaneously (in parallel)");
+
+        ToolSpecification weatherTool = ToolSpecification.builder()
+                .name("getWeather")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("city")
+                        .build())
+                .build();
+
+        ToolSpecification timeTool = ToolSpecification.builder()
+                .name("getTime")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("country")
+                        .build())
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(userMessage)
+                .parameters(ChatRequestParameters.builder()
+                        .toolSpecifications(weatherTool, timeTool)
+                        .build())
+                .build();
+
+        // when
+        ChatResponseAndStreamingMetadata responseAndMetadata = chat(model, chatRequest);
+        ChatResponse chatResponse = responseAndMetadata.chatResponse();
+
+        // then
+        AiMessage aiMessage = chatResponse.aiMessage();
+        List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
+        assertThat(toolExecutionRequests).hasSize(2);
+
+        ToolExecutionRequest weatherToolExecutionRequest = toolExecutionRequests.stream()
+                .filter(req -> "getWeather".equals(req.name()))
+                .findFirst()
+                .orElseThrow();
+        assertThat(weatherToolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
+
+        ToolExecutionRequest timeToolExecutionRequest = toolExecutionRequests.stream()
+                .filter(req -> "getTime".equals(req.name()))
+                .findFirst()
+                .orElseThrow();
+        assertThat(timeToolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"country\":\"France\"}");
+
+        if (assertToolId(model)) {
+            assertThat(weatherToolExecutionRequest.id()).isNotBlank();
+            assertThat(timeToolExecutionRequest.id())
+                    .isNotBlank()
+                    .isNotEqualTo(weatherToolExecutionRequest.id());
+        }
+
+        if (assertTokenUsage()) {
+            TokenUsage tokenUsage = chatResponse.metadata().tokenUsage();
+            assertThat(tokenUsage).isExactlyInstanceOf(tokenUsageType(model));
+            assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
+            assertThat(tokenUsage.totalTokenCount()).isGreaterThan(0);
+        }
+
+        if (assertFinishReason()) {
+            assertThat(chatResponse.metadata().finishReason())
+                    .isEqualTo(dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION);
+        }
+
+        StreamingMetadata metadata = responseAndMetadata.streamingMetadata();
+        assertThat(metadata.completeToolCalls()).hasSize(2);
+
+        // Provider/tool-call ordering isn't guaranteed under "parallel", so verify content without assuming order.
+        List<CompleteToolCall> completeToolCalls = metadata.completeToolCalls();
+        assertThat(completeToolCalls).extracting(CompleteToolCall::index).containsExactlyInAnyOrder(0, 1);
+        assertThat(completeToolCalls)
+                .extracting(c -> c.toolExecutionRequest().name())
+                .containsExactlyInAnyOrder("getWeather", "getTime");
+
+        Optional<CompleteToolCall> completeWeatherToolCall = completeToolCalls.stream()
+                .filter(c -> "getWeather".equals(c.toolExecutionRequest().name()))
+                .findFirst();
+        assertThat(completeWeatherToolCall).isPresent();
+        assertThat(completeWeatherToolCall.orElseThrow().toolExecutionRequest().arguments())
+                .isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
+
+        Optional<CompleteToolCall> completeTimeToolCall = completeToolCalls.stream()
+                .filter(c -> "getTime".equals(c.toolExecutionRequest().name()))
+                .findFirst();
+        assertThat(completeTimeToolCall).isPresent();
+        assertThat(completeTimeToolCall.orElseThrow().toolExecutionRequest().arguments())
+                .isEqualToIgnoringWhitespace("{\"country\":\"France\"}");
+
+        if (assertToolId(model)) {
+            assertThat(completeWeatherToolCall.orElseThrow().toolExecutionRequest().id())
+                    .isEqualTo(weatherToolExecutionRequest.id());
+            assertThat(completeTimeToolCall.orElseThrow().toolExecutionRequest().id())
+                    .isEqualTo(timeToolExecutionRequest.id());
+        }
+
+        // given
+        ChatRequest chatRequest2 = ChatRequest.builder()
+                .messages(
+                        userMessage,
+                        aiMessage,
+                        ToolExecutionResultMessage.from(weatherToolExecutionRequest, "sunny"),
+                        ToolExecutionResultMessage.from(timeToolExecutionRequest, "14:35"))
+                .parameters(ChatRequestParameters.builder()
+                        .toolSpecifications(weatherTool, timeTool)
+                        .build())
+                .build();
+
+        // when
+        ChatResponseAndStreamingMetadata responseAndMetadata2 = chat(model, chatRequest2);
+        ChatResponse chatResponse2 = responseAndMetadata2.chatResponse();
+
+        // then
+        AiMessage aiMessage2 = chatResponse2.aiMessage();
+        assertThat(aiMessage2.text()).containsIgnoringCase("sun").contains("14", "35");
+        assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
+
+        if (assertTokenUsage()) {
+            TokenUsage tokenUsage = chatResponse2.metadata().tokenUsage();
+            assertThat(tokenUsage).isExactlyInstanceOf(tokenUsageType(model));
+            assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
+            assertThat(tokenUsage.totalTokenCount()).isGreaterThan(0);
+        }
+
+        if (assertFinishReason()) {
+            assertThat(chatResponse2.metadata().finishReason())
+                    .isEqualTo(dev.langchain4j.model.output.FinishReason.STOP);
+        }
     }
 
     @Override
@@ -306,12 +439,7 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
     void should_work_with_o_models() {
 
         // given
-        var client = OpenAIOkHttpClient.builder()
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .build();
-
-        StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
-                .client(client)
+        StreamingChatModel model = InternalOpenAiOfficialTestHelper.responsesStreamingChatModelBuilder()
                 .modelName("o4-mini")
                 .build();
 
@@ -327,13 +455,8 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
     void should_support_strict_mode_false() {
 
         // given
-        var client = OpenAIOkHttpClient.builder()
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .build();
-
-        StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
-                .client(client)
-                .modelName(InternalOpenAiOfficialTestHelper.CHAT_MODEL_NAME.toString())
+        StreamingChatModel model = InternalOpenAiOfficialTestHelper.responsesStreamingChatModelBuilder()
+                .modelName(InternalOpenAiOfficialTestHelper.CHAT_MODEL_NAME)
                 .strict(false)
                 .build();
 
@@ -349,14 +472,9 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
     void should_support_reasoning_effort() {
 
         // given
-        var client = OpenAIOkHttpClient.builder()
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .build();
-
-        StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
-                .client(client)
+        StreamingChatModel model = InternalOpenAiOfficialTestHelper.responsesStreamingChatModelBuilder()
                 .modelName("o4-mini")
-                .reasoningEffort("medium")
+                .reasoningEffort(ReasoningEffort.of("medium"))
                 .build();
 
         // when
@@ -371,15 +489,10 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
     void should_support_reasoning_summary() {
 
         // given
-        var client = OpenAIOkHttpClient.builder()
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .build();
-
-        StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
-                .client(client)
+        StreamingChatModel model = InternalOpenAiOfficialTestHelper.responsesStreamingChatModelBuilder()
                 .modelName("o4-mini")
-                .reasoningEffort("medium")
-                .reasoningSummary("auto")
+                .reasoningEffort(ReasoningEffort.of("medium"))
+                .reasoningSummary(Reasoning.Summary.of("auto"))
                 .build();
 
         // when
@@ -396,13 +509,8 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
     void should_not_return_reasoning_summary_when_not_requested() {
 
         // given
-        var client = OpenAIOkHttpClient.builder()
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .build();
-
-        StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
-                .client(client)
-                .modelName(InternalOpenAiOfficialTestHelper.CHAT_MODEL_NAME.toString())
+        StreamingChatModel model = InternalOpenAiOfficialTestHelper.responsesStreamingChatModelBuilder()
+                .modelName(InternalOpenAiOfficialTestHelper.CHAT_MODEL_NAME)
                 .build();
 
         // when
@@ -418,13 +526,8 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
     void should_support_max_tool_calls() {
 
         // given
-        var client = OpenAIOkHttpClient.builder()
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .build();
-
-        StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
-                .client(client)
-                .modelName(InternalOpenAiOfficialTestHelper.CHAT_MODEL_NAME.toString())
+        StreamingChatModel model = InternalOpenAiOfficialTestHelper.responsesStreamingChatModelBuilder()
+                .modelName(InternalOpenAiOfficialTestHelper.CHAT_MODEL_NAME)
                 .maxToolCalls(1)
                 .build();
 
@@ -440,13 +543,8 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
     void should_support_parallel_tool_calls_disabled() {
 
         // given
-        var client = OpenAIOkHttpClient.builder()
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .build();
-
-        StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
-                .client(client)
-                .modelName(InternalOpenAiOfficialTestHelper.CHAT_MODEL_NAME.toString())
+        StreamingChatModel model = InternalOpenAiOfficialTestHelper.responsesStreamingChatModelBuilder()
+                .modelName(InternalOpenAiOfficialTestHelper.CHAT_MODEL_NAME)
                 .parallelToolCalls(false)
                 .build();
 
@@ -487,8 +585,4 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
     protected boolean supportsPartialToolStreaming(dev.langchain4j.model.chat.StreamingChatModel model) {
         return false;
     }
-
-    @Override
-    @Disabled("Can't do it reliably")
-    protected void should_execute_multiple_tools_in_parallel_then_answer(StreamingChatModel model) {}
 }

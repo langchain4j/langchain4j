@@ -1,11 +1,9 @@
 package dev.langchain4j.model.openaiofficial.openai;
 
-import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.openai.models.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
@@ -13,12 +11,7 @@ class OpenAiOfficialResponsesStreamingChatModelListenerIT extends AbstractStream
 
     @Override
     protected StreamingChatModel createModel(ChatModelListener listener) {
-        var client = OpenAIOkHttpClient.builder()
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .build();
-
-        return OpenAiOfficialResponsesStreamingChatModel.builder()
-                .client(client)
+        return InternalOpenAiOfficialTestHelper.responsesStreamingChatModelBuilder()
                 .modelName(modelName())
                 .temperature(temperature())
                 .topP(topP())
@@ -34,10 +27,8 @@ class OpenAiOfficialResponsesStreamingChatModelListenerIT extends AbstractStream
 
     @Override
     protected StreamingChatModel createFailingModel(ChatModelListener listener) {
-        var client = OpenAIOkHttpClient.builder().apiKey("banana").build();
-
-        return OpenAiOfficialResponsesStreamingChatModel.builder()
-                .client(client)
+        return InternalOpenAiOfficialTestHelper.responsesStreamingChatModelBuilder()
+                .apiKey("banana")
                 .modelName(modelName())
                 .listeners(listener)
                 .build();
