@@ -766,10 +766,10 @@
                     </execution>
                     <execution>
                         <id>report</id>
-                        <phase>verify</phase>
                         <goals>
                             <goal>report</goal>
                         </goals>
+                        <phase>verify</phase>
                         <configuration>
                             <excludes>
                                 <exclude>**/*Exception.*</exclude>
