@@ -7,10 +7,13 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.model.openaiofficial.setup.OpenAiOfficialSetup.setupSyncClient;
 import static java.util.Arrays.asList;
 
+import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.client.OpenAIClient;
 import com.openai.core.JsonValue;
+import com.openai.credential.Credential;
 import com.openai.models.ChatModel;
 import com.openai.models.Reasoning;
 import com.openai.models.ReasoningEffort;
@@ -70,6 +73,8 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
+import java.net.Proxy;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -117,8 +122,24 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
     private final Boolean strict;
 
     private OpenAiOfficialResponsesStreamingChatModel(Builder builder) {
-        this.client = ensureNotNull(builder.client, "client");
-        this.executorService = getOrDefault(builder.executorService, DefaultExecutorProvider::getDefaultExecutorService);
+        this.client = builder.client != null
+                ? builder.client
+                : setupSyncClient(
+                        builder.baseUrl,
+                        builder.apiKey,
+                        builder.credential,
+                        builder.microsoftFoundryDeploymentName,
+                        builder.azureOpenAIServiceVersion,
+                        builder.organizationId,
+                        builder.isMicrosoftFoundry,
+                        builder.isGitHubModels,
+                        builder.modelName,
+                        builder.timeout,
+                        builder.maxRetries,
+                        builder.proxy,
+                        builder.customHeaders);
+        this.executorService =
+                getOrDefault(builder.executorService, DefaultExecutorProvider::getDefaultExecutorService);
         this.modelName = ensureNotNull(builder.modelName, "modelName");
         this.temperature = builder.temperature;
         this.topP = builder.topP;
@@ -473,6 +494,19 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
     public static class Builder {
 
+        private String baseUrl;
+        private String apiKey;
+        private Credential credential;
+        private String microsoftFoundryDeploymentName;
+        private AzureOpenAIServiceVersion azureOpenAIServiceVersion;
+        private String organizationId;
+        private boolean isMicrosoftFoundry;
+        private boolean isGitHubModels;
+        private Map<String, String> customHeaders;
+        private Duration timeout;
+        private Integer maxRetries;
+        private Proxy proxy;
+
         private OpenAIClient client;
         private String modelName;
         private Double temperature;
@@ -495,6 +529,84 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         private List<ChatModelListener> listeners;
         private ExecutorService executorService;
         private Boolean strict;
+
+        public Builder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public Builder apiKey(String apiKey) {
+            this.apiKey = apiKey;
+            return this;
+        }
+
+        public Builder credential(Credential credential) {
+            this.credential = credential;
+            return this;
+        }
+
+        /**
+         * @deprecated Use {@link #microsoftFoundryDeploymentName(String)} instead
+         */
+        @Deprecated
+        public Builder azureDeploymentName(String azureDeploymentName) {
+            this.microsoftFoundryDeploymentName = azureDeploymentName;
+            return this;
+        }
+
+        public Builder microsoftFoundryDeploymentName(String microsoftFoundryDeploymentName) {
+            this.microsoftFoundryDeploymentName = microsoftFoundryDeploymentName;
+            return this;
+        }
+
+        public Builder azureOpenAIServiceVersion(AzureOpenAIServiceVersion azureOpenAIServiceVersion) {
+            this.azureOpenAIServiceVersion = azureOpenAIServiceVersion;
+            return this;
+        }
+
+        public Builder organizationId(String organizationId) {
+            this.organizationId = organizationId;
+            return this;
+        }
+
+        /**
+         * @deprecated Use {@link #isMicrosoftFoundry(boolean)} instead
+         */
+        @Deprecated
+        public Builder isAzure(boolean isAzure) {
+            this.isMicrosoftFoundry = isAzure;
+            return this;
+        }
+
+        public Builder isMicrosoftFoundry(boolean isMicrosoftFoundry) {
+            this.isMicrosoftFoundry = isMicrosoftFoundry;
+            return this;
+        }
+
+        public Builder isGitHubModels(boolean isGitHubModels) {
+            this.isGitHubModels = isGitHubModels;
+            return this;
+        }
+
+        public Builder customHeaders(Map<String, String> customHeaders) {
+            this.customHeaders = customHeaders;
+            return this;
+        }
+
+        public Builder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public Builder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public Builder proxy(Proxy proxy) {
+            this.proxy = proxy;
+            return this;
+        }
 
         public Builder client(OpenAIClient client) {
             this.client = client;

@@ -4,7 +4,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-parent</artifactId>
-    <version>1.11.0-beta19-SNAPSHOT</version>
+    <version>1.12.0-beta20-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>LangChain4j :: Parent POM</name>
@@ -35,7 +35,7 @@
     </scm>
 
     <properties>
-        <langchain4j.beta.version>1.11.0-beta19-SNAPSHOT</langchain4j.beta.version>
+        <langchain4j.beta.version>1.12.0-beta20-SNAPSHOT</langchain4j.beta.version>
         <java.version>17</java.version>
         <maven.compiler.release>${java.version}</maven.compiler.release>
         <kotlin.code.style>official</kotlin.code.style>
@@ -44,7 +44,7 @@
         <kotlin.compiler.apiVersion>1.9</kotlin.compiler.apiVersion>
         <kotlin-compiler.version>2.1.21</kotlin-compiler.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <project.build.outputTimestamp>1766586932</project.build.outputTimestamp>
+        <project.build.outputTimestamp>1770210487</project.build.outputTimestamp>
         <argLine></argLine>
         <!-- Dependency Versions -->
         <dokka.version>2.1.0-Beta</dokka.version>
@@ -53,7 +53,7 @@
         <assertk.version>0.28.1</assertk.version>
         <awaitility.version>4.2.2</awaitility.version>
         <aws.java.sdk.version>2.33.5</aws.java.sdk.version>
-        <azure-sdk.version>1.3.3</azure-sdk.version>
+        <azure-sdk.version>1.3.4</azure-sdk.version>
         <jackson.version>2.20.1</jackson.version>
         <jspecify.version>1.0.0</jspecify.version>
         <jtokkit.version>1.1.0</jtokkit.version>

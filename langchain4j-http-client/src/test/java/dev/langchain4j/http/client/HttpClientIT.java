@@ -3,6 +3,7 @@ package dev.langchain4j.http.client;
 import static dev.langchain4j.http.client.HttpMethod.POST;
 import static java.util.Collections.synchronizedList;
 import static java.util.Collections.synchronizedSet;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.joining;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
@@ -19,14 +20,13 @@ import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
-import java.nio.file.Files;
-import java.nio.file.Path;
+
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -224,7 +224,7 @@ public abstract class HttpClientIT {
             client.execute(request, new DefaultServerSentEventParser(), spyListener);
 
             // then
-            StreamingResult streamingResult = completableFuture.get(30, TimeUnit.SECONDS);
+            StreamingResult streamingResult = completableFuture.get(30, SECONDS);
 
             assertThat(streamingResult.response()).isNotNull();
             assertThat(streamingResult.response().statusCode()).isEqualTo(200);
@@ -313,7 +313,7 @@ public abstract class HttpClientIT {
             client.execute(request, new DefaultServerSentEventParser(), spyListener);
 
             // then
-            completableFuture.get(30, TimeUnit.SECONDS);
+            completableFuture.get(30, SECONDS);
 
             InOrder inOrder = inOrder(spyListener);
             inOrder.verify(spyListener, times(1)).onOpen(any());
@@ -397,7 +397,7 @@ public abstract class HttpClientIT {
             client.execute(request, new DefaultServerSentEventParser(), spyListener);
 
             // then
-            StreamingResult streamingResult = completableFuture.get(30, TimeUnit.SECONDS);
+            StreamingResult streamingResult = completableFuture.get(30, SECONDS);
 
             assertThat(streamingResult.response()).isNotNull();
             assertThat(streamingResult.response().statusCode()).isEqualTo(200);
@@ -480,7 +480,7 @@ public abstract class HttpClientIT {
             client.execute(request, new DefaultServerSentEventParser(), spyListener);
 
             // then
-            StreamingResult streamingResult = completableFuture.get(30, TimeUnit.SECONDS);
+            StreamingResult streamingResult = completableFuture.get(30, SECONDS);
 
             assertThat(streamingResult.throwable())
                     .isExactlyInstanceOf(HttpException.class)
@@ -527,6 +527,7 @@ public abstract class HttpClientIT {
             List<ServerSentEvent> events = synchronizedList(new ArrayList<>());
             List<Throwable> errors = synchronizedList(new ArrayList<>());
             Set<Thread> threads = synchronizedSet(new HashSet<>());
+            CompletableFuture<Void> future = new CompletableFuture<>();
 
             ServerSentEventListener listener = new ServerSentEventListener() {
 
@@ -559,10 +560,12 @@ public abstract class HttpClientIT {
                 @Override
                 public void onClose() {
                     threads.add(Thread.currentThread());
+                    future.complete(null);
                 }
             };
             ServerSentEventListener spyListener = spy(listener);
             client.execute(request, new DefaultServerSentEventParser(), spyListener);
+            future.get(30, SECONDS);
             Thread.sleep(5_000);
 
             // then
@@ -613,6 +616,7 @@ public abstract class HttpClientIT {
             List<ServerSentEvent> events = synchronizedList(new ArrayList<>());
             List<Throwable> errors = synchronizedList(new ArrayList<>());
             Set<Thread> threads = synchronizedSet(new HashSet<>());
+            CompletableFuture<Void> future = new CompletableFuture<>();
 
             ServerSentEventListener listener = new ServerSentEventListener() {
 
@@ -647,10 +651,12 @@ public abstract class HttpClientIT {
                 @Override
                 public void onClose() {
                     threads.add(Thread.currentThread());
+                    future.complete(null);
                 }
             };
             ServerSentEventListener spyListener = spy(listener);
             client.execute(request, new DefaultServerSentEventParser(), spyListener);
+            future.get(30, SECONDS);
             Thread.sleep(5_000);
 
             // then
@@ -703,6 +709,7 @@ public abstract class HttpClientIT {
             List<ServerSentEvent> events = synchronizedList(new ArrayList<>());
             List<Throwable> errors = synchronizedList(new ArrayList<>());
             Set<Thread> threads = synchronizedSet(new HashSet<>());
+            CompletableFuture<Void> future = new CompletableFuture<>();
 
             ServerSentEventListener listener = new ServerSentEventListener() {
 
@@ -723,6 +730,7 @@ public abstract class HttpClientIT {
                     errors.add(throwable);
                     threads.add(Thread.currentThread());
 
+                    future.complete(null);
                     throw new RuntimeException("Unexpected exception in onError()");
                 }
 
@@ -733,6 +741,7 @@ public abstract class HttpClientIT {
             };
             ServerSentEventListener spyListener = spy(listener);
             client.execute(request, new DefaultServerSentEventParser(), spyListener);
+            future.get(30, SECONDS);
             Thread.sleep(5_000);
 
             // then
@@ -784,6 +793,7 @@ public abstract class HttpClientIT {
             List<ServerSentEvent> events = synchronizedList(new ArrayList<>());
             List<Throwable> errors = synchronizedList(new ArrayList<>());
             Set<Thread> threads = synchronizedSet(new HashSet<>());
+            CompletableFuture<Void> future = new CompletableFuture<>();
 
             ServerSentEventListener listener = new ServerSentEventListener() {
 
@@ -803,6 +813,7 @@ public abstract class HttpClientIT {
                 public void onError(Throwable throwable) {
                     errors.add(throwable);
                     threads.add(Thread.currentThread());
+                    future.complete(null);
                 }
 
                 @Override
@@ -812,6 +823,7 @@ public abstract class HttpClientIT {
             };
             ServerSentEventListener spyListener = spy(listener);
             client.execute(request, new DefaultServerSentEventParser(), spyListener);
+            future.get(30, SECONDS);
             Thread.sleep(5_000);
 
             // then
@@ -833,8 +845,10 @@ public abstract class HttpClientIT {
 
     @Test
     protected void should_return_successful_http_response_sync_form_data() throws Exception {
-        Path audioPath =
-                Path.of(getClass().getClassLoader().getResource("sample.wav").toURI());
+        byte[] audioBytes;
+        try (InputStream is = getClass().getClassLoader().getResourceAsStream("sample.wav")) {
+            audioBytes = is.readAllBytes();
+        }
 
         for (HttpClient client : clients()) {
 
@@ -846,7 +860,7 @@ public abstract class HttpClientIT {
                     .addHeader("Content-Type", "multipart/form-data; boundary=----LangChain4j")
                     .addFormDataField("model", "gpt-4o-transcribe")
                     .addFormDataField("response_format", "text")
-                    .addFormDataFile("file", "audio.wav", "", Files.readAllBytes(audioPath))
+                    .addFormDataFile("file", "audio.wav", "", audioBytes)
                     .build();
 
             // when

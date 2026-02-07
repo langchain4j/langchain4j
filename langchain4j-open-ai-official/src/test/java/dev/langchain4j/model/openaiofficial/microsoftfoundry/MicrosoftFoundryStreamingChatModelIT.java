@@ -23,7 +23,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InOrder;
 
-@EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
+@EnabledIfEnvironmentVariable(named = "MICROSOFT_FOUNDRY_API_KEY", matches = ".+")
 class MicrosoftFoundryStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
@@ -34,9 +34,9 @@ class MicrosoftFoundryStreamingChatModelIT extends AbstractStreamingChatModelIT 
     @Override
     protected StreamingChatModel createModelWith(ChatRequestParameters parameters) {
         OpenAiOfficialStreamingChatModel.Builder openAiChatModelBuilder = OpenAiOfficialStreamingChatModel.builder()
-                .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-                .azureDeploymentName(CHAT_MODEL_NAME_ALTERNATE.asString())
+                .baseUrl(System.getenv("MICROSOFT_FOUNDRY_ENDPOINT"))
+                .apiKey(System.getenv("MICROSOFT_FOUNDRY_API_KEY"))
+                .microsoftFoundryDeploymentName(CHAT_MODEL_NAME_ALTERNATE.asString())
                 .defaultRequestParameters(parameters);
 
         if (parameters.modelName() == null) {
