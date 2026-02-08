@@ -51,24 +51,6 @@ public enum OTelGenAiAttributes {
      */
     REQUEST_TOP_P("gen_ai.request.top_p"),
 
-    /**
-     * The number of dimensions the resulting output embeddings have.
-     */
-    REQUEST_EMBEDDING_DIMENSIONS("gen_ai.request.embedding.dimensions"),
-
-    /**
-     * The format in which the generated image is returned.
-     */
-    REQUEST_IMAGE_RESPONSE_FORMAT("gen_ai.request.image.response_format"),
-    /**
-     * The size of the image to generate.
-     */
-    REQUEST_IMAGE_SIZE("gen_ai.request.image.size"),
-    /**
-     * The style of the image to generate.
-     */
-    REQUEST_IMAGE_STYLE("gen_ai.request.image.style"),
-
     // GenAI Response
 
     /**
@@ -91,16 +73,6 @@ public enum OTelGenAiAttributes {
      */
     ERROR_TYPE("error.type"),
 
-    // GenAI Content
-
-    /**
-     * The full prompt sent to the model.
-     */
-    PROMPT("gen_ai.prompt"),
-    /**
-     * The full response received from the model.
-     */
-    COMPLETION("gen_ai.completion"),
 
     // GenAi server information
     /**
