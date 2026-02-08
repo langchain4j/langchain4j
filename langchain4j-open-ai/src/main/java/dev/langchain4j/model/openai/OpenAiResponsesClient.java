@@ -60,6 +60,9 @@ class OpenAiResponsesClient {
     private static final String EVENT_FUNCTION_CALL_ARGUMENTS_DONE = "response.function_call_arguments.done";
     private static final String EVENT_OUTPUT_ITEM_DONE = "response.output_item.done";
     private static final String EVENT_RESPONSE_COMPLETED = "response.completed";
+    private static final String EVENT_RESPONSE_INCOMPLETE = "response.incomplete";
+    private static final String EVENT_RESPONSE_FAILED = "response.failed";
+    private static final String EVENT_RESPONSE_ERROR = "response.error";
 
     private static final String FIELD_TYPE = "type";
     private static final String FIELD_ROLE = "role";
@@ -79,6 +82,8 @@ class OpenAiResponsesClient {
     private static final String FIELD_ITEM_ID = "item_id";
     private static final String FIELD_OUTPUT_INDEX = "output_index";
     private static final String FIELD_RESPONSE = "response";
+    private static final String FIELD_ERROR = "error";
+    private static final String FIELD_MESSAGE = "message";
     private static final String FIELD_OUTPUT = "output";
     private static final String FIELD_USAGE = "usage";
     private static final String FIELD_INPUT_TOKENS = "input_tokens";
@@ -617,8 +622,10 @@ class OpenAiResponsesClient {
                     }
                 } else if (EVENT_OUTPUT_ITEM_DONE.equals(type)) {
                     handleOutputItemDone(node);
-                } else if (EVENT_RESPONSE_COMPLETED.equals(type)) {
+                } else if (EVENT_RESPONSE_COMPLETED.equals(type) || EVENT_RESPONSE_INCOMPLETE.equals(type)) {
                     handleResponseCompleted(node);
+                } else if (EVENT_RESPONSE_FAILED.equals(type) || EVENT_RESPONSE_ERROR.equals(type)) {
+                    handleResponseFailure(node);
                 }
             } catch (Exception e) {
                 throw new RuntimeException(e);
@@ -740,6 +747,26 @@ class OpenAiResponsesClient {
                     }
                 }
             }
+        }
+
+        private void handleResponseFailure(JsonNode node) {
+            JsonNode errorNode = node.path(FIELD_ERROR);
+            if (errorNode.isMissingNode()) {
+                errorNode = node.path(FIELD_RESPONSE).path(FIELD_ERROR);
+            }
+            String message = extractErrorMessage(errorNode);
+            withLoggingExceptions(() -> handler.onError(new RuntimeException(message)));
+        }
+
+        private String extractErrorMessage(JsonNode errorNode) {
+            if (errorNode == null || errorNode.isMissingNode() || errorNode.isNull()) {
+                return "Response failed";
+            }
+            String message = errorNode.path(FIELD_MESSAGE).asText(null);
+            if (message == null || message.isBlank()) {
+                message = errorNode.toString();
+            }
+            return "Response failed: " + message;
         }
 
         private FinishReason determineFinishReason(String status) {

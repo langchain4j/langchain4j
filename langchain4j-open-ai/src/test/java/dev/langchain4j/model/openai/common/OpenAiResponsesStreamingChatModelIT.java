@@ -481,6 +481,37 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
         }
     }
 
+    @Test
+    void should_fail_when_input_exceeds_context_limit() {
+        StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .modelName("gpt-5-nano")
+                .build();
+
+        String largeInput = generateLargeInput();
+
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(largeInput, handler);
+
+        assertThatThrownBy(handler::get)
+                .isInstanceOf(RuntimeException.class)
+                .hasRootCauseInstanceOf(RuntimeException.class)
+                .hasRootCauseMessage(
+                        "Response failed: Your input exceeds the context window of this model. Please adjust your input and try again.");
+    }
+
+    private static String generateLargeInput() {
+        String prefix = "count 'a' characters below:\n";
+        int repeats = 400_000;
+
+        StringBuilder builder = new StringBuilder(prefix.length() + repeats * 2);
+        builder.append(prefix);
+        for (int i = 0; i < repeats; i++) {
+            builder.append("a ");
+        }
+        return builder.toString();
+    }
+
     @Override
     protected void should_fail_if_images_as_public_URLs_are_not_supported(StreamingChatModel model) {
         UserMessage userMessage =

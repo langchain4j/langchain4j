@@ -459,6 +459,42 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
         assertThat(response.aiMessage().toolExecutionRequests()).hasSize(1);
     }
 
+    @Test
+    void should_fail_when_input_exceeds_context_limit() {
+
+        // given
+        var client = OpenAIOkHttpClient.builder()
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .build();
+
+        StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
+                .client(client)
+                .modelName("o4-mini")
+                .build();
+
+        String largeInput = generateLargeInput();
+
+        // when
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(largeInput, handler);
+
+        // then
+        assertThatThrownBy(handler::get)
+                .isInstanceOf(RuntimeException.class)
+                .hasRootCauseInstanceOf(com.openai.errors.SseException.class)
+                .hasRootCauseMessage(
+                        "200: Your input exceeds the context window of this model. Please adjust your input and try again.");
+    }
+
+    private static String generateLargeInput() {
+        StringBuilder builder = new StringBuilder(650_000);
+        builder.append("count 'a' characters below:\n");
+        for (int i = 0; i < 400_000; i++) {
+            builder.append("a ");
+        }
+        return builder.toString();
+    }
+
     @Override
     protected boolean supportsSingleImageInputAsPublicURL() {
         return false;
