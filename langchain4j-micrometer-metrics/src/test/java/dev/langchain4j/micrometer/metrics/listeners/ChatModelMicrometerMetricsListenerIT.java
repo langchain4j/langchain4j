@@ -2,15 +2,12 @@ package dev.langchain4j.micrometer.metrics.listeners;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.HashMap;
 import java.util.List;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.micrometer.metrics.conventions.OTelGenAiAttributes;
 import dev.langchain4j.micrometer.metrics.conventions.OTelGenAiMetricName;
 import dev.langchain4j.micrometer.metrics.conventions.OTelGenAiTokenType;
-import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.azure.AzureOpenAiChatModel;
-import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -22,23 +19,11 @@ class ChatModelMicrometerMetricsListenerIT {
 
     ChatModelMicrometerMetricsListener listener;
     MeterRegistry meterRegistry;
-    private static String AI_SYSTEM_NAME = "azure_openai";
 
     @BeforeEach
     void setUp() {
         meterRegistry = new SimpleMeterRegistry();
-        listener = new ChatModelMicrometerMetricsListener(meterRegistry, AI_SYSTEM_NAME);
-    }
-
-    @Test
-    void should_set_systemName_on_request() {
-        ChatRequest chatRequest =
-                ChatRequest.builder().messages(UserMessage.from("Hello")).build();
-
-        ChatModelRequestContext requestContext = new ChatModelRequestContext(chatRequest, ModelProvider.AZURE_OPEN_AI, new HashMap<>());
-        listener.onRequest(requestContext);
-
-        assertThat(requestContext.attributes().get(OTelGenAiAttributes.SYSTEM)).isEqualTo(AI_SYSTEM_NAME);
+        listener = new ChatModelMicrometerMetricsListener(meterRegistry);
     }
 
     @Test

@@ -1,8 +1,5 @@
 package dev.langchain4j.micrometer.metrics.listeners;
 
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-
-import java.util.Map;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.micrometer.metrics.conventions.OTelGenAiAttributes;
 import dev.langchain4j.micrometer.metrics.conventions.OTelGenAiMetricName;
@@ -28,23 +25,19 @@ import io.micrometer.core.instrument.MeterRegistry;
 public class ChatModelMicrometerMetricsListener implements ChatModelListener {
 
     private final MeterRegistry meterRegistry;
-    private final String aiProviderName;
 
     /**
      * Creates a new {@link ChatModelMicrometerMetricsListener}.
      *
      * @param meterRegistry the {@link MeterRegistry} to register metrics with
-     * @param aiProviderName  the AI system name, should follow OpenTelemetry Semantic Conventions
-     *                      for Generative AI Metrics (e.g., "openai", "azure_openai", "anthropic")
      */
-    public ChatModelMicrometerMetricsListener(MeterRegistry meterRegistry, String aiProviderName) {
+    public ChatModelMicrometerMetricsListener(MeterRegistry meterRegistry) {
         this.meterRegistry = meterRegistry;
-        this.aiProviderName = ensureNotBlank(aiProviderName, "aiProviderName");
     }
 
     @Override
     public void onRequest(final ChatModelRequestContext requestContext) {
-        setProviderName(requestContext);
+        // Nothing to do at on request
     }
 
     @Override
@@ -57,12 +50,8 @@ public class ChatModelMicrometerMetricsListener implements ChatModelListener {
         // ChatModelErrorContext does not contain the ChatModelResponseContext, therefor token usage is unavailable
     }
 
-    private void setProviderName(ChatModelRequestContext requestContext) {
-        requestContext.attributes().put(OTelGenAiAttributes.PROVIDER_NAME, aiProviderName);
-    }
-
-    private String getProviderName(Map<Object, Object> attributes) {
-        return (String) attributes.get(OTelGenAiAttributes.PROVIDER_NAME);
+    private String getProviderName(ChatModelResponseContext responseContext) {
+        return responseContext.modelProvider().toString().toLowerCase();
     }
 
     private void recordTokenUsageMetrics(ChatModelResponseContext responseContext) {
@@ -84,7 +73,7 @@ public class ChatModelMicrometerMetricsListener implements ChatModelListener {
 
         Counter.builder(OTelGenAiMetricName.TOKEN_USAGE.value())
                 .tag(OTelGenAiAttributes.OPERATION_NAME.value(), OTelGenAiOperationName.CHAT.value())
-                .tag(OTelGenAiAttributes.PROVIDER_NAME.value(), getProviderName(responseContext.attributes()))
+                .tag(OTelGenAiAttributes.PROVIDER_NAME.value(), getProviderName(responseContext))
                 .tag(OTelGenAiAttributes.REQUEST_MODEL.value(),
                      responseContext.chatRequest().parameters().modelName())
                 .tag(OTelGenAiAttributes.RESPONSE_MODEL.value(),
