@@ -166,7 +166,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 .maxOutputTokens(maxOutputTokens)
                 .maxCompletionTokens(maxOutputTokens)
                 .build();
-        this.strict = getOrDefault(builder.strict, true);
+        this.strict = getOrDefault(builder.strict, false);
     }
 
     public static Builder builder() {
@@ -722,7 +722,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         }
 
         /**
-         * Sets whether to use strict mode for function calling. Defaults to true.
+         * Sets whether to use strict mode for function calling. Defaults to false.
          *
          * <p>When strict mode is enabled, the schema will include "additionalProperties": false and
          * "required" arrays with all property keys.

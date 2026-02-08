@@ -15,7 +15,6 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-
 import java.util.List;
 
 @Experimental
@@ -72,7 +71,7 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
         this.textVerbosity = builder.textVerbosity;
         this.streamIncludeObfuscation = builder.streamIncludeObfuscation;
         this.store = getOrDefault(builder.store, false);
-        this.strict = getOrDefault(builder.strict, true);
+        this.strict = getOrDefault(builder.strict, false);
         this.listeners = copy(builder.listeners);
         this.defaultRequestParameters = DefaultChatRequestParameters.builder()
                 .modelName(modelName)
