@@ -15,7 +15,7 @@
     <description>Micrometer implementation for LangChain4J</description>
 
     <properties>
-        <micrometer.version>1.13.8</micrometer.version>
+        <micrometer.version>1.16.2</micrometer.version>
     </properties>
 
     <dependencyManagement>
@@ -23,7 +23,7 @@
             <dependency>
                 <groupId>io.micrometer</groupId>
                 <artifactId>micrometer-bom</artifactId>
-                <version>1.14.2</version>
+                <version>${micrometer.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
