@@ -271,10 +271,63 @@ The `attributes` map allows passing information between the `onRequest`, `onResp
   `StreamingChatResponseHandler.onCompleteResponse()` is called. The `ChatModelListener.onError()` is called
   before the `StreamingChatResponseHandler.onError()` is called.
 
+### Observability Metrics with Micrometer
+
+The `langchain4j-micrometer-metrics` module provides a Micrometer-based metrics implementation for the `langchain4j` library. Currently, it provides metrics for chat model interactions using a `ChatModelListener` implementation that collects metrics via Micrometer's `MeterRegistry`.
+
+The naming of the metrics follows the [OpenTelemetry Semantic Conventions for Generative AI Metrics](https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-metrics/). (v1.39.0)
+
+> **⚠️ Experimental**: This module is marked as `@Experimental` and may have breaking changes in future versions.
+
+> **⚠️ Warning**: The OpenTelemetry Semantic Conventions for Generative AI are currently **experimental and not stable**. This means they may have breaking changes in future versions. If you follow these conventions, you may need to introduce breaking changes to your dashboards, alerts, and automations when the conventions are updated.
+
+#### Metrics
+
+The following metrics are currently collected:
+
+| Metric Name | Type | Description |
+|-------------|------|-------------|
+| `gen_ai.client.token.usage` | Counter | The number of tokens used by the model for input or output |
+
+##### Tags on `gen_ai.client.token.usage`
+
+| Tag                     | Description | Example Values |
+|-------------------------|-------------|----------------|
+| `gen_ai.operation.name` | The operation being performed | `chat` |
+| `gen_ai.provider.name`  | The AI provider name | `openai`, `azure_openai`, `anthropic` |
+| `gen_ai.request.model`  | The model name from the request | `gpt-4`, `gpt-35-turbo` |
+| `gen_ai.response.model` | The model name from the response | `gpt-4-0613` |
+| `gen_ai.token.type`     | The type of token counted | `input`, `output` |
+
+#### Viewing the Metrics
+
+You can view the metrics by visiting the `/actuator/metrics` endpoint of your application.
+
+For example, if you are running your application on `localhost:8080`, you can visit `http://localhost:8080/actuator/metrics` to view the metrics.
+
+##### Token Usage Metric
+
+View the token usage metric at:
+```
+/actuator/metrics/gen_ai.client.token.usage
+```
+
+##### Filtering by Token Type
+
+The `gen_ai.token.type` tag indicates whether the tokens were used for input or output:
+
+| Token Type | Endpoint |
+|------------|----------|
+| Input tokens | `/actuator/metrics/gen_ai.client.token.usage?tag=gen_ai.token.type:input` |
+| Output tokens | `/actuator/metrics/gen_ai.client.token.usage?tag=gen_ai.token.type:output` |
+
+> **Note**: The endpoint for the `gen_ai.client.token.usage` metric without any tags shows the sum of all token usage (both input and output tokens across all models and systems).
 
 ## Observability in Spring Boot Application
 
 See more details [here](/tutorials/spring-boot-integration#observability).
+
+See more details on how to implement the ChatModelListener with Micrometer Metrics: [here](/tutorials/spring-boot-integration#Micrometer Metrics). 
 
 ## Third-party Integrations
 

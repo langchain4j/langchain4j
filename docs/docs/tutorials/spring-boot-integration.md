@@ -265,6 +265,107 @@ Every `ChatModelListener` bean in the application context will be automatically
 injected into all `ChatModel` and `StreamingChatModel` beans
 created by one of our Spring Boot starters.
 
+### Micrometer Metrics
+Add the `langchain4j-micrometer-metrics` dependency to your project:
+
+For Maven:
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-micrometer-metrics</artifactId>
+    <version>${project.version}</version>
+</dependency>
+```
+For Gradle:
+```gradle
+implementation 'dev.langchain4j:langchain4j-micrometer-metrics:${project.version}'
+```
+
+#### Micrometer (Actuator) Configuration
+You should also have the necessary Actuator dependency in your project. For example, if you are using Spring Boot, you can add the following dependencies to your `pom.xml`:
+
+For Maven:
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-actuator</artifactId>
+</dependency>
+```
+For Gradle:
+```gradle
+implementation 'org.springframework.boot:spring-boot-starter-actuator'
+```
+
+Enable the `/metrics` Actuator endpoint in your properties.
+
+application.properties:
+```properties
+management.endpoints.web.exposure.include=metrics
+```
+application.yaml:
+```yaml
+management:
+  endpoints:
+    web:
+      exposure:
+        include: metrics
+```
+
+#### Add observability to your ChatModel
+
+The `ChatModelMicrometerMetricsListener` collects metrics for chat model interactions. It requires a `MeterRegistry` (provided by Micrometer) and an AI system name that identifies the provider.
+
+```java
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.micrometer.metrics.listeners.ChatModelMicrometerMetricsListener;
+import dev.langchain4j.model.azure.AzureOpenAiChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import io.micrometer.core.instrument.MeterRegistry;
+
+import java.util.List;
+
+// Get the MeterRegistry (from Spring context or create manually)
+MeterRegistry meterRegistry = ...; // e.g., new SimpleMeterRegistry() or injected from Spring
+
+// 1. Create the listener with the MeterRegistry and AI system name
+ChatModelMicrometerMetricsListener listener = 
+    new ChatModelMicrometerMetricsListener(meterRegistry);
+
+// 2. Add the listener to your ChatModel
+AzureOpenAiChatModel chatModel = AzureOpenAiChatModel.builder()
+        .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+        .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+        .deploymentName(System.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"))
+        .listeners(List.of(listener))
+        .build();
+
+// 3. Use the chat model as usual - metrics are collected automatically
+ChatResponse response = chatModel.chat(ChatRequest.builder()
+        .messages(UserMessage.from("Hello!"))
+        .build());
+```
+
+##### Create the ChatModelMicrometerMetricsListener as a bean
+
+In a Spring Boot application, you can create the listener as a bean and inject the `MeterRegistry`:
+
+```java
+import dev.langchain4j.micrometer.metrics.listeners.ChatModelMicrometerMetricsListener;
+import io.micrometer.core.instrument.MeterRegistry;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class MetricsConfig {
+
+    @Bean
+    public ChatModelMicrometerMetricsListener chatModelMetricsListener(MeterRegistry meterRegistry) {
+        return new ChatModelMicrometerMetricsListener(meterRegistry);
+    }
+}
+```
+
 ## Testing
 
 - [An example of integration testing for a Customer Support Agent](https://github.com/langchain4j/langchain4j-examples/blob/main/customer-support-agent-example/src/test/java/dev/langchain4j/example/CustomerSupportAgentIT.java)
