@@ -122,6 +122,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
     private static final String CONTENT_BLOCK_THINKING = "thinking";
     private static final String CONTENT_BLOCK_REDACTED_THINKING = "redacted_thinking";
     private static final String CONTENT_BLOCK_TOOL_USE = "tool_use";
+    private static final String DEFAULT_USER_AGENT = "langchain4j";
 
     private final HttpClient httpClient;
     private final String baseUrl;
@@ -612,6 +613,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 .url(baseUrl, "models")
                 .addHeader("x-api-key", apiKey)
                 .addHeader("anthropic-version", version)
+                .addHeader("User-Agent", DEFAULT_USER_AGENT)
                 .build();
         SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
         return fromJson(successfulHttpResponse.body(), AnthropicModelsListResponse.class);
@@ -653,6 +655,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 .addHeader("Content-Type", "application/json")
                 .addHeader("x-api-key", apiKey)
                 .addHeader("anthropic-version", version)
+                .addHeader("User-Agent", DEFAULT_USER_AGENT)
                 .body(jsonRequest);
 
         if (this.beta != null) {

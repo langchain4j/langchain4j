@@ -112,6 +112,7 @@ class DefaultAnthropicClientTest {
             assertThat(sentRequest.headers().get("Content-Type")).containsExactly("application/json");
             assertThat(sentRequest.headers().get("x-api-key")).containsExactly(TEST_API_KEY);
             assertThat(sentRequest.headers().get("anthropic-version")).containsExactly(TEST_VERSION);
+            assertThat(sentRequest.headers().get("User-Agent")).containsExactly("langchain4j");
             assertThat(sentRequest.body()).isEqualTo(Json.toJson(request));
         }
 
@@ -214,6 +215,7 @@ class DefaultAnthropicClientTest {
             assertThat(sentRequest.url()).isEqualTo(TEST_BASE_URL + "/messages/count_tokens");
             assertThat(sentRequest.headers().get("x-api-key")).containsExactly(TEST_API_KEY);
             assertThat(sentRequest.headers().get("anthropic-version")).containsExactly(TEST_VERSION);
+            assertThat(sentRequest.headers().get("User-Agent")).containsExactly("langchain4j");
         }
     }
 
@@ -260,6 +262,7 @@ class DefaultAnthropicClientTest {
             assertThat(sentRequest.url()).isEqualTo(TEST_BASE_URL + "/models");
             assertThat(sentRequest.headers().get("x-api-key")).containsExactly(TEST_API_KEY);
             assertThat(sentRequest.headers().get("anthropic-version")).containsExactly(TEST_VERSION);
+            assertThat(sentRequest.headers().get("User-Agent")).containsExactly("langchain4j");
         }
     }
 
@@ -344,6 +347,7 @@ class DefaultAnthropicClientTest {
             assertThat(sentRequest.headers().get("Content-Type")).containsExactly("application/json");
             assertThat(sentRequest.headers().get("x-api-key")).containsExactly(TEST_API_KEY);
             assertThat(sentRequest.headers().get("anthropic-version")).containsExactly(TEST_VERSION);
+            assertThat(sentRequest.headers().get("User-Agent")).containsExactly("langchain4j");
         }
 
         @Test
