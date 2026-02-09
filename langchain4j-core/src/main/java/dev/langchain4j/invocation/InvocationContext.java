@@ -173,7 +173,8 @@ public interface InvocationContext {
         /**
          * Sets the LC4j managed parameters for the builder.
          */
-        public Builder managedParameters(Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managedParameters) {
+        public Builder managedParameters(
+                Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managedParameters) {
             this.managedParameters = managedParameters;
             return this;
         }
@@ -198,8 +199,8 @@ public interface InvocationContext {
         /**
          * Constructs an instance of {@link InvocationContext} using the current state of the builder.
          */
-        public <T extends InvocationContext> T build() {
-            return (T) new DefaultInvocationContext(this);
+        public InvocationContext build() {
+            return new DefaultInvocationContext(this);
         }
 
         public UUID invocationId() {
