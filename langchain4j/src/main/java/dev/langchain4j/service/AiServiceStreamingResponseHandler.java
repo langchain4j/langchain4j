@@ -300,13 +300,15 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     try {
                         ToolRequestResult toolRequestResult = toolExecutionFuture.get();
                         fireToolExecutedEvent(toolRequestResult);
-                        toolResults.add(toolRequestResult.result());
+                        ToolExecutionRequest toolExecutionRequest = toolRequestResult.request();
+                        ToolExecutionResult toolExecutionResult = toolRequestResult.result();
+                        toolResults.add(toolExecutionResult);
                         ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.builder()
-                                .id(toolRequestResult.request().id())
-                                .toolName(toolRequestResult.request().name())
-                                .text(toolRequestResult.result().resultText())
-                                .isError(toolRequestResult.result().isError())
-                                .attributes(toolRequestResult.result().attributes())
+                                .id(toolExecutionRequest.id())
+                                .toolName(toolExecutionRequest.name())
+                                .text(toolExecutionResult.resultText())
+                                .isError(toolExecutionResult.isError())
+                                .attributes(toolExecutionResult.attributes())
                                 .build();
                         addToMemory(toolExecutionResultMessage);
                         immediateToolReturn = immediateToolReturn

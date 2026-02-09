@@ -253,14 +253,14 @@ public class ToolService {
             return this.toolSpecifications.isEmpty()
                     ? ToolServiceContext.Empty.INSTANCE
                     : ToolServiceContext.builder()
-                            .effectiveTools(findEffectiveTools(chatMemory, this.toolSpecifications, toolSearchTools))
+                            .effectiveTools(getEffectiveTools(chatMemory, this.toolSpecifications, toolSearchTools))
                             .availableTools(this.toolSpecifications)
-                            .toolExecutors(getToolExecutors(this.toolExecutors, toolSearchTools, this.toolSpecifications))
+                            .toolExecutors(getToolExecutors(this.toolExecutors, this.toolSpecifications, toolSearchTools))
                             .immediateReturnTools(this.immediateReturnTools)
                             .build();
         }
 
-        List<ToolSpecification> toolSpecifications = new ArrayList<>(this.toolSpecifications);
+        List<ToolSpecification> availableTools = new ArrayList<>(this.toolSpecifications);
         Map<String, ToolExecutor> toolExecutors = new HashMap<>(this.toolExecutors);
         Set<String> immediateReturnTools = new HashSet<>(this.immediateReturnTools);
         ToolProviderRequest toolProviderRequest = ToolProviderRequest.builder()
@@ -273,7 +273,7 @@ public class ToolService {
                     toolProviderResult.tools().entrySet()) {
                 String toolName = entry.getKey().name();
                 if (toolExecutors.putIfAbsent(toolName, entry.getValue()) == null) {
-                    toolSpecifications.add(entry.getKey());
+                    availableTools.add(entry.getKey());
                 } else {
                     throw new IllegalConfigurationException(
                             "Duplicated definition for tool: " + entry.getKey().name());
@@ -284,17 +284,17 @@ public class ToolService {
             }
         }
         return ToolServiceContext.builder()
-                .effectiveTools(findEffectiveTools(chatMemory, toolSpecifications, toolSearchTools))
-                .availableTools(toolSpecifications)
-                .toolExecutors(getToolExecutors(toolExecutors, toolSearchTools, toolSpecifications))
+                .effectiveTools(getEffectiveTools(chatMemory, availableTools, toolSearchTools))
+                .availableTools(availableTools)
+                .toolExecutors(getToolExecutors(toolExecutors, availableTools, toolSearchTools))
                 .immediateReturnTools(immediateReturnTools)
                 .build();
     }
 
     // TODO extract TST logic in a separate class
-    private List<ToolSpecification> findEffectiveTools(ChatMemory chatMemory,
-                                                       List<ToolSpecification> availableTools,
-                                                       List<ToolSpecification> toolSearchTools) { // TODO name
+    private List<ToolSpecification> getEffectiveTools(ChatMemory chatMemory,
+                                                      List<ToolSpecification> availableTools,
+                                                      List<ToolSpecification> toolSearchTools) { // TODO name
         if (this.toolSearchStrategy == null) {
             return availableTools;
         }
@@ -321,9 +321,9 @@ public class ToolService {
     }
 
     private Map<String, ToolExecutor> getToolExecutors(Map<String, ToolExecutor> toolExecutors,
-                                                       List<ToolSpecification> toolSearchTools,
-                                                       List<ToolSpecification> availableToolSpecifications) {
-        if (toolSearchTools.isEmpty()) {
+                                                       List<ToolSpecification> availableTools,
+                                                       List<ToolSpecification> toolSearchTools) {
+        if (this.toolSearchStrategy == null) {
             return toolExecutors;
         }
 
@@ -335,7 +335,7 @@ public class ToolService {
                 public ToolExecutionResult executeWithContext(ToolExecutionRequest request, InvocationContext context) {
                     ToolSearchRequest toolSearchRequest = ToolSearchRequest.builder()
                             .toolSearchRequest(request)
-                            .availableTools(availableToolSpecifications)
+                            .availableTools(availableTools)
                             .invocationContext(context)
                             .build();
 
@@ -343,17 +343,9 @@ public class ToolService {
 
                     return ToolExecutionResult.builder()
                             .result(toolSearchResult)
-                            .resultText(formatMessage(toolSearchResult))
+                            .resultText(toolSearchResult.toolExecutionResultMessageText())
                             .attributes(Map.of(FOUND_TOOLS_ATTRIBUTE, toolSearchResult.foundToolNames()))
                             .build();
-                }
-
-                private static String formatMessage(ToolSearchResult toolSearchResult) {
-                    if (toolSearchResult.foundToolNames().isEmpty()) {
-                        return "No matching tools found";
-                    } else {
-                        return "Tools found: " + String.join(", ", toolSearchResult.foundToolNames());
-                    }
                 }
 
                 @Override
@@ -406,7 +398,7 @@ public class ToolService {
             Map<ToolExecutionRequest, ToolExecutionResult> toolResults =
                     execute(aiMessage.toolExecutionRequests(), toolServiceContext.toolExecutors(), invocationContext);
 
-            boolean immediateToolReturn = !aiMessage.toolExecutionRequests().isEmpty();
+            boolean immediateToolReturn = !aiMessage.toolExecutionRequests().isEmpty(); // TODO
             for (Map.Entry<ToolExecutionRequest, ToolExecutionResult> entry : toolResults.entrySet()) {
                 ToolExecutionRequest request = entry.getKey();
                 ToolExecutionResult result = entry.getValue();

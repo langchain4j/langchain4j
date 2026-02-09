@@ -14,7 +14,6 @@ import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.SystemMessage;
-import dev.langchain4j.service.tool.search.ToolSearchStrategy;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -34,7 +33,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
-class VectorToolSearchStrategyIT {
+class VectorToolSearchStrategyIT { // TODO name
 
     private static OpenAiChatModel.OpenAiChatModelBuilder baseModelBuilder() {
         return OpenAiChatModel.builder()
@@ -89,7 +88,7 @@ class VectorToolSearchStrategyIT {
 
         ChatModel spyChatModel = spy(chatModel);
         Tools spyTools = spy(new Tools());
-        ToolSearchStrategy spyToolSearchStrategy = spy(VectorToolSearchStrategy.builder()
+        VectorToolSearchStrategy spyToolSearchStrategy = spy(VectorToolSearchStrategy.builder()
                 .embeddingModel(embeddingModel)
                 .maxResults(1)
                 .build());
@@ -134,6 +133,7 @@ class VectorToolSearchStrategyIT {
 
         verifyNoMoreInteractionsFor(spyChatModel);
         ignoreInteractions(spyToolSearchStrategy).toolSearchTools(any());
+        ignoreInteractions(spyToolSearchStrategy).format(any());
         verifyNoMoreInteractions(spyToolSearchStrategy);
         verifyNoMoreInteractions(spyTools);
 
@@ -175,6 +175,7 @@ class VectorToolSearchStrategyIT {
 
         verifyNoMoreInteractionsFor(spyChatModel);
         ignoreInteractions(spyToolSearchStrategy).toolSearchTools(any());
+        ignoreInteractions(spyToolSearchStrategy).format(any());
         verifyNoMoreInteractions(spyToolSearchStrategy);
         verifyNoMoreInteractions(spyTools);
 

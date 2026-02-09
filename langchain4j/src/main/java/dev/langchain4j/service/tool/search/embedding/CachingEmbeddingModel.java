@@ -100,4 +100,8 @@ class CachingEmbeddingModel implements EmbeddingModel {
     public String modelName() {
         return delegate.modelName();
     }
+
+    void clearCache() {
+        cache.clear();
+    }
 }

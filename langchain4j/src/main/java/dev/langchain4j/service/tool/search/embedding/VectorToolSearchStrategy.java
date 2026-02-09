@@ -94,7 +94,7 @@ public class VectorToolSearchStrategy implements ToolSearchStrategy { // TODO na
 
         request.availableTools().stream()
                 .map(tool -> {
-                    String text = tool.name() + ": " + tool.description();
+                    String text = format(tool);
                     Metadata metadata = Metadata.from(METADATA_TOOL_NAME, tool.name());
                     return TextSegment.from(text, metadata);
                 })
@@ -142,6 +142,13 @@ public class VectorToolSearchStrategy implements ToolSearchStrategy { // TODO na
         }
     }
 
+    /**
+     * TODO
+     */
+    protected String format(ToolSpecification tool) {
+        return tool.name() + ": " + tool.description();
+    }
+
     private void throwException(String message, Exception e) {
         if (throwToolArgumentsExceptions) {
             throw e == null
@@ -151,6 +158,14 @@ public class VectorToolSearchStrategy implements ToolSearchStrategy { // TODO na
             throw e == null
                     ? new ToolExecutionException(message)
                     : new ToolExecutionException(message, e);
+        }
+    }
+
+    public void clearEmbeddingsCache() {
+        if (embeddingModel instanceof CachingEmbeddingModel cachingEmbeddingModel) {
+            cachingEmbeddingModel.clearCache();
+        } else {
+            throw new IllegalStateException("Not caching embeddings, nothing to clear");
         }
     }
 
