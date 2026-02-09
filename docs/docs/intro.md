@@ -101,6 +101,7 @@ LangChain4j features a modular design, comprising:
 
 ## LangChain4j Repositories
 - [Main repository](https://github.com/langchain4j/langchain4j)
+- [Micronaut integration](https://github.com/micronaut-projects/micronaut-langchain4j)
 - [Quarkus extension](https://github.com/quarkiverse/quarkus-langchain4j)
 - [Spring Boot integration](https://github.com/langchain4j/langchain4j-spring)
 - [Community integrations](https://github.com/langchain4j/langchain4j-community)
