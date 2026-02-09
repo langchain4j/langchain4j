@@ -45,8 +45,6 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(GPT_4_1_NANO.toString())
                 .strict(true)
-                .logRequests(true)
-                .logResponses(true)
                 .build();
 
         return List.of(model);

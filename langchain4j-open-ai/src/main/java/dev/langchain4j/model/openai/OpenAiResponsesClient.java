@@ -3,6 +3,7 @@ package dev.langchain4j.model.openai;
 import static dev.langchain4j.http.client.sse.ServerSentEventParsingHandleUtils.toStreamingHandle;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.toMapForOpenAiResponses;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -25,7 +26,6 @@ import dev.langchain4j.http.client.HttpClientBuilderLoader;
 import dev.langchain4j.http.client.HttpMethod;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
-import dev.langchain4j.http.client.log.LoggingHttpClient;
 import dev.langchain4j.http.client.sse.CancellationUnsupportedHandle;
 import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
@@ -35,8 +35,15 @@ import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
+import dev.langchain4j.model.chat.request.ToolChoice;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
+import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.output.FinishReason;
@@ -149,12 +156,7 @@ class OpenAiResponsesClient {
     OpenAiResponsesClient(Builder builder) {
         HttpClientBuilder httpClientBuilder =
                 getOrDefault(builder.httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder);
-        HttpClient httpClient = httpClientBuilder.build();
-        if (builder.logRequests || builder.logResponses) {
-            this.httpClient = new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses);
-        } else {
-            this.httpClient = httpClient;
-        }
+        this.httpClient = httpClientBuilder.build();
         this.baseUrl = getOrDefault(builder.baseUrl, DEFAULT_BASE_URL);
         this.apiKey = builder.apiKey;
         this.organizationId = builder.organizationId;
@@ -169,7 +171,10 @@ class OpenAiResponsesClient {
             Map<String, Object> payload = buildRequestPayload(chatRequest, config);
             HttpRequest request = buildHttpRequest(payload);
 
-            httpClient.execute(request, new DefaultServerSentEventParser(), new ResponsesApiEventListener(handler));
+            httpClient.execute(
+                    request,
+                    new DefaultServerSentEventParser(),
+                    new ResponsesApiEventListener(handler, config.maxToolCalls()));
 
         } catch (Exception e) {
             withLoggingExceptions(() -> handler.onError(ExceptionMapper.DEFAULT.mapException(e)));
@@ -178,6 +183,9 @@ class OpenAiResponsesClient {
 
     private Map<String, Object> buildRequestPayload(ChatRequest chatRequest, OpenAiResponsesConfig config) {
         ChatRequestParameters parameters = chatRequest.parameters();
+        if (parameters == null) {
+            throw new IllegalArgumentException("chatRequest.parameters() must be provided");
+        }
 
         var input = new ArrayList<Map<String, Object>>();
         for (var msg : chatRequest.messages()) {
@@ -185,30 +193,21 @@ class OpenAiResponsesClient {
         }
 
         var payload = new HashMap<String, Object>();
-        String effectiveModelName =
-                parameters != null && parameters.modelName() != null ? parameters.modelName() : config.modelName();
-        payload.put(FIELD_MODEL, effectiveModelName);
+        payload.put(FIELD_MODEL, parameters.modelName());
         payload.put(FIELD_INPUT, input);
         payload.put(FIELD_STREAM, true);
         payload.put(FIELD_STORE, config.store());
 
-        Double effectiveTemperature = parameters != null && parameters.temperature() != null
-                ? parameters.temperature()
-                : config.temperature();
-        if (effectiveTemperature != null) {
-            payload.put(FIELD_TEMPERATURE, effectiveTemperature);
+        if (parameters.temperature() != null) {
+            payload.put(FIELD_TEMPERATURE, parameters.temperature());
         }
 
-        Double effectiveTopP = parameters != null && parameters.topP() != null ? parameters.topP() : config.topP();
-        if (effectiveTopP != null) {
-            payload.put(FIELD_TOP_P, effectiveTopP);
+        if (parameters.topP() != null) {
+            payload.put(FIELD_TOP_P, parameters.topP());
         }
 
-        Integer requestMaxOutputTokens = parameters != null ? parameters.maxOutputTokens() : null;
-        Integer effectiveMaxOutputTokens =
-                requestMaxOutputTokens != null ? requestMaxOutputTokens : config.maxOutputTokens();
-        if (effectiveMaxOutputTokens != null) {
-            payload.put(FIELD_MAX_OUTPUT_TOKENS, effectiveMaxOutputTokens);
+        if (parameters.maxOutputTokens() != null) {
+            payload.put(FIELD_MAX_OUTPUT_TOKENS, parameters.maxOutputTokens());
         }
 
         if (config.maxToolCalls() != null) {
@@ -323,9 +322,12 @@ class OpenAiResponsesClient {
         HttpRequest.Builder requestBuilder = HttpRequest.builder()
                 .url(baseUrl + "/responses")
                 .method(HttpMethod.POST)
-                .addHeader("Authorization", "Bearer " + apiKey)
                 .addHeader("Content-Type", "application/json")
                 .addHeader("Accept", "text/event-stream");
+
+        if (apiKey != null && !apiKey.isBlank()) {
+            requestBuilder.addHeader("Authorization", "Bearer " + apiKey);
+        }
 
         if (organizationId != null) {
             requestBuilder.addHeader(OPENAI_ORGANIZATION_HEADER, organizationId);
@@ -360,11 +362,14 @@ class OpenAiResponsesClient {
 
             if (aiMessage.hasToolExecutionRequests()) {
                 for (ToolExecutionRequest toolRequest : aiMessage.toolExecutionRequests()) {
+                    String callId = requireNonBlank(toolRequest.id(), "ToolExecutionRequest.id");
+                    String name = requireNonBlank(toolRequest.name(), "ToolExecutionRequest.name");
+                    String arguments = requireNonBlank(toolRequest.arguments(), "ToolExecutionRequest.arguments");
                     var functionCall = new HashMap<String, Object>();
                     functionCall.put(FIELD_TYPE, TYPE_FUNCTION_CALL);
-                    functionCall.put(FIELD_CALL_ID, toolRequest.id());
-                    functionCall.put(FIELD_NAME, toolRequest.name());
-                    functionCall.put(FIELD_ARGUMENTS, toolRequest.arguments());
+                    functionCall.put(FIELD_CALL_ID, callId);
+                    functionCall.put(FIELD_NAME, name);
+                    functionCall.put(FIELD_ARGUMENTS, arguments);
                     items.add(functionCall);
                 }
             }
@@ -417,7 +422,7 @@ class OpenAiResponsesClient {
         }
     }
 
-    private String toToolChoiceString(dev.langchain4j.model.chat.request.ToolChoice toolChoice) {
+    private String toToolChoiceString(ToolChoice toolChoice) {
         if (toolChoice == null) {
             return null;
         }
@@ -428,29 +433,34 @@ class OpenAiResponsesClient {
         };
     }
 
-    private Map<String, Object> toResponseTextConfig(
-            dev.langchain4j.model.chat.request.ResponseFormat responseFormat, boolean strict) {
-        if (responseFormat == null
-                || responseFormat.type() == dev.langchain4j.model.chat.request.ResponseFormatType.TEXT) {
+    private static String requireNonBlank(String value, String fieldName) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(fieldName + " must be provided");
+        }
+        return value;
+    }
+
+    private Map<String, Object> toResponseTextConfig(ResponseFormat responseFormat, boolean strict) {
+        if (responseFormat == null || responseFormat.type() == ResponseFormatType.TEXT) {
             return null;
         }
 
         var textConfig = new HashMap<String, Object>();
-        dev.langchain4j.model.chat.request.json.JsonSchema jsonSchema = responseFormat.jsonSchema();
+        JsonSchema jsonSchema = responseFormat.jsonSchema();
 
         if (jsonSchema == null) {
             var format = new HashMap<String, Object>();
             format.put(FIELD_TYPE, TYPE_JSON_OBJECT);
             textConfig.put(FIELD_FORMAT, format);
         } else {
-            if (!(jsonSchema.rootElement() instanceof dev.langchain4j.model.chat.request.json.JsonObjectSchema
-                    || jsonSchema.rootElement() instanceof dev.langchain4j.model.chat.request.json.JsonRawSchema)) {
+            if (!(jsonSchema.rootElement() instanceof JsonObjectSchema
+                    || jsonSchema.rootElement() instanceof JsonRawSchema)) {
                 throw new IllegalArgumentException(
                         "For OpenAI Responses API, the root element of the JSON Schema must be either a JsonObjectSchema or a JsonRawSchema, but it was: "
                                 + jsonSchema.rootElement().getClass());
             }
 
-            Map<String, Object> schemaMap = toMap(jsonSchema.rootElement(), strict);
+            Map<String, Object> schemaMap = toMapForOpenAiResponses(jsonSchema.rootElement(), strict);
             var format = new HashMap<String, Object>();
             format.put(FIELD_TYPE, TYPE_JSON_SCHEMA);
             if (jsonSchema.name() != null) {
@@ -476,8 +486,6 @@ class OpenAiResponsesClient {
         private String baseUrl;
         private String apiKey;
         private String organizationId;
-        private boolean logRequests;
-        private boolean logResponses;
 
         Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
@@ -499,20 +507,6 @@ class OpenAiResponsesClient {
             return this;
         }
 
-        Builder logRequests(Boolean logRequests) {
-            if (logRequests != null) {
-                this.logRequests = logRequests;
-            }
-            return this;
-        }
-
-        Builder logResponses(Boolean logResponses) {
-            if (logResponses != null) {
-                this.logResponses = logResponses;
-            }
-            return this;
-        }
-
         OpenAiResponsesClient build() {
             return new OpenAiResponsesClient(this);
         }
@@ -521,6 +515,7 @@ class OpenAiResponsesClient {
     private static class ResponsesApiEventListener implements ServerSentEventListener {
 
         private final StreamingChatResponseHandler handler;
+        private final Integer maxToolCalls;
         private volatile StreamingHandle streamingHandle;
         private final Map<String, ToolExecutionRequest.Builder> toolCallBuilders = new HashMap<>();
         private final Map<String, Integer> toolCallIndices = new HashMap<>();
@@ -529,8 +524,9 @@ class OpenAiResponsesClient {
         private final List<ServerSentEvent> rawServerSentEvents = new ArrayList<>();
         private SuccessfulHttpResponse rawHttpResponse;
 
-        ResponsesApiEventListener(StreamingChatResponseHandler handler) {
+        ResponsesApiEventListener(StreamingChatResponseHandler handler, Integer maxToolCalls) {
             this.handler = handler;
+            this.maxToolCalls = maxToolCalls;
         }
 
         private boolean isCancelled() {
@@ -611,7 +607,19 @@ class OpenAiResponsesClient {
                     var builder = toolCallBuilders.get(itemId);
                     if (builder != null) {
                         var currentArgs = builder.build().arguments();
-                        builder.arguments(currentArgs + node.path(FIELD_DELTA).asText());
+                        String delta = node.path(FIELD_DELTA).asText();
+                        builder.arguments(currentArgs + delta);
+                        Integer index = toolCallIndices.get(itemId);
+                        if (index != null && !delta.isEmpty()) {
+                            PartialToolCall partialToolCall = PartialToolCall.builder()
+                                    .index(index)
+                                    .id(builder.build().id())
+                                    .name(builder.build().name())
+                                    .partialArguments(delta)
+                                    .build();
+                            InternalStreamingChatResponseHandlerUtils.onPartialToolCall(
+                                    handler, partialToolCall, streamingHandle);
+                        }
                     }
                 } else if (EVENT_FUNCTION_CALL_ARGUMENTS_DONE.equals(type)) {
                     var itemId = node.path(FIELD_ITEM_ID).asText();
@@ -783,6 +791,12 @@ class OpenAiResponsesClient {
 
         private void completeToolCall(String itemId, ToolExecutionRequest.Builder builder) {
             if (builder == null || completedToolCallItemIds.contains(itemId)) {
+                return;
+            }
+            if (maxToolCalls != null && completedToolCalls.size() >= maxToolCalls) {
+                completedToolCallItemIds.add(itemId);
+                toolCallBuilders.remove(itemId);
+                toolCallIndices.remove(itemId);
                 return;
             }
             ToolExecutionRequest toolExecutionRequest = builder.build();

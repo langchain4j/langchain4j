@@ -7,15 +7,28 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Arrays.asList;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
+import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.CompleteToolCall;
+import dev.langchain4j.model.chat.response.PartialResponse;
+import dev.langchain4j.model.chat.response.PartialResponseContext;
+import dev.langchain4j.model.chat.response.PartialThinking;
+import dev.langchain4j.model.chat.response.PartialThinkingContext;
+import dev.langchain4j.model.chat.response.PartialToolCall;
+import dev.langchain4j.model.chat.response.PartialToolCallContext;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Experimental
 public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
@@ -42,6 +55,7 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
     private final Boolean strict;
     private final List<ChatModelListener> listeners;
     private final ChatRequestParameters defaultRequestParameters;
+    private final AtomicReference<String> lastResponseId = new AtomicReference<>();
 
     private OpenAiResponsesStreamingChatModel(Builder builder) {
         this.client = OpenAiResponsesClient.builder()
@@ -49,14 +63,19 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
                 .baseUrl(builder.baseUrl)
                 .apiKey(builder.apiKey)
                 .organizationId(builder.organizationId)
-                .logRequests(builder.logRequests)
-                .logResponses(builder.logResponses)
                 .build();
 
-        this.modelName = ensureNotNull(builder.modelName, "modelName");
-        this.temperature = builder.temperature;
-        this.topP = builder.topP;
-        this.maxOutputTokens = builder.maxOutputTokens;
+        ChatRequestParameters commonParameters;
+        if (builder.defaultRequestParameters != null) {
+            commonParameters = builder.defaultRequestParameters;
+        } else {
+            commonParameters = DefaultChatRequestParameters.EMPTY;
+        }
+
+        this.modelName = ensureNotNull(getOrDefault(builder.modelName, commonParameters.modelName()), "modelName");
+        this.temperature = getOrDefault(builder.temperature, commonParameters.temperature());
+        this.topP = getOrDefault(builder.topP, commonParameters.topP());
+        this.maxOutputTokens = getOrDefault(builder.maxOutputTokens, commonParameters.maxOutputTokens());
         this.maxToolCalls = builder.maxToolCalls;
         this.parallelToolCalls = builder.parallelToolCalls;
         this.previousResponseId = builder.previousResponseId;
@@ -70,7 +89,9 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
         this.reasoningEffort = builder.reasoningEffort;
         this.textVerbosity = builder.textVerbosity;
         this.streamIncludeObfuscation = builder.streamIncludeObfuscation;
+        // Default to false to avoid persisting data unless explicitly requested.
         this.store = getOrDefault(builder.store, false);
+        // Default to false to avoid rejecting outputs unless explicitly enabled by the user.
         this.strict = getOrDefault(builder.strict, false);
         this.listeners = copy(builder.listeners);
         this.defaultRequestParameters = DefaultChatRequestParameters.builder()
@@ -78,6 +99,9 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
                 .temperature(temperature)
                 .topP(topP)
                 .maxOutputTokens(maxOutputTokens)
+                .toolSpecifications(commonParameters.toolSpecifications())
+                .toolChoice(commonParameters.toolChoice())
+                .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
                 .build();
     }
 
@@ -87,6 +111,13 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
 
     @Override
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+        String effectivePreviousResponseId = previousResponseId;
+        if (effectivePreviousResponseId == null
+                && Boolean.TRUE.equals(store)
+                && containsToolExecutionResult(chatRequest)) {
+            effectivePreviousResponseId = lastResponseId.get();
+        }
+
         OpenAiResponsesConfig config = new OpenAiResponsesConfig(
                 modelName,
                 temperature,
@@ -94,7 +125,7 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
                 maxOutputTokens,
                 maxToolCalls,
                 parallelToolCalls,
-                previousResponseId,
+                effectivePreviousResponseId,
                 topLogprobs,
                 truncation,
                 include,
@@ -108,7 +139,66 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
                 store,
                 strict);
 
-        client.streamingChat(chatRequest, config, handler);
+        client.streamingChat(chatRequest, config, wrapHandler(handler));
+    }
+
+    private boolean containsToolExecutionResult(ChatRequest chatRequest) {
+        return chatRequest.messages().stream().anyMatch(ToolExecutionResultMessage.class::isInstance);
+    }
+
+    private StreamingChatResponseHandler wrapHandler(StreamingChatResponseHandler handler) {
+        return new StreamingChatResponseHandler() {
+            @Override
+            public void onPartialResponse(String partialResponse) {
+                handler.onPartialResponse(partialResponse);
+            }
+
+            @Override
+            public void onPartialResponse(PartialResponse partialResponse, PartialResponseContext context) {
+                handler.onPartialResponse(partialResponse, context);
+            }
+
+            @Override
+            public void onPartialThinking(PartialThinking partialThinking) {
+                handler.onPartialThinking(partialThinking);
+            }
+
+            @Override
+            public void onPartialThinking(PartialThinking partialThinking, PartialThinkingContext context) {
+                handler.onPartialThinking(partialThinking, context);
+            }
+
+            @Override
+            public void onPartialToolCall(PartialToolCall partialToolCall) {
+                handler.onPartialToolCall(partialToolCall);
+            }
+
+            @Override
+            public void onPartialToolCall(PartialToolCall partialToolCall, PartialToolCallContext context) {
+                handler.onPartialToolCall(partialToolCall, context);
+            }
+
+            @Override
+            public void onCompleteToolCall(CompleteToolCall completeToolCall) {
+                handler.onCompleteToolCall(completeToolCall);
+            }
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                if (completeResponse != null && completeResponse.metadata() != null) {
+                    String responseId = completeResponse.metadata().id();
+                    if (responseId != null && !responseId.isBlank()) {
+                        lastResponseId.set(responseId);
+                    }
+                }
+                handler.onCompleteResponse(completeResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                handler.onError(error);
+            }
+        };
     }
 
     @Override
@@ -124,6 +214,11 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
     @Override
     public ModelProvider provider() {
         return ModelProvider.OPEN_AI;
+    }
+
+    @Override
+    public Set<Capability> supportedCapabilities() {
+        return Set.of(Capability.RESPONSE_FORMAT_JSON_SCHEMA);
     }
 
     public static class Builder {
@@ -151,9 +246,9 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
         private Boolean streamIncludeObfuscation;
         private Boolean store;
         private Boolean strict;
-        private Boolean logRequests;
-        private Boolean logResponses;
         private List<ChatModelListener> listeners;
+        private ChatRequestParameters defaultRequestParameters;
+        private ResponseFormat responseFormat;
 
         public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
@@ -270,16 +365,6 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
-        public Builder logRequests(Boolean logRequests) {
-            this.logRequests = logRequests;
-            return this;
-        }
-
-        public Builder logResponses(Boolean logResponses) {
-            this.logResponses = logResponses;
-            return this;
-        }
-
         public Builder listeners(List<ChatModelListener> listeners) {
             this.listeners = listeners;
             return this;
@@ -287,6 +372,16 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
 
         public Builder listeners(ChatModelListener... listeners) {
             return listeners(asList(listeners));
+        }
+
+        public Builder defaultRequestParameters(ChatRequestParameters parameters) {
+            this.defaultRequestParameters = parameters;
+            return this;
+        }
+
+        public Builder responseFormat(ResponseFormat responseFormat) {
+            this.responseFormat = responseFormat;
+            return this;
         }
 
         public OpenAiResponsesStreamingChatModel build() {
