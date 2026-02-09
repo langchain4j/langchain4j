@@ -1,5 +1,6 @@
 package dev.langchain4j.service.tool.search.simple;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
@@ -34,6 +35,7 @@ import static java.util.Comparator.comparingInt;
  * Scores are accumulated across all terms. Tools are ranked by score (descending)
  * and limited by {@link #maxResults}.
  */
+@Experimental
 public class SimpleToolSearchStrategy implements ToolSearchStrategy {
 
     private static final String DEFAULT_TOOL_NAME = "tool_search_tool";
@@ -79,11 +81,11 @@ public class SimpleToolSearchStrategy implements ToolSearchStrategy {
     }
 
     public ToolSearchResult search(ToolSearchRequest request) {
-        List<String> terms = extractTerms(request.toolSearchRequest().arguments());
+        List<String> terms = extractTerms(request.toolExecutionRequest().arguments());
 
         List<ScoredTool> scoredTools = request.availableTools().stream()
                 .map(tool -> new ScoredTool(tool, score(tool, terms)))
-                .filter(st -> st.score >= minScore)
+                .filter(scoredTool -> scoredTool.score >= minScore)
                 .sorted(comparingInt(ScoredTool::score).reversed())
                 .limit(maxResults)
                 .toList();

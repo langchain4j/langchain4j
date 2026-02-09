@@ -1,5 +1,6 @@
 package dev.langchain4j.service.tool.search.embedding;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
@@ -31,8 +32,9 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * to find relevant tools based on semantic meaning.
  * TODO comment on tool description
  */
+@Experimental
 public class VectorToolSearchStrategy implements ToolSearchStrategy { // TODO name
-    // TODO move into a separate module
+    // TODO move into a separate module?
 
     private static final String DEFAULT_TOOL_NAME = "tool_search_tool";
     private static final String DEFAULT_TOOL_DESCRIPTION = "Finds available tools using semantic vector search";
@@ -87,7 +89,7 @@ public class VectorToolSearchStrategy implements ToolSearchStrategy { // TODO na
     @Override
     public ToolSearchResult search(ToolSearchRequest request) {
 
-        String query = extractQuery(request.toolSearchRequest().arguments());
+        String query = extractQuery(request.toolExecutionRequest().arguments());
 
         List<TextSegment> segments = new ArrayList<>();
         segments.add(TextSegment.from(query));

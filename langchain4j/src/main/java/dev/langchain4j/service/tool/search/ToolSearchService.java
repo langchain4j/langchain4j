@@ -19,7 +19,9 @@ import java.util.Map;
 import java.util.Set;
 
 import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.merge;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static java.util.stream.Collectors.toCollection;
 import static java.util.stream.Collectors.toSet;
 
 @Internal
@@ -37,84 +39,79 @@ public class ToolSearchService {
         return strategy.toolSearchTools(invocationContext);
     }
 
-    // TODO refactor
-    public List<ToolSpecification> getEffectiveTools(ChatMemory chatMemory,
-                                                     List<ToolSpecification> availableTools,
-                                                     List<ToolSpecification> toolSearchTools) { // TODO name
-        if (this.strategy == null) {
-            return availableTools;
-        }
-
+    public List<ToolSpecification> calculateEffectiveTools(List<ToolSpecification> toolSearchTools,
+                                                           List<ToolSpecification> availableTools,
+                                                           ChatMemory chatMemory) {
         if (chatMemory == null) {
             return toolSearchTools;
         }
 
-        List<ToolSpecification> result = new ArrayList<>(toolSearchTools);
-        Set<String> previouslyFoundToolNames = chatMemory.messages().stream()
+        Set<String> toolNamesFoundEarlier = chatMemory.messages().stream()
                 .filter(it -> it instanceof ToolExecutionResultMessage)
                 .map(it -> (ToolExecutionResultMessage) it)
                 .map(it -> it.attributes().get(FOUND_TOOLS_ATTRIBUTE))
                 .filter(it -> it != null)
                 .map(it -> (List<String>) it)
                 .flatMap(List::stream)
-                .collect(toSet());// TODO unit test, optimize
-        if (!previouslyFoundToolNames.isEmpty()) {
-            Map<String, ToolSpecification> toolSpecsByName = new HashMap<>(availableTools.size());
-            availableTools.forEach(spec -> toolSpecsByName.put(spec.name(), spec));
-            previouslyFoundToolNames.forEach(toolName -> result.add(toolSpecsByName.get(toolName)));
+                .collect(toCollection(() -> new LinkedHashSet<>()));
+
+        if (toolNamesFoundEarlier.isEmpty()) {
+            return toolSearchTools;
         }
-        return result;
+
+        Map<String, ToolSpecification> toolsByName = new HashMap<>(availableTools.size());
+        availableTools.forEach(tool -> toolsByName.put(tool.name(), tool));
+
+        List<ToolSpecification> effectiveTools = new ArrayList<>(toolSearchTools);
+        toolNamesFoundEarlier.forEach(toolName -> effectiveTools.add(toolsByName.get(toolName)));
+        return effectiveTools;
     }
 
-    // TODO refactor
-    public Map<String, ToolExecutor> getToolExecutors(Map<String, ToolExecutor> toolExecutors,
-                                                      List<ToolSpecification> availableTools,
-                                                      List<ToolSpecification> toolSearchTools) {
-        if (this.strategy == null) {
-            return toolExecutors;
-        }
-
-        Map<String, ToolExecutor> result = new HashMap<>(toolExecutors);
+    public Map<String, ToolExecutor> createExecutors(List<ToolSpecification> toolSearchTools,
+                                                     List<ToolSpecification> availableTools) {
+        Map<String, ToolExecutor> executors = new HashMap<>();
         for (ToolSpecification toolSearchTool : toolSearchTools) {
-            ToolExecutor toolExecutor = new ToolSearchExecutor(availableTools);
-            result.put(toolSearchTool.name(), toolExecutor);
+            executors.put(toolSearchTool.name(), new ToolSearchExecutor(availableTools));
         }
-        return result;
+        return executors;
     }
 
-    // TODO refactor
-    public static ChatRequestParameters addNewFoundTools(ChatRequestParameters parameters,
-                                                         Collection<ToolExecutionResult> toolResults,
-                                                         List<ToolSpecification> availableTools) {
-        Set<String> newFoundToolNames = new LinkedHashSet<>();
+    public static ChatRequestParameters addFoundTools(ChatRequestParameters parameters,
+                                                      Collection<ToolExecutionResult> toolResults,
+                                                      List<ToolSpecification> availableTools) {
+        Set<String> foundToolNames = new LinkedHashSet<>();
         for (ToolExecutionResult toolResult : toolResults) {
-            Map<String, Object> attributes = toolResult.attributes();
-            if (attributes.containsKey(FOUND_TOOLS_ATTRIBUTE)) {
-                newFoundToolNames.addAll((List<String>) attributes.get(FOUND_TOOLS_ATTRIBUTE));
+            Object attribute = toolResult.attributes().get(FOUND_TOOLS_ATTRIBUTE);
+            if (attribute != null && attribute instanceof List<?> foundToolNamesList) {
+                foundToolNames.addAll((List<String>) foundToolNamesList);
             }
         }
-        List<ToolSpecification> newFoundTools = new ArrayList<>();
-        for (String foundToolName : newFoundToolNames) {
-            // TODO optimize
-            if (parameters.toolSpecifications().stream().anyMatch(it -> foundToolName.equals(it.name()))) {
-                // this tool was already found previously
+        if (foundToolNames.isEmpty()) {
+            return parameters;
+        }
+
+        Set<String> effectiveToolNames = parameters.toolSpecifications().stream()
+                .map(tool -> tool.name())
+                .collect(toSet());
+
+        Map<String, ToolSpecification> availableToolsByName = new HashMap<>(availableTools.size());
+        availableTools.forEach(tool -> availableToolsByName.put(tool.name(), tool));
+
+        List<ToolSpecification> foundTools = new ArrayList<>();
+        for (String foundToolName : foundToolNames) {
+            if (effectiveToolNames.contains(foundToolName)) {
                 continue;
             }
-            ToolSpecification foundTool = availableTools.stream()
-                    .filter(it -> it.name().equals(foundToolName))
-                    .findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException("No tool with name '%s' exists".formatted(foundToolName)));
-            newFoundTools.add(foundTool);
+            ToolSpecification foundTool = availableToolsByName.get(foundToolName);
+            if (foundTool == null) {
+                throw new IllegalArgumentException("No tool with name '%s' exists".formatted(foundToolName));
+            }
+            foundTools.add(foundTool);
         }
-        if (!newFoundTools.isEmpty()) {
-            List<ToolSpecification> allTools = new ArrayList<>();
-            allTools.addAll(parameters.toolSpecifications());
-            allTools.addAll(newFoundTools);
-            parameters = parameters.overrideWith(ChatRequestParameters.builder()
-                    .toolSpecifications(allTools)
-                    .build());
-        }
-        return parameters;
+
+        return parameters.overrideWith(ChatRequestParameters.builder()
+                .toolSpecifications(merge(parameters.toolSpecifications(), foundTools))
+                .build());
     }
 
     private class ToolSearchExecutor implements ToolExecutor {
@@ -128,7 +125,7 @@ public class ToolSearchService {
         @Override
         public ToolExecutionResult executeWithContext(ToolExecutionRequest request, InvocationContext context) {
             ToolSearchRequest toolSearchRequest = ToolSearchRequest.builder()
-                    .toolSearchRequest(request)
+                    .toolExecutionRequest(request)
                     .availableTools(availableTools)
                     .invocationContext(context)
                     .build();
@@ -137,7 +134,7 @@ public class ToolSearchService {
 
             return ToolExecutionResult.builder()
                     .result(toolSearchResult)
-                    .resultText(toolSearchResult.toolExecutionResultMessageText())
+                    .resultText(toolSearchResult.toolResultMessageText())
                     .attributes(Map.of(FOUND_TOOLS_ATTRIBUTE, toolSearchResult.foundToolNames()))
                     .build();
         }

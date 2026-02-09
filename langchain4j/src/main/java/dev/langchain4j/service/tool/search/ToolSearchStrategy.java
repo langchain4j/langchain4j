@@ -1,5 +1,6 @@
 package dev.langchain4j.service.tool.search;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.invocation.InvocationContext;
 
@@ -12,6 +13,7 @@ import java.util.List;
  *
  * @since 1.12.0
  */
+@Experimental
 public interface ToolSearchStrategy {
 
     /**

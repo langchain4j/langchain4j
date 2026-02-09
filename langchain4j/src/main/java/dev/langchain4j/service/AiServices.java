@@ -639,7 +639,15 @@ public abstract class AiServices<T> {
     }
 
     /**
-     * TODO
+     * Configures a tool search strategy that can be used to save tokens.
+     * When configured, the LLM initially "sees" only a single special tool, which it can call
+     * to discover additional tools. Once tools are found, they are included in the next request
+     * to the LLM and are accumulated untill the {@link ToolExecutionResultMessage}
+     * containing the tool search results is evicted from the {@link ChatMemory}.
+     * <p>
+     * You can use one of the out-of-the-box implementations, such as
+     * {@link dev.langchain4j.service.tool.search.simple.SimpleToolSearchStrategy}
+     * or {@link dev.langchain4j.service.tool.search.embedding.VectorToolSearchStrategy}, or implement your own.
      *
      * @param toolSearchStrategy
      * @return

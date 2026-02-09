@@ -1291,14 +1291,14 @@ public abstract class AbstractAiServiceWithToolsIT {
         public ToolSearchResult search(ToolSearchRequest request) {
             List<String> foundToolNames = new ArrayList<>();
 
-            if (request.toolSearchRequest().arguments().toLowerCase().contains("weather")) {
+            if (request.toolExecutionRequest().arguments().toLowerCase().contains("weather")) {
                 foundToolNames.addAll(request.availableTools().stream()
                         .filter(tool -> tool.name().toLowerCase().contains("weather"))
                         .map(it -> it.name())
                         .toList());
             }
 
-            if (request.toolSearchRequest().arguments().toLowerCase().contains("time")) {
+            if (request.toolExecutionRequest().arguments().toLowerCase().contains("time")) {
                 foundToolNames.addAll(request.availableTools().stream()
                         .filter(tool -> tool.name().toLowerCase().contains("time"))
                         .map(it -> it.name())
@@ -2092,7 +2092,7 @@ public abstract class AbstractAiServiceWithToolsIT {
     public static boolean hasToolSearch(ToolSearchRequest request,
                                         ToolSpecification toolSearchTool,
                                         String queryTerm) {
-        return request.toolSearchRequest().name().equals(toolSearchTool.name())
-                && request.toolSearchRequest().arguments().toLowerCase().contains(queryTerm.toLowerCase());
+        return request.toolExecutionRequest().name().equals(toolSearchTool.name())
+                && request.toolExecutionRequest().arguments().toLowerCase().contains(queryTerm.toLowerCase());
     }
 }

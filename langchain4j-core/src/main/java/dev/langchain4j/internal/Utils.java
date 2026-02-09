@@ -571,4 +571,24 @@ public class Utils {
         }
         return Base64.getEncoder().encodeToString(s.getBytes(UTF_8));
     }
+
+    public static <T> List<T> merge(List<T>... lists) {
+        List<T> result = new ArrayList<>();
+        for (List<T> list : lists) {
+            result.addAll(list);
+        }
+        return result;
+    }
+
+    public static <K, V> Map<K, V> merge(Map<K, V>... maps) {
+        Map<K, V> result = new HashMap<>();
+        for (Map<K, V> map : maps) {
+            for (Map.Entry<K, V> e : map.entrySet()) {
+                if (result.putIfAbsent(e.getKey(), e.getValue()) != null) {
+                    throw new IllegalStateException("Duplicate key: " + e.getKey());
+                }
+            }
+        }
+        return result;
+    }
 }

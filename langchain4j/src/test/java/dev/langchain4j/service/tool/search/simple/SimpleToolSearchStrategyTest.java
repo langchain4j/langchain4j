@@ -189,7 +189,7 @@ class SimpleToolSearchStrategyTest {
                 .arguments(json)
                 .build();
         return ToolSearchRequest.builder()
-                .toolSearchRequest(toolSearchRequest)
+                .toolExecutionRequest(toolSearchRequest)
                 .availableTools(tools)
                 .invocationContext(InvocationContext.builder().build())
                 .build();

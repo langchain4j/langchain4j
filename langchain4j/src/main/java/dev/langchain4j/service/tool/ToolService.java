@@ -5,8 +5,9 @@ import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.merge;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
-import static dev.langchain4j.service.tool.search.ToolSearchService.addNewFoundTools;
+import static dev.langchain4j.service.tool.search.ToolSearchService.addFoundTools;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ReturnBehavior;
@@ -240,9 +241,10 @@ public class ToolService {
         }
 
         List<ToolSpecification> toolSearchTools = toolSearchService.toolSearchTools(invocationContext);
+        Map<String, ToolExecutor> toolSearchToolExecutors = toolSearchService.createExecutors(toolSearchTools, context.availableTools());
         return context.toBuilder()
-                .effectiveTools(toolSearchService.getEffectiveTools(chatMemory, context.availableTools(), toolSearchTools))
-                .toolExecutors(toolSearchService.getToolExecutors(context.toolExecutors(), context.availableTools(), toolSearchTools))
+                .effectiveTools(toolSearchService.calculateEffectiveTools(toolSearchTools, context.availableTools(), chatMemory))
+                .toolExecutors(merge(context.toolExecutors(), toolSearchToolExecutors))
                 .build();
     }
 
@@ -255,11 +257,11 @@ public class ToolService {
             return this.toolSpecifications.isEmpty()
                     ? ToolServiceContext.Empty.INSTANCE
                     : ToolServiceContext.builder()
-                    .effectiveTools(this.toolSpecifications)
-                    .availableTools(this.toolSpecifications)
-                    .toolExecutors(this.toolExecutors)
-                    .immediateReturnTools(this.immediateReturnTools)
-                    .build();
+                            .effectiveTools(this.toolSpecifications)
+                            .availableTools(this.toolSpecifications)
+                            .toolExecutors(this.toolExecutors)
+                            .immediateReturnTools(this.immediateReturnTools)
+                            .build();
         }
 
         List<ToolSpecification> toolSpecifications = new ArrayList<>(this.toolSpecifications);
@@ -333,7 +335,7 @@ public class ToolService {
             Map<ToolExecutionRequest, ToolExecutionResult> toolResults =
                     execute(aiMessage.toolExecutionRequests(), toolServiceContext.toolExecutors(), invocationContext);
 
-            boolean immediateToolReturn = !aiMessage.toolExecutionRequests().isEmpty(); // TODO
+            boolean immediateToolReturn = true;
             for (Map.Entry<ToolExecutionRequest, ToolExecutionResult> entry : toolResults.entrySet()) {
                 ToolExecutionRequest request = entry.getKey();
                 ToolExecutionResult result = entry.getValue();
@@ -385,7 +387,7 @@ public class ToolService {
                 messages = chatMemory.messages();
             }
 
-            parameters = addNewFoundTools(parameters, toolResults.values(), toolServiceContext.availableTools());
+            parameters = addFoundTools(parameters, toolResults.values(), toolServiceContext.availableTools());
 
             ChatRequest chatRequest = context.chatRequestTransformer.apply(
                     ChatRequest.builder()

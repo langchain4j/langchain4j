@@ -114,7 +114,7 @@ class VectorToolSearchStrategyIT { // TODO name
         ));
 
         inOrder.verify(spyToolSearchStrategy).search(argThat(request ->
-                request.toolSearchRequest().arguments().contains("weather")
+                request.toolExecutionRequest().arguments().contains("weather")
         ));
 
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
@@ -154,7 +154,7 @@ class VectorToolSearchStrategyIT { // TODO name
         ));
 
         inOrder.verify(spyToolSearchStrategy).search(argThat(request ->
-                request.toolSearchRequest().arguments().contains("time")
+                request.toolExecutionRequest().arguments().contains("time")
         ));
 
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->

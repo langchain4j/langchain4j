@@ -94,7 +94,7 @@ class SimpleToolSearchStrategyIT { // TODO make abstract test?
         ));
 
         inOrder.verify(spyToolSearchStrategy).search(argThat(request ->
-                request.toolSearchRequest().arguments().contains("terms")
+                request.toolExecutionRequest().arguments().contains("terms")
         ));
 
         inOrder.verify(spyModel).chat(argThat((ChatRequest request) ->

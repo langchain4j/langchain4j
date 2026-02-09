@@ -1,46 +1,85 @@
 package dev.langchain4j.service.tool.search;
 
+import dev.langchain4j.Experimental;
+
 import java.util.List;
+import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
- * TODO
+ * The result of a tool search.
+ * Contains a list of the found tool names and the text to be sent to the LLM.
  *
  * @since 1.12.0
  */
+@Experimental
 public class ToolSearchResult {
 
-    private final List<String> foundToolNames; // TODO names
-    private final String toolExecutionResultMessageText;
+    private final List<String> foundToolNames;
+    private final String toolResultMessageText;
 
+    /**
+     * Creates a {@code ToolSearchResult} from a list of tool names.
+     * Uses the default {@link #toolResultMessageText}.
+     *
+     * @param foundToolNames the names of the found tools
+     */
     public ToolSearchResult(List<String> foundToolNames) {
         this.foundToolNames = copy(foundToolNames);
         if (foundToolNames.isEmpty()) {
-            this.toolExecutionResultMessageText = "No matching tools found";
+            this.toolResultMessageText = "No matching tools found";
         } else {
-            this.toolExecutionResultMessageText = "Tools found: " + String.join(", ", foundToolNames);
+            this.toolResultMessageText = "Tools found: " + String.join(", ", foundToolNames);
         }
     }
 
-    public ToolSearchResult(List<String> foundToolNames, String toolExecutionResultMessageText) {
+    /**
+     * Creates a {@code ToolSearchResult} from a list of tool names and a custom tool result message text.
+     *
+     * @param foundToolNames        the names of the found tools
+     * @param toolResultMessageText the text to be set in the {@link dev.langchain4j.data.message.ToolExecutionResultMessage}
+     *                              and sent to the LLM as the result of the tool search
+     */
+    public ToolSearchResult(List<String> foundToolNames, String toolResultMessageText) {
         this.foundToolNames = copy(foundToolNames);
-        this.toolExecutionResultMessageText = ensureNotNull(toolExecutionResultMessageText, "toolExecutionResultMessageText");
+        this.toolResultMessageText = ensureNotNull(toolResultMessageText, "toolResultMessageText");
     }
 
-    public List<String> foundToolNames() { // TODO name
+    /**
+     * Returns the list of the found tool names.
+     */
+    public List<String> foundToolNames() {
         return foundToolNames;
     }
 
     /**
-     * TODO
+     * Returns the text to be set in the {@link dev.langchain4j.data.message.ToolExecutionResultMessage}
+     * and sent to the LLM as the result of the tool search.
      */
-    public String toolExecutionResultMessageText() { // TODO name
-        return toolExecutionResultMessageText;
+    public String toolResultMessageText() {
+        return toolResultMessageText;
     }
 
-    // TODO builder?
+    @Override
+    public boolean equals(final Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        ToolSearchResult that = (ToolSearchResult) o;
+        return Objects.equals(foundToolNames, that.foundToolNames)
+                && Objects.equals(toolResultMessageText, that.toolResultMessageText);
+    }
 
-    // TODO eht
+    @Override
+    public int hashCode() {
+        return Objects.hash(foundToolNames, toolResultMessageText);
+    }
+
+    @Override
+    public String toString() {
+        return "ToolSearchResult{" +
+                "foundToolNames=" + foundToolNames +
+                ", toolResultMessageText='" + toolResultMessageText + '\'' +
+                '}';
+    }
 }

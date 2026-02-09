@@ -1,5 +1,6 @@
 package dev.langchain4j.service.tool.search.embedding;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -16,6 +17,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 /**
  * TODO comment on "caching"
  */
+@Experimental
 class CachingEmbeddingModel implements EmbeddingModel {
 
     private static final TokenUsage ZERO_TOKEN_USAGE = new TokenUsage(0, 0, 0);

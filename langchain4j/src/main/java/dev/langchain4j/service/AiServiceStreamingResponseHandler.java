@@ -4,7 +4,7 @@ import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.AiServiceParamsUtil.chatRequestParameters;
-import static dev.langchain4j.service.tool.search.ToolSearchService.addNewFoundTools;
+import static dev.langchain4j.service.tool.search.ToolSearchService.addFoundTools;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -300,15 +300,15 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     try {
                         ToolRequestResult toolRequestResult = toolExecutionFuture.get();
                         fireToolExecutedEvent(toolRequestResult);
-                        ToolExecutionRequest toolExecutionRequest = toolRequestResult.request();
-                        ToolExecutionResult toolExecutionResult = toolRequestResult.result();
-                        toolResults.add(toolExecutionResult);
+                        ToolExecutionRequest toolRequest = toolRequestResult.request();
+                        ToolExecutionResult toolResult = toolRequestResult.result();
+                        toolResults.add(toolResult);
                         ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.builder()
-                                .id(toolExecutionRequest.id())
-                                .toolName(toolExecutionRequest.name())
-                                .text(toolExecutionResult.resultText())
-                                .isError(toolExecutionResult.isError())
-                                .attributes(toolExecutionResult.attributes())
+                                .id(toolRequest.id())
+                                .toolName(toolRequest.name())
+                                .text(toolResult.resultText())
+                                .isError(toolResult.isError())
+                                .attributes(toolResult.attributes())
                                 .build();
                         addToMemory(toolExecutionResultMessage);
                         immediateToolReturn = immediateToolReturn
@@ -354,7 +354,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             }
 
             ChatRequestParameters parameters = chatRequestParameters(invocationContext.methodArguments(), chatRequest.toolSpecifications());
-            parameters = addNewFoundTools(parameters, toolResults, availableTools);
+            parameters = addFoundTools(parameters, toolResults, availableTools);
 
             ChatRequest nextChatRequest = context.chatRequestTransformer.apply(
                     ChatRequest.builder()

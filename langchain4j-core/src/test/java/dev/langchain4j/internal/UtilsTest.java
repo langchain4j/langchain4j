@@ -1,6 +1,7 @@
 package dev.langchain4j.internal;
 
 import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
+import static dev.langchain4j.internal.Utils.merge;
 import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.Utils.toStringValueMap;
 import static java.lang.annotation.ElementType.METHOD;
@@ -14,6 +15,7 @@ import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatNoException;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
 
 import com.sun.net.httpserver.HttpServer;
@@ -469,5 +471,25 @@ class UtilsTest {
 
         assertThat(getAnnotatedMethod(proxyMethod, MyAnnotation.class)).contains(myMethod);
         assertThat(getAnnotatedMethod(proxyMethod, AnotherAnnotation.class)).isEmpty();
+    }
+
+    @Test
+    void test_merge_lists() {
+        assertThat(merge(List.of())).isEqualTo(List.of());
+        assertThat(merge(List.of(1), List.of(2))).isEqualTo(List.of(1, 2));
+        assertThat(merge(List.of(1), List.of())).isEqualTo(List.of(1));
+        assertThat(merge(List.of(), List.of(2))).isEqualTo(List.of(2));
+    }
+
+    @Test
+    void test_merge_maps() {
+        assertThat(merge(Map.of())).isEqualTo(Map.of());
+        assertThat(merge(Map.of("one", 1), Map.of("two", 2))).isEqualTo(Map.of("one", 1, "two", 2));
+        assertThat(merge(Map.of("one", 1), Map.of())).isEqualTo(Map.of("one", 1));
+        assertThat(merge(Map.of(), Map.of("two", 2))).isEqualTo(Map.of("two", 2));
+
+        assertThatThrownBy(() -> merge(Map.of("one", 1), Map.of("one", 1)))
+                .isExactlyInstanceOf(IllegalStateException.class)
+                .hasMessage("Duplicate key: one");
     }
 }
