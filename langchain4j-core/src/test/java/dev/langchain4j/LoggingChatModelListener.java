@@ -32,21 +32,22 @@ import java.util.stream.StreamSupport;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static java.util.stream.Collectors.joining;
 
-public class LoggingChatModelListener implements ChatModelListener { // TODO move to test sources?
+public class LoggingChatModelListener implements ChatModelListener {
 
     private static final Logger log = LoggerFactory.getLogger(LoggingChatModelListener.class);
     private static final ObjectMapper mapper = new ObjectMapper();
 
     @Override
-    public void onRequest(ChatModelRequestContext requestContext) { }
+    public void onRequest(ChatModelRequestContext requestContext) {
+    }
 
-    private static String print(ChatMessage message) {
+    private static String format(ChatMessage message) {
         if (message instanceof SystemMessage systemMessage) {
             return "SYSTEM: " + systemMessage.text();
         } else if (message instanceof UserMessage userMessage) {
-            return "USER: " + print(userMessage);
+            return "USER: " + format(userMessage);
         } else if (message instanceof AiMessage aiMessage) {
-            return print(aiMessage);
+            return "AI: " + format(aiMessage);
         } else if (message instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
             return "TOOL: " + toolExecutionResultMessage.text();
         } else {
@@ -54,7 +55,7 @@ public class LoggingChatModelListener implements ChatModelListener { // TODO mov
         }
     }
 
-    private static String print(UserMessage userMessage) {
+    private static String format(UserMessage userMessage) {
         if (userMessage.hasSingleText()) {
             return userMessage.singleText();
         }
@@ -76,9 +77,8 @@ public class LoggingChatModelListener implements ChatModelListener { // TODO mov
                 }).collect(joining(" "));
     }
 
-    private static String print(AiMessage aiMessage) {
+    private static String format(AiMessage aiMessage) {
         StringBuilder sb = new StringBuilder();
-        sb.append("AI: ");
 
         if (!isNullOrBlank(aiMessage.text())) {
             sb.append(aiMessage.text());
@@ -104,8 +104,8 @@ public class LoggingChatModelListener implements ChatModelListener { // TODO mov
         StringBuilder sb = new StringBuilder();
         List<ChatMessage> messages = chatRequest.messages();
         messages.forEach(message -> {
-            sb.append(print(message));
-            sb.append("\n");
+            sb.append(format(message));
+            sb.append("\n\n");
         });
 
         log.info("""
@@ -118,7 +118,7 @@ public class LoggingChatModelListener implements ChatModelListener { // TODO mov
                         """,
                 sb,
                 chatRequest.toolSpecifications().stream().map(ToolSpecification::name).collect(joining(", ")),
-                print(chatResponse.aiMessage())
+                "AI: " + format(chatResponse.aiMessage())
         );
     }
 

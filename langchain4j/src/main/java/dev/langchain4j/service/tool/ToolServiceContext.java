@@ -75,6 +75,14 @@ public class ToolServiceContext {
         return immediateReturnTools;
     }
 
+    public Builder toBuilder() {
+        return builder()
+                .effectiveTools(effectiveTools)
+                .availableTools(availableTools)
+                .toolExecutors(toolExecutors)
+                .immediateReturnTools(immediateReturnTools);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
