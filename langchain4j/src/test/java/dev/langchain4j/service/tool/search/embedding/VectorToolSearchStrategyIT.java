@@ -54,7 +54,7 @@ class VectorToolSearchStrategyIT { // TODO name
 
     interface Assistant {
 
-        @SystemMessage("Use 'tool_search_tool_vector' tool if you need to discover other available tools")
+        @SystemMessage("Use 'tool_search_tool' tool if you need to discover other available tools")
         String chat(String userMessage);
     }
 
@@ -110,7 +110,7 @@ class VectorToolSearchStrategyIT { // TODO name
 
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 1
-                        && containsTool(request, "tool_search_tool_vector")
+                        && containsTool(request, "tool_search_tool")
         ));
 
         inOrder.verify(spyToolSearchStrategy).search(argThat(request ->
@@ -119,7 +119,7 @@ class VectorToolSearchStrategyIT { // TODO name
 
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 2
-                        && containsTool(request, "tool_search_tool_vector")
+                        && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
         ));
 
@@ -127,7 +127,7 @@ class VectorToolSearchStrategyIT { // TODO name
 
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 2
-                        && containsTool(request, "tool_search_tool_vector")
+                        && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
         ));
 
@@ -149,7 +149,7 @@ class VectorToolSearchStrategyIT { // TODO name
 
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 2
-                        && containsTool(request, "tool_search_tool_vector")
+                        && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
         ));
 
@@ -159,7 +159,7 @@ class VectorToolSearchStrategyIT { // TODO name
 
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 3
-                        && containsTool(request, "tool_search_tool_vector")
+                        && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
                         && containsTool(request, "getTime")
         ));
@@ -168,7 +168,7 @@ class VectorToolSearchStrategyIT { // TODO name
 
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 3
-                        && containsTool(request, "tool_search_tool_vector")
+                        && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
                         && containsTool(request, "getTime")
         ));

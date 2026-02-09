@@ -1443,7 +1443,7 @@ class StreamingAiServicesWithToolsIT {
 
     interface AssistantWithToolSearch {
 
-        @SystemMessage("Use 'search_tools' tool if you need to discover other available tools. {{instructions}}")
+        @SystemMessage("Use 'tool_search_tool' tool if you need to discover other available tools. {{instructions}}")
         TokenStream chat(@UserMessage String userMessage, @V("instructions") String instructions);
     }
 
@@ -1719,7 +1719,7 @@ class StreamingAiServicesWithToolsIT {
         String instructions = """
                 Use separate tool calls for separate search terms.
                 For example, when asked "What is the weather and time in London?",
-                call 'search_tools' tool twice (simultaneously, in parallel),
+                call 'tool_search_tool' twice (simultaneously, in parallel),
                 once with "London weather" argument, once with "London time" argument.
                 """;
 
@@ -1797,7 +1797,7 @@ class StreamingAiServicesWithToolsIT {
         String instructions = """
                 Use separate tool calls for separate search terms.
                 For example, when asked "What is the weather and time in London?",
-                call 'search_tools' tool twice (simultaneously, in parallel),
+                call 'tool_search_tool' twice (simultaneously, in parallel),
                 once with "London weather" argument, once with "London time" argument.
                 """;
 
@@ -1884,7 +1884,7 @@ class StreamingAiServicesWithToolsIT {
         String instructions = """
                 Use separate tool calls for separate search terms.
                 For example, when asked "What is the weather and time in London?",
-                call 'search_tools' tool twice (simultaneously, in parallel),
+                call 'tool_search_tool' twice (simultaneously, in parallel),
                 once with "London weather" argument, once with "London time" argument.
                 """;
 
@@ -2057,7 +2057,7 @@ class StreamingAiServicesWithToolsIT {
 
         // when
         ChatResponse chatResponse2 = chat(assistant, "What is the time in London? What is the weather in Paris? " +
-                "Call 2 tools simultaneously (in parallel), in this order: search_tools, getWeather", handler);
+                "Call 2 tools simultaneously (in parallel), in this order: tool_search_tool, getWeather", handler);
 
         // then
         assertThat(chatResponse2.aiMessage().text().toLowerCase()).contains("12", "34", "rain");
@@ -2163,7 +2163,7 @@ class StreamingAiServicesWithToolsIT {
 
         // when
         ChatResponse chatResponse2 = chat(assistant, "What is the time in London? What is the weather in Paris? " +
-                "Call 2 tools simultaneously (in parallel), in this order: search_tools, getWeather", handler);
+                "Call 2 tools simultaneously (in parallel), in this order: tool_search_tool, getWeather", handler);
 
         // then
         assertThat(chatResponse2.aiMessage().text().toLowerCase()).contains("12", "34", "rain");

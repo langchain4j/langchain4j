@@ -48,7 +48,7 @@ class SimpleToolSearchStrategyIT { // TODO make abstract test?
 
     interface Assistant {
 
-        @SystemMessage("Use 'tool_search_tool_simple' tool if you need to discover other available tools")
+        @SystemMessage("Use 'tool_search_tool' tool if you need to discover other available tools")
         String chat(String userMessage);
     }
 
@@ -90,7 +90,7 @@ class SimpleToolSearchStrategyIT { // TODO make abstract test?
 
         inOrder.verify(spyModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 1
-                        && containsTool(request, "tool_search_tool_simple")
+                        && containsTool(request, "tool_search_tool")
         ));
 
         inOrder.verify(spyToolSearchStrategy).search(argThat(request ->
@@ -99,7 +99,7 @@ class SimpleToolSearchStrategyIT { // TODO make abstract test?
 
         inOrder.verify(spyModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 2
-                        && containsTool(request, "tool_search_tool_simple")
+                        && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
         ));
 
@@ -107,7 +107,7 @@ class SimpleToolSearchStrategyIT { // TODO make abstract test?
 
         inOrder.verify(spyModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 2
-                        && containsTool(request, "tool_search_tool_simple")
+                        && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
         ));
 

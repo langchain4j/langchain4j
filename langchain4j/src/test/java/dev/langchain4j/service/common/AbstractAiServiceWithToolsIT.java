@@ -1271,7 +1271,7 @@ public abstract class AbstractAiServiceWithToolsIT {
 
     public static class CustomToolSearchStrategy implements ToolSearchStrategy {
 
-        public static String TOOL_SEARCH_TOOL_NAME = "search_tools";
+        public static String TOOL_SEARCH_TOOL_NAME = "tool_search_tool";
 
         public static ToolSpecification TOOL_SEARCH_TOOL = ToolSpecification.builder()
                 .name(TOOL_SEARCH_TOOL_NAME)
@@ -1332,7 +1332,7 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         interface Assistant {
 
-            @SystemMessage("Use 'search_tools' tool if you need to discover other available tools")
+            @SystemMessage("Use 'tool_search_tool' tool if you need to discover other available tools")
             String chat(String userMessage);
         }
 
@@ -1460,7 +1460,7 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         interface Assistant {
 
-            @SystemMessage("Use 'search_tools' tool if you need to discover other available tools")
+            @SystemMessage("Use 'tool_search_tool' tool if you need to discover other available tools")
             String chat(String userMessage);
         }
 
@@ -1561,10 +1561,10 @@ public abstract class AbstractAiServiceWithToolsIT {
         interface Assistant {
 
             @SystemMessage("""
-                    Use 'search_tools' tool if you need to discover other available tools.
+                    Use 'tool_search_tool' tool if you need to discover other available tools.
                     Use separate tool calls for separate search terms.
                     For example, when asked "What is the weather and time in London?",
-                    call 'search_tools' tool twice (simultaneously, in parallel),
+                    call 'tool_search_tool' twice (simultaneously, in parallel),
                     once with "London weather" argument, once with "London time" argument.
                     """)
             String chat(String userMessage);
@@ -1644,10 +1644,10 @@ public abstract class AbstractAiServiceWithToolsIT {
         interface Assistant {
 
             @SystemMessage("""
-                    Use 'search_tools' tool if you need to discover other available tools.
+                    Use 'tool_search_tool' tool if you need to discover other available tools.
                     Use separate tool calls for separate search terms.
                     For example, when asked "What is the weather and time in London?",
-                    call 'search_tools' tool twice (simultaneously, in parallel),
+                    call 'tool_search_tool' twice (simultaneously, in parallel),
                     once with "London weather" argument, once with "London time" argument.
                     """)
             String chat(String userMessage);
@@ -1736,10 +1736,10 @@ public abstract class AbstractAiServiceWithToolsIT {
         interface Assistant {
 
             @SystemMessage("""
-                    Use 'search_tools' tool if you need to discover other available tools.
+                    Use 'tool_search_tool' tool if you need to discover other available tools.
                     Use separate tool calls for separate search terms.
                     For example, when asked "What is the weather and time in London?",
-                    call 'search_tools' tool twice (simultaneously, in parallel),
+                    call 'tool_search_tool' twice (simultaneously, in parallel),
                     once with "London weather" argument, once with "London time" argument.
                     """)
             String chat(String userMessage);
@@ -1865,7 +1865,7 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         interface Assistant {
 
-            @SystemMessage("Use 'search_tools' tool if you need to discover other available tools")
+            @SystemMessage("Use 'tool_search_tool' tool if you need to discover other available tools")
             String chat(String userMessage);
         }
 
@@ -1922,7 +1922,7 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         // when
         String answer2 = assistant.chat("What is the time in London? What is the weather in Paris? " +
-                "Call 2 tools simultaneously (in parallel), in this order: search_tools, getWeather");
+                "Call 2 tools simultaneously (in parallel), in this order: tool_search_tool, getWeather");
 
         // then
         assertThat(answer2.toLowerCase()).contains("12", "34", "rain");
@@ -1982,7 +1982,7 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         interface Assistant {
 
-            @SystemMessage("Use 'search_tools' tool if you need to discover other available tools")
+            @SystemMessage("Use 'tool_search_tool' tool if you need to discover other available tools")
             String chat(String userMessage);
         }
 
@@ -2036,7 +2036,7 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         // when
         String answer2 = assistant.chat("What is the time in London? What is the weather in Paris? " +
-                "Call 2 tools simultaneously (in parallel), in this order: search_tools, getWeather");
+                "Call 2 tools simultaneously (in parallel), in this order: tool_search_tool, getWeather");
 
         // then
         assertThat(answer2.toLowerCase()).contains("12", "34", "rain");

@@ -36,7 +36,7 @@ import static java.util.Comparator.comparingInt;
  */
 public class SimpleToolSearchStrategy implements ToolSearchStrategy {
 
-    private static final String DEFAULT_TOOL_NAME = "tool_search_tool_simple"; // TODO name
+    private static final String DEFAULT_TOOL_NAME = "tool_search_tool";
     private static final String DEFAULT_TOOL_DESCRIPTION = "Finds available tools whose name or description contains given search terms";
     private static final String DEFAULT_TOOL_ARGUMENT_NAME = "terms";
     private static final String DEFAULT_TOOL_ARGUMENT_DESCRIPTION = "A list of search terms used to find relevant tools";

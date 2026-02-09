@@ -34,7 +34,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 public class VectorToolSearchStrategy implements ToolSearchStrategy { // TODO name
     // TODO move into a separate module
 
-    private static final String DEFAULT_TOOL_NAME = "tool_search_tool_vector"; // TODO
+    private static final String DEFAULT_TOOL_NAME = "tool_search_tool";
     private static final String DEFAULT_TOOL_DESCRIPTION = "Finds available tools using semantic vector search";
     private static final String DEFAULT_TOOL_ARGUMENT_NAME = "query";
     private static final String DEFAULT_TOOL_ARGUMENT_DESCRIPTION = "Natural language query describing desired tool";
