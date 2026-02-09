@@ -6,7 +6,6 @@ import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_OPENAI_U
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_USER_AGENT;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
-import static java.util.Collections.singletonList;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -14,15 +13,16 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
+import dev.langchain4j.model.moderation.ModerationRequest;
+import dev.langchain4j.model.moderation.ModerationResponse;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
-import dev.langchain4j.model.openai.internal.moderation.ModerationRequest;
-import dev.langchain4j.model.openai.internal.moderation.ModerationResponse;
 import dev.langchain4j.model.openai.internal.moderation.ModerationResult;
 import dev.langchain4j.model.openai.spi.OpenAiModerationModelBuilderFactory;
-import dev.langchain4j.model.output.Response;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -58,40 +58,33 @@ public class OpenAiModerationModel implements ModerationModel {
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
     }
 
+    @Override
     public String modelName() {
         return modelName;
     }
 
     @Override
-    public Response<Moderation> moderate(String text) {
-        return moderateInternal(singletonList(text));
-    }
-
-    private Response<Moderation> moderateInternal(List<String> inputs) {
-
-        ModerationRequest request =
-                ModerationRequest.builder().model(modelName).input(inputs).build();
-
-        ModerationResponse response =
-                withRetryMappingExceptions(() -> client.moderation(request).execute(), maxRetries);
-
-        int i = 0;
-        for (ModerationResult moderationResult : response.results()) {
-            if (Boolean.TRUE.equals(moderationResult.isFlagged())) {
-                return Response.from(Moderation.flagged(inputs.get(i)));
-            }
-            i++;
-        }
-
-        return Response.from(Moderation.notFlagged());
+    public ModelProvider provider() {
+        return ModelProvider.OPEN_AI;
     }
 
     @Override
-    public Response<Moderation> moderate(List<ChatMessage> messages) {
-        List<String> inputs =
-                messages.stream().map(OpenAiModerationModel::toText).toList();
-
+    public ModerationResponse doModerate(ModerationRequest moderationRequest) {
+        List<String> inputs = toInputs(moderationRequest);
         return moderateInternal(inputs);
+    }
+
+    private List<String> toInputs(ModerationRequest moderationRequest) {
+        List<String> inputs = new ArrayList<>();
+        if (moderationRequest.hasText()) {
+            inputs.add(moderationRequest.text());
+        }
+        if (moderationRequest.hasMessages()) {
+            moderationRequest.messages().stream()
+                    .map(OpenAiModerationModel::toText)
+                    .forEach(inputs::add);
+        }
+        return inputs;
     }
 
     private static String toText(ChatMessage chatMessage) {
@@ -106,6 +99,30 @@ public class OpenAiModerationModel implements ModerationModel {
         } else {
             throw new IllegalArgumentException("Unsupported message type: " + chatMessage.type());
         }
+    }
+
+    private ModerationResponse moderateInternal(List<String> inputs) {
+
+        dev.langchain4j.model.openai.internal.moderation.ModerationRequest request =
+                dev.langchain4j.model.openai.internal.moderation.ModerationRequest.builder()
+                        .model(modelName)
+                        .input(inputs)
+                        .build();
+
+        dev.langchain4j.model.openai.internal.moderation.ModerationResponse response =
+                withRetryMappingExceptions(() -> client.moderation(request).execute(), maxRetries);
+
+        int i = 0;
+        for (ModerationResult moderationResult : response.results()) {
+            if (Boolean.TRUE.equals(moderationResult.isFlagged())) {
+                return ModerationResponse.builder()
+                        .moderation(Moderation.flagged(inputs.get(i)))
+                        .build();
+            }
+            i++;
+        }
+
+        return ModerationResponse.builder().moderation(Moderation.notFlagged()).build();
     }
 
     public static OpenAiModerationModelBuilder builder() {

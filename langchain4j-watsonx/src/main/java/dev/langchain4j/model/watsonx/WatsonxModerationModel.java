@@ -14,9 +14,12 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.LangChain4jException;
 import dev.langchain4j.internal.DefaultExecutorProvider;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
-import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.moderation.ModerationRequest;
+import dev.langchain4j.model.moderation.ModerationResponse;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -66,41 +69,76 @@ public class WatsonxModerationModel implements ModerationModel {
     }
 
     @Override
-    public Response<Moderation> moderate(String text) {
-
-        var request =
-                DetectionTextRequest.builder().input(text).detectors(detectors).build();
-
-        return WatsonxExceptionMapper.INSTANCE.withExceptionMapper(
-                () -> detectionService.detect(request).detections().stream()
-                        .findFirst()
-                        .map(this::createModerationResponse)
-                        .orElse(Response.from(Moderation.notFlagged())));
+    public ModelProvider provider() {
+        return ModelProvider.WATSONX;
     }
 
     @Override
-    public Response<Moderation> moderate(List<ChatMessage> messages) {
+    public ModerationResponse doModerate(ModerationRequest moderationRequest) {
+        List<String> inputs = toInputs(moderationRequest);
+        return moderateInternal(inputs);
+    }
 
-        var futures = messages.stream()
-                .map(this::toText)
-                .map(message -> CompletableFuture.supplyAsync(
-                        () -> moderate(message), DefaultExecutorProvider.getDefaultExecutorService()))
+    private List<String> toInputs(ModerationRequest moderationRequest) {
+        List<String> inputs = new ArrayList<>();
+        if (moderationRequest.hasText()) {
+            inputs.add(moderationRequest.text());
+        }
+        if (moderationRequest.hasMessages()) {
+            moderationRequest.messages().stream()
+                    .map(WatsonxModerationModel::toText)
+                    .forEach(inputs::add);
+        }
+        return inputs;
+    }
+
+    private static String toText(ChatMessage chatMessage) {
+        if (chatMessage instanceof SystemMessage systemMessage) {
+            return systemMessage.text();
+        } else if (chatMessage instanceof UserMessage userMessage) {
+            return userMessage.singleText();
+        } else if (chatMessage instanceof AiMessage aiMessage) {
+            return aiMessage.text();
+        } else if (chatMessage instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
+            return toolExecutionResultMessage.text();
+        } else {
+            throw new IllegalArgumentException("Unsupported message type: " + chatMessage.type());
+        }
+    }
+
+    private ModerationResponse moderateInternal(List<String> inputs) {
+        var futures = inputs.stream()
+                .map(input -> CompletableFuture.supplyAsync(
+                        () -> moderateSingleInput(input), DefaultExecutorProvider.getDefaultExecutorService()))
                 .toList();
 
         try {
-
             return futures.stream()
                     .map(CompletableFuture::join)
-                    .filter(response -> response.content().flagged())
+                    .filter(response -> response.moderation().flagged())
                     .findFirst()
-                    .orElse(Response.from(Moderation.notFlagged()));
-
+                    .orElse(ModerationResponse.builder()
+                            .moderation(Moderation.notFlagged())
+                            .build());
         } catch (CompletionException e) {
             Throwable cause = e.getCause();
             throw cause instanceof LangChain4jException langchainException
                     ? langchainException
                     : new RuntimeException(cause);
         }
+    }
+
+    private ModerationResponse moderateSingleInput(String input) {
+        var request =
+                DetectionTextRequest.builder().input(input).detectors(detectors).build();
+
+        return WatsonxExceptionMapper.INSTANCE.withExceptionMapper(
+                () -> detectionService.detect(request).detections().stream()
+                        .findFirst()
+                        .map(this::createModerationResponse)
+                        .orElse(ModerationResponse.builder()
+                                .moderation(Moderation.notFlagged())
+                                .build()));
     }
 
     /**
@@ -123,7 +161,7 @@ public class WatsonxModerationModel implements ModerationModel {
         return new Builder();
     }
 
-    private Response<Moderation> createModerationResponse(DetectionTextResponse detectionTextResponse) {
+    private ModerationResponse createModerationResponse(DetectionTextResponse detectionTextResponse) {
         Moderation moderation = Moderation.flagged(detectionTextResponse.text());
         Map<String, Object> metadata = Map.of(
                 "detection", detectionTextResponse.detection(),
@@ -131,21 +169,10 @@ public class WatsonxModerationModel implements ModerationModel {
                 "start", detectionTextResponse.start(),
                 "end", detectionTextResponse.end(),
                 "score", detectionTextResponse.score());
-        return Response.from(moderation, null, null, metadata);
-    }
-
-    private String toText(ChatMessage chatMessage) {
-        if (chatMessage instanceof SystemMessage systemMessage) {
-            return systemMessage.text();
-        } else if (chatMessage instanceof UserMessage userMessage) {
-            return userMessage.singleText();
-        } else if (chatMessage instanceof AiMessage aiMessage) {
-            return aiMessage.text();
-        } else if (chatMessage instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
-            return toolExecutionResultMessage.text();
-        } else {
-            throw new IllegalArgumentException("Unsupported message type: " + chatMessage.type());
-        }
+        return ModerationResponse.builder()
+                .moderation(moderation)
+                .metadata(metadata)
+                .build();
     }
 
     /**
