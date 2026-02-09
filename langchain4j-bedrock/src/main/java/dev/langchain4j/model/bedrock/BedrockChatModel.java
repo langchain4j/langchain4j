@@ -82,6 +82,7 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
         return ConverseRequest.builder()
                 .modelId(chatRequest.modelName())
                 .inferenceConfig(inferenceConfigFrom(chatRequest.parameters()))
+                .outputConfig(outputConfigFrom(chatRequest.parameters()))
                 .system(extractSystemMessages(chatRequest.messages(), cachePointPlacement))
                 .messages(extractRegularMessages(chatRequest.messages(), cachePointPlacement))
                 .toolConfig(extractToolConfigurationFrom(chatRequest, cachePointPlacement))

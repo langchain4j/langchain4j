@@ -1,5 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
@@ -37,8 +38,10 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
+import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
@@ -72,7 +75,12 @@ import software.amazon.awssdk.services.bedrockruntime.model.GuardrailTrace;
 import software.amazon.awssdk.services.bedrockruntime.model.ImageBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ImageSource;
 import software.amazon.awssdk.services.bedrockruntime.model.InferenceConfiguration;
+import software.amazon.awssdk.services.bedrockruntime.model.JsonSchemaDefinition;
 import software.amazon.awssdk.services.bedrockruntime.model.Message;
+import software.amazon.awssdk.services.bedrockruntime.model.OutputConfig;
+import software.amazon.awssdk.services.bedrockruntime.model.OutputFormat;
+import software.amazon.awssdk.services.bedrockruntime.model.OutputFormatStructure;
+import software.amazon.awssdk.services.bedrockruntime.model.OutputFormatType;
 import software.amazon.awssdk.services.bedrockruntime.model.ReasoningContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ReasoningTextBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.StopReason;
@@ -640,6 +648,41 @@ abstract class AbstractBedrockChatModel {
                 .build();
     }
 
+    protected static OutputConfig outputConfigFrom(ChatRequestParameters parameters) {
+        if (parameters == null || parameters.responseFormat() == null) {
+            return null;
+        }
+
+        ResponseFormat responseFormat = parameters.responseFormat();
+        if (responseFormat.type() != ResponseFormatType.JSON
+                || responseFormat.jsonSchema() == null
+                || responseFormat.jsonSchema().rootElement() == null) {
+            return null;
+        }
+
+        String jsonSchema;
+        if (responseFormat.jsonSchema().rootElement() instanceof JsonRawSchema jsonRawSchema) {
+            jsonSchema = jsonRawSchema.schema();
+        } else {
+            jsonSchema = Json.toJson(toMap(responseFormat.jsonSchema().rootElement()));
+        }
+
+        JsonSchemaDefinition.Builder schemaBuilder =
+                JsonSchemaDefinition.builder().schema(jsonSchema);
+        if (isNotNullOrEmpty(responseFormat.jsonSchema().name())) {
+            schemaBuilder.name(responseFormat.jsonSchema().name());
+        }
+
+        return OutputConfig.builder()
+                .textFormat(OutputFormat.builder()
+                        .type(OutputFormatType.JSON_SCHEMA)
+                        .structure(OutputFormatStructure.builder()
+                                .jsonSchema(schemaBuilder.build())
+                                .build())
+                        .build())
+                .build();
+    }
+
     protected GuardrailConfiguration guardrailConfigFrom(BedrockGuardrailConfiguration bedrockGuardrailConfiguration) {
 
         if (bedrockGuardrailConfiguration == null) {
@@ -898,8 +941,10 @@ abstract class AbstractBedrockChatModel {
             throw new UnsupportedFeatureException(String.format(errorTemplate, "'presencePenalty' parameter"));
         }
         if (nonNull(parameters.responseFormat())
-                && parameters.responseFormat().type().equals(ResponseFormatType.JSON)) {
-            throw new UnsupportedFeatureException(String.format(errorTemplate, "JSON response format"));
+                && parameters.responseFormat().type().equals(ResponseFormatType.JSON)
+                && (parameters.responseFormat().jsonSchema() == null
+                        || parameters.responseFormat().jsonSchema().rootElement() == null)) {
+            throw new UnsupportedFeatureException(String.format(errorTemplate, "Schemaless JSON response format"));
         }
     }
 
