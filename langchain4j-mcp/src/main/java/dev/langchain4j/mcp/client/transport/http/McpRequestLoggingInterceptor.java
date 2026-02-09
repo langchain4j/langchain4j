@@ -11,17 +11,18 @@ import okio.Buffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import dev.langchain4j.mcp.client.logging.McpLoggers;
+
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
 class McpRequestLoggingInterceptor implements Interceptor {
 
     private static final Logger log = LoggerFactory.getLogger(McpRequestLoggingInterceptor.class);
-    private static final Logger DEFAULT_TRAFFIC_LOG = LoggerFactory.getLogger("MCP");
-
+   
     private final Logger trafficLog;
 
     McpRequestLoggingInterceptor(Logger logger) {
-        this.trafficLog = getOrDefault(logger, DEFAULT_TRAFFIC_LOG);
+        this.trafficLog = getOrDefault(logger, McpLoggers.traffic());
     }
 
     @Override
