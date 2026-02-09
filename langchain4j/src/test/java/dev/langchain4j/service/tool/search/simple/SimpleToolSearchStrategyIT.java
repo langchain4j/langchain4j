@@ -1,4 +1,4 @@
-package dev.langchain4j.service.tool.search.regex;
+package dev.langchain4j.service.tool.search.simple;
 
 import dev.langchain4j.LoggingChatModelListener;
 import dev.langchain4j.agent.tool.P;
@@ -8,7 +8,6 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.SystemMessage;
-import dev.langchain4j.service.tool.search.ToolSearchStrategy;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -28,7 +27,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
-class RegexToolSearchStrategyIT {
+class SimpleToolSearchStrategyIT { // TODO make abstract test?
 
     private static OpenAiChatModel.OpenAiChatModelBuilder baseModelBuilder() {
         return OpenAiChatModel.builder()
@@ -49,7 +48,7 @@ class RegexToolSearchStrategyIT {
 
     interface Assistant {
 
-        @SystemMessage("Use 'tool_search_tool_regex' tool if you need to discover other available tools")
+        @SystemMessage("Use 'tool_search_tool_simple' tool if you need to discover other available tools")
         String chat(String userMessage);
     }
 
@@ -73,7 +72,7 @@ class RegexToolSearchStrategyIT {
         // given
         ChatModel spyModel = spy(model);
         Tools spyTools = spy(new Tools());
-        ToolSearchStrategy spyToolSearchStrategy = spy(new RegexToolSearchStrategy());
+        SimpleToolSearchStrategy spyToolSearchStrategy = spy(new SimpleToolSearchStrategy());
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(spyModel)
@@ -91,16 +90,16 @@ class RegexToolSearchStrategyIT {
 
         inOrder.verify(spyModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 1
-                        && containsTool(request, "tool_search_tool_regex")
+                        && containsTool(request, "tool_search_tool_simple")
         ));
 
         inOrder.verify(spyToolSearchStrategy).search(argThat(request ->
-                request.toolSearchRequest().arguments().contains("regex")
+                request.toolSearchRequest().arguments().contains("terms")
         ));
 
         inOrder.verify(spyModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 2
-                        && containsTool(request, "tool_search_tool_regex")
+                        && containsTool(request, "tool_search_tool_simple")
                         && containsTool(request, "getWeather")
         ));
 
@@ -108,12 +107,15 @@ class RegexToolSearchStrategyIT {
 
         inOrder.verify(spyModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 2
-                        && containsTool(request, "tool_search_tool_regex")
+                        && containsTool(request, "tool_search_tool_simple")
                         && containsTool(request, "getWeather")
         ));
 
         verifyNoMoreInteractionsFor(spyModel);
         ignoreInteractions(spyToolSearchStrategy).toolSearchTools(any());
+        ignoreInteractions(spyToolSearchStrategy).extractTerms(any());
+        ignoreInteractions(spyToolSearchStrategy).score(any(), any());
+        ignoreInteractions(spyToolSearchStrategy).clean(any());
         verifyNoMoreInteractions(spyToolSearchStrategy);
         verifyNoMoreInteractions(spyTools);
     }
