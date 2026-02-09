@@ -336,7 +336,7 @@ class OpenAiResponsesClient {
         return requestBuilder.body(requestBody).build();
     }
 
-    private List<Map<String, Object>> toResponsesMessages(ChatMessage msg) {
+    private static List<Map<String, Object>> toResponsesMessages(ChatMessage msg) {
         if (msg instanceof SystemMessage systemMessage) {
             return List.of(createMessageEntry(ROLE_SYSTEM, List.of(createInputTextContent(systemMessage.text()))));
         } else if (msg instanceof UserMessage userMessage) {
@@ -388,7 +388,7 @@ class OpenAiResponsesClient {
         }
     }
 
-    private Map<String, Object> createMessageEntry(String role, List<Map<String, Object>> contentEntries) {
+    private static Map<String, Object> createMessageEntry(String role, List<Map<String, Object>> contentEntries) {
         var entry = new HashMap<String, Object>();
         entry.put(FIELD_TYPE, TYPE_MESSAGE);
         entry.put(FIELD_ROLE, role);
@@ -396,14 +396,14 @@ class OpenAiResponsesClient {
         return entry;
     }
 
-    private Map<String, Object> createInputTextContent(String text) {
+    private static Map<String, Object> createInputTextContent(String text) {
         var content = new HashMap<String, Object>();
         content.put(FIELD_TYPE, TYPE_INPUT_TEXT);
         content.put(FIELD_TEXT, text);
         return content;
     }
 
-    private Map<String, Object> createInputImageContent(Image image) {
+    private static Map<String, Object> createInputImageContent(Image image) {
         var content = new HashMap<String, Object>();
         content.put(FIELD_TYPE, TYPE_INPUT_IMAGE);
         content.put(FIELD_IMAGE_URL, buildImageUrl(image));
@@ -411,7 +411,7 @@ class OpenAiResponsesClient {
         return content;
     }
 
-    private String buildImageUrl(Image image) {
+    private static String buildImageUrl(Image image) {
         if (image.url() != null) {
             return image.url().toString();
         } else if (image.base64Data() != null) {
@@ -422,7 +422,7 @@ class OpenAiResponsesClient {
         }
     }
 
-    private String toToolChoiceString(ToolChoice toolChoice) {
+    private static String toToolChoiceString(ToolChoice toolChoice) {
         if (toolChoice == null) {
             return null;
         }
@@ -440,7 +440,7 @@ class OpenAiResponsesClient {
         return value;
     }
 
-    private Map<String, Object> toResponseTextConfig(ResponseFormat responseFormat, boolean strict) {
+    private static Map<String, Object> toResponseTextConfig(ResponseFormat responseFormat, boolean strict) {
         if (responseFormat == null || responseFormat.type() == ResponseFormatType.TEXT) {
             return null;
         }

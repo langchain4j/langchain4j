@@ -356,10 +356,6 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         return Set.of(Capability.RESPONSE_FORMAT_JSON_SCHEMA);
     }
 
-    private boolean containsToolExecutionResult(ChatRequest chatRequest) {
-        return chatRequest.messages().stream().anyMatch(ToolExecutionResultMessage.class::isInstance);
-    }
-
     private StreamingChatResponseHandler wrapHandler(StreamingChatResponseHandler handler) {
         return new StreamingChatResponseHandler() {
             @Override
@@ -413,6 +409,10 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 handler.onError(error);
             }
         };
+    }
+
+    private static boolean containsToolExecutionResult(ChatRequest chatRequest) {
+        return chatRequest.messages().stream().anyMatch(ToolExecutionResultMessage.class::isInstance);
     }
 
     private static List<ResponseInputItem> toResponseInputItems(ChatMessage msg) {

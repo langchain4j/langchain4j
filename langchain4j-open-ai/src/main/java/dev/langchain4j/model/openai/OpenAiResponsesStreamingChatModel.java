@@ -142,10 +142,6 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
         client.streamingChat(chatRequest, config, wrapHandler(handler));
     }
 
-    private boolean containsToolExecutionResult(ChatRequest chatRequest) {
-        return chatRequest.messages().stream().anyMatch(ToolExecutionResultMessage.class::isInstance);
-    }
-
     private StreamingChatResponseHandler wrapHandler(StreamingChatResponseHandler handler) {
         return new StreamingChatResponseHandler() {
             @Override
@@ -219,6 +215,10 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
     @Override
     public Set<Capability> supportedCapabilities() {
         return Set.of(Capability.RESPONSE_FORMAT_JSON_SCHEMA);
+    }
+
+    private static boolean containsToolExecutionResult(ChatRequest chatRequest) {
+        return chatRequest.messages().stream().anyMatch(ToolExecutionResultMessage.class::isInstance);
     }
 
     public static class Builder {
