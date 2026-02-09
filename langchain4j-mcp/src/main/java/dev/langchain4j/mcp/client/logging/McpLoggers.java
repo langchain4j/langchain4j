@@ -10,11 +10,9 @@ public final class McpLoggers {
 
     public static final String DEFAULT_TRAFFIC_LOGGER_NAME = "MCP";
 
-    private static final Logger DEFAULT_TRAFFIC_LOGGER =
-            LoggerFactory.getLogger(DEFAULT_TRAFFIC_LOGGER_NAME);
+    private static final Logger DEFAULT_TRAFFIC_LOGGER = LoggerFactory.getLogger(DEFAULT_TRAFFIC_LOGGER_NAME);
 
-    private McpLoggers() {
-    }
+    private McpLoggers() {}
 
     public static Logger traffic() {
         return DEFAULT_TRAFFIC_LOGGER;

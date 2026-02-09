@@ -3,7 +3,6 @@ package dev.langchain4j.mcp.client.transport.http;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
 import dev.langchain4j.mcp.client.logging.McpLoggers;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import java.util.concurrent.CompletableFuture;
