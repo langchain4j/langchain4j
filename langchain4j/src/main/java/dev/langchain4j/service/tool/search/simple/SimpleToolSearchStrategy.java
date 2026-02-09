@@ -76,7 +76,7 @@ public class SimpleToolSearchStrategy implements ToolSearchStrategy {
     }
 
     @Override
-    public List<ToolSpecification> toolSearchTools(InvocationContext context) {
+    public List<ToolSpecification> getToolSearchTools(InvocationContext context) {
         return List.of(toolSearchTool);
     }
 

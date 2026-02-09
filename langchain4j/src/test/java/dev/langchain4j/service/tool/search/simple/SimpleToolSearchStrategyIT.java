@@ -27,7 +27,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
-class SimpleToolSearchStrategyIT { // TODO make abstract test?
+class SimpleToolSearchStrategyIT {
 
     private static OpenAiChatModel.OpenAiChatModelBuilder baseModelBuilder() {
         return OpenAiChatModel.builder()
@@ -112,7 +112,7 @@ class SimpleToolSearchStrategyIT { // TODO make abstract test?
         ));
 
         verifyNoMoreInteractionsFor(spyModel);
-        ignoreInteractions(spyToolSearchStrategy).toolSearchTools(any());
+        ignoreInteractions(spyToolSearchStrategy).getToolSearchTools(any());
         ignoreInteractions(spyToolSearchStrategy).extractTerms(any());
         ignoreInteractions(spyToolSearchStrategy).score(any(), any());
         ignoreInteractions(spyToolSearchStrategy).clean(any());

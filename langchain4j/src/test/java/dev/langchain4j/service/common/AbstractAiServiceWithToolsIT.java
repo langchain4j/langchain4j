@@ -1283,7 +1283,7 @@ public abstract class AbstractAiServiceWithToolsIT {
                 .build();
 
         @Override
-        public List<ToolSpecification> toolSearchTools(InvocationContext context) {
+        public List<ToolSpecification> getToolSearchTools(InvocationContext context) {
             return List.of(TOOL_SEARCH_TOOL);
         }
 
@@ -1395,7 +1395,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         if (verifyModelInteractions()) {
             verifyNoMoreInteractionsFor(spyChatModel);
         }
-        ignoreInteractions(spyToolSearchStrategy).toolSearchTools(any());
+        ignoreInteractions(spyToolSearchStrategy).getToolSearchTools(any());
         verifyNoMoreInteractions(spyToolSearchStrategy);
         verifyNoMoreInteractions(spyTools);
 
@@ -1444,7 +1444,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         if (verifyModelInteractions()) {
             verifyNoMoreInteractionsFor(spyChatModel);
         }
-        ignoreInteractions(spyToolSearchStrategy).toolSearchTools(any());
+        ignoreInteractions(spyToolSearchStrategy).getToolSearchTools(any());
         verifyNoMoreInteractions(spyToolSearchStrategy);
         verifyNoMoreInteractions(spyTools);
     }
@@ -1509,7 +1509,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         if (verifyModelInteractions()) {
             verifyNoMoreInteractionsFor(spyChatModel);
         }
-        ignoreInteractions(spyToolSearchStrategy).toolSearchTools(any());
+        ignoreInteractions(spyToolSearchStrategy).getToolSearchTools(any());
         verifyNoMoreInteractions(spyToolSearchStrategy);
 
         // when
@@ -1545,7 +1545,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         if (verifyModelInteractions()) {
             verifyNoMoreInteractionsFor(spyChatModel);
         }
-        ignoreInteractions(spyToolSearchStrategy).toolSearchTools(any());
+        ignoreInteractions(spyToolSearchStrategy).getToolSearchTools(any());
         verifyNoMoreInteractions(spyToolSearchStrategy);
     }
 
@@ -1627,7 +1627,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         if (verifyModelInteractions()) {
             verifyNoMoreInteractionsFor(spyChatModel);
         }
-        ignoreInteractions(spyToolSearchStrategy).toolSearchTools(any());
+        ignoreInteractions(spyToolSearchStrategy).getToolSearchTools(any());
         verifyNoMoreInteractions(spyToolSearchStrategy);
         verifyNoMoreInteractions(spyTools);
     }
@@ -1707,7 +1707,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         if (verifyModelInteractions()) {
             verifyNoMoreInteractionsFor(spyChatModel);
         }
-        ignoreInteractions(spyToolSearchStrategy).toolSearchTools(any());
+        ignoreInteractions(spyToolSearchStrategy).getToolSearchTools(any());
         verifyNoMoreInteractions(spyToolSearchStrategy);
     }
 
@@ -1721,7 +1721,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         ToolSearchStrategy spyToolSearchStrategy = spy(new ToolSearchStrategy() {
 
             @Override
-            public List<ToolSpecification> toolSearchTools(InvocationContext context) {
+            public List<ToolSpecification> getToolSearchTools(InvocationContext context) {
                 return List.of(TOOL_SEARCH_TOOL);
             }
 
@@ -1804,7 +1804,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         if (verifyModelInteractions()) {
             verifyNoMoreInteractionsFor(spyChatModel);
         }
-        ignoreInteractions(spyToolSearchStrategy).toolSearchTools(any());
+        ignoreInteractions(spyToolSearchStrategy).getToolSearchTools(any());
         verifyNoMoreInteractions(spyToolSearchStrategy);
         verifyNoMoreInteractions(spyTools);
 
@@ -1849,7 +1849,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         if (verifyModelInteractions()) {
             verifyNoMoreInteractionsFor(spyChatModel);
         }
-        ignoreInteractions(spyToolSearchStrategy).toolSearchTools(any());
+        ignoreInteractions(spyToolSearchStrategy).getToolSearchTools(any());
         verifyNoMoreInteractions(spyToolSearchStrategy);
         verifyNoMoreInteractions(spyTools);
     }
@@ -1916,7 +1916,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         if (verifyModelInteractions()) {
             verifyNoMoreInteractionsFor(spyChatModel);
         }
-        ignoreInteractions(spyToolSearchStrategy).toolSearchTools(any());
+        ignoreInteractions(spyToolSearchStrategy).getToolSearchTools(any());
         verifyNoMoreInteractions(spyToolSearchStrategy);
         verifyNoMoreInteractions(spyTools);
 
@@ -1966,7 +1966,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         if (verifyModelInteractions()) {
             verifyNoMoreInteractionsFor(spyChatModel);
         }
-        ignoreInteractions(spyToolSearchStrategy).toolSearchTools(any());
+        ignoreInteractions(spyToolSearchStrategy).getToolSearchTools(any());
         verifyNoMoreInteractions(spyToolSearchStrategy);
         verifyNoMoreInteractions(spyTools);
     }
@@ -2031,7 +2031,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         if (verifyModelInteractions()) {
             verifyNoMoreInteractionsFor(spyChatModel);
         }
-        ignoreInteractions(spyToolSearchStrategy).toolSearchTools(any());
+        ignoreInteractions(spyToolSearchStrategy).getToolSearchTools(any());
         verifyNoMoreInteractions(spyToolSearchStrategy);
 
         // when
@@ -2077,7 +2077,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         if (verifyModelInteractions()) {
             verifyNoMoreInteractionsFor(spyChatModel);
         }
-        ignoreInteractions(spyToolSearchStrategy).toolSearchTools(any());
+        ignoreInteractions(spyToolSearchStrategy).getToolSearchTools(any());
         verifyNoMoreInteractions(spyToolSearchStrategy);
     }
 

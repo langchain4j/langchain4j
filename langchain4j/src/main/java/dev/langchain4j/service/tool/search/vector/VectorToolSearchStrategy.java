@@ -1,4 +1,4 @@
-package dev.langchain4j.service.tool.search.embedding;
+package dev.langchain4j.service.tool.search.vector;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -30,11 +30,10 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 /**
  * A {@link ToolSearchStrategy} that uses vector similarity search
  * to find relevant tools based on semantic meaning.
- * TODO comment on tool description
+ * TODO comment on tool description, caching
  */
 @Experimental
 public class VectorToolSearchStrategy implements ToolSearchStrategy { // TODO name
-    // TODO move into a separate module?
 
     private static final String DEFAULT_TOOL_NAME = "tool_search_tool";
     private static final String DEFAULT_TOOL_DESCRIPTION = "Finds available tools using semantic vector search";
@@ -82,7 +81,7 @@ public class VectorToolSearchStrategy implements ToolSearchStrategy { // TODO na
     }
 
     @Override
-    public List<ToolSpecification> toolSearchTools(InvocationContext context) {
+    public List<ToolSpecification> getToolSearchTools(InvocationContext context) {
         return List.of(toolSearchTool);
     }
 
@@ -144,9 +143,6 @@ public class VectorToolSearchStrategy implements ToolSearchStrategy { // TODO na
         }
     }
 
-    /**
-     * TODO
-     */
     protected String format(ToolSpecification tool) {
         return tool.name() + ": " + tool.description();
     }

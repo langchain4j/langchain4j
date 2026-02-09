@@ -1,4 +1,4 @@
-package dev.langchain4j.service.tool.search.embedding;
+package dev.langchain4j.service.tool.search.vector;
 
 import dev.langchain4j.LoggingChatModelListener;
 import dev.langchain4j.agent.tool.P;
@@ -132,7 +132,7 @@ class VectorToolSearchStrategyIT { // TODO name
         ));
 
         verifyNoMoreInteractionsFor(spyChatModel);
-        ignoreInteractions(spyToolSearchStrategy).toolSearchTools(any());
+        ignoreInteractions(spyToolSearchStrategy).getToolSearchTools(any());
         ignoreInteractions(spyToolSearchStrategy).format(any());
         verifyNoMoreInteractions(spyToolSearchStrategy);
         verifyNoMoreInteractions(spyTools);
@@ -174,7 +174,7 @@ class VectorToolSearchStrategyIT { // TODO name
         ));
 
         verifyNoMoreInteractionsFor(spyChatModel);
-        ignoreInteractions(spyToolSearchStrategy).toolSearchTools(any());
+        ignoreInteractions(spyToolSearchStrategy).getToolSearchTools(any());
         ignoreInteractions(spyToolSearchStrategy).format(any());
         verifyNoMoreInteractions(spyToolSearchStrategy);
         verifyNoMoreInteractions(spyTools);

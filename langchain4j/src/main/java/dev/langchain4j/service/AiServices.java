@@ -647,7 +647,7 @@ public abstract class AiServices<T> {
      * <p>
      * You can use one of the out-of-the-box implementations, such as
      * {@link dev.langchain4j.service.tool.search.simple.SimpleToolSearchStrategy}
-     * or {@link dev.langchain4j.service.tool.search.embedding.VectorToolSearchStrategy}, or implement your own.
+     * or {@link dev.langchain4j.service.tool.search.vector.VectorToolSearchStrategy}, or implement your own.
      *
      * @param toolSearchStrategy
      * @return

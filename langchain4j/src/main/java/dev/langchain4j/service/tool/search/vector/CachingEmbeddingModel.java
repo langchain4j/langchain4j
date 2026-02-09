@@ -1,4 +1,4 @@
-package dev.langchain4j.service.tool.search.embedding;
+package dev.langchain4j.service.tool.search.vector;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.embedding.Embedding;

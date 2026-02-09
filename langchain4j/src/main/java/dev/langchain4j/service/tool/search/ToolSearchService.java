@@ -36,7 +36,7 @@ public class ToolSearchService {
     }
 
     public List<ToolSpecification> toolSearchTools(InvocationContext invocationContext) {
-        return strategy.toolSearchTools(invocationContext);
+        return strategy.getToolSearchTools(invocationContext);
     }
 
     public List<ToolSpecification> calculateEffectiveTools(List<ToolSpecification> toolSearchTools,
