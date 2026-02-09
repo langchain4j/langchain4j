@@ -34,6 +34,10 @@ public enum BedrockCachePointPlacement {
      * Cache point after first user message.
      */
     AFTER_USER_MESSAGE,
+    /**
+     * Cache point after last user message.
+     */
+    AFTER_LAST_USER_MESSAGE,
 
     /**
      * Cache point after tool definitions.
