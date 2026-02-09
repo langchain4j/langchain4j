@@ -1,6 +1,7 @@
 package dev.langchain4j.model.mistralai;
 
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
@@ -20,6 +21,7 @@ import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.model.moderation.ModerationRequest;
 import dev.langchain4j.model.moderation.ModerationResponse;
+import dev.langchain4j.model.moderation.listener.ModerationModelListener;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,6 +32,7 @@ public class MistralAiModerationModel implements ModerationModel {
     private final MistralAiClient client;
     private final String modelName;
     private final Integer maxRetries;
+    private final List<ModerationModelListener> listeners;
 
     public MistralAiModerationModel(Builder builder) {
         this.client = MistralAiClient.builder()
@@ -43,6 +46,12 @@ public class MistralAiModerationModel implements ModerationModel {
                 .build();
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
+        this.listeners = copyIfNotNull(builder.listeners);
+    }
+
+    @Override
+    public List<ModerationModelListener> listeners() {
+        return listeners != null ? listeners : List.of();
     }
 
     @Override
@@ -137,6 +146,7 @@ public class MistralAiModerationModel implements ModerationModel {
         private Logger logger;
         private String modelName;
         private Integer maxRetries;
+        private List<ModerationModelListener> listeners;
 
         /**
          * @param httpClientBuilder the HTTP client builder to use for creating the HTTP client
@@ -188,6 +198,17 @@ public class MistralAiModerationModel implements ModerationModel {
 
         public Builder maxRetries(int maxRetries) {
             this.maxRetries = maxRetries;
+            return this;
+        }
+
+        /**
+         * Sets the listeners for this moderation model.
+         *
+         * @param listeners the listeners.
+         * @return {@code this}.
+         */
+        public Builder listeners(List<ModerationModelListener> listeners) {
+            this.listeners = listeners;
             return this;
         }
 

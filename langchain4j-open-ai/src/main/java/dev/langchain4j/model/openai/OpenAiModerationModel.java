@@ -1,6 +1,7 @@
 package dev.langchain4j.model.openai;
 
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_OPENAI_URL;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_USER_AGENT;
@@ -18,6 +19,7 @@ import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.model.moderation.ModerationRequest;
 import dev.langchain4j.model.moderation.ModerationResponse;
+import dev.langchain4j.model.moderation.listener.ModerationModelListener;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
 import dev.langchain4j.model.openai.internal.moderation.ModerationResult;
 import dev.langchain4j.model.openai.spi.OpenAiModerationModelBuilderFactory;
@@ -36,6 +38,7 @@ public class OpenAiModerationModel implements ModerationModel {
     private final OpenAiClient client;
     private final String modelName;
     private final Integer maxRetries;
+    private final List<ModerationModelListener> listeners;
 
     public OpenAiModerationModel(OpenAiModerationModelBuilder builder) {
 
@@ -56,11 +59,17 @@ public class OpenAiModerationModel implements ModerationModel {
                 .build();
         this.modelName = builder.modelName;
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
+        this.listeners = copyIfNotNull(builder.listeners);
     }
 
     @Override
     public String modelName() {
         return modelName;
+    }
+
+    @Override
+    public List<ModerationModelListener> listeners() {
+        return listeners != null ? listeners : List.of();
     }
 
     @Override
@@ -148,6 +157,7 @@ public class OpenAiModerationModel implements ModerationModel {
         private Logger logger;
         private Supplier<Map<String, String>> customHeadersSupplier;
         private Map<String, String> customQueryParams;
+        private List<ModerationModelListener> listeners;
 
         public OpenAiModerationModelBuilder() {
             // This is public so it can be extended
@@ -237,6 +247,17 @@ public class OpenAiModerationModel implements ModerationModel {
 
         public OpenAiModerationModelBuilder customQueryParams(Map<String, String> customQueryParams) {
             this.customQueryParams = customQueryParams;
+            return this;
+        }
+
+        /**
+         * Sets the listeners for this moderation model.
+         *
+         * @param listeners the listeners.
+         * @return {@code this}.
+         */
+        public OpenAiModerationModelBuilder listeners(List<ModerationModelListener> listeners) {
+            this.listeners = listeners;
             return this;
         }
 
