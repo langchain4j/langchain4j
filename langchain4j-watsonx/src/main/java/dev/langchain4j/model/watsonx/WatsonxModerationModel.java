@@ -1,5 +1,6 @@
 package dev.langchain4j.model.watsonx;
 
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
@@ -19,6 +20,7 @@ import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.model.moderation.ModerationRequest;
 import dev.langchain4j.model.moderation.ModerationResponse;
+import dev.langchain4j.model.moderation.listener.ModerationModelListener;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +45,7 @@ import java.util.concurrent.CompletionException;
 public class WatsonxModerationModel implements ModerationModel {
     private final List<BaseDetector> detectors;
     private final DetectionService detectionService;
+    private final List<ModerationModelListener> listeners;
 
     public WatsonxModerationModel(Builder builder) {
 
@@ -66,6 +69,13 @@ public class WatsonxModerationModel implements ModerationModel {
                 .httpClient(builder.httpClient)
                 .verifySsl(builder.verifySsl)
                 .build();
+
+        this.listeners = copyIfNotNull(builder.listeners);
+    }
+
+    @Override
+    public List<ModerationModelListener> listeners() {
+        return listeners != null ? listeners : List.of();
     }
 
     @Override
@@ -180,6 +190,7 @@ public class WatsonxModerationModel implements ModerationModel {
      */
     public static class Builder extends WatsonxBuilder<Builder> {
         private List<BaseDetector> detectors;
+        private List<ModerationModelListener> listeners;
 
         private Builder() {}
 
@@ -200,6 +211,17 @@ public class WatsonxModerationModel implements ModerationModel {
          */
         public Builder detectors(BaseDetector... detectors) {
             return detectors(List.of(detectors));
+        }
+
+        /**
+         * Sets the listeners for this moderation model.
+         *
+         * @param listeners the listeners.
+         * @return {@code this}.
+         */
+        public Builder listeners(List<ModerationModelListener> listeners) {
+            this.listeners = listeners;
+            return this;
         }
 
         public WatsonxModerationModel build() {

@@ -1,18 +1,33 @@
 package dev.langchain4j.model.moderation;
 
 import static dev.langchain4j.model.ModelProvider.OTHER;
+import static dev.langchain4j.model.moderation.ModerationModelListenerUtils.onError;
+import static dev.langchain4j.model.moderation.ModerationModelListenerUtils.onRequest;
+import static dev.langchain4j.model.moderation.ModerationModelListenerUtils.onResponse;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.input.Prompt;
+import dev.langchain4j.model.moderation.listener.ModerationModelListener;
 import dev.langchain4j.model.output.Response;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Represents a model that can moderate text.
  */
 public interface ModerationModel {
+
+    /**
+     * Returns the list of listeners for this moderation model.
+     *
+     * @return the list of listeners, or an empty list if none are registered.
+     */
+    default List<ModerationModelListener> listeners() {
+        return List.of();
+    }
 
     /**
      * Returns the model provider for this moderation model.
@@ -39,7 +54,18 @@ public interface ModerationModel {
      * @return a {@link ModerationResponse}, containing all the outputs from the moderation model
      */
     default ModerationResponse moderate(ModerationRequest moderationRequest) {
-        return doModerate(moderationRequest);
+        List<ModerationModelListener> listeners = listeners();
+        Map<Object, Object> attributes = new ConcurrentHashMap<>();
+
+        onRequest(moderationRequest, provider(), modelName(), attributes, listeners);
+        try {
+            ModerationResponse moderationResponse = doModerate(moderationRequest);
+            onResponse(moderationResponse, moderationRequest, provider(), modelName(), attributes, listeners);
+            return moderationResponse;
+        } catch (Exception error) {
+            onError(error, moderationRequest, provider(), modelName(), attributes, listeners);
+            throw error;
+        }
     }
 
     /**
