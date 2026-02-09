@@ -15,44 +15,28 @@ import java.util.concurrent.ConcurrentHashMap;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
- * TODO comment on "caching"
+ * Embedding model that caches embeddings of tool descriptions, since they rarely change.
+ * The embedding of a query is never cached.
+ * <p>
+ * The cache is never cleared automatically, as the risk of a memory leak is low:
+ * the number of tools in an application is usually limited and does not grow over time.
+ * <p>
+ * The cache can be cleared manually by calling {@link #clearCache()}.
  */
 @Experimental
-class CachingEmbeddingModel implements EmbeddingModel {
+class ToolCachingEmbeddingModel implements EmbeddingModel {
 
     private static final TokenUsage ZERO_TOKEN_USAGE = new TokenUsage(0, 0, 0);
 
     private final EmbeddingModel delegate;
     private final Map<String, Embedding> cache = new ConcurrentHashMap<>();
 
-    public CachingEmbeddingModel(EmbeddingModel delegateEmbeddingModel) {
+    public ToolCachingEmbeddingModel(EmbeddingModel delegateEmbeddingModel) {
         this.delegate = ensureNotNull(delegateEmbeddingModel, "delegateEmbeddingModel");
     }
 
-    @Override
-    public Response<Embedding> embed(String text) {
-        ensureNotNull(text, "text");
-
-        if (cache.containsKey(text)) {
-            return Response.from(cache.get(text), ZERO_TOKEN_USAGE);
-        }
-
-        Response<Embedding> response = delegate.embed(text);
-        cache.put(text, response.content());
-        return response;
-    }
-
-    @Override
-    public Response<Embedding> embed(TextSegment textSegment) {
-        ensureNotNull(textSegment, "text");
-
-        if (cache.containsKey(textSegment.text())) {
-            return Response.from(cache.get(textSegment.text()), ZERO_TOKEN_USAGE);
-        }
-
-        Response<Embedding> response = delegate.embed(textSegment);
-        cache.put(textSegment.text(), response.content());
-        return response;
+    void clearCache() {
+        cache.clear();
     }
 
     @Override
@@ -84,13 +68,25 @@ class CachingEmbeddingModel implements EmbeddingModel {
                 Embedding embedding = embeddings.get(i);
                 TextSegment segment = toEmbed.get(i);
 
-                cache.put(segment.text(), embedding);
+                if (i != 0) { // index 0 is for search query, it should not be cached
+                    cache.put(segment.text(), embedding);
+                }
                 result.set(toEmbedIndexes.get(i), embedding);
             }
             return Response.from(result, response.tokenUsage());
         }
 
         return Response.from(result, ZERO_TOKEN_USAGE);
+    }
+
+    @Override
+    public Response<Embedding> embed(String text) {
+        throw new IllegalStateException("should not be called");
+    }
+
+    @Override
+    public Response<Embedding> embed(TextSegment textSegment) {
+        throw new IllegalStateException("should not be called");
     }
 
     @Override
@@ -101,9 +97,5 @@ class CachingEmbeddingModel implements EmbeddingModel {
     @Override
     public String modelName() {
         return delegate.modelName();
-    }
-
-    void clearCache() {
-        cache.clear();
     }
 }

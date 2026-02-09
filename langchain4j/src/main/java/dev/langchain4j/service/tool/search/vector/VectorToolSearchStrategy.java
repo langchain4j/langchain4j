@@ -33,7 +33,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * TODO comment on tool description, caching
  */
 @Experimental
-public class VectorToolSearchStrategy implements ToolSearchStrategy { // TODO name
+public class VectorToolSearchStrategy implements ToolSearchStrategy {
 
     private static final String DEFAULT_TOOL_NAME = "tool_search_tool";
     private static final String DEFAULT_TOOL_DESCRIPTION = "Finds available tools using semantic vector search";
@@ -50,9 +50,6 @@ public class VectorToolSearchStrategy implements ToolSearchStrategy { // TODO na
     private final String toolArgumentName;
     private final boolean throwToolArgumentsExceptions;
 
-    /**
-     * TODO
-     */
     public VectorToolSearchStrategy(EmbeddingModel embeddingModel) {
         this(builder().embeddingModel(embeddingModel));
     }
@@ -60,7 +57,7 @@ public class VectorToolSearchStrategy implements ToolSearchStrategy { // TODO na
     public VectorToolSearchStrategy(Builder builder) {
         Boolean cacheEmbeddings = getOrDefault(builder.cacheEmbeddings, true);
         if (cacheEmbeddings) {
-            this.embeddingModel = ensureNotNull(new CachingEmbeddingModel(builder.embeddingModel), "embeddingModel");
+            this.embeddingModel = ensureNotNull(new ToolCachingEmbeddingModel(builder.embeddingModel), "embeddingModel");
         } else {
             this.embeddingModel = ensureNotNull(builder.embeddingModel, "embeddingModel");
         }
@@ -160,7 +157,7 @@ public class VectorToolSearchStrategy implements ToolSearchStrategy { // TODO na
     }
 
     public void clearEmbeddingsCache() {
-        if (embeddingModel instanceof CachingEmbeddingModel cachingEmbeddingModel) {
+        if (embeddingModel instanceof ToolCachingEmbeddingModel cachingEmbeddingModel) {
             cachingEmbeddingModel.clearCache();
         } else {
             throw new IllegalStateException("Not caching embeddings, nothing to clear");

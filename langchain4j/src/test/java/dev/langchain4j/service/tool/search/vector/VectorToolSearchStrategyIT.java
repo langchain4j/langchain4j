@@ -33,7 +33,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
-class VectorToolSearchStrategyIT { // TODO name
+class VectorToolSearchStrategyIT {
 
     private static OpenAiChatModel.OpenAiChatModelBuilder baseModelBuilder() {
         return OpenAiChatModel.builder()
