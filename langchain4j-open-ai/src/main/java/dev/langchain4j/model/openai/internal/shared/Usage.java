@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 
 import java.util.Objects;
 
@@ -55,12 +56,14 @@ public final class Usage {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
         return another instanceof Usage
                 && equalTo((Usage) another);
     }
 
+    @JacocoIgnoreCoverageGenerated
     private boolean equalTo(Usage another) {
         return Objects.equals(totalTokens, another.totalTokens)
                 && Objects.equals(promptTokens, another.promptTokens)
@@ -70,6 +73,7 @@ public final class Usage {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         int h = 5381;
         h += (h << 5) + Objects.hashCode(totalTokens);
@@ -81,6 +85,7 @@ public final class Usage {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public String toString() {
         return "Usage{"
                 + "totalTokens=" + totalTokens

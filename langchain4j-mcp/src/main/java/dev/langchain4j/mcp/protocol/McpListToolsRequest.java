@@ -7,16 +7,13 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Internal
-public class McpListToolsRequest extends McpJsonRpcMessage {
-
-    @JsonInclude
-    public final McpClientMethod method = McpClientMethod.TOOLS_LIST;
+public class McpListToolsRequest extends McpClientMessage {
 
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
     private Map<String, Object> params;
 
-    public McpListToolsRequest(final Long id) {
-        super(id);
+    public McpListToolsRequest(Long id) {
+        super(id, McpClientMethod.TOOLS_LIST);
         this.params = new HashMap<>();
     }
 

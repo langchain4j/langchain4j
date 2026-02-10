@@ -6,6 +6,7 @@ import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static java.util.Arrays.asList;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import java.util.List;
 import java.util.Objects;
@@ -113,6 +114,7 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public boolean equals(final Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
@@ -131,6 +133,7 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         return Objects.hash(
                 modelName,
@@ -147,6 +150,7 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public String toString() {
         return "DefaultChatRequestParameters{" + "modelName='"
                 + modelName + '\'' + ", temperature="

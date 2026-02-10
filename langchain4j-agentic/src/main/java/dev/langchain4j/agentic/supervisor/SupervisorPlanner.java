@@ -111,16 +111,28 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
             return doneAction(agenticScope, lastResponse, agentInvocation);
         }
 
-        String agentName = agentInvocation.getAgentName();
-        AgentInstance agent = agents.get(agentName);
-        if (agent == null) {
-            throw new IllegalStateException("No agent found with name: " + agentName);
-        }
+        AgentInstance agent = findAgentByName(agentInvocation.getAgentName());
 
         agentInvocation.getArguments().entrySet().stream()
                 .filter(entry -> writeArgumentToScope(agenticScope, agent, entry.getKey(), entry.getValue()))
                 .forEach(entry -> agenticScope.writeState(entry.getKey(), entry.getValue()));
         return call(agent);
+    }
+
+    private AgentInstance findAgentByName(String agentName) {
+        AgentInstance agent = agents.get(agentName);
+        if (agent == null) {
+            List<AgentInstance> candidateAgents = agents.values().stream()
+                    .filter(a -> a.name().equals(agentName))
+                    .toList();
+            if (candidateAgents.size() == 1) {
+                agent = candidateAgents.get(0);
+            }
+        }
+        if (agent == null) {
+            throw new IllegalStateException("No agent found with name: " + agentName);
+        }
+        return agent;
     }
 
     private boolean writeArgumentToScope(AgenticScope agenticScope, AgentInstance agent, String key, Object value) {

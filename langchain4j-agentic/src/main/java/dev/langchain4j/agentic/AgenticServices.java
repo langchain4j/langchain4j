@@ -3,17 +3,16 @@ package dev.langchain4j.agentic;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.checkReturnType;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureAgent;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.invokeStatic;
-import static dev.langchain4j.agentic.internal.AgentInvoker.parameterName;
 import static dev.langchain4j.agentic.internal.AgentUtil.AGENTIC_SCOPE_ARG_NAME;
 import static dev.langchain4j.agentic.internal.AgentUtil.LOOP_COUNTER_ARG_NAME;
 import static dev.langchain4j.agentic.internal.AgentUtil.agentInvocationArguments;
 import static dev.langchain4j.agentic.internal.AgentUtil.agentToExecutor;
 import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.getAnnotatedMethodOnClass;
-import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import dev.langchain4j.agentic.agent.AgentBuilder;
+import dev.langchain4j.agentic.agent.UntypedAgentBuilder;
 import dev.langchain4j.agentic.declarative.AgentListenerSupplier;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.observability.AgentListener;
@@ -35,7 +34,6 @@ import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.declarative.ConditionalAgent;
 import dev.langchain4j.agentic.declarative.ErrorHandler;
 import dev.langchain4j.agentic.declarative.ExitCondition;
-import dev.langchain4j.agentic.declarative.HumanInTheLoopResponseSupplier;
 import dev.langchain4j.agentic.declarative.LoopAgent;
 import dev.langchain4j.agentic.declarative.Output;
 import dev.langchain4j.agentic.declarative.ParallelAgent;
@@ -46,7 +44,6 @@ import dev.langchain4j.agentic.internal.A2AClientBuilder;
 import dev.langchain4j.agentic.internal.A2AService;
 import dev.langchain4j.agentic.internal.AgentExecutor;
 import dev.langchain4j.agentic.internal.AgentInvoker;
-import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;
 import dev.langchain4j.agentic.supervisor.SupervisorAgentService;
 import dev.langchain4j.agentic.supervisor.SupervisorAgentServiceImpl;
@@ -56,10 +53,6 @@ import dev.langchain4j.agentic.workflow.LoopAgentService;
 import dev.langchain4j.agentic.workflow.ParallelAgentService;
 import dev.langchain4j.agentic.workflow.SequentialAgentService;
 import dev.langchain4j.agentic.workflow.WorkflowAgentsBuilder;
-import dev.langchain4j.agentic.workflow.impl.ConditionalAgentServiceImpl;
-import dev.langchain4j.agentic.workflow.impl.LoopAgentServiceImpl;
-import dev.langchain4j.agentic.workflow.impl.ParallelAgentServiceImpl;
-import dev.langchain4j.agentic.workflow.impl.SequentialAgentServiceImpl;
 import dev.langchain4j.agentic.workflow.impl.WorkflowAgentsBuilderImpl;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
@@ -120,13 +113,22 @@ public class AgenticServices {
     }
 
     /**
+     * Creates an agent builder for untyped agents.
+     *
+     * @return a new UntypedAgentBuilder instance
+     */
+    public static UntypedAgentBuilder agentBuilder() {
+        return new UntypedAgentBuilder();
+    }
+
+    /**
      * Creates an agent builder for the given agent service class.
      *
      * @param agentServiceClass the class of the agent service
      * @return a new AgentBuilder instance
      */
-    public static <T> AgentBuilder<T> agentBuilder(Class<T> agentServiceClass) {
-        return new AgentBuilder<>(agentServiceClass, validateAgentClass(agentServiceClass));
+    public static <T> AgentBuilder<T, AgentBuilder<T, ?>> agentBuilder(Class<T> agentServiceClass) {
+        return new AgentBuilder<>(agentServiceClass);
     }
 
     /**
@@ -264,10 +266,10 @@ public class AgenticServices {
     public interface DeclarativeAgentCreationContext<T> {
         Class<T> agentServiceClass();
 
-        AgentBuilder<T> agentBuilder();
+        AgentBuilder<T, ?> agentBuilder();
     }
 
-    public record DefaultDeclarativeAgentCreationContext<T>(Class<T> agentServiceClass, AgentBuilder<T> agentBuilder)
+    public record DefaultDeclarativeAgentCreationContext<T>(Class<T> agentServiceClass, AgentBuilder<T, ?> agentBuilder)
             implements DeclarativeAgentCreationContext<T> {}
 
     /**
@@ -380,7 +382,7 @@ public class AgenticServices {
             ChatModel chatModel,
             Consumer<DeclarativeAgentCreationContext> agentConfigurator) {
         SequenceAgent sequenceAgent = agentMethod.getAnnotation(SequenceAgent.class);
-        var builder = new SequentialAgentServiceImpl<>(agentServiceClass, agentMethod)
+        var builder = sequenceBuilder(agentServiceClass)
                 .subAgents(createSubagents(sequenceAgent.subAgents(), chatModel, agentConfigurator));
 
         buildAgentSpecs(
@@ -400,7 +402,7 @@ public class AgenticServices {
             ChatModel chatModel,
             Consumer<DeclarativeAgentCreationContext> agentConfigurator) {
         LoopAgent loopAgent = agentMethod.getAnnotation(LoopAgent.class);
-        var builder = new LoopAgentServiceImpl<>(agentServiceClass, agentMethod)
+        var builder = loopBuilder(agentServiceClass)
                 .subAgents(createSubagents(loopAgent.subAgents(), chatModel, agentConfigurator))
                 .maxIterations(loopAgent.maxIterations());
 
@@ -430,7 +432,7 @@ public class AgenticServices {
             ChatModel chatModel,
             Consumer<DeclarativeAgentCreationContext> agentConfigurator) {
         ConditionalAgent conditionalAgent = agentMethod.getAnnotation(ConditionalAgent.class);
-        var builder = new ConditionalAgentServiceImpl<>(agentServiceClass, agentMethod);
+        var builder = conditionalBuilder(agentServiceClass);
 
         buildAgentSpecs(
                 agentServiceClass,
@@ -461,7 +463,7 @@ public class AgenticServices {
             ChatModel chatModel,
             Consumer<DeclarativeAgentCreationContext> agentConfigurator) {
         ParallelAgent parallelAgent = agentMethod.getAnnotation(ParallelAgent.class);
-        var builder = new ParallelAgentServiceImpl<>(agentServiceClass, agentMethod)
+        var builder = parallelBuilder(agentServiceClass)
                 .subAgents(createSubagents(parallelAgent.subAgents(), chatModel, agentConfigurator));
 
         buildAgentSpecs(
@@ -692,7 +694,7 @@ public class AgenticServices {
             return agentExecutor;
         }
 
-        AgentBuilder<?> agentBuilder = agentBuilder(subgentClass);
+        AgentBuilder<?, ?> agentBuilder = agentBuilder(subgentClass);
         configureAgent(subgentClass, chatModel, agentBuilder, agentConfigurator);
 
         return agentToExecutor(agentBuilder.build());
@@ -791,25 +793,12 @@ public class AgenticServices {
 
     private static AgentExecutor createHumanInTheLoopAgent(Class<?> agentServiceClass, Method method) {
         var humanInTheLoop = method.getAnnotation(dev.langchain4j.agentic.declarative.HumanInTheLoop.class);
-        if (method.getParameterCount() != 1) {
-            throw new IllegalArgumentException("Method " + method.getName() + " annotated with @"
-                    + HumanInTheLoop.class.getSimpleName() + " must have exactly one parameter");
-        }
 
         var humanInTheLoopBuilder = humanInTheLoopBuilder()
                 .description(humanInTheLoop.description())
                 .outputKey(humanInTheLoop.outputKey())
                 .async(humanInTheLoop.async())
-                .inputKey(parameterName(method.getParameters()[0]))
-                .requestWriter(arg -> invokeStatic(method, arg));
-
-        getAnnotatedMethodOnClass(agentServiceClass, HumanInTheLoopResponseSupplier.class)
-                .ifPresentOrElse(
-                        readerMethod -> humanInTheLoopBuilder.responseReader(() -> invokeStatic(readerMethod)), () -> {
-                            throw new IllegalArgumentException("Human in the loop class " + agentServiceClass.getName()
-                                    + " must have a static method annotated with @"
-                                    + HumanInTheLoopResponseSupplier.class.getSimpleName());
-                        });
+                .responseProvider(scope -> invokeStatic(method, agentInvocationArguments(scope, method).positionalArgs()));
 
         getAnnotatedMethodOnClass(agentServiceClass, AgentListenerSupplier.class)
                 .ifPresent(listenerMethod -> {

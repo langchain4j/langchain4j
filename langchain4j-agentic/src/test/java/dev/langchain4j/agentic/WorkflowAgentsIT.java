@@ -359,11 +359,10 @@ public class WorkflowAgentsIT {
 
         HumanInTheLoop humanInTheLoop = AgenticServices.humanInTheLoopBuilder()
                 .description("An agent that asks the audience for the story")
-                .inputKey("topic")
                 .outputKey("audience")
                 .async(true)
-                .requestWriter(q -> request.set("Which audience for topic " + q + "?"))
-                .responseReader(() -> {
+                .responseProvider(scope -> {
+                    request.set("Which audience for topic " + scope.readState("topic") + "?");
                     try {
                         barrier.await();
                     } catch (InterruptedException | BrokenBarrierException e) {

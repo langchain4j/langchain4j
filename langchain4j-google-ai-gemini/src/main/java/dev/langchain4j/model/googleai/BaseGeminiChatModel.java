@@ -22,7 +22,6 @@ import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.googleai.GeminiGenerateContentRequest.GeminiToolConfig;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUsageMetadata;
@@ -39,6 +38,10 @@ class BaseGeminiChatModel {
     protected final GeminiService geminiService;
     protected final GeminiFunctionCallingConfig functionCallingConfig;
     protected final boolean allowCodeExecution;
+    protected final boolean allowGoogleSearch;
+    protected final boolean allowGoogleMaps;
+    protected final boolean retrieveGoogleMapsWidgetToken;
+    protected final boolean allowUrlContext;
     protected final boolean includeCodeExecutionOutput;
     protected final List<GeminiSafetySetting> safetySettings;
     protected final List<ChatModelListener> listeners;
@@ -50,6 +53,7 @@ class BaseGeminiChatModel {
     protected final Boolean responseLogprobs;
     protected final Boolean enableEnhancedCivicAnswers;
     protected final GeminiMediaResolutionLevel mediaResolution;
+    protected final boolean mediaResolutionPerPartEnabled;
 
     protected final ChatRequestParameters defaultRequestParameters;
 
@@ -58,6 +62,10 @@ class BaseGeminiChatModel {
 
         this.functionCallingConfig = builder.functionCallingConfig;
         this.allowCodeExecution = getOrDefault(builder.allowCodeExecution, false);
+        this.allowGoogleSearch = getOrDefault(builder.allowGoogleSearch, false);
+        this.allowGoogleMaps = getOrDefault(builder.allowGoogleMaps, false);
+        this.retrieveGoogleMapsWidgetToken = getOrDefault(builder.retrieveGoogleMapsWidgetToken, false);
+        this.allowUrlContext = getOrDefault(builder.allowUrlContext, false);
         this.includeCodeExecutionOutput = getOrDefault(builder.includeCodeExecutionOutput, false);
         this.safetySettings = copyIfNotNull(builder.safetySettings);
         this.listeners = copy(builder.listeners);
@@ -69,6 +77,7 @@ class BaseGeminiChatModel {
         this.enableEnhancedCivicAnswers = getOrDefault(builder.enableEnhancedCivicAnswers, false);
         this.logprobs = builder.logprobs;
         this.mediaResolution = builder.mediaResolution;
+        this.mediaResolutionPerPartEnabled = getOrDefault(builder.mediaResolutionPerPartEnabled, false);
 
         ChatRequestParameters parameters;
         if (builder.defaultRequestParameters != null) {
@@ -108,8 +117,8 @@ class BaseGeminiChatModel {
         ChatRequestParameters parameters = chatRequest.parameters();
 
         GeminiContent systemInstruction = new GeminiContent(List.of(), GeminiRole.MODEL.toString());
-        List<GeminiContent> geminiContentList =
-                fromMessageToGContent(chatRequest.messages(), systemInstruction, sendThinking);
+        List<GeminiContent> geminiContentList = fromMessageToGContent(
+                chatRequest.messages(), systemInstruction, sendThinking, mediaResolutionPerPartEnabled);
 
         ResponseFormat responseFormat = chatRequest.responseFormat();
         GeminiSchema schema = null;
@@ -147,7 +156,13 @@ class BaseGeminiChatModel {
                         .mediaResolution(this.mediaResolution)
                         .build())
                 .safetySettings(this.safetySettings)
-                .tools(fromToolSepcsToGTool(chatRequest.toolSpecifications(), this.allowCodeExecution))
+                .tools(fromToolSepcsToGTool(
+                        chatRequest.toolSpecifications(),
+                        this.allowCodeExecution,
+                        this.allowGoogleSearch,
+                        this.allowUrlContext,
+                        this.allowGoogleMaps,
+                        this.retrieveGoogleMapsWidgetToken))
                 .toolConfig(toToolConfig(parameters.toolChoice(), this.functionCallingConfig))
                 .build();
     }
@@ -217,11 +232,19 @@ class BaseGeminiChatModel {
 
         return ChatResponse.builder()
                 .aiMessage(aiMessage)
-                .metadata(ChatResponseMetadata.builder()
+                .metadata(GoogleAiGeminiChatResponseMetadata.builder()
                         .id(geminiResponse.responseId())
                         .modelName(geminiResponse.modelVersion())
                         .tokenUsage(createTokenUsage(geminiResponse.usageMetadata()))
                         .finishReason(finishReason)
+                        .groundingMetadata(
+                                geminiResponse.groundingMetadata() != null
+                                        ? geminiResponse.groundingMetadata()
+                                        : firstCandidate.groundingMetadata())
+                        .urlContextMetadata(
+                                firstCandidate.urlContextMetadata() != null
+                                        ? toUrlContextMetadata(firstCandidate.urlContextMetadata())
+                                        : null)
                         .build())
                 .build();
     }
@@ -237,6 +260,28 @@ class BaseGeminiChatModel {
     protected TokenUsage createTokenUsage(GeminiUsageMetadata tokenCounts) {
         return new TokenUsage(
                 tokenCounts.promptTokenCount(), tokenCounts.candidatesTokenCount(), tokenCounts.totalTokenCount());
+    }
+
+    private UrlContextMetadata toUrlContextMetadata(
+            GeminiGenerateContentResponse.GeminiUrlContextMetadata geminiUrlContextMetadata) {
+        if (geminiUrlContextMetadata == null || geminiUrlContextMetadata.urlMetadata() == null) {
+            return null;
+        }
+        return new UrlContextMetadata(geminiUrlContextMetadata.urlMetadata().stream()
+                .map(this::toUrlMetadata)
+                .toList());
+    }
+
+    private UrlContextMetadata.UrlMetadata toUrlMetadata(
+            GeminiGenerateContentResponse.GeminiUrlMetadata geminiUrlMetadata) {
+        if (geminiUrlMetadata == null) {
+            return null;
+        }
+        return new UrlContextMetadata.UrlMetadata(
+                geminiUrlMetadata.retrievedUrl(),
+                geminiUrlMetadata.urlRetrievalStatus() != null
+                        ? geminiUrlMetadata.urlRetrievalStatus().toString()
+                        : null);
     }
 
     /**
@@ -261,6 +306,10 @@ class BaseGeminiChatModel {
         protected List<String> stopSequences;
         protected GeminiFunctionCallingConfig functionCallingConfig;
         protected Boolean allowCodeExecution;
+        protected Boolean allowGoogleSearch;
+        protected Boolean allowGoogleMaps;
+        protected Boolean retrieveGoogleMapsWidgetToken;
+        protected Boolean allowUrlContext;
         protected Boolean includeCodeExecutionOutput;
         protected Boolean logRequestsAndResponses;
         protected Boolean logRequests;
@@ -275,6 +324,7 @@ class BaseGeminiChatModel {
         protected Integer logprobs;
         protected List<ChatModelListener> listeners;
         protected GeminiMediaResolutionLevel mediaResolution;
+        protected Boolean mediaResolutionPerPartEnabled;
 
         @SuppressWarnings("unchecked")
         protected B builder() {
@@ -500,6 +550,38 @@ class BaseGeminiChatModel {
         }
 
         /**
+         * Enabled <a href="https://ai.google.dev/gemini-api/docs/google-search">Google Search tool</a> in Gemini.
+         */
+        public B allowGoogleSearch(Boolean allowGoogleSearch) {
+            this.allowGoogleSearch = allowGoogleSearch;
+            return builder();
+        }
+
+        /**
+         * Enables <a href="https://ai.google.dev/gemini-api/docs/maps-grounding">Google Maps tool</a> in Gemini.
+         */
+        public B allowGoogleMaps(Boolean allowGoogleMaps) {
+            this.allowGoogleMaps = allowGoogleMaps;
+            return builder();
+        }
+
+        /**
+         * Retrieve the Google Maps widget <a href="https://ai.google.dev/gemini-api/docs/maps-grounding#display_the_google_maps_contextual_widget">context token</a> in the response for use with the Google Maps JS API.
+         */
+        public B retrieveGoogleMapsWidgetToken(Boolean retrieveGoogleMapsWidgetToken) {
+            this.retrieveGoogleMapsWidgetToken = retrieveGoogleMapsWidgetToken;
+            return builder();
+        }
+
+        /**
+         * Enabled <a href="https://ai.google.dev/gemini-api/docs/url-context">Url Context tool</a> in Gemini.
+         */
+        public B allowUrlContext(Boolean allowUrlContext) {
+            this.allowUrlContext = allowUrlContext;
+            return builder();
+        }
+
+        /**
          * Safety setting, affecting the safety-blocking behavior. Passing a safety setting for a category changes the
          * allowed probability that content is blocked
          */
@@ -587,6 +669,33 @@ class BaseGeminiChatModel {
          */
         public B mediaResolution(GeminiMediaResolutionLevel mediaResolution) {
             this.mediaResolution = mediaResolution;
+            return builder();
+        }
+
+        /**
+         * Enables per-part media resolution mapping from {@link dev.langchain4j.data.message.ImageContent.DetailLevel}
+         * to {@link GeminiMediaResolutionLevel}.
+         *
+         * <p>When enabled, the {@code DetailLevel} set on each {@link dev.langchain4j.data.message.ImageContent}
+         * will be mapped to the corresponding {@code GeminiMediaResolutionLevel} and set on the per-part level.
+         * This is only supported by Gemini 3 models for now.</p>
+         *
+         * <p>The mapping is as follows:</p>
+         * <ul>
+         *   <li>{@code LOW} → {@code MEDIA_RESOLUTION_LOW}</li>
+         *   <li>{@code MEDIUM} → {@code MEDIA_RESOLUTION_MEDIUM}</li>
+         *   <li>{@code HIGH} → {@code MEDIA_RESOLUTION_HIGH}</li>
+         *   <li>{@code ULTRA_HIGH} → {@code MEDIA_RESOLUTION_ULTRA_HIGH}</li>
+         *   <li>{@code AUTO} → {@code MEDIA_RESOLUTION_UNSPECIFIED}</li>
+         * </ul>
+         *
+         * <p>Disabled by default. When disabled, the global {@link #mediaResolution(GeminiMediaResolutionLevel)}
+         * setting will be used for all media parts.</p>
+         *
+         * @see <a href="https://ai.google.dev/gemini-api/docs/media-resolution">Media Resolution Documentation</a>
+         */
+        public B mediaResolutionPerPartEnabled(Boolean mediaResolutionPerPartEnabled) {
+            this.mediaResolutionPerPartEnabled = mediaResolutionPerPartEnabled;
             return builder();
         }
     }

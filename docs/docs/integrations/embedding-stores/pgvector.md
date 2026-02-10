@@ -15,13 +15,13 @@ RAG, and more.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-pgvector</artifactId>
-    <version>1.10.0-beta18</version>
+    <version>1.11.0-beta19</version>
 </dependency>
 ```
 
 ## Gradle Dependency
 
-```implementation 'dev.langchain4j:langchain4j-pgvector:1.10.0-beta18'```
+```implementation 'dev.langchain4j:langchain4j-pgvector:1.11.0-beta19'```
 
 ## APIs
 
@@ -43,7 +43,10 @@ RAG, and more.
 | `indexListSize`         | The number of lists for the IVFFlat index.                                                                                                                                                                                                                                                                                                                                                                                                                     | None            | When Required: If `useIndex` is `true`, `indexListSize` must be provided and must be greater than zero. Otherwise, the program will throw an exception during table initialization. When Optional: If `useIndex` is `false`, this property is ignored and doesn’t need to be set. |
 | `createTable`           | Specifies whether to automatically create the embeddings table.                                                                                                                                                                                                                                                                                                                                                                                                | `true`          | Optional                                                                                                                                                                                                                                                                          |
 | `dropTableFirst`        | Specifies whether to drop the table before recreating it (useful for tests).                                                                                                                                                                                                                                                                                                                                                                                   | `false`         | Optional                                                                                                                                                                                                                                                                          |
-| `metadataStorageConfig` | Configuration object for handling metadata associated with embeddings. Supports three storage modes: <ul><li>**COLUMN_PER_KEY**: For static metadata when you know the metadata keys in advance.</li><li>**COMBINED_JSON**: For dynamic metadata when you don’t know the metadata keys in advance. Stores data as JSON. (Default)</li><li>**COMBINED_JSONB**: Similar to JSON, but stored in binary format for optimized querying on large datasets.</li></ul> | `COMBINED_JSON` | Optional. If not set, a default configuration is used with `COMBINED_JSON`.                                                                                                                                                                                                       |
+| `searchMode`            | Search mode to use. Options: <ul><li>**VECTOR**: Standard vector similarity search using cosine distance.</li><li>**HYBRID**: Combines vector search with full-text keyword search using Reciprocal Rank Fusion (RRF).</li></ul>                                                                                                                                                                                                                               | `VECTOR`        | Optional                                                                                                                                                                                                                                                                          |
+| `rrfK`                  | The constant `k` used in the RRF (Reciprocal Rank Fusion) algorithm: `Score = 1/(k + rank_vector) + 1/(k + rank_keyword)`. Lower values (20-40) emphasize top results more; higher values (80-100) create more balanced rankings. Only relevant when `searchMode` is set to `HYBRID`.                                                                                                                                                                          | `60`            | Optional. Only used in HYBRID search mode.                                                                                                                                                                                                                                        |
+| `textSearchConfig`      | PostgreSQL text search configuration name used for keyword search (e.g., `simple`, `english`, `german`). Only applies when `searchMode` is `HYBRID`.                                                                                                                                                                                                                                                                                                  | `simple`        | Optional. Only used in HYBRID search mode.                                                                                                                                                                                                                                        |
+| `metadataStorageConfig` | Configuration object for handling metadata associated with embeddings. Supports three storage modes: <ul><li>**COLUMN_PER_KEY**: For static metadata when you know the metadata keys in advance.</li><li>**COMBINED_JSON**: For dynamic metadata when you don't know the metadata keys in advance. Stores data as JSON. (Default)</li><li>**COMBINED_JSONB**: Similar to JSON, but stored in binary format for optimized querying on large datasets.</li></ul> | `COMBINED_JSON` | Optional. If not set, a default configuration is used with `COMBINED_JSON`.                                                                                                                                                                                                       |
 
 ## Examples
 
@@ -301,6 +304,111 @@ try {
     // Implement retry logic or fallback behavior
 }
 ```
+
+### Hybrid Search (Vector + Keyword)
+
+PGVector supports **hybrid search** that combines vector similarity search with PostgreSQL's full-text keyword search. This approach often provides better results than vector-only search by leveraging both semantic understanding and exact keyword matching.
+
+#### When to Use Hybrid Search
+
+- When you need both semantic similarity and exact keyword matches
+- For queries with domain-specific terms, product names, or technical jargon
+- To improve retrieval accuracy in RAG applications
+
+#### Configuration
+
+Enable hybrid search by setting the `searchMode` parameter:
+
+```java
+import dev.langchain4j.store.embedding.pgvector.SearchMode;
+
+EmbeddingStore<TextSegment> embeddingStore = PgVectorEmbeddingStore.builder()
+        .host("localhost")
+        .port(5432)
+        .database("postgres")
+        .user("my_user")
+        .password("my_password")
+        .table("document_embeddings")
+        .dimension(embeddingModel.dimension())
+        .searchMode(SearchMode.HYBRID)  // Enable hybrid search (default: SearchMode.VECTOR)
+        .textSearchConfig("english")    // Optional: PostgreSQL text search config (default: "simple")
+        .rrfK(60)    // Optional: RRF algorithm parameter (default: 60)
+        .build();
+```
+
+#### Usage
+
+When using hybrid search, you must provide **both** the embedding and the query text:
+
+```java
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+
+String question = "How to configure PostgreSQL vector search?";
+
+// Generate embedding for the query
+Embedding questionEmbedding = embeddingModel.embed(question).content();
+
+// Search with both embedding and text (required for HYBRID mode)
+EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
+        .queryEmbedding(questionEmbedding)  // For vector similarity search
+        .query(question)                    // For keyword search (REQUIRED in HYBRID mode)
+        .maxResults(3)
+        .build();
+
+List<EmbeddingMatch<TextSegment>> results = embeddingStore.search(request);
+```
+
+#### How It Works
+
+Hybrid search uses **Reciprocal Rank Fusion (RRF)** to combine results:
+
+1. **Vector Search**: Finds semantically similar text using cosine similarity
+2. **Keyword Search**: Finds text with matching keywords using PostgreSQL's `tsvector`
+3. **RRF Fusion**: Combines rankings using the formula:
+
+```
+RRF_Score = 1/(k + rank_vector) + 1/(k + rank_keyword)
+```
+
+Where:
+- `k` is a constant (configurable via `rrfK()`, default: 60)
+- `rank_vector` is the ranking position from vector search (1 = best match)
+- `rank_keyword` is the ranking position from keyword search (1 = best match)
+
+**Example Score Calculation** (k = 80 as used in tests):
+
+If a document ranks 1st in both vector and keyword search:
+```
+Score = 1/(80+1) + 1/(80+1)
+      = 1/81 + 1/81
+      ≈ 0.0247
+```
+
+**Score range notes**
+- Maximum score is `2/(k+1)` when a result ranks first in both searches (e.g., k=60 → ~0.0328; k=80 → ~0.0247).
+- Scores decay toward 0 as ranks increase; they do **not** reach 1.0.
+- RRF scores are rank-based and not directly comparable to cosine similarity (0.0–1.0) from vector-only search.
+
+#### Key Differences from Vector-Only Search
+
+| Aspect | Vector Search | Hybrid Search |
+|--------|--------------|---------------|
+| **Query Input** | Only `queryEmbedding` | Both `queryEmbedding` AND `query` text |
+| **Score Type** | Cosine similarity (0.0-1.0) | RRF rank-based score (max `≈ 2/(k+1)`; ~0.033 with k=60) |
+| **Best For** | Semantic similarity, paraphrasing | Exact keywords + semantic meaning |
+
+#### Tuning RRF Parameter
+
+Adjust the `rrfK` parameter to control ranking sensitivity:
+
+```java
+.rrfK(40)   // More weight to top-ranked results (higher scores for top matches)
+.rrfK(80)   // More balanced between top and lower-ranked results
+```
+
+- **Lower k (20-40)**: Emphasizes top-ranked results more
+- **Higher k (80-100)**: More balanced ranking distribution
+- **Default (60)**: Good balance for most use cases
 
 ### Spring Boot Integration
 

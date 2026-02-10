@@ -3,6 +3,7 @@ package dev.langchain4j.mcp.client.transport.http;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.mcp.client.logging.McpLoggers;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import java.util.concurrent.CompletableFuture;
 import okhttp3.Response;
@@ -15,7 +16,7 @@ public class SseEventListener extends EventSourceListener {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Logger log = LoggerFactory.getLogger(SseEventListener.class);
-    private static final Logger trafficLog = LoggerFactory.getLogger("MCP");
+    private static final Logger trafficLog = McpLoggers.traffic();
     private final boolean logEvents;
     // this will contain the POST url for sending commands to the server
     private final CompletableFuture<String> initializationFinished;

@@ -8,11 +8,11 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -97,6 +97,14 @@ class ChatMessageSerializerTest {
                         ToolExecutionResultMessage.from("12345", "weather", "sunny"),
                         "{\"id\":\"12345\",\"toolName\":\"weather\",\"text\":\"sunny\",\"type\":\"TOOL_EXECUTION_RESULT\"}"),
                 Arguments.of(
+                        ToolExecutionResultMessage.builder()
+                                .id("12345")
+                                .toolName("weather")
+                                .text("error occurred")
+                                .isError(true)
+                                .build(),
+                        "{\"id\":\"12345\",\"toolName\":\"weather\",\"text\":\"error occurred\",\"isError\":true,\"type\":\"TOOL_EXECUTION_RESULT\"}"),
+                Arguments.of(
                         CustomMessage.from(new LinkedHashMap<>() {
                             {
                                 put("k1", "v1");
@@ -137,7 +145,8 @@ class ChatMessageSerializerTest {
     @Test
     void should_deserialize_UserMessage_without_attributes() {
 
-        UserMessage deserialized = (UserMessage) messageFromJson("{\"contents\":[{\"text\":\"hello\",\"type\":\"TEXT\"}],\"type\":\"USER\"}");
+        UserMessage deserialized = (UserMessage)
+                messageFromJson("{\"contents\":[{\"text\":\"hello\",\"type\":\"TEXT\"}],\"type\":\"USER\"}");
 
         assertThat(deserialized.name()).isNull();
         assertThat(deserialized.contents()).containsExactly(TextContent.from("hello"));
@@ -156,5 +165,17 @@ class ChatMessageSerializerTest {
         assertThat(deserialized.thinking()).isNull();
         assertThat(deserialized.toolExecutionRequests()).isEmpty();
         assertThat(deserialized.attributes()).isEmpty();
+    }
+
+    @Test
+    void should_deserialize_ToolExecutionResultMessage_without_isError() {
+
+        ToolExecutionResultMessage deserialized = (ToolExecutionResultMessage) messageFromJson(
+                "{\"id\":\"12345\",\"toolName\":\"weather\",\"text\":\"sunny\",\"type\":\"TOOL_EXECUTION_RESULT\"}");
+
+        assertThat(deserialized.id()).isEqualTo("12345");
+        assertThat(deserialized.toolName()).isEqualTo("weather");
+        assertThat(deserialized.text()).isEqualTo("sunny");
+        assertThat(deserialized.isError()).isNull();
     }
 }

@@ -38,7 +38,7 @@ https://ai.google.dev/gemini-api/docs
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-google-ai-gemini</artifactId>
-    <version>1.10.0</version>
+    <version>1.11.0</version>
 </dependency>
 ```
 
@@ -119,6 +119,8 @@ ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .responseLogprobs(...)
     .logprobs(...)
     .enableEnhancedCivicAnswers(...)
+    .mediaResolution(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_HIGH)
+    .mediaResolutionPerPartEnabled(true)
     .listeners(...)
     .supportedCapabilities(...)
     .build();
@@ -580,6 +582,50 @@ if (GeneratedImageHelper.hasGeneratedImages(aiMessage)) {
 }
 ```
 
+### Media Resolution
+
+You can control the resolution of media (images, videos, PDFs) sent to the model. This can be done globally or per-part (per image).
+
+#### Global Media Resolution
+
+To set the media resolution for all media parts in a request, use the `.mediaResolution()` builder method:
+
+```java
+ChatModel gemini = GoogleAiGeminiChatModel.builder()
+    .apiKey(System.getenv("GEMINI_AI_KEY"))
+    .modelName("gemini-2.5-flash")
+    .mediaResolution(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_LOW) // or MEDIUM, HIGH, ULTRA_HIGH, UNSPECIFIED
+    .build();
+```
+
+#### Per-Part Media Resolution (Gemini 3)
+
+With Gemini 3, you can specify the resolution for individual images using the `DetailLevel` in `ImageContent`.
+First, enable this feature in the builder, then set the detail level on `ImageContent`:
+
+```java
+ChatModel gemini = GoogleAiGeminiChatModel.builder()
+    .apiKey(System.getenv("GEMINI_AI_KEY"))
+    .modelName("gemini-3-pro-preview")
+    .mediaResolutionPerPartEnabled(true)
+    .build();
+
+ChatResponse response = gemini.chat(
+    UserMessage.from(
+        ImageContent.from(url1, ImageContent.DetailLevel.LOW),
+        ImageContent.from(url2, ImageContent.DetailLevel.HIGH),
+        TextContent.from("Compare these two images")
+    )
+);
+```
+
+Supported `DetailLevel` values and their mapping to Gemini's resolution levels:
+- `LOW` -> `MEDIA_RESOLUTION_LOW`
+- `MEDIUM` -> `MEDIA_RESOLUTION_MEDIUM`
+- `HIGH` -> `MEDIA_RESOLUTION_HIGH`
+- `ULTRA_HIGH` -> `MEDIA_RESOLUTION_ULTRA_HIGH` (Highest token count, required for specific use cases such as computer use)
+- `AUTO` -> `MEDIA_RESOLUTION_UNSPECIFIED`
+
 ## Thinking
 
 Both `GoogleAiGeminiChatModel` and `GoogleAiGeminiStreamingChatModel`
@@ -803,8 +849,18 @@ switch (response) {
     }
     case BatchSuccess success -> {
         System.out.println("Batch completed successfully!");
+        
+        // Process successful responses
         for (ChatResponse chatResponse : success.responses()) {
             System.out.println(chatResponse.aiMessage().text());
+        }
+        
+        // Check for individual request errors within the batch
+        if (!success.errors().isEmpty()) {
+            System.out.println("Some requests failed:");
+            for (var error : success.errors()) {
+                System.err.println("Error code: " + error.code() + ", message: " + error.message());
+            }
         }
     }
     case BatchError error -> {
@@ -814,6 +870,12 @@ switch (response) {
     }
 }
 ```
+
+**Note:** A `BatchSuccess` response indicates the batch job completed, but individual requests within the batch may have 
+failed. The `success.errors()` list contains any individual request failures (e.g., timeouts, rate limits), 
+while `success.responses()` contains the successful responses. Always check both lists to handle partial failures 
+gracefully.
+
 
 ### Polling for Results
 
@@ -842,8 +904,17 @@ do {
 
 // Process final result
 if (result instanceof BatchSuccess success) {
+    System.out.println("Successful responses: " + success.responses().size());
     for (ChatResponse chatResponse : success.responses()) {
         System.out.println(chatResponse.aiMessage().text());
+    }
+    
+    // Handle any individual request failures
+    if (!success.errors().isEmpty()) {
+        System.out.println("Failed requests: " + success.errors().size());
+        for (var error : success.errors()) {
+            System.err.println("Error: " + error.code() + " - " + error.message());
+        }
     }
 } else if (result instanceof BatchError error) {
     System.err.println("Batch failed: " + error.message());
@@ -981,6 +1052,7 @@ GoogleAiBatchChatModel batchModel = GoogleAiBatchChatModel.builder()
 - **Turnaround**: 24-hour SLO, though completion is often much quicker
 - **Use Cases**: Best for large-scale, non-urgent tasks like data pre-processing or evaluations
 
+
 ### Example: Complete Workflow
 
 ```java
@@ -1035,10 +1107,18 @@ if (finalResult instanceof BatchSuccess success) {
         ChatResponse chatResponse = success.responses().get(i);
         System.out.println("Story #" + i + ": " + chatResponse.aiMessage().text());
     }
+    
+    // Report any failures
+    if (!success.errors().isEmpty()) {
+        System.err.println(success.errors().size() + " requests failed:");
+        for (var error : success.errors()) {
+            System.err.println("  - Code " + error.code() + ": " + error.message());
+        }
+    }
 } else if (finalResult instanceof BatchError error) {
     System.err.println("Batch failed: " + error.message());
 }
-``` 
+```
 
 ## Learn more
 
