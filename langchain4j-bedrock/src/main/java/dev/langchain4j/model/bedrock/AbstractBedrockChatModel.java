@@ -34,6 +34,7 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -48,12 +49,14 @@ import dev.langchain4j.model.output.FinishReason;
 import java.net.URI;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -119,6 +122,7 @@ abstract class AbstractBedrockChatModel {
     protected final boolean returnThinking;
     protected final boolean sendThinking;
     protected final BedrockChatRequestParameters defaultRequestParameters;
+    protected final Set<Capability> supportedCapabilities;
     protected final List<ChatModelListener> listeners;
 
     protected AbstractBedrockChatModel(AbstractBuilder<?> builder) {
@@ -126,6 +130,7 @@ abstract class AbstractBedrockChatModel {
         this.timeout = getOrDefault(builder.timeout, Duration.ofMinutes(1));
         this.returnThinking = getOrDefault(builder.returnThinking, false);
         this.sendThinking = getOrDefault(builder.sendThinking, true);
+        this.supportedCapabilities = copy(builder.supportedCapabilities);
         this.listeners = copy(builder.listeners);
 
         ChatRequestParameters commonParameters;
@@ -975,6 +980,7 @@ abstract class AbstractBedrockChatModel {
         protected Boolean logResponses;
         protected Logger logger;
         protected List<ChatModelListener> listeners;
+        protected Set<Capability> supportedCapabilities;
 
         @SuppressWarnings("unchecked")
         public T self() {
@@ -1079,6 +1085,15 @@ abstract class AbstractBedrockChatModel {
 
         public T listeners(ChatModelListener... listeners) {
             return listeners(asList(listeners));
+        }
+
+        public T supportedCapabilities(Set<Capability> supportedCapabilities) {
+            this.supportedCapabilities = supportedCapabilities;
+            return self();
+        }
+
+        public T supportedCapabilities(Capability... supportedCapabilities) {
+            return supportedCapabilities(Arrays.stream(supportedCapabilities).collect(Collectors.toSet()));
         }
     }
 }

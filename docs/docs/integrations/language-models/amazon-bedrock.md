@@ -33,6 +33,7 @@ ChatModel model = BedrockChatModel.builder()
         .client(BedrockRuntimeClient)
         .region(...)
         .modelId("us.amazon.nova-lite-v1:0")
+        .supportedCapabilities(...)
         .returnThinking(...)
         .sendThinking(...)
         .timeout(...)
@@ -76,6 +77,7 @@ StreamingChatModel model = BedrockStreamingChatModel.builder()
         .client(BedrockRuntimeAsyncClient)
         .region(...)
         .modelId("us.amazon.nova-lite-v1:0")
+        .supportedCapabilities(...)
         .returnThinking(...)
         .sendThinking(...)
         .timeout(...)
@@ -102,6 +104,21 @@ StreamingChatModel model = BedrockStreamingChatModel.builder()
 
 - [BedrockStreamingChatModelExample](https://github.com/langchain4j/langchain4j-examples/blob/main/bedrock-examples/src/main/java/converse/BedrockStreamingChatModelExample.java)
 
+
+## Structured Outputs with AI Services
+
+To enable JSON Schema generation in [AI Services](/tutorials/ai-services), configure Bedrock model capabilities explicitly:
+
+```java
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
+
+ChatModel model = BedrockChatModel.builder()
+        .modelId("us.amazon.nova-lite-v1:0")
+        .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)
+        .build();
+```
+
+This only enables LangChain4j JSON Schema flow. The selected Bedrock model must also support structured outputs.
 
 ## Additional Model Request Fields
 

@@ -49,17 +49,7 @@ class BedrockChatModelWithVisionIT extends AbstractChatModelIT {
 
     @Override
     protected boolean supportsJsonResponseFormat() {
-        return false; // output format not supported
-    }
-
-    @Override
-    protected boolean supportsJsonResponseFormatWithSchema() {
-        return false; // output format not supported
-    }
-
-    @Override
-    protected boolean supportsJsonResponseFormatWithRawSchema() {
-        return false; // output format not supported
+        return false; // Bedrock supports JSON schema output only
     }
 
     @Override
