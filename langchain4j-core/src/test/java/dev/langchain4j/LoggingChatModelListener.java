@@ -105,7 +105,7 @@ public class LoggingChatModelListener implements ChatModelListener {
         List<ChatMessage> messages = chatRequest.messages();
         messages.forEach(message -> {
             sb.append(format(message));
-            sb.append("\n\n");
+            sb.append("\n");
         });
 
         log.info("""
@@ -114,6 +114,7 @@ public class LoggingChatModelListener implements ChatModelListener {
                         ------------------------------------------------------------------------------------------
                         {}
                         <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+                        
                         
                         """,
                 sb,

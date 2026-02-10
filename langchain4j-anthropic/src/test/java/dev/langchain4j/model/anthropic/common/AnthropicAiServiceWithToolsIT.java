@@ -37,8 +37,6 @@ class AnthropicAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
                 .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .temperature(0.0)
                 .listeners(new LoggingChatModelListener())
-//                .logRequests(true)
-//                .logResponses(true)
                 .build());
     }
 

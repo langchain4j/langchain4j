@@ -18,7 +18,7 @@ import java.util.List;
 import static dev.langchain4j.MockitoUtils.ignoreInteractions;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
-import static dev.langchain4j.service.common.AbstractAiServiceWithToolsIT.containsTool;
+import static dev.langchain4j.service.AiServicesWithToolSearchToolIT.containsTool;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
