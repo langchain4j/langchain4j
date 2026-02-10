@@ -425,6 +425,10 @@ public class AnthropicChatModel implements ChatModel {
             return this;
         }
 
+        public AnthropicChatModelBuilder listeners(ChatModelListener... listeners) {
+            return listeners(asList(listeners));
+        }
+
         public AnthropicChatModelBuilder defaultRequestParameters(ChatRequestParameters parameters) {
             this.defaultRequestParameters = parameters;
             return this;
