@@ -1,6 +1,5 @@
 package dev.langchain4j.model.anthropic.common;
 
-import dev.langchain4j.LoggingChatModelListener;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.http.client.MockHttpClientBuilder;
@@ -36,7 +35,8 @@ class AnthropicAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .temperature(0.0)
-                .listeners(new LoggingChatModelListener())
+                .logRequests(true)
+                .logResponses(true)
                 .build());
     }
 
