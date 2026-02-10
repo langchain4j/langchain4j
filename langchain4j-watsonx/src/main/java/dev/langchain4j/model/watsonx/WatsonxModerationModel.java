@@ -8,11 +8,6 @@ import com.ibm.watsonx.ai.detection.DetectionService;
 import com.ibm.watsonx.ai.detection.DetectionTextRequest;
 import com.ibm.watsonx.ai.detection.DetectionTextResponse;
 import com.ibm.watsonx.ai.detection.detector.BaseDetector;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.LangChain4jException;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.model.ModelProvider;
@@ -21,7 +16,6 @@ import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.model.moderation.ModerationRequest;
 import dev.langchain4j.model.moderation.ModerationResponse;
 import dev.langchain4j.model.moderation.listener.ModerationModelListener;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -85,35 +79,8 @@ public class WatsonxModerationModel implements ModerationModel {
 
     @Override
     public ModerationResponse doModerate(ModerationRequest moderationRequest) {
-        List<String> inputs = toInputs(moderationRequest);
+        List<String> inputs = ModerationModel.toInputs(moderationRequest);
         return moderateInternal(inputs);
-    }
-
-    private List<String> toInputs(ModerationRequest moderationRequest) {
-        List<String> inputs = new ArrayList<>();
-        if (moderationRequest.hasText()) {
-            inputs.add(moderationRequest.text());
-        }
-        if (moderationRequest.hasMessages()) {
-            moderationRequest.messages().stream()
-                    .map(WatsonxModerationModel::toText)
-                    .forEach(inputs::add);
-        }
-        return inputs;
-    }
-
-    private static String toText(ChatMessage chatMessage) {
-        if (chatMessage instanceof SystemMessage systemMessage) {
-            return systemMessage.text();
-        } else if (chatMessage instanceof UserMessage userMessage) {
-            return userMessage.singleText();
-        } else if (chatMessage instanceof AiMessage aiMessage) {
-            return aiMessage.text();
-        } else if (chatMessage instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
-            return toolExecutionResultMessage.text();
-        } else {
-            throw new IllegalArgumentException("Unsupported message type: " + chatMessage.type());
-        }
     }
 
     private ModerationResponse moderateInternal(List<String> inputs) {

@@ -5,12 +5,17 @@ import static dev.langchain4j.model.moderation.ModerationModelListenerUtils.onEr
 import static dev.langchain4j.model.moderation.ModerationModelListenerUtils.onRequest;
 import static dev.langchain4j.model.moderation.ModerationModelListenerUtils.onResponse;
 
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.moderation.listener.ModerationModelListener;
 import dev.langchain4j.model.output.Response;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -131,5 +136,45 @@ public interface ModerationModel {
      */
     default Response<Moderation> moderate(TextSegment textSegment) {
         return moderate(textSegment.text());
+    }
+
+    /**
+     * Converts a ModerationRequest into a list of text inputs.
+     * This is a helper method for implementations.
+     *
+     * @param moderationRequest the moderation request
+     * @return a list of text inputs extracted from the request
+     */
+    static List<String> toInputs(ModerationRequest moderationRequest) {
+        List<String> inputs = new ArrayList<>();
+        if (moderationRequest.hasText()) {
+            inputs.add(moderationRequest.text());
+        }
+        if (moderationRequest.hasMessages()) {
+            moderationRequest.messages().stream().map(ModerationModel::toText).forEach(inputs::add);
+        }
+        return inputs;
+    }
+
+    /**
+     * Converts a ChatMessage to its text representation.
+     * This is a helper method for implementations.
+     *
+     * @param chatMessage the chat message
+     * @return the text content of the message
+     * @throws IllegalArgumentException if the message type is unsupported
+     */
+    static String toText(ChatMessage chatMessage) {
+        if (chatMessage instanceof SystemMessage systemMessage) {
+            return systemMessage.text();
+        } else if (chatMessage instanceof UserMessage userMessage) {
+            return userMessage.singleText();
+        } else if (chatMessage instanceof AiMessage aiMessage) {
+            return aiMessage.text();
+        } else if (chatMessage instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
+            return toolExecutionResultMessage.text();
+        } else {
+            throw new IllegalArgumentException("Unsupported message type: " + chatMessage.type());
+        }
     }
 }
