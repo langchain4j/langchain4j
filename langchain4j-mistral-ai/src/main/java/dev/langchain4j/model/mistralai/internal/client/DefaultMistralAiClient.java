@@ -19,6 +19,8 @@ import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.mistralai.internal.api.*;
 import java.time.Duration;
+import java.util.Map;
+import java.util.function.Supplier;
 
 @Internal
 public class DefaultMistralAiClient extends MistralAiClient {
@@ -26,6 +28,7 @@ public class DefaultMistralAiClient extends MistralAiClient {
     private final HttpClient httpClient;
     private final String baseUrl;
     private final String apiKey;
+    private final Supplier<Map<String, String>> customHeadersSupplier;
 
     public static Builder builder() {
         return new Builder();
@@ -59,6 +62,15 @@ public class DefaultMistralAiClient extends MistralAiClient {
 
         this.baseUrl = ensureNotBlank(builder.baseUrl, "baseUrl");
         this.apiKey = ensureNotBlank(builder.apiKey, "apiKey");
+        this.customHeadersSupplier = getOrDefault(builder.customHeadersSupplier, () -> Map::of);
+    }
+
+    private java.util.Map<String, String> buildRequestHeaders() {
+        Map<String, String> dynamicHeaders = customHeadersSupplier.get();
+        if (isNullOrEmpty(dynamicHeaders)) {
+            return Map.of();
+        }
+        return dynamicHeaders;
     }
 
     @Override
@@ -75,6 +87,7 @@ public class DefaultMistralAiClient extends MistralAiClient {
                 .addHeader("Authorization", "Bearer " + apiKey)
                 .addHeader("Content-Type", "application/json")
                 .addHeader("User-Agent", "langchain4j-mistral-ai")
+                .addHeaders(buildRequestHeaders())
                 .body(toJson(request))
                 .build();
 
@@ -85,8 +98,7 @@ public class DefaultMistralAiClient extends MistralAiClient {
     }
 
     @Override
-    public void streamingChatCompletion(
-            MistralAiChatCompletionRequest request, StreamingChatResponseHandler handler) {
+    public void streamingChatCompletion(MistralAiChatCompletionRequest request, StreamingChatResponseHandler handler) {
         streamingChatCompletion(request, handler, false);
     }
 
@@ -101,6 +113,7 @@ public class DefaultMistralAiClient extends MistralAiClient {
                 .addHeader("Authorization", "Bearer " + apiKey)
                 .addHeader("Content-Type", "application/json")
                 .addHeader("User-Agent", "langchain4j-mistral-ai")
+                .addHeaders(buildRequestHeaders())
                 .body(toJson(request))
                 .build();
 
@@ -121,6 +134,7 @@ public class DefaultMistralAiClient extends MistralAiClient {
                 .addHeader("Authorization", "Bearer " + apiKey)
                 .addHeader("Content-Type", "application/json")
                 .addHeader("User-Agent", "langchain4j-mistral-ai")
+                .addHeaders(buildRequestHeaders())
                 .body(toJson(request))
                 .build();
 
@@ -139,6 +153,7 @@ public class DefaultMistralAiClient extends MistralAiClient {
                 .addHeader("Authorization", "Bearer " + apiKey)
                 .addHeader("Content-Type", "application/json")
                 .addHeader("User-Agent", "langchain4j-mistral-ai")
+                .addHeaders(buildRequestHeaders())
                 .body(toJson(request))
                 .build();
 
@@ -161,6 +176,7 @@ public class DefaultMistralAiClient extends MistralAiClient {
                 .addHeader("Authorization", "Bearer " + apiKey)
                 .addHeader("Content-Type", "application/json")
                 .addHeader("User-Agent", "langchain4j-mistral-ai")
+                .addHeaders(buildRequestHeaders())
                 .body(toJson(request))
                 .build();
 
@@ -177,6 +193,7 @@ public class DefaultMistralAiClient extends MistralAiClient {
                 .addHeader("Authorization", "Bearer " + apiKey)
                 .addHeader("Content-Type", "application/json")
                 .addHeader("User-Agent", "langchain4j-mistral-ai")
+                .addHeaders(buildRequestHeaders())
                 .body(toJson(request))
                 .build();
 
@@ -192,6 +209,7 @@ public class DefaultMistralAiClient extends MistralAiClient {
                 .addHeader("Authorization", "Bearer " + apiKey)
                 .addHeader("Content-Type", "application/json")
                 .addHeader("User-Agent", "langchain4j-mistral-ai")
+                .addHeaders(buildRequestHeaders())
                 .build();
 
         SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
