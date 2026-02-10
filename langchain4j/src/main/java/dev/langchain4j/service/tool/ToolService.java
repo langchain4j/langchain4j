@@ -387,7 +387,9 @@ public class ToolService {
                 messages = chatMemory.messages();
             }
 
-            parameters = addFoundTools(parameters, toolResults.values(), toolServiceContext.availableTools());
+            if (toolSearchService != null) {
+                parameters = addFoundTools(parameters, toolResults.values(), toolServiceContext.availableTools());
+            }
 
             ChatRequest chatRequest = context.chatRequestTransformer.apply(
                     ChatRequest.builder()
