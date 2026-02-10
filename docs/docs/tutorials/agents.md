@@ -1929,19 +1929,18 @@ UntypedAgent editor = AgenticServices.sequenceBuilder()
 Another common need when building agentic systems is to have a human in the loop, allowing the system to ask user's input for missing information or approval before proceeding with certain actions. This human-in-the-loop capability can be also seen as a special non-AI agent and thus implemented as such.
 
 ```java
-public record HumanInTheLoop(Consumer<String> requestWriter, Supplier<String> responseReader) {
+public record HumanInTheLoop(Function<AgenticScope, ?> responseProvider) {
 
     @Agent("An agent that asks the user for missing information")
-    public String askUser(String request) {
-        requestWriter.accept(request);
-        return responseReader.get();
+    public Object askUser(AgenticScope scope) {
+        return responseProvider.apply(scope);
     }
 }
 ```
 
-This quite naive, but also very generic, implementation is based on the use of two functions, a `Consumer` of the AI request intended to forward it to the user and a `Supplier`, eventually waiting in a blocking way, of the response provided by the user.
+This quite naive, but also very generic, implementation is based on the use of a single function that takes the current `AgenticScope` as input, from which it will be possible to extract the context to ask an appropriate question, and returns the response that should be provided to the user.
 
-The `HumanInTheLoop` agent provided out-of-the-box by the `langchain4j-agentic` module allows to define these two functions together with the agent description, the state variable of the `AgenticScope` used as input to generate the request for the user and the output variable where the user's response will be written.
+The `HumanInTheLoop` agent provided out-of-the-box by the `langchain4j-agentic` module allows to define this function together with the agent description, and the output variable where the user's response will be written.
 
 For instance, having defined an `AstrologyAgent` like:
 
@@ -1958,48 +1957,51 @@ public interface AstrologyAgent {
 }
 ```
 
-it is possible to create a `SupervisorAgent` that uses both this AI agent and a `HumanInTheLoop` one to ask the user for their zodiac sign before generating the horoscope, sending its question to the console standard output and reading the user's response from the standard input, as follows:
+it is possible to create a sequence workflow that uses both this AI agent and a `HumanInTheLoop` one to ask the user for their zodiac sign before generating the horoscope, sending its question to the console standard output and reading the user's response from the standard input, as follows:
 
 ```java
-AstrologyAgent astrologyAgent = AgenticServices
-        .agentBuilder(AstrologyAgent.class)
-        .chatModel(BASE_MODEL)
-        .build();
-
-HumanInTheLoop humanInTheLoop = AgenticServices
-        .humanInTheLoopBuilder()
+HumanInTheLoop humanInTheLoop = AgenticServices.humanInTheLoopBuilder()
         .description("An agent that asks the zodiac sign of the user")
         .outputKey("sign")
-        .requestWriter(request -> {
-            System.out.println(request);
+        .responseProvider(scope -> {
+            System.out.println("Hi " + scope.readState("name") + ", what is your sign?");
             System.out.print("> ");
+            try {
+                BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+                return reader.readLine();
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to read input", e);
+            }
         })
-        .responseReader(() -> System.console().readLine())
         .build();
 
-SupervisorAgent horoscopeAgent = AgenticServices
-        .supervisorBuilder()
-        .chatModel(PLANNER_MODEL)
-        .subAgents(astrologyAgent, humanInTheLoop)
+AstrologyAgent astrologyAgent = AgenticServices.agentBuilder(AstrologyAgent.class)
+        .chatModel(baseModel())
+        .outputKey("horoscope")
+        .build();
+
+UntypedAgent horoscopeAgent = AgenticServices.sequenceBuilder()
+        .subAgents(humanInTheLoop, astrologyAgent)
+        .outputKey("horoscope")
         .build();
 ```
 
 In this way if the user invokes the `horoscopeAgent` with a request like
 
 ```java
-horoscopeAgent.invoke("My name is Mario. What is my horoscope?")
+horoscopeAgent.invoke(Map.of("name", "Mario"));
 ```
 
-the supervisor agent will see that the user's zodiac sign is missing, and will invoke the `HumanInTheLoop` agent to ask the user for it, producing the following output:
+the sequence will first invoke the `HumanInTheLoop` agent to ask the user for the missing zodiac sign, producing the following output:
 
 ```
-What is your zodiac sign?
+Hi Mario, what is your sign?
 > 
 ```
 
 waiting for the user to provide the answer, which will be then used to invoke the `AstrologyAgent` and generate the horoscope.
 
-Since the user may take some time to provide the answer, it is possible, and actually recommended, to configure the `HumanInTheLoop` agent as an asynchronous one. In this way the agents that don't need the user's input can proceed with their execution while the agentic system is waiting for the user to provide the answer. Note however that the supervisor always enforces blocking execution for all agents in order to allow the planning of the next action to take into account the complete state of the `AgenticScope`. For this reason configuring the `HumanInTheLoop` agent in asynchronous mode wouldn't have any effect in the former example.
+Since the user may take some time to provide the answer, it is possible, and actually recommended, to configure the `HumanInTheLoop` agent as an asynchronous one. In this way the agents that don't need the user's input can proceed with their execution while the agentic system is waiting for the user to provide the answer.
 
 ## A2A Integration
 

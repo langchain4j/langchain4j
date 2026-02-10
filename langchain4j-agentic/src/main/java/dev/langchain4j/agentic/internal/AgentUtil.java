@@ -165,6 +165,11 @@ public class AgentUtil {
     }
 
     public static AgentInvocationArguments agentInvocationArguments(
+            AgenticScope agenticScope, Method method) throws MissingArgumentException {
+        return agentInvocationArguments(agenticScope, argumentsFromMethod(method), Map.of());
+    }
+
+    public static AgentInvocationArguments agentInvocationArguments(
             AgenticScope agenticScope, List<AgentArgument> agentArguments) throws MissingArgumentException {
         return agentInvocationArguments(agenticScope, agentArguments, Map.of());
     }
