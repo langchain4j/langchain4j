@@ -9,19 +9,27 @@ import java.util.Objects;
 public class GoogleAiGeminiChatResponseMetadata extends ChatResponseMetadata {
 
     private final GroundingMetadata groundingMetadata;
+    private final UrlContextMetadata urlContextMetadata;
 
     private GoogleAiGeminiChatResponseMetadata(Builder builder) {
         super(builder);
         this.groundingMetadata = builder.groundingMetadata;
+        this.urlContextMetadata = builder.urlContextMetadata;
     }
 
     public GroundingMetadata groundingMetadata() {
         return groundingMetadata;
     }
 
+    public UrlContextMetadata urlContextMetadata() {
+        return urlContextMetadata;
+    }
+
     @Override
     public Builder toBuilder() {
-        return ((Builder) super.toBuilder(builder())).groundingMetadata(groundingMetadata);
+        return ((Builder) super.toBuilder(builder()))
+                .groundingMetadata(groundingMetadata)
+                .urlContextMetadata(urlContextMetadata);
     }
 
     @Override
@@ -29,12 +37,13 @@ public class GoogleAiGeminiChatResponseMetadata extends ChatResponseMetadata {
         if (this == o) return true;
         if (!(o instanceof GoogleAiGeminiChatResponseMetadata that)) return false;
         if (!super.equals(o)) return false;
-        return Objects.equals(groundingMetadata, that.groundingMetadata);
+        return Objects.equals(groundingMetadata, that.groundingMetadata)
+                && Objects.equals(urlContextMetadata, that.urlContextMetadata);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), groundingMetadata);
+        return Objects.hash(super.hashCode(), groundingMetadata, urlContextMetadata);
     }
 
     @Override
@@ -44,7 +53,8 @@ public class GoogleAiGeminiChatResponseMetadata extends ChatResponseMetadata {
                 + modelName() + '\'' + ", tokenUsage="
                 + tokenUsage() + ", finishReason="
                 + finishReason() + ", groundingMetadata="
-                + groundingMetadata + '}';
+                + groundingMetadata + ", urlContextMetadata="
+                + urlContextMetadata + '}';
     }
 
     public static Builder builder() {
@@ -54,9 +64,15 @@ public class GoogleAiGeminiChatResponseMetadata extends ChatResponseMetadata {
     public static class Builder extends ChatResponseMetadata.Builder<Builder> {
 
         private GroundingMetadata groundingMetadata;
+        private UrlContextMetadata urlContextMetadata;
 
         public Builder groundingMetadata(GroundingMetadata groundingMetadata) {
             this.groundingMetadata = groundingMetadata;
+            return this;
+        }
+
+        public Builder urlContextMetadata(UrlContextMetadata urlContextMetadata) {
+            this.urlContextMetadata = urlContextMetadata;
             return this;
         }
 
