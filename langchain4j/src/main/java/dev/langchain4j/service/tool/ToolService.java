@@ -253,6 +253,7 @@ public class ToolService {
      */
     @Deprecated(since = "1.12.0")
     public ToolServiceContext createContext(InvocationContext invocationContext, UserMessage userMessage) {
+        // TODO make private
         if (this.toolProvider == null) {
             return this.toolSpecifications.isEmpty()
                     ? ToolServiceContext.Empty.INSTANCE
