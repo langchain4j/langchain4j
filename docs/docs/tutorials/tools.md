@@ -882,8 +882,10 @@ Tool search is configured at the AI Service level:
 
 ```java
 Assistant assistant = AiServices.builder(Assistant.class)
-    .chatModel(model)
-    .tools(...)
+    .chatModel(chatModel)
+    .chatMemory(chatMemory)
+    .tools(tools) // works for static tools
+    .toolProvider(mcpToolProvider) // as well as tools provided dynamically (e.g., MCP)
     .toolSearchStrategy(new SimpleToolSearchStrategy())
     .build();
 ```
