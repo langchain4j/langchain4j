@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static dev.langchain4j.agentic.internal.AgentUtil.AGENTIC_SCOPE_ARG_NAME;
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.afterAgentInvocation;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.agentError;
@@ -53,7 +54,7 @@ public interface AgentInvoker extends AgentInstance, InternalAgent {
     }
 
     static AgentInvoker fromSpec(AgentSpecsProvider spec, Method agenticMethod, String name) {
-        List<AgentArgument> arguments = List.of(new AgentArgument(agenticMethod.getGenericParameterTypes()[0], spec.inputKey()));
+        List<AgentArgument> arguments = List.of(new AgentArgument(AgenticScope.class, AGENTIC_SCOPE_ARG_NAME));
         InternalAgent agentInstance = new NonAiAgentInstance(agenticMethod.getDeclaringClass(),
                 name, spec.description(), agenticMethod.getGenericReturnType(), spec.outputKey(), spec.async(), arguments,
                 spec.listener());

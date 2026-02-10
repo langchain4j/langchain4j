@@ -34,7 +34,6 @@ import dev.langchain4j.agentic.declarative.ConditionalAgent;
 import dev.langchain4j.agentic.declarative.ErrorHandler;
 import dev.langchain4j.agentic.declarative.ExitCondition;
 import dev.langchain4j.agentic.declarative.HumanInTheLoop;
-import dev.langchain4j.agentic.declarative.HumanInTheLoopResponseSupplier;
 import dev.langchain4j.agentic.declarative.LoopAgent;
 import dev.langchain4j.agentic.declarative.LoopCounter;
 import dev.langchain4j.agentic.declarative.Output;
@@ -71,10 +70,13 @@ import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.BrokenBarrierException;
-import java.util.concurrent.CyclicBarrier;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
@@ -744,37 +746,33 @@ public class DeclarativeAgentIT {
         assertThat(bankTool.getBalance("Georgios")).isEqualTo(1100.0);
     }
 
-    private static final CyclicBarrier barrier = new CyclicBarrier(2);
     private static final AtomicReference<String> request = new AtomicReference<>();
     private static final AtomicReference<String> audience = new AtomicReference<>();
 
     public interface AudienceRetriever {
 
         @HumanInTheLoop(description = "Generate a story based on the given topic", outputKey = "audience", async = true)
-        static void request(@V("topic") String topic) {
+        static String humanResponse(AgenticScope scope, @V("topic") String topic) {
             request.set("Which audience for topic " + topic + "?");
-        }
-
-        @HumanInTheLoopResponseSupplier
-        static String response() {
+            CompletableFuture<String> futureResult = new CompletableFuture<>();
+            HumanResponseSupplier.pendingResponses.put(scope.memoryId(), futureResult);
             try {
-                barrier.await();
-            } catch (InterruptedException | BrokenBarrierException e) {
+                String result = futureResult.get();
+                HumanResponseSupplier.pendingResponses.remove(scope.memoryId());
+                return result;
+            } catch (InterruptedException | ExecutionException e) {
                 throw new RuntimeException(e);
             }
-            return "young adults";
         }
     }
 
-    public static class BarrierAwaiter {
+    public static class HumanResponseSupplier {
+
+        static final Map<Object, CompletableFuture<String>> pendingResponses = new ConcurrentHashMap<>();
 
         @Agent
-        public static void await() {
-            try {
-                barrier.await();
-            } catch (InterruptedException | BrokenBarrierException e) {
-                throw new RuntimeException(e);
-            }
+        public static void await(AgenticScope scope) {
+            pendingResponses.get(scope.memoryId()).complete("young adults");
         }
     }
 
@@ -789,7 +787,7 @@ public class DeclarativeAgentIT {
     public interface StoryCreatorWithHumanInTheLoop {
 
         @SequenceAgent( outputKey = "story",
-                subAgents = { AudienceRetriever.class, CreativeWriter.class, BarrierAwaiter.class,
+                subAgents = { AudienceRetriever.class, CreativeWriter.class, HumanResponseSupplier.class,
                               AudienceEditor.class, AudienceReader.class })
         String write(@V("topic") String topic);
     }
