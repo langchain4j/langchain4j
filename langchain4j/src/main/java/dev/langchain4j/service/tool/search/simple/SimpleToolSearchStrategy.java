@@ -16,6 +16,7 @@ import dev.langchain4j.service.tool.search.ToolSearchStrategy;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
@@ -44,12 +45,20 @@ public class SimpleToolSearchStrategy implements ToolSearchStrategy {
     private static final String DEFAULT_TOOL_ARGUMENT_DESCRIPTION = "A list of search terms used to find relevant tools";
     private static final int DEFAULT_MAX_RESULTS = 5;
     private static final int DEFAULT_MIN_SCORE = 1;
+    private static final Function<List<String>, String> DEFAULT_TOOL_RESULT_MESSAGE_TEXT_PROVIDER = foundToolNames -> {
+        if (foundToolNames.isEmpty()) {
+            return "No matching tools found";
+        } else {
+            return "Tools found: " + String.join(", ", foundToolNames);
+        }
+    };
 
     private final ToolSpecification toolSearchTool;
     private final int maxResults;
     private final int minScore;
     private final String toolArgumentName;
     private final boolean throwToolArgumentsExceptions;
+    private final Function<List<String>, String> toolResultMessageTextProvider;
 
     public SimpleToolSearchStrategy() {
         this(builder());
@@ -73,6 +82,7 @@ public class SimpleToolSearchStrategy implements ToolSearchStrategy {
         this.maxResults = getOrDefault(builder.maxResults, DEFAULT_MAX_RESULTS);
         this.minScore = getOrDefault(builder.minScore, DEFAULT_MIN_SCORE);
         this.throwToolArgumentsExceptions = getOrDefault(builder.throwToolArgumentsExceptions, false);
+        this.toolResultMessageTextProvider = getOrDefault(builder.toolResultMessageTextProvider, DEFAULT_TOOL_RESULT_MESSAGE_TEXT_PROVIDER);
     }
 
     @Override
@@ -94,7 +104,9 @@ public class SimpleToolSearchStrategy implements ToolSearchStrategy {
                 .map(st -> st.tool.name())
                 .toList();
 
-        return new ToolSearchResult(toolNames);
+        String toolResultMessageText = toolResultMessageTextProvider.apply(toolNames);
+
+        return new ToolSearchResult(toolNames, toolResultMessageText);
     }
 
     protected int score(ToolSpecification tool, List<String> terms) {
@@ -188,7 +200,11 @@ public class SimpleToolSearchStrategy implements ToolSearchStrategy {
         private String toolArgumentName;
         private String toolArgumentDescription;
         private Boolean throwToolArgumentsExceptions;
+        private Function<List<String>, String> toolResultMessageTextProvider;
 
+        /**
+         * TODO javadoc for all fields
+         */
         public Builder maxResults(Integer maxResults) {
             this.maxResults = maxResults;
             return this;
@@ -221,6 +237,11 @@ public class SimpleToolSearchStrategy implements ToolSearchStrategy {
 
         public Builder throwToolArgumentsExceptions(Boolean throwToolArgumentsExceptions) {
             this.throwToolArgumentsExceptions = throwToolArgumentsExceptions;
+            return this;
+        }
+
+        public Builder toolResultMessageTextProvider(Function<List<String>, String> toolResultMessageTextProvider) {
+            this.toolResultMessageTextProvider = toolResultMessageTextProvider;
             return this;
         }
 

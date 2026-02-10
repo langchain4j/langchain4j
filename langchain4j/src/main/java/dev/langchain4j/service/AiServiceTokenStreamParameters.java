@@ -50,7 +50,7 @@ public class AiServiceTokenStreamParameters {
     }
 
     /**
-     * Returnsmessages that should be included in the next {@link ChatRequest}.
+     * Returns messages that should be included in the next {@link ChatRequest}.
      */
     public List<ChatMessage> messages() {
         return messages;

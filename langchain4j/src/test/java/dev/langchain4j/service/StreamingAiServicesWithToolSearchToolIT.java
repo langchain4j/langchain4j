@@ -499,7 +499,7 @@ class StreamingAiServicesWithToolSearchToolIT {
             public ToolSearchResult search(ToolSearchRequest request) {
                 // find all available tools
                 List<String> foundToolNames = request.availableTools().stream().map(it -> it.name()).toList();
-                return new ToolSearchResult(foundToolNames);
+                return new ToolSearchResult(foundToolNames, "Tools found: " + String.join(", ", foundToolNames));
             }
         });
 

@@ -21,6 +21,7 @@ import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
@@ -41,6 +42,13 @@ public class VectorToolSearchStrategy implements ToolSearchStrategy {
     private static final String DEFAULT_TOOL_ARGUMENT_DESCRIPTION = "Natural language query describing desired tool";
     private static final int DEFAULT_MAX_RESULTS = 5;
     private static final double DEFAULT_MIN_SCORE = 0.0;
+    private static final Function<List<String>, String> DEFAULT_TOOL_RESULT_MESSAGE_TEXT_PROVIDER = foundToolNames -> {
+        if (foundToolNames.isEmpty()) {
+            return "No matching tools found";
+        } else {
+            return "Tools found: " + String.join(", ", foundToolNames);
+        }
+    };
     private static final String METADATA_TOOL_NAME = "toolName";
 
     private final ToolSpecification toolSearchTool;
@@ -49,6 +57,7 @@ public class VectorToolSearchStrategy implements ToolSearchStrategy {
     private final double minScore;
     private final String toolArgumentName;
     private final boolean throwToolArgumentsExceptions;
+    private final Function<List<String>, String> toolResultMessageTextProvider;
 
     public VectorToolSearchStrategy(EmbeddingModel embeddingModel) {
         this(builder().embeddingModel(embeddingModel));
@@ -75,6 +84,7 @@ public class VectorToolSearchStrategy implements ToolSearchStrategy {
         this.maxResults = getOrDefault(builder.maxResults, DEFAULT_MAX_RESULTS);
         this.minScore = getOrDefault(builder.minScore, DEFAULT_MIN_SCORE);
         this.throwToolArgumentsExceptions = getOrDefault(builder.throwToolArgumentsExceptions, false);
+        this.toolResultMessageTextProvider = getOrDefault(builder.toolResultMessageTextProvider, DEFAULT_TOOL_RESULT_MESSAGE_TEXT_PROVIDER);
     }
 
     @Override
@@ -116,7 +126,9 @@ public class VectorToolSearchStrategy implements ToolSearchStrategy {
                 .map(match -> (String) match.embedded().metadata().getString(METADATA_TOOL_NAME))
                 .toList();
 
-        return new ToolSearchResult(toolNames);
+        String toolResultMessageText = toolResultMessageTextProvider.apply(toolNames);
+
+        return new ToolSearchResult(toolNames, toolResultMessageText);
     }
 
     private String extractQuery(String argumentsJson) {
@@ -179,7 +191,11 @@ public class VectorToolSearchStrategy implements ToolSearchStrategy {
         private String toolArgumentDescription;
         private Boolean throwToolArgumentsExceptions;
         private Boolean cacheEmbeddings;
+        private Function<List<String>, String> toolResultMessageTextProvider;
 
+        /**
+         * TODO javadoc for all fields
+         */
         public Builder embeddingModel(EmbeddingModel embeddingModel) {
             this.embeddingModel = embeddingModel;
             return this;
@@ -217,6 +233,11 @@ public class VectorToolSearchStrategy implements ToolSearchStrategy {
 
         public Builder cacheEmbeddings(Boolean cacheEmbeddings) {
             this.cacheEmbeddings = cacheEmbeddings;
+            return this;
+        }
+
+        public Builder toolResultMessageTextProvider(Function<List<String>, String> toolResultMessageTextProvider) {
+            this.toolResultMessageTextProvider = toolResultMessageTextProvider;
             return this;
         }
 

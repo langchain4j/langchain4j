@@ -1,6 +1,7 @@
 package dev.langchain4j.service.tool.search;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 
 import java.util.List;
 import java.util.Objects;
@@ -10,7 +11,8 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * The result of a tool search.
- * Contains a list of the found tool names and the text to be sent to the LLM.
+ * Contains a list of the found tool names
+ * and the text to be sent to the LLM inside the {@link ToolExecutionResultMessage}.
  *
  * @since 1.12.0
  */
@@ -21,25 +23,10 @@ public class ToolSearchResult {
     private final String toolResultMessageText;
 
     /**
-     * Creates a {@code ToolSearchResult} from a list of tool names.
-     * Uses the default {@link #toolResultMessageText}.
-     *
-     * @param foundToolNames the names of the found tools
-     */
-    public ToolSearchResult(List<String> foundToolNames) {
-        this.foundToolNames = copy(foundToolNames);
-        if (foundToolNames.isEmpty()) {
-            this.toolResultMessageText = "No matching tools found";
-        } else {
-            this.toolResultMessageText = "Tools found: " + String.join(", ", foundToolNames);
-        }
-    }
-
-    /**
-     * Creates a {@code ToolSearchResult} from a list of tool names and a custom tool result message text.
+     * Creates a {@code ToolSearchResult} from a list of tool names and a tool result message text.
      *
      * @param foundToolNames        the names of the found tools
-     * @param toolResultMessageText the text to be set in the {@link dev.langchain4j.data.message.ToolExecutionResultMessage}
+     * @param toolResultMessageText the text to be set in the {@link ToolExecutionResultMessage}
      *                              and sent to the LLM as the result of the tool search
      */
     public ToolSearchResult(List<String> foundToolNames, String toolResultMessageText) {

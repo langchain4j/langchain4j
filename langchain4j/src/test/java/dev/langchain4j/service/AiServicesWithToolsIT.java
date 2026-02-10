@@ -74,7 +74,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
-public class AiServicesWithToolsIT {
+class AiServicesWithToolsIT {
 
     static Stream<ChatModel> models() {
         return Stream.of(

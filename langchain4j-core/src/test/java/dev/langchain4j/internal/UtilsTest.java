@@ -475,18 +475,20 @@ class UtilsTest {
 
     @Test
     void test_merge_lists() {
-        assertThat(merge(List.of())).isEqualTo(List.of());
         assertThat(merge(List.of(1), List.of(2))).isEqualTo(List.of(1, 2));
         assertThat(merge(List.of(1), List.of())).isEqualTo(List.of(1));
         assertThat(merge(List.of(), List.of(2))).isEqualTo(List.of(2));
+        assertThat(merge(List.of(), List.of())).isEqualTo(List.of());
+        assertThat(merge(List.of())).isEqualTo(List.of());
     }
 
     @Test
     void test_merge_maps() {
-        assertThat(merge(Map.of())).isEqualTo(Map.of());
         assertThat(merge(Map.of("one", 1), Map.of("two", 2))).isEqualTo(Map.of("one", 1, "two", 2));
         assertThat(merge(Map.of("one", 1), Map.of())).isEqualTo(Map.of("one", 1));
         assertThat(merge(Map.of(), Map.of("two", 2))).isEqualTo(Map.of("two", 2));
+        assertThat(merge(Map.of(), Map.of())).isEqualTo(Map.of());
+        assertThat(merge(Map.of())).isEqualTo(Map.of());
 
         assertThatThrownBy(() -> merge(Map.of("one", 1), Map.of("one", 1)))
                 .isExactlyInstanceOf(IllegalStateException.class)

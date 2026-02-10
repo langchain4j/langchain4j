@@ -28,9 +28,13 @@ public class ToolServiceContext {
         this.immediateReturnTools = copy(builder.immediateReturnTools);
     }
 
-    public ToolServiceContext(List<ToolSpecification> effectiveTools, Map<String, ToolExecutor> toolExecutors) {
-        this.effectiveTools = copy(effectiveTools);
-        this.availableTools = copy(effectiveTools);
+    /**
+     * @deprecated use {@link #ToolServiceContext(Builder)} instead
+     */
+    @Deprecated(since = "1.12.0")
+    public ToolServiceContext(List<ToolSpecification> toolSpecifications, Map<String, ToolExecutor> toolExecutors) {
+        this.effectiveTools = copy(toolSpecifications);
+        this.availableTools = copy(toolSpecifications);
         this.toolExecutors = copy(toolExecutors);
         this.immediateReturnTools = Set.of();
     }

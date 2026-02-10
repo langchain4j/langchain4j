@@ -24,6 +24,9 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.stream.Collectors.toCollection;
 import static java.util.stream.Collectors.toSet;
 
+/**
+ * @since 1.12.0
+ */
 @Internal
 public class ToolSearchService {
 
