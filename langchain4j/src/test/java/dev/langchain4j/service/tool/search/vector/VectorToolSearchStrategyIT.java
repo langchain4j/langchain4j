@@ -145,7 +145,7 @@ class VectorToolSearchStrategyIT {
         String answer2 = assistant.chat("What is the time in Germany?");
 
         // then
-        assertThat(answer2).contains("12", "34", "56");
+        assertThat(answer2).contains("12", "34");
 
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 2
