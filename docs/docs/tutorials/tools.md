@@ -908,12 +908,12 @@ using regular approach may be simpler.
 
 #### Notes and Limitations
 
-:::
+:::note
 Tool search relies on the LLM’s ability to understand when and how to search for tools.
 The effectiveness of this feature depends heavily on the chosen model.
 :::
 
-:::
+:::note
 Tool search is currently marked as experimental and may evolve in future releases.
 :::
 
