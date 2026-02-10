@@ -7,8 +7,23 @@ import dev.langchain4j.invocation.InvocationContext;
 import java.util.List;
 
 /**
- * TODO
+ * Strategy for discovering tools dynamically by an LLM during an AI Service invocation.
+ * <p>
+ * A {@code ToolSearchStrategy} allows reducing token usage by avoiding sending all available
+ * tools to the LLM upfront. Instead, the LLM is initially exposed only to one or more
+ * <em>tool search tools</em>, which it can call to discover relevant tools on demand.
+ * <p>
+ * Once the LLM performs a tool search, the matching tools are included in subsequent
+ * requests, typically accumulating until the corresponding search result message is evicted
+ * from the chat memory.
+ * <p>
+ * LangChain4j provides out-of-the-box implementations such as
+ * {@link dev.langchain4j.service.tool.search.simple.SimpleToolSearchStrategy}
+ * and {@link dev.langchain4j.service.tool.search.vector.VectorToolSearchStrategy},
+ * but custom strategies can be implemented to support alternative discovery mechanisms.
  *
+ * @see dev.langchain4j.service.tool.search.simple.SimpleToolSearchStrategy
+ * @see dev.langchain4j.service.tool.search.vector.VectorToolSearchStrategy
  * @since 1.12.0
  */
 @Experimental

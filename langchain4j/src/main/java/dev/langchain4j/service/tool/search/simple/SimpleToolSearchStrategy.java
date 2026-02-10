@@ -203,43 +203,102 @@ public class SimpleToolSearchStrategy implements ToolSearchStrategy {
         private Function<List<String>, String> toolResultMessageTextProvider;
 
         /**
-         * TODO javadoc for all fields
+         * Sets the maximum number of tools to return after scoring and ranking.
+         * <p>
+         * Default value is {@value SimpleToolSearchStrategy#DEFAULT_MAX_RESULTS}.
          */
         public Builder maxResults(Integer maxResults) {
             this.maxResults = maxResults;
             return this;
         }
 
+        /**
+         * Sets the minimum score a tool must have to be included in the results.
+         * <p>
+         * Tools with a score lower than this value are discarded.
+         * <p>
+         * Default value is {@value SimpleToolSearchStrategy#DEFAULT_MIN_SCORE}.
+         */
         public Builder minScore(Integer minScore) {
             this.minScore = minScore;
             return this;
         }
 
+        /**
+         * Sets the name of the tool that performs the tool search.
+         * <p>
+         * Default value is {@value SimpleToolSearchStrategy#DEFAULT_TOOL_NAME}.
+         */
         public Builder toolName(String toolName) {
             this.toolName = toolName;
             return this;
         }
 
+        /**
+         * Sets the description of the tool that performs the tool search.
+         * <p>
+         * Default value is {@value SimpleToolSearchStrategy#DEFAULT_TOOL_DESCRIPTION}.
+         */
         public Builder toolDescription(String toolDescription) {
             this.toolDescription = toolDescription;
             return this;
         }
 
+        /**
+         * Sets the name of the tool argument that contains the list of search terms.
+         * <p>
+         * Default value is {@value SimpleToolSearchStrategy#DEFAULT_TOOL_ARGUMENT_NAME}.
+         */
         public Builder toolArgumentName(String toolArgumentName) {
             this.toolArgumentName = toolArgumentName;
             return this;
         }
 
+        /**
+         * Sets the description of the tool argument that contains the list of search terms.
+         * <p>
+         * Default value is {@value SimpleToolSearchStrategy#DEFAULT_TOOL_ARGUMENT_DESCRIPTION}.
+         */
         public Builder toolArgumentDescription(String toolArgumentDescription) {
             this.toolArgumentDescription = toolArgumentDescription;
             return this;
         }
 
+        /**
+         * Controls which exception type is thrown when tool arguments
+         * are missing, invalid, or cannot be parsed.
+         * <p>
+         * Although all errors produced by this tool are argument-related,
+         * this strategy throws {@link ToolExecutionException} by default
+         * instead of {@link ToolArgumentsException}.
+         * <p>
+         * The reason is historical: by default, AI Services fail fast when
+         * a {@link ToolArgumentsException} is thrown, whereas
+         * {@link ToolExecutionException} allows the error message to be
+         * returned to the LLM. For this tool, returning the error message
+         * to the LLM is usually the desired behavior.
+         * <p>
+         * If this flag is set to {@code true}, {@link ToolArgumentsException}
+         * will be thrown instead.
+         *
+         * @param throwToolArgumentsExceptions whether to throw {@link ToolArgumentsException}
+         * @return this builder
+         */
         public Builder throwToolArgumentsExceptions(Boolean throwToolArgumentsExceptions) {
             this.throwToolArgumentsExceptions = throwToolArgumentsExceptions;
             return this;
         }
 
+        /**
+         * Sets a function that produces a human-readable message describing
+         * the tool search result, based on the list of found tool names.
+         * <p>
+         * By default, returns:
+         * <ul>
+         *   <li>{@code "No matching tools found"} when no tools are found</li>
+         *   <li>{@code "Tools found: <names>"} otherwise</li>
+         * </ul>
+         */
         public Builder toolResultMessageTextProvider(Function<List<String>, String> toolResultMessageTextProvider) {
             this.toolResultMessageTextProvider = toolResultMessageTextProvider;
             return this;

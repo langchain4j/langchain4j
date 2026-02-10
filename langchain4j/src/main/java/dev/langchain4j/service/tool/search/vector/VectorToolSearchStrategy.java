@@ -24,14 +24,25 @@ import java.util.Map;
 import java.util.function.Function;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.toBase64;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * A {@link ToolSearchStrategy} that uses vector similarity search
- * to find relevant tools based on semantic meaning.
- * TODO comment on tool description, caching
+ * to find relevant tools based on the semantic meaning of their names and descriptions.
+ * <p>
+ * NOTE: It is important that the tool description ({@link ToolSpecification#description()})
+ * is present and comprehensive to ensure that vector search performs effectively.
+ * <p>
+ * NOTE:
+ * By default, embeddings of tool descriptions are cached (since they rarely change).
+ * You can disable this by setting {@link Builder#cacheEmbeddings(Boolean)} to {@code false}.
+ * The embedding of a query is never cached.
+ * The cache is never cleared automatically, as the risk of a memory leak is low:
+ * the number of tools in an application is usually limited and does not grow over time.
+ * The cache can be cleared manually by calling {@link #clearEmbeddingsCache()}.
  */
 @Experimental
 public class VectorToolSearchStrategy implements ToolSearchStrategy {
@@ -153,7 +164,11 @@ public class VectorToolSearchStrategy implements ToolSearchStrategy {
     }
 
     protected String format(ToolSpecification tool) {
-        return tool.name() + ": " + tool.description();
+        if (isNullOrBlank(tool.description())) {
+            return tool.name();
+        } else {
+            return tool.name() + ": " + tool.description();
+        }
     }
 
     private void throwException(String message, Exception e) {
@@ -194,48 +209,111 @@ public class VectorToolSearchStrategy implements ToolSearchStrategy {
         private Function<List<String>, String> toolResultMessageTextProvider;
 
         /**
-         * TODO javadoc for all fields
+         * Sets the {@link EmbeddingModel} used to generate embeddings for the query
+         * and available tools.
+         * <p>
+         * This property is required and has no default value.
          */
         public Builder embeddingModel(EmbeddingModel embeddingModel) {
             this.embeddingModel = embeddingModel;
             return this;
         }
 
+        /**
+         * Sets the maximum number of tools to return from the vector similarity search.
+         * <p>
+         * Default value is {@value VectorToolSearchStrategy#DEFAULT_MAX_RESULTS}.
+         */
         public Builder maxResults(Integer maxResults) {
             this.maxResults = maxResults;
             return this;
         }
 
+        /**
+         * Sets the name of the tool that performs the tool search.
+         * <p>
+         * Default value is {@value VectorToolSearchStrategy#DEFAULT_TOOL_NAME}.
+         */
         public Builder toolName(String toolName) {
             this.toolName = toolName;
             return this;
         }
 
+        /**
+         * Sets the description of the tool that performs the tool search.
+         * <p>
+         * Default value is {@value VectorToolSearchStrategy#DEFAULT_TOOL_DESCRIPTION}.
+         */
         public Builder toolDescription(String toolDescription) {
             this.toolDescription = toolDescription;
             return this;
         }
 
+        /**
+         * Sets the name of the tool argument that contains the natural language query.
+         * <p>
+         * Default value is {@value VectorToolSearchStrategy#DEFAULT_TOOL_ARGUMENT_NAME}.
+         */
         public Builder toolArgumentName(String toolArgumentName) {
             this.toolArgumentName = toolArgumentName;
             return this;
         }
 
+        /**
+         * Sets the description of the tool argument that contains the natural language query.
+         * <p>
+         * Default value is {@value VectorToolSearchStrategy#DEFAULT_TOOL_ARGUMENT_DESCRIPTION}.
+         */
         public Builder toolArgumentDescription(String toolArgumentDescription) {
             this.toolArgumentDescription = toolArgumentDescription;
             return this;
         }
 
+        /**
+         * Controls which exception type is thrown when tool arguments
+         * are missing, invalid, or cannot be parsed.
+         * <p>
+         * Although all errors produced by this tool are argument-related,
+         * this strategy throws {@link ToolExecutionException} by default
+         * instead of {@link ToolArgumentsException}.
+         * <p>
+         * The reason is historical: by default, AI Services fail fast when
+         * a {@link ToolArgumentsException} is thrown, whereas
+         * {@link ToolExecutionException} allows the error message to be
+         * returned to the LLM. For this tool, returning the error message
+         * to the LLM is usually the desired behavior.
+         * <p>
+         * If this flag is set to {@code true}, {@link ToolArgumentsException}
+         * will be thrown instead.
+         *
+         * @param throwToolArgumentsExceptions whether to throw {@link ToolArgumentsException}
+         * @return this builder
+         */
         public Builder throwToolArgumentsExceptions(Boolean throwToolArgumentsExceptions) {
             this.throwToolArgumentsExceptions = throwToolArgumentsExceptions;
             return this;
         }
 
+        /**
+         * Controls whether embeddings generated by the embedding model are cached.
+         * <p>
+         * Default value is {@code true}.
+         */
         public Builder cacheEmbeddings(Boolean cacheEmbeddings) {
             this.cacheEmbeddings = cacheEmbeddings;
             return this;
         }
 
+        /**
+         * Sets a function that produces a human-readable message describing
+         * the tool search result, based on the list of found tool names.
+         * <p>
+         * By default, returns:
+         * <ul>
+         *   <li>{@code "No matching tools found"} when no tools are found</li>
+         *   <li>{@code "Tools found: tool_1, tool_2, ..."} otherwise</li>
+         * </ul>
+         */
         public Builder toolResultMessageTextProvider(Function<List<String>, String> toolResultMessageTextProvider) {
             this.toolResultMessageTextProvider = toolResultMessageTextProvider;
             return this;
