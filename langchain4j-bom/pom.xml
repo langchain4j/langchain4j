@@ -581,7 +581,7 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-micrometer-metrics</artifactId>
-                <version>${project.version}</version>
+                <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <!-- spring boot -->
