@@ -828,7 +828,7 @@ instead of being exposed upfront.
 The core idea is simple:
 - Initially, the LLM is exposed to one or more special tool-search tools
 - The LLM can call these tools to search for relevant tools
-- Once relevant tools are discovered, they are included in subsequent interactions
+- Once relevant tools are found, they are included in subsequent interactions
 
 This enables scalable, token-efficient, and model-driven tool discovery.
 
@@ -839,18 +839,17 @@ A tool search flow typically looks like this:
    - The LLM sees only tool-search tools (not the full tool set)
 2. Tool search
    - The LLM calls a tool-search tool, describing what kind of tool it needs
-3. Tool discovery
-   - The tool-search strategy matches the request against available tools
+   - The tool-search strategy matches the request against searchable tools
 4. Tool exposure
    - Matching tools are added to the next request to the LLM
 5. Tool execution
-   - The LLM can now call the discovered tools normally
+   - The LLM can now call the found tools normally
 
-Previously discovered tools are accumulated across multiple tool-search calls.
+Previously found tools are accumulated across multiple tool-search calls.
 Each time the LLM invokes the tool-search tool,
-the newly matched tools are added to the existing set of available tools (they are merged, not replaced).
-This means the list of available tools can grow over time.
-Tools remain available until their corresponding `ToolExecutionResultMessage` is evicted from the `ChatMemory`.
+the newly matched tools are added to the existing set of tools visible to the LLM (they are merged, not replaced).
+This means the list of tools can grow over time.
+Tools remain visible to the LLM until their corresponding `ToolExecutionResultMessage` is evicted from the `ChatMemory`.
 
 #### ToolSearchStrategy
 
