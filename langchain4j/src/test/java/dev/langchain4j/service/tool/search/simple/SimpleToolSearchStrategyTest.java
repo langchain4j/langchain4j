@@ -190,7 +190,7 @@ class SimpleToolSearchStrategyTest {
                 .build();
         return ToolSearchRequest.builder()
                 .toolExecutionRequest(toolSearchRequest)
-                .availableTools(tools)
+                .searchableTools(tools)
                 .invocationContext(InvocationContext.builder().build())
                 .build();
     }

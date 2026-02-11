@@ -93,7 +93,7 @@ public class SimpleToolSearchStrategy implements ToolSearchStrategy {
     public ToolSearchResult search(ToolSearchRequest request) {
         List<String> terms = extractTerms(request.toolExecutionRequest().arguments());
 
-        List<ScoredTool> scoredTools = request.availableTools().stream()
+        List<ScoredTool> scoredTools = request.searchableTools().stream()
                 .map(tool -> new ScoredTool(tool, score(tool, terms)))
                 .filter(scoredTool -> scoredTool.score >= minScore)
                 .sorted(comparingInt(ScoredTool::score).reversed())

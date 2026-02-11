@@ -12,9 +12,9 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
- * A request for a tool search.
- * Contains a {@link ToolExecutionRequest} representing an LLM tool call,
- * as well as all tools currently available in the AI Service.
+ * A request to search for tools.
+ * Contains a {@link ToolExecutionRequest} representing an LLM tool call (including search terms or a query),
+ * as well as all searchable tools in the AI Service.
  *
  * @since 1.12.0
  */
@@ -22,12 +22,12 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 public class ToolSearchRequest {
 
     private final ToolExecutionRequest toolExecutionRequest;
-    private final List<ToolSpecification> availableTools;
+    private final List<ToolSpecification> searchableTools;
     private final InvocationContext invocationContext;
 
     public ToolSearchRequest(Builder builder) {
         this.toolExecutionRequest = ensureNotNull(builder.toolExecutionRequest, "toolExecutionRequest");
-        this.availableTools = copy(builder.availableTools);
+        this.searchableTools = copy(builder.searchableTools);
         this.invocationContext = ensureNotNull(builder.invocationContext, "invocationContext");
     }
 
@@ -39,10 +39,11 @@ public class ToolSearchRequest {
     }
 
     /**
-     * Returns all tools available in the AI Service.
+     * Returns all searchable tools for the AI Service.
+     * This list does not include tools that were already found during previous searches.
      */
-    public List<ToolSpecification> availableTools() {
-        return availableTools;
+    public List<ToolSpecification> searchableTools() {
+        return searchableTools;
     }
 
     /**
@@ -57,20 +58,20 @@ public class ToolSearchRequest {
         if (o == null || getClass() != o.getClass()) return false;
         ToolSearchRequest that = (ToolSearchRequest) o;
         return Objects.equals(toolExecutionRequest, that.toolExecutionRequest)
-                && Objects.equals(availableTools, that.availableTools)
+                && Objects.equals(searchableTools, that.searchableTools)
                 && Objects.equals(invocationContext, that.invocationContext);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(toolExecutionRequest, availableTools, invocationContext);
+        return Objects.hash(toolExecutionRequest, searchableTools, invocationContext);
     }
 
     @Override
     public String toString() {
         return "ToolSearchRequest{" +
                 "toolExecutionRequest=" + toolExecutionRequest +
-                ", availableTools=" + availableTools +
+                ", searchableTools=" + searchableTools +
                 ", invocationContext=" + invocationContext +
                 '}';
     }
@@ -82,7 +83,7 @@ public class ToolSearchRequest {
     public static class Builder {
 
         private ToolExecutionRequest toolExecutionRequest;
-        private List<ToolSpecification> availableTools;
+        private List<ToolSpecification> searchableTools;
         private InvocationContext invocationContext;
 
         public Builder toolExecutionRequest(ToolExecutionRequest toolExecutionRequest) {
@@ -90,8 +91,8 @@ public class ToolSearchRequest {
             return this;
         }
 
-        public Builder availableTools(List<ToolSpecification> availableTools) {
-            this.availableTools = availableTools;
+        public Builder searchableTools(List<ToolSpecification> searchableTools) {
+            this.searchableTools = searchableTools;
             return this;
         }
 

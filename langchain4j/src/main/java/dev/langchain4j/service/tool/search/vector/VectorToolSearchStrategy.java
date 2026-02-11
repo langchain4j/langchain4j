@@ -111,7 +111,7 @@ public class VectorToolSearchStrategy implements ToolSearchStrategy {
         List<TextSegment> segments = new ArrayList<>();
         segments.add(TextSegment.from(query));
 
-        request.availableTools().stream()
+        request.searchableTools().stream()
                 .map(tool -> {
                     String text = format(tool);
                     Metadata metadata = Metadata.from(METADATA_TOOL_NAME, tool.name());

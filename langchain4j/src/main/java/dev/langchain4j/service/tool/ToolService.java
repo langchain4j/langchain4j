@@ -5,7 +5,6 @@ import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.internal.Utils.merge;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.service.tool.search.ToolSearchService.addFoundTools;
 
@@ -235,17 +234,12 @@ public class ToolService {
     public ToolServiceContext createContext(InvocationContext invocationContext,
                                             UserMessage userMessage,
                                             ChatMemory chatMemory) {
-        ToolServiceContext context = createContext(invocationContext, userMessage);
+        ToolServiceContext toolServiceContext = createContext(invocationContext, userMessage);
         if (toolSearchService == null) {
-            return context;
+            return toolServiceContext;
+        } else {
+            return toolSearchService.adjust(toolServiceContext, chatMemory, invocationContext);
         }
-
-        List<ToolSpecification> toolSearchTools = toolSearchService.toolSearchTools(invocationContext);
-        Map<String, ToolExecutor> toolSearchToolExecutors = toolSearchService.createExecutors(toolSearchTools, context.availableTools());
-        return context.toBuilder()
-                .effectiveTools(toolSearchService.calculateEffectiveTools(toolSearchTools, context.availableTools(), chatMemory))
-                .toolExecutors(merge(context.toolExecutors(), toolSearchToolExecutors))
-                .build();
     }
 
     /**
