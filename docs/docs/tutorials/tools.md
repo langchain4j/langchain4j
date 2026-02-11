@@ -846,8 +846,11 @@ A tool search flow typically looks like this:
 5. Tool execution
    - The LLM can now call the discovered tools normally
 
-Previously discovered tools are accumulated and remain available until the corresponding
-`ToolExecutionResultMessage` is evicted from the `ChatMemory`.
+Previously discovered tools are accumulated across multiple tool-search calls.
+Each time the LLM invokes the tool-search tool,
+the newly matched tools are added to the existing set of available tools (they are merged, not replaced).
+This means the list of available tools can grow over time.
+Tools remain available until their corresponding `ToolExecutionResultMessage` is evicted from the `ChatMemory`.
 
 #### ToolSearchStrategy
 
