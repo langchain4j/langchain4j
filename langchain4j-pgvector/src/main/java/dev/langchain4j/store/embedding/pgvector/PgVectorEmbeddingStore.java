@@ -673,7 +673,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         // Find a way to do the following code in connection initialization.
         // Here we assume the datasource could handle a connection pool
         // and we should add the vector type on each connection
-        if (skipCreateVectorExtension) {
+        if (!skipCreateVectorExtension) {
             try (Statement statement = connection.createStatement()) {
                 statement.executeUpdate("CREATE EXTENSION IF NOT EXISTS vector");
             }
