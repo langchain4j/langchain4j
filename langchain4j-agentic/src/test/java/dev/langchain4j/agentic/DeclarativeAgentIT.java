@@ -56,6 +56,7 @@ import dev.langchain4j.agentic.scope.AgenticScopePersister;
 import dev.langchain4j.agentic.scope.AgenticScopeRegistry;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
+import dev.langchain4j.agentic.supervisor.SupervisorContextStrategy;
 import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
 import dev.langchain4j.agentic.workflow.ConditionalAgentInstance;
 import dev.langchain4j.agentic.workflow.LoopAgentInstance;
@@ -802,5 +803,47 @@ public class DeclarativeAgentIT {
 
         assertThat(request.get()).isEqualTo("Which audience for topic dragons and wizards?");
         assertThat(audience.get()).isEqualTo("young adults");
+    }
+
+    public interface AstrologyAgent {
+        @SystemMessage(
+                """
+            You are an astrologist that generates horoscopes based on the user's name and zodiac sign.
+            """)
+        @UserMessage("""
+            Generate the horoscope for {{name}} who is a {{sign}}.
+            """)
+        @Agent("An astrologist that generates horoscopes based on the user's name and zodiac sign.")
+        String horoscope(@V("name") String name, @V("sign") String sign);
+
+        @ChatModelSupplier
+        static ChatModel chatModel() {
+            return baseModel();
+        }
+    }
+
+    private static final AtomicReference<String> signRequest = new AtomicReference<>();
+
+    public interface SignRetriever {
+
+        @HumanInTheLoop(description = "An agent that asks the zodiac sign of the user", outputKey = "sign")
+        static String humanResponse(@V("name") String name) {
+            signRequest.set("hi " + name + ", what is your zodiac sign?");
+            return "pisces";
+        }
+    }
+
+    @Test
+    void supervisor_human_in_the_loop_tests() {
+        var horoscopeGenerator = AgenticServices.supervisorBuilder()
+                .chatModel(plannerModel())
+                .responseStrategy(SupervisorResponseStrategy.LAST)
+                .subAgents(AstrologyAgent.class, SignRetriever.class)
+                .build();
+
+        String horoscope = horoscopeGenerator.invoke("My name is Mario");
+        assertThat(horoscope).containsIgnoringCase("pisces");
+
+        assertThat(signRequest.get()).isEqualTo("hi Mario, what is your zodiac sign?");
     }
 }

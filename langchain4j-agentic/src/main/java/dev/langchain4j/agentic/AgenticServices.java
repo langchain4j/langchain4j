@@ -9,6 +9,7 @@ import static dev.langchain4j.agentic.internal.AgentUtil.agentInvocationArgument
 import static dev.langchain4j.agentic.internal.AgentUtil.agentToExecutor;
 import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.getAnnotatedMethodOnClass;
+import static dev.langchain4j.agentic.internal.AgentUtil.nonAiAgentInvoker;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import dev.langchain4j.agentic.agent.AgentBuilder;
@@ -700,6 +701,10 @@ public class AgenticServices {
         return agentToExecutor(agentBuilder.build());
     }
 
+    public static AgentExecutor createBuiltInAgentExecutor(Class<?> agentServiceClass) {
+        return createBuiltInAgentExecutor(agentServiceClass, declarativeChatModel(agentServiceClass), context -> {});
+    }
+
     private static AgentExecutor createBuiltInAgentExecutor(
             Class<?> agentServiceClass,
             ChatModel chatModel,
@@ -806,7 +811,9 @@ public class AgenticServices {
                     humanInTheLoopBuilder.listener(invokeStatic(listenerMethod));
                 });
 
-        return agentToExecutor(humanInTheLoopBuilder.build());
+        String name = isNullOrBlank(humanInTheLoop.name()) ? method.getName() : humanInTheLoop.name();
+        AgentInvoker agentInvoker = nonAiAgentInvoker(method, name, humanInTheLoop.description(), humanInTheLoop.outputKey(), humanInTheLoop.async());
+        return new AgentExecutor(agentInvoker, humanInTheLoopBuilder.build());
     }
 
     private static Method nonAiAgentMethod(Class<?> agentServiceClass) {
