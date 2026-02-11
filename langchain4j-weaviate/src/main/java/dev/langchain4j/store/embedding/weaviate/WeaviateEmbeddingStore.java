@@ -174,39 +174,65 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
         client.batch().objectsBatchDeleter()
                 .withClassName(objectClass)
                 .withWhere(WhereFilter.builder()
-                        .path("id")
+                        .path(new String[]{"id"})
                         .operator(Operator.ContainsAny)
                         .valueText(ids.toArray(new String[0]))
                         .build())
                 .run();
     }
 
+
     @Override
     public void removeAll() {
-        List<String> allIds = client.data().objectsGetter()
+        List<WeaviateObject> objects = client.data().objectsGetter()
                 .withClassName(objectClass)
                 .run()
-                .getResult()
-                .stream()
+                .getResult();
+
+        if (objects == null || objects.isEmpty()) {
+            return;
+        }
+
+        List<String> allIds = objects.stream()
                 .map(WeaviateObject::getId)
                 .collect(Collectors.toList());
 
-        if (!allIds.isEmpty()) {
-            removeAll(allIds);
-        }
+        removeAll(allIds);
+    }
+
+    @Override
+    public void remove(String id) {
+        ensureNotBlank(id, "id");
+
+        client.data().deleter()
+                .withClassName(objectClass)
+                .withID(id)
+                .run();
     }
 
     @Override
     public void removeAll(Filter filter) {
+
         ensureNotNull(filter, "filter");
 
-        List<String> allIds = client.data().objectsGetter()
+        // NOTE:
+        // Weaviate stores metadata inside nested "_metadata".
+        // WhereFilter cannot reliably filter nested map fields.
+        // Therefore we fallback to client-side filtering.
+
+        List<String> idsToDelete = client.data().objectsGetter()
                 .withClassName(objectClass)
                 .run()
                 .getResult()
                 .stream()
                 .filter(obj -> {
+
+                    if (obj.getProperties() == null) {
+                        return false;
+                    }
+
                     Object metadataObj = obj.getProperties().get(metadataFieldName);
+
                     if (!(metadataObj instanceof Map)) {
                         return false;
                     }
@@ -219,8 +245,8 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .map(WeaviateObject::getId)
                 .collect(Collectors.toList());
 
-        if (!allIds.isEmpty()) {
-            removeAll(allIds);
+        if (!idsToDelete.isEmpty()) {
+            removeAll(idsToDelete);
         }
     }
 
