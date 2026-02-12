@@ -106,18 +106,17 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     /**
      * Constructor for PgVectorEmbeddingStore Class
      *
-     * @param datasource                The datasource to use
-     * @param table                     The database table
-     * @param dimension                 The vector dimension
-     * @param useIndex                  Should use <a href="https://github.com/pgvector/pgvector#ivfflat">IVFFlat</a> index
-     * @param indexListSize             The IVFFlat number of lists
-     * @param createTable               Should create table automatically
-     * @param dropTableFirst            Should drop table first, usually for testing
-     * @param skipCreateVectorExtension Skip the CREATE VECTOR EXTENSION when retrieving a connection, useful when the datasource credentials are not admin
-     * @param metadataStorageConfig     The {@link MetadataStorageConfig} config.
-     * @param searchMode                The search mode to use (null for default)
-     * @param textSearchConfig          PostgreSQL text search configuration (null for default)
-     * @param rrfK                      RRF k parameter (null for default)
+     * @param datasource            The datasource to use
+     * @param table                 The database table
+     * @param dimension             The vector dimension
+     * @param useIndex              Should use <a href="https://github.com/pgvector/pgvector#ivfflat">IVFFlat</a> index
+     * @param indexListSize         The IVFFlat number of lists
+     * @param createTable           Should create table automatically
+     * @param dropTableFirst        Should drop table first, usually for testing
+     * @param metadataStorageConfig The {@link MetadataStorageConfig} config.
+     * @param searchMode            The search mode to use (null for default)
+     * @param textSearchConfig      PostgreSQL text search configuration (null for default)
+     * @param rrfK                  RRF k parameter (null for default)
      */
     protected PgVectorEmbeddingStore(
             DataSource datasource,
@@ -127,41 +126,38 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             Integer indexListSize,
             Boolean createTable,
             Boolean dropTableFirst,
-            Boolean skipCreateVectorExtension,
             MetadataStorageConfig metadataStorageConfig,
             SearchMode searchMode,
             String textSearchConfig,
             Integer rrfK) {
-        this.datasource = ensureNotNull(datasource, "datasource");
-        this.table = ensureNotBlank(table, "table");
-        MetadataStorageConfig config =
-                getOrDefault(metadataStorageConfig, DefaultMetadataStorageConfig.defaultConfig());
-        this.metadataHandler = MetadataHandlerFactory.get(config);
-        useIndex = getOrDefault(useIndex, false);
-        createTable = getOrDefault(createTable, true);
-        dropTableFirst = getOrDefault(dropTableFirst, false);
-        this.skipCreateVectorExtension = getOrDefault(skipCreateVectorExtension, false);
-        this.searchMode = getOrDefault(searchMode, SearchMode.VECTOR);
-        this.textSearchConfig = getOrDefault(textSearchConfig, DEFAULT_TEXT_SEARCH_CONFIG);
-        this.rrfK = ensureGreaterThanZero(getOrDefault(rrfK, DEFAULT_RRF_K), "rrfK");
 
-        if (useIndex || createTable || dropTableFirst) {
-            initTable(dropTableFirst, createTable, useIndex, dimension, indexListSize);
-        }
+        this(new DatasourceBuilder()
+                .datasource(datasource)
+                .table(table)
+                .dimension(dimension)
+                .useIndex(useIndex)
+                .indexListSize(indexListSize)
+                .createTable(createTable)
+                .dropTableFirst(dropTableFirst)
+                .skipCreateVectorExtension(null)
+                .metadataStorageConfig(metadataStorageConfig)
+                .searchMode(searchMode)
+                .textSearchConfig(textSearchConfig)
+                .rrfK(rrfK)
+        );
     }
 
     /**
      * Constructor for PgVectorEmbeddingStore Class
      *
-     * @param datasource                The datasource to use
-     * @param table                     The database table
-     * @param dimension                 The vector dimension
-     * @param useIndex                  Should use <a href="https://github.com/pgvector/pgvector#ivfflat">IVFFlat</a> index
-     * @param indexListSize             The IVFFlat number of lists
-     * @param createTable               Should create table automatically
-     * @param dropTableFirst            Should drop table first, usually for testing
-     * @param skipCreateVectorExtension Skip the CREATE VECTOR EXTENSION when retrieving a connection, useful when the datasource credentials are not admin
-     * @param metadataStorageConfig     The {@link MetadataStorageConfig} config.
+     * @param datasource            The datasource to use
+     * @param table                 The database table
+     * @param dimension             The vector dimension
+     * @param useIndex              Should use <a href="https://github.com/pgvector/pgvector#ivfflat">IVFFlat</a> index
+     * @param indexListSize         The IVFFlat number of lists
+     * @param createTable           Should create table automatically
+     * @param dropTableFirst        Should drop table first, usually for testing
+     * @param metadataStorageConfig The {@link MetadataStorageConfig} config.
      */
     protected PgVectorEmbeddingStore(
             DataSource datasource,
@@ -171,7 +167,6 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             Integer indexListSize,
             Boolean createTable,
             Boolean dropTableFirst,
-            Boolean skipCreateVectorExtension,
             MetadataStorageConfig metadataStorageConfig) {
         this(
                 datasource,
@@ -181,7 +176,6 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                 indexListSize,
                 createTable,
                 dropTableFirst,
-                skipCreateVectorExtension,
                 metadataStorageConfig,
                 null,
                 null,
@@ -192,19 +186,18 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * Constructor for PgVectorEmbeddingStore Class
      * Use this builder when you don't have datasource management.
      *
-     * @param host                      The database host
-     * @param port                      The database port
-     * @param user                      The database user
-     * @param password                  The database password
-     * @param database                  The database name
-     * @param table                     The database table
-     * @param dimension                 The vector dimension
-     * @param useIndex                  Should use <a href="https://github.com/pgvector/pgvector#ivfflat">IVFFlat</a> index
-     * @param indexListSize             The IVFFlat number of lists
-     * @param createTable               Should create table automatically
-     * @param dropTableFirst            Should drop table first, usually for testing
-     * @param skipCreateVectorExtension Should the embedding store execute the "CREATE EXTENSION IF NOT EXISTS vector" statement when retrieving a connection
-     * @param metadataStorageConfig     The {@link MetadataStorageConfig} config.
+     * @param host                  The database host
+     * @param port                  The database port
+     * @param user                  The database user
+     * @param password              The database password
+     * @param database              The database name
+     * @param table                 The database table
+     * @param dimension             The vector dimension
+     * @param useIndex              Should use <a href="https://github.com/pgvector/pgvector#ivfflat">IVFFlat</a> index
+     * @param indexListSize         The IVFFlat number of lists
+     * @param createTable           Should create table automatically
+     * @param dropTableFirst        Should drop table first, usually for testing
+     * @param metadataStorageConfig The {@link MetadataStorageConfig} config.
      */
     @SuppressWarnings("unused")
     protected PgVectorEmbeddingStore(
@@ -219,7 +212,6 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             Integer indexListSize,
             Boolean createTable,
             Boolean dropTableFirst,
-            Boolean skipCreateVectorExtension,
             MetadataStorageConfig metadataStorageConfig) {
         this(
                 createDataSource(host, port, user, password, database),
@@ -229,13 +221,12 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                 indexListSize,
                 createTable,
                 dropTableFirst,
-                skipCreateVectorExtension,
                 metadataStorageConfig);
     }
 
     /**
      * New constructor that takes the builder itself.
-     * This is the entry point for enhanced configuration (searchMode, textSearchConfig, rrfK).
+     * This is the entry point for enhanced configuration (searchMode, textSearchConfig, rrfK and skipCreateVectorExtension).
      *
      * @param builder The builder containing all configuration
      */
@@ -248,11 +239,36 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                 builder.indexListSize,
                 builder.createTable,
                 builder.dropTableFirst,
-                builder.skipCreateVectorExtension,
                 builder.metadataStorageConfig,
                 builder.searchMode,
                 builder.textSearchConfig,
                 builder.rrfK);
+    }
+
+    /**
+     * New constructor that takes the DatasourceBuilder.
+     * This is the entry point for enhanced configuration (searchMode, textSearchConfig, rrfK and skipCreateVectorExtension).
+     *
+     * @param builder The builder containing all configuration
+     */
+    protected PgVectorEmbeddingStore(DatasourceBuilder builder) {
+        super();
+        this.datasource = ensureNotNull(builder.datasource, "datasource");
+        this.table = ensureNotBlank(builder.table, "table");
+        MetadataStorageConfig config =
+                getOrDefault(builder.metadataStorageConfig, DefaultMetadataStorageConfig.defaultConfig());
+        this.metadataHandler = MetadataHandlerFactory.get(config);
+        boolean useIndex = getOrDefault(builder.useIndex, false);
+        boolean createTable = getOrDefault(builder.createTable, true);
+        boolean dropTableFirst = getOrDefault(builder.dropTableFirst, false);
+        this.skipCreateVectorExtension = getOrDefault(builder.skipCreateVectorExtension, false);
+        this.searchMode = getOrDefault(builder.searchMode, SearchMode.VECTOR);
+        this.textSearchConfig = getOrDefault(builder.textSearchConfig, DEFAULT_TEXT_SEARCH_CONFIG);
+        this.rrfK = ensureGreaterThanZero(getOrDefault(builder.rrfK, DEFAULT_RRF_K), "rrfK");
+
+        if (useIndex || createTable || dropTableFirst) {
+            initTable(dropTableFirst, createTable, useIndex, builder.dimension, builder.indexListSize);
+        }
     }
 
     public PgVectorEmbeddingStore() {
