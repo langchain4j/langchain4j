@@ -1,28 +1,27 @@
 package dev.langchain4j.store.embedding.weaviate;
 
+import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
+import static org.assertj.core.api.Assertions.*;
+
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.weaviate.WeaviateContainer;
-
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-import java.util.stream.Collectors;
-
-import static dev.langchain4j.internal.Utils.randomUUID;
-import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
-import static org.assertj.core.api.Assertions.*;
 
 @Testcontainers
 class LocalWeaviateEmbeddingStoreRemoveIT {
@@ -59,15 +58,12 @@ class LocalWeaviateEmbeddingStoreRemoveIT {
 
         embeddingStore.remove(id);
 
-        var result = embeddingStore.search(
-                EmbeddingSearchRequest.builder()
-                        .queryEmbedding(embedding)
-                        .maxResults(10)
-                        .build()
-        );
+        var result = embeddingStore.search(EmbeddingSearchRequest.builder()
+                .queryEmbedding(embedding)
+                .maxResults(10)
+                .build());
 
-        assertThat(result.matches())
-                .noneMatch(m -> id.equals(m.embeddingId()));
+        assertThat(result.matches()).noneMatch(m -> id.equals(m.embeddingId()));
     }
 
     // ---------------------------------------------------------
@@ -82,17 +78,13 @@ class LocalWeaviateEmbeddingStoreRemoveIT {
 
         embeddingStore.removeAll(Arrays.asList(id2, id3));
 
-        var result = embeddingStore.search(
-                EmbeddingSearchRequest.builder()
-                        .queryEmbedding(embeddingModel.embed("one").content())
-                        .maxResults(10)
-                        .build()
-        );
+        var result = embeddingStore.search(EmbeddingSearchRequest.builder()
+                .queryEmbedding(embeddingModel.embed("one").content())
+                .maxResults(10)
+                .build());
 
-        List<String> remainingIds = result.matches()
-                .stream()
-                .map(EmbeddingMatch::embeddingId)
-                .collect(Collectors.toList());
+        List<String> remainingIds =
+                result.matches().stream().map(EmbeddingMatch::embeddingId).collect(Collectors.toList());
 
         assertThat(remainingIds).containsExactly(id1);
     }
@@ -123,17 +115,13 @@ class LocalWeaviateEmbeddingStoreRemoveIT {
 
         embeddingStore.removeAll(metadataKey("id").isEqualTo("1"));
 
-        var result = embeddingStore.search(
-                EmbeddingSearchRequest.builder()
-                        .queryEmbedding(embeddingModel.embed("keep1").content())
-                        .maxResults(10)
-                        .build()
-        );
+        var result = embeddingStore.search(EmbeddingSearchRequest.builder()
+                .queryEmbedding(embeddingModel.embed("keep1").content())
+                .maxResults(10)
+                .build());
 
-        List<String> remainingIds = result.matches()
-                .stream()
-                .map(EmbeddingMatch::embeddingId)
-                .collect(Collectors.toList());
+        List<String> remainingIds =
+                result.matches().stream().map(EmbeddingMatch::embeddingId).collect(Collectors.toList());
 
         assertThat(remainingIds).contains(id2, id3);
     }
@@ -150,12 +138,10 @@ class LocalWeaviateEmbeddingStoreRemoveIT {
 
         embeddingStore.removeAll(metadataKey("unknown").isEqualTo("1"));
 
-        var result = embeddingStore.search(
-                EmbeddingSearchRequest.builder()
-                        .queryEmbedding(embeddingModel.embed("a").content())
-                        .maxResults(10)
-                        .build()
-        );
+        var result = embeddingStore.search(EmbeddingSearchRequest.builder()
+                .queryEmbedding(embeddingModel.embed("a").content())
+                .maxResults(10)
+                .build());
 
         assertThat(result.matches()).hasSize(3);
     }
