@@ -10,7 +10,7 @@ public class ToolExecutionException extends LangChain4jException {
     private final Integer errorCode;
 
     public ToolExecutionException(String message) {
-        this(message, null);
+        this(message, (Integer) null);
     }
 
     public ToolExecutionException(Throwable cause) {
@@ -21,8 +21,17 @@ public class ToolExecutionException extends LangChain4jException {
         this(new RuntimeException(message), errorCode);
     }
 
+    public ToolExecutionException(String message, Throwable cause) {
+        this(message, cause, null);
+    }
+
     public ToolExecutionException(Throwable cause, Integer errorCode) {
         super(cause);
+        this.errorCode = errorCode;
+    }
+
+    public ToolExecutionException(String message, Throwable cause, Integer errorCode) {
+        super(message, cause);
         this.errorCode = errorCode;
     }
 
