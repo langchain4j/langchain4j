@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.mcp.client.McpCallContext;
 import dev.langchain4j.mcp.client.McpHeadersSupplier;
+import dev.langchain4j.mcp.client.logging.McpLoggers;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.protocol.McpClientMessage;
@@ -31,8 +32,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class WebSocketMcpTransport implements McpTransport {
-
-    private static final Logger DEFAULT_TRAFFIC_LOG = LoggerFactory.getLogger("MCP");
     private static final Logger LOG = LoggerFactory.getLogger(WebSocketMcpTransport.class);
     private final String url;
     private final McpHeadersSupplier headersSupplier;
@@ -54,7 +53,7 @@ public class WebSocketMcpTransport implements McpTransport {
         this.url = ensureNotNull(builder.url, "Missing server endpoint URL");
         this.logResponses = builder.logResponses;
         this.logRequests = builder.logRequests;
-        this.trafficLog = getOrDefault(builder.logger, DEFAULT_TRAFFIC_LOG);
+        this.trafficLog = getOrDefault(builder.logger, McpLoggers.traffic());
         this.connectTimeout = getOrDefault(builder.timeout, Duration.ofSeconds(60));
         this.headersSupplier = getOrDefault(builder.headersSupplier, (i) -> Map.of());
         this.executor = builder.executor;

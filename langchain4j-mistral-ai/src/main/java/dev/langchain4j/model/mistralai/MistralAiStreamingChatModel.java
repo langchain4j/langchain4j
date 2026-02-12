@@ -26,7 +26,9 @@ import dev.langchain4j.model.mistralai.spi.MistralAiStreamingChatModelBuilderFac
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 
@@ -46,6 +48,7 @@ public class MistralAiStreamingChatModel implements StreamingChatModel {
     private final Set<Capability> supportedCapabilities;
     private final ChatRequestParameters defaultRequestParameters;
 
+    @SuppressWarnings({"unchecked"})
     public MistralAiStreamingChatModel(MistralAiStreamingChatModelBuilder builder) {
         this.client = MistralAiClient.builder()
                 .httpClientBuilder(builder.httpClientBuilder)
@@ -55,8 +58,8 @@ public class MistralAiStreamingChatModel implements StreamingChatModel {
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
                 .logger(builder.logger)
+                .customHeaders(builder.customHeadersSupplier)
                 .build();
-
         this.safePrompt = builder.safePrompt;
         this.randomSeed = builder.randomSeed;
         this.returnThinking = getOrDefault(builder.returnThinking, false);
@@ -151,11 +154,22 @@ public class MistralAiStreamingChatModel implements StreamingChatModel {
         private List<ChatModelListener> listeners;
         private Set<Capability> supportedCapabilities;
         private ChatRequestParameters defaultRequestParameters;
+        private Supplier<Map<String, String>> customHeadersSupplier;
 
         public MistralAiStreamingChatModelBuilder() {}
 
         public MistralAiStreamingChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
+
+        public MistralAiStreamingChatModelBuilder customHeaders(java.util.Map<String, String> customHeaders) {
+            this.customHeadersSupplier = () -> customHeaders;
+            return this;
+        }
+
+        public MistralAiStreamingChatModelBuilder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
             return this;
         }
 
