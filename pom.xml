@@ -127,6 +127,9 @@
         <module>langchain4j-agentic-a2a</module>
         <module>langchain4j-agentic-patterns</module>
 
+        <!-- Observability -->
+        <module>langchain4j-observation</module>
+
         <!-- integration tests -->
         <module>integration-tests</module>
 
