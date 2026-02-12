@@ -143,8 +143,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .metadataStorageConfig(metadataStorageConfig)
                 .searchMode(searchMode)
                 .textSearchConfig(textSearchConfig)
-                .rrfK(rrfK)
-        );
+                .rrfK(rrfK));
     }
 
     /**
