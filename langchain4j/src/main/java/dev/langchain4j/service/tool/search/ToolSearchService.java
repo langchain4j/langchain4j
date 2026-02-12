@@ -19,6 +19,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static dev.langchain4j.agent.tool.SearchBehavior.ALWAYS_VISIBLE;
+import static dev.langchain4j.agent.tool.ToolSpecification.METADATA_SEARCH_BEHAVIOR;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.merge;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -56,8 +58,18 @@ public class ToolSearchService {
     private List<ToolSpecification> calculateEffectiveTools(List<ToolSpecification> toolSearchTools,
                                                             List<ToolSpecification> availableTools,
                                                             ChatMemory chatMemory) {
+        List<ToolSpecification> effectiveTools = new ArrayList<>();
+
+        availableTools.forEach(tool -> {
+            if (tool.metadata().get(METADATA_SEARCH_BEHAVIOR) == ALWAYS_VISIBLE) {
+                effectiveTools.add(tool);
+            }
+        });
+
+        effectiveTools.addAll(toolSearchTools);
+
         if (chatMemory == null) {
-            return toolSearchTools;
+            return effectiveTools;
         }
 
         Set<String> toolNamesFoundEarlier = chatMemory.messages().stream()
@@ -70,14 +82,13 @@ public class ToolSearchService {
                 .collect(toCollection(() -> new LinkedHashSet<>()));
 
         if (toolNamesFoundEarlier.isEmpty()) {
-            return toolSearchTools;
+            return effectiveTools;
         }
 
         Map<String, ToolSpecification> toolsByName = new HashMap<>(availableTools.size());
         availableTools.forEach(tool -> toolsByName.put(tool.name(), tool));
-
-        List<ToolSpecification> effectiveTools = new ArrayList<>(toolSearchTools);
         toolNamesFoundEarlier.forEach(toolName -> effectiveTools.add(toolsByName.get(toolName)));
+
         return effectiveTools;
     }
 

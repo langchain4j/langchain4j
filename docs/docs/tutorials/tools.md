@@ -849,7 +849,11 @@ Previously found tools are accumulated across multiple tool-search calls.
 Each time the LLM invokes the tool-search tool,
 the newly matched tools are added to the existing set of tools visible to the LLM (they are merged, not replaced).
 This means the list of tools can grow over time.
-Tools remain visible to the LLM until their corresponding `ToolExecutionResultMessage` is evicted from the `ChatMemory`.
+Found tools remain visible to the LLM until their corresponding `ToolExecutionResultMessage`
+is evicted from the `ChatMemory`, and at least until the end of the AI Service invocation.
+
+If `ChatMemory` is not configured, the found tools remain visible to the LLM
+only until the end of the AI service invocation.
 
 #### ToolSearchStrategy
 
@@ -907,6 +911,64 @@ Tool search is especially useful when:
 
 If you have only a small number of tools, or all tools are always relevant,
 using regular approach may be simpler.
+
+#### Always Visible Tools
+
+When tool search is enabled, tools are normally hidden from the LLM until they are discovered via a tool-search call.
+However, in some cases you may want certain tools to always be visible to the LLM.
+
+Typical use cases:
+- Core tools that should always be accessible
+- Frequently used tools where search overhead is unnecessary
+- Utility tools
+
+LangChain4j supports this via the `ALWAYS_VISIBLE` tool search behavior.
+
+##### How It Works
+
+When a tool is marked as `ALWAYS_VISIBLE`:
+- It is exposed to the LLM in the very first request
+- It does not require discovery via tool search
+- It remains visible throughout the AI Service invocation
+- It is not included in searchable tool candidates
+
+All other tools continue to follow the normal tool-search flow.
+
+##### Using `@Tool` Annotation
+
+You can mark a tool as always visible via the @Tool annotation:
+```java
+@Tool(searchBehavior = SearchBehavior.ALWAYS_VISIBLE)
+String getWeather(String city) {
+    return weatherService.getWeather(city);
+}
+```
+
+##### Using `McpToolProvider`
+
+When using MCP tools (via `McpToolProvider`), always-visible tools can be configured via `alwaysVisibleToolNames`:
+
+```java
+McpToolProvider.builder()
+    .mcpClients(mcpClient)
+    .alwaysVisibleToolNames("getWeather")
+    .build();
+```
+
+##### Using `ToolSpecification`
+
+If you configure tools programmatically (e.g., via a `ToolProvider`),
+you can mark them as always visible via metadata:
+```java
+ToolSpecification toolSpecification = ToolSpecification.builder()
+    .name("getWeather")
+    .parameters(JsonObjectSchema.builder()
+        .addStringProperty("city")
+        .required("city")
+        .build())
+    .metadata(Map.of(ToolSpecification.METADATA_SEARCH_BEHAVIOR, SearchBehavior.ALWAYS_VISIBLE))
+    .build();
+```
 
 #### Notes and Limitations
 

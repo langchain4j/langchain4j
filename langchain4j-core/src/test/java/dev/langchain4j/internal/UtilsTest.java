@@ -479,7 +479,10 @@ class UtilsTest {
         assertThat(merge(List.of(1), List.of())).isEqualTo(List.of(1));
         assertThat(merge(List.of(), List.of(2))).isEqualTo(List.of(2));
         assertThat(merge(List.of(), List.of())).isEqualTo(List.of());
-        assertThat(merge(List.of())).isEqualTo(List.of());
+
+        assertThatThrownBy(() -> merge(List.of()))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("at least 2 elements");
     }
 
     @Test
@@ -488,10 +491,12 @@ class UtilsTest {
         assertThat(merge(Map.of("one", 1), Map.of())).isEqualTo(Map.of("one", 1));
         assertThat(merge(Map.of(), Map.of("two", 2))).isEqualTo(Map.of("two", 2));
         assertThat(merge(Map.of(), Map.of())).isEqualTo(Map.of());
-        assertThat(merge(Map.of())).isEqualTo(Map.of());
 
+        assertThatThrownBy(() -> merge(Map.of()))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("at least 2 elements");
         assertThatThrownBy(() -> merge(Map.of("one", 1), Map.of("one", 1)))
-                .isExactlyInstanceOf(IllegalStateException.class)
+                .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Duplicate key: one");
     }
 }

@@ -573,6 +573,18 @@ public class Utils {
     }
 
     public static <T> List<T> merge(List<T>... lists) {
+        if (lists.length < 2) {
+            throw new IllegalArgumentException("lists must have at least 2 elements");
+        }
+
+        if (lists.length == 2) {
+            if (lists[0] == null || lists[0].isEmpty()) {
+                return lists[1];
+            } else if (lists[1] == null || lists[1].isEmpty()) {
+                return lists[0];
+            }
+        }
+
         List<T> result = new ArrayList<>();
         for (List<T> list : lists) {
             result.addAll(list);
@@ -581,11 +593,23 @@ public class Utils {
     }
 
     public static <K, V> Map<K, V> merge(Map<K, V>... maps) {
+        if (maps.length < 2) {
+            throw new IllegalArgumentException("maps must have at least 2 elements");
+        }
+
+        if (maps.length == 2) {
+            if (maps[0] == null || maps[0].isEmpty()) {
+                return maps[1];
+            } else if (maps[1] == null || maps[1].isEmpty()) {
+                return maps[0];
+            }
+        }
+
         Map<K, V> result = new HashMap<>();
         for (Map<K, V> map : maps) {
             for (Map.Entry<K, V> e : map.entrySet()) {
                 if (result.putIfAbsent(e.getKey(), e.getValue()) != null) {
-                    throw new IllegalStateException("Duplicate key: " + e.getKey());
+                    throw new IllegalArgumentException("Duplicate key: " + e.getKey());
                 }
             }
         }
