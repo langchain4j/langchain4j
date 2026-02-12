@@ -775,19 +775,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         public PgVectorEmbeddingStore build() {
-            return new PgVectorEmbeddingStore(
-                    this.datasource,
-                    this.table,
-                    this.dimension,
-                    this.useIndex,
-                    this.indexListSize,
-                    this.createTable,
-                    this.dropTableFirst,
-                    this.skipCreateVectorExtension,
-                    this.metadataStorageConfig,
-                    this.searchMode,
-                    this.textSearchConfig,
-                    this.rrfK);
+            return new PgVectorEmbeddingStore(this);
         }
 
         public String toString() {
