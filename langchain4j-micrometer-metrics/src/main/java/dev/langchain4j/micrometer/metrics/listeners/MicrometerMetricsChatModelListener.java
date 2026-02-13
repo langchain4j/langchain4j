@@ -4,6 +4,7 @@ import dev.langchain4j.Experimental;
 import dev.langchain4j.micrometer.metrics.conventions.OTelGenAiAttributes;
 import dev.langchain4j.micrometer.metrics.conventions.OTelGenAiMetricName;
 import dev.langchain4j.micrometer.metrics.conventions.OTelGenAiOperationName;
+import dev.langchain4j.micrometer.metrics.conventions.OTelGenAiProviderName;
 import dev.langchain4j.micrometer.metrics.conventions.OTelGenAiTokenType;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -51,7 +52,17 @@ public class MicrometerMetricsChatModelListener implements ChatModelListener {
     }
 
     private String getProviderName(ChatModelResponseContext responseContext) {
-        return responseContext.modelProvider().toString().toLowerCase();
+        return OTelGenAiProviderName.fromModelProvider(responseContext.modelProvider());
+    }
+
+    private String getRequestModelName(ChatModelResponseContext responseContext) {
+        String modelName = responseContext.chatRequest().parameters().modelName();
+        return modelName != null ? modelName : "unknown";
+    }
+
+    private String getResponseModelName(ChatModelResponseContext responseContext) {
+        String modelName = responseContext.chatResponse().metadata().modelName();
+        return modelName != null ? modelName : "unknown";
     }
 
     private void recordTokenUsageMetrics(ChatModelResponseContext responseContext) {
@@ -74,10 +85,8 @@ public class MicrometerMetricsChatModelListener implements ChatModelListener {
         Counter.builder(OTelGenAiMetricName.TOKEN_USAGE.value())
                 .tag(OTelGenAiAttributes.OPERATION_NAME.value(), OTelGenAiOperationName.CHAT.value())
                 .tag(OTelGenAiAttributes.PROVIDER_NAME.value(), getProviderName(responseContext))
-                .tag(OTelGenAiAttributes.REQUEST_MODEL.value(),
-                     responseContext.chatRequest().parameters().modelName())
-                .tag(OTelGenAiAttributes.RESPONSE_MODEL.value(),
-                     responseContext.chatResponse().metadata().modelName())
+                .tag(OTelGenAiAttributes.REQUEST_MODEL.value(), getRequestModelName(responseContext))
+                .tag(OTelGenAiAttributes.RESPONSE_MODEL.value(), getResponseModelName(responseContext))
                 .tag(OTelGenAiAttributes.TOKEN_TYPE.value(), tokenType.value())
                 .description(String.format("Counts %s tokens used", tokenType.value()))
                 .register(meterRegistry)
