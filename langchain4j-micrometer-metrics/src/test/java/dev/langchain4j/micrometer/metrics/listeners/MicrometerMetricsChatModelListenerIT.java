@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.ModelNotFoundException;
 import dev.langchain4j.micrometer.metrics.conventions.OTelGenAiAttributes;
 import dev.langchain4j.micrometer.metrics.conventions.OTelGenAiMetricName;
 import dev.langchain4j.micrometer.metrics.conventions.OTelGenAiTokenType;
@@ -25,7 +26,7 @@ class MicrometerMetricsChatModelListenerIT {
     @BeforeEach
     void setUp() {
         meterRegistry = new SimpleMeterRegistry();
-        listener = new MicrometerMetricsChatModelListener (meterRegistry);
+        listener = new MicrometerMetricsChatModelListener(meterRegistry);
     }
 
     @Test
@@ -62,7 +63,11 @@ class MicrometerMetricsChatModelListenerIT {
 
     @Test
     void should_contain_metrics_with_error_on_request() {
-        doChatRequest("wrongDeploymentName");
+        try {
+            doChatRequest("wrongDeploymentName");
+        } catch (ModelNotFoundException expected) {
+            // ignored because expected behaviour
+        }
 
         // No token usage metrics on error
         assertThat(meterRegistry.find(OTelGenAiMetricName.TOKEN_USAGE.value()).meter())
@@ -94,11 +99,7 @@ class MicrometerMetricsChatModelListenerIT {
         ChatRequest chatRequest =
                 ChatRequest.builder().messages(UserMessage.from("Hi")).build();
 
-        try {
-            ChatResponse response = chatModel.chat(chatRequest);
-            assertThat(response.metadata()).isNotNull();
-        } catch (Exception e) {
-            System.out.println(e.getMessage());
-        }
+        ChatResponse response = chatModel.chat(chatRequest);
+        assertThat(response.metadata()).isNotNull();
     }
 }
