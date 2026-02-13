@@ -2,7 +2,6 @@ package dev.langchain4j.micrometer.metrics.listeners;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.List;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.ModelNotFoundException;
 import dev.langchain4j.micrometer.metrics.conventions.OTelGenAiAttributes;
@@ -13,6 +12,7 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
