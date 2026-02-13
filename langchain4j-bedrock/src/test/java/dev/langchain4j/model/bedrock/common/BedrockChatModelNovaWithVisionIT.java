@@ -61,8 +61,6 @@ class BedrockChatModelNovaWithVisionIT extends AbstractChatModelIT {
         return false; // output format not supported
     }
 
-
-
     @Override
     protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(final ChatModel model) {
         return BedrockChatResponseMetadata.class;

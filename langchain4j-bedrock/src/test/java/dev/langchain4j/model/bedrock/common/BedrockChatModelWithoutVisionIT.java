@@ -73,8 +73,6 @@ class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
         return false; // output format not supported
     }
 
-
-
     @Override
     protected boolean assertExceptionType() {
         // Bedrock throws ValidationException, while test expects UnsupportedFeatureException

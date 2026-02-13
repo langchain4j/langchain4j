@@ -83,8 +83,6 @@ class BedrockStreamingChatModelIT extends AbstractStreamingChatModelIT {
         return false; // output format not supported
     }
 
-
-
     @Override
     protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(final StreamingChatModel model) {
         return BedrockChatResponseMetadata.class;
