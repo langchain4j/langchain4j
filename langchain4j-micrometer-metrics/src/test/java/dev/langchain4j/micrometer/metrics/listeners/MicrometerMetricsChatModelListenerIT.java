@@ -56,11 +56,6 @@ class MicrometerMetricsChatModelListenerIT {
                         .counter()
                         .count())
                 .isGreaterThan(1.0);
-
-        //        assertThat(meterRegistry.find("gen_ai.client.operation.duration").timer()).isNotNull();
-        //        assertThat(meterRegistry.find("gen_ai.client.operation.duration")
-        //                .timer()
-        //                .count()).isGreaterThan(0);
     }
 
     @Test
