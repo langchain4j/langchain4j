@@ -1,22 +1,20 @@
 package dev.langchain4j.agentic.observability;
 
 import dev.langchain4j.Internal;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agentic.scope.AgenticScope;
-import dev.langchain4j.service.tool.BeforeToolExecution;
-import dev.langchain4j.service.tool.ToolExecution;
-import dev.langchain4j.service.tool.ToolExecutionResult;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Predicate;
 
 @Internal
 public class ComposedAgentListener implements AgentListener {
 
-    private final List<AgentListener> listeners;
+    private final Set<AgentListener> listeners;
 
     private ComposedAgentListener(List<AgentListener> listeners) {
-        this.listeners = listeners;
+        this.listeners = new HashSet<>(listeners);
     }
 
     public ComposedAgentListener(AgentListener... listeners) {
@@ -68,16 +66,16 @@ public class ComposedAgentListener implements AgentListener {
     }
 
     @Override
-    public void afterToolExecution(ToolExecution toolExecution) {
+    public void afterAgentToolExecution(AfterAgentToolExecution afterAgentToolExecution) {
         for (AgentListener listener : listeners) {
-            listener.afterToolExecution(toolExecution);
+            listener.afterAgentToolExecution(afterAgentToolExecution);
         }
     }
 
     @Override
-    public void beforeToolExecution(BeforeToolExecution beforeToolExecution) {
+    public void beforeAgentToolExecution(BeforeAgentToolExecution beforeAgentToolExecution) {
         for (AgentListener listener : listeners) {
-            listener.beforeToolExecution(beforeToolExecution);
+            listener.beforeAgentToolExecution(beforeAgentToolExecution);
         }
     }
 
@@ -132,5 +130,17 @@ public class ComposedAgentListener implements AgentListener {
             case 1 -> inherited.get(0);
             default -> new ComposedAgentListener(inherited);
         };
+    }
+
+    public boolean contains(AgentListener listener) {
+        if (listener instanceof ComposedAgentListener composed) {
+            return listeners.containsAll(composed.listeners);
+        }
+        return listeners.contains(listener);
+    }
+
+    @Override
+    public boolean inheritedBySubagents() {
+        return listeners.stream().anyMatch(AgentListener::inheritedBySubagents);
     }
 }

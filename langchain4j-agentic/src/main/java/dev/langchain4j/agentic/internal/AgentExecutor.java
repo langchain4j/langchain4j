@@ -148,6 +148,11 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
     }
 
     @Override
+    public void registerInheritedParentListener(AgentListener parentListener) {
+        agentInvoker.registerInheritedParentListener(parentListener);
+    }
+
+    @Override
     public void appendId(final String idSuffix) {
         agentInvoker.appendId(idSuffix);
     }
