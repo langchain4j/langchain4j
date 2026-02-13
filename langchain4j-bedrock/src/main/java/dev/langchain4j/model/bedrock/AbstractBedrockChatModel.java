@@ -33,6 +33,8 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.internal.Json;
+import dev.langchain4j.internal.JsonSchemaElementUtils;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -919,9 +921,7 @@ abstract class AbstractBedrockChatModel {
         }
 
         if (responseFormat.jsonSchema() == null) {
-            // JSON without schema - just request JSON output (not directly supported,
-            // model will attempt to output JSON based on prompt)
-            return null;
+            throw new UnsupportedFeatureException("JSON response format is not supported without a schema");
         }
 
         // JSON with schema - use structured output
@@ -930,9 +930,10 @@ abstract class AbstractBedrockChatModel {
             // For raw JSON schema, use the raw string directly
             schemaJson = rawSchema.schema();
         } else {
-            // For structured schema, convert to Document then to JSON string
-            Document schemaDocument = BedrockSchemaMapper.fromJsonSchemaToDocument(responseFormat.jsonSchema());
-            schemaJson = documentToJson(schemaDocument);
+            // For structured schema, convert to Map then to JSON string
+            Map<String, Object> jsonSchemaMap =
+                    JsonSchemaElementUtils.toMap(responseFormat.jsonSchema().rootElement());
+            schemaJson = Json.toJson(jsonSchemaMap);
         }
 
         return OutputConfig.builder()
