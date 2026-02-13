@@ -425,9 +425,9 @@ The naming of the metrics follows the [OpenTelemetry Semantic Conventions for Ge
 
 The following metrics are currently collected:
 
-| Metric Name | Type | Description |
-|-------------|------|-------------|
-| `gen_ai.client.token.usage` | Counter | The number of tokens used by the model for input or output |
+| Metric Name | Type | Description                                                     |
+|-------------|------|-----------------------------------------------------------------|
+| `gen_ai.client.token.usage` | Counter | The number of tokens used by the **chat** model for input or output |
 
 #### Tags on `gen_ai.client.token.usage`
 
