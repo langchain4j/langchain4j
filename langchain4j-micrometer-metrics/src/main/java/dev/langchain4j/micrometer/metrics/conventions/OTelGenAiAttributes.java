@@ -73,7 +73,6 @@ public enum OTelGenAiAttributes {
      */
     ERROR_TYPE("error.type"),
 
-
     // GenAi server information
     /**
      * The GenAI server port.

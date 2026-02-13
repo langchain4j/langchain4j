@@ -78,9 +78,8 @@ public class MicrometerMetricsChatModelListener implements ChatModelListener {
                 responseContext.chatResponse().tokenUsage().outputTokenCount());
     }
 
-    private void addTokenMetric(ChatModelResponseContext responseContext,
-                                OTelGenAiTokenType tokenType,
-                                int tokenCount) {
+    private void addTokenMetric(
+            ChatModelResponseContext responseContext, OTelGenAiTokenType tokenType, int tokenCount) {
 
         Counter.builder(OTelGenAiMetricName.TOKEN_USAGE.value())
                 .tag(OTelGenAiAttributes.OPERATION_NAME.value(), OTelGenAiOperationName.CHAT.value())

@@ -2,7 +2,6 @@ package dev.langchain4j.micrometer.metrics.listeners;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.HashMap;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.micrometer.metrics.conventions.OTelGenAiAttributes;
@@ -14,6 +13,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import java.util.HashMap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -56,8 +56,7 @@ class MicrometerMetricsChatModelListenerTest {
 
     @Test
     void should_record_unknown_model_names_when_model_names_are_null() {
-        ChatModelResponseContext responseContext = createResponseContext(
-                ModelProvider.MICROSOFT_FOUNDRY, null, null);
+        ChatModelResponseContext responseContext = createResponseContext(ModelProvider.MICROSOFT_FOUNDRY, null, null);
 
         listener.onResponse(responseContext);
 
@@ -73,18 +72,15 @@ class MicrometerMetricsChatModelListenerTest {
         return createResponseContext(modelProvider, "gpt-4o", "gpt-4o");
     }
 
-    private ChatModelResponseContext createResponseContext(ModelProvider modelProvider,
-                                                          String requestModelName,
-                                                          String responseModelName) {
-        ChatResponse.Builder responseBuilder = ChatResponse.builder()
-                .aiMessage(new AiMessage("Hello"))
-                .tokenUsage(new TokenUsage(10, 20));
+    private ChatModelResponseContext createResponseContext(
+            ModelProvider modelProvider, String requestModelName, String responseModelName) {
+        ChatResponse.Builder responseBuilder =
+                ChatResponse.builder().aiMessage(new AiMessage("Hello")).tokenUsage(new TokenUsage(10, 20));
         if (responseModelName != null) {
             responseBuilder.modelName(responseModelName);
         }
 
-        ChatRequest.Builder requestBuilder = ChatRequest.builder()
-                .messages(UserMessage.from("Hi"));
+        ChatRequest.Builder requestBuilder = ChatRequest.builder().messages(UserMessage.from("Hi"));
         if (requestModelName != null) {
             requestBuilder.modelName(requestModelName);
         }

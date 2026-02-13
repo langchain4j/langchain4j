@@ -21,8 +21,7 @@ class OTelGenAiProviderNameTest {
 
     @Test
     void should_return_unknown_when_model_provider_is_null() {
-        assertThat(OTelGenAiProviderName.fromModelProvider(null))
-                .isEqualTo("unknown");
+        assertThat(OTelGenAiProviderName.fromModelProvider(null)).isEqualTo("unknown");
     }
 
     @Test
@@ -45,7 +44,6 @@ class OTelGenAiProviderNameTest {
 
     @Test
     void should_map_other_to_other() {
-        assertThat(OTelGenAiProviderName.fromModelProvider(ModelProvider.OTHER))
-                .isEqualTo("other");
+        assertThat(OTelGenAiProviderName.fromModelProvider(ModelProvider.OTHER)).isEqualTo("other");
     }
 }

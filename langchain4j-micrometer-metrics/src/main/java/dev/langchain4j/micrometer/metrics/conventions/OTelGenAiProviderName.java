@@ -9,7 +9,6 @@ import dev.langchain4j.model.ModelProvider;
  * @see <a href="https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-spans/">OTel GenAI Spans</a>
  */
 public enum OTelGenAiProviderName {
-
     ANTHROPIC(ModelProvider.ANTHROPIC, "anthropic"),
     AMAZON_BEDROCK(ModelProvider.AMAZON_BEDROCK, "aws.bedrock"),
     // Azure OpenAI is deprecated in favor of Microsoft Foundry
