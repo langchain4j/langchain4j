@@ -15,15 +15,15 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-class ChatModelMicrometerMetricsListenerIT {
+class MicrometerMetricsChatModelListenerIT {
 
-    ChatModelMicrometerMetricsListener listener;
+    MicrometerMetricsChatModelListener listener;
     MeterRegistry meterRegistry;
 
     @BeforeEach
     void setUp() {
         meterRegistry = new SimpleMeterRegistry();
-        listener = new ChatModelMicrometerMetricsListener(meterRegistry);
+        listener = new MicrometerMetricsChatModelListener (meterRegistry);
     }
 
     @Test

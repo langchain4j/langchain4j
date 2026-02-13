@@ -18,20 +18,20 @@ import io.micrometer.core.instrument.MeterRegistry;
  * <p>
  * This listener records token usage metrics (input and output tokens) when a chat model response is received.
  * <p>
- * Note: The {@link ChatModelMicrometerMetricsListener}
+ * Note: The {@link MicrometerMetricsChatModelListener}
  * must be instantiated separately (e.g., via Spring Boot auto-configuration or manual instantiation).
  */
 @Experimental
-public class ChatModelMicrometerMetricsListener implements ChatModelListener {
+public class MicrometerMetricsChatModelListener implements ChatModelListener {
 
     private final MeterRegistry meterRegistry;
 
     /**
-     * Creates a new {@link ChatModelMicrometerMetricsListener}.
+     * Creates a new {@link MicrometerMetricsChatModelListener}.
      *
      * @param meterRegistry the {@link MeterRegistry} to register metrics with
      */
-    public ChatModelMicrometerMetricsListener(MeterRegistry meterRegistry) {
+    public MicrometerMetricsChatModelListener(MeterRegistry meterRegistry) {
         this.meterRegistry = meterRegistry;
     }
 

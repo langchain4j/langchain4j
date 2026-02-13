@@ -313,11 +313,11 @@ management:
 
 #### Add observability to your ChatModel
 
-The `ChatModelMicrometerMetricsListener` collects metrics for chat model interactions. It requires a `MeterRegistry` (provided by Micrometer) and an AI system name that identifies the provider.
+The `MicrometerMetricsChatModelListener` collects metrics for chat model interactions. It requires a `MeterRegistry` (provided by Micrometer) and an AI system name that identifies the provider.
 
 ```java
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.micrometer.metrics.listeners.ChatModelMicrometerMetricsListener;
+import dev.langchain4j.micrometer.metrics.listeners.MicrometerMetricsChatModelListener;
 import dev.langchain4j.model.azure.AzureOpenAiChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -329,8 +329,8 @@ import java.util.List;
 MeterRegistry meterRegistry = ...; // e.g., new SimpleMeterRegistry() or injected from Spring
 
 // 1. Create the listener with the MeterRegistry and AI system name
-ChatModelMicrometerMetricsListener listener = 
-    new ChatModelMicrometerMetricsListener(meterRegistry);
+MicrometerMetricsChatModelListener listener = 
+    new MicrometerMetricsChatModelListener(meterRegistry);
 
 // 2. Add the listener to your ChatModel
 AzureOpenAiChatModel chatModel = AzureOpenAiChatModel.builder()
@@ -346,12 +346,12 @@ ChatResponse response = chatModel.chat(ChatRequest.builder()
         .build());
 ```
 
-##### Create the ChatModelMicrometerMetricsListener as a bean
+##### Create the MicrometerMetricsChatModelListener as a bean
 
 In a Spring Boot application, you can create the listener as a bean and inject the `MeterRegistry`:
 
 ```java
-import dev.langchain4j.micrometer.metrics.listeners.ChatModelMicrometerMetricsListener;
+import dev.langchain4j.micrometer.metrics.listeners.MicrometerMetricsChatModelListener;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -360,8 +360,8 @@ import org.springframework.context.annotation.Configuration;
 public class MetricsConfig {
 
     @Bean
-    public ChatModelMicrometerMetricsListener chatModelMetricsListener(MeterRegistry meterRegistry) {
-        return new ChatModelMicrometerMetricsListener(meterRegistry);
+    public MicrometerMetricsChatModelListener listener(MeterRegistry meterRegistry) {
+        return new MicrometerMetricsChatModelListener(meterRegistry);
     }
 }
 ```
