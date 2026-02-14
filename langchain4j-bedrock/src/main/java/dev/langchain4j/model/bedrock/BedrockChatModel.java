@@ -87,6 +87,7 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
                 .toolConfig(extractToolConfigurationFrom(chatRequest, cachePointPlacement))
                 .additionalModelRequestFields(additionalRequestModelFieldsFrom(chatRequest.parameters()))
                 .guardrailConfig(guardrailConfigFrom(bedrockGuardrailConfiguration))
+                .outputConfig(outputConfigFrom(chatRequest.responseFormat()))
                 .build();
     }
 
