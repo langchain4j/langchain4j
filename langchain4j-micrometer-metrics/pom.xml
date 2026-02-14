@@ -15,6 +15,7 @@
 
     <properties>
         <micrometer.version>1.16.2</micrometer.version>
+        <spring.boot.version>3.5.5</spring.boot.version>
     </properties>
 
     <dependencyManagement>
@@ -23,6 +24,14 @@
                 <groupId>io.micrometer</groupId>
                 <artifactId>micrometer-bom</artifactId>
                 <version>${micrometer.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <!-- Import dependency management from Spring Boot -->
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring.boot.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -45,14 +54,20 @@
 
         <!-- For testing purposes-->
         <dependency>
-            <groupId>io.micrometer</groupId>
-            <artifactId>micrometer-observation-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-azure-open-ai</artifactId>
             <version>1.12.0-SNAPSHOT</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- Spring Boot test dependencies for Spring Boot IT -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
