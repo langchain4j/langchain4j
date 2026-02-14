@@ -162,9 +162,10 @@ public class OpenAiStreamingResponseBuilder {
 
         if (delta.toolCalls() != null && !delta.toolCalls().isEmpty()) {
             ToolCall toolCall = delta.toolCalls().get(0);
+            Integer toolCallIndex = toolCall.index() != null ? toolCall.index() : 0;
 
             ToolExecutionRequestBuilder builder = this.indexToToolExecutionRequestBuilder.computeIfAbsent(
-                    toolCall.index(), idx -> new ToolExecutionRequestBuilder());
+                    toolCallIndex, idx -> new ToolExecutionRequestBuilder());
 
             if (toolCall.id() != null) {
                 if (accumulateToolCallId) {
