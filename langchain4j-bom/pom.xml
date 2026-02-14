@@ -583,6 +583,13 @@
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
+            <!-- observability -->
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-micrometer-metrics</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
             <!-- spring boot -->
             <dependency>
                 <groupId>dev.langchain4j</groupId>
