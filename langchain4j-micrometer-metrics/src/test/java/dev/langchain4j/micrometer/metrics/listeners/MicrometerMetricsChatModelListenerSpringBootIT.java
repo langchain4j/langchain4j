@@ -68,8 +68,8 @@ class MicrometerMetricsChatModelListenerSpringBootIT {
                 .modelName("gpt-4o")
                 .build();
 
-        ChatModelResponseContext responseContext =
-                new ChatModelResponseContext(chatResponse, chatRequest, ModelProvider.MICROSOFT_FOUNDRY, new HashMap<>());
+        ChatModelResponseContext responseContext = new ChatModelResponseContext(
+                chatResponse, chatRequest, ModelProvider.MICROSOFT_FOUNDRY, new HashMap<>());
 
         listener.onResponse(responseContext);
 

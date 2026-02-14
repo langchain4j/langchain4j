@@ -21,6 +21,14 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
+                <!-- Must come before Spring Boot BOM to override its Jackson version -->
+                <groupId>com.fasterxml.jackson</groupId>
+                <artifactId>jackson-bom</artifactId>
+                <version>${jackson.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
                 <groupId>io.micrometer</groupId>
                 <artifactId>micrometer-bom</artifactId>
                 <version>${micrometer.version}</version>
