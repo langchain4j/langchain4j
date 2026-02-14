@@ -9,4 +9,4 @@ import org.jspecify.annotations.NonNull;
  * A batch model for processing multiple image generation requests asynchronously.
  */
 @Experimental
-public interface BatchImageModel extends BatchModel<String, Response<@NonNull Image>> {}
+public interface BatchImageModel extends BatchModel<String, Response<Image>> {}
