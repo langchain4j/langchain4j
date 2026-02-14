@@ -22,7 +22,7 @@ class BedrockAiServiceWithJsonSchemaIT extends AbstractAiServiceWithJsonSchemaIT
 
     @Override
     protected boolean isStrictJsonSchemaEnabled(ChatModel model) {
-        // Bedrock (Nova) models support strict JSON schema
+        // Bedrock models support strict JSON schema
         return true;
     }
 }
