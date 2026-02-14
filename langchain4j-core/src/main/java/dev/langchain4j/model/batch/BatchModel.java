@@ -35,7 +35,7 @@ public interface BatchModel<REQ, RES> {
     /**
      * Retrieves the current state and results of a batch operation.
      *
-     * <p>The responses indicates whether the batch is still processing, completed successfully,
+     * <p>The responses indicate whether the batch is still processing, completed successfully,
      * or failed. Clients should poll this method at intervals until the batch completes.</p>
      *
      * @param name the batch identifier obtained from {@link #submit(List)}
