@@ -25,9 +25,8 @@ class StreamableHttpMcpTransportTest {
 
     @Test
     void shouldForceHttp11ForStreamableTransport() throws Exception {
-        StreamableHttpMcpTransport transport = StreamableHttpMcpTransport.builder()
-                .url("http://localhost/mcp")
-                .build();
+        StreamableHttpMcpTransport transport =
+                StreamableHttpMcpTransport.builder().url("http://localhost/mcp").build();
 
         assertThat(extractHttpClient(transport).version()).isEqualTo(HttpClient.Version.HTTP_1_1);
     }
