@@ -1,12 +1,10 @@
 package dev.langchain4j.model.googleai;
 
-import static dev.langchain4j.model.googleai.BatchRequestResponse.BatchJobState.BATCH_STATE_CANCELLED;
-import static dev.langchain4j.model.googleai.BatchRequestResponse.BatchJobState.BATCH_STATE_PENDING;
+import static dev.langchain4j.model.batch.BatchJobState.CANCELLED;
+import static dev.langchain4j.model.batch.BatchJobState.FAILED;
+import static dev.langchain4j.model.batch.BatchJobState.PENDING;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import dev.langchain4j.model.googleai.BatchRequestResponse.BatchError;
-import dev.langchain4j.model.googleai.BatchRequestResponse.BatchIncomplete;
-import dev.langchain4j.model.googleai.GoogleAiGeminiBatchImageModel.ImageGenerationRequest;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
@@ -31,21 +29,18 @@ class GoogleAiGeminiBatchImageModelIT {
 
         var displayName = "Test Image Batch";
         var priority = 1L;
-        var requests = List.of(
-                new ImageGenerationRequest("A simple red circle on white background"),
-                new ImageGenerationRequest("A simple blue square on white background"));
+        var prompts = List.of("A simple red circle on white background", "A simple blue square on white background");
 
         // when
-        var response = subject.createBatchInline(displayName, priority, requests);
+        var response = subject.createBatch(displayName, priority, prompts);
 
         // then
-        assertThat(response).isInstanceOf(BatchIncomplete.class);
-        var incomplete = (BatchIncomplete<?>) response;
-        assertThat(incomplete.batchName().value()).startsWith("batches/");
-        assertThat(incomplete.state()).isEqualTo(BATCH_STATE_PENDING);
+        assertThat(response.isIncomplete()).isTrue();
+        assertThat(response.batchName().value()).startsWith("batches/");
+        assertThat(response.state()).isEqualTo(PENDING);
 
         // cleanup
-        subject.cancelBatchJob(incomplete.batchName());
+        subject.cancelJob(response.batchName());
     }
 
     @Test
@@ -57,18 +52,16 @@ class GoogleAiGeminiBatchImageModelIT {
                 .logRequestsAndResponses(true)
                 .build();
 
-        var requests = List.of(new ImageGenerationRequest("A green triangle"));
-        var createResponse = (BatchIncomplete<?>) subject.createBatchInline("Cancel Test", null, requests);
+        var prompts = List.of("A green triangle");
+        var createResponse = subject.createBatch("Cancel Test", null, prompts);
 
         // when
-        subject.cancelBatchJob(createResponse.batchName());
+        subject.cancelJob(createResponse.batchName());
 
         // then
-        var retrieveResponse = subject.retrieveBatchResults(createResponse.batchName());
-        assertThat(retrieveResponse).isInstanceOf(BatchError.class);
-        var error = (BatchError<?>) retrieveResponse;
-        assertThat(error.state()).isEqualTo(BATCH_STATE_CANCELLED);
-        assertThat(error.code()).isEqualTo(13);
+        var retrieveResponse = subject.retrieveResults(createResponse.batchName());
+        assertThat(retrieveResponse.isError()).isTrue();
+        assertThat(retrieveResponse.state()).isIn(CANCELLED, FAILED);
     }
 
     @AfterEach

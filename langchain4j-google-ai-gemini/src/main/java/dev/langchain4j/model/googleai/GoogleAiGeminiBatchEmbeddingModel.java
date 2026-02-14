@@ -7,13 +7,13 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.batch.BatchEmbeddingModel;
+import dev.langchain4j.model.batch.BatchList;
+import dev.langchain4j.model.batch.BatchName;
+import dev.langchain4j.model.batch.BatchResponse;
+import dev.langchain4j.model.batch.ExtractedBatchResults;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateResponse;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchFileRequest;
-import dev.langchain4j.model.googleai.BatchRequestResponse.BatchIncomplete;
-import dev.langchain4j.model.googleai.BatchRequestResponse.BatchList;
-import dev.langchain4j.model.googleai.BatchRequestResponse.BatchName;
-import dev.langchain4j.model.googleai.BatchRequestResponse.BatchResponse;
-import dev.langchain4j.model.googleai.GeminiBatchProcessor.ExtractedBatchResults;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingRequest;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingResponse;
 import dev.langchain4j.model.googleai.GeminiFiles.GeminiFile;
@@ -23,13 +23,23 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 /**
  * Batch embedding model for Google AI Gemini.
+ *
+ * <p>Provides asynchronous batch processing for generating embeddings from multiple text segments
+ * at reduced cost (50% of standard pricing) with a 24-hour turnaround SLO.</p>
+ *
+ * <p>Implements {@link BatchEmbeddingModel} for unified batch processing of embedding requests.</p>
+ *
+ * @see BatchEmbeddingModel
+ * @see BatchResponse
  */
 @Experimental
-public final class GoogleAiGeminiBatchEmbeddingModel {
+@NullMarked
+public final class GoogleAiGeminiBatchEmbeddingModel implements BatchEmbeddingModel {
     private final GeminiBatchProcessor<TextSegment, Embedding, GeminiEmbeddingRequest, GeminiEmbeddingResponse>
             batchProcessor;
     private final String modelName;
@@ -62,6 +72,19 @@ public final class GoogleAiGeminiBatchEmbeddingModel {
     }
 
     /**
+     * {@inheritDoc}
+     *
+     * <p>Creates and enqueues a batch of embedding requests using default display name and priority.</p>
+     *
+     * @param segments the list of {@link TextSegment}s to generate embeddings for
+     * @return a {@link BatchResponse} representing the initial state of the batch operation
+     */
+    @Override
+    public BatchResponse<Embedding> submit(List<TextSegment> segments) {
+        return createBatch(null, null, segments);
+    }
+
+    /**
      * Creates and enqueues a batch of embedding requests for asynchronous processing using the inline API.
      *
      * <p>This method submits a list of text segments to be embedded as a single batch operation.
@@ -69,26 +92,25 @@ public final class GoogleAiGeminiBatchEmbeddingModel {
      * inline batch creation endpoint, which supports requests up to 20 MB in size.</p>
      *
      * <p>The response contains the initial state of the batch job (usually PENDING). You can monitor
-     * the job's progress using {@link #retrieveBatchResults(BatchName)}.</p>
+     * the job's progress using {@link #retrieveResults(BatchName)}.</p>
      *
-     * @param displayName a user-defined name for the batch, used for identification and listing
+     * @param displayName a user-defined name for the batch, used for identification and listing; may be {@code null}
      * @param priority    optional priority for the batch; batches with higher priority values are
      *                    processed before those with lower values; negative values are allowed;
-     *                    defaults to 0 if null
+     *                    defaults to 0 if {@code null}
      * @param segments    the list of {@link TextSegment}s to generate embeddings for
-     * @return a {@link BatchResponse} representing the initial state of the batch operation,
-     * typically {@link BatchIncomplete}
+     * @return a {@link BatchResponse} representing the initial state of the batch operation
      */
-    public BatchResponse<Embedding> createBatchInline(
-            String displayName, @Nullable Long priority, List<TextSegment> segments) {
-        return batchProcessor.createBatchInline(displayName, priority, segments, modelName, ASYNC_BATCH_EMBED_CONTENT);
+    public BatchResponse<Embedding> createBatch(
+            @Nullable String displayName, @Nullable Long priority, List<TextSegment> segments) {
+        return batchProcessor.createBatch(displayName, priority, segments, modelName, ASYNC_BATCH_EMBED_CONTENT);
     }
 
     /**
      * Creates and enqueues a batch of embedding requests from an uploaded file.
      *
      * <p>This method is used for processing large volumes of embedding requests that exceed the limits
-     * of the inline API. Before calling this method, you must write your requests to a JSONL file
+     * of the inline API (20 MB). Before calling this method, you must write your requests to a JSONL file
      * (using {@link #writeBatchToFile}) and upload it using the {@link GeminiFiles} API to get a {@link GeminiFile}.</p>
      *
      * @param displayName a user-defined name for the batch, used for identification
@@ -134,38 +156,77 @@ public final class GoogleAiGeminiBatchEmbeddingModel {
     }
 
     /**
-     * Retrieves the current state and results of a batch operation.
+     * {@inheritDoc}
+     *
+     * <p>Polls the Gemini API to get the latest state of a previously created batch.
+     * Clients should poll this method at intervals to check the operation status until completion.</p>
+     *
+     * @param name the batch name obtained from {@link #submit(List)} or {@link #createBatchFromFile(String, GeminiFile)}
+     * @return a {@link BatchResponse} representing the current state of the batch operation
      */
-    public BatchResponse<Embedding> retrieveBatchResults(BatchName name) {
+    @Override
+    public BatchResponse<Embedding> retrieveResults(BatchName name) {
         return batchProcessor.retrieveBatchResults(name);
     }
 
     /**
-     * Cancels a batch operation that is currently pending or running.
+     * {@inheritDoc}
+     *
+     * <p>Cancellation is only possible for batches that are in PENDING or RUNNING state.
+     * Batches that have already completed, failed, or been cancelled cannot be cancelled.</p>
+     *
+     * @param name the batch name to cancel
      */
-    public void cancelBatchJob(BatchName name) {
+    @Override
+    public void cancelJob(BatchName name) {
         batchProcessor.cancelBatchJob(name);
     }
 
     /**
-     * Deletes a batch job.
+     * Deletes a batch job from the system.
+     *
+     * <p>This removes the batch job record but does not cancel it if still running.
+     * Use {@link #cancelJob(BatchName)} to cancel a running batch before deletion.</p>
+     *
+     * @param name the batch name to delete
+     * @throws RuntimeException if the batch job cannot be deleted or does not exist
      */
     public void deleteBatchJob(BatchName name) {
         batchProcessor.deleteBatchJob(name);
     }
 
     /**
-     * Lists batch jobs.
+     * {@inheritDoc}
+     *
+     * @param pageSize  the maximum number of batch jobs to return; if {@code null}, uses server default
+     * @param pageToken token for retrieving a specific page from {@link BatchList#nextPageToken()};
+     *                  if {@code null}, returns the first page
+     * @return a {@link BatchList} containing batch responses and pagination information
      */
-    public BatchList<Embedding> listBatchJobs(@Nullable Integer pageSize, @Nullable String pageToken) {
+    @Override
+    public BatchList<Embedding> listJobs(@Nullable Integer pageSize, @Nullable String pageToken) {
         return batchProcessor.listBatchJobs(pageSize, pageToken);
     }
 
+    /**
+     * Returns a new builder for constructing {@link GoogleAiGeminiBatchEmbeddingModel} instances.
+     *
+     * @return a new builder instance
+     */
     public static Builder builder() {
         return new Builder();
     }
 
+    /**
+     * Builder for constructing {@link GoogleAiGeminiBatchEmbeddingModel} instances.
+     */
     public static class Builder extends BaseGoogleAiEmbeddingModelBuilder<Builder> {
+
+        /**
+         * Builds a new {@link GoogleAiGeminiBatchEmbeddingModel} instance.
+         *
+         * @return the configured batch embedding model
+         */
         public GoogleAiGeminiBatchEmbeddingModel build() {
             return new GoogleAiGeminiBatchEmbeddingModel(this);
         }
@@ -201,22 +262,25 @@ public final class GoogleAiGeminiBatchEmbeddingModel {
         }
 
         @Override
-        public ExtractedBatchResults<Embedding> extractResults(BatchCreateResponse<GeminiEmbeddingResponse> response) {
+        public ExtractedBatchResults<Embedding> extractResults(
+                @Nullable BatchCreateResponse<GeminiEmbeddingResponse> response) {
             if (response == null || response.inlinedResponses() == null) {
                 return new ExtractedBatchResults<>(List.of(), List.of());
             }
 
             List<Embedding> responses = new ArrayList<>();
-            List<BatchRequestResponse.Operation.Status> errors = new ArrayList<>();
+            List<ExtractedBatchResults.Status> errors = new ArrayList<>();
 
             for (Object wrapper : response.inlinedResponses().inlinedResponses()) {
                 var typed = Json.convertValue(wrapper, responseWrapperType);
-                if (typed.response() != null) {
-                    var embedding = Embedding.from(typed.response().embedding().values());
+                var typedResponse = typed.response();
+                if (typedResponse != null) {
+                    var embedding = Embedding.from(typedResponse.embedding().values());
                     responses.add(embedding);
                 }
-                if (typed.error() != null) {
-                    errors.add(typed.error());
+                var error = typed.error();
+                if (error != null) {
+                    errors.add(error.toGenericStatus());
                 }
             }
 

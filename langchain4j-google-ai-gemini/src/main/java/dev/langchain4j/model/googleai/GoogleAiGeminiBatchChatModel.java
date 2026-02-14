@@ -5,15 +5,16 @@ import static dev.langchain4j.model.googleai.GeminiService.BatchOperationType.BA
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.Experimental;
+import dev.langchain4j.model.batch.BatchChatModel;
+import dev.langchain4j.model.batch.BatchJobState;
+import dev.langchain4j.model.batch.BatchList;
+import dev.langchain4j.model.batch.BatchName;
+import dev.langchain4j.model.batch.BatchResponse;
+import dev.langchain4j.model.batch.ExtractedBatchResults;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateResponse;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchFileRequest;
-import dev.langchain4j.model.googleai.BatchRequestResponse.BatchIncomplete;
-import dev.langchain4j.model.googleai.BatchRequestResponse.BatchList;
-import dev.langchain4j.model.googleai.BatchRequestResponse.BatchName;
-import dev.langchain4j.model.googleai.BatchRequestResponse.BatchResponse;
-import dev.langchain4j.model.googleai.GeminiBatchProcessor.ExtractedBatchResults;
 import dev.langchain4j.model.googleai.GeminiFiles.GeminiFile;
 import dev.langchain4j.model.googleai.jsonl.JsonLinesWriter;
 import java.io.IOException;
@@ -29,9 +30,15 @@ import org.jspecify.annotations.Nullable;
  * large volumes of requests at a reduced cost (50% of standard). It is ideal for non-urgent, large-scale tasks like
  * data pre-processing or evaluations, with a Service Level Objective (SLO) of 24-hour turnaround, though
  * completion is often much quicker.
+ *
+ * <p>Implements {@link BatchChatModel} for unified batch processing of chat requests.</p>
+ *
+ * @see BatchChatModel
+ * @see BatchResponse
  */
 @Experimental
-public final class GoogleAiGeminiBatchChatModel {
+public final class GoogleAiGeminiBatchChatModel implements BatchChatModel {
+
     private final GeminiBatchProcessor<
                     ChatRequest, ChatResponse, GeminiGenerateContentRequest, GeminiGenerateContentResponse>
             batchProcessor;
@@ -51,32 +58,47 @@ public final class GoogleAiGeminiBatchChatModel {
     }
 
     /**
+     * {@inheritDoc}
+     *
+     * <p>Creates and enqueues a batch of content generation requests for asynchronous processing
+     * using default display name and priority.</p>
+     *
+     * @param requests a list of chat requests to be processed in the batch; all requests must
+     *                 use the same model
+     * @return a {@link BatchResponse} representing the initial state of the batch operation
+     * @throws IllegalArgumentException if the requests contain different models
+     */
+    @Override
+    public BatchResponse<ChatResponse> submit(List<ChatRequest> requests) {
+        return createBatch(null, null, requests);
+    }
+
+    /**
      * Creates and enqueues a batch of content generation requests for asynchronous processing.
      *
-     * <p> This method submits multiple chat requests as a single batch operation to the Gemini API.
+     * <p>This method submits multiple chat requests as a single batch operation to the Gemini API.
      * All requests in the batch must use the same model. The batch will be processed asynchronously,
-     * and the initial response will typically be in a {@link BatchIncomplete} state.</p>
+     * and the initial responses will typically be in an incomplete state.</p>
      *
      * <p>Batch processing offers a 50% cost reduction compared to real-time requests and has a
      * 24-hour turnaround SLO, making it ideal for large-scale, non-urgent tasks.</p>
      *
-     * <p><strong>Note:</strong> The inline API allows for a total request size of 20MB or under. Larger requests
-     * should use the File API</p>
+     * <p><strong>Note:</strong> The inline API allows for a total request size of 20MB or under.
+     * Larger requests should use {@link #createBatchFromFile(String, GeminiFile)}.</p>
      *
-     * @param displayName a user-defined name for the batch, used for identification
+     * @param displayName a user-defined name for the batch, used for identification; may be {@code null}
      * @param priority    optional priority for the batch; batches with higher priority values are
      *                    processed before those with lower values; negative values are allowed;
-     *                    defaults to 0 if null
+     *                    defaults to 0 if {@code null}
      * @param requests    a list of chat requests to be processed in the batch; all requests must
      *                    use the same model
-     * @return a {@link BatchResponse} representing the initial state of the batch operation,
-     * typically {@link BatchIncomplete}
+     * @return a {@link BatchResponse} representing the initial state of the batch operation
      * @throws IllegalArgumentException if the requests contain different models
      */
-    public BatchResponse<ChatResponse> createBatchInline(
-            String displayName, @Nullable Long priority, List<ChatRequest> requests) {
+    public BatchResponse<ChatResponse> createBatch(
+            @Nullable String displayName, @Nullable Long priority, List<ChatRequest> requests) {
         validateModelInChatRequests(modelName, requests);
-        return batchProcessor.createBatchInline(displayName, priority, requests, modelName, BATCH_GENERATE_CONTENT);
+        return batchProcessor.createBatch(displayName, priority, requests, modelName, BATCH_GENERATE_CONTENT);
     }
 
     /**
@@ -92,8 +114,7 @@ public final class GoogleAiGeminiBatchChatModel {
      *
      * @param displayName a user-defined name for the batch, used for identification
      * @param file        the GeminiFile object representing the uploaded file containing batch requests
-     * @return a {@link BatchResponse} representing the initial state of the batch operation,
-     * typically {@link BatchIncomplete}
+     * @return a {@link BatchResponse} representing the initial state of the batch operation
      * @see #writeBatchToFile(JsonLinesWriter, Iterable)
      * @see GeminiFiles#uploadFile(java.nio.file.Path, String)
      */
@@ -143,48 +164,42 @@ public final class GoogleAiGeminiBatchChatModel {
     }
 
     /**
-     * Retrieves the current state and results of a batch operation.
+     * {@inheritDoc}
      *
-     * <p>This method polls the Gemini API to get the latest state of a previously created batch.
-     * The response can be:
-     * <ul>
-     *   <li>{@link BatchIncomplete} - if the batch is still pending or running</li>
-     *   <li>{@link BatchRequestResponse.BatchSuccess} - if the batch completed successfully, containing all responses</li>
-     *   <li>{@link BatchRequestResponse.BatchError} - if the batch failed, containing error details</li>
-     * </ul>
-     * <p>
+     * <p>Polls the Gemini API to get the latest state of a previously created batch.
      * Clients should poll this method at intervals to check the operation status until completion.</p>
      *
-     * @param name the name of the batch operation to retrieve, obtained from the initial
-     *             {@link #createBatchInline} call
+     * @param name the batch name obtained from {@link #submit(List)} or {@link #createBatchFromFile(String, GeminiFile)}
      * @return a {@link BatchResponse} representing the current state of the batch operation
      */
-    public BatchResponse<ChatResponse> retrieveBatchResults(BatchName name) {
+    @Override
+    public BatchResponse<ChatResponse> retrieveResults(BatchName name) {
         return batchProcessor.retrieveBatchResults(name);
     }
 
     /**
-     * Cancels a batch operation that is currently pending or running.
+     * {@inheritDoc}
      *
-     * <p>This method attempts to cancel a batch job. Cancellation is only possible for batches
-     * that are in {@link BatchRequestResponse.BatchJobState#BATCH_STATE_PENDING} or {@link BatchRequestResponse.BatchJobState#BATCH_STATE_RUNNING}
-     * state. Batches that have already completed, failed, or been cancelled cannot be cancelled.</p>
+     * <p>Cancellation is only possible for batches that are in
+     * {@link BatchJobState#PENDING} or {@link BatchJobState#RUNNING} state.
+     * Batches that have already completed, failed, or been cancelled cannot be cancelled.</p>
      *
-     * @param name the name of the batch operation to cancel
+     * @param name the batch name to cancel
      * @throws dev.langchain4j.exception.HttpException if the batch cannot be cancelled (e.g., already completed,
      *                                                 already cancelled, or does not exist)
      */
-    public void cancelBatchJob(BatchName name) {
+    @Override
+    public void cancelJob(BatchName name) {
         batchProcessor.cancelBatchJob(name);
     }
 
     /**
      * Deletes a batch job from the system.
-     * <p>
-     * This removes the batch job but does not cancel it if still running.
-     * Use {@link #cancelBatchJob(BatchName)} to cancel a running batch.
      *
-     * @param name the name of the batch job to delete
+     * <p>This removes the batch job record but does not cancel it if still running.
+     * Use {@link #cancelJob(BatchName)} to cancel a running batch before deletion.</p>
+     *
+     * @param name the batch name to delete
      * @throws RuntimeException if the batch job cannot be deleted or does not exist
      */
     public void deleteBatchJob(BatchName name) {
@@ -192,15 +207,15 @@ public final class GoogleAiGeminiBatchChatModel {
     }
 
     /**
-     * Lists batch jobs with optional pagination.
+     * {@inheritDoc}
      *
-     * @param pageSize  the maximum number of batch jobs to return; if null, uses server default
-     * @param pageToken token for retrieving a specific page from {@link BatchList#pageToken()};
-     *                  if null, returns the first page
-     * @return a {@link BatchList} containing batch responses and a token for the next page
-     * @throws RuntimeException if the server does not support this operation
+     * @param pageSize  the maximum number of batch jobs to return; if {@code null}, uses server default
+     * @param pageToken token for retrieving a specific page from {@link BatchList#nextPageToken()};
+     *                  if {@code null}, returns the first page
+     * @return a {@link BatchList} containing batch responses and pagination information
      */
-    public BatchList<ChatResponse> listBatchJobs(@Nullable Integer pageSize, @Nullable String pageToken) {
+    @Override
+    public BatchList<ChatResponse> listJobs(@Nullable Integer pageSize, @Nullable String pageToken) {
         return batchProcessor.listBatchJobs(pageSize, pageToken);
     }
 
@@ -216,13 +231,26 @@ public final class GoogleAiGeminiBatchChatModel {
         }
     }
 
+    /**
+     * Returns a new builder for constructing {@link GoogleAiGeminiBatchChatModel} instances.
+     *
+     * @return a new builder instance
+     */
     public static Builder builder() {
         return new Builder();
     }
 
+    /**
+     * Builder for constructing {@link GoogleAiGeminiBatchChatModel} instances.
+     */
     public static final class Builder extends BaseGeminiChatModel.GoogleAiGeminiChatModelBaseBuilder<Builder> {
         private Builder() {}
 
+        /**
+         * Builds a new {@link GoogleAiGeminiBatchChatModel} instance.
+         *
+         * @return the configured batch chat model
+         */
         public GoogleAiGeminiBatchChatModel build() {
             return new GoogleAiGeminiBatchChatModel(this);
         }
@@ -249,21 +277,22 @@ public final class GoogleAiGeminiBatchChatModel {
 
         @Override
         public ExtractedBatchResults<ChatResponse> extractResults(
-                BatchCreateResponse<GeminiGenerateContentResponse> response) {
+                @Nullable BatchCreateResponse<GeminiGenerateContentResponse> response) {
             if (response == null || response.inlinedResponses() == null) {
                 return new ExtractedBatchResults<>(List.of(), List.of());
             }
 
             List<ChatResponse> responses = new ArrayList<>();
-            List<BatchRequestResponse.Operation.Status> errors = new ArrayList<>();
-
+            List<ExtractedBatchResults.Status> errors = new ArrayList<>();
             for (Object wrapper : response.inlinedResponses().inlinedResponses()) {
                 var typed = Json.convertValue(wrapper, responseWrapperType);
-                if (typed.response() != null) {
-                    responses.add(chatModel.processResponse(typed.response()));
+                var typedResponse = typed.response();
+                if (typedResponse != null) {
+                    responses.add(chatModel.processResponse(typedResponse));
                 }
-                if (typed.error() != null) {
-                    errors.add(typed.error());
+                var error = typed.error();
+                if (error != null) {
+                    errors.add(error.toGenericStatus());
                 }
             }
 
