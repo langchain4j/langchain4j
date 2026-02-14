@@ -10,7 +10,7 @@ import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
-import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
 
 /**
@@ -18,6 +18,9 @@ import io.micrometer.core.instrument.MeterRegistry;
  * about chat model interactions following OpenTelemetry Semantic Conventions for Generative AI.
  * <p>
  * This listener records token usage metrics (input and output tokens) when a chat model response is received.
+ * The token usage metric is recorded as a {@link DistributionSummary} (Histogram), consistent with the
+ * <a href="https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-metrics/#metric-gen_aiclienttokenusage">
+ * OpenTelemetry Semantic Conventions for {@code gen_ai.client.token.usage}</a>.
  * <p>
  * Note: The {@link MicrometerMetricsChatModelListener}
  * must be instantiated separately (e.g., via Spring Boot auto-configuration or manual instantiation).
@@ -81,14 +84,17 @@ public class MicrometerMetricsChatModelListener implements ChatModelListener {
     private void addTokenMetric(
             ChatModelResponseContext responseContext, OTelGenAiTokenType tokenType, int tokenCount) {
 
-        Counter.builder(OTelGenAiMetricName.TOKEN_USAGE.value())
+        DistributionSummary.builder(OTelGenAiMetricName.TOKEN_USAGE.value())
+                .baseUnit("{token}")
                 .tag(OTelGenAiAttributes.OPERATION_NAME.value(), OTelGenAiOperationName.CHAT.value())
                 .tag(OTelGenAiAttributes.PROVIDER_NAME.value(), getProviderName(responseContext))
                 .tag(OTelGenAiAttributes.REQUEST_MODEL.value(), getRequestModelName(responseContext))
                 .tag(OTelGenAiAttributes.RESPONSE_MODEL.value(), getResponseModelName(responseContext))
                 .tag(OTelGenAiAttributes.TOKEN_TYPE.value(), tokenType.value())
-                .description(String.format("Counts %s tokens used", tokenType.value()))
+                .description(String.format("Measures %s tokens used", tokenType.value()))
+                .serviceLevelObjectives(1, 4, 16, 64, 256, 1024, 4096, 16384, 65536, 262144, 1048576, 4194304,
+                        16777216, 67108864)
                 .register(meterRegistry)
-                .increment(tokenCount);
+                .record(tokenCount);
     }
 }

@@ -427,7 +427,7 @@ The following metrics are currently collected:
 
 | Metric Name | Type | Description                                                     |
 |-------------|------|-----------------------------------------------------------------|
-| `gen_ai.client.token.usage` | Counter | The number of tokens used by the **chat** model for input or output |
+| `gen_ai.client.token.usage` | Histogram (DistributionSummary) | The number of input and output tokens used per **chat** model request |
 
 #### Tags on `gen_ai.client.token.usage`
 

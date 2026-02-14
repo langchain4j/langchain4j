@@ -388,7 +388,7 @@ The `gen_ai.token.type` tag indicates whether the tokens were used for input or 
 | Input tokens | `/actuator/metrics/gen_ai.client.token.usage?tag=gen_ai.token.type:input` |
 | Output tokens | `/actuator/metrics/gen_ai.client.token.usage?tag=gen_ai.token.type:output` |
 
-> **Note**: The endpoint for the `gen_ai.client.token.usage` metric without any tags shows the sum of all token usage (both input and output tokens across all models and systems).
+> **Note**: The `gen_ai.client.token.usage` metric is a histogram (DistributionSummary). The endpoint without any tags shows aggregated statistics (count, total, max) across all token types, models, and providers.
 
 
 ## Testing

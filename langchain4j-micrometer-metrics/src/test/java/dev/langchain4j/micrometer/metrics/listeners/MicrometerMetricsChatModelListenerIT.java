@@ -50,14 +50,14 @@ class MicrometerMetricsChatModelListenerIT {
         assertThat(meterRegistry
                         .get(OTelGenAiMetricName.TOKEN_USAGE.value())
                         .tag(OTelGenAiAttributes.TOKEN_TYPE.value(), OTelGenAiTokenType.INPUT.value())
-                        .counter()
-                        .count())
+                        .summary()
+                        .totalAmount())
                 .isGreaterThan(1.0);
         assertThat(meterRegistry
                         .get(OTelGenAiMetricName.TOKEN_USAGE.value())
                         .tag(OTelGenAiAttributes.TOKEN_TYPE.value(), OTelGenAiTokenType.OUTPUT.value())
-                        .counter()
-                        .count())
+                        .summary()
+                        .totalAmount())
                 .isGreaterThan(1.0);
     }
 
