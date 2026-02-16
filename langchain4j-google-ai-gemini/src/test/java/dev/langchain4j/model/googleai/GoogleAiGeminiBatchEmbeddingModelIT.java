@@ -1,15 +1,15 @@
 package dev.langchain4j.model.googleai;
 
-import static dev.langchain4j.model.batch.BatchJobState.CANCELLED;
-import static dev.langchain4j.model.batch.BatchJobState.FAILED;
-import static dev.langchain4j.model.batch.BatchJobState.PENDING;
+import static dev.langchain4j.model.batch.BatchState.CANCELLED;
+import static dev.langchain4j.model.batch.BatchState.FAILED;
+import static dev.langchain4j.model.batch.BatchState.PENDING;
 import static java.nio.file.Files.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.HttpException;
-import dev.langchain4j.model.batch.BatchName;
+import dev.langchain4j.model.batch.BatchId;
 import dev.langchain4j.model.batch.BatchResponse;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchFileRequest;
 import dev.langchain4j.model.googleai.GoogleAiEmbeddingModel.TaskType;
@@ -27,10 +27,10 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
     private static final String MODEL_NAME = "gemini-embedding-001";
 
     @Nested
-    class CreateBatch {
+    class submit {
 
         @Test
-        void should_create_batch_with_valid_text_segments() {
+        void should_submit_with_valid_text_segments() {
             // given
             var subject = GoogleAiGeminiBatchEmbeddingModel.builder()
                     .apiKey(GOOGLE_AI_GEMINI_API_KEY)
@@ -48,16 +48,16 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
                     TextSegment.from("Germany is known for its engineering."));
 
             // when
-            var response = subject.createBatch(displayName, priority, textSegments);
+            var response = subject.submit(GeminiBatchRequest.from(textSegments, displayName, priority));
 
             // then
-            assertThat(response.isIncomplete()).isTrue();
-            assertThat(response.batchName().value()).startsWith("batches/");
+            assertThat(response.isInProgress()).isTrue();
+            assertThat(response.batchId().value()).startsWith("batches/");
             assertThat(response.state()).isEqualTo(PENDING);
         }
 
         @Test
-        void should_create_batch_with_single_text_segment_list() {
+        void should_submit_with_single_text_segment_list() {
             // given
             var subject = GoogleAiGeminiBatchEmbeddingModel.builder()
                     .apiKey(GOOGLE_AI_GEMINI_API_KEY)
@@ -71,15 +71,15 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
             var textSegments = List.of(TextSegment.from("This is a test document for embedding."));
 
             // when
-            var response = subject.createBatch(displayName, priority, textSegments);
+            var response = subject.submit(GeminiBatchRequest.from(textSegments, displayName, priority));
 
             // then
-            assertThat(response.isIncomplete()).isTrue();
-            assertThat(response.batchName().value()).startsWith("batches/");
+            assertThat(response.isInProgress()).isTrue();
+            assertThat(response.batchId().value()).startsWith("batches/");
         }
 
         @Test
-        void should_create_batch_with_different_task_types() {
+        void should_submit_with_different_task_types() {
             // given
             var subject = GoogleAiGeminiBatchEmbeddingModel.builder()
                     .apiKey(GOOGLE_AI_GEMINI_API_KEY)
@@ -97,15 +97,15 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
                     TextSegment.from("Document about baking techniques"));
 
             // when
-            var response = subject.createBatch(displayName, priority, textSegments);
+            var response = subject.submit(GeminiBatchRequest.from(textSegments, displayName, priority));
 
             // then
-            assertThat(response.isIncomplete()).isTrue();
-            assertThat(response.batchName().value()).startsWith("batches/");
+            assertThat(response.isInProgress()).isTrue();
+            assertThat(response.batchId().value()).startsWith("batches/");
         }
 
         @Test
-        void should_create_batch_with_output_dimensionality() {
+        void should_submit_with_output_dimensionality() {
             // given
             var subject = GoogleAiGeminiBatchEmbeddingModel.builder()
                     .apiKey(GOOGLE_AI_GEMINI_API_KEY)
@@ -120,11 +120,11 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
             var textSegments = List.of(TextSegment.from("Query about embeddings with reduced dimensions"));
 
             // when
-            var response = subject.createBatch(displayName, priority, textSegments);
+            var response = subject.submit(GeminiBatchRequest.from(textSegments, displayName, priority));
 
             // then
-            assertThat(response.isIncomplete()).isTrue();
-            assertThat(response.batchName().value()).startsWith("batches/");
+            assertThat(response.isInProgress()).isTrue();
+            assertThat(response.batchId().value()).startsWith("batches/");
         }
     }
 
@@ -132,7 +132,7 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
     class BatchFromFile {
 
         @Test
-        void should_write_upload_and_create_batch_from_file() throws Exception {
+        void should_write_upload_and_submit_from_file() throws Exception {
             // given
             var embeddingModel = GoogleAiGeminiBatchEmbeddingModel.builder()
                     .apiKey(GOOGLE_AI_GEMINI_API_KEY)
@@ -146,7 +146,7 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
 
             var tempFile = createTempFile("gemini-it-test", ".jsonl");
             GeminiFiles.GeminiFile uploadedFile;
-            BatchName batchName;
+            BatchId batchId;
 
             // 1. Write batch requests to local temp file (Integration of writeBatchToFile)
             var requests = List.of(
@@ -157,23 +157,23 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
                 embeddingModel.writeBatchToFile(writer, requests);
             }
 
-            // 2. Upload the file to Google AI (Prerequisite for createBatchFromFile)
+            // 2. Upload the file to Google AI (Prerequisite for submit)
             uploadedFile = filesClient.uploadFile(tempFile, "IT Batch File");
             System.out.println("Got: " + uploadedFile);
             assertThat(uploadedFile.state()).isEqualTo("ACTIVE");
 
-            // 3. Create batch from the uploaded file (Integration of createBatchFromFile)
-            var response = embeddingModel.createBatchFromFile("IT File Batch", uploadedFile);
+            // 3. Create batch from the uploaded file (Integration of submit)
+            var response = embeddingModel.submit("IT File Batch", uploadedFile);
 
             // then
-            assertThat(response.isIncomplete()).isTrue();
+            assertThat(response.isInProgress()).isTrue();
             assertThat(response.state()).isEqualTo(PENDING);
-            batchName = response.batchName();
-            assertThat(batchName.value()).startsWith("batches/");
+            batchId = response.batchId();
+            assertThat(batchId.value()).startsWith("batches/");
         }
 
         @Test
-        void should_fail_to_create_batch_from_non_existent_file() {
+        void should_fail_to_submit_from_non_existent_file() {
             // given
             var embeddingModel = GoogleAiGeminiBatchEmbeddingModel.builder()
                     .apiKey(GOOGLE_AI_GEMINI_API_KEY)
@@ -193,7 +193,7 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
                     "ACTIVE");
 
             // when & then
-            assertThatThrownBy(() -> embeddingModel.createBatchFromFile("Bad Batch", nonExistentFile))
+            assertThatThrownBy(() -> embeddingModel.submit("Bad Batch", nonExistentFile))
                     .isInstanceOf(HttpException.class)
                     .hasMessageContaining("Requested entity was not found");
         }
@@ -215,14 +215,14 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
             var displayName = "Test Batch - To Cancel";
             var priority = 1L;
             var textSegments = List.of(TextSegment.from("Text to embed 1"), TextSegment.from("Text to embed 2"));
-            var response = subject.createBatch(displayName, priority, textSegments);
+            var response = subject.submit(GeminiBatchRequest.from(textSegments, displayName, priority));
 
             // when
-            subject.cancelJob(response.batchName());
+            subject.cancel(response.batchId());
 
             // then
-            var retrieveResponse = subject.retrieveResults(response.batchName());
-            assertThat(retrieveResponse.isError()).isTrue();
+            var retrieveResponse = subject.retrieve(response.batchId());
+            assertThat(retrieveResponse.hasFailed()).isTrue();
             assertThat(retrieveResponse.state()).isIn(CANCELLED, FAILED);
         }
 
@@ -237,8 +237,8 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
                     .build();
 
             // when & then
-            var batchName = new BatchName("batches/test-batch");
-            assertThatThrownBy(() -> subject.cancelJob(batchName))
+            var batchName = new BatchId("batches/test-batch");
+            assertThatThrownBy(() -> subject.cancel(batchName))
                     .isInstanceOf(HttpException.class)
                     .hasMessageContaining("\"message\": \"Could not parse the batch name\"");
         }
@@ -260,16 +260,15 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
             var displayName = "Test Batch - To Delete";
             var priority = 1L;
             var textSegments = List.of(TextSegment.from("Text to embed 1"), TextSegment.from("Text to embed 2"));
-            var response = subject.createBatch(displayName, priority, textSegments);
+            var response = subject.submit(GeminiBatchRequest.from(textSegments, displayName, priority));
 
             // when
-            subject.deleteBatchJob(response.batchName());
+            subject.deleteBatchJob(response.batchId());
 
             // then - no longer exists
-            var list = subject.listJobs(null, null);
-            var batchNames =
-                    list.batches().stream().map(BatchResponse::batchName).toList();
-            assertThat(batchNames).doesNotContain(response.batchName());
+            var list = subject.list(null, null);
+            var batchNames = list.batches().stream().map(BatchResponse::batchId).toList();
+            assertThat(batchNames).doesNotContain(response.batchId());
         }
 
         @Test
@@ -283,7 +282,7 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
                     .build();
 
             // when & then
-            var batchName = new BatchName("batches/test-batch");
+            var batchName = new BatchId("batches/test-batch");
             assertThatThrownBy(() -> subject.deleteBatchJob(batchName))
                     .isInstanceOf(HttpException.class)
                     .hasMessageContaining("\"message\": \"Could not parse the batch name\"");
@@ -306,15 +305,15 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
             var displayName = "Test Batch - To List";
             var priority = 1L;
             var textSegments = List.of(TextSegment.from("Text to embed 1"), TextSegment.from("Text to embed 2"));
-            var createResponse = subject.createBatch(displayName, priority, textSegments);
+            var response = subject.submit(GeminiBatchRequest.from(textSegments, displayName, priority));
 
             // when
-            var list = subject.listJobs(null, null);
+            var list = subject.list(null, null);
             var batches = list.batches();
 
             // then
             assertThat(batches).hasSizeGreaterThan(0);
-            assertThat(batches.get(0).batchName()).isEqualTo(createResponse.batchName());
+            assertThat(batches.get(0).batchId()).isEqualTo(response.batchId());
         }
 
         @Test
@@ -330,14 +329,14 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
             var displayName = "Test Batch - Pagination ";
             var priority = 1L;
             var textSegments = List.of(TextSegment.from("Text to embed 1"), TextSegment.from("Text to embed 2"));
-            subject.createBatch(displayName + "1", priority, textSegments);
-            subject.createBatch(displayName + "2", priority, textSegments);
+            subject.submit(GeminiBatchRequest.from(textSegments, displayName + "1", priority));
+            subject.submit(GeminiBatchRequest.from(textSegments, displayName + "2", priority));
 
             // when
-            var list = subject.listJobs(1, null);
+            var list = subject.list(1, null);
             assertThat(list.batches()).hasSize(1);
 
-            var secondList = subject.listJobs(1, list.nextPageToken());
+            var secondList = subject.list(1, list.nextPageToken());
             assertThat(secondList.batches()).hasSize(1);
         }
 
@@ -352,7 +351,7 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
                     .build();
 
             // when
-            var list = subject.listJobs(5, null);
+            var list = subject.list(5, null);
 
             // then
             assertThat(list.batches()).hasSizeLessThanOrEqualTo(5);
@@ -375,14 +374,14 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
             var displayName = "Test Batch - Retrieve Status";
             var priority = 1L;
             var textSegments = List.of(TextSegment.from("Text to embed 1"), TextSegment.from("Text to embed 2"));
-            var createResponse = subject.createBatch(displayName, priority, textSegments);
+            var response = subject.submit(GeminiBatchRequest.from(textSegments, displayName, priority));
 
             // when
-            var retrieveResponse = subject.retrieveResults(createResponse.batchName());
+            var retrieveResponse = subject.retrieve(response.batchId());
 
             // then
-            assertThat(retrieveResponse.isIncomplete()).isTrue();
-            assertThat(retrieveResponse.batchName()).isEqualTo(createResponse.batchName());
+            assertThat(retrieveResponse.isInProgress()).isTrue();
+            assertThat(retrieveResponse.batchId()).isEqualTo(response.batchId());
         }
     }
 

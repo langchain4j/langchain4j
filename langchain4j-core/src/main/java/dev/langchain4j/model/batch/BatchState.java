@@ -3,7 +3,7 @@ package dev.langchain4j.model.batch;
 /**
  * Represents the possible states of a batch job.
  */
-public enum BatchJobState {
+public enum BatchState {
     PENDING,
     RUNNING,
     SUCCEEDED,

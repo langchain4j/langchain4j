@@ -8,11 +8,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.http.client.HttpClientBuilder;
-import dev.langchain4j.model.batch.BatchImageModel;
-import dev.langchain4j.model.batch.BatchList;
-import dev.langchain4j.model.batch.BatchName;
-import dev.langchain4j.model.batch.BatchResponse;
-import dev.langchain4j.model.batch.ExtractedBatchResults;
+import dev.langchain4j.model.batch.*;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateResponse;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchFileRequest;
 import dev.langchain4j.model.googleai.GeminiContent.GeminiPart;
@@ -20,6 +16,7 @@ import dev.langchain4j.model.googleai.GeminiFiles.GeminiFile;
 import dev.langchain4j.model.googleai.GeminiGenerationConfig.GeminiImageConfig;
 import dev.langchain4j.model.googleai.GoogleAiGeminiImageModel.GeminiImageGenerationException;
 import dev.langchain4j.model.googleai.jsonl.JsonLinesWriter;
+import dev.langchain4j.model.image.BatchImageModel;
 import dev.langchain4j.model.output.Response;
 import java.io.IOException;
 import java.time.Duration;
@@ -47,8 +44,8 @@ import org.slf4j.Logger;
  *
  * <h2>Workflow</h2>
  * <ol>
- *   <li>Create a batch using {@link #submit(List)} or {@link #createBatchFromFile}</li>
- *   <li>Poll for completion using {@link #retrieveResults}</li>
+ *   <li>Create a batch using {@link BatchImageModel#submit(BatchRequest)} or {@link #submit}</li>
+ *   <li>Poll for completion using {@link #retrieve}</li>
  *   <li>Process the generated images from the successful {@link BatchResponse}</li>
  *   <li>Optionally cancel or delete the batch job</li>
  * </ol>
@@ -145,36 +142,22 @@ public final class GoogleAiGeminiBatchImageModel implements BatchImageModel {
      *
      * <p>Creates and enqueues a batch of image generation requests using default display name and priority.</p>
      *
-     * @param prompts the list of text prompts describing images to generate
+     * @param request the list of text prompts describing images to generate
      * @return a {@link BatchResponse} representing the initial state of the batch operation
      */
     @Override
-    public BatchResponse<Response<Image>> submit(List<String> prompts) {
-        return createBatch(null, null, prompts);
-    }
+    public BatchResponse<Response<Image>> submit(BatchRequest<String> request) {
+        if (request instanceof GeminiBatchRequest<String> batchRequest) {
+            return batchProcessor.createBatch(
+                    batchRequest.displayName(),
+                    batchRequest.priority(),
+                    batchRequest.requests(),
+                    modelName,
+                    BATCH_GENERATE_CONTENT);
 
-    /**
-     * Creates and enqueues a batch of image generation requests for asynchronous processing.
-     *
-     * <p>This method submits multiple image generation prompts as a single batch operation.
-     * The batch will be processed asynchronously, and the initial responses will typically be
-     * in an incomplete state.</p>
-     *
-     * <p>Batch processing offers a 50% cost reduction compared to real-time requests and has
-     * a 24-hour turnaround SLO, making it ideal for large-scale, non-urgent tasks.</p>
-     *
-     * <p><strong>Note:</strong> The inline API allows for a total request size of 20MB or under.
-     * For larger batches, use {@link #createBatchFromFile}.</p>
-     *
-     * @param displayName a user-defined name for the batch, used for identification; may be {@code null}
-     * @param priority    optional priority for the batch; batches with higher priority values
-     *                    are processed before those with lower values; negative values are allowed;
-     *                    defaults to 0 if {@code null}
-     * @return a {@link BatchResponse} representing the initial state of the batch operation
-     */
-    public BatchResponse<Response<@NonNull Image>> createBatch(
-            @Nullable String displayName, @Nullable Long priority, List<String> prompts) {
-        return batchProcessor.createBatch(displayName, priority, prompts, modelName, BATCH_GENERATE_CONTENT);
+        } else {
+            return batchProcessor.createBatch(null, null, request.requests(), modelName, BATCH_GENERATE_CONTENT);
+        }
     }
 
     /**
@@ -191,7 +174,7 @@ public final class GoogleAiGeminiBatchImageModel implements BatchImageModel {
      * @param displayName a user-defined name for the batch, used for identification
      * @param file        the GeminiFile object representing the uploaded file containing batch requests
      */
-    public BatchResponse<Response<@NonNull Image>> createBatchFromFile(String displayName, GeminiFile file) {
+    public BatchResponse<Response<@NonNull Image>> submit(String displayName, GeminiFile file) {
         return batchProcessor.createBatchFromFile(displayName, file, modelName, BATCH_GENERATE_CONTENT);
     }
 
@@ -201,7 +184,7 @@ public final class GoogleAiGeminiBatchImageModel implements BatchImageModel {
      * <p>This method serializes image generation prompts into JSONL (JSON Lines) format, where
      * each line contains a single request wrapped in a {@link BatchFileRequest} with a unique key.
      * The resulting file can be uploaded using the Gemini Files API and then used to create a
-     * batch job via {@link #createBatchFromFile}.</p>
+     * batch job via {@link #submit}.</p>
      *
      * <p><strong>Example usage:</strong></p>
      * <pre>{@code
@@ -219,7 +202,7 @@ public final class GoogleAiGeminiBatchImageModel implements BatchImageModel {
      * @param requests an iterable collection of BatchFileRequest objects containing
      *                 prompt strings, each with a unique key identifier
      * @throws IOException if an I/O error occurs while writing to the writer
-     * @see #createBatchFromFile
+     * @see #submit
      * @see JsonLinesWriter
      */
     public void writeBatchToFile(JsonLinesWriter writer, Iterable<BatchFileRequest<String>> requests)
@@ -236,11 +219,11 @@ public final class GoogleAiGeminiBatchImageModel implements BatchImageModel {
      * <p>Polls the Gemini API to get the latest state of a previously created batch.
      * Clients should poll this method at intervals to check the operation status until completion.</p>
      *
-     * @param name the batch name obtained from {@link #submit(List)} or {@link #createBatchFromFile}
+     * @param name the batch name obtained from {@link BatchImageModel#submit(BatchRequest)} or {@link #submit}
      * @return a {@link BatchResponse} representing the current state of the batch operation
      */
     @Override
-    public BatchResponse<Response<@NonNull Image>> retrieveResults(BatchName name) {
+    public BatchResponse<Response<@NonNull Image>> retrieve(BatchId name) {
         return batchProcessor.retrieveBatchResults(name);
     }
 
@@ -255,7 +238,7 @@ public final class GoogleAiGeminiBatchImageModel implements BatchImageModel {
      *                                                 (e.g., already completed, already cancelled, or does not exist)
      */
     @Override
-    public void cancelJob(BatchName name) {
+    public void cancel(BatchId name) {
         batchProcessor.cancelBatchJob(name);
     }
 
@@ -263,12 +246,12 @@ public final class GoogleAiGeminiBatchImageModel implements BatchImageModel {
      * Deletes a batch job from the system.
      *
      * <p>This removes the batch job record but does not cancel it if still running.
-     * Use {@link #cancelJob} to cancel a running batch before deletion.</p>
+     * Use {@link #cancel} to cancel a running batch before deletion.</p>
      *
      * @param name the batch name to delete
      * @throws RuntimeException if the batch job cannot be deleted or does not exist
      */
-    public void deleteBatchJob(BatchName name) {
+    public void deleteBatchJob(BatchId name) {
         batchProcessor.deleteBatchJob(name);
     }
 
@@ -276,12 +259,12 @@ public final class GoogleAiGeminiBatchImageModel implements BatchImageModel {
      * {@inheritDoc}
      *
      * @param pageSize  the maximum number of batch jobs to return; if {@code null}, uses server default
-     * @param pageToken token for retrieving a specific page from {@link BatchList#nextPageToken()};
+     * @param pageToken token for retrieving a specific page from {@link BatchPage#nextPageToken()};
      *                  if {@code null}, returns the first page
-     * @return a {@link BatchList} containing batch responses and pagination information
+     * @return a {@link BatchPage} containing batch responses and pagination information
      */
     @Override
-    public BatchList<Response<@NonNull Image>> listJobs(@Nullable Integer pageSize, @Nullable String pageToken) {
+    public BatchPage<Response<@NonNull Image>> list(@Nullable Integer pageSize, @Nullable String pageToken) {
         return batchProcessor.listBatchJobs(pageSize, pageToken);
     }
 
@@ -500,14 +483,14 @@ public final class GoogleAiGeminiBatchImageModel implements BatchImageModel {
         }
 
         @Override
-        public ExtractedBatchResults<Response<@NonNull Image>> extractResults(
+        public GeminiBatchProcessor.ExtractedBatchResults<Response<@NonNull Image>> extractResults(
                 @Nullable BatchCreateResponse<GeminiGenerateContentResponse> response) {
             if (response == null || response.inlinedResponses() == null) {
-                return new ExtractedBatchResults<>(List.of(), List.of());
+                return new GeminiBatchProcessor.ExtractedBatchResults<>(List.of(), List.of());
             }
 
             List<Response<@NonNull Image>> responses = new ArrayList<>();
-            List<ExtractedBatchResults.Status> errors = new ArrayList<>();
+            List<BatchError> errors = new ArrayList<>();
 
             for (Object wrapper : response.inlinedResponses().inlinedResponses()) {
                 var typed = Json.convertValue(wrapper, inlinedResponseWrapperType);
@@ -521,7 +504,7 @@ public final class GoogleAiGeminiBatchImageModel implements BatchImageModel {
                 }
             }
 
-            return new ExtractedBatchResults<>(responses, errors);
+            return new GeminiBatchProcessor.ExtractedBatchResults<>(responses, errors);
         }
 
         private Response<@NonNull Image> extractImage(GeminiGenerateContentResponse geminiResponse) {

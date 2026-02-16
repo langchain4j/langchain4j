@@ -1,8 +1,8 @@
 package dev.langchain4j.model.googleai;
 
-import static dev.langchain4j.model.batch.BatchJobState.CANCELLED;
-import static dev.langchain4j.model.batch.BatchJobState.FAILED;
-import static dev.langchain4j.model.batch.BatchJobState.PENDING;
+import static dev.langchain4j.model.batch.BatchState.CANCELLED;
+import static dev.langchain4j.model.batch.BatchState.FAILED;
+import static dev.langchain4j.model.batch.BatchState.PENDING;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
@@ -17,7 +17,7 @@ class GoogleAiGeminiBatchImageModelIT {
     private static final String MODEL_NAME = "gemini-2.5-flash-image";
 
     @Test
-    void should_create_batch_with_valid_image_requests() {
+    void should_submit_with_valid_image_requests() {
         // given
         var subject = GoogleAiGeminiBatchImageModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
@@ -30,15 +30,15 @@ class GoogleAiGeminiBatchImageModelIT {
         var prompts = List.of("A simple red circle on white background", "A simple blue square on white background");
 
         // when
-        var response = subject.createBatch(displayName, priority, prompts);
+        var response = subject.submit(GeminiBatchRequest.from(prompts, displayName, priority));
 
         // then
-        assertThat(response.isIncomplete()).isTrue();
-        assertThat(response.batchName().value()).startsWith("batches/");
+        assertThat(response.isInProgress()).isTrue();
+        assertThat(response.batchId().value()).startsWith("batches/");
         assertThat(response.state()).isEqualTo(PENDING);
 
         // cleanup
-        subject.cancelJob(response.batchName());
+        subject.cancel(response.batchId());
     }
 
     @Test
@@ -51,14 +51,14 @@ class GoogleAiGeminiBatchImageModelIT {
                 .build();
 
         var prompts = List.of("A green triangle");
-        var createResponse = subject.createBatch("Cancel Test", null, prompts);
+        var response = subject.submit(GeminiBatchRequest.from(prompts, "Cancel test"));
 
         // when
-        subject.cancelJob(createResponse.batchName());
+        subject.cancel(response.batchId());
 
         // then
-        var retrieveResponse = subject.retrieveResults(createResponse.batchName());
-        assertThat(retrieveResponse.isError()).isTrue();
+        var retrieveResponse = subject.retrieve(response.batchId());
+        assertThat(retrieveResponse.hasFailed()).isTrue();
         assertThat(retrieveResponse.state()).isIn(CANCELLED, FAILED);
     }
 

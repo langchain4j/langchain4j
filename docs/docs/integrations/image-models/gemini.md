@@ -227,12 +227,12 @@ List<String> prompts = List.of(
 
 // Submit batch
 BatchResponse<?> response = batchModel.createBatchInline(prompts, "image-batch");
-BatchName batchName = getBatchName(response);
+BatchName batchId = getBatchName(response);
 
 // Poll for completion
 do {
     Thread.sleep(10000);
-    response = batchModel.retrieveBatchResults(batchName);
+    response = batchModel.retrieveBatchResults(batchId);
 } while (response instanceof BatchIncomplete);
 
 // Process results
@@ -244,7 +244,7 @@ if (response instanceof BatchSuccess<?> success) {
 }
 
 // Clean up
-batchModel.deleteBatchJob(batchName);
+batchModel.deleteBatchJob(batchId);
 ```
 
 ## Limitations
