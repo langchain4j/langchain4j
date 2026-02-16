@@ -165,6 +165,8 @@
                                         <exclude>dev.langchain4j.model.chat.request.json</exclude>
                                         <exclude>dev.langchain4j.model.chat.response</exclude>
                                         <exclude>dev.langchain4j.model.listener</exclude>
+                                        <exclude>dev.langchain4j.model.moderation</exclude>
+                                        <exclude>dev.langchain4j.model.moderation.listener</exclude>
                                         <exclude>dev.langchain4j.spi</exclude>
                                         <exclude>dev.langchain4j.store.embedding</exclude>
                                         <exclude>dev.langchain4j.store.embedding.filter</exclude>
