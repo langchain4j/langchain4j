@@ -175,5 +175,5 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
      * @param responses the list of successful responses from the batch operation
      * @param errors    the list of errors that occurred for individual requests in the batch
      */
-    public record ExtractedBatchResults<T>(List<T> responses, List<BatchError> errors) {}
+    record ExtractedBatchResults<T>(List<T> responses, List<BatchError> errors) {}
 }
