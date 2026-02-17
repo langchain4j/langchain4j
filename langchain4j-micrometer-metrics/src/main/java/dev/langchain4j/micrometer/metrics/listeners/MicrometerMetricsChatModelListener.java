@@ -91,7 +91,7 @@ public class MicrometerMetricsChatModelListener implements ChatModelListener {
                 .tag(OTelGenAiAttributes.REQUEST_MODEL.value(), getRequestModelName(responseContext))
                 .tag(OTelGenAiAttributes.RESPONSE_MODEL.value(), getResponseModelName(responseContext))
                 .tag(OTelGenAiAttributes.TOKEN_TYPE.value(), tokenType.value())
-                .description(String.format("Measures %s tokens used", tokenType.value()))
+                .description("Measures token usage")
                 .publishPercentileHistogram()
                 .minimumExpectedValue(1.0)
                 .maximumExpectedValue(67108864.0)
