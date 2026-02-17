@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.mcp.client.logging.McpLoggers;
 import java.io.BufferedReader;
 import java.io.Closeable;
 import java.io.IOException;
@@ -20,7 +21,6 @@ public class JsonRpcIoHandler implements Runnable, Closeable {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Logger log = LoggerFactory.getLogger(JsonRpcIoHandler.class);
-    private static final Logger DEFAULT_TRAFFIC_LOG = LoggerFactory.getLogger("MCP");
 
     private final InputStream input;
     private final PrintStream out;
@@ -44,7 +44,7 @@ public class JsonRpcIoHandler implements Runnable, Closeable {
         this.logEvents = logEvents;
         this.messageHandler = messageHandler;
         this.out = new PrintStream(output, true);
-        this.trafficLog = getOrDefault(logger, DEFAULT_TRAFFIC_LOG);
+        this.trafficLog = getOrDefault(logger, McpLoggers.traffic());
     }
 
     @Override

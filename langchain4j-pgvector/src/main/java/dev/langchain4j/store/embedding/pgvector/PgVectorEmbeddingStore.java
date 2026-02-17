@@ -76,6 +76,12 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * Embeddings table name
      */
     protected final String table;
+
+    /**
+     * Flag to do not execute the {@code CREATE VECTOR EXTENSION} when retrieving a PGVector connection
+     */
+    private final boolean skipCreateVectorExtension;
+
     /**
      * Metadata handler
      */
@@ -124,22 +130,20 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             SearchMode searchMode,
             String textSearchConfig,
             Integer rrfK) {
-        this.datasource = ensureNotNull(datasource, "datasource");
-        this.table = ensureNotBlank(table, "table");
-        MetadataStorageConfig config =
-                getOrDefault(metadataStorageConfig, DefaultMetadataStorageConfig.defaultConfig());
-        this.metadataHandler = MetadataHandlerFactory.get(config);
-        useIndex = getOrDefault(useIndex, false);
-        createTable = getOrDefault(createTable, true);
-        dropTableFirst = getOrDefault(dropTableFirst, false);
 
-        this.searchMode = getOrDefault(searchMode, SearchMode.VECTOR);
-        this.textSearchConfig = getOrDefault(textSearchConfig, DEFAULT_TEXT_SEARCH_CONFIG);
-        this.rrfK = ensureGreaterThanZero(getOrDefault(rrfK, DEFAULT_RRF_K), "rrfK");
-
-        if (useIndex || createTable || dropTableFirst) {
-            initTable(dropTableFirst, createTable, useIndex, dimension, indexListSize);
-        }
+        this(new DatasourceBuilder()
+                .datasource(datasource)
+                .table(table)
+                .dimension(dimension)
+                .useIndex(useIndex)
+                .indexListSize(indexListSize)
+                .createTable(createTable)
+                .dropTableFirst(dropTableFirst)
+                .skipCreateVectorExtension(null)
+                .metadataStorageConfig(metadataStorageConfig)
+                .searchMode(searchMode)
+                .textSearchConfig(textSearchConfig)
+                .rrfK(rrfK));
     }
 
     /**
@@ -221,7 +225,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     /**
      * New constructor that takes the builder itself.
-     * This is the entry point for enhanced configuration (searchMode, textSearchConfig, rrfK).
+     * This is the entry point for enhanced configuration (searchMode, textSearchConfig, rrfK and skipCreateVectorExtension).
      *
      * @param builder The builder containing all configuration
      */
@@ -240,10 +244,37 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                 builder.rrfK);
     }
 
+    /**
+     * New constructor that takes the DatasourceBuilder.
+     * This is the entry point for enhanced configuration (searchMode, textSearchConfig, rrfK and skipCreateVectorExtension).
+     *
+     * @param builder The builder containing all configuration
+     */
+    protected PgVectorEmbeddingStore(DatasourceBuilder builder) {
+        super();
+        this.datasource = ensureNotNull(builder.datasource, "datasource");
+        this.table = ensureNotBlank(builder.table, "table");
+        MetadataStorageConfig config =
+                getOrDefault(builder.metadataStorageConfig, DefaultMetadataStorageConfig.defaultConfig());
+        this.metadataHandler = MetadataHandlerFactory.get(config);
+        boolean useIndex = getOrDefault(builder.useIndex, false);
+        boolean createTable = getOrDefault(builder.createTable, true);
+        boolean dropTableFirst = getOrDefault(builder.dropTableFirst, false);
+        this.skipCreateVectorExtension = getOrDefault(builder.skipCreateVectorExtension, false);
+        this.searchMode = getOrDefault(builder.searchMode, SearchMode.VECTOR);
+        this.textSearchConfig = getOrDefault(builder.textSearchConfig, DEFAULT_TEXT_SEARCH_CONFIG);
+        this.rrfK = ensureGreaterThanZero(getOrDefault(builder.rrfK, DEFAULT_RRF_K), "rrfK");
+
+        if (useIndex || createTable || dropTableFirst) {
+            initTable(dropTableFirst, createTable, useIndex, builder.dimension, builder.indexListSize);
+        }
+    }
+
     public PgVectorEmbeddingStore() {
         this.datasource = null;
         this.table = null;
         this.metadataHandler = null;
+        this.skipCreateVectorExtension = false;
         this.searchMode = SearchMode.VECTOR;
         this.textSearchConfig = DEFAULT_TEXT_SEARCH_CONFIG;
         this.rrfK = DEFAULT_RRF_K;
@@ -657,8 +688,10 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         // Find a way to do the following code in connection initialization.
         // Here we assume the datasource could handle a connection pool
         // and we should add the vector type on each connection
-        try (Statement statement = connection.createStatement()) {
-            statement.executeUpdate("CREATE EXTENSION IF NOT EXISTS vector");
+        if (!skipCreateVectorExtension) {
+            try (Statement statement = connection.createStatement()) {
+                statement.executeUpdate("CREATE EXTENSION IF NOT EXISTS vector");
+            }
         }
         PGvector.addVectorType(connection);
         return connection;
@@ -672,6 +705,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         private Integer indexListSize;
         private Boolean createTable;
         private Boolean dropTableFirst;
+        private Boolean skipCreateVectorExtension;
         private MetadataStorageConfig metadataStorageConfig;
         private SearchMode searchMode;
         private String textSearchConfig;
@@ -714,6 +748,11 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        public DatasourceBuilder skipCreateVectorExtension(Boolean skipCreateVectorExtension) {
+            this.skipCreateVectorExtension = skipCreateVectorExtension;
+            return this;
+        }
+
         public DatasourceBuilder metadataStorageConfig(MetadataStorageConfig metadataStorageConfig) {
             this.metadataStorageConfig = metadataStorageConfig;
             return this;
@@ -735,26 +774,16 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         public PgVectorEmbeddingStore build() {
-            return new PgVectorEmbeddingStore(
-                    this.datasource,
-                    this.table,
-                    this.dimension,
-                    this.useIndex,
-                    this.indexListSize,
-                    this.createTable,
-                    this.dropTableFirst,
-                    this.metadataStorageConfig,
-                    this.searchMode,
-                    this.textSearchConfig,
-                    this.rrfK);
+            return new PgVectorEmbeddingStore(this);
         }
 
         public String toString() {
             return "PgVectorEmbeddingStore.DatasourceBuilder(datasource=" + this.datasource + ", table=" + this.table
                     + ", dimension=" + this.dimension + ", useIndex=" + this.useIndex + ", indexListSize="
                     + this.indexListSize + ", createTable=" + this.createTable + ", dropTableFirst="
-                    + this.dropTableFirst + ", metadataStorageConfig=" + this.metadataStorageConfig + ", searchMode="
-                    + this.searchMode + ", textSearchConfig=" + this.textSearchConfig + ", rrfK=" + this.rrfK + ")";
+                    + this.dropTableFirst + ", skipCreateVectorExtension=" + this.skipCreateVectorExtension
+                    + ", metadataStorageConfig=" + this.metadataStorageConfig + ", searchMode=" + this.searchMode
+                    + ", textSearchConfig=" + this.textSearchConfig + ", rrfK=" + this.rrfK + ")";
         }
     }
 
@@ -770,6 +799,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         private Integer indexListSize;
         private Boolean createTable;
         private Boolean dropTableFirst;
+        private Boolean skipCreateVectorExtension;
         private MetadataStorageConfig metadataStorageConfig;
         private SearchMode searchMode;
         private String textSearchConfig;
@@ -827,6 +857,11 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        public PgVectorEmbeddingStoreBuilder skipCreateVectorExtension(Boolean skipCreateVectorExtension) {
+            this.skipCreateVectorExtension = skipCreateVectorExtension;
+            return this;
+        }
+
         public PgVectorEmbeddingStoreBuilder dropTableFirst(Boolean dropTableFirst) {
             this.dropTableFirst = dropTableFirst;
             return this;
@@ -861,8 +896,9 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                     + ", user=" + this.user + ", password=" + this.password + ", database=" + this.database + ", table="
                     + this.table + ", dimension=" + this.dimension + ", useIndex=" + this.useIndex + ", indexListSize="
                     + this.indexListSize + ", createTable=" + this.createTable + ", dropTableFirst="
-                    + this.dropTableFirst + ", metadataStorageConfig=" + this.metadataStorageConfig + ", searchMode="
-                    + this.searchMode + ", textSearchConfig=" + this.textSearchConfig + ", rrfK=" + this.rrfK + ")";
+                    + this.dropTableFirst + ", skipCreateVectorExtension=" + this.skipCreateVectorExtension
+                    + ", metadataStorageConfig=" + this.metadataStorageConfig + ", searchMode=" + this.searchMode
+                    + ", textSearchConfig=" + this.textSearchConfig + ", rrfK=" + this.rrfK + ")";
         }
     }
 }

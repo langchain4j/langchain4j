@@ -16,9 +16,11 @@ import dev.langchain4j.model.mistralai.internal.api.MistralAiEmbeddingResponse;
 import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
 import dev.langchain4j.model.mistralai.spi.MistralAiEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
-import org.slf4j.Logger;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Supplier;
+import org.slf4j.Logger;
 
 /**
  * Represents a Mistral AI embedding model, such as mistral-embed.
@@ -32,6 +34,7 @@ public class MistralAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final String modelName;
     private final Integer maxRetries;
 
+    @SuppressWarnings({"unchecked"})
     public MistralAiEmbeddingModel(MistralAiEmbeddingModelBuilder builder) {
         this.client = MistralAiClient.builder()
                 .httpClientBuilder(builder.httpClientBuilder)
@@ -41,6 +44,7 @@ public class MistralAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
                 .logger(builder.logger)
+                .customHeaders(builder.customHeadersSupplier)
                 .build();
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
@@ -94,6 +98,7 @@ public class MistralAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         private Logger logger;
         private Integer maxRetries;
         private HttpClientBuilder httpClientBuilder;
+        private Supplier<Map<String, String>> customHeadersSupplier;
 
         public MistralAiEmbeddingModelBuilder() {}
 
@@ -177,6 +182,15 @@ public class MistralAiEmbeddingModel extends DimensionAwareEmbeddingModel {
          */
         public MistralAiEmbeddingModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
+
+        /**
+         * @param customHeadersSupplier a supplier of custom headers to be sent with each request
+         * @return {@code this}.
+         */
+        public MistralAiEmbeddingModelBuilder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
             return this;
         }
 

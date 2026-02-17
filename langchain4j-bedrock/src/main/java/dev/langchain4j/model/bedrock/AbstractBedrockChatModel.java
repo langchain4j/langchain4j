@@ -15,6 +15,7 @@ import static dev.langchain4j.model.bedrock.GuardrailAssessment.Policy.SENSITIVE
 import static dev.langchain4j.model.bedrock.GuardrailAssessment.Policy.TOPIC;
 import static dev.langchain4j.model.bedrock.GuardrailAssessment.Policy.WORD;
 import static dev.langchain4j.model.bedrock.Utils.extractAndValidateFormat;
+import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Objects.nonNull;
 import static software.amazon.awssdk.core.SdkBytes.fromByteArray;
@@ -1029,6 +1030,10 @@ abstract class AbstractBedrockChatModel {
         public T listeners(List<ChatModelListener> listeners) {
             this.listeners = listeners;
             return self();
+        }
+
+        public T listeners(ChatModelListener... listeners) {
+            return listeners(asList(listeners));
         }
     }
 }

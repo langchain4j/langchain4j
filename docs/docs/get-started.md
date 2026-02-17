@@ -1,7 +1,7 @@
 ---
 sidebar_position: 5
-stableVersion: 1.10.0
-betaVersion: 1.10.0-beta18
+stableVersion: 1.11.0
+betaVersion: 1.11.0-beta19
 ---
 
 # Get Started
@@ -27,7 +27,7 @@ As an example, let's import the OpenAI dependency:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.10.0</version>
+    <version>1.11.0</version>
 </dependency>
 ```
 
@@ -38,14 +38,14 @@ the following dependency:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>1.10.0</version>
+    <version>1.11.0</version>
 </dependency>
 ```
 
 - For Gradle in `build.gradle`:
 ```groovy
-implementation 'dev.langchain4j:langchain4j-open-ai:1.10.0'
-implementation 'dev.langchain4j:langchain4j:1.10.0'
+implementation 'dev.langchain4j:langchain4j-open-ai:1.11.0'
+implementation 'dev.langchain4j:langchain4j:1.11.0'
 ```
 
 <details>
@@ -57,7 +57,7 @@ implementation 'dev.langchain4j:langchain4j:1.10.0'
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-bom</artifactId>
-            <version>1.10.0</version>
+            <version>1.11.0</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -70,8 +70,8 @@ Please note that `langchain4j-bom` always contains the latest versions of all La
 :::
 
 :::note
-Please note that while the `langchain4j-bom` version is `1.10.0`,
-many of the modules still have version `1.10.0-beta18`,
+Please note that while the `langchain4j-bom` version is `1.11.0`,
+many of the modules still have version `1.11.0-beta19`,
 so there might be some breaking changes for these modules in the future.
 :::
 </details>
@@ -100,7 +100,7 @@ you can use the most recent `SNAPSHOT` dependency:
     <dependency>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j</artifactId>
-        <version>1.10.0-SNAPSHOT</version>
+        <version>1.11.0-SNAPSHOT</version>
     </dependency>
 </dependencies>
 ```

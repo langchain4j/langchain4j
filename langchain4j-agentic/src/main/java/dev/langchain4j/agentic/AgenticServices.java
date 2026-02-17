@@ -3,14 +3,13 @@ package dev.langchain4j.agentic;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.checkReturnType;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureAgent;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.invokeStatic;
-import static dev.langchain4j.agentic.internal.AgentInvoker.parameterName;
 import static dev.langchain4j.agentic.internal.AgentUtil.AGENTIC_SCOPE_ARG_NAME;
 import static dev.langchain4j.agentic.internal.AgentUtil.LOOP_COUNTER_ARG_NAME;
 import static dev.langchain4j.agentic.internal.AgentUtil.agentInvocationArguments;
 import static dev.langchain4j.agentic.internal.AgentUtil.agentToExecutor;
 import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.getAnnotatedMethodOnClass;
-import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
+import static dev.langchain4j.agentic.internal.AgentUtil.nonAiAgentInvoker;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import dev.langchain4j.agentic.agent.AgentBuilder;
@@ -36,7 +35,6 @@ import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.declarative.ConditionalAgent;
 import dev.langchain4j.agentic.declarative.ErrorHandler;
 import dev.langchain4j.agentic.declarative.ExitCondition;
-import dev.langchain4j.agentic.declarative.HumanInTheLoopResponseSupplier;
 import dev.langchain4j.agentic.declarative.LoopAgent;
 import dev.langchain4j.agentic.declarative.Output;
 import dev.langchain4j.agentic.declarative.ParallelAgent;
@@ -47,7 +45,6 @@ import dev.langchain4j.agentic.internal.A2AClientBuilder;
 import dev.langchain4j.agentic.internal.A2AService;
 import dev.langchain4j.agentic.internal.AgentExecutor;
 import dev.langchain4j.agentic.internal.AgentInvoker;
-import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;
 import dev.langchain4j.agentic.supervisor.SupervisorAgentService;
 import dev.langchain4j.agentic.supervisor.SupervisorAgentServiceImpl;
@@ -57,10 +54,6 @@ import dev.langchain4j.agentic.workflow.LoopAgentService;
 import dev.langchain4j.agentic.workflow.ParallelAgentService;
 import dev.langchain4j.agentic.workflow.SequentialAgentService;
 import dev.langchain4j.agentic.workflow.WorkflowAgentsBuilder;
-import dev.langchain4j.agentic.workflow.impl.ConditionalAgentServiceImpl;
-import dev.langchain4j.agentic.workflow.impl.LoopAgentServiceImpl;
-import dev.langchain4j.agentic.workflow.impl.ParallelAgentServiceImpl;
-import dev.langchain4j.agentic.workflow.impl.SequentialAgentServiceImpl;
 import dev.langchain4j.agentic.workflow.impl.WorkflowAgentsBuilderImpl;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
@@ -708,6 +701,10 @@ public class AgenticServices {
         return agentToExecutor(agentBuilder.build());
     }
 
+    public static AgentExecutor createBuiltInAgentExecutor(Class<?> agentServiceClass) {
+        return createBuiltInAgentExecutor(agentServiceClass, declarativeChatModel(agentServiceClass), context -> {});
+    }
+
     private static AgentExecutor createBuiltInAgentExecutor(
             Class<?> agentServiceClass,
             ChatModel chatModel,
@@ -801,25 +798,12 @@ public class AgenticServices {
 
     private static AgentExecutor createHumanInTheLoopAgent(Class<?> agentServiceClass, Method method) {
         var humanInTheLoop = method.getAnnotation(dev.langchain4j.agentic.declarative.HumanInTheLoop.class);
-        if (method.getParameterCount() != 1) {
-            throw new IllegalArgumentException("Method " + method.getName() + " annotated with @"
-                    + HumanInTheLoop.class.getSimpleName() + " must have exactly one parameter");
-        }
 
         var humanInTheLoopBuilder = humanInTheLoopBuilder()
                 .description(humanInTheLoop.description())
                 .outputKey(humanInTheLoop.outputKey())
                 .async(humanInTheLoop.async())
-                .inputKey(parameterName(method.getParameters()[0]))
-                .requestWriter(arg -> invokeStatic(method, arg));
-
-        getAnnotatedMethodOnClass(agentServiceClass, HumanInTheLoopResponseSupplier.class)
-                .ifPresentOrElse(
-                        readerMethod -> humanInTheLoopBuilder.responseReader(() -> invokeStatic(readerMethod)), () -> {
-                            throw new IllegalArgumentException("Human in the loop class " + agentServiceClass.getName()
-                                    + " must have a static method annotated with @"
-                                    + HumanInTheLoopResponseSupplier.class.getSimpleName());
-                        });
+                .responseProvider(scope -> invokeStatic(method, agentInvocationArguments(scope, method).positionalArgs()));
 
         getAnnotatedMethodOnClass(agentServiceClass, AgentListenerSupplier.class)
                 .ifPresent(listenerMethod -> {
@@ -827,7 +811,9 @@ public class AgenticServices {
                     humanInTheLoopBuilder.listener(invokeStatic(listenerMethod));
                 });
 
-        return agentToExecutor(humanInTheLoopBuilder.build());
+        String name = isNullOrBlank(humanInTheLoop.name()) ? method.getName() : humanInTheLoop.name();
+        AgentInvoker agentInvoker = nonAiAgentInvoker(method, name, humanInTheLoop.description(), humanInTheLoop.outputKey(), humanInTheLoop.async());
+        return new AgentExecutor(agentInvoker, humanInTheLoopBuilder.build());
     }
 
     private static Method nonAiAgentMethod(Class<?> agentServiceClass) {
