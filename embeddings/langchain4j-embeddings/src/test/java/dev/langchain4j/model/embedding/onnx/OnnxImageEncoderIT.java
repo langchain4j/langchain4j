@@ -214,7 +214,7 @@ class OnnxImageEncoderIT {
 
                         assertThat(clsEmbedding.vector())
                                 .as("Pre-pooled model output should be identical regardless of PoolingMode")
-                                .isNotEqualTo(meanEmbedding.vector());
+                                .isEqualTo(meanEmbedding.vector());
                     }
                 }
             }
