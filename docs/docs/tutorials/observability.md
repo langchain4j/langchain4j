@@ -413,7 +413,7 @@ observedRetriever.retrieve(Query.from("my query"));
 
 ## Observability Metrics with Micrometer
 
-The `langchain4j-micrometer-metrics` module provides a Micrometer-based metrics implementation for the `langchain4j` library. Currently, it provides metrics for chat model interactions using a `ChatModelListener` implementation that collects metrics via Micrometer's `MeterRegistry`.
+The `langchain4j-micrometer-metrics` module provides a Micrometer-based metrics implementation for the LangChain4j library. Currently, it provides metrics for `ChatModel` and `StreamingChatModel` interactions using a `ChatModelListener` implementation that collects metrics via Micrometer's `MeterRegistry`.
 
 The naming of the metrics follows the [OpenTelemetry Semantic Conventions for Generative AI Metrics](https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-metrics/). (v1.39.0)
 
@@ -443,7 +443,7 @@ The following metrics are currently collected:
 
 See more details [here](/tutorials/spring-boot-integration#observability).
 
-See more details on how to implement the ChatModelListener with Micrometer Metrics: [here](/tutorials/spring-boot-integration#Micrometer Metrics). 
+See more details on how to implement the ChatModelListener with Micrometer Metrics: [here](/tutorials/spring-boot-integration#micrometer-metrics). 
 
 ## Third-party Integrations
 
