@@ -312,45 +312,9 @@ management:
         include: metrics
 ```
 
-#### Add observability to your ChatModel
+#### Configure `MicrometerMetricsChatModelListener` bean
 
-The `MicrometerMetricsChatModelListener` collects metrics for `ChatModel` and `StreamingChatModel` interactions.
-It requires a `MeterRegistry` (provided by Micrometer).
-
-```java
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.micrometer.metrics.listeners.MicrometerMetricsChatModelListener;
-import dev.langchain4j.model.azure.AzureOpenAiChatModel;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import io.micrometer.core.instrument.MeterRegistry;
-
-import java.util.List;
-
-// Get the MeterRegistry (from Spring context or create manually)
-MeterRegistry meterRegistry = ...; // e.g., new SimpleMeterRegistry() or injected from Spring
-
-// 1. Create the listener with the MeterRegistry and AI system name
-MicrometerMetricsChatModelListener listener = 
-    new MicrometerMetricsChatModelListener(meterRegistry);
-
-// 2. Add the listener to your ChatModel
-AzureOpenAiChatModel chatModel = AzureOpenAiChatModel.builder()
-        .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-        .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-        .deploymentName(System.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"))
-        .listeners(List.of(listener))
-        .build();
-
-// 3. Use the chat model as usual - metrics are collected automatically
-ChatResponse response = chatModel.chat(ChatRequest.builder()
-        .messages(UserMessage.from("Hello!"))
-        .build());
-```
-
-##### Create the MicrometerMetricsChatModelListener as a bean
-
-In a Spring Boot application, you can create the listener as a bean and inject the `MeterRegistry`:
+In a Spring Boot application, you can define the listener as a bean and inject the `MeterRegistry`:
 
 ```java
 import dev.langchain4j.micrometer.metrics.listeners.MicrometerMetricsChatModelListener;
