@@ -333,16 +333,16 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                 statement.executeUpdate(query);
                 metadataHandler.createMetadataIndexes(statement, table);
             }
-
+            String cleanTableName = computeCleanTableName();
             if (searchMode == SearchMode.HYBRID) {
-                String ftsIndexName = table + "_text_fts_gin_index";
+                String ftsIndexName = cleanTableName + "_text_fts_gin_index";
                 query = String.format(
                         "CREATE INDEX IF NOT EXISTS %s ON %s " + "USING gin (to_tsvector('%s', coalesce(text, '')))",
                         ftsIndexName, table, textSearchConfig);
                 statement.executeUpdate(query);
             }
             if (useIndex) {
-                final String indexName = table + "_ivfflat_index";
+                final String indexName = cleanTableName + "_ivfflat_index";
                 query = String.format(
                         "CREATE INDEX IF NOT EXISTS %s ON %s " + "USING ivfflat (embedding vector_cosine_ops) "
                                 + "WITH (lists = %s)",
@@ -352,6 +352,11 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         } catch (SQLException e) {
             throw new RuntimeException(String.format("Failed to execute '%s'", query), e);
         }
+    }
+
+    private String computeCleanTableName() {
+        int lastDotIndex = table.lastIndexOf('.');
+        return lastDotIndex >= 0 ? table.substring(lastDotIndex + 1) : table;
     }
 
     /**
