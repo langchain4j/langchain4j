@@ -42,27 +42,31 @@ public class GeminiCacheManager {
             if (cachedContent != null) {
                 if (cachedContent.isExpired()) {
                     log.debug("Cached content for key '{}' is expired: {}", key, cachedContent);
-                } else if (cachedContent.isAlmostExpired()) {
-                    log.debug("Cached content for key '{}' is almost expired: {}", key, cachedContent);
-                    deleteCachedContent(cachedContent);
-                } else {
-                    if (cachedContent.isChecksumVerified()) {
-                        log.debug("Using existing cached content for key '{}': {}", key, cachedContent);
-                        return cachedContent;
-                    } else {
-                        if (cachedContent.checksumMatches(content, tools, toolConfig)) {
-                            cachedContent.setChecksumVerified(true);
-                            log.debug("Using existing cached content for key '{}' with matching checksum: {}", key, cachedContent);
-                            return cachedContent;
-                        } else {
-                            log.debug("Cached content for key '{}' has different checksum: {}", key, cachedContent);
-                            deleteCachedContent(cachedContent);
-                        }
+                } else if (cachedContent.checksumMatches(content, tools, toolConfig)) {
+                    if (cachedContent.isAlmostExpired()) {
+                        log.debug("Using existing cached content for key '{}' and extending TTL due to approaching expiration: {}", key, cachedContent);
+                        return extendTtl(cachedContent, ttl);
                     }
+                    log.debug("Using existing cached content for key '{}': {}", key, cachedContent);
+                    return cachedContent;
+                } else {
+                    log.debug("Cached content for key '{}' has different checksum, deleting: {}", key, cachedContent);
+                    deleteCachedContent(cachedContent);
                 }
             }
             return createCachedContent(key, ttl, content, tools, toolConfig, model);
         }).getId();
+    }
+
+    private CachedContentMetadata extendTtl(CachedContentMetadata cachedContent, Duration ttl) {
+        GeminiCachedContent updated = GeminiCachedContent.builder()
+                .ttl(ttl.toSeconds() + "s")
+                .build();
+        String cacheName = StringUtils.removeStart(cachedContent.getId(), "cachedContents/");
+        updated = geminiService.updateCachedContent(cacheName, updated);
+        CachedContentMetadata newMetadata = new CachedContentMetadata(updated);
+        log.debug("Extended TTL for cached content '{}': {}", newMetadata.getKey(), newMetadata);
+        return newMetadata;
     }
 
     private void deleteCachedContent(CachedContentMetadata cachedContent) {
@@ -90,7 +94,6 @@ public class GeminiCacheManager {
         cachedContent = geminiService.createCachedContent(model, cachedContent);
 
         CachedContentMetadata newCachedContent = new CachedContentMetadata(cachedContent);
-        newCachedContent.setChecksumVerified(true);
         log.debug("Created new cached content for key '{}': {}", key, cachedContent);
         return newCachedContent;
     }
@@ -115,9 +118,6 @@ public class GeminiCacheManager {
         String key;
         String checksum;
         Instant expirationTime;
-        GeminiCachedContent cachedContent;
-
-        boolean checksumVerified;
 
         CachedContentMetadata(GeminiCachedContent cachedContent) {
             this.id = cachedContent.name();
@@ -125,8 +125,6 @@ public class GeminiCacheManager {
             this.key = parts[0];
             this.checksum = parts.length == 2 ? parts[1] : "undefined";
             this.expirationTime = Instant.parse(cachedContent.expireTime());
-            this.cachedContent = cachedContent;
-            this.checksumVerified = false;
         }
 
         public String getId() {
@@ -135,18 +133,6 @@ public class GeminiCacheManager {
 
         public String getKey() {
             return key;
-        }
-
-        public String getChecksum() {
-            return checksum;
-        }
-
-        public boolean isChecksumVerified() {
-            return checksumVerified;
-        }
-
-        public void setChecksumVerified(boolean checksumVerified) {
-            this.checksumVerified = checksumVerified;
         }
 
         public Instant getExpirationTime() {
@@ -172,7 +158,6 @@ public class GeminiCacheManager {
                     ", key='" + key + '\'' +
                     ", checksum='" + checksum + '\'' +
                     ", expirationTime=" + expirationTime +
-                    ", checksumVerified=" + checksumVerified +
                     '}';
         }
 
