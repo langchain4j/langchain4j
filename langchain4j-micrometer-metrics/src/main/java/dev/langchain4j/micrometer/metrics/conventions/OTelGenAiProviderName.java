@@ -23,7 +23,7 @@ public enum OTelGenAiProviderName {
     OLLAMA(ModelProvider.OLLAMA, "ollama"),
     OPEN_AI(ModelProvider.OPEN_AI, "openai"),
     WATSONX(ModelProvider.WATSONX, "ibm.watsonx.ai"),
-    OTHER(ModelProvider.OTHER, "other");
+    OTHER(ModelProvider.OTHER, "unknown");
 
     private final ModelProvider modelProvider;
     private final String value;

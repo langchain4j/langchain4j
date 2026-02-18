@@ -273,16 +273,17 @@ For Maven:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-micrometer-metrics</artifactId>
-    <version>${project.version}</version>
+    <version>1.12.0-beta20</version>
 </dependency>
 ```
 For Gradle:
 ```gradle
-implementation 'dev.langchain4j:langchain4j-micrometer-metrics:${project.version}'
+implementation 'dev.langchain4j:langchain4j-micrometer-metrics:1.12.0-beta20'
 ```
 
 #### Micrometer (Actuator) Configuration
-You should also have the necessary Actuator dependency in your project. For example, if you are using Spring Boot, you can add the following dependencies to your `pom.xml`:
+You should also have the necessary Actuator dependency in your project.
+For example, if you are using Spring Boot, you can add the following dependencies to your `pom.xml`:
 
 For Maven:
 ```xml
@@ -313,7 +314,8 @@ management:
 
 #### Add observability to your ChatModel
 
-The `MicrometerMetricsChatModelListener` collects metrics for chat model interactions. It requires a `MeterRegistry` (provided by Micrometer) and an AI system name that identifies the provider.
+The `MicrometerMetricsChatModelListener` collects metrics for `ChatModel` and `StreamingChatModel` interactions.
+It requires a `MeterRegistry` (provided by Micrometer).
 
 ```java
 import dev.langchain4j.data.message.UserMessage;

@@ -13,6 +13,8 @@ import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 /**
  * A {@link ChatModelListener} that uses a Micrometer {@link MeterRegistry} to collect metrics
  * about chat model interactions following OpenTelemetry Semantic Conventions for Generative AI.
@@ -36,22 +38,22 @@ public class MicrometerMetricsChatModelListener implements ChatModelListener {
      * @param meterRegistry the {@link MeterRegistry} to register metrics with
      */
     public MicrometerMetricsChatModelListener(MeterRegistry meterRegistry) {
-        this.meterRegistry = meterRegistry;
+        this.meterRegistry = ensureNotNull(meterRegistry, "meterRegistry");
     }
 
     @Override
-    public void onRequest(final ChatModelRequestContext requestContext) {
+    public void onRequest(ChatModelRequestContext requestContext) {
         // Nothing to do at on request
     }
 
     @Override
-    public void onResponse(final ChatModelResponseContext responseContext) {
+    public void onResponse(ChatModelResponseContext responseContext) {
         recordTokenUsageMetrics(responseContext);
     }
 
     @Override
-    public void onError(final ChatModelErrorContext errorContext) {
-        // ChatModelErrorContext does not contain the ChatModelResponseContext, therefor token usage is unavailable
+    public void onError(ChatModelErrorContext errorContext) {
+        // ChatModelErrorContext does not contain the ChatModelResponseContext, therefore token usage is unavailable
     }
 
     private String getProviderName(ChatModelResponseContext responseContext) {
