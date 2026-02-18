@@ -13,6 +13,7 @@ import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
@@ -43,7 +44,7 @@ public class MicrometerMetricsChatModelListener implements ChatModelListener {
 
     @Override
     public void onRequest(ChatModelRequestContext requestContext) {
-        // Nothing to do at on request
+        // Nothing to do on request
     }
 
     @Override
@@ -53,21 +54,7 @@ public class MicrometerMetricsChatModelListener implements ChatModelListener {
 
     @Override
     public void onError(ChatModelErrorContext errorContext) {
-        // ChatModelErrorContext does not contain the ChatModelResponseContext, therefore token usage is unavailable
-    }
-
-    private String getProviderName(ChatModelResponseContext responseContext) {
-        return OTelGenAiProviderName.fromModelProvider(responseContext.modelProvider());
-    }
-
-    private String getRequestModelName(ChatModelResponseContext responseContext) {
-        String modelName = responseContext.chatRequest().parameters().modelName();
-        return modelName != null ? modelName : "unknown";
-    }
-
-    private String getResponseModelName(ChatModelResponseContext responseContext) {
-        String modelName = responseContext.chatResponse().metadata().modelName();
-        return modelName != null ? modelName : "unknown";
+        // Nothing to do on error, ChatModelErrorContext does not contain TokenUsage
     }
 
     private void recordTokenUsageMetrics(ChatModelResponseContext responseContext) {
@@ -101,5 +88,19 @@ public class MicrometerMetricsChatModelListener implements ChatModelListener {
                         1, 4, 16, 64, 256, 1024, 4096, 16384, 65536, 262144, 1048576, 4194304, 16777216, 67108864)
                 .register(meterRegistry)
                 .record(tokenCount);
+    }
+
+    private static String getProviderName(ChatModelResponseContext responseContext) {
+        return OTelGenAiProviderName.fromModelProvider(responseContext.modelProvider());
+    }
+
+    private static String getRequestModelName(ChatModelResponseContext responseContext) {
+        String modelName = responseContext.chatRequest().parameters().modelName();
+        return getOrDefault(modelName, "unknown");
+    }
+
+    private static String getResponseModelName(ChatModelResponseContext responseContext) {
+        String modelName = responseContext.chatResponse().metadata().modelName();
+        return getOrDefault(modelName, "unknown");
     }
 }
