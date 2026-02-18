@@ -13,7 +13,7 @@
     <name>LangChain4j :: Integration :: Observation API</name>
 
     <properties>
-        <micrometer-bom.version>1.14.2</micrometer-bom.version>
+        <micrometer-bom.version>1.16.3</micrometer-bom.version>
     </properties>
 
     <dependencyManagement>
@@ -37,7 +37,25 @@
         </dependency>
         <dependency>
             <groupId>io.micrometer</groupId>
-            <artifactId>micrometer-observation</artifactId>
+            <artifactId>micrometer-core</artifactId>
+        </dependency>
+
+        <!-- For testing purposes-->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-observation-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-azure-open-ai</artifactId>
+            <version>1.12.0-SNAPSHOT</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <version>4.3.0</version>
         </dependency>
     </dependencies>
 </project>
