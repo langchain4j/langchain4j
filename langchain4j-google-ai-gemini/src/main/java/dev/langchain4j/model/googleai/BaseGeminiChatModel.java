@@ -82,7 +82,7 @@ class BaseGeminiChatModel {
         this.mediaResolutionPerPartEnabled = getOrDefault(builder.mediaResolutionPerPartEnabled, false);
         this.cachingConfig = builder.cachingConfig;
 
-        if (cachingConfig != null && cachingConfig.isCacheSystemMessages()) {
+        if (cachingConfig != null && cachingConfig.isCacheContents()) {
             if (cachingConfig.getCacheManagerProvider() != null) {
                 this.cacheManager = cachingConfig.getCacheManagerProvider().apply(geminiService);
             } else {
@@ -132,12 +132,24 @@ class BaseGeminiChatModel {
         GeminiContent systemInstruction = new GeminiContent(List.of(), GeminiRole.MODEL.toString());
         List<GeminiContent> geminiContentList =
                 fromMessageToGContent(chatRequest.messages(), systemInstruction, sendThinking, mediaResolutionPerPartEnabled, sendOriginalContentParts);
+        GeminiTool geminiTools = fromToolSepcsToGTool(
+                chatRequest.toolSpecifications(),
+                this.allowCodeExecution,
+                this.allowGoogleSearch,
+                this.allowUrlContext,
+                this.allowGoogleMaps,
+                this.retrieveGoogleMapsWidgetToken);
+        GeminiToolConfig geminiToolConfig = toToolConfig(parameters.toolChoice(), this.functionCallingConfig);
+
         String cachedContent = null;
         if (systemInstruction.parts().isEmpty()) {
             systemInstruction = null;
-        } else if (cachingConfig != null && cachingConfig.isCacheSystemMessages()) {
-            cachedContent = cacheManager.getOrCreateCached(cachingConfig.getCacheKey(), cachingConfig.getTtl(), systemInstruction, chatRequest.modelName());
+        } else if (cachingConfig != null && cachingConfig.isCacheContents()) {
+            cachedContent = cacheManager.getOrCreateCached(cachingConfig.getCacheKey(), cachingConfig.getTtl(),
+                    systemInstruction, geminiTools, geminiToolConfig, chatRequest.modelName());
             systemInstruction = null;
+            geminiTools = null;
+            geminiToolConfig = null;
         }
 
         ResponseFormat responseFormat = chatRequest.responseFormat();
@@ -177,14 +189,8 @@ class BaseGeminiChatModel {
                         .build())
                 .cachedContent(cachedContent)
                 .safetySettings(this.safetySettings)
-                .tools(fromToolSepcsToGTool(
-                        chatRequest.toolSpecifications(),
-                        this.allowCodeExecution,
-                        this.allowGoogleSearch,
-                        this.allowUrlContext,
-                        this.allowGoogleMaps,
-                        this.retrieveGoogleMapsWidgetToken))
-                .toolConfig(toToolConfig(parameters.toolChoice(), this.functionCallingConfig))
+                .tools(geminiTools)
+                .toolConfig(geminiToolConfig)
                 .build();
     }
 
