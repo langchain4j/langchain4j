@@ -332,17 +332,18 @@ public class MetricsConfig {
 }
 ```
 
-##### Viewing the Metrics
+#### View the Metrics
 
 You can view the metrics by visiting the `/actuator/metrics` endpoint of your application.
 
-For example, if you are running your application on `localhost:8080`, you can visit `http://localhost:8080/actuator/metrics` to view the metrics.
+For example, if you are running your application on `localhost:8080`,
+you can visit http://localhost:8080/actuator/metrics to view the metrics.
 
-###### Token Usage Metric
+##### Token Usage Metric
 
 View the token usage metric at:
 ```
-/actuator/metrics/gen_ai.client.token.usage
+http://localhost:8080/actuator/metrics/gen_ai.client.token.usage
 ```
 
 ##### Filtering by Token Type

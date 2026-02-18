@@ -481,7 +481,7 @@ ChatResponse response = chatModel.chat(ChatRequest.builder()
 
 See more details [here](/tutorials/spring-boot-integration#observability).
 
-See more details on how to implement the `ChatModelListener` with Micrometer Metrics: [here](/tutorials/spring-boot-integration#micrometer-metrics). 
+See more details on how to collect Micrometer Metrics in Spring Boot application [here](/tutorials/spring-boot-integration#micrometer-metrics). 
 
 ## Third-party Integrations
 
