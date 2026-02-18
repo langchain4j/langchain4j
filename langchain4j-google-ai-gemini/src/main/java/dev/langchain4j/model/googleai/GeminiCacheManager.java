@@ -36,7 +36,8 @@ public class GeminiCacheManager {
         log.debug("Loaded existing cached contents: {}", cachedContents);
     }
 
-    public String getOrCreateCached(String key, Duration ttl, GeminiContent content, String model) {
+    public String getOrCreateCached(String key, Duration ttl, GeminiContent content,
+                                    GeminiTool tools, GeminiToolConfig toolConfig, String model) {
         return cachedContents.compute(key, (__, cachedContent) -> {
             if (cachedContent != null) {
                 if (cachedContent.isExpired()) {
@@ -49,7 +50,7 @@ public class GeminiCacheManager {
                         log.debug("Using existing cached content for key '{}': {}", key, cachedContent);
                         return cachedContent;
                     } else {
-                        if (cachedContent.checksumMatches(content)) {
+                        if (cachedContent.checksumMatches(content, tools, toolConfig)) {
                             cachedContent.setChecksumVerified(true);
                             log.debug("Using existing cached content for key '{}' with matching checksum: {}", key, cachedContent);
                             return cachedContent;
@@ -60,7 +61,7 @@ public class GeminiCacheManager {
                     }
                 }
             }
-            return createCachedContent(key, ttl, content, model);
+            return createCachedContent(key, ttl, content, tools, toolConfig, model);
         }).getId();
     }
 
@@ -77,11 +78,14 @@ public class GeminiCacheManager {
         }
     }
 
-    private CachedContentMetadata createCachedContent(String key, Duration ttl, GeminiContent content, String model) {
+    private CachedContentMetadata createCachedContent(String key, Duration ttl, GeminiContent content,
+                                                      GeminiTool tools, GeminiToolConfig toolConfig, String model) {
         GeminiCachedContent cachedContent = GeminiCachedContent.builder()
                 .systemInstruction(content)
+                .tools(tools != null ? Collections.singletonList(tools) : null)
+                .toolConfig(toolConfig)
                 .ttl(ttl.toSeconds() + "s")
-                .displayName(key + ":" + getChecksum(content))
+                .displayName(key + ":" + getChecksum(content, tools, toolConfig))
                 .build();
         cachedContent = geminiService.createCachedContent(model, cachedContent);
 
@@ -91,10 +95,18 @@ public class GeminiCacheManager {
         return newCachedContent;
     }
 
-    private static String getChecksum(GeminiContent content) {
-        return DigestUtils.sha256Hex(content.parts().stream()
+    private static String getChecksum(GeminiContent content, GeminiTool tools, GeminiToolConfig toolConfig) {
+        var sb = new StringBuilder();
+        sb.append(content.parts().stream()
                 .map(GeminiContent.GeminiPart::text)
                 .collect(Collectors.joining(System.lineSeparator())));
+        if (tools != null) {
+            sb.append(System.lineSeparator()).append(Json.toJson(tools));
+        }
+        if (toolConfig != null) {
+            sb.append(System.lineSeparator()).append(Json.toJson(toolConfig));
+        }
+        return DigestUtils.sha256Hex(sb.toString());
     }
 
     private static class CachedContentMetadata {
@@ -149,8 +161,8 @@ public class GeminiCacheManager {
             return expirationTime.isBefore(Instant.now());
         }
 
-        public boolean checksumMatches(GeminiContent content) {
-            return this.checksum.equals(GeminiCacheManager.getChecksum(content));
+        public boolean checksumMatches(GeminiContent content, GeminiTool tools, GeminiToolConfig toolConfig) {
+            return this.checksum.equals(GeminiCacheManager.getChecksum(content, tools, toolConfig));
         }
 
         @Override

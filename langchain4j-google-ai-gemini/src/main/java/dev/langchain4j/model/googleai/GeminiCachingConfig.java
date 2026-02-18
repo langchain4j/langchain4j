@@ -5,17 +5,17 @@ import java.util.function.Function;
 
 public class GeminiCachingConfig {
 
-    private boolean cacheSystemMessages;
+    private boolean cacheContents;
     private String cacheKey;
     private Duration ttl;
     private Function<GeminiService, GeminiCacheManager> cacheManagerProvider;
 
-    public boolean isCacheSystemMessages() {
-        return cacheSystemMessages;
+    public boolean isCacheContents() {
+        return cacheContents;
     }
 
-    public void setCacheSystemMessages(final boolean cacheSystemMessages) {
-        this.cacheSystemMessages = cacheSystemMessages;
+    public void setCacheContents(final boolean cacheContents) {
+        this.cacheContents = cacheContents;
     }
 
     public String getCacheKey() {
@@ -48,13 +48,13 @@ public class GeminiCachingConfig {
 
     public static class Builder {
 
-        private boolean cacheSystemMessages;
+        private boolean cacheContents;
         private String cacheKey;
         private Duration ttl;
         private Function<GeminiService, GeminiCacheManager> cacheManagerProvider;
 
-        public Builder cacheSystemMessages(boolean cacheSystemMessages) {
-            this.cacheSystemMessages = cacheSystemMessages;
+        public Builder cacheContents(boolean cacheContents) {
+            this.cacheContents = cacheContents;
             return this;
         }
 
@@ -75,7 +75,7 @@ public class GeminiCachingConfig {
 
         public GeminiCachingConfig build() {
             GeminiCachingConfig config = new GeminiCachingConfig();
-            config.setCacheSystemMessages(cacheSystemMessages);
+            config.setCacheContents(cacheContents);
             config.setCacheKey(cacheKey);
             config.setTtl(ttl);
             config.setCacheManagerProvider(cacheManagerProvider);
