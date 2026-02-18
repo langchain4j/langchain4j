@@ -2,6 +2,7 @@ package dev.langchain4j.model.googleai;
 
 import static dev.langchain4j.http.client.HttpMethod.DELETE;
 import static dev.langchain4j.http.client.HttpMethod.GET;
+import static dev.langchain4j.http.client.HttpMethod.PATCH;
 import static dev.langchain4j.http.client.HttpMethod.POST;
 import static dev.langchain4j.http.client.sse.ServerSentEventParsingHandleUtils.toStreamingHandle;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
@@ -183,6 +184,11 @@ public class GeminiService {
     GoogleAiListCachedContentsResponse listCachedContents(GoogleAiListCachedContentsRequest request) {
         String url = baseUrl + "/cachedContents?pageSize=" + request.getPageSize() + (request.getPageToken() != null ? "&pageToken=" + request.getPageToken() : "");
         return sendRequest(url, apiKey, null, GoogleAiListCachedContentsResponse.class, GET);
+    }
+
+    GeminiCachedContent updateCachedContent(String cacheName, GeminiCachedContent cachedContent) {
+        String url = baseUrl + "/cachedContents/" + cacheName;
+        return sendRequest(url, apiKey, cachedContent, GeminiCachedContent.class, PATCH);
     }
 
     void deleteCachedContent(String id) {

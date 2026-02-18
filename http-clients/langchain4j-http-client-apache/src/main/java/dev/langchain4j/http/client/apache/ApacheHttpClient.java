@@ -27,6 +27,7 @@ import org.apache.hc.client5.http.async.methods.SimpleHttpResponse;
 import org.apache.hc.client5.http.async.methods.SimpleRequestBuilder;
 import org.apache.hc.client5.http.classic.methods.HttpDelete;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.client5.http.classic.methods.HttpPatch;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.async.CloseableHttpAsyncClient;
@@ -176,6 +177,7 @@ public class ApacheHttpClient implements HttpClient {
                     case GET -> new HttpGet(request.url());
                     case DELETE -> new HttpDelete(request.url());
                     case POST -> new HttpPost(request.url());
+                    case PATCH -> new HttpPatch(request.url());
                 };
 
         if (request.formDataFields().isEmpty() && request.formDataFiles().isEmpty()) {
@@ -208,6 +210,7 @@ public class ApacheHttpClient implements HttpClient {
                 case GET -> SimpleRequestBuilder.get(uri);
                 case DELETE -> SimpleRequestBuilder.delete(uri);
                 case POST -> SimpleRequestBuilder.post(uri);
+                case PATCH -> SimpleRequestBuilder.patch(uri);
             };
 
             if (request.body() != null) {
