@@ -1,6 +1,6 @@
 package dev.langchain4j.skills;
 
-public interface SkillReference {
+public interface SkillFile {
 
     String path(); // TODO name
 

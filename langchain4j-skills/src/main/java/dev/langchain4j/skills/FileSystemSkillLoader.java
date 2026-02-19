@@ -33,13 +33,13 @@ public class FileSystemSkillLoader {
         String name = getSingle(frontMatter, "name");
         String description = getSingle(frontMatter, "description");
 
-        List<DefaultSkillReference> references = loadReferences(skillDirectory);
+        List<DefaultSkillFile> files = loadFiles(skillDirectory);
 
         return DefaultSkill.builder()
                 .name(name)
                 .description(description)
                 .body(body)
-                .references(references)
+                .files(files)
                 .build();
     }
 
@@ -70,28 +70,24 @@ public class FileSystemSkillLoader {
                 .orElse(null);
     }
 
-    private static List<DefaultSkillReference> loadReferences(Path skillDirectory) {
-        Path referencesDir = skillDirectory.resolve("references");
-        if (!Files.exists(referencesDir) || !Files.isDirectory(referencesDir)) {
-            return List.of();
-        }
-
-        try (Stream<Path> files = Files.list(referencesDir)) {
+    private static List<DefaultSkillFile> loadFiles(Path skillDirectory) {
+        try (Stream<Path> files = Files.walk(skillDirectory)) {
             return files
                     .filter(Files::isRegularFile)
+                    .filter(path -> !path.getFileName().toString().equals("SKILL.md"))
                     .map(path -> {
                         String formattedPath = stream(skillDirectory.relativize(path).spliterator(), false)
                                 .map(Path::toString)
                                 .collect(joining("/"));
                         String body = toRuntimeException(() -> Files.readString(path));
-                        return DefaultSkillReference.builder()
+                        return DefaultSkillFile.builder()
                                 .path(formattedPath)
                                 .body(body)
                                 .build();
                     })
                     .toList();
         } catch (IOException e) {
-            throw new RuntimeException("Failed to read references directory: " + referencesDir, e);
+            throw new RuntimeException("Failed to read skill directory: " + skillDirectory, e);
         }
     }
 }

@@ -67,26 +67,26 @@ public class Skills {
         Map<ToolSpecification, ToolExecutor> result = new HashMap<>();
         result.put(activateSkillTool, activateSkillExecutor);
 
-        boolean hasReferences = skills.stream().anyMatch(skill -> !skill.references().isEmpty());
-        if (hasReferences) {
-            String exampleReferencePath = skills.stream()
-                    .filter(skill -> !skill.references().isEmpty())
+        boolean hasFiles = skills.stream().anyMatch(skill -> !skill.files().isEmpty());
+        if (hasFiles) {
+            String exampleFilePath = skills.stream()
+                    .filter(skill -> !skill.files().isEmpty())
                     .findFirst()
-                    .map(skill -> skill.references().get(0).path())
+                    .map(skill -> skill.files().get(0).path())
                     .orElseThrow();
 
             // TODO same tool for assets?
-            ToolSpecification loadReferenceTool = ToolSpecification.builder()
-                    .name("load_reference") // TODO make configurable
-                    .description("Loads reference file") // TODO make configurable
+            ToolSpecification readFileTool = ToolSpecification.builder()
+                    .name("read_file") // TODO make configurable, make default less generic, to avoid clashes
+                    .description("Reads content of a file") // TODO make configurable
                     .parameters(JsonObjectSchema.builder()
-                            .addStringProperty("skill_name", "The name of the skill for which to load the reference. For example: " + skills.get(0).name()) // TODO make configurable
-                            .addStringProperty("file_path", "Relative path to the reference file. For example: " + exampleReferencePath)
+                            .addStringProperty("skill_name", "The name of the skill for which to read the file. For example: " + skills.get(0).name()) // TODO make configurable
+                            .addStringProperty("file_path", "Relative path to the file. For example: " + exampleFilePath)
                             .required("skill_name", "file_path")
                             .build())
                     .build();
 
-            ToolExecutor loadReferenceExecutor = new ToolExecutor() {
+            ToolExecutor readFileExecutor = new ToolExecutor() {
 
                 @Override
                 public ToolExecutionResult executeWithContext(ToolExecutionRequest request, InvocationContext context) {
@@ -100,18 +100,18 @@ public class Skills {
                         throwException("There is no skill with name '%s'".formatted(skillName));
                     }
 
-                    List<SkillReference> references = skill.references().stream()
-                            .filter(reference -> reference.path().equals(filePath)) // TODO customizable
+                    List<SkillFile> files = skill.files().stream()
+                            .filter(file -> file.path().equals(filePath)) // TODO customizable
                             .toList();
-                    if (references.isEmpty()) {
-                        throwException("There is no reference with path '%s'".formatted(filePath));
-                        // TODO add all available references for this skill
+                    if (files.isEmpty()) {
+                        throwException("There is no file with path '%s'".formatted(filePath));
+                        // TODO add all available files for this skill
                     }
 
-                    // TODO if matched not exactly, validate that there is no more than 1 reference
+                    // TODO if matched not exactly, validate that there is no more than 1 file
 
                     return ToolExecutionResult.builder()
-                            .resultText(references.get(0).body()) // TODO customizable?
+                            .resultText(files.get(0).body()) // TODO customizable?
                             .build();
                 }
 
@@ -121,7 +121,7 @@ public class Skills {
                 }
             };
 
-            result.put(loadReferenceTool, loadReferenceExecutor);
+            result.put(readFileTool, readFileExecutor);
         }
 
         return result;

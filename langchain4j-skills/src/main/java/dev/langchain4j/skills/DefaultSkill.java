@@ -12,14 +12,14 @@ public class DefaultSkill implements Skill {
     private final String name;
     private final String description;
     private final String body;
-    private final List<SkillReference> references;
+    private final List<SkillFile> files;
 
     public DefaultSkill(Builder builder) {
         this.name = ensureNotBlank(builder.name, "name");
         this.description = ensureNotBlank(builder.description, "description");
         this.body = ensureNotBlank(builder.body, "body");
-        this.references = copy(builder.references);
-        validateUniqueReferencePaths(this.references);
+        this.files = copy(builder.files);
+        validateUniqueFilePaths(this.files);
     }
 
     @Override
@@ -38,12 +38,12 @@ public class DefaultSkill implements Skill {
     }
 
     @Override
-    public List<SkillReference> references() {
-        return references;
+    public List<SkillFile> files() {
+        return files;
     }
 
     // TODO eht
-    // TODO toString: part of body, part of references
+    // TODO toString: part of body, part of files
 
     public static Builder builder() {
         return new Builder();
@@ -54,7 +54,7 @@ public class DefaultSkill implements Skill {
         private String name;
         private String description;
         private String body;
-        private List<? extends SkillReference> references;
+        private List<? extends SkillFile> files;
 
         public Builder name(String name) {
             this.name = name;
@@ -71,8 +71,8 @@ public class DefaultSkill implements Skill {
             return this;
         }
 
-        public Builder references(List<? extends SkillReference> references) {
-            this.references = references;
+        public Builder files(List<? extends SkillFile> files) {
+            this.files = files;
             return this;
         }
 
@@ -81,14 +81,14 @@ public class DefaultSkill implements Skill {
         }
     }
 
-    private static void validateUniqueReferencePaths(List<SkillReference> references) {
+    private static void validateUniqueFilePaths(List<SkillFile> files) {
         Set<String> seenPaths = new HashSet<>();
 
-        for (SkillReference reference : references) {
-            String path = reference.path();
+        for (SkillFile file : files) {
+            String path = file.path();
 
             if (!seenPaths.add(path)) {
-                throw new IllegalStateException("Duplicate reference.path detected: '%s'".formatted(path)); // TODO name
+                throw new IllegalStateException("Duplicate file.path detected: '%s'".formatted(path)); // TODO name
             }
         }
     }

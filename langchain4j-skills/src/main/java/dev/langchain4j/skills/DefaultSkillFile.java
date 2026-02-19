@@ -2,12 +2,12 @@ package dev.langchain4j.skills;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
-public class DefaultSkillReference implements SkillReference {
+public class DefaultSkillFile implements SkillFile {
 
     private final String path;
     private final String body;
 
-    public DefaultSkillReference(Builder builder) {
+    public DefaultSkillFile(Builder builder) {
         this.path = ensureNotBlank(builder.path, "path");
         this.body = ensureNotBlank(builder.body, "body");
     }
@@ -23,7 +23,7 @@ public class DefaultSkillReference implements SkillReference {
     }
 
     // TODO eht
-    // TODO toString: part of body, part of references
+    // TODO toString: part of body, part of files
 
     public static Builder builder() {
         return new Builder();
@@ -44,8 +44,8 @@ public class DefaultSkillReference implements SkillReference {
             return this;
         }
 
-        public DefaultSkillReference build() {
-            return new DefaultSkillReference(this);
+        public DefaultSkillFile build() {
+            return new DefaultSkillFile(this);
         }
     }
 }

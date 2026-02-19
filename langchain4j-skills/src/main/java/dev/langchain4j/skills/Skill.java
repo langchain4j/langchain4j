@@ -10,5 +10,5 @@ public interface Skill {
 
     String body();
 
-    List<SkillReference> references();
+    List<SkillFile> files();
 }
