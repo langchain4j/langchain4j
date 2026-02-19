@@ -80,13 +80,6 @@ public class AgenticScopeRegistry {
         return removed;
     }
 
-    public Set<AgenticScopeKey> getAllAgenticScopeKeys() {
-        if (hasStore()) {
-            return store.getAllKeys();
-        }
-        return getAllAgenticScopeKeysInMemory();
-    }
-
     public Set<AgenticScopeKey> getAllAgenticScopeKeysInMemory() {
         return inMemoryAgenticScope.keySet();
     }
