@@ -26,6 +26,7 @@ public class DefaultChatModelConvention implements ChatModelConvention {
     private static final String OUTCOME_KEY = "outcome";
     private static final String OUTCOME_SUCCESS = "SUCCESS";
     private static final String OUTCOME_ERROR = "ERROR";
+    static final String UNKNOWN = "unknown";
 
     public DefaultChatModelConvention() {
     }
@@ -55,17 +56,17 @@ public class DefaultChatModelConvention implements ChatModelConvention {
 
         result = ofNullable(requestContext.modelProvider())
                 .map(p -> KeyValue.of(PROVIDER_NAME, p.name()))
-                .map(result::and).orElse(result);
+                .map(result::and).orElse(result.and(KeyValue.of(PROVIDER_NAME, UNKNOWN)));
 
         result = ofNullable(requestContext.chatRequest())
                 .map(ChatRequest::parameters).map(ChatRequestParameters::modelName)
                 .map(m -> KeyValue.of(REQUEST_MODEL, m))
-                .map(result::and).orElse(result);
+                .map(result::and).orElse(result.and(KeyValue.of(REQUEST_MODEL, UNKNOWN)));
 
         result = ofNullable(responseContext)
                 .map(ChatModelResponseContext::chatResponse).map(ChatResponse::metadata).map(ChatResponseMetadata::modelName)
                 .map(m -> KeyValue.of(RESPONSE_MODEL, m))
-                .map(result::and).orElse(result);
+                .map(result::and).orElse(result.and(KeyValue.of(RESPONSE_MODEL, UNKNOWN)));
 
         if (errorContext != null && errorContext.error() != null) {
             result = result.and(KeyValue.of(OUTCOME_KEY, OUTCOME_ERROR));
@@ -98,6 +99,4 @@ public class DefaultChatModelConvention implements ChatModelConvention {
 
         return result;
     }
-
-
 }

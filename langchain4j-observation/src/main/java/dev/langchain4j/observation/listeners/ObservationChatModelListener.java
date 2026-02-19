@@ -3,15 +3,22 @@ package dev.langchain4j.observation.listeners;
 import static dev.langchain4j.observation.listeners.ChatModelDocumentation.HighCardinalityValues.TOKEN_USAGE;
 import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.OPERATION_NAME;
 import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.PROVIDER_NAME;
+import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.REQUEST_MODEL;
 import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.RESPONSE_MODEL;
 import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.TOKEN_TYPE;
+import static java.util.Optional.ofNullable;
 
+import java.util.Optional;
 import dev.langchain4j.Experimental;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
-import io.micrometer.core.instrument.Counter;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.output.TokenUsage;
+import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Meter.MeterProvider;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.observation.Observation;
@@ -28,16 +35,22 @@ import io.micrometer.observation.ObservationRegistry;
 public class ObservationChatModelListener implements ChatModelListener {
 
     private static final String OBSERVATION_SCOPE_KEY = "micrometer.observation.scope";
+    public static final String UNKNOWN = "unknown";
 
     private final ObservationRegistry observationRegistry;
-    private final MeterProvider<Counter> tokenCounter;
+    private final MeterProvider<DistributionSummary> tokenDistribution;
     private final ChatModelConvention chatModelConvention;
 
     public ObservationChatModelListener(final ObservationRegistry observationRegistry, final MeterRegistry meterRegistry) {
         this.observationRegistry = observationRegistry;
-        tokenCounter = Counter.builder(TOKEN_USAGE.asString())
+        tokenDistribution = DistributionSummary.builder(TOKEN_USAGE.asString())
                 .description("Measures the quantity of used tokens")
                 .tag(OPERATION_NAME.asString(), "chat")
+                .publishPercentileHistogram()
+                .minimumExpectedValue(1.0)
+                .maximumExpectedValue(67108864.0)
+                .serviceLevelObjectives(
+                        1, 4, 16, 64, 256, 1024, 4096, 16384, 65536, 262144, 1048576, 4194304, 16777216, 67108864)
                 .withRegistry(meterRegistry);
         chatModelConvention = null;
     }
@@ -64,39 +77,60 @@ public class ObservationChatModelListener implements ChatModelListener {
 
         final Observation observation = currentScope.getCurrentObservation();
         String providerName = null;
+        String requestModel = null;
         try {
             if (observation.getContext() instanceof ChatModelObservationContext chatModelObservationContext) {
                 chatModelObservationContext.setResponseContext(responseContext);
                 final ChatModelRequestContext requestContext = chatModelObservationContext.getRequestContext();
-                if (requestContext != null && requestContext.modelProvider() != null) {
-                    providerName = requestContext.modelProvider().name();
-                }
+
+                providerName = ofNullable(requestContext)
+                        .map(ChatModelRequestContext::modelProvider)
+                        .map(ModelProvider::name)
+                        .orElse(UNKNOWN);
+
+                requestModel = ofNullable(requestContext)
+                        .map(ChatModelRequestContext::chatRequest)
+                        .map(ChatRequest::modelName)
+                        .orElse(UNKNOWN);
             }
 
-            final String responseModelName = responseContext.chatResponse().metadata().modelName();
-            final Integer outputTokens = responseContext.chatResponse().tokenUsage().outputTokenCount();
-            final Integer inputTokens = responseContext.chatResponse().tokenUsage().inputTokenCount();
+            final String responseModelName = ofNullable(responseContext)
+                    .map(ChatModelResponseContext::chatResponse)
+                    .map(ChatResponse::modelName)
+                    .orElse(UNKNOWN);
 
-            if (responseModelName != null) {
-                if (providerName != null && outputTokens != null) {
-                    tokenCounter.withTags(
-                                    PROVIDER_NAME.asString(), providerName,
-                                    RESPONSE_MODEL.asString(), responseModelName,
-                                    TOKEN_TYPE.asString(), "input")
-                            .increment(inputTokens);
+            final Optional<Integer> outputTokens = ofNullable(responseContext)
+                    .map(ChatModelResponseContext::chatResponse)
+                    .map(ChatResponse::tokenUsage)
+                    .map(TokenUsage::outputTokenCount);
 
-                    tokenCounter.withTags(
-                                    PROVIDER_NAME.asString(), providerName,
-                                    RESPONSE_MODEL.asString(), responseModelName,
-                                    TOKEN_TYPE.asString(), "output")
-                            .increment(outputTokens);
-                }
+            final Optional<Integer> inputTokens = ofNullable(responseContext)
+                    .map(ChatModelResponseContext::chatResponse)
+                    .map(ChatResponse::tokenUsage)
+                    .map(TokenUsage::inputTokenCount);
+
+            if (inputTokens.isPresent()) {
+                tokenDistribution.withTags(
+                                PROVIDER_NAME.asString(), providerName,
+                                REQUEST_MODEL.asString(), requestModel,
+                                RESPONSE_MODEL.asString(), responseModelName,
+                                TOKEN_TYPE.asString(), "input")
+                        .record(inputTokens.get());
             }
+
+            if (outputTokens.isPresent()) {
+                tokenDistribution.withTags(
+                                PROVIDER_NAME.asString(), providerName,
+                                REQUEST_MODEL.asString(), requestModel,
+                                RESPONSE_MODEL.asString(), responseModelName,
+                                TOKEN_TYPE.asString(), "output")
+                        .record(outputTokens.get());
+            }
+
         } finally {
             currentScope.close();
             observation.stop();
         }
-
     }
 
     @Override
