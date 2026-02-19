@@ -2,6 +2,7 @@ package dev.langchain4j.observation.listeners;
 
 import static dev.langchain4j.observation.listeners.ChatModelDocumentation.HighCardinalityValues.TOKEN_USAGE;
 import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.OPERATION_NAME;
+import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.PROVIDER_NAME;
 import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.REQUEST_MODEL;
 import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.RESPONSE_MODEL;
 import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.TOKEN_TYPE;
@@ -9,13 +10,21 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 import java.time.Duration;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.azure.AzureOpenAiChatModel;
+import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.output.TokenUsage;
 import io.micrometer.common.KeyValue;
+import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.distribution.CountAtBucket;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.micrometer.observation.tck.TestObservationRegistry;
 import io.micrometer.observation.tck.TestObservationRegistryAssert;
@@ -58,15 +67,34 @@ public class MicrometerChatModelListenerIT {
         assertThat(meterRegistry
                 .get(TOKEN_USAGE.asString())
                 .tag(TOKEN_TYPE.asString(), "input")
-                .counter()
-                .count())
-                .isGreaterThan(1.0);
+                .summary()
+                .totalAmount())
+                .isGreaterThan(1);
         assertThat(meterRegistry
                 .get(TOKEN_USAGE.asString())
                 .tag(TOKEN_TYPE.asString(), "output")
-                .counter()
-                .count())
-                .isGreaterThan(1.0);
+                .summary()
+                .totalAmount())
+                .isGreaterThan(1);
+
+        DistributionSummary inputSummary = meterRegistry
+                .get(TOKEN_USAGE.asString())
+                .tag(TOKEN_TYPE.asString(), "input")
+                .summary();
+        CountAtBucket[] inputBuckets = inputSummary.takeSnapshot().histogramCounts();
+        assertThat(inputBuckets).isNotEmpty();
+        assertThat(countAtBucket(inputBuckets, 16)).isEqualTo(1);
+        assertThat(countAtBucket(inputBuckets, 64)).isEqualTo(1);
+
+        // Output tokens (145): should appear in le:256 bucket (145 <= 256) but not le:64 (145 > 64)
+        DistributionSummary outputSummary = meterRegistry
+                .get(TOKEN_USAGE.asString())
+                .tag(TOKEN_TYPE.asString(), "output")
+                .summary();
+        CountAtBucket[] outputBuckets = outputSummary.takeSnapshot().histogramCounts();
+        assertThat(outputBuckets).isNotEmpty();
+        assertThat(countAtBucket(outputBuckets, 64)).isEqualTo(1);
+        assertThat(countAtBucket(outputBuckets, 256)).isEqualTo(1);
 
         TestObservationRegistryAssert.assertThat(observationRegistry)
                 .hasObservationWithNameEqualTo("gen_ai.client.operation.duration")
@@ -131,5 +159,44 @@ public class MicrometerChatModelListenerIT {
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
+    }
+
+    private ChatModelResponseContext createResponseContext(ModelProvider modelProvider) {
+        return createResponseContext(modelProvider, "gpt-4o", "gpt-4o");
+    }
+
+    private ChatModelResponseContext createResponseContext(
+            ModelProvider modelProvider, String requestModelName, String responseModelName) {
+        return createResponseContext(modelProvider, requestModelName, responseModelName, 10, 20);
+    }
+
+    private ChatModelResponseContext createResponseContext(
+            ModelProvider modelProvider,
+            String requestModelName,
+            String responseModelName,
+            int inputTokens,
+            int outputTokens) {
+        ChatResponse.Builder responseBuilder = ChatResponse.builder()
+                .aiMessage(new AiMessage("Hello"))
+                .tokenUsage(new TokenUsage(inputTokens, outputTokens));
+        if (responseModelName != null) {
+            responseBuilder.modelName(responseModelName);
+        }
+
+        ChatRequest.Builder requestBuilder = ChatRequest.builder().messages(UserMessage.from("Hi"));
+        if (requestModelName != null) {
+            requestBuilder.modelName(requestModelName);
+        }
+
+        return new ChatModelResponseContext(
+                responseBuilder.build(), requestBuilder.build(), modelProvider, new HashMap<>());
+    }
+
+    private double countAtBucket(CountAtBucket[] buckets, double boundary) {
+        return Arrays.stream(buckets)
+                .filter(b -> b.bucket() == boundary)
+                .findFirst()
+                .map(CountAtBucket::count)
+                .orElse(0.0);
     }
 }
