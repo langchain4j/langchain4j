@@ -516,6 +516,10 @@ public class OpenAiChatModel implements ChatModel {
             return this;
         }
 
+        public OpenAiChatModelBuilder listeners(ChatModelListener... listeners) {
+            return listeners(asList(listeners));
+        }
+
         public OpenAiChatModel build() {
             return new OpenAiChatModel(this);
         }

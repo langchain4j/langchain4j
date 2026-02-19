@@ -18,6 +18,8 @@ import static dev.langchain4j.internal.Utils.quoted;
  */
 public class ToolSpecification {
 
+    public static final String METADATA_SEARCH_BEHAVIOR = "searchBehavior";
+
     private final String name;
     private final String description;
     private final JsonObjectSchema parameters;

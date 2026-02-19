@@ -1,8 +1,15 @@
 package dev.langchain4j.service.tool;
 
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
+
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.memory.ChatMemory;
+
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.quoted;
 
 /**
  * Represents the result of a tool execution.
@@ -15,6 +22,7 @@ public class ToolExecutionResult {
     private final Object result;
     private final AtomicReference<String> resultText;
     private final Supplier<String> resultTextSupplier;
+    private final Map<String, Object> attributes;
 
     public ToolExecutionResult(Builder builder) {
         this.isError = builder.isError;
@@ -30,6 +38,8 @@ public class ToolExecutionResult {
         } else {
             throw new IllegalArgumentException("Either resultText or resultTextSupplier must be provided");
         }
+
+        this.attributes = copy(builder.attributes);
     }
 
     /**
@@ -68,6 +78,17 @@ public class ToolExecutionResult {
                 current -> current != null ? current : (resultTextSupplier != null ? resultTextSupplier.get() : null));
     }
 
+    /**
+     * Returns attributes associated with tool execution.
+     * These attributes will be propagated into {@link ToolExecutionResultMessage#attributes()}
+     * and can be persisted in a {@link ChatMemory}. They will not be sent to the LLM.
+     *
+     * @since 1.12.0
+     */
+    public Map<String, Object> attributes() {
+        return attributes;
+    }
+
     @Override
     public boolean equals(final Object object) {
         if (this == object) return true;
@@ -75,20 +96,23 @@ public class ToolExecutionResult {
         ToolExecutionResult that = (ToolExecutionResult) object;
         return isError == that.isError
                 && Objects.equals(result, that.result)
-                && Objects.equals(resultText(), that.resultText());
+                && Objects.equals(resultText(), that.resultText())
+                && Objects.equals(attributes, attributes);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(isError, result, resultText());
+        return Objects.hash(isError, result, resultText(), attributes);
     }
 
     @Override
     public String toString() {
-        return "ToolExecutionResult{" + "isError="
-                + isError + ", result="
-                + result + ", resultText='"
-                + resultText() + '\'' + '}';
+        return "ToolExecutionResult {"
+                + "isError = " + isError
+                + ", result = " + result
+                + ", resultText = " + quoted(resultText())
+                + ", attributes = " + attributes
+                + '}';
     }
 
     public static Builder builder() {
@@ -101,6 +125,7 @@ public class ToolExecutionResult {
         private Object result;
         private String resultText;
         private Supplier<String> resultTextSupplier;
+        private Map<String, Object> attributes;
 
         public Builder isError(boolean isError) {
             this.isError = isError;
@@ -129,6 +154,18 @@ public class ToolExecutionResult {
         public Builder resultTextSupplier(Supplier<String> resultTextSupplier) {
             this.resultTextSupplier = resultTextSupplier;
             this.resultText = null;
+            return this;
+        }
+
+        /**
+         * Sets attributes associated with tool execution.
+         * These attributes will be propagated into {@link ToolExecutionResultMessage#attributes()}
+         * and can be persisted in a {@link ChatMemory}. They will not be sent to the LLM.
+         *
+         * @since 1.12.0
+         */
+        public Builder attributes(Map<String, Object> attributes) {
+            this.attributes = attributes;
             return this;
         }
 
