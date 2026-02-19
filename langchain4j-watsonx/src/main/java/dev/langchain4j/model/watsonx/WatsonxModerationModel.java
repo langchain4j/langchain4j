@@ -64,7 +64,7 @@ public class WatsonxModerationModel implements ModerationModel {
                 .verifySsl(builder.verifySsl)
                 .build();
 
-        this.listeners = copyIfNotNull(builder.listeners);
+        this.listeners = copy(builder.listeners);
     }
 
     @Override
