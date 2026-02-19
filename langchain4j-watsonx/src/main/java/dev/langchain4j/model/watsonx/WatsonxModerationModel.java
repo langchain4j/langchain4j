@@ -1,6 +1,6 @@
 package dev.langchain4j.model.watsonx;
 
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.copy;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
