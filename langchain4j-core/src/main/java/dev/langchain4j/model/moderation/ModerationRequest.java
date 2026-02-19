@@ -142,8 +142,13 @@ public class ModerationRequest {
          * @throws IllegalArgumentException if neither text nor messages are set.
          */
         public ModerationRequest build() {
-            if (text == null && (messages == null || messages.isEmpty())) {
+            boolean hasText = text != null;
+            boolean hasMessages = messages != null && !messages.isEmpty();
+            if (!hasText && !hasMessages) {
                 throw new IllegalArgumentException("Either text or messages must be set");
+            }
+            if (hasText && hasMessages) {
+                throw new IllegalArgumentException("Only one of text or messages can be set, not both");
             }
             return new ModerationRequest(this);
         }
