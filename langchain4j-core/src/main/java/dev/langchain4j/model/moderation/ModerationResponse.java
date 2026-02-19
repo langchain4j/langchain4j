@@ -3,7 +3,6 @@ package dev.langchain4j.model.moderation;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import dev.langchain4j.model.output.TokenUsage;
 import java.util.Map;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
@@ -16,14 +15,10 @@ public class ModerationResponse {
     private final Moderation moderation;
 
     @Nullable
-    private final TokenUsage tokenUsage;
-
-    @Nullable
     private final Map<String, Object> metadata;
 
     private ModerationResponse(Builder builder) {
         this.moderation = ensureNotNull(builder.moderation, "moderation");
-        this.tokenUsage = builder.tokenUsage;
         this.metadata = copyIfNotNull(builder.metadata);
     }
 
@@ -34,16 +29,6 @@ public class ModerationResponse {
      */
     public Moderation moderation() {
         return moderation;
-    }
-
-    /**
-     * Returns the token usage, if available.
-     *
-     * @return the token usage, or {@code null} if not available.
-     */
-    @Nullable
-    public TokenUsage tokenUsage() {
-        return tokenUsage;
     }
 
     /**
@@ -61,22 +46,17 @@ public class ModerationResponse {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         ModerationResponse that = (ModerationResponse) o;
-        return Objects.equals(moderation, that.moderation)
-                && Objects.equals(tokenUsage, that.tokenUsage)
-                && Objects.equals(metadata, that.metadata);
+        return Objects.equals(moderation, that.moderation) && Objects.equals(metadata, that.metadata);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(moderation, tokenUsage, metadata);
+        return Objects.hash(moderation, metadata);
     }
 
     @Override
     public String toString() {
-        return "ModerationResponse{" + "moderation="
-                + moderation + ", tokenUsage="
-                + tokenUsage + ", metadata="
-                + metadata + '}';
+        return "ModerationResponse{" + "moderation=" + moderation + ", metadata=" + metadata + '}';
     }
 
     /**
@@ -104,14 +84,12 @@ public class ModerationResponse {
     public static class Builder {
 
         private Moderation moderation;
-        private TokenUsage tokenUsage;
         private Map<String, Object> metadata;
 
         private Builder() {}
 
         private Builder(ModerationResponse response) {
             this.moderation = response.moderation;
-            this.tokenUsage = response.tokenUsage;
             this.metadata = response.metadata;
         }
 
@@ -123,17 +101,6 @@ public class ModerationResponse {
          */
         public Builder moderation(Moderation moderation) {
             this.moderation = moderation;
-            return this;
-        }
-
-        /**
-         * Sets the token usage.
-         *
-         * @param tokenUsage the token usage.
-         * @return this builder.
-         */
-        public Builder tokenUsage(TokenUsage tokenUsage) {
-            this.tokenUsage = tokenUsage;
             return this;
         }
 

@@ -3,7 +3,6 @@ package dev.langchain4j.model.moderation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import dev.langchain4j.model.output.TokenUsage;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -34,7 +33,6 @@ class ModerationResponseTest {
 
         // then
         assertThat(response.moderation()).isEqualTo(moderation);
-        assertThat(response.tokenUsage()).isNull();
         assertThat(response.metadata()).isNull();
     }
 
@@ -42,19 +40,16 @@ class ModerationResponseTest {
     void should_create_response_with_all_fields() {
         // given
         Moderation moderation = Moderation.flagged("bad content");
-        TokenUsage tokenUsage = new TokenUsage(10, 20, 30);
         Map<String, Object> metadata = Map.of("key", "value");
 
         // when
         ModerationResponse response = ModerationResponse.builder()
                 .moderation(moderation)
-                .tokenUsage(tokenUsage)
                 .metadata(metadata)
                 .build();
 
         // then
         assertThat(response.moderation()).isEqualTo(moderation);
-        assertThat(response.tokenUsage()).isEqualTo(tokenUsage);
         assertThat(response.metadata()).containsEntry("key", "value");
     }
 
@@ -90,16 +85,11 @@ class ModerationResponseTest {
     void should_have_correct_equals_and_hashCode() {
         // given
         Moderation moderation = Moderation.notFlagged();
-        TokenUsage tokenUsage = new TokenUsage(1, 2, 3);
 
-        ModerationResponse response1 = ModerationResponse.builder()
-                .moderation(moderation)
-                .tokenUsage(tokenUsage)
-                .build();
-        ModerationResponse response2 = ModerationResponse.builder()
-                .moderation(moderation)
-                .tokenUsage(tokenUsage)
-                .build();
+        ModerationResponse response1 =
+                ModerationResponse.builder().moderation(moderation).build();
+        ModerationResponse response2 =
+                ModerationResponse.builder().moderation(moderation).build();
         ModerationResponse response3 = ModerationResponse.builder()
                 .moderation(Moderation.flagged("bad"))
                 .build();
@@ -128,19 +118,18 @@ class ModerationResponseTest {
     }
 
     @Test
-    void should_create_response_with_token_usage() {
+    void should_create_response_with_metadata() {
         // given
         Moderation moderation = Moderation.notFlagged();
-        TokenUsage tokenUsage = new TokenUsage(5, 10, 15);
+        Map<String, Object> metadata = Map.of("key", "value");
 
         // when
         ModerationResponse response = ModerationResponse.builder()
                 .moderation(moderation)
-                .tokenUsage(tokenUsage)
+                .metadata(metadata)
                 .build();
 
         // then
-        assertThat(response.tokenUsage()).isEqualTo(tokenUsage);
-        assertThat(response.metadata()).isNull();
+        assertThat(response.metadata()).containsEntry("key", "value");
     }
 }
