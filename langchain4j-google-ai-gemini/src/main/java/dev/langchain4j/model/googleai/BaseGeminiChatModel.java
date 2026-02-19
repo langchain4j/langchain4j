@@ -244,7 +244,7 @@ class BaseGeminiChatModel {
         return switch (config.getMode()) {
             case AUTO -> ToolChoice.AUTO;
             case ANY -> ToolChoice.REQUIRED;
-            case NONE -> null;
+            case NONE, VALIDATED -> null;
         };
     }
 
