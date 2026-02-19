@@ -49,7 +49,7 @@ public interface ModerationModel {
      * @return the model name, or {@code null} if not available.
      */
     default String modelName() {
-        return null;
+        return "unknown";
     }
 
     /**
