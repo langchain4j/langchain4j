@@ -1,16 +1,62 @@
 package dev.langchain4j.agentic.observability;
 
+import dev.langchain4j.Internal;
+import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.workflow.ConditionalAgent;
+import dev.langchain4j.agentic.workflow.ConditionalAgentInstance;
+import dev.langchain4j.agentic.workflow.LoopAgentInstance;
+import java.io.IOException;
+import java.lang.reflect.Type;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Monitors agent executions and provides observability for the LangChain4j Agentic system.
+ * Generates a self-contained HTML report visualizing the static topology of an agentic system
+ * and the dynamic execution traces.
+ *
+ * <p>The report includes:
+ * <ul>
+ *   <li>A visual tree chart of the agent hierarchy showing topology types, names, and properties</li>
+ *   <li>A waterfall timeline of execution traces grouped by memory/session ID</li>
+ * </ul>
+ */
 public class AgentMonitor implements AgentListener {
+
+    private final String name;
+
+    private AgentInstance rootAgent;
 
     private final Map<Object, List<MonitoredExecution>> successfulExecutions = new ConcurrentHashMap<>();
     private final Map<Object, List<MonitoredExecution>> failedExecutions = new ConcurrentHashMap<>();
     private final Map<Object, MonitoredExecution> ongoingExecutions = new ConcurrentHashMap<>();
+
+    public AgentMonitor() {
+        this("LangChain4j Agentic System Report");
+    }
+
+    public AgentMonitor(String name) {
+        this.name = name;
+    }
+
+    @Internal
+    public void setRootAgent(AgentInstance rootAgent) {
+        this.rootAgent = rootAgent;
+    }
 
     @Override
     public void beforeAgentInvocation(AgentRequest agentRequest) {
@@ -85,4 +131,49 @@ public class AgentMonitor implements AgentListener {
     public List<MonitoredExecution> failedExecutionsFor(Object memoryId) {
         return failedExecutions.getOrDefault(memoryId, List.of());
     }
+
+    /**
+     * Returns the set of all memory IDs that have been tracked by this monitor,
+     * including successful, failed, and ongoing executions.
+     */
+    public Set<Object> allMemoryIds() {
+        Set<Object> ids = new LinkedHashSet<>();
+        ids.addAll(successfulExecutions.keySet());
+        ids.addAll(failedExecutions.keySet());
+        ids.addAll(ongoingExecutions.keySet());
+        return Collections.unmodifiableSet(ids);
+    }
+
+    /**
+     * Returns all executions (successful, failed, and ongoing) for a given memory ID.
+     */
+    public List<MonitoredExecution> allExecutionsFor(AgenticScope agenticScope) {
+        return allExecutionsFor(agenticScope.memoryId());
+    }
+
+    /**
+     * Returns all executions (successful, failed, and ongoing) for a given memory ID.
+     */
+    public List<MonitoredExecution> allExecutionsFor(Object memoryId) {
+        List<MonitoredExecution> all = new ArrayList<>(successfulExecutionsFor(memoryId));
+        all.addAll(failedExecutionsFor(memoryId));
+        MonitoredExecution ongoing = ongoingExecutionFor(memoryId);
+        if (ongoing != null) {
+            all.add(ongoing);
+        }
+        return all;
+    }
+
+    public void generateReport(Path path) {
+        try {
+            Files.writeString(path, generateReport());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public String generateReport() {
+        return new HtmlReportGenerator(name, this, rootAgent).generateReport();
+    }
+
 }

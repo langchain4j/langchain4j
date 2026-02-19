@@ -16,6 +16,7 @@ import dev.langchain4j.agentic.Agents.CreativeWriter;
 import dev.langchain4j.agentic.Agents.CreativeWriterWithArgMessage;
 import dev.langchain4j.agentic.Agents.EveningPlan;
 import dev.langchain4j.agentic.Agents.EveningPlannerAgent;
+import dev.langchain4j.agentic.Agents.ExpertInvokerAgentWithMemory;
 import dev.langchain4j.agentic.Agents.ExpertRouterAgent;
 import dev.langchain4j.agentic.Agents.ExpertRouterAgentWithMemory;
 import dev.langchain4j.agentic.Agents.FoodExpert;
@@ -58,6 +59,7 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -504,7 +506,7 @@ public class WorkflowAgentsIT {
                 .subAgents(styleScorer, styleEditor)
                 .listener(new AgentListener() {}) // empty listener to test inheritance
                 .maxIterations(5)
-                .exitCondition(agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
+                .exitCondition("score higher than 0.8", agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
                 .build();
 
         UntypedAgent styledWriter = AgenticServices.sequenceBuilder()
@@ -550,6 +552,8 @@ public class WorkflowAgentsIT {
         assertThat(topLevelInvocation.nestedInvocations().get(1).agent().name()).isEqualTo("reviewLoop");
 
         System.out.println(execution);
+
+//        monitor.generateReport(Path.of("src", "test", "resources", "review-loop.html"));
     }
 
     @Test
@@ -916,15 +920,15 @@ public class WorkflowAgentsIT {
                 .outputKey("response")
                 .build();
 
-        UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
+        ExpertInvokerAgentWithMemory expertsAgent = AgenticServices.conditionalBuilder(ExpertInvokerAgentWithMemory.class)
                 .name("router")
-                .subAgents(agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.MEDICAL, medicalExpert)
-                .subAgents(agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.TECHNICAL, technicalExpert)
-                .subAgents(agenticScope -> agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.LEGAL, legalExpert)
+                .outputKey("response")
+                .subAgents("Medical request", scope -> scope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.MEDICAL, medicalExpert)
+                .subAgents("Technical request", scope -> scope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.TECHNICAL, technicalExpert)
+                .subAgents("Legal request", scope -> scope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.LEGAL, legalExpert)
                 .build();
 
-        ExpertRouterAgentWithMemory expertRouterAgent = AgenticServices.sequenceBuilder(
-                        ExpertRouterAgentWithMemory.class)
+        ExpertRouterAgentWithMemory expertRouterAgent = AgenticServices.sequenceBuilder(ExpertRouterAgentWithMemory.class)
                 .subAgents(routerAgent, expertsAgent)
                 .listener(monitor)
                 .outputKey("response")
@@ -933,22 +937,22 @@ public class WorkflowAgentsIT {
         JsonInMemoryAgenticScopeStore store = new JsonInMemoryAgenticScopeStore();
         AgenticScopePersister.setStore(store);
 
-        String response1 = expertRouterAgent.ask("1", "I broke my leg, what should I do?");
+        String response1 = expertRouterAgent.ask("Mario", "I broke my leg, what should I do?");
         System.out.println(response1);
 
-        AgenticScope agenticScope1 = expertRouterAgent.getAgenticScope("1");
+        AgenticScope agenticScope1 = expertRouterAgent.getAgenticScope("Mario");
         assertThat(agenticScope1.readState("category", RequestCategory.UNKNOWN)).isEqualTo(RequestCategory.MEDICAL);
 
         assertThat(store.getLoadedIds()).isEmpty();
 
-        String response2 = expertRouterAgent.ask("2", "My computer has liquid inside, what should I do?");
+        String response2 = expertRouterAgent.ask("Dmytro", "My computer has liquid inside, what should I do?");
         System.out.println(response2);
 
-        AgenticScope agenticScope2 = expertRouterAgent.getAgenticScope("2");
+        AgenticScope agenticScope2 = expertRouterAgent.getAgenticScope("Dmytro");
         assertThat(agenticScope2.readState("category", RequestCategory.UNKNOWN)).isEqualTo(RequestCategory.TECHNICAL);
 
-        checkMonitoredExecution(monitor, "1", "medical");
-        checkMonitoredExecution(monitor, "2", "technical");
+        checkMonitoredExecution(monitor, "Mario", "medical");
+        checkMonitoredExecution(monitor, "Dmytro", "technical");
 
         AgenticScopeRegistry registry = ((AgenticScopeOwner) expertRouterAgent).registry();
         assertThat(store.getAllKeys()).isEqualTo(registry.getAllAgenticScopeKeysInMemory());
@@ -957,28 +961,30 @@ public class WorkflowAgentsIT {
         registry.clearInMemory();
         assertThat(registry.getAllAgenticScopeKeysInMemory()).isEmpty();
 
-        String legalResponse1 = expertRouterAgent.ask("1", "Should I sue my neighbor who caused this damage?");
+        String legalResponse1 = expertRouterAgent.ask("Mario", "Should I sue my neighbor who caused this damage?");
         System.out.println(legalResponse1);
 
-        String legalResponse2 = expertRouterAgent.ask("2", "Should I sue my neighbor who caused this damage?");
+        String legalResponse2 = expertRouterAgent.ask("Dmytro", "Should I sue my neighbor who caused this damage?");
         System.out.println(legalResponse2);
 
-        assertThat(store.getLoadedIds()).isEqualTo(List.of("1", "2"));
+        assertThat(store.getLoadedIds()).isEqualTo(List.of("Mario", "Dmytro"));
 
         assertThat(legalResponse1).containsIgnoringCase("medical").doesNotContain("computer");
         assertThat(legalResponse2).containsIgnoringCase("computer").doesNotContain("medical");
 
         // It is necessary to read again the agenticScope instances since they were evicted from the in-memory registry
         // and reloaded from the persistence provider
-        agenticScope1 = expertRouterAgent.getAgenticScope("1");
+        agenticScope1 = expertRouterAgent.getAgenticScope("Mario");
         assertThat(agenticScope1.readState("category", RequestCategory.UNKNOWN)).isEqualTo(RequestCategory.LEGAL);
-        agenticScope2 = expertRouterAgent.getAgenticScope("2");
+        agenticScope2 = expertRouterAgent.getAgenticScope("Dmytro");
         assertThat(agenticScope2.readState("category", RequestCategory.UNKNOWN)).isEqualTo(RequestCategory.LEGAL);
 
-        assertThat(expertRouterAgent.evictAgenticScope("1")).isTrue();
-        assertThat(expertRouterAgent.evictAgenticScope("2")).isTrue();
-        assertThat(expertRouterAgent.evictAgenticScope("1")).isFalse();
-        assertThat(expertRouterAgent.evictAgenticScope("2")).isFalse();
+        assertThat(expertRouterAgent.evictAgenticScope("Mario")).isTrue();
+        assertThat(expertRouterAgent.evictAgenticScope("Dmytro")).isTrue();
+        assertThat(expertRouterAgent.evictAgenticScope("Mario")).isFalse();
+        assertThat(expertRouterAgent.evictAgenticScope("Dmytro")).isFalse();
+
+//        monitor.generateReport(Path.of("src", "test", "resources", "expert-routing.html"));
 
         AgenticScopePersister.setStore(null);
     }

@@ -10,7 +10,9 @@ import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.observability.AgentMonitor;
 import dev.langchain4j.agentic.observability.ComposedAgentListener;
+import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import java.lang.reflect.InvocationHandler;
@@ -142,7 +144,19 @@ public abstract class AbstractServiceBuilder<T, S> {
     }
 
     public T build(Supplier<Planner> plannerSupplier) {
-        return build(new PlannerBasedInvocationHandler(this, plannerSupplier));
+        AgentInstance agent = (AgentInstance) build(new PlannerBasedInvocationHandler(this, plannerSupplier));
+        registerRootAgentOnMonitor(agent);
+        return (T) agent;
+    }
+
+    private void registerRootAgentOnMonitor(AgentInstance agent) {
+        if (agentListener instanceof AgentMonitor monitor) {
+            monitor.setRootAgent(agent);
+        } else if (agentListener instanceof ComposedAgentListener composed) {
+            composed.listeners().stream().filter(AgentMonitor.class::isInstance)
+                    .map(AgentMonitor.class::cast)
+                    .forEach(monitor -> monitor.setRootAgent(agent));
+        }
     }
 
     public T build(InvocationHandler invocationHandler) {
