@@ -60,21 +60,17 @@ class ModerationRequestTest {
     }
 
     @Test
-    void should_create_request_with_both_text_and_messages() {
+    void should_throw_when_both_text_and_messages_set() {
         // given
         UserMessage message = UserMessage.from("hello");
 
-        // when
-        ModerationRequest request = ModerationRequest.builder()
-                .text("some text")
-                .messages(List.of(message))
-                .build();
-
-        // then
-        assertThat(request.text()).isEqualTo("some text");
-        assertThat(request.messages()).containsExactly(message);
-        assertThat(request.hasText()).isTrue();
-        assertThat(request.hasMessages()).isTrue();
+        // when-then
+        assertThatThrownBy(() -> ModerationRequest.builder()
+                        .text("some text")
+                        .messages(List.of(message))
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Only one of text or messages can be set, not both");
     }
 
     @Test
