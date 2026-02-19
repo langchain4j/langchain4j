@@ -413,6 +413,30 @@ Toggling the safe prompt will prepend your messages with the following `@SystemM
 Always assist with care, respect, and truth. Respond with utmost utility yet securely. Avoid harmful, unethical, prejudiced, or negative content. Ensure replies promote fairness and positivity.
 ```
 
+## Thinking / Reasoning
+
+Both `MistralAiChatModel` and `MistralAiStreamingChatModel` support
+reasoning with [Magistral reasoning models](https://docs.mistral.ai/capabilities/reasoning/).
+
+Configured with the following parameters:
+- `returnThinking`: when enabled, reasoning text produced by the model will be parsed from the API response
+  and stored in `AiMessage.thinking()`. For streaming, `StreamingChatResponseHandler.onPartialThinking()`
+  and `TokenStream.onPartialThinking()` callbacks will also be invoked.
+  Disabled by default.
+- `sendThinking`: when enabled, reasoning text from previous responses (stored in `AiMessage.thinking()`)
+  will be included in follow-up requests to the LLM.
+  Disabled by default.
+
+Here is an example of how to configure reasoning:
+```java
+ChatModel model = MistralAiChatModel.builder()
+        .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+        .modelName(MistralAiChatModelName.MAGISTRAL_MEDIUM_LATEST)
+        .returnThinking(true)
+        .sendThinking(true)
+        .build();
+```
+
 ## Moderation
 
 It is a classifier model that can be used to detect harmful content in text.
