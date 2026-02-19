@@ -4,12 +4,12 @@
     <parent>
         <groupId>org.thingsboard.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.11.0-beta19-TB2</version>
+        <version>1.11.0-beta19-TB3</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>langchain4j-ollama</artifactId>
-    <version>1.11.0-TB2</version>
+    <version>1.11.0-TB3</version>
     <name>LangChain4j :: Integration :: Ollama</name>
 
     <properties>
@@ -21,19 +21,19 @@
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.11.0-TB2</version>
+            <version>1.11.0-TB3</version>
         </dependency>
 
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j-http-client</artifactId>
-            <version>1.11.0-TB2</version>
+            <version>1.11.0-TB3</version>
         </dependency>
 
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j-http-client-jdk</artifactId>
-            <version>1.11.0-TB2</version>
+            <version>1.11.0-TB3</version>
             <scope>runtime</scope>
         </dependency>
 
@@ -63,7 +63,7 @@
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.11.0-TB2</version>
+            <version>1.11.0-TB3</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>
@@ -72,7 +72,7 @@
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j-http-client</artifactId>
-            <version>1.11.0-TB2</version>
+            <version>1.11.0-TB3</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>
@@ -81,13 +81,13 @@
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
-            <version>1.11.0-TB2</version>
+            <version>1.11.0-TB3</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
-            <version>1.11.0-TB2</version>
+            <version>1.11.0-TB3</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>
@@ -96,7 +96,7 @@
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j-open-ai</artifactId>
-            <version>1.11.0-TB2</version>
+            <version>1.11.0-TB3</version>
             <scope>test</scope>
         </dependency>
 

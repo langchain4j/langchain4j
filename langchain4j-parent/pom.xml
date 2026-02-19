@@ -4,7 +4,7 @@
 
     <groupId>org.thingsboard.langchain4j</groupId>
     <artifactId>langchain4j-parent</artifactId>
-    <version>1.11.0-beta19-TB2</version>
+    <version>1.11.0-beta19-TB3</version>
     <packaging>pom</packaging>
 
     <name>LangChain4j :: Parent POM</name>
@@ -35,7 +35,7 @@
     </scm>
 
     <properties>
-        <langchain4j.beta.version>1.11.0-beta19-TB2</langchain4j.beta.version>
+        <langchain4j.beta.version>1.11.0-beta19-TB3</langchain4j.beta.version>
         <java.version>17</java.version>
         <maven.compiler.release>${java.version}</maven.compiler.release>
         <kotlin.code.style>official</kotlin.code.style>

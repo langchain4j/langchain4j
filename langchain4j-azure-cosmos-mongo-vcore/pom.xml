@@ -4,7 +4,7 @@
     <parent>
         <groupId>org.thingsboard.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.11.0-beta19-TB2</version>
+        <version>1.11.0-beta19-TB3</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -16,7 +16,7 @@
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.11.0-TB2</version>
+            <version>1.11.0-TB3</version>
         </dependency>
 
         <dependency>
@@ -47,7 +47,7 @@
         <dependency>
             <groupId>org.thingsboard.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.11.0-TB2</version>
+            <version>1.11.0-TB3</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>
