@@ -26,33 +26,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public interface ModerationModel {
 
     /**
-     * Returns the list of listeners for this moderation model.
-     *
-     * @return the list of listeners, or an empty list if none are registered.
-     */
-    default List<ModerationModelListener> listeners() {
-        return List.of();
-    }
-
-    /**
-     * Returns the model provider for this moderation model.
-     *
-     * @return the model provider.
-     */
-    default ModelProvider provider() {
-        return OTHER;
-    }
-
-    /**
-     * Returns the model name for this moderation model.
-     *
-     * @return the model name, or {@code null} if not available.
-     */
-    default String modelName() {
-        return "unknown";
-    }
-
-    /**
      * This is the main API to interact with the moderation model.
      *
      * @param moderationRequest a {@link ModerationRequest}, containing all the inputs to the moderation model
@@ -176,5 +149,32 @@ public interface ModerationModel {
         } else {
             throw new IllegalArgumentException("Unsupported message type: " + chatMessage.type());
         }
+    }
+
+    /**
+     * Returns the list of listeners for this moderation model.
+     *
+     * @return the list of listeners, or an empty list if none are registered.
+     */
+    default List<ModerationModelListener> listeners() {
+        return List.of();
+    }
+
+    /**
+     * Returns the model provider for this moderation model.
+     *
+     * @return the model provider.
+     */
+    default ModelProvider provider() {
+        return OTHER;
+    }
+
+    /**
+     * Returns the model name for this moderation model.
+     *
+     * @return the model name, or {@code null} if not available.
+     */
+    default String modelName() {
+        return "unknown";
     }
 }
