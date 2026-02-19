@@ -421,7 +421,7 @@ public class Utils {
      * @param <T>  Generic type of the list.
      * @return The copy of the provided list or an empty list.
      */
-    public static <T> List<T> copy(List<T> list) {
+    public static <T> List<T> copy(List<? extends T> list) { // TODO
         if (list == null) {
             return List.of();
         }

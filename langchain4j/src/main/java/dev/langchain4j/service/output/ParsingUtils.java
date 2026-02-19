@@ -16,7 +16,7 @@ import static dev.langchain4j.internal.Utils.quoted;
 import static java.nio.charset.StandardCharsets.*;
 
 @Internal
-class ParsingUtils {
+public class ParsingUtils {
 
     static <T> T parseAsStringOrJson(String text, Function<String, T> parser, Class<T> type) {
 
@@ -108,7 +108,7 @@ class ParsingUtils {
                 quoted(text), quoted(toBase64(text)), type), cause);
     }
 
-    private static String toBase64(String s) {
+    public static String toBase64(String s) {
         if (s == null) {
             return null;
         }

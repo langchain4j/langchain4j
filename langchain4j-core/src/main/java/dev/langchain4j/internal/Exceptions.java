@@ -2,6 +2,8 @@ package dev.langchain4j.internal;
 
 import dev.langchain4j.Internal;
 
+import java.util.concurrent.Callable;
+
 /**
  * Utility methods for creating common exceptions.
  */
@@ -42,6 +44,18 @@ public class Exceptions {
             return e.getCause();
         } else {
             return e;
+        }
+    }
+
+    public static <T> T toRuntimeException(Callable<T> callable) { // TODO name
+        try {
+            return callable.call();
+        } catch (Exception e) {
+            if (e instanceof RuntimeException re) {
+                throw re;
+            } else {
+                throw new RuntimeException(e);
+            }
         }
     }
 }

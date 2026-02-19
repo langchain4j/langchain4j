@@ -126,6 +126,7 @@
         <module>langchain4j-agentic</module>
         <module>langchain4j-agentic-a2a</module>
         <module>langchain4j-agentic-patterns</module>
+        <module>langchain4j-skills</module>
 
         <!-- integration tests -->
         <module>integration-tests</module>
