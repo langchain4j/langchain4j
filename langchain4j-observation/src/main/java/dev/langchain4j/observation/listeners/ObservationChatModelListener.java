@@ -1,6 +1,5 @@
 package dev.langchain4j.observation.listeners;
 
-import static dev.langchain4j.observation.listeners.ChatModelDocumentation.HighCardinalityValues.TOKEN_USAGE;
 import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.OPERATION_NAME;
 import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.PROVIDER_NAME;
 import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.REQUEST_MODEL;
@@ -29,13 +28,14 @@ import io.micrometer.observation.ObservationRegistry;
  * <p>
  * Observations will handle request durations and tracing. Observation lifecycle and context management is handled here.
  * <p>
- * There is a Micrometer Counter responsible for token usage.
+ * There is a Micrometer DistributionSummary responsible to record token usage.
  */
 @Experimental
 public class ObservationChatModelListener implements ChatModelListener {
 
     private static final String OBSERVATION_SCOPE_KEY = "micrometer.observation.scope";
-    public static final String UNKNOWN = "unknown";
+    static final String UNKNOWN = "unknown";
+    static final String TOKEN_USAGE = "gen_ai.client.token.usage";
 
     private final ObservationRegistry observationRegistry;
     private final MeterProvider<DistributionSummary> tokenDistribution;
@@ -43,7 +43,7 @@ public class ObservationChatModelListener implements ChatModelListener {
 
     public ObservationChatModelListener(final ObservationRegistry observationRegistry, final MeterRegistry meterRegistry) {
         this.observationRegistry = observationRegistry;
-        tokenDistribution = DistributionSummary.builder(TOKEN_USAGE.asString())
+        tokenDistribution = DistributionSummary.builder(TOKEN_USAGE)
                 .description("Measures the quantity of used tokens")
                 .tag(OPERATION_NAME.asString(), "chat")
                 .publishPercentileHistogram()

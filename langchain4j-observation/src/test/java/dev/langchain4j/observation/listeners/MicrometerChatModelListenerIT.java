@@ -1,11 +1,14 @@
 package dev.langchain4j.observation.listeners;
 
-import static dev.langchain4j.observation.listeners.ChatModelDocumentation.HighCardinalityValues.TOKEN_USAGE;
+import static dev.langchain4j.observation.listeners.ChatModelDocumentation.HighCardinalityValues.INPUT_TOKENS;
+import static dev.langchain4j.observation.listeners.ChatModelDocumentation.HighCardinalityValues.OUTPUT_TOKENS;
 import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.OPERATION_NAME;
+import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.OUTCOME;
 import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.PROVIDER_NAME;
 import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.REQUEST_MODEL;
 import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.RESPONSE_MODEL;
 import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.TOKEN_TYPE;
+import static dev.langchain4j.observation.listeners.ObservationChatModelListener.TOKEN_USAGE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
@@ -50,35 +53,35 @@ public class MicrometerChatModelListenerIT {
 
         // Only token usage metrics should be present
         await().atMost(Duration.ofSeconds(5))
-                .untilAsserted(() -> assertThat(meterRegistry.find(TOKEN_USAGE.asString()).meter())
+                .untilAsserted(() -> assertThat(meterRegistry.find(TOKEN_USAGE).meter())
                         .isNotNull());
 
         assertThat(meterRegistry
-                .find(TOKEN_USAGE.asString())
+                .find(TOKEN_USAGE)
                 .tag(TOKEN_TYPE.asString(), "input")
                 .meter())
                 .isNotNull();
         assertThat(meterRegistry
-                .find(TOKEN_USAGE.asString())
+                .find(TOKEN_USAGE)
                 .tag(TOKEN_TYPE.asString(), "output")
                 .meter())
                 .isNotNull();
 
         assertThat(meterRegistry
-                .get(TOKEN_USAGE.asString())
+                .get(TOKEN_USAGE)
                 .tag(TOKEN_TYPE.asString(), "input")
                 .summary()
                 .totalAmount())
                 .isGreaterThan(1);
         assertThat(meterRegistry
-                .get(TOKEN_USAGE.asString())
+                .get(TOKEN_USAGE)
                 .tag(TOKEN_TYPE.asString(), "output")
                 .summary()
                 .totalAmount())
                 .isGreaterThan(1);
 
         DistributionSummary inputSummary = meterRegistry
-                .get(TOKEN_USAGE.asString())
+                .get(TOKEN_USAGE)
                 .tag(TOKEN_TYPE.asString(), "input")
                 .summary();
         CountAtBucket[] inputBuckets = inputSummary.takeSnapshot().histogramCounts();
@@ -88,7 +91,7 @@ public class MicrometerChatModelListenerIT {
 
         // Output tokens (145): should appear in le:256 bucket (145 <= 256) but not le:64 (145 > 64)
         DistributionSummary outputSummary = meterRegistry
-                .get(TOKEN_USAGE.asString())
+                .get(TOKEN_USAGE)
                 .tag(TOKEN_TYPE.asString(), "output")
                 .summary();
         CountAtBucket[] outputBuckets = outputSummary.takeSnapshot().histogramCounts();
@@ -104,9 +107,9 @@ public class MicrometerChatModelListenerIT {
                 .hasLowCardinalityKeyValue(KeyValue.of(OPERATION_NAME.asString(), "chat"))
                 .hasLowCardinalityKeyValue(KeyValue.of(REQUEST_MODEL.asString(), "gpt-4o"))
                 .hasLowCardinalityKeyValue(KeyValue.of(RESPONSE_MODEL.asString(), "gpt-4o-2024-11-20"))
-                .hasLowCardinalityKeyValue(KeyValue.of("outcome", "SUCCESS"))
-                .hasHighCardinalityKeyValueWithKey("output_tokens")
-                .hasHighCardinalityKeyValueWithKey("input_tokens");
+                .hasLowCardinalityKeyValue(KeyValue.of(OUTCOME.asString(), "SUCCESS"))
+                .hasHighCardinalityKeyValueWithKey(OUTPUT_TOKENS.asString())
+                .hasHighCardinalityKeyValueWithKey(INPUT_TOKENS.asString());
     }
 
     @Test
@@ -114,15 +117,15 @@ public class MicrometerChatModelListenerIT {
         doChatRequest("wrongDeploymentName");
 
         // No token usage metrics on error
-        assertThat(meterRegistry.find(TOKEN_USAGE.asString()).meter())
+        assertThat(meterRegistry.find(TOKEN_USAGE).meter())
                 .isNull();
         assertThat(meterRegistry
-                .find(TOKEN_USAGE.asString())
+                .find(TOKEN_USAGE)
                 .tag(TOKEN_TYPE.asString(), "input")
                 .meter())
                 .isNull();
         assertThat(meterRegistry
-                .find(TOKEN_USAGE.asString())
+                .find(TOKEN_USAGE)
                 .tag(TOKEN_TYPE.asString(), "output")
                 .meter())
                 .isNull();
@@ -135,7 +138,7 @@ public class MicrometerChatModelListenerIT {
                 .hasLowCardinalityKeyValue(KeyValue.of(OPERATION_NAME.asString(), "chat"))
                 .hasLowCardinalityKeyValue(KeyValue.of(REQUEST_MODEL.asString(), "wrongDeploymentName"))
                 .doesNotHaveLowCardinalityKeyValue(KeyValue.of(RESPONSE_MODEL.asString(), "gpt-4o-2024-11-20"))
-                .hasLowCardinalityKeyValue(KeyValue.of("outcome", "ERROR"));
+                .hasLowCardinalityKeyValue(KeyValue.of(OUTCOME.asString(), "ERROR"));
     }
 
     private void doChatRequest(String deploymentName) {

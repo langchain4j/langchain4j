@@ -1,6 +1,9 @@
 package dev.langchain4j.observation.listeners;
 
+import static dev.langchain4j.observation.listeners.ChatModelDocumentation.HighCardinalityValues.INPUT_TOKENS;
+import static dev.langchain4j.observation.listeners.ChatModelDocumentation.HighCardinalityValues.OUTPUT_TOKENS;
 import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.OPERATION_NAME;
+import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.OUTCOME;
 import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.PROVIDER_NAME;
 import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.REQUEST_MODEL;
 import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.RESPONSE_MODEL;
@@ -23,7 +26,6 @@ import org.jspecify.annotations.Nullable;
  */
 public class DefaultChatModelConvention implements ChatModelConvention {
 
-    private static final String OUTCOME_KEY = "outcome";
     private static final String OUTCOME_SUCCESS = "SUCCESS";
     private static final String OUTCOME_ERROR = "ERROR";
     static final String UNKNOWN = "unknown";
@@ -69,9 +71,9 @@ public class DefaultChatModelConvention implements ChatModelConvention {
                 .map(result::and).orElse(result.and(KeyValue.of(RESPONSE_MODEL, UNKNOWN)));
 
         if (errorContext != null && errorContext.error() != null) {
-            result = result.and(KeyValue.of(OUTCOME_KEY, OUTCOME_ERROR));
+            result = result.and(KeyValue.of(OUTCOME.asString(), OUTCOME_ERROR));
         } else {
-            result = result.and(KeyValue.of(OUTCOME_KEY, OUTCOME_SUCCESS));
+            result = result.and(KeyValue.of(OUTCOME.asString(), OUTCOME_SUCCESS));
         }
         return result;
     }
@@ -89,12 +91,12 @@ public class DefaultChatModelConvention implements ChatModelConvention {
 
         result = ofNullable(responseContext)
                 .map(ChatModelResponseContext::chatResponse).map(ChatResponse::tokenUsage).map(TokenUsage::outputTokenCount)
-                .map(tokens -> KeyValue.of("output_tokens", "" + tokens))
+                .map(tokens -> KeyValue.of(OUTPUT_TOKENS.asString(), "" + tokens))
                 .map(result::and).orElse(result);
 
         result = ofNullable(responseContext)
                 .map(ChatModelResponseContext::chatResponse).map(ChatResponse::tokenUsage).map(TokenUsage::inputTokenCount)
-                .map(tokens -> KeyValue.of("input_tokens", "" + tokens))
+                .map(tokens -> KeyValue.of(INPUT_TOKENS.asString(), "" + tokens))
                 .map(result::and).orElse(result);
 
         return result;
