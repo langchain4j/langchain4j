@@ -7,7 +7,7 @@ import io.micrometer.observation.docs.ObservationDocumentation;
 import org.jspecify.annotations.Nullable;
 
 public enum ChatModelDocumentation implements ObservationDocumentation {
-    INSTANCE{
+    INSTANCE {
         @Override
         public @Nullable Class<? extends ObservationConvention<? extends Observation.Context>> getDefaultConvention() {
             return DefaultChatModelConvention.class;
@@ -60,17 +60,34 @@ public enum ChatModelDocumentation implements ObservationDocumentation {
             public String asString() {
                 return "gen_ai.token.type";
             }
-        };
-    }
-
-    public enum HighCardinalityValues implements KeyName {
-        TOKEN_USAGE {
+        },
+        OUTCOME{
             @Override
             public String asString() {
-                return "gen_ai.client.token.usage";
+                return "outcome";
             }
         };
     }
 
+    public enum HighCardinalityValues implements KeyName {
+//        TOKEN_USAGE {
+//            @Override
+//            public String asString() {
+//                return "gen_ai.client.token.usage";
+//            }
+//        };
 
+        OUTPUT_TOKENS {
+            @Override
+            public String asString() {
+                return "output_tokens";
+            }
+        },
+        INPUT_TOKENS {
+            @Override
+            public String asString() {
+                return "input_tokens";
+            }
+        };
+    }
 }
