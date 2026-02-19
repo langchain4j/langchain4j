@@ -53,7 +53,7 @@ public class OpenAiModerationModel implements ModerationModel {
                 .build();
         this.modelName = builder.modelName;
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
-        this.listeners = copyIfNotNull(builder.listeners);
+        this.listeners = copy(builder.listeners);
     }
 
     @Override
