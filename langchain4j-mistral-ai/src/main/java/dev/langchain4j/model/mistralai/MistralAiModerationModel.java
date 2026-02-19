@@ -45,7 +45,7 @@ public class MistralAiModerationModel implements ModerationModel {
 
     @Override
     public List<ModerationModelListener> listeners() {
-        return listeners != null ? listeners : List.of();
+        return listeners;
     }
 
     @Override
