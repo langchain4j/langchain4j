@@ -92,7 +92,7 @@ public interface ModerationModel {
     default Response<Moderation> moderate(String text) {
         ModerationRequest request = ModerationRequest.builder().text(text).build();
         ModerationResponse response = moderate(request);
-        return Response.from(response.moderation(), response.tokenUsage(), null, response.metadata());
+        return Response.from(response.moderation(), null, null, response.metadata());
     }
 
     /**
@@ -125,7 +125,7 @@ public interface ModerationModel {
         ModerationRequest request =
                 ModerationRequest.builder().messages(messages).build();
         ModerationResponse response = moderate(request);
-        return Response.from(response.moderation(), response.tokenUsage(), null, response.metadata());
+        return Response.from(response.moderation(), null, null, response.metadata());
     }
 
     /**
