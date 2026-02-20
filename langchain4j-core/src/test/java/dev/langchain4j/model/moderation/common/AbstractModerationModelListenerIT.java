@@ -103,14 +103,14 @@ public abstract class AbstractModerationModelListenerIT {
 
         String textToModerate = "hello";
         ModerationRequest moderationRequest =
-                ModerationRequest.builder().text(textToModerate).build();
+                ModerationRequest.builder().messages(List.of(textToModerate)).build();
 
         // when
         ModerationResponse moderationResponse = model.moderate(moderationRequest);
 
         // then
         ModerationRequest observedModerationRequest = moderationRequestReference.get();
-        assertThat(observedModerationRequest.text()).isEqualTo(textToModerate);
+        assertThat(observedModerationRequest.messages()).containsExactly(textToModerate);
 
         assertThat(onRequestInvocations).hasValue(1);
 
@@ -178,7 +178,7 @@ public abstract class AbstractModerationModelListenerIT {
         String textToModerate = "this message will fail";
 
         ModerationRequest moderationRequest =
-                ModerationRequest.builder().text(textToModerate).build();
+                ModerationRequest.builder().messages(List.of(textToModerate)).build();
 
         // when
         Throwable thrown = catchThrowable(() -> model.moderate(moderationRequest));
@@ -241,7 +241,7 @@ public abstract class AbstractModerationModelListenerIT {
 
         String textToModerate = "hello";
         ModerationRequest moderationRequest =
-                ModerationRequest.builder().text(textToModerate).build();
+                ModerationRequest.builder().messages(List.of(textToModerate)).build();
 
         // when
         ModerationResponse response = model.moderate(moderationRequest);
@@ -283,8 +283,9 @@ public abstract class AbstractModerationModelListenerIT {
 
         ModerationModel model = createFailingModel(List.of(failingListener, successfulListener));
 
-        ModerationRequest moderationRequest =
-                ModerationRequest.builder().text("this message will fail").build();
+        ModerationRequest moderationRequest = ModerationRequest.builder()
+                .messages(List.of("this message will fail"))
+                .build();
 
         // when
         try {

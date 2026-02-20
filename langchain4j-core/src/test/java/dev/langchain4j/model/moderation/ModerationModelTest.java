@@ -14,12 +14,7 @@ class ModerationModelTest implements WithAssertions {
 
         @Override
         public ModerationResponse doModerate(ModerationRequest moderationRequest) {
-            String flaggedText;
-            if (moderationRequest.hasText()) {
-                flaggedText = moderationRequest.text();
-            } else {
-                flaggedText = ((UserMessage) moderationRequest.messages().get(0)).singleText();
-            }
+            String flaggedText = moderationRequest.messages().get(0);
             return ModerationResponse.builder()
                     .moderation(Moderation.flagged(flaggedText))
                     .build();
@@ -50,7 +45,8 @@ class ModerationModelTest implements WithAssertions {
     @Test
     void moderate_moderation_request_with_text() {
         ModerationModel model = new FlagEverythingModel();
-        ModerationRequest request = ModerationRequest.builder().text("hello").build();
+        ModerationRequest request =
+                ModerationRequest.builder().messages(List.of("hello")).build();
         ModerationResponse response = model.moderate(request);
         assertThat(response.moderation()).isEqualTo(Moderation.flagged("hello"));
     }
@@ -58,9 +54,8 @@ class ModerationModelTest implements WithAssertions {
     @Test
     void moderate_moderation_request_with_messages() {
         ModerationModel model = new FlagEverythingModel();
-        ModerationRequest request = ModerationRequest.builder()
-                .messages(List.of(UserMessage.from("user msg")))
-                .build();
+        ModerationRequest request =
+                ModerationRequest.builder().messages(List.of("user msg")).build();
         ModerationResponse response = model.moderate(request);
         assertThat(response.moderation()).isEqualTo(Moderation.flagged("user msg"));
     }
