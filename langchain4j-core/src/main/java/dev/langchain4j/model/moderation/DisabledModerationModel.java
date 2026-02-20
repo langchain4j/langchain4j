@@ -25,11 +25,23 @@ public class DisabledModerationModel implements ModerationModel {
         throw new ModelDisabledException("ModerationModel is disabled");
     }
 
+    /**
+     * @deprecated Use {@link #moderate(String)} instead.
+     * As of 2.0.0, conversion from ChatMessage to text is the caller's responsibility.
+     * See https://github.com/langchain4j/langchain4j/issues/4595
+     */
+    @Deprecated(forRemoval = true)
     @Override
     public Response<Moderation> moderate(ChatMessage message) {
         throw new ModelDisabledException("ModerationModel is disabled");
     }
 
+    /**
+     * @deprecated Use {@link #moderate(String)} instead.
+     * As of 2.0.0, conversion from ChatMessage to text is the caller's responsibility.
+     * See https://github.com/langchain4j/langchain4j/issues/4595
+     */
+    @Deprecated(forRemoval = true)
     @Override
     public Response<Moderation> moderate(List<ChatMessage> messages) {
         throw new ModelDisabledException("ModerationModel is disabled");
