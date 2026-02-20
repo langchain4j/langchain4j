@@ -1,23 +1,13 @@
 package dev.langchain4j.agentic.observability;
 
 import dev.langchain4j.Internal;
-import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
-import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.scope.AgenticScope;
-import dev.langchain4j.agentic.workflow.ConditionalAgent;
-import dev.langchain4j.agentic.workflow.ConditionalAgentInstance;
-import dev.langchain4j.agentic.workflow.LoopAgentInstance;
 import java.io.IOException;
-import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;

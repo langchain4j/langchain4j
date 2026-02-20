@@ -6,10 +6,7 @@ import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.workflow.ConditionalAgent;
 import dev.langchain4j.agentic.workflow.ConditionalAgentInstance;
 import dev.langchain4j.agentic.workflow.LoopAgentInstance;
-import java.io.IOException;
 import java.lang.reflect.Type;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -19,6 +16,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * Generates HTML reports for agent executions.
+ * This class has been vibe-coded and is not expected to be maintainable manually by a human without LLM's help.
+ */
 public record HtmlReportGenerator(String name, AgentMonitor monitor, AgentInstance rootAgent) {
 
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
