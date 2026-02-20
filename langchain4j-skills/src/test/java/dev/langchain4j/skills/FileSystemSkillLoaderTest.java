@@ -44,10 +44,22 @@ class FileSystemSkillLoaderTest {
                 });
     }
 
+    @Test
+    void should_store_directory_when_loaded_from_filesystem() {
+        Path expectedDir = toPath("skills/using-process-tool");
+        Skill skill = FileSystemSkillLoader.loadSkill(expectedDir);
+
+        assertThat(skill).isInstanceOf(DefaultSkill.class);
+        assertThat(((DefaultSkill) skill).directory()).isEqualTo(expectedDir);
+    }
+
     private Skill loadSkill(String resourcePath) {
+        return FileSystemSkillLoader.loadSkill(toPath(resourcePath));
+    }
+
+    private Path toPath(String resourcePath) {
         try {
-            Path path = Paths.get(getClass().getClassLoader().getResource(resourcePath).toURI());
-            return FileSystemSkillLoader.loadSkill(path);
+            return Paths.get(getClass().getClassLoader().getResource(resourcePath).toURI());
         } catch (URISyntaxException e) {
             throw new RuntimeException(e);
         }

@@ -13,9 +13,11 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.Map;
 
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_SONNET_4_6;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -84,6 +86,28 @@ public class SkillsIT {
         verify(spyTools).process("Klaus", 177, "Heisler");
         verify(spyTools).reset();
         verifyNoMoreInteractions(spyTools);
+    }
+
+    @Test
+    void should_activate_skill_and_run_script() {
+
+        // given
+        Skill skill = FileSystemSkillLoader.loadSkill(toPath("skills/greeting-user"));
+        String skillSystemMessage = Skills.createSystemMessage(skill);
+        SkillsConfig config = SkillsConfig.builder().allowRun(true).build();
+        Map<ToolSpecification, ToolExecutor> skillTools = Skills.createTools(List.of(skill), config);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(model)
+                .systemMessage(skillSystemMessage)
+                .tools(skillTools)
+                .build();
+
+        // when
+        String response = assistant.chat("Greet the user");
+
+        // then
+        assertThat(response).containsIgnoringCase("hello from python");
     }
 
     private Path toPath(String fileName) {

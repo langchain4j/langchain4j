@@ -9,6 +9,8 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -22,10 +24,18 @@ import static java.util.Arrays.asList;
 public class Skills {
 
     public static Map<ToolSpecification, ToolExecutor> createTools(Skill... skills) {
-        return createTools(asList(skills));
+        return createTools(asList(skills), null);
     }
 
     public static Map<ToolSpecification, ToolExecutor> createTools(List<Skill> skills) {
+        return createTools(skills, null);
+    }
+
+    public static Map<ToolSpecification, ToolExecutor> createTools(SkillsConfig config, Skill... skills) {
+        return createTools(asList(skills), config);
+    }
+
+    public static Map<ToolSpecification, ToolExecutor> createTools(List<Skill> skills, SkillsConfig config) {
         ensureNotEmpty(skills, "skills");
 
         Map<String, Skill> skillsByName = new LinkedHashMap<>();
@@ -67,15 +77,16 @@ public class Skills {
         Map<ToolSpecification, ToolExecutor> result = new HashMap<>();
         result.put(activateSkillTool, activateSkillExecutor);
 
-        boolean hasFiles = skills.stream().anyMatch(skill -> !skill.files().isEmpty());
+        boolean hasFiles = skills.stream().anyMatch(skill ->
+                skill.files().stream().anyMatch(f -> !f.path().startsWith("scripts/")));
         if (hasFiles) {
             String exampleFilePath = skills.stream()
-                    .filter(skill -> !skill.files().isEmpty())
+                    .flatMap(skill -> skill.files().stream())
+                    .filter(f -> !f.path().startsWith("scripts/"))
                     .findFirst()
-                    .map(skill -> skill.files().get(0).path())
+                    .map(SkillFile::path)
                     .orElseThrow();
 
-            // TODO same tool for assets?
             ToolSpecification readFileTool = ToolSpecification.builder()
                     .name("read_file") // TODO make configurable, make default less generic, to avoid clashes
                     .description("Reads content of a file") // TODO make configurable
@@ -122,6 +133,80 @@ public class Skills {
             };
 
             result.put(readFileTool, readFileExecutor);
+        }
+
+        if (config != null && config.allowRun()) {
+            ToolSpecification runTool = ToolSpecification.builder()
+                    .name("run") // TODO make everything customizable
+                    .description("Runs a shell command. When skill_name is provided, the command runs with the skill's root directory as the working directory.")
+                    .parameters(JsonObjectSchema.builder()
+                            .addStringProperty("command",
+                                    "The shell command to execute. For example: 'python scripts/process.py --input data.csv'")
+                            .addStringProperty("skill_name",
+                                    "Optional. Name of the skill whose root directory to use as the working directory. For example: " + skills.get(0).name())
+                            .required("command")
+                            .build())
+                    .build();
+
+            ToolExecutor runExecutor = new ToolExecutor() {
+
+                @Override
+                public ToolExecutionResult executeWithContext(ToolExecutionRequest request, InvocationContext context) {
+
+                    Map<String, Object> arguments = parseMap(request.arguments());
+                    String command = extractArgument("command", arguments);
+                    String skillName = arguments.containsKey("skill_name")
+                            ? arguments.get("skill_name").toString() : null;
+
+                    Path workingDir = null;
+                    if (skillName != null && !skillName.isBlank()) {
+                        Skill skill = skillsByName.get(skillName);
+                        if (skill == null) {
+                            throwException("There is no skill with name '%s'".formatted(skillName));
+                        }
+                        if (skill instanceof DefaultSkill ds && ds.directory() != null) {
+                            workingDir = ds.directory();
+                        }
+                        // if directory is null (programmatically built skill), CWD falls back to JVM default
+                    }
+
+                    try {
+                        ProcessRunner.Result runResult = ProcessRunner.run(
+                                command, workingDir, ProcessRunner.DEFAULT_TIMEOUT_SECONDS);
+                        if (runResult.isSuccess()) {
+                            return ToolExecutionResult.builder()
+                                    .resultText(runResult.stdout()) // TODO truncate, configurable
+                                    .build();
+                        } else {
+                            String errorText = "Exit code: " + runResult.exitCode() + "\n"
+                                    + "Stdout:\n" + (runResult.stdout().isEmpty() ? "(empty)" : runResult.stdout()) + "\n"
+                                    + "Stderr:\n" + (runResult.stderr().isEmpty() ? "(empty)" : runResult.stderr());
+                            return ToolExecutionResult.builder()
+                                    .isError(true)
+                                    .resultText(errorText)
+                                    .build();
+                        }
+                    } catch (ProcessRunner.TimeoutException e) {
+                        return ToolExecutionResult.builder()
+                                .isError(true)
+                                .resultText(e.getMessage())
+                                .build();
+                    } catch (IOException | InterruptedException e) {
+                        if (e instanceof InterruptedException) Thread.currentThread().interrupt();
+                        return ToolExecutionResult.builder()
+                                .isError(true)
+                                .resultText("Failed to run command: " + e.getMessage())
+                                .build();
+                    }
+                }
+
+                @Override
+                public String execute(ToolExecutionRequest request, Object memoryId) {
+                    throw new IllegalStateException("executeWithContext must be called instead");
+                }
+            };
+
+            result.put(runTool, runExecutor);
         }
 
         return result;

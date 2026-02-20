@@ -1,5 +1,6 @@
 package dev.langchain4j.skills;
 
+import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -13,12 +14,14 @@ public class DefaultSkill implements Skill {
     private final String description;
     private final String body;
     private final List<SkillFile> files;
+    private final Path directory;
 
     public DefaultSkill(Builder builder) {
         this.name = ensureNotBlank(builder.name, "name");
         this.description = ensureNotBlank(builder.description, "description");
         this.body = ensureNotBlank(builder.body, "body");
         this.files = copy(builder.files);
+        this.directory = builder.directory;
         validateUniqueFilePaths(this.files);
     }
 
@@ -42,6 +45,10 @@ public class DefaultSkill implements Skill {
         return files;
     }
 
+    public Path directory() {
+        return directory;
+    }
+
     // TODO eht
     // TODO toString: part of body, part of files
 
@@ -55,6 +62,7 @@ public class DefaultSkill implements Skill {
         private String description;
         private String body;
         private List<? extends SkillFile> files;
+        private Path directory;
 
         public Builder name(String name) {
             this.name = name;
@@ -73,6 +81,11 @@ public class DefaultSkill implements Skill {
 
         public Builder files(List<? extends SkillFile> files) {
             this.files = files;
+            return this;
+        }
+
+        public Builder directory(Path directory) {
+            this.directory = directory;
             return this;
         }
 

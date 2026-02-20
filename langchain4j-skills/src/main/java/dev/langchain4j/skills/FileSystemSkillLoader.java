@@ -40,6 +40,7 @@ public class FileSystemSkillLoader {
                 .description(description)
                 .body(body)
                 .files(files)
+                .directory(skillDirectory)
                 .build();
     }
 
