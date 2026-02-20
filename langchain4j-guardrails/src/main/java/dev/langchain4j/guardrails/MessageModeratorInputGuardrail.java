@@ -2,6 +2,9 @@ package dev.langchain4j.guardrails;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import java.util.stream.Collectors;
+
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.InputGuardrailResult;
@@ -53,7 +56,8 @@ public class MessageModeratorInputGuardrail implements InputGuardrail {
      */
     @Override
     public InputGuardrailResult validate(UserMessage userMessage) {
-        Response<Moderation> response = moderationModel.moderate(userMessage);
+        String textToModerate = extractText(userMessage);
+        Response<Moderation> response = moderationModel.moderate(textToModerate);
 
         if (response.content().flagged()) {
             return fatal("User message has been flagged", new ModerationException("User message has been flagged", response.content()));
@@ -61,4 +65,19 @@ public class MessageModeratorInputGuardrail implements InputGuardrail {
             return success();
         }
     }
+
+    /**
+     * Extracts all textual content parts from the given {@link UserMessage}
+     * and joins them into a single String for moderation.
+     *
+     * Only {@link TextContent} parts are included.
+     */
+    private static String extractText(UserMessage userMessage) {
+        return userMessage.contents().stream()
+                .filter(TextContent.class::isInstance)
+                .map(TextContent.class::cast)
+                .map(TextContent::text)
+                .collect(Collectors.joining("\n---\n"));
+    }
+
 }
