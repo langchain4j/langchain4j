@@ -271,6 +271,98 @@ The `attributes` map allows passing information between the `onRequest`, `onResp
   `StreamingChatResponseHandler.onCompleteResponse()` is called. The `ChatModelListener.onError()` is called
   before the `StreamingChatResponseHandler.onError()` is called.
 
+## Moderation Model Observability
+
+Implementations of `ModerationModel` that support listeners (such as `OpenAiModerationModel`, `MistralAiModerationModel`,
+and `WatsonxModerationModel`) allow configuring `ModerationModelListener`(s) to listen for events such as:
+- Requests to the moderation API
+- Responses from the moderation API
+- Errors
+
+Here is an example of using `ModerationModelListener`:
+```java
+ModerationModelListener listener = new ModerationModelListener() {
+
+    @Override
+    public void onRequest(ModerationModelRequestContext requestContext) {
+        ModerationRequest moderationRequest = requestContext.moderationRequest();
+
+        // Access messages being moderated
+        System.out.println("Moderating messages: " + moderationRequest.messages());
+
+        System.out.println(requestContext.modelProvider());
+        System.out.println(requestContext.modelName());
+
+        Map<Object, Object> attributes = requestContext.attributes();
+        attributes.put("startTime", System.currentTimeMillis());
+    }
+
+    @Override
+    public void onResponse(ModerationModelResponseContext responseContext) {
+        ModerationResponse moderationResponse = responseContext.moderationResponse();
+
+        Moderation moderation = moderationResponse.moderation();
+        System.out.println("Flagged: " + moderation.flagged());
+        if (moderation.flagged()) {
+            System.out.println("Flagged text: " + moderation.flaggedText());
+        }
+
+        ModerationRequest moderationRequest = responseContext.moderationRequest();
+        System.out.println(moderationRequest);
+
+        System.out.println(responseContext.modelProvider());
+        System.out.println(responseContext.modelName());
+
+        Map<Object, Object> attributes = responseContext.attributes();
+        Long startTime = (Long) attributes.get("startTime");
+        if (startTime != null) {
+            System.out.println("Duration: " + (System.currentTimeMillis() - startTime) + "ms");
+        }
+    }
+
+    @Override
+    public void onError(ModerationModelErrorContext errorContext) {
+        Throwable error = errorContext.error();
+        error.printStackTrace();
+
+        ModerationRequest moderationRequest = errorContext.moderationRequest();
+        System.out.println(moderationRequest);
+
+        System.out.println(errorContext.modelProvider());
+        System.out.println(errorContext.modelName());
+
+        Map<Object, Object> attributes = errorContext.attributes();
+        System.out.println(attributes.get("startTime"));
+    }
+};
+
+ModerationModel model = OpenAiModerationModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .listeners(List.of(listener))
+        .build();
+
+model.moderate("Text to check for policy violations");
+```
+
+The `attributes` map allows passing information between the `onRequest`, `onResponse`, and `onError` methods of the same
+`ModerationModelListener`, as well as between multiple `ModerationModelListener`s.
+
+### How listeners work
+
+- Listeners are specified as a `List<ModerationModelListener>` and are called in the order of iteration.
+- Listeners are called synchronously and in the same thread.
+- The `ModerationModelListener.onRequest()` method is called right before calling the moderation API.
+- The `ModerationModelListener.onRequest()` method is called only once per request.
+  If an error occurs while calling the moderation API and a retry happens,
+  `ModerationModelListener.onRequest()` will **_not_** be called for every retry.
+- The `ModerationModelListener.onResponse()` method is called only once,
+  immediately after receiving a successful response.
+- The `ModerationModelListener.onError()` method is called only once.
+  If an error occurs while calling the moderation API and a retry happens,
+  `ModerationModelListener.onError()` will **_not_** be called for every retry.
+- If an exception is thrown from one of the `ModerationModelListener` methods,
+  it will be logged at the `WARN` level. The execution of subsequent listeners will continue as usual.
+
 ## RAG Observability (EmbeddingModel, EmbeddingStore and ContentRetriever)
 
 `EmbeddingModel`, `EmbeddingStore` and `ContentRetriever` can be instrumented with listeners to observe:
