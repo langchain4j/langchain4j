@@ -28,7 +28,7 @@ import org.junit.jupiter.api.Test;
  * <p>
  * <b>Requirements:</b> Docker must be running to execute this test.
  */
-class CanaryTokenIT {
+class CanaryTokenGuardrailIT {
 
     private static final String MODEL_NAME = TINY_DOLPHIN_MODEL;
     private static final String LOCAL_IMAGE_NAME = localOllamaImage(MODEL_NAME);
