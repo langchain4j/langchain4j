@@ -52,17 +52,26 @@ class ProcessRunnerTest {
     @Test
     @DisabledOnOs(OS.WINDOWS)
     void should_timeout_on_unix() {
+        long start = System.currentTimeMillis();
+
         assertThatThrownBy(() -> ProcessRunner.run("sleep 60", null, 1))
                 .isInstanceOf(ProcessRunner.TimeoutException.class)
                 .hasMessageContaining("timed out");
+
+        long elapsed = System.currentTimeMillis() - start;
+        assertThat(elapsed).isBetween(1_000L, 5_000L);
     }
 
     @Test
     @EnabledOnOs(OS.WINDOWS)
     void should_timeout_on_windows() {
-        // ping sends N packets with ~1s between each — works reliably in non-interactive mode
+        long start = System.currentTimeMillis();
+
         assertThatThrownBy(() -> ProcessRunner.run("ping -n 62 127.0.0.1", null, 1))
                 .isInstanceOf(ProcessRunner.TimeoutException.class)
                 .hasMessageContaining("timed out");
+
+        long elapsed = System.currentTimeMillis() - start;
+        assertThat(elapsed).isBetween(1_000L, 5_000L);
     }
 }
