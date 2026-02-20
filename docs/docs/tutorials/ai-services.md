@@ -580,7 +580,8 @@ GoogleAiGeminiChatModel.builder()
 ```java
 MistralAiChatModel.builder()
     ...
-    .responseFormat(MistralAiResponseFormatType.JSON_OBJECT)
+    .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)
+    .strictJsonSchema(true)
     .build();
 ```
 

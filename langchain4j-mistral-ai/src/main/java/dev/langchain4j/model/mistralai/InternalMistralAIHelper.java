@@ -35,7 +35,12 @@ class InternalMistralAIHelper {
     }
 
     static MistralAiChatCompletionRequest createMistralAiRequest(
-            ChatRequest chatRequest, Boolean safePrompt, Integer randomSeed, boolean stream, boolean sendThinking) {
+            ChatRequest chatRequest,
+            Boolean safePrompt,
+            Integer randomSeed,
+            boolean stream,
+            boolean sendThinking,
+            boolean strictJsonSchema) {
         MistralAiChatCompletionRequest.MistralAiChatCompletionRequestBuilder requestBuilder =
                 MistralAiChatCompletionRequest.builder()
                         .model(chatRequest.modelName())
@@ -45,7 +50,7 @@ class InternalMistralAIHelper {
                         .topP(chatRequest.topP())
                         .randomSeed(randomSeed)
                         .safePrompt(safePrompt)
-                        .responseFormat(toMistralAiResponseFormat(chatRequest.responseFormat()))
+                        .responseFormat(toMistralAiResponseFormat(chatRequest.responseFormat(), strictJsonSchema))
                         .stop(chatRequest.stopSequences().toArray(new String[0]))
                         .frequencyPenalty(chatRequest.frequencyPenalty())
                         .presencePenalty(chatRequest.presencePenalty())

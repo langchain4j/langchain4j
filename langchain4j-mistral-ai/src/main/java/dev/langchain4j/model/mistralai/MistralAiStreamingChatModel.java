@@ -98,7 +98,7 @@ public class MistralAiStreamingChatModel implements StreamingChatModel {
         validate(chatRequest.parameters());
 
         MistralAiChatCompletionRequest request =
-                createMistralAiRequest(chatRequest, safePrompt, randomSeed, true, sendThinking);
+                createMistralAiRequest(chatRequest, safePrompt, randomSeed, true, sendThinking, false);
         client.streamingChatCompletion(request, handler, returnThinking);
     }
 
