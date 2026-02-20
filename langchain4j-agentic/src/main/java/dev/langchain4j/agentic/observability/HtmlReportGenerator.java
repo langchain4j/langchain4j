@@ -243,32 +243,30 @@ public record HtmlReportGenerator(String name, AgentMonitor monitor, AgentInstan
     }
 
     private void appendLoopInfo(StringBuilder html, AgentInstance agent) {
-        if (agent.topology() != AgenticSystemTopology.LOOP) return;
-        try {
-            LoopAgentInstance loop = agent.as(LoopAgentInstance.class);
-            html.append("<div class=\"loop-info\">");
-            html.append("<span class=\"loop-tag\">max ").append(loop.maxIterations()).append("</span>");
-            if (loop.exitCondition() != null && !loop.exitCondition().isEmpty()) {
-                html.append("<span class=\"loop-tag\">exit: ").append(esc(truncate(loop.exitCondition(), 40))).append("</span>");
-            }
-            html.append("<span class=\"loop-tag\">").append(loop.testExitAtLoopEnd() ? "test at end" : "test at start").append("</span>");
-            html.append("</div>\n");
-        } catch (ClassCastException ignored) {
+        if (agent.topology() != AgenticSystemTopology.LOOP) {
+            return;
         }
+        LoopAgentInstance loop = agent.as(LoopAgentInstance.class);
+        html.append("<div class=\"loop-info\">");
+        html.append("<span class=\"loop-tag\">max ").append(loop.maxIterations()).append("</span>");
+        if (loop.exitCondition() != null && !loop.exitCondition().isEmpty()) {
+            html.append("<span class=\"loop-tag\">exit: ").append(esc(truncate(loop.exitCondition(), 40))).append("</span>");
+        }
+        html.append("<span class=\"loop-tag\">").append(loop.testExitAtLoopEnd() ? "test at end" : "test at start").append("</span>");
+        html.append("</div>\n");
     }
 
     private Map<String, String> conditionsOf(AgentInstance agent) {
+        if (agent.topology() != AgenticSystemTopology.ROUTER) {
+            return Map.of();
+        }
         Map<String, String> map = new LinkedHashMap<>();
-        if (agent.topology() != AgenticSystemTopology.ROUTER) return map;
-        try {
-            ConditionalAgentInstance ci = agent.as(ConditionalAgentInstance.class);
-            for (ConditionalAgent ca : ci.conditionalSubagents()) {
-                if (ca.condition() == null) continue;
+        for (ConditionalAgent ca : agent.as(ConditionalAgentInstance.class).conditionalSubagents()) {
+            if (ca.condition() != null) {
                 for (AgentInstance child : ca.agentInstances()) {
                     map.put(child.agentId(), ca.condition());
                 }
             }
-        } catch (ClassCastException ignored) {
         }
         return map;
     }
