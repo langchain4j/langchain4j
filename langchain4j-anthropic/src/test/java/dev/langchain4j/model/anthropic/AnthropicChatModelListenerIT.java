@@ -1,6 +1,6 @@
 package dev.langchain4j.model.anthropic;
 
-import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_HAIKU_4_5_20251001;
 import static java.util.Collections.singletonList;
 
 import dev.langchain4j.model.chat.ChatModel;
@@ -17,7 +17,6 @@ class AnthropicChatModelListenerIT extends AbstractChatModelListenerIT {
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(modelName())
                 .temperature(temperature())
-                .topP(topP())
                 .maxTokens(maxTokens())
                 .logRequests(true)
                 .logResponses(true)
@@ -27,7 +26,12 @@ class AnthropicChatModelListenerIT extends AbstractChatModelListenerIT {
 
     @Override
     protected String modelName() {
-        return CLAUDE_3_5_HAIKU_20241022.toString();
+        return CLAUDE_HAIKU_4_5_20251001.toString();
+    }
+
+    @Override
+    protected Double topP() {
+        return null;
     }
 
     @Override

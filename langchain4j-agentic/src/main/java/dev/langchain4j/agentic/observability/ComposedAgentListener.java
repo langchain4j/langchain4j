@@ -3,6 +3,7 @@ package dev.langchain4j.agentic.observability;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -42,6 +43,10 @@ public class ComposedAgentListener implements AgentListener {
         } else {
             this.listeners.add(listener);
         }
+    }
+
+    public Collection<AgentListener> listeners() {
+        return listeners;
     }
 
     @Override

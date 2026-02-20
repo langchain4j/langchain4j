@@ -408,8 +408,6 @@ It can be enabled by setting the `cacheSystemMessages` and `cacheTools` paramete
 
 When enabled,`cache_control` blocks will be added to the last system message and tool, respectively.
 
-To use caching, please set `beta("prompt-caching-2024-07-31")`.
-
 `AnthropicChatModel` and `AnthropicStreamingChatModel` return `AnthropicTokenUsage` in response which
 contains `cacheCreationInputTokens` and `cacheReadInputTokens`.
 
