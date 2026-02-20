@@ -435,6 +435,7 @@ ChatModel chatModel = MistralAiChatModel.builder()
          .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
          .modelName("mistral-small-latest")
          .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA) // see [6] below
+         .strictJsonSchema(true) // see [6] below
          .logRequests(true)
          .logResponses(true)
          .build();
