@@ -15,7 +15,6 @@ import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.moderation.listener.ModerationModelListener;
 import dev.langchain4j.model.output.Response;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -63,7 +62,8 @@ public interface ModerationModel {
      * @return the moderation {@code Response}.
      */
     default Response<Moderation> moderate(String text) {
-        ModerationRequest request = ModerationRequest.builder().text(text).build();
+        ModerationRequest request =
+                ModerationRequest.builder().messages(List.of(text)).build();
         ModerationResponse response = moderate(request);
         return Response.from(response.moderation(), null, null, response.metadata());
     }
@@ -95,8 +95,8 @@ public interface ModerationModel {
      * @return the moderation {@code Response}.
      */
     default Response<Moderation> moderate(List<ChatMessage> messages) {
-        ModerationRequest request =
-                ModerationRequest.builder().messages(messages).build();
+        List<String> texts = messages.stream().map(ModerationModel::toText).toList();
+        ModerationRequest request = ModerationRequest.builder().messages(texts).build();
         ModerationResponse response = moderate(request);
         return Response.from(response.moderation(), null, null, response.metadata());
     }
@@ -119,14 +119,7 @@ public interface ModerationModel {
      * @return a list of text inputs extracted from the request
      */
     static List<String> toInputs(ModerationRequest moderationRequest) {
-        List<String> inputs = new ArrayList<>();
-        if (moderationRequest.hasText()) {
-            inputs.add(moderationRequest.text());
-        }
-        if (moderationRequest.hasMessages()) {
-            moderationRequest.messages().stream().map(ModerationModel::toText).forEach(inputs::add);
-        }
-        return inputs;
+        return moderationRequest.messages();
     }
 
     /**
