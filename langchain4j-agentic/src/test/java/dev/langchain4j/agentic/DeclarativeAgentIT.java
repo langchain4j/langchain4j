@@ -56,7 +56,6 @@ import dev.langchain4j.agentic.scope.AgenticScopePersister;
 import dev.langchain4j.agentic.scope.AgenticScopeRegistry;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
-import dev.langchain4j.agentic.supervisor.SupervisorContextStrategy;
 import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
 import dev.langchain4j.agentic.workflow.ConditionalAgentInstance;
 import dev.langchain4j.agentic.workflow.LoopAgentInstance;
@@ -77,7 +76,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
@@ -747,14 +745,14 @@ public class DeclarativeAgentIT {
         assertThat(bankTool.getBalance("Georgios")).isEqualTo(1100.0);
     }
 
-    private static final AtomicReference<String> request = new AtomicReference<>();
-    private static final AtomicReference<String> audience = new AtomicReference<>();
+    private static final AtomicReference<String> requestRef = new AtomicReference<>();
+    private static final AtomicReference<String> audienceRef = new AtomicReference<>();
 
     public interface AudienceRetriever {
 
         @HumanInTheLoop(description = "Generate a story based on the given topic", outputKey = "audience", async = true)
         static String humanResponse(AgenticScope scope, @V("topic") String topic) {
-            request.set("Which audience for topic " + topic + "?");
+            requestRef.set("Which audience for topic " + topic + "?");
             CompletableFuture<String> futureResult = new CompletableFuture<>();
             HumanResponseSupplier.pendingResponses.put(scope.memoryId(), futureResult);
             try {
@@ -780,8 +778,8 @@ public class DeclarativeAgentIT {
     public static class AudienceReader {
 
         @Agent
-        public static void readAudience(AgenticScope agenticScope) {
-            audience.set(agenticScope.readState("audience", ""));
+        public static void readAudience(@V("audience") String audience) {
+            audienceRef.set(audience);
         }
     }
 
@@ -801,8 +799,8 @@ public class DeclarativeAgentIT {
         String story = storyCreator.write("dragons and wizards");
         System.out.println(story);
 
-        assertThat(request.get()).isEqualTo("Which audience for topic dragons and wizards?");
-        assertThat(audience.get()).isEqualTo("young adults");
+        assertThat(requestRef.get()).isEqualTo("Which audience for topic dragons and wizards?");
+        assertThat(audienceRef.get()).isEqualTo("young adults");
     }
 
     public interface AstrologyAgent {
