@@ -18,7 +18,7 @@ class ProcessRunnerTest {
         ProcessRunner.Result result = ProcessRunner.run("echo hello", null, 10);
 
         assertThat(result.isSuccess()).isTrue();
-        assertThat(result.stdout()).contains("hello");
+        assertThat(result.stdOut()).contains("hello");
     }
 
     @Test
@@ -27,7 +27,7 @@ class ProcessRunnerTest {
         ProcessRunner.Result result = ProcessRunner.run("echo hello", null, 10);
 
         assertThat(result.isSuccess()).isTrue();
-        assertThat(result.stdout()).contains("hello");
+        assertThat(result.stdOut()).contains("hello");
     }
 
     @Test
@@ -37,7 +37,7 @@ class ProcessRunnerTest {
 
         assertThat(result.isSuccess()).isFalse();
         assertThat(result.exitCode()).isNotEqualTo(0);
-        assertThat(result.stderr()).isNotBlank();
+        assertThat(result.stdErr()).isNotBlank();
     }
 
     @Test

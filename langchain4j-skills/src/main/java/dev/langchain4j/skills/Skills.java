@@ -175,12 +175,12 @@ public class Skills {
                                 command, workingDir, ProcessRunner.DEFAULT_TIMEOUT_SECONDS);
                         if (runResult.isSuccess()) {
                             return ToolExecutionResult.builder()
-                                    .resultText(runResult.stdout()) // TODO truncate, configurable
+                                    .resultText(runResult.stdOut()) // TODO truncate, configurable
                                     .build();
                         } else {
                             String errorText = "Exit code: " + runResult.exitCode() + "\n"
-                                    + "Stdout:\n" + (runResult.stdout().isEmpty() ? "(empty)" : runResult.stdout()) + "\n"
-                                    + "Stderr:\n" + (runResult.stderr().isEmpty() ? "(empty)" : runResult.stderr());
+                                    + "Stdout:\n" + (runResult.stdOut().isEmpty() ? "(empty)" : runResult.stdOut()) + "\n"
+                                    + "Stderr:\n" + (runResult.stdErr().isEmpty() ? "(empty)" : runResult.stdErr());
                             return ToolExecutionResult.builder()
                                     .isError(true)
                                     .resultText(errorText)
@@ -189,7 +189,7 @@ public class Skills {
                     } catch (ProcessRunner.TimeoutException e) {
                         return ToolExecutionResult.builder()
                                 .isError(true)
-                                .resultText(e.getMessage())
+                                .resultText(e.getMessage() + "\n\nSTDOUT: " + e.partialStdOut() + "\n\nSTDERR: " + e.partialStdErr())
                                 .build();
                     } catch (IOException | InterruptedException e) {
                         if (e instanceof InterruptedException) Thread.currentThread().interrupt();
