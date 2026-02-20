@@ -17,7 +17,6 @@ import java.util.Map;
 import java.util.Optional;
 
 import static dev.langchain4j.agentic.internal.AgentUtil.AGENTIC_SCOPE_ARG_NAME;
-import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.afterAgentInvocation;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.agentError;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.beforeAgentInvocation;
@@ -29,7 +28,7 @@ public interface AgentInvoker extends AgentInstance, InternalAgent {
     AgentInvocationArguments toInvocationArguments(AgenticScope agenticScope) throws MissingArgumentException;
 
     default Object invoke(DefaultAgenticScope agenticScope, Object agent, AgentInvocationArguments args) throws AgentInvocationException {
-        AgentListener listener = composeWithInherited(listener(), agenticScope.listener());
+        AgentListener listener = listener();
         beforeAgentInvocation(listener, agenticScope, this, args.namedArgs());
         Object result = internalInvoke(agenticScope, listener, agent, args);
         afterAgentInvocation(listener, agenticScope, this, args.namedArgs(), result);
@@ -38,7 +37,6 @@ public interface AgentInvoker extends AgentInstance, InternalAgent {
 
     private Object internalInvoke(DefaultAgenticScope agenticScope, AgentListener listener, Object agent, AgentInvocationArguments args) {
         LangChain4jManaged.setCurrent(Map.of(AgenticScope.class, agenticScope));
-        AgentListener higherLevelListener = leaf() ? null : agenticScope.replaceListener(listener);
         try {
             return method().invoke(agent, args.positionalArgs());
         } catch (Exception e) {
@@ -46,9 +44,6 @@ public interface AgentInvoker extends AgentInstance, InternalAgent {
             agentError(listener, agenticScope, this, args.namedArgs(), invocationException);
             throw invocationException;
         } finally {
-            if (!leaf()) {
-                agenticScope.setListener(higherLevelListener);
-            }
             LangChain4jManaged.removeCurrent();
         }
     }
