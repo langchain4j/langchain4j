@@ -213,7 +213,18 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         if (toolCalls != null) {
             for (ToolCall toolCall : toolCalls) {
 
-                int index = toolCall.index() != null ? toolCall.index() : 0;
+                int index;
+                if (toolCall.index() != null) {
+                    index = toolCall.index();
+                } else {
+                    index = toolCallBuilder.index();
+                    // When index is null and a different tool call id appears, increment the index
+                    if (toolCall.id() != null
+                            && toolCallBuilder.id() != null
+                            && !toolCallBuilder.id().equals(toolCall.id())) {
+                        index = toolCallBuilder.index() + 1;
+                    }
+                }
                 if (toolCallBuilder.index() != index) {
                     onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
                     toolCallBuilder.updateIndex(index);

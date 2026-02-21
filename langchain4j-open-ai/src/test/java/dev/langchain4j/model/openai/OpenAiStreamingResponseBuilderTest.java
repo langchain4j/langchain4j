@@ -14,28 +14,17 @@ class OpenAiStreamingResponseBuilderTest {
         // Given: a tool call with null index (as Gemini's OpenAI-compatible API returns)
         OpenAiStreamingResponseBuilder builder = new OpenAiStreamingResponseBuilder();
 
-        FunctionCall functionCall = FunctionCall.builder()
-                .name("getWeather")
-                .arguments("{\"city\": \"Berlin\"}")
-                .build();
-
         ToolCall toolCall = ToolCall.builder()
                 .id("call_123")
-                .index(null) // Gemini returns null index
+                .index(null)
                 .type(ToolType.FUNCTION)
-                .function(functionCall)
+                .function(FunctionCall.builder()
+                        .name("getWeather")
+                        .arguments("{\"city\": \"Berlin\"}")
+                        .build())
                 .build();
 
-        Delta delta = Delta.builder().toolCalls(List.of(toolCall)).build();
-
-        ChatCompletionChoice choice =
-                ChatCompletionChoice.builder().index(0).delta(delta).build();
-
-        ChatCompletionResponse response = ChatCompletionResponse.builder()
-                .id("resp_1")
-                .model("gemini-2.0-flash")
-                .choices(List.of(choice))
-                .build();
+        ChatCompletionResponse response = chatCompletionResponse(toolCall);
 
         // When: appending the response (should not throw NPE)
         builder.append(response);
@@ -51,40 +40,77 @@ class OpenAiStreamingResponseBuilderTest {
     }
 
     @Test
+    void should_handle_multiple_tool_calls_with_null_index() {
+        // Given: two distinct tool calls, both with null index (Gemini parallel tool calls)
+        OpenAiStreamingResponseBuilder builder = new OpenAiStreamingResponseBuilder();
+
+        // First tool call streaming chunks
+        ToolCall firstToolCall = ToolCall.builder()
+                .id("call_aaa")
+                .index(null)
+                .type(ToolType.FUNCTION)
+                .function(FunctionCall.builder()
+                        .name("getWeather")
+                        .arguments("{\"city\": \"Berlin\"}")
+                        .build())
+                .build();
+        builder.append(chatCompletionResponse(firstToolCall));
+
+        // Second tool call streaming chunks — different id, still null index
+        ToolCall secondToolCall = ToolCall.builder()
+                .id("call_bbb")
+                .index(null)
+                .type(ToolType.FUNCTION)
+                .function(FunctionCall.builder()
+                        .name("getTemperature")
+                        .arguments("{\"city\": \"Paris\"}")
+                        .build())
+                .build();
+        builder.append(chatCompletionResponse(secondToolCall));
+
+        // Then: both tool execution requests should be built separately
+        ChatResponse chatResponse = builder.build();
+        assertThat(chatResponse.aiMessage().toolExecutionRequests()).hasSize(2);
+        assertThat(chatResponse.aiMessage().toolExecutionRequests().get(0).name())
+                .isEqualTo("getWeather");
+        assertThat(chatResponse.aiMessage().toolExecutionRequests().get(0).id()).isEqualTo("call_aaa");
+        assertThat(chatResponse.aiMessage().toolExecutionRequests().get(1).name())
+                .isEqualTo("getTemperature");
+        assertThat(chatResponse.aiMessage().toolExecutionRequests().get(1).id()).isEqualTo("call_bbb");
+    }
+
+    @Test
     void should_handle_non_null_tool_call_index() {
         // Given: a standard tool call with non-null index
         OpenAiStreamingResponseBuilder builder = new OpenAiStreamingResponseBuilder();
-
-        FunctionCall functionCall = FunctionCall.builder()
-                .name("getTemperature")
-                .arguments("{\"city\": \"Paris\"}")
-                .build();
 
         ToolCall toolCall = ToolCall.builder()
                 .id("call_456")
                 .index(0)
                 .type(ToolType.FUNCTION)
-                .function(functionCall)
+                .function(FunctionCall.builder()
+                        .name("getTemperature")
+                        .arguments("{\"city\": \"Paris\"}")
+                        .build())
                 .build();
 
-        Delta delta = Delta.builder().toolCalls(List.of(toolCall)).build();
-
-        ChatCompletionChoice choice =
-                ChatCompletionChoice.builder().index(0).delta(delta).build();
-
-        ChatCompletionResponse response = ChatCompletionResponse.builder()
-                .id("resp_2")
-                .model("gpt-4o")
-                .choices(List.of(choice))
-                .build();
-
-        // When
-        builder.append(response);
+        builder.append(chatCompletionResponse(toolCall));
 
         // Then
         ChatResponse chatResponse = builder.build();
         assertThat(chatResponse.aiMessage().toolExecutionRequests()).hasSize(1);
         assertThat(chatResponse.aiMessage().toolExecutionRequests().get(0).name())
                 .isEqualTo("getTemperature");
+    }
+
+    private static ChatCompletionResponse chatCompletionResponse(ToolCall toolCall) {
+        return ChatCompletionResponse.builder()
+                .id("resp_1")
+                .model("gemini-2.0-flash")
+                .choices(List.of(ChatCompletionChoice.builder()
+                        .index(0)
+                        .delta(Delta.builder().toolCalls(List.of(toolCall)).build())
+                        .build()))
+                .build();
     }
 }
