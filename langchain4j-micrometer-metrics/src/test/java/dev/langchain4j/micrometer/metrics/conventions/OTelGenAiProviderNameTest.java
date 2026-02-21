@@ -1,17 +1,20 @@
 package dev.langchain4j.micrometer.metrics.conventions;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
+
 import dev.langchain4j.model.ModelProvider;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
-
 class OTelGenAiProviderNameTest {
 
     @ParameterizedTest
-    @EnumSource(value = ModelProvider.class, mode = EXCLUDE, names = {"OTHER"})
+    @EnumSource(
+            value = ModelProvider.class,
+            mode = EXCLUDE,
+            names = {"OTHER"})
     void every_model_provider_should_have_a_mapping(ModelProvider modelProvider) {
         String result = OTelGenAiProviderName.fromModelProvider(modelProvider);
 

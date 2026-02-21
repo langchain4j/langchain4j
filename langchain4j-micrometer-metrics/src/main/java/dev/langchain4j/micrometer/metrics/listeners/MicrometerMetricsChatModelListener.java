@@ -1,5 +1,8 @@
 package dev.langchain4j.micrometer.metrics.listeners;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.Experimental;
 import dev.langchain4j.micrometer.metrics.conventions.OTelGenAiAttributes;
 import dev.langchain4j.micrometer.metrics.conventions.OTelGenAiMetricName;
@@ -13,17 +16,18 @@ import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
 
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-
 /**
  * A {@link ChatModelListener} that uses a Micrometer {@link MeterRegistry} to collect metrics
  * about chat model interactions following OpenTelemetry Semantic Conventions for Generative AI.
  * <p>
- * This listener records token usage metrics (input and output tokens) when a chat model response is received.
- * The token usage metric is recorded as a {@link DistributionSummary} (Histogram), consistent with the
+ * This listener records token usage metrics (input and output tokens) when a chat model response is received,
+ * using a {@link DistributionSummary} consistent with the
  * <a href="https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-metrics/#metric-gen_aiclienttokenusage">
  * OpenTelemetry Semantic Conventions for {@code gen_ai.client.token.usage}</a>.
+ * <p>
+ * Histogram publishing and bucket boundaries are not configured by this listener.
+ * Users can enable histograms and set bucket boundaries through their {@link MeterRegistry} configuration
+ * (e.g., via Spring Boot properties or {@link io.micrometer.core.instrument.config.MeterFilter}).
  * <p>
  * Note: The {@link MicrometerMetricsChatModelListener}
  * must be instantiated separately (e.g., via Spring Boot auto-configuration or manual instantiation).
@@ -81,11 +85,6 @@ public class MicrometerMetricsChatModelListener implements ChatModelListener {
                 .tag(OTelGenAiAttributes.RESPONSE_MODEL.value(), getResponseModelName(responseContext))
                 .tag(OTelGenAiAttributes.TOKEN_TYPE.value(), tokenType.value())
                 .description("Measures token usage")
-                .publishPercentileHistogram()
-                .minimumExpectedValue(1.0)
-                .maximumExpectedValue(67108864.0)
-                .serviceLevelObjectives(
-                        1, 4, 16, 64, 256, 1024, 4096, 16384, 65536, 262144, 1048576, 4194304, 16777216, 67108864)
                 .register(meterRegistry)
                 .record(tokenCount);
     }
