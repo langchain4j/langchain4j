@@ -145,13 +145,14 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
 
         ChatCompletionRequest openAiRequest =
                 toOpenAiChatRequest(
-                        chatRequest, parameters, sendThinking, thinkingFieldName, strictTools, strictJsonSchema)
+                                chatRequest, parameters, sendThinking, thinkingFieldName, strictTools, strictJsonSchema)
                         .stream(true)
                         .streamOptions(
                                 StreamOptions.builder().includeUsage(true).build())
                         .build();
 
-        OpenAiStreamingResponseBuilder openAiResponseBuilder = new OpenAiStreamingResponseBuilder(returnThinking, accumulateToolCallId);
+        OpenAiStreamingResponseBuilder openAiResponseBuilder =
+                new OpenAiStreamingResponseBuilder(returnThinking, accumulateToolCallId);
         ToolCallBuilder toolCallBuilder = new ToolCallBuilder();
 
         client.chatCompletion(openAiRequest)
@@ -212,7 +213,18 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         if (toolCalls != null) {
             for (ToolCall toolCall : toolCalls) {
 
-                int index = toolCall.index();
+                int index;
+                if (toolCall.index() != null) {
+                    index = toolCall.index();
+                } else {
+                    index = toolCallBuilder.index();
+                    // When index is null and a different tool call id appears, increment the index
+                    if (toolCall.id() != null
+                            && toolCallBuilder.id() != null
+                            && !toolCallBuilder.id().equals(toolCall.id())) {
+                        index = toolCallBuilder.index() + 1;
+                    }
+                }
                 if (toolCallBuilder.index() != index) {
                     onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
                     toolCallBuilder.updateIndex(index);
