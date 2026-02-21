@@ -117,6 +117,7 @@
 
         <!-- embedding store filter parsers -->
         <module>embedding-store-filter-parsers/langchain4j-embedding-store-filter-parser-sql</module>
+        <module>embedding-store-filter-parsers/langchain4j-embedding-store-filter-builder-language</module>
 
         <!-- guardrails -->
         <module>langchain4j-guardrails</module>
