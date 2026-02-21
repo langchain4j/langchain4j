@@ -115,7 +115,7 @@ class PolymorphicOutputParser<T> implements OutputParser<T> {
                 .append(discriminator)
                 .append("=")
                 .append(value)
-                .append(", follow: ")
+                .append(", answer strictly in the following JSON format: ")
                 .append(structure(subType)));
 
         return instructions.toString();
