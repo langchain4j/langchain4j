@@ -223,6 +223,18 @@ public class JsonSchemaElementUtils {
         return toMap(jsonSchemaElement, strict, true);
     }
 
+    /**
+     * OpenAI Responses API validates schemas using the Structured Outputs subset:
+     * all object properties must be required and {@code additionalProperties} must be {@code false}.
+     * This helper builds a strict schema (to produce nullable types for optional fields),
+     * keeps existing {@code additionalProperties} values if present, and only adds the field when it is missing.
+     */
+    public static Map<String, Object> toMapForOpenAiResponses(JsonSchemaElement jsonSchemaElement, boolean strict) {
+        Map<String, Object> schemaMap = toMap(jsonSchemaElement, true);
+        ensureAdditionalPropertiesFalse(schemaMap);
+        return schemaMap;
+    }
+
     public static Map<String, Object> toMap(JsonSchemaElement jsonSchemaElement, boolean strict, boolean required) {
         if (jsonSchemaElement instanceof JsonObjectSchema jsonObjectSchema) {
             Map<String, Object> map = new LinkedHashMap<>();
@@ -347,6 +359,52 @@ public class JsonSchemaElementUtils {
         } else {
             return type;
         }
+    }
+
+    private static void ensureAdditionalPropertiesFalse(Object node) {
+        if (node instanceof Map<?, ?> rawMap) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> map = (Map<String, Object>) rawMap;
+            if (isObjectSchema(map) && !map.containsKey("additionalProperties")) {
+                map.put("additionalProperties", false);
+            }
+            for (Object value : map.values()) {
+                ensureAdditionalPropertiesFalse(value);
+            }
+        } else if (node instanceof Iterable<?> iterable) {
+            for (Object value : iterable) {
+                ensureAdditionalPropertiesFalse(value);
+            }
+        } else if (node instanceof Object[] values) {
+            for (Object value : values) {
+                ensureAdditionalPropertiesFalse(value);
+            }
+        }
+    }
+
+    private static boolean isObjectSchema(Map<?, ?> map) {
+        if (map.containsKey("properties")) {
+            return true;
+        }
+        Object type = map.get("type");
+        if ("object".equals(type)) {
+            return true;
+        }
+        if (type instanceof String[] types) {
+            for (String value : types) {
+                if ("object".equals(value)) {
+                    return true;
+                }
+            }
+        }
+        if (type instanceof Iterable<?> iterable) {
+            for (Object value : iterable) {
+                if ("object".equals(value)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     static boolean isJsonInteger(Class<?> type) {

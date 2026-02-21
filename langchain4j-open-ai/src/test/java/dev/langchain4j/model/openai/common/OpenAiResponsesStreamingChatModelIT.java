@@ -36,6 +36,7 @@ import org.mockito.InOrder;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Override
     protected List<StreamingChatModel> models() {
@@ -43,8 +44,7 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(GPT_4_1_NANO.toString())
-                .logRequests(true)
-                .logResponses(true)
+                .strict(true)
                 .build();
 
         return List.of(model);
@@ -54,7 +54,8 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
     protected StreamingChatModel createModelWith(ChatRequestParameters parameters) {
         OpenAiResponsesStreamingChatModel.Builder modelBuilder = OpenAiResponsesStreamingChatModel.builder()
                 .apiKey(System.getenv("OPENAI_API_KEY"))
-                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"));
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .strict(true);
 
         if (parameters.modelName() != null) {
             modelBuilder.modelName(parameters.modelName());
@@ -103,6 +104,7 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(GPT_4_1_NANO.toString())
+                .strict(true)
                 .listeners(List.of(listener))
                 .build();
     }
@@ -248,7 +250,13 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
         model.chat("What is the capital of Germany?", handler);
 
-        assertThat(handler.get().aiMessage().text()).contains("Berlin");
+        ChatResponse response = handler.get();
+        assertThat(response.aiMessage().text()).contains("Berlin");
+        assertThat(response.metadata()).isInstanceOf(OpenAiChatResponseMetadata.class);
+        OpenAiChatResponseMetadata metadata = (OpenAiChatResponseMetadata) response.metadata();
+        assertThat(metadata.id()).isNotBlank();
+        assertThat(metadata.modelName()).isNotBlank();
+        assertThat(metadata.finishReason()).isNotNull();
     }
 
     @Test
@@ -262,7 +270,13 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
         model.chat("What is the capital of France?", handler);
 
-        assertThat(handler.get().aiMessage().text()).contains("Paris");
+        ChatResponse response = handler.get();
+        assertThat(response.aiMessage().text()).contains("Paris");
+        assertThat(response.metadata()).isInstanceOf(OpenAiChatResponseMetadata.class);
+        OpenAiChatResponseMetadata metadata = (OpenAiChatResponseMetadata) response.metadata();
+        assertThat(metadata.id()).isNotBlank();
+        assertThat(metadata.modelName()).isNotBlank();
+        assertThat(metadata.finishReason()).isNotNull();
     }
 
     @Test
@@ -323,6 +337,7 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 .apiKey("test-key")
                 .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
                 .modelName(GPT_4_1_NANO.toString())
+                .strict(true)
                 .build();
 
         ToolSpecification toolSpecification = ToolSpecification.builder()
@@ -341,8 +356,7 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
         } catch (Exception ignored) {
         }
 
-        ObjectMapper objectMapper = new ObjectMapper();
-        JsonNode payload = objectMapper.readTree(mockHttpClient.request().body());
+        JsonNode payload = OBJECT_MAPPER.readTree(mockHttpClient.request().body());
         JsonNode toolsNode = payload.get("tools");
 
         assertThat(toolsNode).isNotNull();
@@ -356,6 +370,39 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
         assertThat(toolNode.get("strict").asBoolean()).isTrue();
 
         assertThat(payload.get("tool_choice").asText()).isEqualTo("auto");
+    }
+
+    @Test
+    void should_not_send_strict_when_strict_is_false() throws Exception {
+        MockHttpClient mockHttpClient = new MockHttpClient();
+
+        StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
+                .apiKey("test-key")
+                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                .modelName(GPT_4_1_NANO.toString())
+                .strict(false)
+                .build();
+
+        ToolSpecification toolSpecification = ToolSpecification.builder()
+                .name("getWeather")
+                .parameters(JsonObjectSchema.builder().addStringProperty("city").build())
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("Hello"))
+                .toolSpecifications(toolSpecification)
+                .build();
+
+        try {
+            model.chat(chatRequest, new TestStreamingChatResponseHandler());
+        } catch (Exception ignored) {
+        }
+
+        JsonNode payload = OBJECT_MAPPER.readTree(mockHttpClient.request().body());
+        JsonNode toolNode = payload.get("tools").get(0);
+
+        assertThat(toolNode.has("strict")).isFalse();
+        assertThat(toolNode.get("parameters").has("additionalProperties")).isFalse();
     }
 
     @Test
@@ -430,6 +477,37 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
             assertThat(tokenUsage.totalTokenCount())
                     .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
         }
+    }
+
+    @Test
+    void should_fail_when_input_exceeds_context_limit() {
+        StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .modelName("gpt-5-nano")
+                .build();
+
+        String largeInput = generateLargeInput();
+
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(largeInput, handler);
+
+        assertThatThrownBy(handler::get)
+                .isInstanceOf(RuntimeException.class)
+                .hasRootCauseInstanceOf(RuntimeException.class)
+                .hasRootCauseMessage(
+                        "Response failed: Your input exceeds the context window of this model. Please adjust your input and try again.");
+    }
+
+    private static String generateLargeInput() {
+        String prefix = "count 'a' characters below:\n";
+        int repeats = 400_000;
+
+        StringBuilder builder = new StringBuilder(prefix.length() + repeats * 2);
+        builder.append(prefix);
+        for (int i = 0; i < repeats; i++) {
+            builder.append("a ");
+        }
+        return builder.toString();
     }
 
     @Override

@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.openai.models.ChatModel;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
@@ -13,7 +14,10 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ToolChoice;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatRequestParameters;
@@ -39,6 +43,7 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
         StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
                 .client(client)
                 .modelName("gpt-5-mini")
+                .strict(true)
                 .build();
 
         return List.of(model);
@@ -51,7 +56,9 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
                 .build();
 
         OpenAiOfficialResponsesStreamingChatModel.Builder modelBuilder =
-                OpenAiOfficialResponsesStreamingChatModel.builder().client(client);
+                OpenAiOfficialResponsesStreamingChatModel.builder()
+                        .client(client)
+                        .strict(true);
 
         if (parameters.modelName() != null) {
             modelBuilder.modelName(parameters.modelName());
@@ -107,6 +114,7 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
         return OpenAiOfficialResponsesStreamingChatModel.builder()
                 .client(client)
                 .modelName(InternalOpenAiOfficialTestHelper.CHAT_MODEL_NAME.toString())
+                .strict(true)
                 .listeners(listener)
                 .build();
     }
@@ -320,7 +328,13 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
         model.chat("What is the capital of Germany?", handler);
 
         // then
-        assertThat(handler.get().aiMessage().text()).contains("Berlin");
+        var response = handler.get();
+        assertThat(response.aiMessage().text()).contains("Berlin");
+        assertThat(response.metadata()).isInstanceOf(OpenAiOfficialChatResponseMetadata.class);
+        OpenAiOfficialChatResponseMetadata metadata = (OpenAiOfficialChatResponseMetadata) response.metadata();
+        assertThat(metadata.id()).isNotBlank();
+        assertThat(metadata.modelName()).isNotBlank();
+        assertThat(metadata.finishReason()).isNotNull();
     }
 
     @Test
@@ -342,7 +356,13 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
         model.chat("What is 2+2?", handler);
 
         // then
-        assertThat(handler.get().aiMessage().text()).isNotBlank();
+        var response = handler.get();
+        assertThat(response.aiMessage().text()).isNotBlank();
+        assertThat(response.metadata()).isInstanceOf(OpenAiOfficialChatResponseMetadata.class);
+        OpenAiOfficialChatResponseMetadata metadata = (OpenAiOfficialChatResponseMetadata) response.metadata();
+        assertThat(metadata.id()).isNotBlank();
+        assertThat(metadata.modelName()).isNotBlank();
+        assertThat(metadata.finishReason()).isNotNull();
     }
 
     @Test
@@ -364,7 +384,13 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
         model.chat("What is the capital of France?", handler);
 
         // then
-        assertThat(handler.get().aiMessage().text()).contains("Paris");
+        var response = handler.get();
+        assertThat(response.aiMessage().text()).contains("Paris");
+        assertThat(response.metadata()).isInstanceOf(OpenAiOfficialChatResponseMetadata.class);
+        OpenAiOfficialChatResponseMetadata metadata = (OpenAiOfficialChatResponseMetadata) response.metadata();
+        assertThat(metadata.id()).isNotBlank();
+        assertThat(metadata.modelName()).isNotBlank();
+        assertThat(metadata.finishReason()).isNotNull();
     }
 
     @Test
@@ -382,11 +408,23 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
                 .build();
 
         // when
+        ToolSpecification weatherTool = ToolSpecification.builder()
+                .name("getWeather")
+                .parameters(JsonObjectSchema.builder().addStringProperty("city").build())
+                .build();
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("Use getWeather to report weather in Munich"))
+                .toolSpecifications(weatherTool)
+                .toolChoice(ToolChoice.REQUIRED)
+                .build();
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        model.chat("What is the weather?", handler);
+        model.chat(chatRequest, handler);
 
         // then
-        assertThat(handler.get().aiMessage().text()).isNotBlank();
+        var response = handler.get();
+        assertThat(response.aiMessage().toolExecutionRequests()).hasSize(1);
+        String toolName = response.aiMessage().toolExecutionRequests().get(0).name();
+        assertThat(toolName).isEqualTo("getWeather");
     }
 
     @Test
@@ -404,11 +442,57 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
                 .build();
 
         // when
+        ToolSpecification weatherTool = ToolSpecification.builder()
+                .name("getWeather")
+                .parameters(JsonObjectSchema.builder().addStringProperty("city").build())
+                .build();
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("Use getWeather to report weather in Munich"))
+                .toolSpecifications(weatherTool)
+                .toolChoice(ToolChoice.REQUIRED)
+                .build();
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        model.chat("Hello", handler);
+        model.chat(chatRequest, handler);
 
         // then
-        assertThat(handler.get().aiMessage().text()).isNotBlank();
+        var response = handler.get();
+        assertThat(response.aiMessage().toolExecutionRequests()).hasSize(1);
+    }
+
+    @Test
+    void should_fail_when_input_exceeds_context_limit() {
+
+        // given
+        var client = OpenAIOkHttpClient.builder()
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .build();
+
+        StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
+                .client(client)
+                .modelName("o4-mini")
+                .build();
+
+        String largeInput = generateLargeInput();
+
+        // when
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(largeInput, handler);
+
+        // then
+        assertThatThrownBy(handler::get)
+                .isInstanceOf(RuntimeException.class)
+                .hasRootCauseInstanceOf(com.openai.errors.SseException.class)
+                .hasRootCauseMessage(
+                        "200: Your input exceeds the context window of this model. Please adjust your input and try again.");
+    }
+
+    private static String generateLargeInput() {
+        StringBuilder builder = new StringBuilder(650_000);
+        builder.append("count 'a' characters below:\n");
+        for (int i = 0; i < 400_000; i++) {
+            builder.append("a ");
+        }
+        return builder.toString();
     }
 
     @Override
@@ -443,6 +527,5 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
 
     @Override
     @Disabled("Can't do it reliably")
-    protected void should_execute_multiple_tools_in_parallel_then_answer(StreamingChatModel model) {
-    }
+    protected void should_execute_multiple_tools_in_parallel_then_answer(StreamingChatModel model) {}
 }
