@@ -271,6 +271,7 @@ The `attributes` map allows passing information between the `onRequest`, `onResp
   `StreamingChatResponseHandler.onCompleteResponse()` is called. The `ChatModelListener.onError()` is called
   before the `StreamingChatResponseHandler.onError()` is called.
 
+
 ## RAG Observability (EmbeddingModel, EmbeddingStore and ContentRetriever)
 
 `EmbeddingModel`, `EmbeddingStore` and `ContentRetriever` can be instrumented with listeners to observe:
@@ -410,9 +411,77 @@ observedRetriever.retrieve(Query.from("my query"));
   listener, as well as between multiple listeners.
 
 
+## Observability Metrics with Micrometer
+
+The `langchain4j-micrometer-metrics` module provides a Micrometer-based metrics implementation for the LangChain4j library.
+Currently, it provides metrics for `ChatModel` and `StreamingChatModel` interactions
+using a `ChatModelListener` implementation that collects metrics via Micrometer's `MeterRegistry`.
+
+The naming of the metrics follows the [OpenTelemetry Semantic Conventions for Generative AI Metrics](https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-metrics/). (v1.39.0)
+
+> **⚠️ Experimental**: This module is marked as `@Experimental` and may have breaking changes in future versions.
+
+> **⚠️ Warning**: The OpenTelemetry Semantic Conventions for Generative AI are currently **experimental and not stable**. This means they may have breaking changes in future versions. If you follow these conventions, you may need to introduce breaking changes to your dashboards, alerts, and automations when the conventions are updated.
+
+### Metrics
+
+The following metrics are currently collected:
+
+| Metric Name | Type | Description                                                     |
+|-------------|------|-----------------------------------------------------------------|
+| `gen_ai.client.token.usage` | Histogram (DistributionSummary) | The number of input and output tokens used per **chat** model request |
+
+#### Tags on `gen_ai.client.token.usage`
+
+| Tag                     | Description | Example Values                              |
+|-------------------------|-------------|---------------------------------------------|
+| `gen_ai.operation.name` | The operation being performed | `chat`                                      |
+| `gen_ai.provider.name`  | The AI provider name | `openai`, `azure.ai.inference`, `anthropic` |
+| `gen_ai.request.model`  | The model name from the request | `gpt-4`, `gpt-35-turbo`                     |
+| `gen_ai.response.model` | The model name from the response | `gpt-4-0613`                                |
+| `gen_ai.token.type`     | The type of token counted | `input`, `output`                           |
+
+#### Creating the `MicrometerMetricsChatModelListener`
+
+The `MicrometerMetricsChatModelListener` collects metrics for `ChatModel` and `StreamingChatModel` interactions.
+It requires a Micrometer's `MeterRegistry` to be instantiated.
+
+```java
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.micrometer.metrics.listeners.MicrometerMetricsChatModelListener;
+import dev.langchain4j.model.azure.AzureOpenAiChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import io.micrometer.core.instrument.MeterRegistry;
+
+import java.util.List;
+
+// Get the MeterRegistry
+MeterRegistry meterRegistry = new SimpleMeterRegistry();
+
+// 1. Create the listener with the MeterRegistry and AI system name
+MicrometerMetricsChatModelListener listener = 
+    new MicrometerMetricsChatModelListener(meterRegistry);
+
+// 2. Add the listener to your ChatModel
+AzureOpenAiChatModel chatModel = AzureOpenAiChatModel.builder()
+        .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+        .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+        .deploymentName(System.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"))
+        .listeners(List.of(listener))
+        .build();
+
+// 3. Use the chat model as usual - metrics are collected automatically
+ChatResponse response = chatModel.chat(ChatRequest.builder()
+        .messages(UserMessage.from("Hello!"))
+        .build());
+```
+
 ## Observability in Spring Boot Application
 
 See more details [here](/tutorials/spring-boot-integration#observability).
+
+See more details on how to collect Micrometer Metrics in Spring Boot application [here](/tutorials/spring-boot-integration#micrometer-metrics). 
 
 ## Third-party Integrations
 
