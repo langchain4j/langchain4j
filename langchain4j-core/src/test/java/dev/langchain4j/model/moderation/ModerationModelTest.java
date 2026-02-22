@@ -1,14 +1,11 @@
 package dev.langchain4j.model.moderation;
 
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.output.Response;
+import java.util.List;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
-
-import java.util.List;
 
 class ModerationModelTest implements WithAssertions {
 
@@ -20,8 +17,11 @@ class ModerationModelTest implements WithAssertions {
         }
 
         @Override
-        public Response<Moderation> moderate(List<ChatMessage> messages) {
-            return Response.from(Moderation.flagged(((UserMessage) messages.get(0)).singleText()));
+        public Response<Moderation> moderate(List<String> texts) {
+            if (texts.isEmpty()) {
+                return Response.from(Moderation.notFlagged());
+            }
+            return Response.from(Moderation.flagged(texts.get(0)));
         }
     }
 
@@ -33,16 +33,16 @@ class ModerationModelTest implements WithAssertions {
     }
 
     @Test
-    void moderate_chat_message() {
+    void moderate_text_segment() {
         ModerationModel model = new FlagEverythingModel();
-        Response<Moderation> response = model.moderate(UserMessage.from("Hello, world!"));
+        Response<Moderation> response = model.moderate(TextSegment.from("Hello, world!"));
         assertThat(response).isEqualTo(Response.from(Moderation.flagged("Hello, world!")));
     }
 
     @Test
-    void moderate_text_segment() {
+    void moderate_list_of_strings() {
         ModerationModel model = new FlagEverythingModel();
-        Response<Moderation> response = model.moderate(TextSegment.from("Hello, world!"));
+        Response<Moderation> response = model.moderate(List.of("Hello, world!"));
         assertThat(response).isEqualTo(Response.from(Moderation.flagged("Hello, world!")));
     }
 }

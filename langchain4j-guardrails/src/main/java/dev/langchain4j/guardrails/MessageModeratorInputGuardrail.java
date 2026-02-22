@@ -2,16 +2,15 @@ package dev.langchain4j.guardrails;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import java.util.stream.Collectors;
-
-import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.InputGuardrailResult;
+import dev.langchain4j.internal.ChatMessageTextExtractor;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.service.ModerationException;
+import java.util.List;
 
 /**
  * An {@link InputGuardrail} that validates user messages using a {@link ModerationModel} to detect
@@ -28,7 +27,6 @@ import dev.langchain4j.service.ModerationException;
  * </p>
  */
 public class MessageModeratorInputGuardrail implements InputGuardrail {
-
 
     private final ModerationModel moderationModel;
 
@@ -56,28 +54,21 @@ public class MessageModeratorInputGuardrail implements InputGuardrail {
      */
     @Override
     public InputGuardrailResult validate(UserMessage userMessage) {
-        String textToModerate = extractText(userMessage);
-        Response<Moderation> response = moderationModel.moderate(textToModerate);
 
-        if (response.content().flagged()) {
-            return fatal("User message has been flagged", new ModerationException("User message has been flagged", response.content()));
-        } else {
+        List<String> texts = ChatMessageTextExtractor.extract(userMessage);
+
+        if (texts.isEmpty()) {
             return success();
         }
-    }
 
-    /**
-     * Extracts all textual content parts from the given {@link UserMessage}
-     * and joins them into a single String for moderation.
-     *
-     * Only {@link TextContent} parts are included.
-     */
-    private static String extractText(UserMessage userMessage) {
-        return userMessage.contents().stream()
-                .filter(TextContent.class::isInstance)
-                .map(TextContent.class::cast)
-                .map(TextContent::text)
-                .collect(Collectors.joining("\n---\n"));
-    }
+        Response<Moderation> response = moderationModel.moderate(texts);
 
+        if (response.content().flagged()) {
+            return fatal(
+                    "User message has been flagged",
+                    new ModerationException("User message has been flagged", response.content()));
+        }
+
+        return success();
+    }
 }

@@ -7,20 +7,11 @@ import com.ibm.watsonx.ai.detection.DetectionService;
 import com.ibm.watsonx.ai.detection.DetectionTextRequest;
 import com.ibm.watsonx.ai.detection.DetectionTextResponse;
 import com.ibm.watsonx.ai.detection.detector.BaseDetector;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.exception.LangChain4jException;
-import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.model.output.Response;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 
 /**
  * A {@link ModerationModel} implementation that integrates IBM watsonx.ai with LangChain4j.
@@ -78,35 +69,17 @@ public class WatsonxModerationModel implements ModerationModel {
                         .orElse(Response.from(Moderation.notFlagged())));
     }
 
-    /**
-     * @deprecated Use {@link #moderate(String)} instead.
-     * As of 2.0.0, conversion from ChatMessage to text is the caller's responsibility.
-     * See https://github.com/langchain4j/langchain4j/issues/4595
-     */
-    @Deprecated(forRemoval = true)
     @Override
-    public Response<Moderation> moderate(List<ChatMessage> messages) {
+    public Response<Moderation> moderate(List<String> texts) {
 
-        var futures = messages.stream()
-                .map(this::toText)
-                .map(message -> CompletableFuture.supplyAsync(
-                        () -> moderate(message), DefaultExecutorProvider.getDefaultExecutorService()))
-                .toList();
-
-        try {
-
-            return futures.stream()
-                    .map(CompletableFuture::join)
-                    .filter(response -> response.content().flagged())
-                    .findFirst()
-                    .orElse(Response.from(Moderation.notFlagged()));
-
-        } catch (CompletionException e) {
-            Throwable cause = e.getCause();
-            throw cause instanceof LangChain4jException langchainException
-                    ? langchainException
-                    : new RuntimeException(cause);
+        for (String text : texts) {
+            Response<Moderation> response = moderate(text);
+            if (response.content().flagged()) {
+                return response;
+            }
         }
+
+        return Response.from(Moderation.notFlagged());
     }
 
     /**
@@ -138,20 +111,6 @@ public class WatsonxModerationModel implements ModerationModel {
                 "end", detectionTextResponse.end(),
                 "score", detectionTextResponse.score());
         return Response.from(moderation, null, null, metadata);
-    }
-
-    private String toText(ChatMessage chatMessage) {
-        if (chatMessage instanceof SystemMessage systemMessage) {
-            return systemMessage.text();
-        } else if (chatMessage instanceof UserMessage userMessage) {
-            return userMessage.singleText();
-        } else if (chatMessage instanceof AiMessage aiMessage) {
-            return aiMessage.text();
-        } else if (chatMessage instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
-            return toolExecutionResultMessage.text();
-        } else {
-            throw new IllegalArgumentException("Unsupported message type: " + chatMessage.type());
-        }
     }
 
     /**

@@ -27,6 +27,7 @@ import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
+import dev.langchain4j.internal.ChatMessageTextExtractor;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
@@ -211,7 +212,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                         UserMessage userMessage = invokeInputGuardrails(
                                 context.guardrailService(), method, userMessageForAugmentation, commonGuardrailParam);
 
-                        Type returnType = context.returnType != null ? context.returnType : method.getGenericReturnType();
+                        Type returnType =
+                                context.returnType != null ? context.returnType : method.getGenericReturnType();
                         boolean streaming = returnType == TokenStream.class || canAdaptTokenStreamTo(returnType);
 
                         // TODO should it be called when returnType==String?
@@ -236,7 +238,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     allContents.add(content);
                                 }
                             }
-                            userMessage = userMessage.toBuilder().contents(allContents).build();
+                            userMessage = userMessage.toBuilder()
+                                    .contents(allContents)
+                                    .build();
                         }
 
                         List<ChatMessage> messages = new ArrayList<>();
@@ -482,9 +486,16 @@ class DefaultAiServices<T> extends AiServices<T> {
                             ExecutorService executor = DefaultExecutorProvider.getDefaultExecutorService();
                             return executor.submit(() -> {
                                 List<ChatMessage> messagesToModerate = removeToolMessages(messages);
-                                return context.moderationModel
-                                        .moderate(messagesToModerate)
-                                        .content();
+
+                                List<String> texts = messagesToModerate.stream()
+                                        .flatMap(msg -> ChatMessageTextExtractor.extract(msg).stream())
+                                        .toList();
+
+                                if (texts.isEmpty()) {
+                                    return Moderation.notFlagged();
+                                }
+
+                                return context.moderationModel.moderate(texts).content();
                             });
                         }
                         return null;
@@ -611,8 +622,10 @@ class DefaultAiServices<T> extends AiServices<T> {
             return "";
         }
 
-        return context.userMessageProvider.apply(memoryId)
-                .orElseThrow(() -> illegalConfiguration("Error: The method '%s' does not have a user message defined.", method.getName()));
+        return context.userMessageProvider
+                .apply(memoryId)
+                .orElseThrow(() -> illegalConfiguration(
+                        "Error: The method '%s' does not have a user message defined.", method.getName()));
     }
 
     private static boolean hasContentArgument(Method method, Object[] args) {

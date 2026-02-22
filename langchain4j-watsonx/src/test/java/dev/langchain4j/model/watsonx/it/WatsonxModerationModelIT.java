@@ -6,10 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.ibm.watsonx.ai.detection.detector.Hap;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.model.watsonx.WatsonxModerationModel;
 import java.util.List;
@@ -49,11 +45,7 @@ public class WatsonxModerationModelIT {
     @Test
     public void should_return_not_flagged() {
 
-        var response = model.moderate(List.of(
-                SystemMessage.from("systemMessage"),
-                UserMessage.from("userMessage"),
-                AiMessage.from("aiMessage"),
-                ToolExecutionResultMessage.from("id", "toolName", "toolExecutionResult")));
+        var response = model.moderate(List.of("systemMessage", "userMessage", "aiMessage", "toolExecutionResult"));
 
         assertFalse(response.content().flagged());
         assertNull(response.content().flaggedText());
@@ -62,11 +54,7 @@ public class WatsonxModerationModelIT {
     @Test
     void should_return_the_flagged_response() {
 
-        var response = model.moderate(List.of(
-                SystemMessage.from("systemMessage"),
-                UserMessage.from("userMessage"),
-                AiMessage.from("I kill you!"),
-                ToolExecutionResultMessage.from("id", "toolName", "toolExecutionResult")));
+        var response = model.moderate(List.of("systemMessage", "userMessage", "I kill you!", "toolExecutionResult"));
 
         assertTrue(response.content().flagged());
         assertEquals("I kill you!", response.content().flaggedText());

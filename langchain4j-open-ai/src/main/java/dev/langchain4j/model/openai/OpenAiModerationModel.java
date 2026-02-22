@@ -8,11 +8,6 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
 
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
@@ -67,6 +62,11 @@ public class OpenAiModerationModel implements ModerationModel {
         return moderateInternal(singletonList(text));
     }
 
+    @Override
+    public Response<Moderation> moderate(List<String> texts) {
+        return moderateInternal(texts);
+    }
+
     private Response<Moderation> moderateInternal(List<String> inputs) {
 
         ModerationRequest request =
@@ -84,34 +84,6 @@ public class OpenAiModerationModel implements ModerationModel {
         }
 
         return Response.from(Moderation.notFlagged());
-    }
-
-    /**
-     * @deprecated Use {@link #moderate(String)} instead.
-     * As of 2.0.0, conversion from ChatMessage to text is the caller's responsibility.
-     * See https://github.com/langchain4j/langchain4j/issues/4595
-     */
-    @Deprecated(forRemoval = true)
-    @Override
-    public Response<Moderation> moderate(List<ChatMessage> messages) {
-        List<String> inputs =
-                messages.stream().map(OpenAiModerationModel::toText).toList();
-
-        return moderateInternal(inputs);
-    }
-
-    private static String toText(ChatMessage chatMessage) {
-        if (chatMessage instanceof SystemMessage systemMessage) {
-            return systemMessage.text();
-        } else if (chatMessage instanceof UserMessage userMessage) {
-            return userMessage.singleText();
-        } else if (chatMessage instanceof AiMessage aiMessage) {
-            return aiMessage.text();
-        } else if (chatMessage instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
-            return toolExecutionResultMessage.text();
-        } else {
-            throw new IllegalArgumentException("Unsupported message type: " + chatMessage.type());
-        }
     }
 
     public static OpenAiModerationModelBuilder builder() {

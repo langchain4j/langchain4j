@@ -21,10 +21,6 @@ import com.ibm.watsonx.ai.detection.DetectionTextRequest;
 import com.ibm.watsonx.ai.detection.DetectionTextResponse;
 import com.ibm.watsonx.ai.detection.detector.GraniteGuardian;
 import com.ibm.watsonx.ai.detection.detector.Pii;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.LangChain4jException;
 import dev.langchain4j.model.moderation.ModerationModel;
 import java.net.URI;
@@ -143,11 +139,8 @@ public class WatsonxModerationTest {
                     .detectors(Pii.ofDefaults(), GraniteGuardian.ofDefaults())
                     .build();
 
-            var moderateResponse = model.moderate(List.of(
-                    SystemMessage.from("systemMessage"),
-                    UserMessage.from("userMessage"),
-                    AiMessage.from("aiMessage"),
-                    ToolExecutionResultMessage.from("id", "toolName", "toolExecutionResult")));
+            var moderateResponse =
+                    model.moderate(List.of("systemMessage", "userMessage", "aiMessage", "toolExecutionResult"));
 
             verify(mockDetectionService, atMost(4)).detect(any());
             verify(mockDetectionService, atLeast(1)).detect(any());
@@ -188,11 +181,8 @@ public class WatsonxModerationTest {
                     .detectors(Pii.ofDefaults(), GraniteGuardian.ofDefaults())
                     .build();
 
-            var moderateResponse = model.moderate(List.of(
-                    SystemMessage.from("systemMessage"),
-                    UserMessage.from("userMessage"),
-                    AiMessage.from("aiMessage"),
-                    ToolExecutionResultMessage.from("id", "toolName", "toolExecutionResult")));
+            var moderateResponse =
+                    model.moderate(List.of("systemMessage", "userMessage", "aiMessage", "toolExecutionResult"));
 
             verify(mockDetectionService, times(4)).detect(any());
             assertEquals(4, detectionTextRequest.getAllValues().size());
@@ -219,11 +209,7 @@ public class WatsonxModerationTest {
 
             var ex = assertThrows(
                     LangChain4jException.class,
-                    () -> model.moderate(List.of(
-                            SystemMessage.from("systemMessage"),
-                            UserMessage.from("userMessage"),
-                            AiMessage.from("aiMessage"),
-                            ToolExecutionResultMessage.from("id", "toolName", "toolExecutionResult"))));
+                    () -> model.moderate(List.of("systemMessage", "userMessage", "aiMessage", "toolExecutionResult")));
 
             assertEquals("errormessage", ex.getMessage());
         });
@@ -245,13 +231,9 @@ public class WatsonxModerationTest {
 
             var ex = assertThrows(
                     RuntimeException.class,
-                    () -> model.moderate(List.of(
-                            SystemMessage.from("systemMessage"),
-                            UserMessage.from("userMessage"),
-                            AiMessage.from("aiMessage"),
-                            ToolExecutionResultMessage.from("id", "toolName", "toolExecutionResult"))));
+                    () -> model.moderate(List.of("systemMessage", "userMessage", "aiMessage", "toolExecutionResult")));
 
-            assertEquals("errormessage", ex.getCause().getMessage());
+            assertEquals("errormessage", ex.getMessage());
         });
     }
 
