@@ -9,7 +9,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-import dev.langchain4j.model.openai.LogProb;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 import java.util.List;
 import java.util.Objects;
 
@@ -30,16 +30,19 @@ public final class LogProbs {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
         return another instanceof LogProbs && equalTo((LogProbs) another);
     }
 
+    @JacocoIgnoreCoverageGenerated
     private boolean equalTo(LogProbs another) {
         return Objects.equals(content, another.content);
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         int h = 5381;
         h += (h << 5) + Objects.hashCode(content);
@@ -47,6 +50,7 @@ public final class LogProbs {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public String toString() {
         return "LogProbs{" + "content=" + content + "}";
     }

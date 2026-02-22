@@ -1,6 +1,7 @@
 package dev.langchain4j.model.openai;
 
 import static dev.langchain4j.internal.Utils.copy;
+import static java.util.stream.Collectors.toList;
 
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
@@ -17,7 +18,7 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
     private final String systemFingerprint;
     private final SuccessfulHttpResponse rawHttpResponse;
     private final List<ServerSentEvent> rawServerSentEvents;
-    private final LogProbs logprobs;
+    private final LogProbs logProbs;
 
     private OpenAiChatResponseMetadata(Builder builder) {
         super(builder);
@@ -26,7 +27,7 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
         this.systemFingerprint = builder.systemFingerprint;
         this.rawHttpResponse = builder.rawHttpResponse;
         this.rawServerSentEvents = copy(builder.rawServerSentEvents);
-        this.logprobs = builder.logprobs;
+        this.logProbs = builder.logProbs;
     }
 
     @Override
@@ -68,8 +69,25 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
         return rawServerSentEvents;
     }
 
-    public List<LogProb> logprobs() {
-        return logprobs != null ? logprobs.content() : null;
+    public List<LogProb> logProbs() {
+        if (logProbs == null) return null;
+        return logProbs.content().stream()
+                .map(OpenAiChatResponseMetadata::toPublicLogProb)
+                .collect(toList());
+    }
+
+    private static LogProb toPublicLogProb(dev.langchain4j.model.openai.internal.chat.LogProb internal) {
+        return LogProb.builder()
+                .token(internal.token())
+                .logprob(internal.logprob())
+                .bytes(internal.bytes())
+                .topLogprobs(
+                        internal.topLogprobs() == null
+                                ? null
+                                : internal.topLogprobs().stream()
+                                        .map(OpenAiChatResponseMetadata::toPublicLogProb)
+                                        .collect(toList()))
+                .build();
     }
 
     @Override
@@ -80,7 +98,7 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
                 .systemFingerprint(systemFingerprint)
                 .rawHttpResponse(rawHttpResponse)
                 .rawServerSentEvents(rawServerSentEvents)
-                .logprobs(logprobs);
+                .logProbs(logProbs);
     }
 
     @Override
@@ -94,7 +112,7 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
                 && Objects.equals(systemFingerprint, that.systemFingerprint)
                 && Objects.equals(rawHttpResponse, that.rawHttpResponse)
                 && Objects.equals(rawServerSentEvents, that.rawServerSentEvents)
-                && Objects.equals(logprobs, that.logprobs);
+                && Objects.equals(logProbs, that.logProbs);
     }
 
     @Override
@@ -106,7 +124,7 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
                 systemFingerprint,
                 rawHttpResponse,
                 rawServerSentEvents,
-                logprobs);
+                logProbs);
     }
 
     @Override
@@ -120,8 +138,8 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
                 + serviceTier + '\'' + ", systemFingerprint='"
                 + systemFingerprint + '\'' + ", rawHttpResponse="
                 + rawHttpResponse + ", rawServerSentEvents="
-                + rawServerSentEvents + ", logprobs="
-                + logprobs + '}';
+                + rawServerSentEvents + ", logProbs="
+                + logProbs + '}';
     }
 
     public static Builder builder() {
@@ -135,7 +153,7 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
         private String systemFingerprint;
         private SuccessfulHttpResponse rawHttpResponse;
         private List<ServerSentEvent> rawServerSentEvents;
-        private LogProbs logprobs;
+        private LogProbs logProbs;
 
         public Builder created(Long created) {
             this.created = created;
@@ -162,8 +180,8 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
             return this;
         }
 
-        public Builder logprobs(LogProbs logprobs) {
-            this.logprobs = logprobs;
+        public Builder logProbs(LogProbs logProbs) {
+            this.logProbs = logProbs;
             return this;
         }
 
