@@ -1,16 +1,36 @@
-package dev.langchain4j.model.openai;
+package dev.langchain4j.model.openai.internal.chat;
 
+import static java.util.Collections.unmodifiableList;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 import java.util.List;
 import java.util.Objects;
 
+@JsonDeserialize(builder = LogProb.Builder.class)
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public final class LogProb {
 
+    @JsonProperty
     private final String token;
+
+    @JsonProperty
     private final Double logprob;
+
+    @JsonProperty
     private final List<Integer> bytes;
+
+    @JsonProperty
     private final List<LogProb> topLogprobs;
 
-    private LogProb(Builder builder) {
+    public LogProb(Builder builder) {
         this.token = builder.token;
         this.logprob = builder.logprob;
         this.bytes = builder.bytes;
@@ -34,11 +54,13 @@ public final class LogProb {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
         return another instanceof LogProb && equalTo((LogProb) another);
     }
 
+    @JacocoIgnoreCoverageGenerated
     private boolean equalTo(LogProb another) {
         return Objects.equals(token, another.token)
                 && Objects.equals(logprob, another.logprob)
@@ -47,6 +69,7 @@ public final class LogProb {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         int h = 5381;
         h += (h << 5) + Objects.hashCode(token);
@@ -57,6 +80,7 @@ public final class LogProb {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public String toString() {
         return "LogProb{"
                 + "token=" + token
@@ -70,7 +94,10 @@ public final class LogProb {
         return new Builder();
     }
 
-    public static class Builder {
+    @JsonPOJOBuilder(withPrefix = "")
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    public static final class Builder {
 
         private String token;
         private Double logprob;
@@ -88,12 +115,16 @@ public final class LogProb {
         }
 
         public Builder bytes(List<Integer> bytes) {
-            this.bytes = bytes;
+            if (bytes != null) {
+                this.bytes = unmodifiableList(bytes);
+            }
             return this;
         }
 
         public Builder topLogprobs(List<LogProb> topLogprobs) {
-            this.topLogprobs = topLogprobs;
+            if (topLogprobs != null) {
+                this.topLogprobs = unmodifiableList(topLogprobs);
+            }
             return this;
         }
 

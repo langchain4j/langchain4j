@@ -448,16 +448,12 @@ class OpenAiChatModelIT {
         assertThat(response.metadata()).isInstanceOf(OpenAiChatResponseMetadata.class);
 
         OpenAiChatResponseMetadata metadata = (OpenAiChatResponseMetadata) response.metadata();
-        List<LogProb> logprobs = metadata.logprobs();
-        assertThat(logprobs).isNotNull().isNotEmpty();
+        List<LogProb> logProbs = metadata.logProbs();
+        assertThat(logProbs).isNotNull().isNotEmpty();
 
-        // Verify first token has logprob data
-        LogProb firstToken = logprobs.get(0);
+        LogProb firstToken = logProbs.get(0);
         assertThat(firstToken.token()).isNotBlank();
         assertThat(firstToken.logprob()).isNotNull();
-
-        // Verify top_logprobs are present
-        assertThat(firstToken.topLogprobs()).isNotNull();
-        assertThat(firstToken.topLogprobs()).hasSize(2);
+        assertThat(firstToken.topLogprobs()).isNotNull().hasSize(2);
     }
 }

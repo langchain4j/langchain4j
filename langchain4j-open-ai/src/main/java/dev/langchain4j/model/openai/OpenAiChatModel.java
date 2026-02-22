@@ -166,7 +166,7 @@ public class OpenAiChatModel implements ChatModel {
                 .serviceTier(openAiResponse.serviceTier())
                 .systemFingerprint(openAiResponse.systemFingerprint())
                 .rawHttpResponse(parsedAndRawResponse.rawHttpResponse())
-                .logprobs(openAiResponse.choices().get(0).logprobs())
+                .logProbs(openAiResponse.choices().get(0).logprobs())
                 .build();
 
         return ChatResponse.builder()
@@ -453,30 +453,11 @@ public class OpenAiChatModel implements ChatModel {
             return this;
         }
 
-        /**
-         * Whether to return log probability information for the output tokens.
-         * If true, returns the log probabilities of each output token returned in the {@code content} field.
-         * <br>
-         * This feature is useful for assessing the model's confidence in its responses.
-         *
-         * @param logprobs whether to return log probabilities
-         * @return {@code this}
-         */
         public OpenAiChatModelBuilder logprobs(Boolean logprobs) {
             this.logprobs = logprobs;
             return this;
         }
 
-        /**
-         * Number of most likely alternative tokens to return at each token position, each with an associated log probability.
-         * <br>
-         * Valid values are between 0 and 20. Only applicable when {@code logprobs} is set to {@code true}.
-         * <br>
-         * This provides insight into the model's alternative choices at each generation step.
-         *
-         * @param topLogprobs number of alternative tokens to return (0-20)
-         * @return {@code this}
-         */
         public OpenAiChatModelBuilder topLogprobs(Integer topLogprobs) {
             this.topLogprobs = topLogprobs;
             return this;
