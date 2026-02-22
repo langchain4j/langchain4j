@@ -171,4 +171,16 @@ class PolymorphicOutputParserTest {
                 .isInstanceOf(OutputParsingException.class)
                 .hasMessageContaining("Unknown discriminator value: 123");
     }
+
+    @Test
+    void should_not_use_polymorphic_parser_when_id_is_none() {
+        @JsonTypeInfo(use = JsonTypeInfo.Id.NONE)
+        class SimplePojo {
+            public String name;
+        }
+
+        OutputParser<?> parser = new DefaultOutputParserFactory().get(SimplePojo.class, null);
+
+        assertThat(parser).isInstanceOf(PojoOutputParser.class);
+    }
 }

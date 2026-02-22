@@ -19,16 +19,20 @@ public class JsonSchemas {
         }
 
         OutputParser<?> outputParser = outputParserFor(returnType);
-        if (outputParser instanceof PojoOutputParser || outputParser instanceof PolymorphicOutputParser) {
-            return outputParser.jsonSchema();
-        }
-        return Optional.empty();
+        return jsonSchemaFrom(outputParser);
     }
 
     private static OutputParser<?> outputParserFor(Type returnType) {
         Class<?> rawClass = getRawClass(returnType);
         Class<?> typeArgumentClass = resolveFirstGenericParameterClass(returnType);
         return new DefaultOutputParserFactory().get(rawClass, typeArgumentClass);
+    }
+
+    private static Optional<JsonSchema> jsonSchemaFrom(OutputParser<?> outputParser) {
+        if (outputParser instanceof PojoOutputParser || outputParser instanceof PolymorphicOutputParser) {
+            return outputParser.jsonSchema();
+        }
+        return Optional.empty();
     }
 
     private static boolean isExcluded(Type returnType) {

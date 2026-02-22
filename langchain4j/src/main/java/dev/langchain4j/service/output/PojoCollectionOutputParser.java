@@ -20,11 +20,9 @@ abstract class PojoCollectionOutputParser<T, CT extends Collection<T>> implement
     private final Class<T> type;
     private final OutputParser<T> parser;
 
-    PojoCollectionOutputParser(Class<T> type) {
+    PojoCollectionOutputParser(Class<T> type, OutputParser<T> parser) {
         this.type = ensureNotNull(type, "type");
-        @SuppressWarnings("unchecked")
-        OutputParser<T> outputParser = (OutputParser<T>) new DefaultOutputParserFactory().get(type, null);
-        this.parser = outputParser;
+        this.parser = ensureNotNull(parser, "parser");
     }
 
     @Override

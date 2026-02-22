@@ -57,7 +57,8 @@ class DefaultOutputParserFactory implements OutputParserFactory {
             return new EnumOutputParser<>(rawClass.asSubclass(Enum.class));
         }
 
-        if (rawClass.isAnnotationPresent(JsonTypeInfo.class)) {
+        JsonTypeInfo jsonTypeInfo = rawClass.getAnnotation(JsonTypeInfo.class);
+        if (jsonTypeInfo != null && jsonTypeInfo.use() != JsonTypeInfo.Id.NONE) {
             return new PolymorphicOutputParser<>(rawClass);
         }
 
@@ -70,7 +71,11 @@ class DefaultOutputParserFactory implements OutputParserFactory {
                 return new StringListOutputParser();
             }
 
-            return new PojoListOutputParser<>(typeArgumentClass);
+            @SuppressWarnings("unchecked")
+            Class<Object> tClass = (Class<Object>) typeArgumentClass;
+            @SuppressWarnings("unchecked")
+            OutputParser<Object> tParser = (OutputParser<Object>) this.get(typeArgumentClass, null);
+            return new PojoListOutputParser<>(tClass, tParser);
         }
 
         if (rawClass.equals(Set.class)) {
@@ -82,7 +87,11 @@ class DefaultOutputParserFactory implements OutputParserFactory {
                 return new StringSetOutputParser();
             }
 
-            return new PojoSetOutputParser<>(typeArgumentClass);
+            @SuppressWarnings("unchecked")
+            Class<Object> tClass = (Class<Object>) typeArgumentClass;
+            @SuppressWarnings("unchecked")
+            OutputParser<Object> tParser = (OutputParser<Object>) this.get(typeArgumentClass, null);
+            return new PojoSetOutputParser<>(tClass, tParser);
         }
 
         OutputParser<?> outputParser = OUTPUT_PARSERS.get(rawClass);
