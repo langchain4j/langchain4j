@@ -1,5 +1,6 @@
-package dev.langchain4j.observation.listeners;
+package convention;
 
+import context.ChatModelObservationContext;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationConvention;
 

@@ -1,4 +1,4 @@
-package dev.langchain4j.observation.listeners;
+package convention;
 
 import io.micrometer.common.docs.KeyName;
 import io.micrometer.observation.Observation;
@@ -70,13 +70,6 @@ public enum ChatModelDocumentation implements ObservationDocumentation {
     }
 
     public enum HighCardinalityValues implements KeyName {
-//        TOKEN_USAGE {
-//            @Override
-//            public String asString() {
-//                return "gen_ai.client.token.usage";
-//            }
-//        };
-
         OUTPUT_TOKENS {
             @Override
             public String asString() {

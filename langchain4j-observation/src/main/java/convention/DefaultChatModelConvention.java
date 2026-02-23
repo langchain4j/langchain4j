@@ -1,12 +1,12 @@
-package dev.langchain4j.observation.listeners;
+package convention;
 
-import static dev.langchain4j.observation.listeners.ChatModelDocumentation.HighCardinalityValues.INPUT_TOKENS;
-import static dev.langchain4j.observation.listeners.ChatModelDocumentation.HighCardinalityValues.OUTPUT_TOKENS;
-import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.OPERATION_NAME;
-import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.OUTCOME;
-import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.PROVIDER_NAME;
-import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.REQUEST_MODEL;
-import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.RESPONSE_MODEL;
+import static convention.ChatModelDocumentation.HighCardinalityValues.INPUT_TOKENS;
+import static convention.ChatModelDocumentation.HighCardinalityValues.OUTPUT_TOKENS;
+import static convention.ChatModelDocumentation.LowCardinalityValues.OPERATION_NAME;
+import static convention.ChatModelDocumentation.LowCardinalityValues.OUTCOME;
+import static convention.ChatModelDocumentation.LowCardinalityValues.PROVIDER_NAME;
+import static convention.ChatModelDocumentation.LowCardinalityValues.REQUEST_MODEL;
+import static convention.ChatModelDocumentation.LowCardinalityValues.RESPONSE_MODEL;
 import static java.util.Optional.ofNullable;
 
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
@@ -17,6 +17,7 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.TokenUsage;
+import context.ChatModelObservationContext;
 import io.micrometer.common.KeyValue;
 import io.micrometer.common.KeyValues;
 import org.jspecify.annotations.Nullable;
@@ -29,6 +30,7 @@ public class DefaultChatModelConvention implements ChatModelConvention {
     private static final String OUTCOME_SUCCESS = "SUCCESS";
     private static final String OUTCOME_ERROR = "ERROR";
     static final String UNKNOWN = "unknown";
+    public static final String OPERATION_VALUE_CHAT = "chat";
 
     public DefaultChatModelConvention() {
     }
@@ -38,9 +40,20 @@ public class DefaultChatModelConvention implements ChatModelConvention {
         return "gen_ai.client.operation.duration";
     }
 
+    /**
+     * Will produce the span name according to
+     * <a href="https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-spans/#inference">gen-ai span name semantic conventions</a>
+     * from OpenTelemetry.
+     *
+     * @param context the {@link ChatModelObservationContext}
+     * @return The contextual name
+     */
     @Override
     public @Nullable String getContextualName(final ChatModelObservationContext context) {
-        return "GenAI request duration";
+        return OPERATION_VALUE_CHAT +
+                ofNullable(context.getRequestContext())
+                        .map(ChatModelRequestContext::chatRequest).map(ChatRequest::parameters).map(ChatRequestParameters::modelName)
+                        .orElse(UNKNOWN);
     }
 
     @Override
@@ -49,18 +62,14 @@ public class DefaultChatModelConvention implements ChatModelConvention {
         final ChatModelResponseContext responseContext = context.getResponseContext();
         final ChatModelErrorContext errorContext = context.getErrorContext();
 
-        // fast fail
-        if (requestContext == null) {
-            return KeyValues.empty();
-        }
+        KeyValues result = KeyValues.of(KeyValue.of(OPERATION_NAME, OPERATION_VALUE_CHAT));
 
-        KeyValues result = KeyValues.of(KeyValue.of(OPERATION_NAME, "chat"));
-
-        result = ofNullable(requestContext.modelProvider())
+        result = ofNullable(requestContext)
+                .map(ChatModelRequestContext::modelProvider)
                 .map(p -> KeyValue.of(PROVIDER_NAME, p.name()))
                 .map(result::and).orElse(result.and(KeyValue.of(PROVIDER_NAME, UNKNOWN)));
 
-        result = ofNullable(requestContext.chatRequest())
+        result = ofNullable(requestContext).map(ChatModelRequestContext::chatRequest)
                 .map(ChatRequest::parameters).map(ChatRequestParameters::modelName)
                 .map(m -> KeyValue.of(REQUEST_MODEL, m))
                 .map(result::and).orElse(result.and(KeyValue.of(REQUEST_MODEL, UNKNOWN)));
@@ -81,11 +90,6 @@ public class DefaultChatModelConvention implements ChatModelConvention {
     @Override
     public KeyValues getHighCardinalityKeyValues(final ChatModelObservationContext context) {
         final ChatModelResponseContext responseContext = context.getResponseContext();
-
-        // fast fail
-        if (responseContext == null) {
-            return KeyValues.empty();
-        }
 
         KeyValues result = KeyValues.empty();
 

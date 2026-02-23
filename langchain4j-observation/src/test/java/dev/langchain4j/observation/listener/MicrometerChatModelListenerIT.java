@@ -1,14 +1,13 @@
-package dev.langchain4j.observation.listeners;
+package dev.langchain4j.observation.listener;
 
-import static dev.langchain4j.observation.listeners.ChatModelDocumentation.HighCardinalityValues.INPUT_TOKENS;
-import static dev.langchain4j.observation.listeners.ChatModelDocumentation.HighCardinalityValues.OUTPUT_TOKENS;
-import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.OPERATION_NAME;
-import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.OUTCOME;
-import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.PROVIDER_NAME;
-import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.REQUEST_MODEL;
-import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.RESPONSE_MODEL;
-import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.TOKEN_TYPE;
-import static dev.langchain4j.observation.listeners.ObservationChatModelListener.TOKEN_USAGE;
+import static convention.ChatModelDocumentation.HighCardinalityValues.INPUT_TOKENS;
+import static convention.ChatModelDocumentation.HighCardinalityValues.OUTPUT_TOKENS;
+import static convention.ChatModelDocumentation.LowCardinalityValues.OPERATION_NAME;
+import static convention.ChatModelDocumentation.LowCardinalityValues.OUTCOME;
+import static convention.ChatModelDocumentation.LowCardinalityValues.REQUEST_MODEL;
+import static convention.ChatModelDocumentation.LowCardinalityValues.RESPONSE_MODEL;
+import static convention.ChatModelDocumentation.LowCardinalityValues.TOKEN_TYPE;
+import static dev.langchain4j.observation.listener.ObservationChatModelListener.TOKEN_USAGE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
@@ -33,7 +32,9 @@ import io.micrometer.observation.tck.TestObservationRegistry;
 import io.micrometer.observation.tck.TestObservationRegistryAssert;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+@EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
 public class MicrometerChatModelListenerIT {
 
     private TestObservationRegistry observationRegistry;
@@ -105,8 +106,8 @@ public class MicrometerChatModelListenerIT {
                 .hasBeenStarted()
                 .hasBeenStopped()
                 .hasLowCardinalityKeyValue(KeyValue.of(OPERATION_NAME.asString(), "chat"))
-                .hasLowCardinalityKeyValue(KeyValue.of(REQUEST_MODEL.asString(), "gpt-4o"))
-                .hasLowCardinalityKeyValue(KeyValue.of(RESPONSE_MODEL.asString(), "gpt-4o-2024-11-20"))
+                .hasLowCardinalityKeyValue(KeyValue.of(REQUEST_MODEL.asString(), "gpt-4o-mini"))
+                .hasLowCardinalityKeyValue(KeyValue.of(RESPONSE_MODEL.asString(), "gpt-4o-mini-2024-07-18"))
                 .hasLowCardinalityKeyValue(KeyValue.of(OUTCOME.asString(), "SUCCESS"))
                 .hasHighCardinalityKeyValueWithKey(OUTPUT_TOKENS.asString())
                 .hasHighCardinalityKeyValueWithKey(INPUT_TOKENS.asString());
@@ -137,7 +138,7 @@ public class MicrometerChatModelListenerIT {
                 .hasBeenStopped()
                 .hasLowCardinalityKeyValue(KeyValue.of(OPERATION_NAME.asString(), "chat"))
                 .hasLowCardinalityKeyValue(KeyValue.of(REQUEST_MODEL.asString(), "wrongDeploymentName"))
-                .doesNotHaveLowCardinalityKeyValue(KeyValue.of(RESPONSE_MODEL.asString(), "gpt-4o-2024-11-20"))
+                .doesNotHaveLowCardinalityKeyValue(KeyValue.of(RESPONSE_MODEL.asString(), "gpt-4o-mini-2024-11-20"))
                 .hasLowCardinalityKeyValue(KeyValue.of(OUTCOME.asString(), "ERROR"));
     }
 
@@ -156,43 +157,8 @@ public class MicrometerChatModelListenerIT {
         ChatRequest chatRequest =
                 ChatRequest.builder().messages(UserMessage.from("Hi")).build();
 
-        try {
-            ChatResponse response = chatModel.chat(chatRequest);
-            assertThat(response.metadata()).isNotNull();
-        } catch (Exception e) {
-            System.out.println(e.getMessage());
-        }
-    }
-
-    private ChatModelResponseContext createResponseContext(ModelProvider modelProvider) {
-        return createResponseContext(modelProvider, "gpt-4o", "gpt-4o");
-    }
-
-    private ChatModelResponseContext createResponseContext(
-            ModelProvider modelProvider, String requestModelName, String responseModelName) {
-        return createResponseContext(modelProvider, requestModelName, responseModelName, 10, 20);
-    }
-
-    private ChatModelResponseContext createResponseContext(
-            ModelProvider modelProvider,
-            String requestModelName,
-            String responseModelName,
-            int inputTokens,
-            int outputTokens) {
-        ChatResponse.Builder responseBuilder = ChatResponse.builder()
-                .aiMessage(new AiMessage("Hello"))
-                .tokenUsage(new TokenUsage(inputTokens, outputTokens));
-        if (responseModelName != null) {
-            responseBuilder.modelName(responseModelName);
-        }
-
-        ChatRequest.Builder requestBuilder = ChatRequest.builder().messages(UserMessage.from("Hi"));
-        if (requestModelName != null) {
-            requestBuilder.modelName(requestModelName);
-        }
-
-        return new ChatModelResponseContext(
-                responseBuilder.build(), requestBuilder.build(), modelProvider, new HashMap<>());
+        ChatResponse response = chatModel.chat(chatRequest);
+        assertThat(response.metadata()).isNotNull();
     }
 
     private double countAtBucket(CountAtBucket[] buckets, double boundary) {

@@ -1,13 +1,17 @@
-package dev.langchain4j.observation.listeners;
+package dev.langchain4j.observation.listener;
 
-import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.OPERATION_NAME;
-import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.PROVIDER_NAME;
-import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.REQUEST_MODEL;
-import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.RESPONSE_MODEL;
-import static dev.langchain4j.observation.listeners.ChatModelDocumentation.LowCardinalityValues.TOKEN_TYPE;
+import static convention.ChatModelDocumentation.LowCardinalityValues.OPERATION_NAME;
+import static convention.ChatModelDocumentation.LowCardinalityValues.PROVIDER_NAME;
+import static convention.ChatModelDocumentation.LowCardinalityValues.REQUEST_MODEL;
+import static convention.ChatModelDocumentation.LowCardinalityValues.RESPONSE_MODEL;
+import static convention.ChatModelDocumentation.LowCardinalityValues.TOKEN_TYPE;
 import static java.util.Optional.ofNullable;
 
 import java.util.Optional;
+import context.ChatModelObservationContext;
+import convention.ChatModelConvention;
+import convention.ChatModelDocumentation;
+import convention.DefaultChatModelConvention;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
@@ -45,12 +49,8 @@ public class ObservationChatModelListener implements ChatModelListener {
         this.observationRegistry = observationRegistry;
         tokenDistribution = DistributionSummary.builder(TOKEN_USAGE)
                 .description("Measures the quantity of used tokens")
+                .baseUnit("tokens")
                 .tag(OPERATION_NAME.asString(), "chat")
-                .publishPercentileHistogram()
-                .minimumExpectedValue(1.0)
-                .maximumExpectedValue(67108864.0)
-                .serviceLevelObjectives(
-                        1, 4, 16, 64, 256, 1024, 4096, 16384, 65536, 262144, 1048576, 4194304, 16777216, 67108864)
                 .withRegistry(meterRegistry);
         chatModelConvention = null;
     }
