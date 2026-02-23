@@ -40,8 +40,8 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * By default, embeddings of tool descriptions are cached (since they rarely change).
  * You can disable this by setting {@link Builder#cacheEmbeddings(Boolean)} to {@code false}.
  * The embedding of a query is never cached.
- * The cache is never cleared automatically, as the risk of a memory leak is low:
- * the number of tools in an application is usually limited and does not grow over time.
+ * To simplify the implementation, the cache is not cleared automatically because the risk of a memory leak is minimal.
+ * The number of tools in an application is typically limited and does not increase over time.
  * The cache can be cleared manually by calling {@link #clearEmbeddingsCache()}.
  */
 @Experimental

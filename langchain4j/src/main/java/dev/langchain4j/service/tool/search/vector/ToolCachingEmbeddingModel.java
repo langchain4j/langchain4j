@@ -18,8 +18,8 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * Embedding model that caches embeddings of tool descriptions, since they rarely change.
  * The embedding of a query is never cached.
  * <p>
- * The cache is never cleared automatically, as the risk of a memory leak is low:
- * the number of tools in an application is usually limited and does not grow over time.
+ * To simplify the implementation, the cache is not cleared automatically because the risk of a memory leak is minimal.
+ * The number of tools in an application is typically limited and does not increase over time.
  * <p>
  * The cache can be cleared manually by calling {@link #clearCache()}.
  */
