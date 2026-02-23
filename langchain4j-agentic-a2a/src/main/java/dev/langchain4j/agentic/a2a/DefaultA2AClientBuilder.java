@@ -39,6 +39,8 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
+
 public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, InternalAgent, InvocationHandler {
 
     private final ServiceOutputParser serviceOutputParser = new ServiceOutputParser();
@@ -214,6 +216,13 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     @Override
     public void setParent(InternalAgent parent) {
         this.parent = parent;
+    }
+
+    @Override
+    public void registerInheritedParentListener(AgentListener parentListener) {
+        if (parentListener != null && parentListener.inheritedBySubagents()) {
+            agentListener = composeWithInherited(listener(), parentListener);
+        }
     }
 
     @Override
