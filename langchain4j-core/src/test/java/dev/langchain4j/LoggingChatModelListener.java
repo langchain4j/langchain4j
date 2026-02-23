@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Spliterators;
+import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
@@ -38,6 +39,33 @@ public class LoggingChatModelListener implements ChatModelListener {
 
     @Override
     public void onRequest(ChatModelRequestContext requestContext) {
+    }
+
+    @Override
+    public void onResponse(ChatModelResponseContext responseContext) {
+        ChatRequest chatRequest = responseContext.chatRequest();
+        ChatResponse chatResponse = responseContext.chatResponse();
+
+        StringBuilder sb = new StringBuilder();
+        List<ChatMessage> messages = chatRequest.messages();
+        messages.forEach(message -> {
+            sb.append(format(message));
+            sb.append("\n");
+        });
+
+        log.info("""
+                        >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+                        {}TOOLS: {}
+                        ------------------------------------------------------------------------------------------
+                        {}
+                        <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+                        
+                        
+                        """,
+                sb,
+                chatRequest.toolSpecifications().stream().map(ToolSpecification::name).collect(joining(", ")),
+                "AI: " + format(chatResponse.aiMessage())
+        );
     }
 
     private static String format(ChatMessage message) {
@@ -96,40 +124,14 @@ public class LoggingChatModelListener implements ChatModelListener {
         return sb.toString();
     }
 
-    @Override
-    public void onResponse(ChatModelResponseContext responseContext) {
-        ChatRequest chatRequest = responseContext.chatRequest();
-        ChatResponse chatResponse = responseContext.chatResponse();
-
-        StringBuilder sb = new StringBuilder();
-        List<ChatMessage> messages = chatRequest.messages();
-        messages.forEach(message -> {
-            sb.append(format(message));
-            sb.append("\n");
-        });
-
-        log.info("""
-                        >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-                        {}TOOLS: {}
-                        ------------------------------------------------------------------------------------------
-                        {}
-                        <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-                        
-                        
-                        """,
-                sb,
-                chatRequest.toolSpecifications().stream().map(ToolSpecification::name).collect(joining(", ")),
-                "AI: " + format(chatResponse.aiMessage())
-        );
-    }
-
-    private static String printArguments(String json) {
+    static String formatArguments(String json) {
         JsonNode root = null;
         try {
             root = mapper.readTree(json);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
+        try {
             return StreamSupport.stream(
                             Spliterators.spliteratorUnknownSize(root.fields(), 0), false)
                     .sorted(Comparator.comparingInt(e ->
@@ -137,6 +139,9 @@ public class LoggingChatModelListener implements ChatModelListener {
                     .map(e -> e.getValue().isTextual()
                             ? "\"" + e.getValue().asText() + "\""
                             : e.getValue().toString())
+                    .collect(Collectors.joining(", "));
+        } catch (Exception e) {
+            return root.toString();
         }
     }
 

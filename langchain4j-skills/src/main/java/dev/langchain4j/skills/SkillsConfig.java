@@ -2,14 +2,14 @@ package dev.langchain4j.skills;
 
 public class SkillsConfig {
 
-    private final boolean allowRun;
+    private final boolean allowRunScripts;
 
     private SkillsConfig(Builder builder) {
-        this.allowRun = builder.allowRun;
+        this.allowRunScripts = builder.allowRunScripts;
     }
 
-    public boolean allowRun() {
-        return allowRun;
+    public boolean allowRunScripts() { // TODO names
+        return allowRunScripts;
     }
 
     public static Builder builder() {
@@ -18,10 +18,10 @@ public class SkillsConfig {
 
     public static class Builder {
 
-        private boolean allowRun;
+        private boolean allowRunScripts;
 
-        public Builder allowRun(boolean allowRun) {
-            this.allowRun = allowRun;
+        public Builder allowRunScripts(boolean allowRunScripts) {
+            this.allowRunScripts = allowRunScripts;
             return this;
         }
 

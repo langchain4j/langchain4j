@@ -1,4 +1,4 @@
-package dev.langchain4j.skills;
+package dev.langchain4j.skills.scripts;
 
 import dev.langchain4j.internal.DefaultExecutorProvider;
 
@@ -76,9 +76,18 @@ class ProcessRunner {
             timedOut.set(true);
             process.descendants().forEach(ProcessHandle::destroyForcibly);
             process.destroyForcibly();
-            // TODO
-            try { process.getInputStream().close(); } catch (IOException ignored) {}
-            try { process.getErrorStream().close(); } catch (IOException ignored) {}
+            try {
+                process.getInputStream().close();
+            } catch (IOException ignored) {
+            }
+            try {
+                process.getOutputStream().close();
+            } catch (IOException ignored) {
+            }
+            try {
+                process.getErrorStream().close();
+            } catch (IOException ignored) {
+            }
             stdOutFuture.cancel(true);
             stdErrFuture.cancel(true);
 

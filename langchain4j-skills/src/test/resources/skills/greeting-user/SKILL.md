@@ -3,10 +3,10 @@ name: greeting-user
 description: Explains how to properly greet the user
 ---
 
-To greet the user, run:
+To greet the user, first run:
 
 ```bash
 python scripts/hello.py
 ```
 
-Then return the result to the user without changes.
+Then follow instructions written [here](references/processing-result.md).

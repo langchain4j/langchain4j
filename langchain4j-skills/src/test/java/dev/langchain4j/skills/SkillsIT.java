@@ -38,8 +38,8 @@ public class SkillsIT {
     }
 
     /**
-     * These tools have generic names and inconsistent arguments on purpose,
-     * they can be used "properly" only when skill body/references is loaded.
+     * These tools have generic names, inconsistent arguments and cryptic return values on purpose,
+     * they can "make sense" only when skill body/references is loaded.
      */
     class Tools {
 
@@ -63,7 +63,7 @@ public class SkillsIT {
     }
 
     @Test
-    void should_activate_skill_and_load_reference() {
+    void should_activate_skill_and_load_reference() { // TODO name
 
         // given
         Skill skill = FileSystemSkillLoader.loadSkill(toPath("skills/using-process-tool"));
@@ -87,6 +87,10 @@ public class SkillsIT {
         verify(spyTools).process("Klaus", 177, "Heisler");
         verify(spyTools).reset();
         verifyNoMoreInteractions(spyTools);
+
+        assertThat(skillSystemMessage).contains("using-process-tool");
+        assertThat(skillTools.keySet().stream().map(ToolSpecification::name))
+                .containsExactly("activate_skill", "read_file");
     }
 
     @Test
@@ -95,7 +99,7 @@ public class SkillsIT {
         // given
         Skill skill = FileSystemSkillLoader.loadSkill(toPath("skills/greeting-user"));
         String skillSystemMessage = Skills.createSystemMessage(skill);
-        SkillsConfig config = SkillsConfig.builder().allowRun(true).build();
+        SkillsConfig config = SkillsConfig.builder().allowRunScripts(true).build();
         Map<ToolSpecification, ToolExecutor> skillTools = Skills.createTools(List.of(skill), config);
 
         Assistant assistant = AiServices.builder(Assistant.class)
@@ -108,7 +112,11 @@ public class SkillsIT {
         Result<String> result = assistant.chat("Greet the user");
 
         // then
-        assertThat(result.content()).containsIgnoringCase("hello from python");
+        assertThat(result.content()).containsIgnoringCase("python from hello");
+
+        assertThat(skillSystemMessage).contains("greeting-user");
+        assertThat(skillTools.keySet().stream().map(ToolSpecification::name))
+                .containsExactly("activate_skill", "run_shell_script");
     }
 
     @Test
@@ -117,7 +125,7 @@ public class SkillsIT {
         // given
         Skill skill = FileSystemSkillLoader.loadSkill(toPath("skills/docx"));
         String skillSystemMessage = Skills.createSystemMessage(skill);
-        SkillsConfig config = SkillsConfig.builder().allowRun(true).build();
+        SkillsConfig config = SkillsConfig.builder().allowRunScripts(true).build();
         Map<ToolSpecification, ToolExecutor> skillTools = Skills.createTools(List.of(skill), config);
 
         Assistant assistant = AiServices.builder(Assistant.class)
@@ -127,7 +135,9 @@ public class SkillsIT {
                 .build();
 
         // when
-        Result<String> result = assistant.chat("Modify a word document C:\\dev\\output.docx change the text color to red");
+        Result<String> result = assistant.chat("Modify the word document C:\\dev\\output.docx in place, " +
+                "change the color of the text to blue." +
+                "Ignore all validation errors");
 
         System.out.println(result.tokenUsage());
         // then

@@ -10,5 +10,7 @@ public interface Skill {
 
     String body();
 
-    List<SkillFile> files();
+    List<SkillFile> files(); // TODO name: references? should inclide assets
+
+    // TODO what about scripts?
 }
