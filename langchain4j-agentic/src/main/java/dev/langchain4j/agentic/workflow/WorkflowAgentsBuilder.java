@@ -14,4 +14,7 @@ public interface WorkflowAgentsBuilder {
 
     ConditionalAgentService<UntypedAgent> conditionalBuilder();
     <T> ConditionalAgentService<T> conditionalBuilder(Class<T> agentServiceClass);
+
+    ParallelMultiInstanceAgentService<UntypedAgent> parallelMultiInstanceBuilder();
+    <T> ParallelMultiInstanceAgentService<T> parallelMultiInstanceBuilder(Class<T> agentServiceClass);
 }

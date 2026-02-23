@@ -39,6 +39,7 @@ import dev.langchain4j.agentic.declarative.LoopCounter;
 import dev.langchain4j.agentic.declarative.Output;
 import dev.langchain4j.agentic.declarative.ParallelAgent;
 import dev.langchain4j.agentic.declarative.ParallelExecutor;
+import dev.langchain4j.agentic.declarative.ParallelMultiInstanceAgent;
 import dev.langchain4j.agentic.declarative.PlannerAgent;
 import dev.langchain4j.agentic.declarative.PlannerSupplier;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
@@ -843,5 +844,70 @@ public class DeclarativeAgentIT {
         assertThat(horoscope).containsIgnoringCase("pisces");
 
         assertThat(signRequest.get()).isEqualTo("hi Mario, what is your zodiac sign?");
+    }
+
+    // --- Parallel Multi-Instance Agent tests ---
+
+    public record Person(String name, String sign) {}
+
+    public interface PersonAstrologyAgent {
+        @SystemMessage(
+                """
+            You are an astrologist that generates horoscopes based on the user's name and zodiac sign.
+            """)
+        @UserMessage("""
+            Generate the horoscope for {{person}}.
+            The person has a name and a zodiac sign. Use both to create a personalized horoscope.
+            """)
+        @Agent(description = "An astrologist that generates horoscopes for a person", outputKey = "horoscope")
+        String horoscope(@V("person") Person person);
+
+        @ChatModelSupplier
+        static ChatModel chatModel() {
+            return baseModel();
+        }
+    }
+
+    public interface BatchHoroscopeAgent extends AgentInstance {
+
+        @ParallelMultiInstanceAgent(
+                subAgent = PersonAstrologyAgent.class,
+                inputKey = "persons")
+        ResultWithAgenticScope<Object> generateHoroscopes(@V("persons") List<Person> persons);
+
+        @ParallelExecutor
+        static Executor executor() {
+            return Executors.newFixedThreadPool(3);
+        }
+    }
+
+    @Test
+    void declarative_parallel_multi_instance_tests() {
+        BatchHoroscopeAgent agent = AgenticServices.createAgenticSystem(BatchHoroscopeAgent.class, baseModel());
+
+        assertThat(agent.name()).isEqualTo("generateHoroscopes");
+        assertThat(agent.topology()).isEqualTo(AgenticSystemTopology.PARALLEL);
+        assertThat(agent.subagents()).hasSize(1);
+
+        AgentInstance subagent = agent.subagents().get(0);
+        assertThat(subagent.name()).isEqualTo("horoscope");
+        assertThat(subagent.outputKey()).isEqualTo("horoscope");
+
+        List<Person> persons = List.of(
+                new Person("Mario", "aries"),
+                new Person("Luigi", "pisces"),
+                new Person("Peach", "leo")
+        );
+
+        ResultWithAgenticScope<Object> result = agent.generateHoroscopes(persons);
+        AgenticScope scope = result.agenticScope();
+
+        String horoscope0 = (String) scope.readState("horoscope_0");
+        String horoscope1 = (String) scope.readState("horoscope_1");
+        String horoscope2 = (String) scope.readState("horoscope_2");
+
+        assertThat(horoscope0).isNotBlank();
+        assertThat(horoscope1).isNotBlank();
+        assertThat(horoscope2).isNotBlank();
     }
 }

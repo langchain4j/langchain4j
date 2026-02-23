@@ -39,6 +39,7 @@ import dev.langchain4j.agentic.declarative.LoopAgent;
 import dev.langchain4j.agentic.declarative.Output;
 import dev.langchain4j.agentic.declarative.ParallelAgent;
 import dev.langchain4j.agentic.declarative.ParallelExecutor;
+import dev.langchain4j.agentic.declarative.ParallelMultiInstanceAgent;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
 import dev.langchain4j.agentic.declarative.SupervisorRequest;
 import dev.langchain4j.agentic.internal.A2AClientBuilder;
@@ -52,6 +53,7 @@ import dev.langchain4j.agentic.workflow.ConditionalAgentService;
 import dev.langchain4j.agentic.workflow.HumanInTheLoop;
 import dev.langchain4j.agentic.workflow.LoopAgentService;
 import dev.langchain4j.agentic.workflow.ParallelAgentService;
+import dev.langchain4j.agentic.workflow.ParallelMultiInstanceAgentService;
 import dev.langchain4j.agentic.workflow.SequentialAgentService;
 import dev.langchain4j.agentic.workflow.WorkflowAgentsBuilder;
 import dev.langchain4j.agentic.workflow.impl.WorkflowAgentsBuilderImpl;
@@ -171,6 +173,25 @@ public class AgenticServices {
      */
     public static <T> ParallelAgentService<T> parallelBuilder(Class<T> agentServiceClass) {
         return workflowAgentsBuilder().parallelBuilder(agentServiceClass);
+    }
+
+    /**
+     * Creates a builder for an untyped agent implementing a parallel multi-instance workflow
+     * that creates multiple instances of the same sub-agent, one per item in a collection.
+     */
+    public static ParallelMultiInstanceAgentService<UntypedAgent> parallelMultiInstanceBuilder() {
+        return workflowAgentsBuilder().parallelMultiInstanceBuilder();
+    }
+
+    /**
+     * Creates a builder for an agent implementing a parallel multi-instance workflow
+     * that creates multiple instances of the same sub-agent, one per item in a collection,
+     * and can be invoked in a strongly typed way through the provided agent service interface.
+     *
+     * @param agentServiceClass the class of the agent service
+     */
+    public static <T> ParallelMultiInstanceAgentService<T> parallelMultiInstanceBuilder(Class<T> agentServiceClass) {
+        return workflowAgentsBuilder().parallelMultiInstanceBuilder(agentServiceClass);
     }
 
     /**
@@ -363,6 +384,11 @@ public class AgenticServices {
             return buildParallelAgent(agentServiceClass, parallelMethod.get(), chatModel, agentConfigurator);
         }
 
+        Optional<Method> parallelMultiInstanceMethod = getAnnotatedMethodOnClass(agentServiceClass, ParallelMultiInstanceAgent.class);
+        if (parallelMultiInstanceMethod.isPresent()) {
+            return buildParallelMultiInstanceAgent(agentServiceClass, parallelMultiInstanceMethod.get(), chatModel, agentConfigurator);
+        }
+
         Optional<Method> supervisorMethod =
                 getAnnotatedMethodOnClass(agentServiceClass, dev.langchain4j.agentic.declarative.SupervisorAgent.class);
         if (supervisorMethod.isPresent()) {
@@ -473,6 +499,41 @@ public class AgenticServices {
                 parallelAgent.name(),
                 parallelAgent.description(),
                 AgentUtil.outputKey(parallelAgent.outputKey(), parallelAgent.typedOutputKey()),
+                builder);
+
+        selectMethod(
+                        agentServiceClass,
+                        method -> method.isAnnotationPresent(ParallelExecutor.class)
+                                && Executor.class.isAssignableFrom(method.getReturnType())
+                                && method.getParameterCount() == 0)
+                .map(method -> {
+                    try {
+                        return (Executor) method.invoke(null);
+                    } catch (Exception e) {
+                        throw new RuntimeException("Error invoking executor method: " + method.getName(), e);
+                    }
+                })
+                .ifPresent(builder::executor);
+
+        return builder.build();
+    }
+
+    private static <T> T buildParallelMultiInstanceAgent(
+            Class<T> agentServiceClass,
+            Method agentMethod,
+            ChatModel chatModel,
+            Consumer<DeclarativeAgentCreationContext> agentConfigurator) {
+        ParallelMultiInstanceAgent annotation = agentMethod.getAnnotation(ParallelMultiInstanceAgent.class);
+        var builder = parallelMultiInstanceBuilder(agentServiceClass)
+                .subAgents(List.of(createSubagent(annotation.subAgent(), chatModel, agentConfigurator)))
+                .inputKey(annotation.inputKey());
+
+        buildAgentSpecs(
+                agentServiceClass,
+                agentMethod,
+                annotation.name(),
+                annotation.description(),
+                AgentUtil.outputKey(annotation.outputKey(), annotation.typedOutputKey()),
                 builder);
 
         selectMethod(
@@ -738,6 +799,14 @@ public class AgenticServices {
             Method method = parallelMethod.get();
             InternalAgent agent =
                     (InternalAgent) buildParallelAgent(agentServiceClass, method, chatModel, agentConfigurator);
+            return new AgentExecutor(AgentInvoker.fromMethod(agent, method), agent);
+        }
+
+        Optional<Method> parallelMultiInstanceMethod = getAnnotatedMethodOnClass(agentServiceClass, ParallelMultiInstanceAgent.class);
+        if (parallelMultiInstanceMethod.isPresent()) {
+            Method method = parallelMultiInstanceMethod.get();
+            InternalAgent agent =
+                    (InternalAgent) buildParallelMultiInstanceAgent(agentServiceClass, method, chatModel, agentConfigurator);
             return new AgentExecutor(AgentInvoker.fromMethod(agent, method), agent);
         }
 
