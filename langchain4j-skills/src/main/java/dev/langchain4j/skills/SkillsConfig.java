@@ -8,7 +8,7 @@ public class SkillsConfig {
         this.allowRunScripts = builder.allowRunScripts;
     }
 
-    public boolean allowRunScripts() { // TODO names
+    public boolean allowRunScripts() { // TODO names allowRunningShellCommands? allowRunningScripts?
         return allowRunScripts;
     }
 

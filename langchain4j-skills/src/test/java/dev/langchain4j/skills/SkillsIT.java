@@ -90,7 +90,7 @@ public class SkillsIT {
 
         assertThat(skillSystemMessage).contains("using-process-tool");
         assertThat(skillTools.keySet().stream().map(ToolSpecification::name))
-                .containsExactly("activate_skill", "read_file");
+                .containsExactlyInAnyOrder("activate_skill", "read_file");
     }
 
     @Test
@@ -116,7 +116,7 @@ public class SkillsIT {
 
         assertThat(skillSystemMessage).contains("greeting-user");
         assertThat(skillTools.keySet().stream().map(ToolSpecification::name))
-                .containsExactly("activate_skill", "run_shell_script");
+                .containsExactlyInAnyOrder("activate_skill", "run_shell_command");
     }
 
     @Test
