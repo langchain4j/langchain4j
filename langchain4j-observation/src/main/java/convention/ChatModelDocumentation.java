@@ -61,7 +61,7 @@ public enum ChatModelDocumentation implements ObservationDocumentation {
                 return "gen_ai.token.type";
             }
         },
-        OUTCOME{
+        OUTCOME {
             @Override
             public String asString() {
                 return "outcome";

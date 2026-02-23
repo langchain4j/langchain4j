@@ -7,7 +7,6 @@ import static convention.ChatModelDocumentation.LowCardinalityValues.RESPONSE_MO
 import static convention.ChatModelDocumentation.LowCardinalityValues.TOKEN_TYPE;
 import static java.util.Optional.ofNullable;
 
-import java.util.Optional;
 import context.ChatModelObservationContext;
 import convention.ChatModelConvention;
 import convention.ChatModelDocumentation;
@@ -26,6 +25,7 @@ import io.micrometer.core.instrument.Meter.MeterProvider;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
+import java.util.Optional;
 
 /**
  * Will use observations and micrometer metrics to generate telemetry based on the {@link ChatModelListener} lifecycle.
@@ -45,7 +45,8 @@ public class ObservationChatModelListener implements ChatModelListener {
     private final MeterProvider<DistributionSummary> tokenDistribution;
     private final ChatModelConvention chatModelConvention;
 
-    public ObservationChatModelListener(final ObservationRegistry observationRegistry, final MeterRegistry meterRegistry) {
+    public ObservationChatModelListener(
+            final ObservationRegistry observationRegistry, final MeterRegistry meterRegistry) {
         this.observationRegistry = observationRegistry;
         tokenDistribution = DistributionSummary.builder(TOKEN_USAGE)
                 .description("Measures the quantity of used tokens")
@@ -57,11 +58,11 @@ public class ObservationChatModelListener implements ChatModelListener {
 
     @Override
     public void onRequest(final ChatModelRequestContext requestContext) {
-        final Observation onRequest = ChatModelDocumentation.INSTANCE
-                .start(this.chatModelConvention,
-                        new DefaultChatModelConvention(),
-                        () -> new ChatModelObservationContext(requestContext, null, null),
-                        observationRegistry);
+        final Observation onRequest = ChatModelDocumentation.INSTANCE.start(
+                this.chatModelConvention,
+                new DefaultChatModelConvention(),
+                () -> new ChatModelObservationContext(requestContext, null, null),
+                observationRegistry);
 
         final Observation.Scope scope = onRequest.openScope();
         requestContext.attributes().put(OBSERVATION_SCOPE_KEY, scope);
@@ -69,7 +70,8 @@ public class ObservationChatModelListener implements ChatModelListener {
 
     @Override
     public void onResponse(final ChatModelResponseContext responseContext) {
-        final Observation.Scope currentScope = (Observation.Scope) responseContext.attributes().remove(OBSERVATION_SCOPE_KEY);
+        final Observation.Scope currentScope =
+                (Observation.Scope) responseContext.attributes().remove(OBSERVATION_SCOPE_KEY);
 
         if (currentScope == null) {
             return;
@@ -110,7 +112,8 @@ public class ObservationChatModelListener implements ChatModelListener {
                     .map(TokenUsage::inputTokenCount);
 
             if (inputTokens.isPresent()) {
-                tokenDistribution.withTags(
+                tokenDistribution
+                        .withTags(
                                 PROVIDER_NAME.asString(), providerName,
                                 REQUEST_MODEL.asString(), requestModel,
                                 RESPONSE_MODEL.asString(), responseModelName,
@@ -119,7 +122,8 @@ public class ObservationChatModelListener implements ChatModelListener {
             }
 
             if (outputTokens.isPresent()) {
-                tokenDistribution.withTags(
+                tokenDistribution
+                        .withTags(
                                 PROVIDER_NAME.asString(), providerName,
                                 REQUEST_MODEL.asString(), requestModel,
                                 RESPONSE_MODEL.asString(), responseModelName,
@@ -135,7 +139,8 @@ public class ObservationChatModelListener implements ChatModelListener {
 
     @Override
     public void onError(final ChatModelErrorContext errorContext) {
-        final Observation.Scope currentScope = (Observation.Scope) errorContext.attributes().remove(OBSERVATION_SCOPE_KEY);
+        final Observation.Scope currentScope =
+                (Observation.Scope) errorContext.attributes().remove(OBSERVATION_SCOPE_KEY);
         if (currentScope != null) {
             final Observation observation = currentScope.getCurrentObservation();
             try {

@@ -11,18 +11,10 @@ import static dev.langchain4j.observation.listener.ObservationChatModelListener.
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
-import java.time.Duration;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.azure.AzureOpenAiChatModel;
-import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.output.TokenUsage;
 import io.micrometer.common.KeyValue;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -30,6 +22,9 @@ import io.micrometer.core.instrument.distribution.CountAtBucket;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.micrometer.observation.tck.TestObservationRegistry;
 import io.micrometer.observation.tck.TestObservationRegistryAssert;
+import java.time.Duration;
+import java.util.Arrays;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -54,31 +49,31 @@ public class MicrometerChatModelListenerIT {
 
         // Only token usage metrics should be present
         await().atMost(Duration.ofSeconds(5))
-                .untilAsserted(() -> assertThat(meterRegistry.find(TOKEN_USAGE).meter())
-                        .isNotNull());
+                .untilAsserted(() ->
+                        assertThat(meterRegistry.find(TOKEN_USAGE).meter()).isNotNull());
 
         assertThat(meterRegistry
-                .find(TOKEN_USAGE)
-                .tag(TOKEN_TYPE.asString(), "input")
-                .meter())
+                        .find(TOKEN_USAGE)
+                        .tag(TOKEN_TYPE.asString(), "input")
+                        .meter())
                 .isNotNull();
         assertThat(meterRegistry
-                .find(TOKEN_USAGE)
-                .tag(TOKEN_TYPE.asString(), "output")
-                .meter())
+                        .find(TOKEN_USAGE)
+                        .tag(TOKEN_TYPE.asString(), "output")
+                        .meter())
                 .isNotNull();
 
         assertThat(meterRegistry
-                .get(TOKEN_USAGE)
-                .tag(TOKEN_TYPE.asString(), "input")
-                .summary()
-                .totalAmount())
+                        .get(TOKEN_USAGE)
+                        .tag(TOKEN_TYPE.asString(), "input")
+                        .summary()
+                        .totalAmount())
                 .isGreaterThan(1);
         assertThat(meterRegistry
-                .get(TOKEN_USAGE)
-                .tag(TOKEN_TYPE.asString(), "output")
-                .summary()
-                .totalAmount())
+                        .get(TOKEN_USAGE)
+                        .tag(TOKEN_TYPE.asString(), "output")
+                        .summary()
+                        .totalAmount())
                 .isGreaterThan(1);
 
         DistributionSummary inputSummary = meterRegistry
@@ -118,17 +113,16 @@ public class MicrometerChatModelListenerIT {
         doChatRequest("wrongDeploymentName");
 
         // No token usage metrics on error
-        assertThat(meterRegistry.find(TOKEN_USAGE).meter())
+        assertThat(meterRegistry.find(TOKEN_USAGE).meter()).isNull();
+        assertThat(meterRegistry
+                        .find(TOKEN_USAGE)
+                        .tag(TOKEN_TYPE.asString(), "input")
+                        .meter())
                 .isNull();
         assertThat(meterRegistry
-                .find(TOKEN_USAGE)
-                .tag(TOKEN_TYPE.asString(), "input")
-                .meter())
-                .isNull();
-        assertThat(meterRegistry
-                .find(TOKEN_USAGE)
-                .tag(TOKEN_TYPE.asString(), "output")
-                .meter())
+                        .find(TOKEN_USAGE)
+                        .tag(TOKEN_TYPE.asString(), "output")
+                        .meter())
                 .isNull();
 
         TestObservationRegistryAssert.assertThat(observationRegistry)

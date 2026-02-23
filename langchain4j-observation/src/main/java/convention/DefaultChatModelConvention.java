@@ -9,6 +9,7 @@ import static convention.ChatModelDocumentation.LowCardinalityValues.REQUEST_MOD
 import static convention.ChatModelDocumentation.LowCardinalityValues.RESPONSE_MODEL;
 import static java.util.Optional.ofNullable;
 
+import context.ChatModelObservationContext;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
@@ -17,7 +18,6 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.TokenUsage;
-import context.ChatModelObservationContext;
 import io.micrometer.common.KeyValue;
 import io.micrometer.common.KeyValues;
 import org.jspecify.annotations.Nullable;
@@ -32,8 +32,7 @@ public class DefaultChatModelConvention implements ChatModelConvention {
     static final String UNKNOWN = "unknown";
     public static final String OPERATION_VALUE_CHAT = "chat";
 
-    public DefaultChatModelConvention() {
-    }
+    public DefaultChatModelConvention() {}
 
     @Override
     public @Nullable String getName() {
@@ -50,9 +49,11 @@ public class DefaultChatModelConvention implements ChatModelConvention {
      */
     @Override
     public @Nullable String getContextualName(final ChatModelObservationContext context) {
-        return OPERATION_VALUE_CHAT +
-                ofNullable(context.getRequestContext())
-                        .map(ChatModelRequestContext::chatRequest).map(ChatRequest::parameters).map(ChatRequestParameters::modelName)
+        return OPERATION_VALUE_CHAT
+                + ofNullable(context.getRequestContext())
+                        .map(ChatModelRequestContext::chatRequest)
+                        .map(ChatRequest::parameters)
+                        .map(ChatRequestParameters::modelName)
                         .orElse(UNKNOWN);
     }
 
@@ -67,17 +68,24 @@ public class DefaultChatModelConvention implements ChatModelConvention {
         result = ofNullable(requestContext)
                 .map(ChatModelRequestContext::modelProvider)
                 .map(p -> KeyValue.of(PROVIDER_NAME, p.name()))
-                .map(result::and).orElse(result.and(KeyValue.of(PROVIDER_NAME, UNKNOWN)));
+                .map(result::and)
+                .orElse(result.and(KeyValue.of(PROVIDER_NAME, UNKNOWN)));
 
-        result = ofNullable(requestContext).map(ChatModelRequestContext::chatRequest)
-                .map(ChatRequest::parameters).map(ChatRequestParameters::modelName)
+        result = ofNullable(requestContext)
+                .map(ChatModelRequestContext::chatRequest)
+                .map(ChatRequest::parameters)
+                .map(ChatRequestParameters::modelName)
                 .map(m -> KeyValue.of(REQUEST_MODEL, m))
-                .map(result::and).orElse(result.and(KeyValue.of(REQUEST_MODEL, UNKNOWN)));
+                .map(result::and)
+                .orElse(result.and(KeyValue.of(REQUEST_MODEL, UNKNOWN)));
 
         result = ofNullable(responseContext)
-                .map(ChatModelResponseContext::chatResponse).map(ChatResponse::metadata).map(ChatResponseMetadata::modelName)
+                .map(ChatModelResponseContext::chatResponse)
+                .map(ChatResponse::metadata)
+                .map(ChatResponseMetadata::modelName)
                 .map(m -> KeyValue.of(RESPONSE_MODEL, m))
-                .map(result::and).orElse(result.and(KeyValue.of(RESPONSE_MODEL, UNKNOWN)));
+                .map(result::and)
+                .orElse(result.and(KeyValue.of(RESPONSE_MODEL, UNKNOWN)));
 
         if (errorContext != null && errorContext.error() != null) {
             result = result.and(KeyValue.of(OUTCOME.asString(), OUTCOME_ERROR));
@@ -94,14 +102,20 @@ public class DefaultChatModelConvention implements ChatModelConvention {
         KeyValues result = KeyValues.empty();
 
         result = ofNullable(responseContext)
-                .map(ChatModelResponseContext::chatResponse).map(ChatResponse::tokenUsage).map(TokenUsage::outputTokenCount)
+                .map(ChatModelResponseContext::chatResponse)
+                .map(ChatResponse::tokenUsage)
+                .map(TokenUsage::outputTokenCount)
                 .map(tokens -> KeyValue.of(OUTPUT_TOKENS.asString(), "" + tokens))
-                .map(result::and).orElse(result);
+                .map(result::and)
+                .orElse(result);
 
         result = ofNullable(responseContext)
-                .map(ChatModelResponseContext::chatResponse).map(ChatResponse::tokenUsage).map(TokenUsage::inputTokenCount)
+                .map(ChatModelResponseContext::chatResponse)
+                .map(ChatResponse::tokenUsage)
+                .map(TokenUsage::inputTokenCount)
                 .map(tokens -> KeyValue.of(INPUT_TOKENS.asString(), "" + tokens))
-                .map(result::and).orElse(result);
+                .map(result::and)
+                .orElse(result);
 
         return result;
     }
