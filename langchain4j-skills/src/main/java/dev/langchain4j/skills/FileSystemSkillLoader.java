@@ -76,15 +76,20 @@ public class FileSystemSkillLoader {
             return files
                     .filter(Files::isRegularFile)
                     .filter(path -> !path.getFileName().toString().equals("SKILL.md"))
+                    .filter(path -> !skillDirectory.relativize(path).startsWith("scripts"))
                     .map(path -> {
-                        String formattedPath = stream(skillDirectory.relativize(path).spliterator(), false)
-                                .map(Path::toString)
-                                .collect(joining("/"));
-                        String body = toRuntimeException(() -> Files.readString(path));
-                        return DefaultSkillFile.builder()
-                                .path(formattedPath)
-                                .body(body)
-                                .build();
+                        try {
+                            String formattedPath = stream(skillDirectory.relativize(path).spliterator(), false)
+                                    .map(Path::toString)
+                                    .collect(joining("/"));
+                            String body = toRuntimeException(() -> Files.readString(path));
+                            return DefaultSkillFile.builder()
+                                    .path(formattedPath)
+                                    .body(body)
+                                    .build();
+                        } catch (Exception e) {
+                            throw e; // TODO
+                        }
                     })
                     .toList();
         } catch (IOException e) {

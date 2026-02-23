@@ -45,6 +45,13 @@ class FileSystemSkillLoaderTest {
     }
 
     @Test
+    void should_not_load_scripts_as_skill_files() {
+        Skill skill = loadSkill("skills/greeting-user");
+
+        assertThat(skill.files()).isEmpty();
+    }
+
+    @Test
     void should_store_directory_when_loaded_from_filesystem() {
         Path expectedDir = toPath("skills/using-process-tool");
         Skill skill = FileSystemSkillLoader.loadSkill(expectedDir);

@@ -6,6 +6,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.model.anthropic.AnthropicChatModel;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.Result;
 import dev.langchain4j.service.tool.ToolExecutor;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -33,7 +34,7 @@ public class SkillsIT {
 
     interface Assistant {
 
-        String chat(String userMessage);
+        Result<String> chat(String userMessage);
     }
 
     /**
@@ -104,10 +105,33 @@ public class SkillsIT {
                 .build();
 
         // when
-        String response = assistant.chat("Greet the user");
+        Result<String> result = assistant.chat("Greet the user");
 
         // then
-        assertThat(response).containsIgnoringCase("hello from python");
+        assertThat(result.content()).containsIgnoringCase("hello from python");
+    }
+
+    @Test
+    void should_activate_skill_and_run_script_2() { // TODO
+
+        // given
+        Skill skill = FileSystemSkillLoader.loadSkill(toPath("skills/docx"));
+        String skillSystemMessage = Skills.createSystemMessage(skill);
+        SkillsConfig config = SkillsConfig.builder().allowRun(true).build();
+        Map<ToolSpecification, ToolExecutor> skillTools = Skills.createTools(List.of(skill), config);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(model)
+                .systemMessage(skillSystemMessage)
+                .tools(skillTools)
+                .build();
+
+        // when
+        Result<String> result = assistant.chat("Modify a word document C:\\dev\\output.docx change the text color to red");
+
+        System.out.println(result.tokenUsage());
+        // then
+//        assertThat(response).containsIgnoringCase("hello from python");
     }
 
     private Path toPath(String fileName) {

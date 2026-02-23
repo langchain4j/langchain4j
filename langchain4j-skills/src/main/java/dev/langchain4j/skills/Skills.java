@@ -2,7 +2,7 @@ package dev.langchain4j.skills;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.exception.ToolArgumentsException;
+import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
@@ -77,12 +77,10 @@ public class Skills {
         Map<ToolSpecification, ToolExecutor> result = new HashMap<>();
         result.put(activateSkillTool, activateSkillExecutor);
 
-        boolean hasFiles = skills.stream().anyMatch(skill ->
-                skill.files().stream().anyMatch(f -> !f.path().startsWith("scripts/")));
+        boolean hasFiles = skills.stream().anyMatch(skill -> !skill.files().isEmpty());
         if (hasFiles) {
             String exampleFilePath = skills.stream()
                     .flatMap(skill -> skill.files().stream())
-                    .filter(f -> !f.path().startsWith("scripts/"))
                     .findFirst()
                     .map(SkillFile::path)
                     .orElseThrow();
@@ -132,13 +130,23 @@ public class Skills {
                 }
             };
 
-            result.put(readFileTool, readFileExecutor);
+            result.put(readFileTool, readFileExecutor); // TODO add it only when runTool is missing?
+            // TODO LLM is trying to use this tool to load files it created.
+            // TODO if yes, test that it can load references properly
         }
 
         if (config != null && config.allowRun()) {
             ToolSpecification runTool = ToolSpecification.builder()
                     .name("run") // TODO make everything customizable
-                    .description("Runs a shell command. When skill_name is provided, the command runs with the skill's root directory as the working directory.")
+                    .description("Runs a shell command using " + System.getProperty("os.name") + ". When skill_name is provided, the command runs with the skill's root directory as the working directory."
+                            // TODO
+                            + """
+                            Each invocation starts a fresh shell — shell variables and working directory changes do not persist between calls, but filesystem writes do.
+                            When installing npm packages, always use local installation (npm install <pkg>, never npm install -g <pkg>). \
+                            Global packages are not guaranteed to be found by require() in subsequent calls. \
+                            Local packages are installed into node_modules/ inside the working directory and are always found automatically.
+                            When generating Node.js code to execute via node -e, always output the entire script as a single line with statements separated by semicolons.
+                            Never use multi-line strings, as they break across different shells on Windows.""")
                     .parameters(JsonObjectSchema.builder()
                             .addStringProperty("command",
                                     "The shell command to execute. For example: 'python scripts/process.py --input data.csv'")
@@ -170,15 +178,25 @@ public class Skills {
                         // if directory is null (programmatically built skill), CWD falls back to JVM default
                     }
 
+                    // Resolve the effective CWD so it can be included in every result.
+                    // The LLM needs to know the absolute path to construct reliable paths
+                    // across commands, since each invocation starts a fresh shell process.
+                    Path resolvedCwd = workingDir != null
+                            ? workingDir.toAbsolutePath()
+                            : Path.of(System.getProperty("user.dir"));
+                    String cwdHeader = "[Working directory: " + resolvedCwd + "]\n";
+
                     try {
                         ProcessRunner.Result runResult = ProcessRunner.run(
                                 command, workingDir, ProcessRunner.DEFAULT_TIMEOUT_SECONDS);
                         if (runResult.isSuccess()) {
+                            String output = runResult.stdOut().isBlank() ? "(no output)" : runResult.stdOut();
                             return ToolExecutionResult.builder()
-                                    .resultText(runResult.stdOut()) // TODO truncate, configurable
+                                    .resultText(cwdHeader + output) // TODO truncate, configurable
                                     .build();
                         } else {
-                            String errorText = "Exit code: " + runResult.exitCode() + "\n"
+                            String errorText = cwdHeader
+                                    + "Exit code: " + runResult.exitCode() + "\n"
                                     + "Stdout:\n" + (runResult.stdOut().isEmpty() ? "(empty)" : runResult.stdOut()) + "\n"
                                     + "Stderr:\n" + (runResult.stdErr().isEmpty() ? "(empty)" : runResult.stdErr());
                             return ToolExecutionResult.builder()
@@ -235,7 +253,7 @@ public class Skills {
     }
 
     private static void throwException(String message, Exception e) {
-        throw new ToolArgumentsException(message); // TODO
+        throw new ToolExecutionException(message); // TODO
 //        if (throwToolArgumentsExceptions) {
 //            throw e == null
 //                    ? new ToolArgumentsException(message)
