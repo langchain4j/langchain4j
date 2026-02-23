@@ -18,6 +18,7 @@ import static dev.langchain4j.model.openai.internal.OpenAiUtils.toOpenAiChatRequ
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.validate;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
+import static java.util.Arrays.asList;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
@@ -596,6 +597,10 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         public OpenAiStreamingChatModelBuilder listeners(List<ChatModelListener> listeners) {
             this.listeners = listeners;
             return this;
+        }
+
+        public OpenAiStreamingChatModelBuilder listeners(ChatModelListener... listeners) {
+            return listeners(asList(listeners));
         }
 
         public OpenAiStreamingChatModel build() {

@@ -123,14 +123,13 @@ public class LoggingChatModelListener implements ChatModelListener {
         );
     }
 
-    private static String formatArguments(String json) {
+    private static String printArguments(String json) {
         JsonNode root = null;
         try {
             root = mapper.readTree(json);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
-        try {
             return StreamSupport.stream(
                             Spliterators.spliteratorUnknownSize(root.fields(), 0), false)
                     .sorted(Comparator.comparingInt(e ->
@@ -138,9 +137,6 @@ public class LoggingChatModelListener implements ChatModelListener {
                     .map(e -> e.getValue().isTextual()
                             ? "\"" + e.getValue().asText() + "\""
                             : e.getValue().toString())
-                    .collect(joining(", "));
-        } catch (Exception e) {
-            return escapeNewlines(json);
         }
     }
 

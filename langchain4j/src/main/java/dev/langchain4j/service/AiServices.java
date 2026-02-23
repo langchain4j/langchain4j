@@ -45,6 +45,7 @@ import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
+import dev.langchain4j.service.tool.search.ToolSearchStrategy;
 import dev.langchain4j.spi.services.AiServicesFactory;
 import java.util.Collection;
 import java.util.List;
@@ -634,6 +635,29 @@ public abstract class AiServices<T> {
      */
     public AiServices<T> toolExecutionErrorHandler(ToolExecutionErrorHandler handler) {
         context.toolService.executionErrorHandler(handler);
+        return this;
+    }
+
+    /**
+     * Configures a tool search strategy that can be used to reduce token usage.
+     * <p>
+     * When configured, the LLM initially "sees" only a single special tool, which it can call
+     * to discover additional tools. Once tools are found, they are included in subsequent
+     * requests to the LLM.
+     * <p>
+     * Previously found tools are accumulated until the {@link ToolExecutionResultMessage}
+     * containing the tool search results is evicted from the {@link ChatMemory}.
+     * <p>
+     * You can use one of the out-of-the-box implementations, such as
+     * {@link dev.langchain4j.service.tool.search.simple.SimpleToolSearchStrategy}
+     * or {@link dev.langchain4j.service.tool.search.vector.VectorToolSearchStrategy}, or implement your own.
+     *
+     * @param toolSearchStrategy the tool search strategy to use
+     * @return builder
+     * @since 1.12.0
+     */
+    public AiServices<T> toolSearchStrategy(ToolSearchStrategy toolSearchStrategy) {
+        context.toolService.toolSearchStrategy(toolSearchStrategy);
         return this;
     }
 
