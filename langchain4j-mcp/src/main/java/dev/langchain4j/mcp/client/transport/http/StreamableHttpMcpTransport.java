@@ -45,6 +45,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
     private volatile McpOperationHandler operationHandler;
     private final HttpClient httpClient;
     private final SSLContext sslContext;
+    private final HttpClient.Version httpVersion;
     private McpInitializeRequest initializeRequest;
     private final AtomicReference<String> mcpSessionId = new AtomicReference<>();
 
@@ -56,8 +57,9 @@ public class StreamableHttpMcpTransport implements McpTransport {
         Duration timeout = getOrDefault(builder.timeout, Duration.ofSeconds(60));
         customHeadersSupplier = getOrDefault(builder.customHeadersSupplier, (i) -> Map.of());
         sslContext = builder.sslContext;
+        httpVersion = getOrDefault(builder.httpVersion, HttpClient.Version.HTTP_1_1);
         HttpClient.Builder clientBuilder =
-                HttpClient.newBuilder().connectTimeout(timeout).version(HttpClient.Version.HTTP_1_1);
+                HttpClient.newBuilder().connectTimeout(timeout).version(httpVersion);
         if (builder.executor != null) {
             clientBuilder.executor(builder.executor);
         }
@@ -254,6 +256,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         private boolean logResponses = false;
         private Logger logger;
         private SSLContext sslContext;
+        private HttpClient.Version httpVersion;
 
         /**
          * The URL of the MCP server.
@@ -341,6 +344,15 @@ public class StreamableHttpMcpTransport implements McpTransport {
          */
         public StreamableHttpMcpTransport.Builder sslContext(SSLContext sslContext) {
             this.sslContext = sslContext;
+            return this;
+        }
+
+        /**
+         * Sets the HTTP protocol version used by the transport.
+         * Defaults to {@link HttpClient.Version#HTTP_1_1}.
+         */
+        public StreamableHttpMcpTransport.Builder httpVersion(HttpClient.Version httpVersion) {
+            this.httpVersion = httpVersion;
             return this;
         }
 

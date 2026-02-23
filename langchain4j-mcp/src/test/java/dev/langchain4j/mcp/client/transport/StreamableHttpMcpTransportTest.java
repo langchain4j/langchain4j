@@ -31,6 +31,16 @@ class StreamableHttpMcpTransportTest {
         assertThat(extractHttpClient(transport).version()).isEqualTo(HttpClient.Version.HTTP_1_1);
     }
 
+    @Test
+    void shouldAllowOverridingHttpVersion() throws Exception {
+        StreamableHttpMcpTransport transport = StreamableHttpMcpTransport.builder()
+                .url("http://localhost/mcp")
+                .httpVersion(HttpClient.Version.HTTP_2)
+                .build();
+
+        assertThat(extractHttpClient(transport).version()).isEqualTo(HttpClient.Version.HTTP_2);
+    }
+
     private static SSLContext extractSslContext(StreamableHttpMcpTransport transport) throws Exception {
         Field field = StreamableHttpMcpTransport.class.getDeclaredField("sslContext");
         field.setAccessible(true);
