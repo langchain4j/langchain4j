@@ -5,7 +5,6 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.ModelDisabledException;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.output.Response;
-
 import java.util.List;
 
 /**
@@ -37,6 +36,11 @@ public class DisabledModerationModel implements ModerationModel {
 
     @Override
     public Response<Moderation> moderate(TextSegment textSegment) {
+        throw new ModelDisabledException("ModerationModel is disabled");
+    }
+
+    @Override
+    public ModerationResponse doModerate(ModerationRequest moderationRequest) {
         throw new ModelDisabledException("ModerationModel is disabled");
     }
 }
