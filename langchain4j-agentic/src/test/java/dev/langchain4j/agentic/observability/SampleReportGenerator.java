@@ -239,13 +239,6 @@ public class SampleReportGenerator {
         @Override public AgentInstance parent() { return parent; }
         @Override public List<AgentInstance> subagents() { return subagents; }
         @Override public AgenticSystemTopology topology() { return topology; }
-
-        @Override
-        @SuppressWarnings("unchecked")
-        public <T extends AgentInstance> T as(Class<T> cls) {
-            if (cls.isInstance(this)) return cls.cast(this);
-            throw new ClassCastException("Cannot cast " + name + " to " + cls.getSimpleName());
-        }
     }
 
     static class MockConditionalAgent extends MockAgent implements ConditionalAgentInstance {
