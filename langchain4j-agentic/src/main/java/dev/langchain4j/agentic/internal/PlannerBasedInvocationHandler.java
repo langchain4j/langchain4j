@@ -3,6 +3,7 @@ package dev.langchain4j.agentic.internal;
 import static dev.langchain4j.agentic.internal.AgentUtil.agenticSystemDataTypes;
 import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.rawType;
+import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.afterAgentInvocation;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.beforeAgentInvocation;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.afterAgenticScopeCreated;
@@ -54,7 +55,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
 
     private final Function<AgenticScope, Object> output;
 
-    protected final AgentListener agentListener;
+    protected AgentListener agentListener;
 
     private final Consumer<AgenticScope> beforeCall;
 
@@ -109,10 +110,10 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
         this.outputType = service.agentReturnType();
         this.allowStreamingOutput = UntypedAgent.class.isAssignableFrom(this.type) ||
                 TokenStream.class.isAssignableFrom(rawType(this.outputType));
-        setParent(parent);
         this.outputKey = service.outputKey;
         this.arguments = service.agenticMethod != null ? argumentsFromMethod(service.agenticMethod) : List.of();
         this.subagents = service.subagents.stream().map(AgentInstance.class::cast).toList();
+        setParent(parent);
     }
 
     public AgenticScopeOwner withAgenticScope(DefaultAgenticScope agenticScope) {
@@ -185,7 +186,6 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
 
         Map<String, Object> namedArgs = isRootCall() ? argToMap(method, args) : null;
         if (isRootCall()) {
-            currentScope.setListener(agentListener);
             currentScope.rootCallStarted(registry);
             beforeAgentInvocation(agentListener, currentScope, this, namedArgs);
         }
@@ -197,8 +197,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
 
         if (isRootCall()) {
             afterAgentInvocation(agentListener, currentScope, this, namedArgs, output);
-            currentScope.rootCallEnded(registry);
-            currentScope.setListener(null);
+            currentScope.rootCallEnded(registry, agentListener);
         }
 
         return method.getReturnType().equals(ResultWithAgenticScope.class)
@@ -218,6 +217,11 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
             namedArgs.put(ParameterNameResolver.name(method.getParameters()[i]), args[i]);
         }
         return namedArgs;
+    }
+
+    @Override
+    public String toString() {
+        return service.serviceType() + "<" + type.getSimpleName() + ">";
     }
 
     @Override
@@ -272,9 +276,22 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
 
     @Override
     public void setParent(InternalAgent parent) {
+        if (parent == null) {
+            return;
+        }
         this.parent = parent;
-        if (parent != null && !parent.allowStreamingOutput()) {
+        registerInheritedParentListener(parent.listener());
+        if (!parent.allowStreamingOutput()) {
             this.allowStreamingOutput = false;
+        }
+    }
+
+    @Override
+    public void registerInheritedParentListener(AgentListener parentListener) {
+        if (parentListener != null && parentListener.inheritedBySubagents()) {
+            agentListener = composeWithInherited(agentListener, parentListener);
+            subagents().stream().map(InternalAgent.class::cast)
+                    .forEach(agent -> agent.registerInheritedParentListener(parentListener));
         }
     }
 

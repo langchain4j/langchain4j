@@ -9,16 +9,18 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agentic.Agent;
-import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.internal.InternalAgent;
+import dev.langchain4j.agentic.observability.AfterAgentToolExecution;
 import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.observability.BeforeAgentToolExecution;
 import dev.langchain4j.agentic.observability.ComposedAgentListener;
 import dev.langchain4j.agentic.internal.AgentUtil;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.internal.Context;
 import dev.langchain4j.agentic.internal.UserMessageRecorder;
 import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
@@ -27,6 +29,7 @@ import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
 import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
+import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
@@ -160,10 +163,6 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         if (retrievalAugmentor != null) {
             aiServices.retrievalAugmentor(retrievalAugmentor);
         }
-        if (agentListener != null) {
-            aiServices.beforeToolExecution(agentListener::beforeToolExecution);
-            aiServices.afterToolExecution(agentListener::afterToolExecution);
-        }
 
         setupGuardrails(aiServices);
         setupTools(aiServices);
@@ -186,7 +185,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
         build(agenticScope, context, aiServices);
 
-        return (T) Proxy.newProxyInstance(
+        AgentInstance agent = (AgentInstance) Proxy.newProxyInstance(
                 agentServiceClass.getClassLoader(),
                 new Class<?>[] {
                     agentServiceClass,
@@ -194,6 +193,17 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
                     ChatMemoryAccess.class, ChatMessagesAccess.class
                 },
                 new AgentInvocationHandler(context, aiServices.build(), this, messageRecorder, agenticScopeDependent));
+
+        if (agentListener != null) {
+            aiServices.beforeToolExecution(beforeToolExecution ->
+                    agentListener.beforeAgentToolExecution(new BeforeAgentToolExecution(
+                            (AgenticScope) LangChain4jManaged.current().get(AgenticScope.class), agent, beforeToolExecution)));
+            aiServices.afterToolExecution(afterToolExecution ->
+                    agentListener.afterAgentToolExecution(new AfterAgentToolExecution(
+                            (AgenticScope) LangChain4jManaged.current().get(AgenticScope.class), agent, afterToolExecution)));
+        }
+
+        return (T) agent;
     }
 
     protected void build(DefaultAgenticScope agenticScope, AiServiceContext context, AiServices<T> aiServices) { }

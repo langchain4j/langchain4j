@@ -128,6 +128,9 @@
         <module>langchain4j-agentic-patterns</module>
         <module>langchain4j-skills</module>
 
+        <!-- observability -->
+        <module>langchain4j-micrometer-metrics</module>
+
         <!-- integration tests -->
         <module>integration-tests</module>
 
