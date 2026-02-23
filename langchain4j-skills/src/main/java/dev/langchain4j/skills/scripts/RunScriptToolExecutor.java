@@ -17,7 +17,7 @@ import static dev.langchain4j.skills.Skills.throwException;
 
 public class RunScriptToolExecutor implements ToolExecutor { // TODO name
 
-        private final Map<String, Skill> skillsByName; // TODO needed?
+        private final Map<String, Skill> skillsByName; // TODO needed? TODO check scripts paths,
 
         public RunScriptToolExecutor(Map<String, Skill> skillsByName) {
             this.skillsByName = skillsByName;
