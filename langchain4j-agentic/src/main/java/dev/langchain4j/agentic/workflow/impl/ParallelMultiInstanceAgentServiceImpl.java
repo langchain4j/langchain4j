@@ -1,13 +1,15 @@
 package dev.langchain4j.agentic.workflow.impl;
 
+import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
+
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.internal.AbstractServiceBuilder;
 import dev.langchain4j.agentic.workflow.ParallelMultiInstanceAgentService;
 import java.lang.reflect.Method;
 
-import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
-
-public class ParallelMultiInstanceAgentServiceImpl<T> extends AbstractServiceBuilder<T, ParallelMultiInstanceAgentService<T>> implements ParallelMultiInstanceAgentService<T> {
+public class ParallelMultiInstanceAgentServiceImpl<T>
+        extends AbstractServiceBuilder<T, ParallelMultiInstanceAgentService<T>>
+        implements ParallelMultiInstanceAgentService<T> {
 
     private String inputKey;
 
@@ -31,7 +33,12 @@ public class ParallelMultiInstanceAgentServiceImpl<T> extends AbstractServiceBui
     }
 
     public static <T> ParallelMultiInstanceAgentServiceImpl<T> builder(Class<T> agentServiceClass) {
-        return new ParallelMultiInstanceAgentServiceImpl<>(agentServiceClass, validateAgentClass(agentServiceClass, false, dev.langchain4j.agentic.declarative.ParallelMultiInstanceAgent.class));
+        return new ParallelMultiInstanceAgentServiceImpl<>(
+                agentServiceClass,
+                validateAgentClass(
+                        agentServiceClass,
+                        false,
+                        dev.langchain4j.agentic.declarative.ParallelMultiInstanceAgent.class));
     }
 
     @Override

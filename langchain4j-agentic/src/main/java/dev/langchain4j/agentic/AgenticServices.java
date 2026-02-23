@@ -13,25 +13,14 @@ import static dev.langchain4j.agentic.internal.AgentUtil.nonAiAgentInvoker;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import dev.langchain4j.agentic.agent.AgentBuilder;
-import dev.langchain4j.agentic.agent.UntypedAgentBuilder;
-import dev.langchain4j.agentic.declarative.AgentListenerSupplier;
-import dev.langchain4j.agentic.internal.InternalAgent;
-import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
+import dev.langchain4j.agentic.agent.UntypedAgentBuilder;
 import dev.langchain4j.agentic.declarative.A2AClientAgent;
 import dev.langchain4j.agentic.declarative.ActivationCondition;
+import dev.langchain4j.agentic.declarative.AgentListenerSupplier;
 import dev.langchain4j.agentic.declarative.ChatMemoryProviderSupplier;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
-import dev.langchain4j.agentic.declarative.PlannerAgent;
-import dev.langchain4j.agentic.declarative.PlannerSupplier;
-import dev.langchain4j.agentic.internal.AgentUtil;
-import dev.langchain4j.agentic.planner.AgentArgument;
-import dev.langchain4j.agentic.planner.AgenticService;
-import dev.langchain4j.agentic.planner.Planner;
-import dev.langchain4j.agentic.planner.PlannerBasedService;
-import dev.langchain4j.agentic.planner.PlannerBasedServiceImpl;
-import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.declarative.ConditionalAgent;
 import dev.langchain4j.agentic.declarative.ErrorHandler;
 import dev.langchain4j.agentic.declarative.ExitCondition;
@@ -40,12 +29,23 @@ import dev.langchain4j.agentic.declarative.Output;
 import dev.langchain4j.agentic.declarative.ParallelAgent;
 import dev.langchain4j.agentic.declarative.ParallelExecutor;
 import dev.langchain4j.agentic.declarative.ParallelMultiInstanceAgent;
+import dev.langchain4j.agentic.declarative.PlannerAgent;
+import dev.langchain4j.agentic.declarative.PlannerSupplier;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
 import dev.langchain4j.agentic.declarative.SupervisorRequest;
 import dev.langchain4j.agentic.internal.A2AClientBuilder;
 import dev.langchain4j.agentic.internal.A2AService;
 import dev.langchain4j.agentic.internal.AgentExecutor;
 import dev.langchain4j.agentic.internal.AgentInvoker;
+import dev.langchain4j.agentic.internal.AgentUtil;
+import dev.langchain4j.agentic.internal.InternalAgent;
+import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgenticService;
+import dev.langchain4j.agentic.planner.Planner;
+import dev.langchain4j.agentic.planner.PlannerBasedService;
+import dev.langchain4j.agentic.planner.PlannerBasedServiceImpl;
+import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;
 import dev.langchain4j.agentic.supervisor.SupervisorAgentService;
 import dev.langchain4j.agentic.supervisor.SupervisorAgentServiceImpl;
@@ -384,9 +384,11 @@ public class AgenticServices {
             return buildParallelAgent(agentServiceClass, parallelMethod.get(), chatModel, agentConfigurator);
         }
 
-        Optional<Method> parallelMultiInstanceMethod = getAnnotatedMethodOnClass(agentServiceClass, ParallelMultiInstanceAgent.class);
+        Optional<Method> parallelMultiInstanceMethod =
+                getAnnotatedMethodOnClass(agentServiceClass, ParallelMultiInstanceAgent.class);
         if (parallelMultiInstanceMethod.isPresent()) {
-            return buildParallelMultiInstanceAgent(agentServiceClass, parallelMultiInstanceMethod.get(), chatModel, agentConfigurator);
+            return buildParallelMultiInstanceAgent(
+                    agentServiceClass, parallelMultiInstanceMethod.get(), chatModel, agentConfigurator);
         }
 
         Optional<Method> supervisorMethod =
@@ -475,10 +477,10 @@ public class AgenticServices {
                         return activationCondition != null
                                 && Arrays.asList(activationCondition.value()).contains(subagent);
                     })
-                    .ifPresent(method ->
-                            builder.subAgent(method.getAnnotation(ActivationCondition.class).description(),
-                                    agenticScopePredicate(method),
-                                    createSubagent(subagent, chatModel, agentConfigurator)));
+                    .ifPresent(method -> builder.subAgent(
+                            method.getAnnotation(ActivationCondition.class).description(),
+                            agenticScopePredicate(method),
+                            createSubagent(subagent, chatModel, agentConfigurator)));
         }
 
         return builder.build();
@@ -571,11 +573,13 @@ public class AgenticServices {
                 builder);
 
         getAnnotatedMethodOnClass(agentServiceClass, PlannerSupplier.class)
-                .ifPresentOrElse(method -> {
-                    checkReturnType(method, Planner.class);
-                    builder.planner(() -> invokeStatic(method));
-                }, () -> new IllegalArgumentException(
-                    "A planner agent requires a method annotated with @PlannerSupplier that returns the Planner instance."));
+                .ifPresentOrElse(
+                        method -> {
+                            checkReturnType(method, Planner.class);
+                            builder.planner(() -> invokeStatic(method));
+                        },
+                        () -> new IllegalArgumentException(
+                                "A planner agent requires a method annotated with @PlannerSupplier that returns the Planner instance."));
 
         return builder.build();
     }
@@ -802,11 +806,12 @@ public class AgenticServices {
             return new AgentExecutor(AgentInvoker.fromMethod(agent, method), agent);
         }
 
-        Optional<Method> parallelMultiInstanceMethod = getAnnotatedMethodOnClass(agentServiceClass, ParallelMultiInstanceAgent.class);
+        Optional<Method> parallelMultiInstanceMethod =
+                getAnnotatedMethodOnClass(agentServiceClass, ParallelMultiInstanceAgent.class);
         if (parallelMultiInstanceMethod.isPresent()) {
             Method method = parallelMultiInstanceMethod.get();
-            InternalAgent agent =
-                    (InternalAgent) buildParallelMultiInstanceAgent(agentServiceClass, method, chatModel, agentConfigurator);
+            InternalAgent agent = (InternalAgent)
+                    buildParallelMultiInstanceAgent(agentServiceClass, method, chatModel, agentConfigurator);
             return new AgentExecutor(AgentInvoker.fromMethod(agent, method), agent);
         }
 
@@ -836,9 +841,9 @@ public class AgenticServices {
                 if (agenticMethod.getParameterCount() == 0) {
                     return agentToExecutor(new AgentAction(() -> invokeStatic(agenticMethod)));
                 }
-                return agentToExecutor(
-                        new AgenticScopeAction((scope ->
-                                invokeStatic(agenticMethod, agentInvocationArguments(scope, agenticMethod).positionalArgs()))));
+                return agentToExecutor(new AgenticScopeAction((scope -> invokeStatic(
+                        agenticMethod,
+                        agentInvocationArguments(scope, agenticMethod).positionalArgs()))));
             }
         }
 
@@ -870,7 +875,8 @@ public class AgenticServices {
                 .description(humanInTheLoop.description())
                 .outputKey(humanInTheLoop.outputKey())
                 .async(humanInTheLoop.async())
-                .responseProvider(scope -> invokeStatic(method, agentInvocationArguments(scope, method).positionalArgs()));
+                .responseProvider(scope -> invokeStatic(
+                        method, agentInvocationArguments(scope, method).positionalArgs()));
 
         getAnnotatedMethodOnClass(agentServiceClass, AgentListenerSupplier.class)
                 .ifPresent(listenerMethod -> {
@@ -879,7 +885,8 @@ public class AgenticServices {
                 });
 
         String name = isNullOrBlank(humanInTheLoop.name()) ? method.getName() : humanInTheLoop.name();
-        AgentInvoker agentInvoker = nonAiAgentInvoker(method, name, humanInTheLoop.description(), humanInTheLoop.outputKey(), humanInTheLoop.async());
+        AgentInvoker agentInvoker = nonAiAgentInvoker(
+                method, name, humanInTheLoop.description(), humanInTheLoop.outputKey(), humanInTheLoop.async());
         return new AgentExecutor(agentInvoker, humanInTheLoopBuilder.build());
     }
 

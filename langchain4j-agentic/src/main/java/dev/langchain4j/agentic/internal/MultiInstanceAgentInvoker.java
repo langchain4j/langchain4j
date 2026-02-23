@@ -21,13 +21,16 @@ public class MultiInstanceAgentInvoker extends AbstractAgentInvoker {
     public MultiInstanceAgentInvoker(AgentInvoker delegate, Object item, int instanceIndex) {
         super(delegate.method(), (InternalAgent) delegate);
         this.item = item;
-        this.injectionKey = delegate.arguments().isEmpty() ? null : delegate.arguments().get(0).name();
+        this.injectionKey = delegate.arguments().isEmpty()
+                ? null
+                : delegate.arguments().get(0).name();
         this.instanceIndex = instanceIndex;
         this.instanceName = delegate.name() + "_" + instanceIndex;
         this.instanceAgentId = delegate.agentId() + "_" + instanceIndex;
-        this.instanceOutputKey = delegate.outputKey() != null && !delegate.outputKey().isBlank()
-                ? delegate.outputKey() + "_" + instanceIndex
-                : null;
+        this.instanceOutputKey =
+                delegate.outputKey() != null && !delegate.outputKey().isBlank()
+                        ? delegate.outputKey() + "_" + instanceIndex
+                        : null;
     }
 
     @Override

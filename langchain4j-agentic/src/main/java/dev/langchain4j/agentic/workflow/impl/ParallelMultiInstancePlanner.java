@@ -1,16 +1,16 @@
 package dev.langchain4j.agentic.workflow.impl;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
 import dev.langchain4j.agentic.internal.AgentExecutor;
 import dev.langchain4j.agentic.internal.MultiInstanceAgentInvoker;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
-import dev.langchain4j.agentic.planner.PlanningContext;
 import dev.langchain4j.agentic.planner.Planner;
+import dev.langchain4j.agentic.planner.PlanningContext;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
 public class ParallelMultiInstancePlanner implements Planner {
 
@@ -53,8 +53,7 @@ public class ParallelMultiInstancePlanner implements Planner {
         List<AgentInstance> instances = new ArrayList<>(items.size());
         for (int i = 0; i < items.size(); i++) {
             Object item = items.get(i);
-            MultiInstanceAgentInvoker instanceInvoker = new MultiInstanceAgentInvoker(
-                    subagent.agentInvoker(), item, i);
+            MultiInstanceAgentInvoker instanceInvoker = new MultiInstanceAgentInvoker(subagent.agentInvoker(), item, i);
             instances.add(new AgentExecutor(instanceInvoker, subagent.agent()));
         }
 

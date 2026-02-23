@@ -18,16 +18,11 @@ import dev.langchain4j.agentic.Agents.StyleEditor;
 import dev.langchain4j.agentic.Agents.StyleScorer;
 import dev.langchain4j.agentic.Agents.TechnicalExpert;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
-import dev.langchain4j.agentic.declarative.AgentListenerSupplier;
-import dev.langchain4j.agentic.observability.AgentInvocation;
-import dev.langchain4j.agentic.observability.AgentListener;
-import dev.langchain4j.agentic.observability.AgentMonitor;
-import dev.langchain4j.agentic.observability.AgentRequest;
-import dev.langchain4j.agentic.observability.AgentResponse;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.declarative.ActivationCondition;
+import dev.langchain4j.agentic.declarative.AgentListenerSupplier;
 import dev.langchain4j.agentic.declarative.ChatMemoryProviderSupplier;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
 import dev.langchain4j.agentic.declarative.ConditionalAgent;
@@ -46,8 +41,13 @@ import dev.langchain4j.agentic.declarative.SequenceAgent;
 import dev.langchain4j.agentic.declarative.SupervisorAgent;
 import dev.langchain4j.agentic.declarative.SupervisorRequest;
 import dev.langchain4j.agentic.declarative.ToolsSupplier;
-import dev.langchain4j.agentic.observability.MonitoredExecution;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
+import dev.langchain4j.agentic.observability.AgentInvocation;
+import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.observability.AgentMonitor;
+import dev.langchain4j.agentic.observability.AgentRequest;
+import dev.langchain4j.agentic.observability.AgentResponse;
+import dev.langchain4j.agentic.observability.MonitoredExecution;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.Planner;
@@ -96,8 +96,9 @@ public class DeclarativeAgentIT {
 
     public interface StoryCreator {
 
-        @SequenceAgent( outputKey = "story",
-                subAgents = { CreativeWriter.class, AudienceEditor.class, StyleEditor.class})
+        @SequenceAgent(
+                outputKey = "story",
+                subAgents = {CreativeWriter.class, AudienceEditor.class, StyleEditor.class})
         String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
     }
 
@@ -111,8 +112,9 @@ public class DeclarativeAgentIT {
 
     public interface PlannerBasedStoryCreator {
 
-        @PlannerAgent( outputKey = "story",
-                subAgents = { CreativeWriter.class, AudienceEditor.class, StyleEditor.class})
+        @PlannerAgent(
+                outputKey = "story",
+                subAgents = {CreativeWriter.class, AudienceEditor.class, StyleEditor.class})
         String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
 
         @PlannerSupplier
@@ -123,7 +125,8 @@ public class DeclarativeAgentIT {
 
     @Test
     void declarative_planner_tests() {
-        PlannerBasedStoryCreator storyCreator = AgenticServices.createAgenticSystem(PlannerBasedStoryCreator.class, baseModel());
+        PlannerBasedStoryCreator storyCreator =
+                AgenticServices.createAgenticSystem(PlannerBasedStoryCreator.class, baseModel());
 
         String story = storyCreator.write("dragons and wizards", "fantasy", "young adults");
         assertThat(story).isNotBlank();
@@ -131,8 +134,9 @@ public class DeclarativeAgentIT {
 
     public interface StoryCreatorWithConfigurableStyleEditor {
 
-        @SequenceAgent( outputKey = "styledStory",
-                subAgents = { CreativeWriter.class, AudienceEditor.class, StyleEditor.class})
+        @SequenceAgent(
+                outputKey = "styledStory",
+                subAgents = {CreativeWriter.class, AudienceEditor.class, StyleEditor.class})
         String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
     }
 
@@ -185,8 +189,9 @@ public class DeclarativeAgentIT {
 
     public interface StoryCreatorWithErrorRecovery {
 
-        @SequenceAgent( outputKey = "story",
-                subAgents = { CreativeWriter.class, AudienceEditor.class, StyleEditor.class})
+        @SequenceAgent(
+                outputKey = "story",
+                subAgents = {CreativeWriter.class, AudienceEditor.class, StyleEditor.class})
         String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
 
         @ErrorHandler
@@ -216,8 +221,7 @@ public class DeclarativeAgentIT {
                 description = "Review and score the given story to ensure it aligns with the specified style",
                 outputKey = "story",
                 maxIterations = 5,
-                subAgents = { StyleScorer.class, StyleEditor.class }
-                )
+                subAgents = {StyleScorer.class, StyleEditor.class})
         String reviewAndScore(@V("story") String story);
 
         @ExitCondition
@@ -228,8 +232,9 @@ public class DeclarativeAgentIT {
 
     public interface StoryCreatorWithReview {
 
-        @SequenceAgent( outputKey = "story",
-                subAgents = { CreativeWriter.class, StyleReviewLoopAgent.class })
+        @SequenceAgent(
+                outputKey = "story",
+                subAgents = {CreativeWriter.class, StyleReviewLoopAgent.class})
         ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
     }
 
@@ -257,8 +262,7 @@ public class DeclarativeAgentIT {
                 description = "Review the given story to ensure it aligns with the specified style",
                 outputKey = "story",
                 maxIterations = 5,
-                subAgents = { StyleScorer.class, StyleEditor.class }
-        )
+                subAgents = {StyleScorer.class, StyleEditor.class})
         String write(@V("story") String story);
 
         @ExitCondition(testExitAtLoopEnd = true, description = "score greater than 0.8")
@@ -270,8 +274,9 @@ public class DeclarativeAgentIT {
 
     public interface StoryCreatorWithReviewWithCounter extends AgentInstance {
 
-        @SequenceAgent( outputKey = "story",
-                subAgents = { CreativeWriter.class, StyleReviewLoopAgentWithCounter.class })
+        @SequenceAgent(
+                outputKey = "story",
+                subAgents = {CreativeWriter.class, StyleReviewLoopAgentWithCounter.class})
         ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
     }
 
@@ -307,10 +312,12 @@ public class DeclarativeAgentIT {
         assertThat(story).isEqualTo(agenticScope.readState("story"));
         assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
 
-        List<dev.langchain4j.agentic.scope.AgentInvocation> scoreAgentInvocations = agenticScope.agentInvocations("scoreStyle");
+        List<dev.langchain4j.agentic.scope.AgentInvocation> scoreAgentInvocations =
+                agenticScope.agentInvocations("scoreStyle");
         assertThat(scoreAgentInvocations).hasSizeBetween(1, 5).hasSize(loopCount.get());
 
-        List<dev.langchain4j.agentic.scope.AgentInvocation> styleEditorAgentInvocations = agenticScope.agentInvocations("editStory");
+        List<dev.langchain4j.agentic.scope.AgentInvocation> styleEditorAgentInvocations =
+                agenticScope.agentInvocations("editStory");
         assertThat(styleEditorAgentInvocations).hasSizeBetween(1, 5).hasSize(loopCount.get());
 
         loopCount = null;
@@ -342,8 +349,9 @@ public class DeclarativeAgentIT {
 
     public interface StoryCreatorWithReviewWithListener {
 
-        @SequenceAgent( outputKey = "story",
-                subAgents = { CreativeWriterWithListener.class, StyleReviewLoopAgentWithListener.class })
+        @SequenceAgent(
+                outputKey = "story",
+                subAgents = {CreativeWriterWithListener.class, StyleReviewLoopAgentWithListener.class})
         ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
     }
 
@@ -377,8 +385,9 @@ public class DeclarativeAgentIT {
 
     public interface ExpertsAgent {
 
-        @ConditionalAgent( outputKey = "response",
-                subAgents = { MedicalExpert.class, TechnicalExpert.class, LegalExpert.class } )
+        @ConditionalAgent(
+                outputKey = "response",
+                subAgents = {MedicalExpert.class, TechnicalExpert.class, LegalExpert.class})
         String askExpert(@V("request") String request);
 
         @ActivationCondition(value = MedicalExpert.class, description = "category is medical")
@@ -399,8 +408,9 @@ public class DeclarativeAgentIT {
 
     public interface ExpertRouterAgent extends AgentInstance {
 
-        @SequenceAgent( outputKey = "response",
-                subAgents = { CategoryRouter.class, ExpertsAgent.class })
+        @SequenceAgent(
+                outputKey = "response",
+                subAgents = {CategoryRouter.class, ExpertsAgent.class})
         ResultWithAgenticScope<String> ask(@V("request") String request);
     }
 
@@ -422,9 +432,12 @@ public class DeclarativeAgentIT {
 
         ConditionalAgentInstance conditionalInstance = conditionalAgentInstance.as(ConditionalAgentInstance.class);
         assertThat(conditionalInstance.conditionalSubagents()).hasSize(3);
-        assertThat(conditionalInstance.conditionalSubagents().get(0).condition()).isEqualTo("category is medical");
-        assertThat(conditionalInstance.conditionalSubagents().get(1).condition()).isEqualTo("<unknown>");
-        assertThat(conditionalInstance.conditionalSubagents().get(2).condition()).isEqualTo("category is legal");
+        assertThat(conditionalInstance.conditionalSubagents().get(0).condition())
+                .isEqualTo("category is medical");
+        assertThat(conditionalInstance.conditionalSubagents().get(1).condition())
+                .isEqualTo("<unknown>");
+        assertThat(conditionalInstance.conditionalSubagents().get(2).condition())
+                .isEqualTo("category is legal");
 
         ResultWithAgenticScope<String> result = expertRouterAgent.ask("I broke my leg what should I do");
         String response = result.result();
@@ -438,7 +451,8 @@ public class DeclarativeAgentIT {
 
     public interface EveningPlannerAgent {
 
-        @ParallelAgent(outputKey = "plans",
+        @ParallelAgent(
+                outputKey = "plans",
                 subAgents = {FoodExpert.class, MovieExpert.class})
         List<EveningPlan> plan(@V("mood") String mood);
 
@@ -472,7 +486,8 @@ public class DeclarativeAgentIT {
         List<Agents.EveningPlan> plans = eveningPlannerAgent.plan("romantic");
         assertThat(plans).hasSize(3);
 
-        MonitoredExecution execution = PARALLEL_AGENTS_MONITOR.successfulExecutions().get(0);
+        MonitoredExecution execution =
+                PARALLEL_AGENTS_MONITOR.successfulExecutions().get(0);
         System.out.println(execution);
         assertThat(execution.done()).isTrue();
         assertThat(execution.ongoingInvocations()).isEmpty();
@@ -484,9 +499,10 @@ public class DeclarativeAgentIT {
 
     public interface SupervisorStoryCreator {
 
-        @SupervisorAgent( outputKey = "story",
+        @SupervisorAgent(
+                outputKey = "story",
                 responseStrategy = SupervisorResponseStrategy.LAST,
-                subAgents = { CreativeWriter.class, StyleReviewLoopAgent.class })
+                subAgents = {CreativeWriter.class, StyleReviewLoopAgent.class})
         ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
 
         @SupervisorRequest
@@ -522,9 +538,12 @@ public class DeclarativeAgentIT {
 
         assertThat(agenticScope.agentInvocations("generateStory")).hasSize(1);
 
-        List<dev.langchain4j.agentic.scope.AgentInvocation> scoreAgentInvocations = agenticScope.agentInvocations("scoreStyle");
+        List<dev.langchain4j.agentic.scope.AgentInvocation> scoreAgentInvocations =
+                agenticScope.agentInvocations("scoreStyle");
         assertThat(scoreAgentInvocations).hasSizeBetween(1, 5);
-        assertThat((Double) scoreAgentInvocations.get(scoreAgentInvocations.size() - 1).output())
+        assertThat((Double) scoreAgentInvocations
+                        .get(scoreAgentInvocations.size() - 1)
+                        .output())
                 .isGreaterThanOrEqualTo(0.8);
     }
 
@@ -558,7 +577,10 @@ public class DeclarativeAgentIT {
             Analyze the following user request under a legal point of view and provide the best possible answer.
             The user request is {{request}}.
             """)
-        @Agent(description = "A legal expert", outputKey = "response", summarizedContext = {"medical", "technical"})
+        @Agent(
+                description = "A legal expert",
+                outputKey = "response",
+                summarizedContext = {"medical", "technical"})
         String legal(@MemoryId String memoryId, @V("request") String request);
 
         @ChatMemoryProviderSupplier
@@ -596,8 +618,10 @@ public class DeclarativeAgentIT {
 
     public interface ExpertsAgentWithMemory {
 
-        @ConditionalAgent( outputKey = "response",
-                subAgents = { MedicalExpertWithMemory.class, TechnicalExpertWithMemory.class, LegalExpertWithMemory.class })
+        @ConditionalAgent(
+                outputKey = "response",
+                subAgents = {MedicalExpertWithMemory.class, TechnicalExpertWithMemory.class, LegalExpertWithMemory.class
+                })
         String askExpert(@V("request") String request);
 
         @ActivationCondition(MedicalExpertWithMemory.class)
@@ -626,8 +650,9 @@ public class DeclarativeAgentIT {
 
     public interface ExpertRouterAgentWithMemory extends AgenticScopeAccess {
 
-        @SequenceAgent( outputKey = "response",
-                subAgents = { CategoryRouterWithModel.class, ExpertsAgentWithMemory.class })
+        @SequenceAgent(
+                outputKey = "response",
+                subAgents = {CategoryRouterWithModel.class, ExpertsAgentWithMemory.class})
         String ask(@MemoryId String memoryId, @V("request") String request);
     }
 
@@ -724,7 +749,7 @@ public class DeclarativeAgentIT {
 
         @SupervisorAgent(
                 responseStrategy = SupervisorResponseStrategy.SUMMARY,
-                subAgents = { WithdrawAgent.class, CreditAgent.class})
+                subAgents = {WithdrawAgent.class, CreditAgent.class})
         String invoke(@V("request") String request);
 
         @ChatModelSupplier
@@ -786,9 +811,15 @@ public class DeclarativeAgentIT {
 
     public interface StoryCreatorWithHumanInTheLoop {
 
-        @SequenceAgent( outputKey = "story",
-                subAgents = { AudienceRetriever.class, CreativeWriter.class, HumanResponseSupplier.class,
-                              AudienceEditor.class, AudienceReader.class })
+        @SequenceAgent(
+                outputKey = "story",
+                subAgents = {
+                    AudienceRetriever.class,
+                    CreativeWriter.class,
+                    HumanResponseSupplier.class,
+                    AudienceEditor.class,
+                    AudienceReader.class
+                })
         String write(@V("topic") String topic);
     }
 
@@ -855,7 +886,8 @@ public class DeclarativeAgentIT {
                 """
             You are an astrologist that generates horoscopes based on the user's name and zodiac sign.
             """)
-        @UserMessage("""
+        @UserMessage(
+                """
             Generate the horoscope for {{person}}.
             The person has a name and a zodiac sign. Use both to create a personalized horoscope.
             """)
@@ -870,9 +902,7 @@ public class DeclarativeAgentIT {
 
     public interface BatchHoroscopeAgent extends AgentInstance {
 
-        @ParallelMultiInstanceAgent(
-                subAgent = PersonAstrologyAgent.class,
-                inputKey = "persons")
+        @ParallelMultiInstanceAgent(subAgent = PersonAstrologyAgent.class, inputKey = "persons")
         ResultWithAgenticScope<Object> generateHoroscopes(@V("persons") List<Person> persons);
 
         @ParallelExecutor
@@ -893,11 +923,8 @@ public class DeclarativeAgentIT {
         assertThat(subagent.name()).isEqualTo("horoscope");
         assertThat(subagent.outputKey()).isEqualTo("horoscope");
 
-        List<Person> persons = List.of(
-                new Person("Mario", "aries"),
-                new Person("Luigi", "pisces"),
-                new Person("Peach", "leo")
-        );
+        List<Person> persons =
+                List.of(new Person("Mario", "aries"), new Person("Luigi", "pisces"), new Person("Peach", "leo"));
 
         ResultWithAgenticScope<Object> result = agent.generateHoroscopes(persons);
         AgenticScope scope = result.agenticScope();

@@ -9,7 +9,6 @@ import dev.langchain4j.agentic.workflow.SequentialAgentService;
 import dev.langchain4j.agentic.workflow.WorkflowAgentsBuilder;
 
 public enum WorkflowAgentsBuilderImpl implements WorkflowAgentsBuilder {
-
     INSTANCE;
 
     @Override
