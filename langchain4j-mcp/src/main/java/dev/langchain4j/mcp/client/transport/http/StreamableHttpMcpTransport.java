@@ -58,7 +58,8 @@ public class StreamableHttpMcpTransport implements McpTransport {
         customHeadersSupplier = getOrDefault(builder.customHeadersSupplier, (i) -> Map.of());
         sslContext = builder.sslContext;
         httpVersion = builder.forceHttpVersion1_1 ? HttpClient.Version.HTTP_1_1 : HttpClient.Version.HTTP_2;
-        HttpClient.Builder clientBuilder = HttpClient.newBuilder().connectTimeout(timeout).version(httpVersion);
+        HttpClient.Builder clientBuilder =
+                HttpClient.newBuilder().connectTimeout(timeout).version(httpVersion);
         if (builder.executor != null) {
             clientBuilder.executor(builder.executor);
         }
