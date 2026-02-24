@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
+import static dev.langchain4j.service.tool.search.ToolSearchService.addFoundTools;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ReturnBehavior;
@@ -30,6 +31,9 @@ import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.observability.api.event.ToolExecutedEvent;
 import dev.langchain4j.service.AiServiceContext;
 import dev.langchain4j.service.IllegalConfigurationException;
+import dev.langchain4j.service.tool.search.ToolSearchService;
+import dev.langchain4j.service.tool.search.ToolSearchStrategy;
+
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -72,6 +76,7 @@ public class ToolService {
     private ToolExecutionErrorHandler executionErrorHandler;
     private Function<ToolExecutionRequest, ToolExecutionResultMessage> toolHallucinationStrategy =
             HallucinatedToolNameStrategy.THROW_EXCEPTION;
+    private ToolSearchService toolSearchService;
 
     private Consumer<BeforeToolExecution> beforeToolExecution = null;
     private Consumer<ToolExecution> afterToolExecution = null;
@@ -219,12 +224,36 @@ public class ToolService {
         return getOrDefault(executionErrorHandler, DEFAULT_TOOL_EXECUTION_ERROR_HANDLER);
     }
 
+    /**
+     * @since 1.12.0
+     */
+    public void toolSearchStrategy(ToolSearchStrategy toolSearchStrategy) {
+        this.toolSearchService = new ToolSearchService(toolSearchStrategy);
+    }
+
+    public ToolServiceContext createContext(InvocationContext invocationContext,
+                                            UserMessage userMessage,
+                                            ChatMemory chatMemory) {
+        ToolServiceContext toolServiceContext = createContext(invocationContext, userMessage);
+        if (toolSearchService == null) {
+            return toolServiceContext;
+        } else {
+            return toolSearchService.adjust(toolServiceContext, chatMemory, invocationContext);
+        }
+    }
+
+    /**
+     * @deprecated use {@link #createContext(InvocationContext, UserMessage, ChatMemory)} instead
+     */
+    @Deprecated(since = "1.12.0")
     public ToolServiceContext createContext(InvocationContext invocationContext, UserMessage userMessage) {
+        // TODO make private
         if (this.toolProvider == null) {
             return this.toolSpecifications.isEmpty()
                     ? ToolServiceContext.Empty.INSTANCE
                     : ToolServiceContext.builder()
-                            .toolSpecifications(this.toolSpecifications)
+                            .effectiveTools(this.toolSpecifications)
+                            .availableTools(this.toolSpecifications)
                             .toolExecutors(this.toolExecutors)
                             .immediateReturnTools(this.immediateReturnTools)
                             .build();
@@ -254,7 +283,8 @@ public class ToolService {
             }
         }
         return ToolServiceContext.builder()
-                .toolSpecifications(toolSpecifications)
+                .effectiveTools(toolSpecifications)
+                .availableTools(toolSpecifications)
                 .toolExecutors(toolExecutors)
                 .immediateReturnTools(immediateReturnTools)
                 .build();
@@ -309,6 +339,7 @@ public class ToolService {
                         .toolName(request.name())
                         .text(result.resultText())
                         .isError(result.isError())
+                        .attributes(result.attributes())
                         .build();
 
                 ToolExecution toolExecution =
@@ -349,6 +380,10 @@ public class ToolService {
 
             if (chatMemory != null) {
                 messages = chatMemory.messages();
+            }
+
+            if (toolSearchService != null) {
+                parameters = addFoundTools(parameters, toolResults.values(), toolServiceContext.availableTools());
             }
 
             ChatRequest chatRequest = context.chatRequestTransformer.apply(

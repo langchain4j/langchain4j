@@ -2,7 +2,6 @@ package dev.langchain4j.model.anthropic;
 
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelIT.randomString;
-import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_HAIKU_4_5_20251001;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_SONNET_4_5_20250929;
 import static java.lang.System.getenv;
@@ -10,7 +9,6 @@ import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -41,11 +39,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 class AnthropicStreamingChatModelIT {
 
     @ParameterizedTest
-    @EnumSource(
-            value = AnthropicChatModelName.class,
-            mode = EXCLUDE,
-            names = {"CLAUDE_OPUS_4_20250514" // Run manually before release. Expensive to run very often.
-            })
+    @EnumSource(AnthropicChatModelName.class)
     void should_support_all_enum_model_names(AnthropicChatModelName modelName) {
 
         // given
@@ -76,9 +70,8 @@ class AnthropicStreamingChatModelIT {
                 .baseUrl("https://api.anthropic.com/v1/")
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .version("2023-06-01")
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .temperature(1.0)
-                .topP(1.0)
                 .topK(1)
                 .maxTokens(3)
                 .stopSequences(asList("hello", "world"))
@@ -104,15 +97,14 @@ class AnthropicStreamingChatModelIT {
         // given
         AnthropicStreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .beta("prompt-caching-2024-07-31")
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .cacheSystemMessages(true)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
 
         SystemMessage systemMessage =
-                SystemMessage.from("What types of messages are supported in LangChain?".repeat(172) + randomString(2));
+                SystemMessage.from("What types of messages are supported in LangChain?".repeat(350) + randomString(2));
         UserMessage userMessage =
                 new UserMessage(TextContent.from("What types of messages are supported in LangChain?"));
 
@@ -133,8 +125,7 @@ class AnthropicStreamingChatModelIT {
         // given
         AnthropicStreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .beta("prompt-caching-2024-07-31")
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .cacheTools(true)
                 .logRequests(true)
                 .logResponses(true)
@@ -144,7 +135,7 @@ class AnthropicStreamingChatModelIT {
 
         ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name("calculator")
-                .description("returns a sum of two numbers".repeat(214) + randomString(2))
+                .description("returns a sum of two numbers".repeat(430) + randomString(2))
                 .parameters(JsonObjectSchema.builder()
                         .addIntegerProperty("first")
                         .addIntegerProperty("second")
@@ -223,7 +214,7 @@ class AnthropicStreamingChatModelIT {
         // given
         StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .apiKey(getenv("ANTHROPIC_API_KEY"))
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .userId("test-user-12345")
                 .maxTokens(10)
                 .build();

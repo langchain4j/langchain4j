@@ -18,6 +18,7 @@ import static dev.langchain4j.model.openai.internal.OpenAiUtils.toOpenAiChatRequ
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.validate;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
+import static java.util.Arrays.asList;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
@@ -145,13 +146,14 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
 
         ChatCompletionRequest openAiRequest =
                 toOpenAiChatRequest(
-                        chatRequest, parameters, sendThinking, thinkingFieldName, strictTools, strictJsonSchema)
+                                chatRequest, parameters, sendThinking, thinkingFieldName, strictTools, strictJsonSchema)
                         .stream(true)
                         .streamOptions(
                                 StreamOptions.builder().includeUsage(true).build())
                         .build();
 
-        OpenAiStreamingResponseBuilder openAiResponseBuilder = new OpenAiStreamingResponseBuilder(returnThinking, accumulateToolCallId);
+        OpenAiStreamingResponseBuilder openAiResponseBuilder =
+                new OpenAiStreamingResponseBuilder(returnThinking, accumulateToolCallId);
         ToolCallBuilder toolCallBuilder = new ToolCallBuilder();
 
         client.chatCompletion(openAiRequest)
@@ -212,7 +214,18 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         if (toolCalls != null) {
             for (ToolCall toolCall : toolCalls) {
 
-                int index = toolCall.index();
+                int index;
+                if (toolCall.index() != null) {
+                    index = toolCall.index();
+                } else {
+                    index = toolCallBuilder.index();
+                    // When index is null and a different tool call id appears, increment the index
+                    if (toolCall.id() != null
+                            && toolCallBuilder.id() != null
+                            && !toolCallBuilder.id().equals(toolCall.id())) {
+                        index = toolCallBuilder.index() + 1;
+                    }
+                }
                 if (toolCallBuilder.index() != index) {
                     onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
                     toolCallBuilder.updateIndex(index);
@@ -584,6 +597,10 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         public OpenAiStreamingChatModelBuilder listeners(List<ChatModelListener> listeners) {
             this.listeners = listeners;
             return this;
+        }
+
+        public OpenAiStreamingChatModelBuilder listeners(ChatModelListener... listeners) {
+            return listeners(asList(listeners));
         }
 
         public OpenAiStreamingChatModel build() {

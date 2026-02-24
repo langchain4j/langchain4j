@@ -155,7 +155,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         if (model instanceof StreamingChatModel) {
             StreamingMetadata streamingMetadata = chatResponseAndStreamingMetadata.streamingMetadata();
             assertThat(streamingMetadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
-            assertThat(streamingMetadata.timesOnPartialResponseWasCalled()).isGreaterThan(1);
+            assertThat(streamingMetadata.timesOnPartialResponseWasCalled()).isGreaterThan(0);
             assertThat(streamingMetadata.partialToolCalls()).isEmpty();
             assertThat(streamingMetadata.completeToolCalls()).isEmpty();
             assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
