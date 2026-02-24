@@ -12,6 +12,7 @@ import java.util.List;
 
 import static dev.langchain4j.model.openai.OpenAiImageModelName.DALL_E_2;
 import static dev.langchain4j.model.openai.OpenAiImageModelName.DALL_E_3;
+import static dev.langchain4j.model.openai.OpenAiImageModelName.GPT_IMAGE_1;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Disabled("Run manually before release. Expensive to run very often.")
@@ -77,6 +78,29 @@ class OpenAiImageModelIT {
         String revisedPrompt = response.content().revisedPrompt();
         log.info("Your revised prompt: {}", revisedPrompt);
         assertThat(revisedPrompt).hasSizeGreaterThan(50);
+    }
+
+    @Test
+    void image_generation_with_gpt_image_1_works() {
+        OpenAiImageModel model = OpenAiImageModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(GPT_IMAGE_1)
+                .size("1024x1024")
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        Response<Image> response = model.generate("A cute capybara");
+
+        assertThat(response.content().url()).isNull();
+        assertThat(response.content().base64Data()).isNotNull().isBase64();
+        log.info("The remote image is a base64 encoded string.");
+
+        assertThat(response.tokenUsage()).isNotNull();
+        assertThat(response.tokenUsage().inputTokenCount()).isGreaterThan(0);
+        log.info("Token usage: {}", response.tokenUsage());
     }
 
     @Test
