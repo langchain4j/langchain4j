@@ -755,13 +755,23 @@ System.out.println(execution);
 so it will reveal the nested sequence of agents invocations necessary to generate and refine the story, like it follows:
 
 ```
-AgentInvocation{agent=Sequential, startTime=2025-12-04T17:23:45.684601233, finishTime=2025-12-04T17:25:31.310476077, duration=105625 ms, inputs={style=comedy, topic=dragons and wiz...}, output=In the shadowy ...}
-|=> AgentInvocation{agent=generateStory, startTime=2025-12-04T17:23:45.687031946, finishTime=2025-12-04T17:23:53.216629832, duration=7529 ms, inputs={topic=dragons and wiz...}, output=In the shadowed...}
-|=> AgentInvocation{agent=reviewLoop, startTime=2025-12-04T17:23:53.218004760, finishTime=2025-12-04T17:25:31.310442197, duration=98092 ms, inputs={score=0.85, topic=dragons and wiz..., style=comedy, story=In the shadowy ...}, output=null}
-    |=> AgentInvocation{agent=scoreStyle, startTime=2025-12-04T17:23:53.218606335, finishTime=2025-12-04T17:23:58.900747685, duration=5682 ms, inputs={style=comedy, story=In the shadowed...}, output=0.25}
-    |=> AgentInvocation{agent=editStory, startTime=2025-12-04T17:23:58.901041911, finishTime=2025-12-04T17:24:58.130857588, duration=59229 ms, inputs={style=comedy, story=In the shadowed...}, output=In the shadowy ...}
-    |=> AgentInvocation{agent=scoreStyle, startTime=2025-12-04T17:24:58.130980855, finishTime=2025-12-04T17:25:31.310076714, duration=33179 ms, inputs={style=comedy, story=In the shadowy ...}, output=0.85}
+AgentInvocation{agent=Sequential, startTime=2026-02-19T17:49:54.822383375, finishTime=2026-02-19T17:50:05.914590184, duration=11092 ms, inputs={style=comedy, topic=dragons and wiz...}, output=In a realm wher...}
+|=> AgentInvocation{agent=generateStory, startTime=2026-02-19T17:49:54.825325661, finishTime=2026-02-19T17:49:57.422386599, duration=2597 ms, inputs={topic=dragons and wiz...}, output=In a realm wher...}
+|=> AgentInvocation{agent=reviewLoop, startTime=2026-02-19T17:49:57.423984553, finishTime=2026-02-19T17:50:05.914543382, duration=8490 ms, inputs={score=0.9, topic=dragons and wiz..., style=comedy, story=In a realm wher...}, output=null}
+    |=> AgentInvocation{agent=scoreStyle, iteration=0, startTime=2026-02-19T17:49:57.424105276, finishTime=2026-02-19T17:49:58.177055502, duration=752 ms, inputs={style=comedy, story=In a realm wher...}, output=0.2}
+    |=> AgentInvocation{agent=editStory, iteration=0, startTime=2026-02-19T17:49:58.177243431, finishTime=2026-02-19T17:50:05.463039694, duration=7285 ms, inputs={style=comedy, story=In a realm wher...}, output=In a realm wher...}
+    |=> AgentInvocation{agent=scoreStyle, iteration=1, startTime=2026-02-19T17:50:05.463154489, finishTime=2026-02-19T17:50:05.914156072, duration=451 ms, inputs={style=comedy, story=In a realm wher...}, output=0.9}
 ```
+
+Finally, using the static `generateReport` method esposed by `HtmlReportGenerator` class, it is also possible to generate a visual HTML report of the data collected by the `AgentMonitor` for both the topology of the agentic system and the recorded executions. For instance, generating this report for the former execution: 
+
+```java
+HtmlReportGenerator.generateReport(monitor, Path.of("review-loop.html"));
+```
+
+will produce a report file `review-loop.html` in the current working directory similar to this:
+
+![](/img/agent-monitor.png)
 
 ## Declarative API
 

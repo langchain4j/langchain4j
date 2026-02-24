@@ -35,7 +35,6 @@ class AnthropicChatModelThinkingIT {
 
     @ParameterizedTest
     @EnumSource(value = AnthropicChatModelName.class, mode = EXCLUDE, names = {
-            "CLAUDE_3_5_HAIKU_20241022",
             "CLAUDE_3_HAIKU_20240307",
     })
     void should_return_and_send_thinking(AnthropicChatModelName modelName) {
@@ -93,7 +92,6 @@ class AnthropicChatModelThinkingIT {
 
     @ParameterizedTest
     @EnumSource(value = AnthropicChatModelName.class, mode = EXCLUDE, names = {
-            "CLAUDE_3_5_HAIKU_20241022",
             "CLAUDE_3_HAIKU_20240307",
     })
     void should_return_and_NOT_send_thinking(AnthropicChatModelName modelName) {
@@ -152,7 +150,6 @@ class AnthropicChatModelThinkingIT {
 
     @ParameterizedTest
     @EnumSource(value = AnthropicChatModelName.class, mode = EXCLUDE, names = {
-            "CLAUDE_3_5_HAIKU_20241022",
             "CLAUDE_3_HAIKU_20240307",
     })
     void should_return_and_send_thinking_with_tools(AnthropicChatModelName modelName) {
