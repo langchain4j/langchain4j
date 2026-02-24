@@ -11,21 +11,22 @@ import static dev.langchain4j.store.embedding.milvus.CollectionOperationsExecuto
 import static dev.langchain4j.store.embedding.milvus.CollectionOperationsExecutor.insert;
 import static dev.langchain4j.store.embedding.milvus.CollectionOperationsExecutor.loadCollectionInMemory;
 import static dev.langchain4j.store.embedding.milvus.CollectionOperationsExecutor.removeForVector;
+import static dev.langchain4j.store.embedding.milvus.CollectionRequestBuilder.buildHybridSearchRequest;
 import static dev.langchain4j.store.embedding.milvus.CollectionRequestBuilder.buildSearchRequest;
 import static dev.langchain4j.store.embedding.milvus.Generator.generateRandomIds;
 import static dev.langchain4j.store.embedding.milvus.Mapper.toEmbeddingMatches;
 import static dev.langchain4j.store.embedding.milvus.Mapper.toMetadataJsons;
 import static dev.langchain4j.store.embedding.milvus.Mapper.toScalars;
+import static dev.langchain4j.store.embedding.milvus.Mapper.toSparseVectors;
 import static dev.langchain4j.store.embedding.milvus.Mapper.toVectors;
 import static dev.langchain4j.store.embedding.milvus.MilvusMetadataFilterMapper.formatValues;
 import static dev.langchain4j.store.embedding.milvus.MilvusMetadataFilterMapper.map;
-import static io.milvus.common.clientenum.ConsistencyLevelEnum.EVENTUALLY;
-import static io.milvus.param.IndexType.FLAT;
-import static io.milvus.param.MetricType.COSINE;
 import static java.lang.String.format;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -35,18 +36,23 @@ import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
-import io.milvus.client.MilvusServiceClient;
-import io.milvus.common.clientenum.ConsistencyLevelEnum;
-import io.milvus.param.ConnectParam;
-import io.milvus.param.IndexType;
-import io.milvus.param.MetricType;
-import io.milvus.param.dml.InsertParam;
-import io.milvus.param.dml.SearchParam;
-import io.milvus.response.SearchResultsWrapper;
+import io.milvus.v2.client.ConnectConfig;
+import io.milvus.v2.client.MilvusClientV2;
+import io.milvus.v2.common.ConsistencyLevel;
+import io.milvus.v2.common.IndexParam;
+import io.milvus.v2.service.vector.request.HybridSearchReq;
+import io.milvus.v2.service.vector.request.SearchReq;
+import io.milvus.v2.service.vector.request.ranker.BaseRanker;
+import io.milvus.v2.service.vector.request.ranker.RRFRanker;
+import io.milvus.v2.service.vector.response.SearchResp;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
 /**
  * Represents an <a href="https://milvus.io/">Milvus</a> index as an embedding store.
@@ -62,146 +68,137 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     private static final String DEFAULT_TEXT_FIELD_NAME = "text";
     private static final String DEFAULT_METADATA_FIELD_NAME = "metadata";
     private static final String DEFAULT_VECTOR_FIELD_NAME = "vector";
+    private static final String DEFAULT_SPARSE_VECTOR_FIELD_NAME = "sparse_vector";
 
-    private final MilvusServiceClient milvusClient;
+    private final MilvusClientV2 milvusClientV2;
     private final String collectionName;
-    private final MetricType metricType;
-    private final ConsistencyLevelEnum consistencyLevel;
+    private final IndexParam.MetricType metricType;
+    private final IndexParam.MetricType sparseMetricType;
+    private final BaseRanker baseRanker;
+    private final ConsistencyLevel consistencyLevel;
     private final boolean retrieveEmbeddingsOnSearch;
     private final boolean autoFlushOnInsert;
     private final FieldDefinition fieldDefinition;
-    private final Map<String, Object> extraParameters;
+    private final Integer dimension;
+    private final MilvusSparseMode sparseMode;
 
-    @Deprecated(since = "1.4.0")
     public MilvusEmbeddingStore(
             String host,
             Integer port,
             String collectionName,
             Integer dimension,
-            IndexType indexType,
-            MetricType metricType,
+            IndexParam.IndexType indexType,
+            IndexParam.IndexType sparseIndexType,
+            IndexParam.MetricType metricType,
+            IndexParam.MetricType sparseMetricType,
             String uri,
             String token,
             String username,
             String password,
-            ConsistencyLevelEnum consistencyLevel,
+            BaseRanker baseRanker,
+            ConsistencyLevel consistencyLevel,
             Boolean retrieveEmbeddingsOnSearch,
             Boolean autoFlushOnInsert,
             String databaseName,
             String idFieldName,
             String textFieldName,
-            String metadataFieldName,
-            String vectorFieldName) {
+            String metadataFiledName,
+            String vectorFiledName,
+            String sparseVectorFieldName,
+            MilvusSparseMode sparseMode) {
         this(
                 createMilvusClient(host, port, uri, token, username, password, databaseName),
                 collectionName,
                 dimension,
                 indexType,
+                sparseIndexType,
                 metricType,
+                sparseMetricType,
+                baseRanker,
                 consistencyLevel,
                 retrieveEmbeddingsOnSearch,
                 autoFlushOnInsert,
                 idFieldName,
                 textFieldName,
-                metadataFieldName,
-                vectorFieldName);
+                metadataFiledName,
+                vectorFiledName,
+                sparseVectorFieldName,
+                sparseMode);
     }
 
-    @Deprecated(since = "1.4.0")
     public MilvusEmbeddingStore(
-            MilvusServiceClient milvusClient,
+            MilvusClientV2 milvusClientV2,
             String collectionName,
             Integer dimension,
-            IndexType indexType,
-            MetricType metricType,
-            ConsistencyLevelEnum consistencyLevel,
+            IndexParam.IndexType indexType,
+            IndexParam.IndexType sparseIndexType,
+            IndexParam.MetricType metricType,
+            IndexParam.MetricType sparseMetricType,
+            BaseRanker baseRanker,
+            ConsistencyLevel consistencyLevel,
             Boolean retrieveEmbeddingsOnSearch,
             Boolean autoFlushOnInsert,
             String idFieldName,
             String textFieldName,
-            String metadataFieldName,
-            String vectorFieldName) {
-        this.milvusClient = ensureNotNull(milvusClient, "milvusClient");
+            String metadataFiledName,
+            String vectorFiledName,
+            String sparseVectorFieldName,
+            MilvusSparseMode sparseMode) {
+        this.milvusClientV2 = ensureNotNull(milvusClientV2, "milvusClientV2");
         this.collectionName = getOrDefault(collectionName, "default");
-        this.metricType = getOrDefault(metricType, COSINE);
-        this.consistencyLevel = getOrDefault(consistencyLevel, EVENTUALLY);
+        this.metricType = getOrDefault(metricType, IndexParam.MetricType.COSINE);
+        this.sparseMode = getOrDefault(sparseMode, MilvusSparseMode.BM25);
+        if(this.sparseMode == MilvusSparseMode.BM25) {
+            this.sparseMetricType = getOrDefault(sparseMetricType, IndexParam.MetricType.BM25);
+        } else {
+            this.sparseMetricType = getOrDefault(sparseMetricType, IndexParam.MetricType.IP);
+        }
+        this.baseRanker = getOrDefault(baseRanker, new RRFRanker(60));
+        this.consistencyLevel = getOrDefault(consistencyLevel, ConsistencyLevel.EVENTUALLY);
         this.retrieveEmbeddingsOnSearch = getOrDefault(retrieveEmbeddingsOnSearch, false);
         this.autoFlushOnInsert = getOrDefault(autoFlushOnInsert, false);
         this.fieldDefinition = new FieldDefinition(
                 getOrDefault(idFieldName, DEFAULT_ID_FIELD_NAME),
                 getOrDefault(textFieldName, DEFAULT_TEXT_FIELD_NAME),
-                getOrDefault(metadataFieldName, DEFAULT_METADATA_FIELD_NAME),
-                getOrDefault(vectorFieldName, DEFAULT_VECTOR_FIELD_NAME));
-        this.extraParameters = Map.of();
+                getOrDefault(metadataFiledName, DEFAULT_METADATA_FIELD_NAME),
+                getOrDefault(vectorFiledName, DEFAULT_VECTOR_FIELD_NAME),
+                getOrDefault(sparseVectorFieldName, DEFAULT_SPARSE_VECTOR_FIELD_NAME));
+        this.dimension = dimension;
 
-        if (!hasCollection(this.milvusClient, this.collectionName)) {
+        if (!hasCollection(this.milvusClientV2, this.collectionName)) {
             createCollection(
-                    this.milvusClient,
+                    this.milvusClientV2,
                     this.collectionName,
                     this.fieldDefinition,
-                    ensureNotNull(dimension, "dimension"));
+                    ensureNotNull(dimension, "dimension"),
+                    this.sparseMode);
             createIndex(
-                    this.milvusClient,
+                    this.milvusClientV2,
                     this.collectionName,
                     this.fieldDefinition.getVectorFieldName(),
-                    getOrDefault(indexType, FLAT),
+                    getOrDefault(indexType, IndexParam.IndexType.FLAT),
                     this.metricType);
-        }
-
-        loadCollectionInMemory(this.milvusClient, collectionName);
-    }
-
-    public MilvusEmbeddingStore(Builder builder) {
-        this.milvusClient = (builder.milvusClient == null)
-                ? createMilvusClient(
-                        builder.host,
-                        builder.port,
-                        builder.uri,
-                        builder.token,
-                        builder.username,
-                        builder.password,
-                        builder.databaseName)
-                : builder.milvusClient;
-        this.collectionName = getOrDefault(builder.collectionName, "default");
-        this.metricType = getOrDefault(builder.metricType, COSINE);
-        this.consistencyLevel = getOrDefault(builder.consistencyLevel, EVENTUALLY);
-        this.retrieveEmbeddingsOnSearch = getOrDefault(builder.retrieveEmbeddingsOnSearch, false);
-        this.autoFlushOnInsert = getOrDefault(builder.autoFlushOnInsert, false);
-        this.fieldDefinition = new FieldDefinition(
-                getOrDefault(builder.idFieldName, DEFAULT_ID_FIELD_NAME),
-                getOrDefault(builder.textFieldName, DEFAULT_TEXT_FIELD_NAME),
-                getOrDefault(builder.metadataFieldName, DEFAULT_METADATA_FIELD_NAME),
-                getOrDefault(builder.vectorFieldName, DEFAULT_VECTOR_FIELD_NAME));
-        this.extraParameters = getOrDefault(builder.extraParameters, Map.of());
-
-        if (!hasCollection(this.milvusClient, this.collectionName)) {
-            createCollection(
-                    this.milvusClient,
-                    this.collectionName,
-                    this.fieldDefinition,
-                    ensureNotNull(builder.dimension, "dimension"));
-            if (this.extraParameters.isEmpty()) {
+            if(this.sparseMode == MilvusSparseMode.BM25) {
                 createIndex(
-                        this.milvusClient,
+                        this.milvusClientV2,
                         this.collectionName,
-                        this.fieldDefinition.getVectorFieldName(),
-                        getOrDefault(builder.indexType, FLAT),
-                        this.metricType);
+                        this.fieldDefinition.getSparseVectorFieldName(),
+                        IndexParam.IndexType.SPARSE_INVERTED_INDEX,
+                        IndexParam.MetricType.BM25);
             } else {
                 createIndex(
-                        this.milvusClient,
+                        this.milvusClientV2,
                         this.collectionName,
-                        this.fieldDefinition.getVectorFieldName(),
-                        getOrDefault(builder.indexType, FLAT),
-                        this.metricType,
-                        builder.extraParameters.toString());
+                        this.fieldDefinition.getSparseVectorFieldName(),
+                        getOrDefault(sparseIndexType, IndexParam.IndexType.SPARSE_INVERTED_INDEX),
+                        this.sparseMetricType);
             }
         }
 
-        loadCollectionInMemory(this.milvusClient, collectionName);
+        loadCollectionInMemory(this.milvusClientV2, collectionName);
     }
 
-    private static MilvusServiceClient createMilvusClient(
+    private static MilvusClientV2 createMilvusClient(
             String host,
             Integer port,
             String uri,
@@ -209,18 +206,34 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
             String username,
             String password,
             String databaseName) {
-        ConnectParam.Builder connectBuilder = ConnectParam.newBuilder()
-                .withHost(getOrDefault(host, "localhost"))
-                .withPort(getOrDefault(port, 19530))
-                .withUri(uri)
-                .withToken(token)
-                .withAuthorization(getOrDefault(username, ""), getOrDefault(password, ""));
-
-        if (databaseName != null) {
-            connectBuilder.withDatabaseName(databaseName);
+        String endpoint;
+        if (uri != null && !uri.isBlank()) {
+            endpoint = uri;
+        } else {
+            String h = getOrDefault(host, "localhost");
+            int p = getOrDefault(port, 19530);
+            endpoint = String.format("http://%s:%d", h, p);
         }
 
-        return new MilvusServiceClient(connectBuilder.build());
+        ConnectConfig.ConnectConfigBuilder cfgB = ConnectConfig.builder().uri(endpoint);
+        if (token != null && !token.isBlank()) {
+            cfgB.token(token);
+        } else if (username != null && !username.isBlank() && password != null && !password.isBlank()) {
+            cfgB.username(username).password(password);
+        }
+
+        MilvusClientV2 client = new MilvusClientV2(cfgB.build());
+
+        if (databaseName != null && !databaseName.isBlank()) {
+            try {
+                client.useDatabase(databaseName);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException("Interrupted while switching database to " + databaseName, e);
+            }
+        }
+
+        return client;
     }
 
     public static Builder builder() {
@@ -228,7 +241,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     public void dropCollection(String collectionName) {
-        CollectionOperationsExecutor.dropCollection(this.milvusClient, collectionName);
+        CollectionOperationsExecutor.dropCollection(this.milvusClientV2, collectionName);
     }
 
     public String add(Embedding embedding) {
@@ -254,22 +267,58 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-    public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest embeddingSearchRequest) {
+    public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
+        MilvusEmbeddingSearchRequest milvusRequest;
+        if (request instanceof MilvusEmbeddingSearchRequest) {
+            milvusRequest = (MilvusEmbeddingSearchRequest) request;
+        } else {
+            milvusRequest = MilvusEmbeddingSearchRequest.milvusBuilder()
+                    .queryEmbedding(request.queryEmbedding())
+                    .maxResults(request.maxResults())
+                    .minScore(request.minScore())
+                    .filter(request.filter())
+                    .build();
+        }
+        return search(milvusRequest);
+    }
 
-        SearchParam searchParam = buildSearchRequest(
-                collectionName,
-                fieldDefinition,
-                embeddingSearchRequest.queryEmbedding().vectorAsList(),
-                embeddingSearchRequest.filter(),
-                embeddingSearchRequest.maxResults(),
-                metricType,
-                consistencyLevel);
 
-        SearchResultsWrapper resultsWrapper = CollectionOperationsExecutor.search(milvusClient, searchParam);
+    public EmbeddingSearchResult<TextSegment> search(MilvusEmbeddingSearchRequest embeddingSearchRequest) {
+        SearchResp searchResp;
+        if (Objects.equals(embeddingSearchRequest.searchMode(), MilvusEmbeddingSearchMode.HYBRID)) {
+            // Accept either manual sparse or auto text sparse
+            boolean hasSparse = embeddingSearchRequest.sparseEmbedding() != null
+                    || (embeddingSearchRequest.sparseQueryText() != null
+                    && !embeddingSearchRequest.sparseQueryText().isBlank());
+            // Validate that both dense and sparse embeddings are provided for hybrid search
+            if (embeddingSearchRequest.queryEmbedding() == null || !hasSparse) {
+                throw new IllegalArgumentException(
+                        "HYBRID requires dense queryEmbedding and either sparseEmbedding or sparseQueryText");
+            }
+
+            HybridSearchReq hybridSearchReq = buildHybridSearchRequest(
+                    embeddingSearchRequest,
+                    collectionName,
+                    fieldDefinition,
+                    metricType,
+                    sparseMetricType,
+                    baseRanker,
+                    consistencyLevel);
+            searchResp = CollectionOperationsExecutor.search(milvusClientV2, hybridSearchReq);
+        } else {
+            SearchReq searchReq = buildSearchRequest(
+                    embeddingSearchRequest,
+                    collectionName,
+                    fieldDefinition,
+                    metricType,
+                    sparseMetricType,
+                    consistencyLevel);
+            searchResp = CollectionOperationsExecutor.search(milvusClientV2, searchReq);
+        }
 
         List<EmbeddingMatch<TextSegment>> matches = toEmbeddingMatches(
-                milvusClient,
-                resultsWrapper,
+                milvusClientV2,
+                searchResp,
                 collectionName,
                 fieldDefinition,
                 consistencyLevel,
@@ -291,16 +340,106 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
             return;
         }
-        List<InsertParam.Field> fields = new ArrayList<>();
-        fields.add(new InsertParam.Field(fieldDefinition.getIdFieldName(), ids));
-        fields.add(new InsertParam.Field(fieldDefinition.getTextFieldName(), toScalars(textSegments, ids.size())));
-        fields.add(new InsertParam.Field(
-                fieldDefinition.getMetadataFieldName(), toMetadataJsons(textSegments, ids.size())));
-        fields.add(new InsertParam.Field(fieldDefinition.getVectorFieldName(), toVectors(embeddings)));
 
-        insert(this.milvusClient, this.collectionName, fields);
+        List<String> textScalars = toScalars(textSegments, ids.size());
+        List<JsonObject> metadataJsons = toMetadataJsons(textSegments, ids.size());
+        List<List<Float>> denseVectors = toVectors(embeddings);
+        Map<Long, Float> emptySparse = new TreeMap<>();
+
+        List<JsonObject> rows = new ArrayList<>(ids.size());
+        Gson gson = new Gson();
+
+        for (int i = 0; i < ids.size(); i++) {
+            JsonObject row = new JsonObject();
+
+            row.addProperty(fieldDefinition.getIdFieldName(), ids.get(i));
+            row.addProperty(fieldDefinition.getTextFieldName(), textScalars.get(i));
+            row.add(fieldDefinition.getMetadataFieldName(), metadataJsons.get(i));
+            row.add(fieldDefinition.getVectorFieldName(), gson.toJsonTree(denseVectors.get(i)));
+            if(this.sparseMode == MilvusSparseMode.CUSTOM) {
+                row.add(fieldDefinition.getSparseVectorFieldName(), gson.toJsonTree(emptySparse));
+            }
+
+            rows.add(row);
+        }
+
+        insert(this.milvusClientV2, this.collectionName, rows);
         if (autoFlushOnInsert) {
-            flush(this.milvusClient, this.collectionName);
+            flush(this.milvusClientV2, this.collectionName);
+        }
+    }
+
+    public void addAllSparse(List<String> ids, List<SparseEmbedding> embeddings, List<TextSegment> textSegments) {
+        if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
+            return;
+        }
+
+        if (this.sparseMode != MilvusSparseMode.CUSTOM) {
+            throw new IllegalStateException("Built-in sparse mode does not accept client-provided sparse vectors.");
+        }
+
+        List<String> textScalars = toScalars(textSegments, ids.size());
+        List<JsonObject> metadataJsons = toMetadataJsons(textSegments, ids.size());
+        List<SortedMap<Long, Float>> sparseVectors = toSparseVectors(embeddings);
+        List<Float> zeroDenseVectors = Collections.nCopies(this.dimension, 0f);
+
+        List<JsonObject> rows = new ArrayList<>(ids.size());
+        Gson gson = new Gson();
+
+        for (int i = 0; i < ids.size(); i++) {
+            JsonObject row = new JsonObject();
+
+            row.addProperty(fieldDefinition.getIdFieldName(), ids.get(i));
+            row.addProperty(fieldDefinition.getTextFieldName(), textScalars.get(i));
+            row.add(fieldDefinition.getMetadataFieldName(), metadataJsons.get(i));
+            row.add(fieldDefinition.getVectorFieldName(), gson.toJsonTree(zeroDenseVectors));
+            row.add(fieldDefinition.getSparseVectorFieldName(), gson.toJsonTree(sparseVectors.get(i)));
+
+            rows.add(row);
+        }
+
+        insert(this.milvusClientV2, this.collectionName, rows);
+        if (autoFlushOnInsert) {
+            flush(this.milvusClientV2, this.collectionName);
+        }
+    }
+
+    public void addAllHybrid(
+            List<String> ids,
+            List<Embedding> denseEmbeddings,
+            List<SparseEmbedding> sparseEmbeddings,
+            List<TextSegment> textSegments) {
+        if (isNullOrEmpty(ids) || isNullOrEmpty(denseEmbeddings) || isNullOrEmpty(sparseEmbeddings)) {
+            return;
+        }
+
+        if (this.sparseMode != MilvusSparseMode.CUSTOM) {
+            throw new IllegalStateException("Built-in sparse mode does not accept client-provided sparse vectors.");
+        }
+
+        List<String> textScalars = toScalars(textSegments, ids.size());
+        List<JsonObject> metadataJsons = toMetadataJsons(textSegments, ids.size());
+        List<List<Float>> denseVectors = toVectors(denseEmbeddings);
+        List<SortedMap<Long, Float>> sparseVectors = toSparseVectors(sparseEmbeddings);
+
+        List<JsonObject> rows = new ArrayList<>(ids.size());
+        Gson gson = new Gson();
+
+        for (int i = 0; i < ids.size(); i++) {
+            JsonObject row = new JsonObject();
+
+            row.addProperty(fieldDefinition.getIdFieldName(), ids.get(i));
+            row.addProperty(fieldDefinition.getTextFieldName(), textScalars.get(i));
+            row.add(fieldDefinition.getMetadataFieldName(), metadataJsons.get(i));
+            row.add(fieldDefinition.getVectorFieldName(), gson.toJsonTree(denseVectors.get(i)));
+            row.add(fieldDefinition.getSparseVectorFieldName(), gson.toJsonTree(sparseVectors.get(i)));
+
+            rows.add(row);
+        }
+
+        insert(this.milvusClientV2, this.collectionName, rows);
+        if (autoFlushOnInsert) {
+            flush(this.milvusClientV2, this.collectionName);
         }
     }
 
@@ -323,7 +462,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     public void removeAll(Collection<String> ids) {
         ensureNotEmpty(ids, "ids");
         removeForVector(
-                this.milvusClient,
+                this.milvusClientV2,
                 this.collectionName,
                 format("%s in %s", this.fieldDefinition.getIdFieldName(), formatValues(ids)));
     }
@@ -349,7 +488,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     public void removeAll(Filter filter) {
         ensureNotNull(filter, "filter");
         removeForVector(
-                this.milvusClient, this.collectionName, map(filter, this.fieldDefinition.getMetadataFieldName()));
+                this.milvusClientV2, this.collectionName, map(filter, this.fieldDefinition.getMetadataFieldName()));
     }
 
     /**
@@ -369,23 +508,31 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public void removeAll() {
         removeForVector(
-                this.milvusClient, this.collectionName, format("%s != \"\"", this.fieldDefinition.getIdFieldName()));
+                this.milvusClientV2, this.collectionName, format("%s != \"\"", this.fieldDefinition.getIdFieldName()));
+    }
+
+
+    public enum MilvusSparseMode {
+        BM25, // built-in sparse vector from text
+        CUSTOM // user provided sparse vector
     }
 
     public static class Builder {
-
-        private MilvusServiceClient milvusClient;
+        private MilvusClientV2 milvusClientV2;
         private String host;
         private Integer port;
         private String collectionName;
         private Integer dimension;
-        private IndexType indexType;
-        private MetricType metricType;
+        private IndexParam.IndexType indexType;
+        private IndexParam.IndexType sparseIndexType;
+        private IndexParam.MetricType metricType;
+        private IndexParam.MetricType sparseMetricType;
         private String uri;
         private String token;
         private String username;
         private String password;
-        private ConsistencyLevelEnum consistencyLevel;
+        private BaseRanker baseRanker;
+        private ConsistencyLevel consistencyLevel;
         private Boolean retrieveEmbeddingsOnSearch;
         private String databaseName;
         private Boolean autoFlushOnInsert;
@@ -393,10 +540,11 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         private String textFieldName;
         private String metadataFieldName;
         private String vectorFieldName;
-        private Map<String, Object> extraParameters;
+        private String sparseVectorFieldName;
+        private MilvusSparseMode sparseMode;
 
-        public Builder milvusClient(MilvusServiceClient milvusClient) {
-            this.milvusClient = milvusClient;
+        public Builder milvusClient(MilvusClientV2 milvusClientV2) {
+            this.milvusClientV2 = milvusClientV2;
             return this;
         }
 
@@ -446,7 +594,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
          *                  Default value: FLAT.
          * @return builder
          */
-        public Builder indexType(IndexType indexType) {
+        public Builder indexType(IndexParam.IndexType indexType) {
             this.indexType = indexType;
             return this;
         }
@@ -456,7 +604,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
          *                   Default value: COSINE.
          * @return builder
          */
-        public Builder metricType(MetricType metricType) {
+        public Builder metricType(IndexParam.MetricType metricType) {
             this.metricType = metricType;
             return this;
         }
@@ -502,7 +650,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
          *                         Default value: EVENTUALLY.
          * @return builder
          */
-        public Builder consistencyLevel(ConsistencyLevelEnum consistencyLevel) {
+        public Builder consistencyLevel(ConsistencyLevel consistencyLevel) {
             this.consistencyLevel = consistencyLevel;
             return this;
         }
@@ -584,13 +732,107 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
-        public Builder extraParameters(Map<String, Object> extraParameters) {
-            this.extraParameters = extraParameters;
+        /**
+         * @param sparseVectorFieldName the name of the field where the {@link Embedding} is stored.
+         *                              Default value: "sparse_vector".
+         * @return builder
+         */
+        public Builder sparseVectorFieldName(String sparseVectorFieldName) {
+            this.sparseVectorFieldName = sparseVectorFieldName;
+            return this;
+        }
+
+        /**
+         *
+         * @param baseRanker the component that combines and reorders the similarity scores from multiple ANN sub-searches (e.g., dense and sparse) into a single final ranking.
+         *                   Default value: new RRFRanker(60).
+         * @return builder
+         */
+        public Builder baseRanker(BaseRanker baseRanker) {
+            this.baseRanker = baseRanker;
+            return this;
+        }
+
+        /**
+         *
+         * @param sparseMetricType The type of the metric used for sparse vector similarity search.
+         *                         Default value: IP.
+         * @return builer
+         */
+        public Builder sparseMetricType(IndexParam.MetricType sparseMetricType) {
+            this.sparseMetricType = sparseMetricType;
+            return this;
+        }
+
+        /**
+         *
+         * @param sparseIndexType  The type of the index.
+         *                         Default value: SPARSE_INVERTED_INDEX.
+         * @return builder
+         */
+        public Builder sparseIndexType(IndexParam.IndexType sparseIndexType) {
+            this.sparseIndexType = sparseIndexType;
+            return this;
+        }
+
+        /**
+         *
+         * @param sparseMode  The mode of sparse vector generation.
+         *                    BM25 - use Milvus built-in sparse vector generation from text (sparseQueryText in search request must be provided).
+         *                    CUSTOM - user provides sparse vector (sparseEmbedding in search request must be provided).
+         *                    Default value: BM25.
+         * @return builder
+         */
+        public Builder sparseMode(MilvusSparseMode sparseMode) {
+            this.sparseMode = sparseMode;
             return this;
         }
 
         public MilvusEmbeddingStore build() {
-            return new MilvusEmbeddingStore(this);
+            if (milvusClientV2 == null) {
+                return new MilvusEmbeddingStore(
+                        host,
+                        port,
+                        collectionName,
+                        dimension,
+                        indexType,
+                        sparseIndexType,
+                        metricType,
+                        sparseMetricType,
+                        uri,
+                        token,
+                        username,
+                        password,
+                        baseRanker,
+                        consistencyLevel,
+                        retrieveEmbeddingsOnSearch,
+                        autoFlushOnInsert,
+                        databaseName,
+                        idFieldName,
+                        textFieldName,
+                        metadataFieldName,
+                        vectorFieldName,
+                        sparseVectorFieldName,
+                        sparseMode);
+            }
+            return new MilvusEmbeddingStore(
+                    milvusClientV2,
+                    collectionName,
+                    dimension,
+                    indexType,
+                    sparseIndexType,
+                    metricType,
+                    sparseMetricType,
+                    baseRanker,
+                    consistencyLevel,
+                    retrieveEmbeddingsOnSearch,
+                    autoFlushOnInsert,
+                    idFieldName,
+                    textFieldName,
+                    metadataFieldName,
+                    vectorFieldName,
+                    sparseVectorFieldName,
+                    sparseMode);
         }
     }
 }
