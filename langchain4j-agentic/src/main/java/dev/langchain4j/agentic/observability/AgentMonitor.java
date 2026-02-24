@@ -3,9 +3,6 @@ package dev.langchain4j.agentic.observability;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -27,25 +24,19 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class AgentMonitor implements AgentListener {
 
-    private final String name;
-
     private AgentInstance rootAgent;
 
     private final Map<Object, List<MonitoredExecution>> successfulExecutions = new ConcurrentHashMap<>();
     private final Map<Object, List<MonitoredExecution>> failedExecutions = new ConcurrentHashMap<>();
     private final Map<Object, MonitoredExecution> ongoingExecutions = new ConcurrentHashMap<>();
 
-    public AgentMonitor() {
-        this("LangChain4j Agentic System Report");
-    }
-
-    public AgentMonitor(String name) {
-        this.name = name;
-    }
-
     @Internal
     public void setRootAgent(AgentInstance rootAgent) {
         this.rootAgent = rootAgent;
+    }
+
+    AgentInstance rootAgent() {
+        return rootAgent;
     }
 
     @Override
@@ -153,17 +144,4 @@ public class AgentMonitor implements AgentListener {
         }
         return all;
     }
-
-    public void generateReport(Path path) {
-        try {
-            Files.writeString(path, generateReport());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public String generateReport() {
-        return new HtmlReportGenerator(name, this, rootAgent).generateReport();
-    }
-
 }
