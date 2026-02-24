@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>dev.langchain4j</groupId>
+        <artifactId>langchain4j-parent</artifactId>
+        <version>1.12.0-beta20-SNAPSHOT</version>
+        <relativePath>../../langchain4j-parent/pom.xml</relativePath>
+    </parent>
+
+    <artifactId>langchain4j-document-parser-docling</artifactId>
+    <name>LangChain4j :: Document Parser :: Docling</name>
+
+    <dependencies>
+        <!-- LangChain4j Core -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-core</artifactId>
+            <version>1.12.0-SNAPSHOT</version>
+        </dependency>
+
+        <!-- Docling Java Client -->
+        <dependency>
+            <groupId>ai.docling</groupId>
+            <artifactId>docling-serve-client</artifactId>
+            <version>0.1.5</version>
+        </dependency>
+        
+        <dependency>
+            <groupId>ai.docling</groupId>
+            <artifactId>docling-serve-api</artifactId>
+            <version>0.1.5</version>
+        </dependency>
+
+        <!-- Testing -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <scope>test</scope>
+        </dependency>
+        
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        
+        <!-- Docling Testcontainers for integration testing -->
+        <dependency>
+            <groupId>ai.docling</groupId>
+            <artifactId>docling-testcontainers</artifactId>
+            <version>0.1.5</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>
