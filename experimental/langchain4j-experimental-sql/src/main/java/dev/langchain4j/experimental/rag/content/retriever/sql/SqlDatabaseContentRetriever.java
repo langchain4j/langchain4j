@@ -1,5 +1,22 @@
 package dev.langchain4j.experimental.rag.content.retriever.sql;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.singletonList;
+
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.sql.DataSource;
+
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -14,22 +31,6 @@ import dev.langchain4j.rag.query.Query;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.select.Select;
-
-import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.DatabaseMetaData;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
 
 /**
  * <b>
@@ -122,7 +123,7 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
         }
     }
 
-    private static String generateDDL(DataSource dataSource) {
+    public static String generateDDL(DataSource dataSource) {
         StringBuilder ddl = new StringBuilder();
 
         try (Connection connection = dataSource.getConnection()) {
@@ -144,84 +145,86 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
 
     private static String generateCreateTableStatement(String tableName, DatabaseMetaData metaData) {
         StringBuilder createTableStatement = new StringBuilder();
+        StringBuilder commentStatements = new StringBuilder(); // Collects COMMENT ON COLUMN and TABLE
+        List<String> primaryKeyColumns = new ArrayList<>();
 
         try {
             ResultSet columns = metaData.getColumns(null, null, tableName, null);
-            ResultSet pk = metaData.getPrimaryKeys(null, null, tableName);
+            ResultSet pks = metaData.getPrimaryKeys(null, null, tableName);
             ResultSet fks = metaData.getImportedKeys(null, null, tableName);
 
-            String primaryKeyColumn = "";
-            if (pk.next()) {
-                primaryKeyColumn = pk.getString("COLUMN_NAME");
+            // Collect primary key columns
+            while (pks.next()) {
+                primaryKeyColumns.add(pks.getString("COLUMN_NAME"));
             }
 
-            createTableStatement
-                    .append("CREATE TABLE ")
+            createTableStatement.append("CREATE TABLE ")
                     .append(tableName)
                     .append(" (\n");
+
+            List<String> columnDefinitions = new ArrayList<>();
 
             while (columns.next()) {
                 String columnName = columns.getString("COLUMN_NAME");
                 String columnType = columns.getString("TYPE_NAME");
                 int size = columns.getInt("COLUMN_SIZE");
                 String nullable = columns.getString("IS_NULLABLE").equals("YES") ? " NULL" : " NOT NULL";
-                String columnDef = columns.getString("COLUMN_DEF") != null ? " DEFAULT " + columns.getString("COLUMN_DEF") : "";
+                String columnDef = columns.getString("COLUMN_DEF") != null
+                        ? " DEFAULT " + columns.getString("COLUMN_DEF") : "";
                 String comment = columns.getString("REMARKS");
 
-                createTableStatement
-                        .append("  ")
+                StringBuilder columnLine = new StringBuilder("  ")
                         .append(columnName)
                         .append(" ")
                         .append(columnType)
-                        .append("(")
-                        .append(size)
-                        .append(")")
+                        .append("(").append(size).append(")")
                         .append(nullable)
                         .append(columnDef);
 
-                if (columnName.equals(primaryKeyColumn)) {
-                    createTableStatement.append(" PRIMARY KEY");
+                // Inline PK only if it's a single PK
+                if (primaryKeyColumns.size() == 1 && primaryKeyColumns.contains(columnName)) {
+                    columnLine.append(" PRIMARY KEY");
                 }
 
-                createTableStatement.append(",\n");
+                columnDefinitions.add(columnLine.toString());
 
+                // COMMENT ON COLUMN (after CREATE TABLE)
                 if (comment != null && !comment.isEmpty()) {
-                    createTableStatement
-                            .append("  COMMENT ON COLUMN ")
-                            .append(tableName)
-                            .append(".")
-                            .append(columnName)
-                            .append(" IS '")
-                            .append(comment)
-                            .append("',\n");
+                    commentStatements
+                            .append("COMMENT ON COLUMN ")
+                            .append(tableName).append(".").append(columnName)
+                            .append(" IS '").append(comment).append("';\n");
                 }
             }
 
+            // Multi-column PRIMARY KEY
+            if (primaryKeyColumns.size() > 1) {
+                columnDefinitions.add("  PRIMARY KEY (" + String.join(", ", primaryKeyColumns) + ")");
+            }
+
+            // FOREIGN KEYS
             while (fks.next()) {
                 String fkColumnName = fks.getString("FKCOLUMN_NAME");
                 String pkTableName = fks.getString("PKTABLE_NAME");
                 String pkColumnName = fks.getString("PKCOLUMN_NAME");
-                createTableStatement
-                        .append("  FOREIGN KEY (")
-                        .append(fkColumnName)
-                        .append(") REFERENCES ")
-                        .append(pkTableName)
-                        .append("(")
-                        .append(pkColumnName)
-                        .append("),\n");
+
+                columnDefinitions.add(String.format(
+                        "  FOREIGN KEY (%s) REFERENCES %s(%s)",
+                        fkColumnName, pkTableName, pkColumnName
+                ));
             }
 
-            if (createTableStatement.charAt(createTableStatement.length() - 2) == ',') {
-                createTableStatement.delete(createTableStatement.length() - 2, createTableStatement.length());
-            }
+            // Finalize CREATE TABLE
+            createTableStatement
+                    .append(String.join(",\n", columnDefinitions))
+                    .append("\n);\n");
 
-            createTableStatement.append(");\n");
-
+            // COMMENT ON TABLE (after CREATE TABLE)
             ResultSet tableRemarks = metaData.getTables(null, null, tableName, null);
             if (tableRemarks.next()) {
                 String tableComment = tableRemarks.getString("REMARKS");
                 if (tableComment != null && !tableComment.isEmpty()) {
-                    createTableStatement
+                    commentStatements
                             .append("COMMENT ON TABLE ")
                             .append(tableName)
                             .append(" IS '")
@@ -229,12 +232,14 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
                             .append("';\n");
                 }
             }
+
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
 
-        return createTableStatement.toString();
+        return createTableStatement.toString() + commentStatements.toString();
     }
+
 
     public static SqlDatabaseContentRetrieverBuilder builder() {
         return new SqlDatabaseContentRetrieverBuilder();
