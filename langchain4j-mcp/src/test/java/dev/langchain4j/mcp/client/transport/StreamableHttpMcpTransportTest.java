@@ -2,6 +2,7 @@ package dev.langchain4j.mcp.client.transport;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.http.client.HttpVersion;
 import dev.langchain4j.mcp.client.transport.http.StreamableHttpMcpTransport;
 import java.lang.reflect.Field;
 import java.net.http.HttpClient;
@@ -35,7 +36,7 @@ class StreamableHttpMcpTransportTest {
     void shouldAllowOverridingHttpVersion() throws Exception {
         StreamableHttpMcpTransport transport = StreamableHttpMcpTransport.builder()
                 .url("http://localhost/mcp")
-                .httpVersion(HttpClient.Version.HTTP_2)
+                .httpVersion(HttpVersion.HTTP_2)
                 .build();
 
         assertThat(extractHttpClient(transport).version()).isEqualTo(HttpClient.Version.HTTP_2);

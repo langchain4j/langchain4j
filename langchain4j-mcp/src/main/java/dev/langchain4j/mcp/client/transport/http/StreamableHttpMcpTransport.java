@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.http.client.HttpVersion;
 import dev.langchain4j.mcp.client.McpCallContext;
 import dev.langchain4j.mcp.client.McpHeadersSupplier;
 import dev.langchain4j.mcp.client.logging.McpLoggers;
@@ -45,7 +46,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
     private volatile McpOperationHandler operationHandler;
     private final HttpClient httpClient;
     private final SSLContext sslContext;
-    private final HttpClient.Version httpVersion;
+    private final HttpVersion httpVersion;
     private McpInitializeRequest initializeRequest;
     private final AtomicReference<String> mcpSessionId = new AtomicReference<>();
 
@@ -57,9 +58,9 @@ public class StreamableHttpMcpTransport implements McpTransport {
         Duration timeout = getOrDefault(builder.timeout, Duration.ofSeconds(60));
         customHeadersSupplier = getOrDefault(builder.customHeadersSupplier, (i) -> Map.of());
         sslContext = builder.sslContext;
-        httpVersion = getOrDefault(builder.httpVersion, HttpClient.Version.HTTP_1_1);
+        httpVersion = getOrDefault(builder.httpVersion, HttpVersion.HTTP_1_1);
         HttpClient.Builder clientBuilder =
-                HttpClient.newBuilder().connectTimeout(timeout).version(httpVersion);
+                HttpClient.newBuilder().connectTimeout(timeout).version(toJdkHttpVersion(httpVersion));
         if (builder.executor != null) {
             clientBuilder.executor(builder.executor);
         }
@@ -232,6 +233,16 @@ public class StreamableHttpMcpTransport implements McpTransport {
         return statusCode >= 200 && statusCode < 300;
     }
 
+    private static HttpClient.Version toJdkHttpVersion(HttpVersion version) {
+        switch (version) {
+            case HTTP_2:
+                return HttpClient.Version.HTTP_2;
+            case HTTP_1_1:
+            default:
+                return HttpClient.Version.HTTP_1_1;
+        }
+    }
+
     @Override
     public void close() throws IOException {
         // The httpClient.close() method only exists on JDK 21+, so invoke it only if we can.
@@ -256,7 +267,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         private boolean logResponses = false;
         private Logger logger;
         private SSLContext sslContext;
-        private HttpClient.Version httpVersion;
+        private HttpVersion httpVersion;
 
         /**
          * The URL of the MCP server.
@@ -349,9 +360,9 @@ public class StreamableHttpMcpTransport implements McpTransport {
 
         /**
          * Sets the HTTP protocol version used by the transport.
-         * Defaults to {@link HttpClient.Version#HTTP_1_1}.
+         * Defaults to {@link HttpVersion#HTTP_1_1}.
          */
-        public StreamableHttpMcpTransport.Builder httpVersion(HttpClient.Version httpVersion) {
+        public StreamableHttpMcpTransport.Builder httpVersion(HttpVersion httpVersion) {
             this.httpVersion = httpVersion;
             return this;
         }
