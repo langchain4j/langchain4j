@@ -21,6 +21,9 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+import java.util.UUID;
+
 class EmbeddingStoreIngestorTest {
 
     @Test
@@ -191,5 +194,53 @@ class EmbeddingStoreIngestorTest {
         verifyNoMoreInteractions(embeddingStore);
 
         assertThat(ingestionResult.tokenUsage()).isEqualTo(tokenUsage);
+    }
+
+
+    @Test
+    void should_return_ids() {
+
+        Document firstDocument = Document.from("First sentence.");
+
+        DocumentTransformer documentTransformer = mock(DocumentTransformer.class);
+        when(documentTransformer.transformAll(singletonList(firstDocument))).thenReturn(singletonList(firstDocument));
+
+        DocumentSplitter documentSplitter = mock(DocumentSplitter.class);
+        when(documentSplitter.splitAll(singletonList(firstDocument)))
+                .thenReturn(singletonList(textSegment("First sentence.")));
+
+        TextSegmentTransformer textSegmentTransformer = mock(TextSegmentTransformer.class);
+        when(textSegmentTransformer.transformAll(singletonList(textSegment("First sentence."))))
+                .thenReturn(singletonList(textSegment("Transformed first sentence.")));
+
+        EmbeddingModel embeddingModel = mock(EmbeddingModel.class);
+        TokenUsage firstTokenUsage = new TokenUsage(1, 2, 3);
+
+        when(embeddingModel.embedAll(singletonList(textSegment("Transformed first sentence."))))
+                .thenReturn(Response.from(singletonList(Embedding.from(new float[] {1})), firstTokenUsage));
+
+        @SuppressWarnings("unchecked")
+        EmbeddingStore<TextSegment> embeddingStore = mock(EmbeddingStore.class);
+
+        when(embeddingStore.addAll(singletonList(Embedding.from(new float[] {1})),
+                singletonList(textSegment("Transformed first sentence."))))
+                .thenReturn(List.of(UUID.randomUUID().toString()));
+
+        EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
+                .documentTransformer(documentTransformer)
+                .documentSplitter(documentSplitter)
+                .textSegmentTransformer(textSegmentTransformer)
+                .embeddingModel(embeddingModel)
+                .embeddingStore(embeddingStore)
+                .build();
+
+        String id = UUID.randomUUID().toString();
+        // Method overloads.
+        IngestionResult ingestionResult1 = ingestor.ingest(singletonList(firstDocument), singletonList(id));
+        IngestionResult ingestionResult2 = ingestor.ingest(singletonList(firstDocument));
+
+        // Assertions.
+        assertThat(ingestionResult1.ids()).isEqualTo(singletonList(id));
+        assertThat(ingestionResult2.ids()).isNotEmpty();
     }
 }
