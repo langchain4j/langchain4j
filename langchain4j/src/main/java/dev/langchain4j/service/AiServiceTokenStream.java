@@ -40,7 +40,8 @@ public class AiServiceTokenStream implements TokenStream {
 
     private final List<ChatMessage> messages;
 
-    private final List<ToolSpecification> toolSpecifications;
+    private final List<ToolSpecification> effectiveTools;
+    private final List<ToolSpecification> availableTools;
     private final Map<String, ToolExecutor> toolExecutors;
     private final ToolArgumentsErrorHandler toolArgumentsErrorHandler;
     private final ToolExecutionErrorHandler toolExecutionErrorHandler;
@@ -87,7 +88,8 @@ public class AiServiceTokenStream implements TokenStream {
     public AiServiceTokenStream(AiServiceTokenStreamParameters parameters) {
         ensureNotNull(parameters, "parameters");
         this.messages = copy(ensureNotEmpty(parameters.messages(), "messages"));
-        this.toolSpecifications = copy(parameters.toolSpecifications());
+        this.effectiveTools = copy(parameters.effectiveTools());
+        this.availableTools = copy(parameters.availableTools());
         this.toolExecutors = copy(parameters.toolExecutors());
         this.toolArgumentsErrorHandler = parameters.toolArgumentsErrorHandler();
         this.toolExecutionErrorHandler = parameters.toolExecutionErrorHandler();
@@ -198,7 +200,7 @@ public class AiServiceTokenStream implements TokenStream {
         ChatRequest chatRequest = context.chatRequestTransformer.apply(
                 ChatRequest.builder()
                         .messages(messages)
-                        .parameters(chatRequestParameters(invocationContext.methodArguments(), toolSpecifications))
+                        .parameters(chatRequestParameters(invocationContext.methodArguments(), effectiveTools))
                         .build(),
                 invocationContext.chatMemoryId());
 
@@ -227,7 +229,7 @@ public class AiServiceTokenStream implements TokenStream {
                 errorHandler,
                 initTemporaryMemory(context, messages),
                 new TokenUsage(),
-                toolSpecifications,
+                availableTools,
                 toolExecutors,
                 context.toolService.maxSequentialToolsInvocations(),
                 toolArgumentsErrorHandler,

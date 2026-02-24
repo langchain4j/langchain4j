@@ -2,6 +2,7 @@ package dev.langchain4j.agentic;
 
 import static dev.langchain4j.agentic.Models.baseModel;
 import static dev.langchain4j.agentic.Models.throwingModel;
+import static dev.langchain4j.agentic.observability.HtmlReportGenerator.generateReport;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -553,7 +554,7 @@ public class WorkflowAgentsIT {
 
         System.out.println(execution);
 
-//        monitor.generateReport(Path.of("src", "test", "resources", "review-loop.html"));
+//        generateReport(monitor, Path.of("src", "test", "resources", "review-loop.html"));
     }
 
     @Test
@@ -984,7 +985,7 @@ public class WorkflowAgentsIT {
         assertThat(expertRouterAgent.evictAgenticScope("Mario")).isFalse();
         assertThat(expertRouterAgent.evictAgenticScope("Dmytro")).isFalse();
 
-//        monitor.generateReport(Path.of("src", "test", "resources", "expert-routing.html"));
+//        generateReport(monitor, "Mario", Path.of("src", "test", "resources", "expert-routing.html"));
 
         AgenticScopePersister.setStore(null);
     }

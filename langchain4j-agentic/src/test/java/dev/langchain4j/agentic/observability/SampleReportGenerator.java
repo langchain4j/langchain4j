@@ -16,6 +16,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import static dev.langchain4j.agentic.observability.HtmlReportGenerator.generateReport;
+
 /**
  * Generates a sample HTML report with mock data to preview the AgenticSystemReport visualization.
  * Run the main method and open the generated sample-report.html in a browser.
@@ -98,7 +100,7 @@ public class SampleReportGenerator {
 
         // ----- Create monitor and simulate executions -----
 
-        AgentMonitor monitor = new AgentMonitor("Expert Router System");
+        AgentMonitor monitor = new AgentMonitor();
         monitor.setRootAgent(sequence);
 
         // Execution 1 (user-alice): medical path
@@ -127,7 +129,7 @@ public class SampleReportGenerator {
         // ----- Generate report -----
 
         Path output = Path.of("langchain4j-agentic", "src", "test", "resources", "sample-report.html");
-        monitor.generateReport(output);
+        generateReport(monitor, output);
         System.out.println("Report written to " + output.toAbsolutePath());
     }
 
