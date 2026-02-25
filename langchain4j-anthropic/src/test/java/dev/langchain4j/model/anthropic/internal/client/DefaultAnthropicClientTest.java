@@ -16,6 +16,7 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageReques
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicMessage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicModelsListResponse;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicStreamingException;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicUsage;
 import dev.langchain4j.model.anthropic.internal.api.MessageTokenCountResponse;
@@ -377,8 +378,9 @@ class DefaultAnthropicClientTest {
             Throwable error = futureError.get(5, TimeUnit.SECONDS);
 
             // Then
-            assertThat(error).isInstanceOf(RuntimeException.class);
-            assertThat(error.getMessage()).contains("Rate limit exceeded");
+            assertThat(error).isInstanceOf(AnthropicStreamingException.class);
+            assertThat(error.getMessage()).isEqualTo("Rate limit exceeded");
+            assertThat(((AnthropicStreamingException) error).type()).isEqualTo("rate_limit_error");
         }
     }
 

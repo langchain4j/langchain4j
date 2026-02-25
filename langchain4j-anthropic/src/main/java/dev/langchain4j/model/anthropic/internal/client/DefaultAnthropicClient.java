@@ -48,6 +48,7 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicDelta;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicModelsListResponse;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicResponseMessage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicStreamingData;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicStreamingException;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicUsage;
 import dev.langchain4j.model.anthropic.internal.api.MessageTokenCountResponse;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -321,7 +322,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 } else if ("message_stop".equals(event.event())) {
                     handleMessageStop();
                 } else if ("error".equals(event.event())) {
-                    handleError(event.data());
+                    handleError(data);
                 }
 
                 rawServerSentEvents.add(event);
@@ -563,8 +564,9 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 return metadataBuilder.build();
             }
 
-            private void handleError(String dataString) {
-                withLoggingExceptions(() -> handler.onError(new RuntimeException(dataString)));
+            private void handleError(AnthropicStreamingData data) {
+                withLoggingExceptions(
+                        () -> handler.onError(new AnthropicStreamingException(data.error.message, data.error.type)));
             }
 
             @Override

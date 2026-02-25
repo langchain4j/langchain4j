@@ -25,6 +25,12 @@ public class Agents {
         String ask(@MemoryId String memoryId, @V("request") String request);
     }
 
+    public interface ExpertInvokerAgentWithMemory {
+
+        @Agent
+        String routeToExpert(@MemoryId String memoryId, @V("category") RequestCategory category, @V("request") String request);
+    }
+
     public interface CategoryRouter {
 
         @UserMessage("""

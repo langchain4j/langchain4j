@@ -568,6 +568,22 @@ public static void main(String[] args) {
 }
 ``` 
 
+## Accessing raw HTTP responses and Server-Sent Events (SSE)
+
+When using `MistralAiChatModel`, you can access the raw HTTP response:
+```java
+SuccessfulHttpResponse rawHttpResponse = ((MistralAiChatResponseMetadata) chatResponse.metadata()).rawHttpResponse();
+System.out.println(rawHttpResponse.body());
+System.out.println(rawHttpResponse.headers());
+System.out.println(rawHttpResponse.statusCode());
+```
+
+When using `MistralAiStreamingChatModel`, you can access the raw HTTP response (see above) and raw Server-Sent Events:
+```java
+List<ServerSentEvent> rawServerSentEvents = ((MistralAiChatResponseMetadata) chatResponse.metadata()).rawServerSentEvents();
+System.out.println(rawServerSentEvents.get(0).data());
+System.out.println(rawServerSentEvents.get(0).event());
+```
 
 ## Examples
 - [Mistral AI Examples](https://github.com/langchain4j/langchain4j-examples/tree/main/mistral-ai-examples/src/main/java)

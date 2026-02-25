@@ -5,6 +5,7 @@ import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
 class ToolExecutionResultMessageTest implements WithAssertions {
+
     @Test
     void methods() {
         ToolExecutionResultMessage tm = new ToolExecutionResultMessage("id", "toolName", "text");
@@ -16,7 +17,7 @@ class ToolExecutionResultMessageTest implements WithAssertions {
 
         assertThat(tm)
                 .hasToString(
-                        "ToolExecutionResultMessage { id = \"id\" toolName = \"toolName\" text = \"text\" isError = null }");
+                        "ToolExecutionResultMessage{id='id', toolName='toolName', text='text', isError=null, attributes={}}");
     }
 
     @Test
@@ -35,7 +36,7 @@ class ToolExecutionResultMessageTest implements WithAssertions {
 
         assertThat(tm)
                 .hasToString(
-                        "ToolExecutionResultMessage { id = \"id\" toolName = \"toolName\" text = \"error message\" isError = true }");
+                        "ToolExecutionResultMessage{id='id', toolName='toolName', text='error message', isError=true, attributes={}}");
     }
 
     @Test
