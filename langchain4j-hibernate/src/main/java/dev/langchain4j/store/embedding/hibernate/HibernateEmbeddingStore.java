@@ -1455,7 +1455,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                     })
                     .build());
             final boolean drop = getOrDefault(dropTableFirst, false);
-            final boolean create = getOrDefault(createTable, true);
+            final boolean create = getOrDefault(createTable, false);
             if (drop && create) {
                 cfg.setSchemaExportAction(Action.CREATE);
             } else if (drop) {
