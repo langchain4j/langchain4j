@@ -1251,7 +1251,7 @@ public class WorkflowAgentsIT {
 
         BatchHoroscopeAgent agent = AgenticServices.parallelMultiInstanceBuilder(BatchHoroscopeAgent.class)
                 .subAgents(personAstrologyAgent)
-                .inputCollection("persons")
+                .itemsProvider("persons")
                 .executor(Executors.newFixedThreadPool(3))
                 .build();
 

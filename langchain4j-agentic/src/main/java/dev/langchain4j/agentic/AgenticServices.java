@@ -528,7 +528,7 @@ public class AgenticServices {
         ParallelMultiInstanceAgent annotation = agentMethod.getAnnotation(ParallelMultiInstanceAgent.class);
         var builder = parallelMultiInstanceBuilder(agentServiceClass)
                 .subAgents(List.of(createSubagent(annotation.subAgent(), chatModel, agentConfigurator)))
-                .inputCollection(annotation.inputCollection());
+                .itemsProvider(annotation.itemsProvider());
 
         buildAgentSpecs(
                 agentServiceClass,

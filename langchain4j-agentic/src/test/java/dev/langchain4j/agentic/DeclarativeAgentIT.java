@@ -903,7 +903,7 @@ public class DeclarativeAgentIT {
 
     public interface BatchHoroscopeAgent extends AgentInstance {
 
-        @ParallelMultiInstanceAgent(subAgent = PersonAstrologyAgent.class, inputCollection = "persons")
+        @ParallelMultiInstanceAgent(subAgent = PersonAstrologyAgent.class, itemsProvider = "persons")
         ResultWithAgenticScope<Object> generateHoroscopes(@V("persons") List<Person> persons);
 
         @ParallelExecutor
@@ -941,7 +941,7 @@ public class DeclarativeAgentIT {
 
     public interface BatchHoroscopeAgentWithMemory extends AgentInstance, ChatMemoryAccess {
 
-        @ParallelMultiInstanceAgent(subAgent = PersonAstrologyAgent.class, inputCollection = "persons")
+        @ParallelMultiInstanceAgent(subAgent = PersonAstrologyAgent.class, itemsProvider = "persons")
         ResultWithAgenticScope<Object> generateHoroscopes(@V("persons") List<Person> persons);
 
         @ParallelExecutor

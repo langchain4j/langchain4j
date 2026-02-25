@@ -72,5 +72,5 @@ public @interface ParallelMultiInstanceAgent {
      *
      * @return the key of the input collection.
      */
-    String inputCollection();
+    String itemsProvider();
 }

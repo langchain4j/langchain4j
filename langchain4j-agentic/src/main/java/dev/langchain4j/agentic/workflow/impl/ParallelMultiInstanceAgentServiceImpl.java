@@ -11,21 +11,21 @@ public class ParallelMultiInstanceAgentServiceImpl<T>
         extends AbstractServiceBuilder<T, ParallelMultiInstanceAgentService<T>>
         implements ParallelMultiInstanceAgentService<T> {
 
-    private String inputCollection;
+    private String itemsProvider;
 
     public ParallelMultiInstanceAgentServiceImpl(Class<T> agentServiceClass, Method agenticMethod) {
         super(agentServiceClass, agenticMethod);
     }
 
     @Override
-    public ParallelMultiInstanceAgentService<T> inputCollection(String inputCollection) {
-        this.inputCollection = inputCollection;
+    public ParallelMultiInstanceAgentService<T> itemsProvider(String itemsProvider) {
+        this.itemsProvider = itemsProvider;
         return this;
     }
 
     @Override
     public T build() {
-        return build(() -> new ParallelMultiInstancePlanner(inputCollection));
+        return build(() -> new ParallelMultiInstancePlanner(itemsProvider));
     }
 
     public static ParallelMultiInstanceAgentServiceImpl<UntypedAgent> builder() {
