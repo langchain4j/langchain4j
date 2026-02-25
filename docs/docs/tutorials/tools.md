@@ -347,6 +347,22 @@ void getTemperature(String location, @P(value = "Unit of temperature", required 
 }
 ```
 
+#### Alternative: Using `Optional<T>` for Optional Parameters
+
+Instead of annotating parameters with `@P(required = false)`, you simply declare the parameter as `Optional<T>`.
+Any parameter of type `Optional<T>` will be treated as optional automatically, even without specify `required = false` in the `@P` annotation.
+
+**Example:**
+```java
+@Tool
+void getTemperature(
+    @P("Temperature value") double value,
+    @P("Unit of temperature") Optional<String> unit
+) {
+    ...
+}
+```
+
 Fields and sub-fields of complex parameters are also considered **_required_** by default.
 You can make a field optional by annotating it with `@JsonProperty(required = false)`:
 ```java

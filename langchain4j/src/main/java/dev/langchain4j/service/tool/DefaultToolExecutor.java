@@ -16,12 +16,14 @@ import dev.langchain4j.invocation.LangChain4jManaged;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 public class DefaultToolExecutor implements ToolExecutor {
@@ -194,15 +196,38 @@ public class DefaultToolExecutor implements ToolExecutor {
 
             String parameterName = parameter.getName();
             Object argument = argumentsMap.get(parameterName);
-            if (argument != null) {
-                Class<?> parameterClass = parameter.getType();
-                Type parameterType = parameter.getParameterizedType();
+            Class<?> parameterClass = parameter.getType();
+            Type parameterType = parameter.getParameterizedType();
 
+            if (parameterClass == Optional.class) {
+                arguments[i] = createOptional(argument, parameterName, parameterType);
+            } else if (argument != null) {
                 arguments[i] = coerceArgument(argument, parameterName, parameterClass, parameterType);
             }
         }
 
         return arguments;
+    }
+
+    private static Type extractActualType(Type parameterType) {
+        return ((ParameterizedType) parameterType).getActualTypeArguments()[0];
+    }
+
+    private static Class<?> extractActualClass(Type actualType) {
+        return actualType instanceof Class
+                ? (Class<?>) actualType
+                : (Class<?>) ((ParameterizedType) actualType).getRawType();
+    }
+
+    private static Optional<?> createOptional(Object argument, String parameterName, Type parameterType) {
+        if (argument == null) {
+            return Optional.empty();
+        }
+
+        Type actualType = extractActualType(parameterType);
+        Class<?> actualClass = extractActualClass(actualType);
+        Object coercedValue = coerceArgument(argument, parameterName, actualClass, actualType);
+        return Optional.of(coercedValue);
     }
 
     static Object coerceArgument(Object argument, String parameterName, Class<?> parameterClass, Type parameterType) {
