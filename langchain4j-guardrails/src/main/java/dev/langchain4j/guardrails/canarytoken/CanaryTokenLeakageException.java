@@ -23,4 +23,3 @@ public class CanaryTokenLeakageException extends RuntimeException {
         return leakedContent;
     }
 }
-

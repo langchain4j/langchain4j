@@ -82,14 +82,10 @@ public class CanaryTokenOutputGuardrail implements OutputGuardrail {
 
             case THROW_EXCEPTION:
                 log.debug("Guardrail detected leakage!");
-                return fatal(
-                        "System prompt leakage detected",
-                        new CanaryTokenLeakageException(canary, content)
-                );
+                return fatal("System prompt leakage detected", new CanaryTokenLeakageException(canary, content));
 
             default:
                 return success();
         }
     }
 }
-

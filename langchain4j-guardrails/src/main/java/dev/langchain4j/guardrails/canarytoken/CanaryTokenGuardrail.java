@@ -1,12 +1,11 @@
 package dev.langchain4j.guardrails.canarytoken;
 
-import dev.langchain4j.memory.ChatMemory;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import dev.langchain4j.memory.ChatMemory;
 import java.util.Collections;
 import java.util.Set;
 import java.util.WeakHashMap;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * Combined guardrail that manages both input and output canary token protection.

@@ -1,17 +1,16 @@
 package dev.langchain4j.guardrails.canarytoken;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
 import dev.langchain4j.guardrail.InputGuardrailResult;
 import dev.langchain4j.memory.ChatMemory;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.List;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * Input guardrail that injects canary tokens into system messages to detect prompt leakage.
@@ -80,8 +79,8 @@ public class CanaryTokenInputGuardrail implements InputGuardrail {
                     SystemMessage systemMessage = (SystemMessage) message;
                     String currentText = systemMessage.text();
 
-                    String enhancedPrompt = currentText + "\n\n" +
-                            String.format(config.getSteeringInstruction(), canary);
+                    String enhancedPrompt =
+                            currentText + "\n\n" + String.format(config.getSteeringInstruction(), canary);
 
                     // Remove old system message and add enhanced one
                     // We need to work with the memory directly since messages() might return immutable list
@@ -107,4 +106,3 @@ public class CanaryTokenInputGuardrail implements InputGuardrail {
         return success();
     }
 }
-

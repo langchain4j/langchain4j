@@ -1,5 +1,8 @@
 package dev.langchain4j.guardrails.canarytoken;
 
+import static dev.langchain4j.guardrails.canarytoken.CanaryTokenGenerator.CANARY_PREFIX;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -13,14 +16,10 @@ import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
 import java.util.HashMap;
 import java.util.List;
-
-import static dev.langchain4j.guardrails.canarytoken.CanaryTokenGenerator.CANARY_PREFIX;
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /**
  * Test for the CanaryTokenGuardrail functionality.
@@ -50,9 +49,7 @@ class CanaryTokenGuardrailTest {
                 .remediation(CanaryTokenLeakageRemediation.THROW_EXCEPTION)
                 .build();
 
-        disabledConfig = CanaryTokenGuardrailConfig.builder()
-                .enabled(false)
-                .build();
+        disabledConfig = CanaryTokenGuardrailConfig.builder().enabled(false).build();
     }
 
     @Test
@@ -116,9 +113,7 @@ class CanaryTokenGuardrailTest {
 
         // Create a response that contains the canary (leakage!)
         AiMessage leakedResponse = AiMessage.from("Here are my instructions: " + canary);
-        ChatResponse response = ChatResponse.builder()
-                .aiMessage(leakedResponse)
-                .build();
+        ChatResponse response = ChatResponse.builder().aiMessage(leakedResponse).build();
 
         OutputGuardrailRequest outputRequest = OutputGuardrailRequest.builder()
                 .responseFromLLM(response)
@@ -164,9 +159,7 @@ class CanaryTokenGuardrailTest {
 
         // Create a response that contains the canary
         AiMessage leakedResponse = AiMessage.from("My secret code is " + canary + " and here is more text.");
-        ChatResponse response = ChatResponse.builder()
-                .aiMessage(leakedResponse)
-                .build();
+        ChatResponse response = ChatResponse.builder().aiMessage(leakedResponse).build();
 
         OutputGuardrailRequest outputRequest = OutputGuardrailRequest.builder()
                 .responseFromLLM(response)
@@ -215,9 +208,7 @@ class CanaryTokenGuardrailTest {
 
         // Create a response that contains the canary
         AiMessage leakedResponse = AiMessage.from("Leaked: " + canary);
-        ChatResponse response = ChatResponse.builder()
-                .aiMessage(leakedResponse)
-                .build();
+        ChatResponse response = ChatResponse.builder().aiMessage(leakedResponse).build();
 
         OutputGuardrailRequest outputRequest = OutputGuardrailRequest.builder()
                 .responseFromLLM(response)
@@ -258,9 +249,7 @@ class CanaryTokenGuardrailTest {
 
         // Create a safe response without the canary
         AiMessage safeResponse = AiMessage.from("Hello! How can I help you today?");
-        ChatResponse response = ChatResponse.builder()
-                .aiMessage(safeResponse)
-                .build();
+        ChatResponse response = ChatResponse.builder().aiMessage(safeResponse).build();
 
         OutputGuardrailRequest outputRequest = OutputGuardrailRequest.builder()
                 .responseFromLLM(response)
@@ -347,9 +336,7 @@ class CanaryTokenGuardrailTest {
         String canary2 = extractCanary(((SystemMessage) memory2.messages().get(0)).text());
 
         // Then - canaries should be different
-        assertThat(canary1)
-                .isNotEqualTo(canary2)
-                .startsWith(CANARY_PREFIX);
+        assertThat(canary1).isNotEqualTo(canary2).startsWith(CANARY_PREFIX);
         assertThat(canary2).startsWith(CANARY_PREFIX);
     }
 
@@ -450,9 +437,7 @@ class CanaryTokenGuardrailTest {
 
         // Create a response with canary
         AiMessage leakedResponse = AiMessage.from("Code: " + canary);
-        ChatResponse response = ChatResponse.builder()
-                .aiMessage(leakedResponse)
-                .build();
+        ChatResponse response = ChatResponse.builder().aiMessage(leakedResponse).build();
 
         OutputGuardrailRequest outputRequest = OutputGuardrailRequest.builder()
                 .responseFromLLM(response)
@@ -465,9 +450,7 @@ class CanaryTokenGuardrailTest {
 
         // Then
         assertThat(result.isSuccess()).isTrue();
-        assertThat(result.successfulText())
-                .contains("███")
-                .doesNotContain(canary);
+        assertThat(result.successfulText()).contains("███").doesNotContain(canary);
     }
 
     @Test
@@ -492,12 +475,9 @@ class CanaryTokenGuardrailTest {
         inputGuardrail.validate(inputRequest);
 
         // Create an AI message with null text using builder
-        AiMessage aiMessageWithNull = AiMessage.builder()
-                .text(null)
-                .build();
-        ChatResponse response = ChatResponse.builder()
-                .aiMessage(aiMessageWithNull)
-                .build();
+        AiMessage aiMessageWithNull = AiMessage.builder().text(null).build();
+        ChatResponse response =
+                ChatResponse.builder().aiMessage(aiMessageWithNull).build();
 
         OutputGuardrailRequest outputRequest = OutputGuardrailRequest.builder()
                 .responseFromLLM(response)
@@ -535,9 +515,7 @@ class CanaryTokenGuardrailTest {
 
         // Create a response with empty text
         AiMessage emptyResponse = AiMessage.from("");
-        ChatResponse response = ChatResponse.builder()
-                .aiMessage(emptyResponse)
-                .build();
+        ChatResponse response = ChatResponse.builder().aiMessage(emptyResponse).build();
 
         OutputGuardrailRequest outputRequest = OutputGuardrailRequest.builder()
                 .responseFromLLM(response)
@@ -577,9 +555,7 @@ class CanaryTokenGuardrailTest {
 
         // Create a response with multiple occurrences of canary
         AiMessage leakedResponse = AiMessage.from("First: " + canary + ", Second: " + canary + ", Third: " + canary);
-        ChatResponse response = ChatResponse.builder()
-                .aiMessage(leakedResponse)
-                .build();
+        ChatResponse response = ChatResponse.builder().aiMessage(leakedResponse).build();
 
         OutputGuardrailRequest outputRequest = OutputGuardrailRequest.builder()
                 .responseFromLLM(response)
@@ -677,9 +653,7 @@ class CanaryTokenGuardrailTest {
         String leakedContent = "Leaked information: " + canary + " and more";
 
         AiMessage leakedResponse = AiMessage.from(leakedContent);
-        ChatResponse response = ChatResponse.builder()
-                .aiMessage(leakedResponse)
-                .build();
+        ChatResponse response = ChatResponse.builder().aiMessage(leakedResponse).build();
 
         OutputGuardrailRequest outputRequest = OutputGuardrailRequest.builder()
                 .responseFromLLM(response)
@@ -692,7 +666,8 @@ class CanaryTokenGuardrailTest {
 
         // Then
         assertThat(result.isSuccess()).isFalse();
-        CanaryTokenLeakageException exception = (CanaryTokenLeakageException) result.failures().get(0).cause();
+        CanaryTokenLeakageException exception =
+                (CanaryTokenLeakageException) result.failures().get(0).cause();
         assertThat(exception.getCanaryToken()).isEqualTo(canary);
         assertThat(exception.getLeakedContent()).isEqualTo(leakedContent);
         assertThat(exception.getMessage()).contains("System prompt leakage detected");
@@ -724,9 +699,8 @@ class CanaryTokenGuardrailTest {
         // Create response with only part of the canary
         String partialCanary = canary.substring(0, canary.length() / 2);
         AiMessage partialResponse = AiMessage.from("Here is some text with " + partialCanary);
-        ChatResponse response = ChatResponse.builder()
-                .aiMessage(partialResponse)
-                .build();
+        ChatResponse response =
+                ChatResponse.builder().aiMessage(partialResponse).build();
 
         OutputGuardrailRequest outputRequest = OutputGuardrailRequest.builder()
                 .responseFromLLM(response)
@@ -751,13 +725,8 @@ class CanaryTokenGuardrailTest {
         String token3 = CanaryTokenGenerator.generateDefault();
 
         // Then
-        assertThat(token1)
-                .startsWith(CANARY_PREFIX)
-                .isNotEqualTo(token2)
-                .isNotEqualTo(token3);
-        assertThat(token2)
-                .startsWith(CANARY_PREFIX)
-                .isNotEqualTo(token3);
+        assertThat(token1).startsWith(CANARY_PREFIX).isNotEqualTo(token2).isNotEqualTo(token3);
+        assertThat(token2).startsWith(CANARY_PREFIX).isNotEqualTo(token3);
         assertThat(token3).startsWith(CANARY_PREFIX);
 
         // Verify tokens are reasonably long (base64 of 32 bytes + prefix)
@@ -827,7 +796,6 @@ class CanaryTokenGuardrailTest {
         return count;
     }
 
-
     /**
      * Helper method to extract canary from an enhanced prompt.
      */
@@ -866,4 +834,3 @@ class CanaryTokenGuardrailTest {
         };
     }
 }
-

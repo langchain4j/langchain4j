@@ -28,4 +28,3 @@ public class CanaryTokenGenerator {
         return CANARY_PREFIX + Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
     }
 }
-
