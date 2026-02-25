@@ -767,11 +767,9 @@ public class AgenticServices {
                 if (agenticMethod.getParameterCount() == 0) {
                     return agentToExecutor(new AgentAction(() -> invokeStatic(agenticMethod)));
                 }
-                if (agenticMethod.getParameterCount() == 1
-                        && AgenticScope.class.isAssignableFrom(agenticMethod.getParameterTypes()[0])) {
-                    return agentToExecutor(
-                            new AgenticScopeAction((agenticScope -> invokeStatic(agenticMethod, agenticScope))));
-                }
+                return agentToExecutor(
+                        new AgenticScopeAction((scope ->
+                                invokeStatic(agenticMethod, agentInvocationArguments(scope, agenticMethod).positionalArgs()))));
             }
         }
 

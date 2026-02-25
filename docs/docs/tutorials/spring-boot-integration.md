@@ -265,6 +265,99 @@ Every `ChatModelListener` bean in the application context will be automatically
 injected into all `ChatModel` and `StreamingChatModel` beans
 created by one of our Spring Boot starters.
 
+### Micrometer Metrics
+Add the `langchain4j-micrometer-metrics` dependency to your project:
+
+For Maven:
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-micrometer-metrics</artifactId>
+    <version>1.12.0-beta20</version>
+</dependency>
+```
+For Gradle:
+```gradle
+implementation 'dev.langchain4j:langchain4j-micrometer-metrics:1.12.0-beta20'
+```
+
+#### Micrometer (Actuator) Configuration
+You should also have the necessary Actuator dependency in your project.
+For example, if you are using Spring Boot, you can add the following dependencies to your `pom.xml`:
+
+For Maven:
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-actuator</artifactId>
+</dependency>
+```
+For Gradle:
+```gradle
+implementation 'org.springframework.boot:spring-boot-starter-actuator'
+```
+
+Enable the `/metrics` Actuator endpoint in your properties.
+
+application.properties:
+```properties
+management.endpoints.web.exposure.include=metrics
+```
+application.yaml:
+```yaml
+management:
+  endpoints:
+    web:
+      exposure:
+        include: metrics
+```
+
+#### Configure `MicrometerMetricsChatModelListener` bean
+
+In a Spring Boot application, you can define the listener as a bean and inject the `MeterRegistry`:
+
+```java
+import dev.langchain4j.micrometer.metrics.listeners.MicrometerMetricsChatModelListener;
+import io.micrometer.core.instrument.MeterRegistry;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class MetricsConfig {
+
+    @Bean
+    public MicrometerMetricsChatModelListener listener(MeterRegistry meterRegistry) {
+        return new MicrometerMetricsChatModelListener(meterRegistry);
+    }
+}
+```
+
+#### View the Metrics
+
+You can view the metrics by visiting the `/actuator/metrics` endpoint of your application.
+
+For example, if you are running your application on `localhost:8080`,
+you can visit http://localhost:8080/actuator/metrics to view the metrics.
+
+##### Token Usage Metric
+
+View the token usage metric at:
+```
+http://localhost:8080/actuator/metrics/gen_ai.client.token.usage
+```
+
+##### Filtering by Token Type
+
+The `gen_ai.token.type` tag indicates whether the tokens were used for input or output:
+
+| Token Type | Endpoint |
+|------------|----------|
+| Input tokens | `/actuator/metrics/gen_ai.client.token.usage?tag=gen_ai.token.type:input` |
+| Output tokens | `/actuator/metrics/gen_ai.client.token.usage?tag=gen_ai.token.type:output` |
+
+> **Note**: The `gen_ai.client.token.usage` metric is a histogram (DistributionSummary). The endpoint without any tags shows aggregated statistics (count, total, max) across all token types, models, and providers.
+
+
 ## Testing
 
 - [An example of integration testing for a Customer Support Agent](https://github.com/langchain4j/langchain4j-examples/blob/main/customer-support-agent-example/src/test/java/dev/langchain4j/example/CustomerSupportAgentIT.java)

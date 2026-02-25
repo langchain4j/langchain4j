@@ -6,7 +6,10 @@ import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.workflow.ConditionalAgent;
 import dev.langchain4j.agentic.workflow.ConditionalAgentInstance;
 import dev.langchain4j.agentic.workflow.LoopAgentInstance;
+import java.io.IOException;
 import java.lang.reflect.Type;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -20,11 +23,47 @@ import java.util.Set;
  * Generates HTML reports for agent executions.
  * This class has been vibe-coded and is not expected to be maintainable manually by a human without LLM's help.
  */
-public record HtmlReportGenerator(String name, AgentMonitor monitor, AgentInstance rootAgent) {
+public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent, Object memoryId) {
 
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
 
-    String generateReport() {
+    public static void generateTopology(Object rootAgent, Path path) {
+        try {
+            Files.writeString(path, generateTopology(rootAgent));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static String generateTopology(Object rootAgent) {
+        return new HtmlReportGenerator(null, (AgentInstance) rootAgent, null).generateReport();
+    }
+
+    public static void generateReport(AgentMonitor monitor, Path path) {
+        try {
+            Files.writeString(path, generateReport(monitor));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static String generateReport(AgentMonitor monitor) {
+        return new HtmlReportGenerator(monitor, monitor.rootAgent(), null).generateReport();
+    }
+
+    public static void generateReport(AgentMonitor monitor, Object memoryId, Path path) {
+        try {
+            Files.writeString(path, generateReport(monitor, memoryId));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static String generateReport(AgentMonitor monitor, Object memoryId) {
+        return new HtmlReportGenerator(monitor, monitor.rootAgent(), memoryId).generateReport();
+    }
+
+    private String generateReport() {
         StringBuilder html = new StringBuilder(16384);
         html.append("<!DOCTYPE html>\n<html lang=\"en\">\n");
         appendHead(html);
@@ -32,7 +71,9 @@ public record HtmlReportGenerator(String name, AgentMonitor monitor, AgentInstan
         appendNavbar(html);
         html.append("<main class=\"container\">\n");
         appendTopologySection(html);
-        appendExecutionsSection(html);
+        if (monitor != null) {
+            appendExecutionsSection(html);
+        }
         appendFooter(html);
         html.append("</main>\n");
         appendScript(html);
@@ -44,11 +85,15 @@ public record HtmlReportGenerator(String name, AgentMonitor monitor, AgentInstan
     // Head
     // -----------------------------------------------------------------------
 
+    private String name() {
+        return monitor != null ? "LangChain4j Agentic System Report" : "LangChain4j Agentic System Topology";
+    }
+
     private void appendHead(StringBuilder html) {
         html.append("<head>\n");
         html.append("<meta charset=\"UTF-8\">\n");
         html.append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n");
-        html.append("<title>").append(esc(name)).append("</title>\n");
+        html.append("<title>").append(esc(name())).append("</title>\n");
         appendStyles(html);
         html.append("</head>\n");
     }
@@ -66,7 +111,7 @@ public record HtmlReportGenerator(String name, AgentMonitor monitor, AgentInstan
     private void appendNavbar(StringBuilder html) {
         html.append("<nav class=\"navbar\">\n");
         html.append("  <div class=\"navbar-logo\">").append(LOGO_SVG).append("</div>\n");
-        html.append("  <div class=\"navbar-title\">").append(esc(name)).append("</div>\n");
+        html.append("  <div class=\"navbar-title\">").append(esc(name())).append("</div>\n");
         html.append("  <div class=\"navbar-subtitle\">LangChain4j Agentic System</div>\n");
         html.append("</nav>\n");
     }
@@ -243,32 +288,30 @@ public record HtmlReportGenerator(String name, AgentMonitor monitor, AgentInstan
     }
 
     private void appendLoopInfo(StringBuilder html, AgentInstance agent) {
-        if (agent.topology() != AgenticSystemTopology.LOOP) return;
-        try {
-            LoopAgentInstance loop = agent.as(LoopAgentInstance.class);
-            html.append("<div class=\"loop-info\">");
-            html.append("<span class=\"loop-tag\">max ").append(loop.maxIterations()).append("</span>");
-            if (loop.exitCondition() != null && !loop.exitCondition().isEmpty()) {
-                html.append("<span class=\"loop-tag\">exit: ").append(esc(truncate(loop.exitCondition(), 40))).append("</span>");
-            }
-            html.append("<span class=\"loop-tag\">").append(loop.testExitAtLoopEnd() ? "test at end" : "test at start").append("</span>");
-            html.append("</div>\n");
-        } catch (ClassCastException ignored) {
+        if (agent.topology() != AgenticSystemTopology.LOOP) {
+            return;
         }
+        LoopAgentInstance loop = agent.as(LoopAgentInstance.class);
+        html.append("<div class=\"loop-info\">");
+        html.append("<span class=\"loop-tag\">max ").append(loop.maxIterations()).append("</span>");
+        if (loop.exitCondition() != null && !loop.exitCondition().isEmpty()) {
+            html.append("<span class=\"loop-tag\">exit: ").append(esc(truncate(loop.exitCondition(), 40))).append("</span>");
+        }
+        html.append("<span class=\"loop-tag\">").append(loop.testExitAtLoopEnd() ? "test at end" : "test at start").append("</span>");
+        html.append("</div>\n");
     }
 
     private Map<String, String> conditionsOf(AgentInstance agent) {
+        if (agent.topology() != AgenticSystemTopology.ROUTER) {
+            return Map.of();
+        }
         Map<String, String> map = new LinkedHashMap<>();
-        if (agent.topology() != AgenticSystemTopology.ROUTER) return map;
-        try {
-            ConditionalAgentInstance ci = agent.as(ConditionalAgentInstance.class);
-            for (ConditionalAgent ca : ci.conditionalSubagents()) {
-                if (ca.condition() == null) continue;
+        for (ConditionalAgent ca : agent.as(ConditionalAgentInstance.class).conditionalSubagents()) {
+            if (ca.condition() != null) {
                 for (AgentInstance child : ca.agentInstances()) {
                     map.put(child.agentId(), ca.condition());
                 }
             }
-        } catch (ClassCastException ignored) {
         }
         return map;
     }
@@ -278,7 +321,14 @@ public record HtmlReportGenerator(String name, AgentMonitor monitor, AgentInstan
     // -----------------------------------------------------------------------
 
     private void appendExecutionsSection(StringBuilder html) {
-        Set<Object> memoryIds = monitor.allMemoryIds();
+        Set<Object> memoryIds;
+        if (memoryId != null) {
+            memoryIds = monitor.allMemoryIds().contains(memoryId)
+                    ? Set.of(memoryId)
+                    : Set.of();
+        } else {
+            memoryIds = monitor.allMemoryIds();
+        }
 
         html.append("<section class=\"section\">\n");
         html.append("<div class=\"section-header\">\n");

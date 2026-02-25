@@ -48,7 +48,6 @@ import org.slf4j.LoggerFactory;
  * Only cosine similarity is used.
  * Only ivfflat index is used.
  */
-// Needed for inherited bean injection validation
 public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     /**

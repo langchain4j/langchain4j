@@ -61,6 +61,12 @@ public class ToolProviderResult {
         return immediateReturnToolNames;
     }
 
+    public Builder toBuilder() {
+        return builder()
+                .addAll(tools)
+                .immediateReturnToolNames(immediateReturnToolNames);
+    }
+
     public static Builder builder() {
         return new Builder();
     }

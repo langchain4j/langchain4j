@@ -525,6 +525,23 @@ Map<String, Object> customParameters = Map.of(
 );
 ```
 
+## Accessing raw HTTP responses and Server-Sent Events (SSE)
+
+When using `AnthropicChatModel`, you can access the raw HTTP response:
+```java
+SuccessfulHttpResponse rawHttpResponse = ((AnthropicChatResponseMetadata) chatResponse.metadata()).rawHttpResponse();
+System.out.println(rawHttpResponse.body());
+System.out.println(rawHttpResponse.headers());
+System.out.println(rawHttpResponse.statusCode());
+```
+
+When using `AnthropicStreamingChatModel`, you can access the raw HTTP response (see above) and raw Server-Sent Events:
+```java
+List<ServerSentEvent> rawServerSentEvents = ((AnthropicChatResponseMetadata) chatResponse.metadata()).rawServerSentEvents();
+System.out.println(rawServerSentEvents.get(0).data());
+System.out.println(rawServerSentEvents.get(0).event());
+```
+
 ## AnthropicTokenCountEstimator
 
 ```java

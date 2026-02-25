@@ -763,10 +763,10 @@ AgentInvocation{agent=Sequential, startTime=2026-02-19T17:49:54.822383375, finis
     |=> AgentInvocation{agent=scoreStyle, iteration=1, startTime=2026-02-19T17:50:05.463154489, finishTime=2026-02-19T17:50:05.914156072, duration=451 ms, inputs={style=comedy, story=In a realm wher...}, output=0.9}
 ```
 
-Finally, the `AgentMonitor` is also capable of generating a visual HTML report for both the topology of the agentic system and the recorded executions. For instance, generating this report for the former execution: 
+Finally, using the static `generateReport` method esposed by `HtmlReportGenerator` class, it is also possible to generate a visual HTML report of the data collected by the `AgentMonitor` for both the topology of the agentic system and the recorded executions. For instance, generating this report for the former execution: 
 
 ```java
-monitor.generateReport(Path.of("review-loop.html"));
+HtmlReportGenerator.generateReport(monitor, Path.of("review-loop.html"));
 ```
 
 will produce a report file `review-loop.html` in the current working directory similar to this:
