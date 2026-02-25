@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.mcp.client.McpCallContext;
 import dev.langchain4j.mcp.client.McpHeadersSupplier;
 import dev.langchain4j.mcp.client.logging.McpLoggers;
@@ -27,6 +28,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import javax.net.ssl.SSLContext;
@@ -35,6 +39,7 @@ import org.slf4j.LoggerFactory;
 
 public class StreamableHttpMcpTransport implements McpTransport {
     private static final Logger LOG = LoggerFactory.getLogger(StreamableHttpMcpTransport.class);
+    private static final long DEFAULT_SUBSIDIARY_RETRY_MS = 5000;
     private final String url;
     private final McpHeadersSupplier customHeadersSupplier;
     private final boolean logResponses;
@@ -49,6 +54,15 @@ public class StreamableHttpMcpTransport implements McpTransport {
     private McpInitializeRequest initializeRequest;
     private final AtomicReference<String> mcpSessionId = new AtomicReference<>();
 
+    // Subsidiary SSE channel fields
+    private final boolean subsidiaryChannelEnabled;
+    private volatile Runnable onFailureCallback;
+    private volatile boolean subsidiaryChannelEstablished;
+    private final AtomicReference<String> subsidiaryLastEventId = new AtomicReference<>();
+    private final AtomicLong subsidiaryRetryMs = new AtomicLong(DEFAULT_SUBSIDIARY_RETRY_MS);
+    private final Executor executor;
+    private AtomicBoolean closed = new AtomicBoolean(false);
+
     public StreamableHttpMcpTransport(StreamableHttpMcpTransport.Builder builder) {
         url = ensureNotNull(builder.url, "Missing server endpoint URL");
         logRequests = builder.logRequests;
@@ -58,6 +72,8 @@ public class StreamableHttpMcpTransport implements McpTransport {
         customHeadersSupplier = getOrDefault(builder.customHeadersSupplier, (i) -> Map.of());
         sslContext = builder.sslContext;
         httpVersion = builder.forceHttpVersion1_1 ? HttpClient.Version.HTTP_1_1 : HttpClient.Version.HTTP_2;
+        subsidiaryChannelEnabled = builder.subsidiaryChannelEnabled;
+        executor = getOrDefault(builder.executor, DefaultExecutorProvider.getDefaultExecutorService());
         HttpClient.Builder clientBuilder =
                 HttpClient.newBuilder().connectTimeout(timeout).version(httpVersion);
         if (builder.executor != null) {
@@ -86,7 +102,14 @@ public class StreamableHttpMcpTransport implements McpTransport {
                 })
                 .thenCompose(originalResponse -> execute(
                                 new McpCallContext(null, new McpInitializationNotification()), false)
-                        .thenCompose(nullNode -> CompletableFuture.completedFuture(originalResponse)));
+                        .thenCompose(nullNode -> CompletableFuture.completedFuture(originalResponse)))
+                .thenCompose(originalResponse -> {
+                    if (subsidiaryChannelEnabled) {
+                        return startSubsidiaryChannel(true)
+                                .thenCompose(v -> CompletableFuture.completedFuture(originalResponse));
+                    }
+                    return CompletableFuture.completedFuture(originalResponse);
+                });
     }
 
     private HttpRequest createRequest(McpJsonRpcMessage message, McpCallContext callContext)
@@ -139,7 +162,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
 
     @Override
     public void onFailure(Runnable actionOnFailure) {
-        // nothing to do here, we don't maintain a long-running SSE channel (yet)
+        this.onFailureCallback = actionOnFailure;
     }
 
     private CompletableFuture<JsonNode> execute(McpCallContext context, boolean isRetry) {
@@ -228,12 +251,114 @@ public class StreamableHttpMcpTransport implements McpTransport {
         return future;
     }
 
+    /**
+     * Opens the subsidiary SSE channel by issuing an HTTP GET to the MCP endpoint.
+     * This allows the server to send notifications and requests to the client
+     * without the client first sending data via HTTP POST.
+     *
+     * @param firstAttempt if true, failures will not trigger reconnection
+     * @return a future that completes when the channel setup attempt finishes
+     */
+    private CompletableFuture<Void> startSubsidiaryChannel(boolean firstAttempt) {
+        if (closed.get()) {
+            return CompletableFuture.completedFuture(null);
+        }
+        HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .header("Accept", "text/event-stream")
+                .GET();
+        String sessionId = mcpSessionId.get();
+        if (sessionId != null) {
+            requestBuilder.header("Mcp-Session-Id", sessionId);
+        }
+        String lastId = subsidiaryLastEventId.get();
+        if (lastId != null) {
+            requestBuilder.header("Last-Event-ID", lastId);
+        }
+        Map<String, String> headers = customHeadersSupplier.apply(null);
+        if (headers != null) {
+            headers.forEach(requestBuilder::header);
+        }
+        HttpRequest request = requestBuilder.build();
+
+        CompletableFuture<Void> result = new CompletableFuture<>();
+        SseSubscriber subscriber = new SseSubscriber(
+                logResponses,
+                operationHandler,
+                trafficLog,
+                subsidiaryLastEventId,
+                subsidiaryRetryMs,
+                this::scheduleSubsidiaryReconnect,
+                closed);
+
+        httpClient
+                .sendAsync(request, responseInfo -> {
+                    int statusCode = responseInfo.statusCode();
+                    Optional<String> contentType = responseInfo.headers().firstValue("Content-Type");
+                    if (isExpectedStatusCode(statusCode)
+                            && contentType.isPresent()
+                            && contentType.get().contains("text/event-stream")) {
+                        subsidiaryChannelEstablished = true;
+                        LOG.debug("Subsidiary SSE channel established");
+                        result.complete(null);
+                        return HttpResponse.BodySubscribers.fromLineSubscriber(subscriber);
+                    } else {
+                        if (firstAttempt) {
+                            LOG.warn(
+                                    "Failed to open subsidiary SSE channel (status={}, contentType={}), will not re-attempt",
+                                    statusCode,
+                                    contentType.orElse("absent"));
+                        } else {
+                            LOG.debug(
+                                    "Failed to reconnect subsidiary SSE channel (status={}, contentType={}), scheduling retry",
+                                    statusCode,
+                                    contentType.orElse("absent"));
+                            if (!closed.get()) {
+                                scheduleSubsidiaryReconnect();
+                            }
+                        }
+                        result.complete(null);
+                        return HttpResponse.BodySubscribers.discarding();
+                    }
+                })
+                .exceptionally(t -> {
+                    if (!closed.get()) {
+                        if (firstAttempt) {
+                            LOG.warn("Failed to open subsidiary SSE channel", t);
+                        } else {
+                            LOG.debug("Subsidiary SSE channel connection failed, scheduling retry", t);
+                            scheduleSubsidiaryReconnect();
+                        }
+                    }
+                    result.complete(null);
+                    return null;
+                });
+        return result;
+    }
+
+    private void scheduleSubsidiaryReconnect() {
+        if (closed.get() || !subsidiaryChannelEstablished) {
+            return;
+        }
+        long delayMs = subsidiaryRetryMs.get();
+        LOG.debug("Scheduling subsidiary SSE channel reconnect in {} ms", delayMs);
+        Executor delayedExecutor = CompletableFuture.delayedExecutor(delayMs, TimeUnit.MILLISECONDS, executor);
+        CompletableFuture.runAsync(
+                () -> {
+                    if (!closed.get()) {
+                        startSubsidiaryChannel(false);
+                    }
+                },
+                delayedExecutor);
+    }
+
     private boolean isExpectedStatusCode(int statusCode) {
         return statusCode >= 200 && statusCode < 300;
     }
 
     @Override
     public void close() throws IOException {
+        closed.set(true);
         // The httpClient.close() method only exists on JDK 21+, so invoke it only if we can.
         // Replace this with a normal method call when switching the base to JDK 21+.
         try {
@@ -257,6 +382,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         private Logger logger;
         private SSLContext sslContext;
         private boolean forceHttpVersion1_1;
+        private boolean subsidiaryChannelEnabled = false;
 
         /**
          * The URL of the MCP server.
@@ -332,6 +458,8 @@ public class StreamableHttpMcpTransport implements McpTransport {
 
         /**
          * An optional {@link Executor} that will be used for executing requests and handling responses.
+         * It will also be used for scheduling auto-reconnect attempts of the subsidiary SSE channel if that is enabled.
+         * If not provided, a default shared executor will be used.
          */
         public StreamableHttpMcpTransport.Builder executor(Executor executor) {
             this.executor = executor;
@@ -352,6 +480,21 @@ public class StreamableHttpMcpTransport implements McpTransport {
          */
         public StreamableHttpMcpTransport.Builder setHttpVersion1_1() {
             this.forceHttpVersion1_1 = true;
+            return this;
+        }
+
+        /**
+         * Enables or disables the subsidiary SSE channel. When enabled, the transport
+         * will open an HTTP GET-based SSE stream after initialization, allowing the
+         * server to send notifications and requests to the client without the client
+         * first sending data via HTTP POST. If the server does not support the
+         * subsidiary channel (returns 405), the transport will log a warning and
+         * continue without it. If the stream breaks after being successfully
+         * established, the transport will automatically attempt to reconnect.
+         * Defaults to {@code false}.
+         */
+        public StreamableHttpMcpTransport.Builder subsidiaryChannel(boolean subsidiaryChannelEnabled) {
+            this.subsidiaryChannelEnabled = subsidiaryChannelEnabled;
             return this;
         }
 
