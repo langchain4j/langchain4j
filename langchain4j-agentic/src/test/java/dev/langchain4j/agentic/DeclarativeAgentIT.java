@@ -950,12 +950,4 @@ public class DeclarativeAgentIT {
         }
     }
 
-    @Test
-    void parallel_multi_instance_agent_should_throw_on_chat_memory_access() {
-        BatchHoroscopeAgentWithMemory agent =
-                AgenticServices.createAgenticSystem(BatchHoroscopeAgentWithMemory.class, baseModel());
-
-        assertThat(assertThrows(UnsupportedOperationException.class, () -> agent.getChatMemory("test")))
-                .hasMessageContaining("ChatMemory is not supported for ParallelMultiInstanceAgent");
-    }
 }

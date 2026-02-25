@@ -73,8 +73,4 @@ public class ParallelMultiInstancePlanner implements Planner, ChatMemoryAccessPr
         return AgenticSystemTopology.PARALLEL;
     }
 
-    @Override
-    public ChatMemoryAccess chatMemoryAccess(AgenticScope agenticScope) {
-        throw new UnsupportedOperationException("ChatMemory is not supported for ParallelMultiInstanceAgent");
-    }
 }
