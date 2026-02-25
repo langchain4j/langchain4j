@@ -15,13 +15,13 @@ RAG, and more.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-hibernate</artifactId>
-    <version>1.10.0-beta18</version>
+    <version>1.12.0-beta20</version>
 </dependency>
 ```
 
 ## Gradle Dependency
 
-```implementation 'dev.langchain4j:langchain4j-hibernate:1.10.0-beta18'```
+```implementation 'dev.langchain4j:langchain4j-hibernate:1.12.0-beta20'```
 
 ## APIs
 
@@ -194,6 +194,83 @@ HibernateEmbeddingStore embeddingStore = HibernateEmbeddingStore.builder()
         .textMetadataAttributeName("metadata")
         .metadataAttributeNames("mimeType", "fileName")
         .build();
+```
+
+Metadata can also be nested within `@OneToOne`, `@ManyToOne` or `@Embedded` attributes that are also annotated with `@Metadata`,
+or by specifying an explicit attribute path with the `.` (dot) separator.
+
+```java
+@Entity
+public class Book {
+    @Id
+    private Long id;
+    private String title;
+    private String content;
+    @Metadata
+    @Embedded
+    private BookDetails details = new BookDetails();
+    @Metadata
+    @ManyToOne(fetch = FetchType.LAZY)
+    private Author author;
+
+    @Embedding
+    @Array(length = 384)
+    private float[] embedding;
+    @TextMetadata
+    private Map<String, Object> metadata;
+}
+@Entity
+public class Author {
+    @Id
+    @Metadata
+    @GeneratedValue
+    private Long id;
+    private String firstname;
+    private String lastname;
+}
+@Embeddable
+public class BookDetails {
+    @Metadata
+    private String language;
+    private String abstractText;
+}
+```
+
+The equivalent attribute paths are `details.language` and `author.id`, which are then available for filtering,
+by specifying these paths as metadata keys, e.g.
+
+```java
+MetadataFilterBuilder.metadataKey("details.language").isEqualTo("English")
+```
+
+or
+
+```java
+MetadataFilterBuilder.metadataKey("author.id").isEqualTo(2L)
+```
+
+Alternatively, the `HibernateEmbeddingStore` API also provides `search` methods that allow to use the type-safe Hibernate ORM `Restriction` API.
+
+```java
+HibernateEmbeddingStore<Book> embeddingStore = embeddingStore();
+embeddingStore.search(
+        embedding,
+        Path.from(Book.class)
+            .to(Book_.details)
+            .to(BookDetails_.language)
+            .equalTo("English"));
+```
+
+or
+
+```java
+HibernateEmbeddingStore<Book> embeddingStore = embeddingStore();
+embeddingStore.search(
+        embedding,
+        Path.from(Book.class)
+            .to(Book_.author)
+            .to(Author_.id)
+            .equalTo(2L));
 ```
 
 ## Complete RAG Example with Hibernate

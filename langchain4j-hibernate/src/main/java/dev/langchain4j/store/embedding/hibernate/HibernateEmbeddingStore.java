@@ -40,6 +40,7 @@ import jakarta.persistence.criteria.Path;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Selection;
 import jakarta.persistence.metamodel.EntityType;
+import jakarta.persistence.metamodel.ManagedType;
 import jakarta.persistence.metamodel.SingularAttribute;
 import jakarta.persistence.metamodel.Type;
 import java.io.StringReader;
@@ -49,9 +50,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.StringTokenizer;
 import java.util.UUID;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
@@ -135,7 +140,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
      * @param embeddingAttributeName     The name of the entity attribute containing the embedding vector
      * @param embeddingTextAttributeName The name of the entity attribute containing the text from which the embedding vector is derived, or null
      * @param textMetadataAttributeName  The name of the entity attribute to store generic metadata in
-     * @param metadataAttributeNames     The name of the explicit metadata entity attributes
+     * @param metadataAttributePaths     The name of the explicit metadata entity attributes
      * @param distanceFunction           The distance function to use for vector search
      */
     protected HibernateEmbeddingStore(
@@ -146,7 +151,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
             String embeddingAttributeName,
             String embeddingTextAttributeName,
             String textMetadataAttributeName,
-            String[] metadataAttributeNames,
+            String[] metadataAttributePaths,
             DistanceFunction distanceFunction) {
         this.isDynamic = isDynamic;
         this.sessionFactory = ensureNotNull(sessionFactory, "sessionFactory");
@@ -200,18 +205,17 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
             //noinspection unchecked
             this.textMetadataAttributeMapType = (Type<Map<?, ?>>) textMetadataAttributeType;
         }
-        if (metadataAttributeNames == null || metadataAttributeNames.length == 0) {
+        if (metadataAttributePaths == null || metadataAttributePaths.length == 0) {
             this.metadataAttributeMappings = Collections.emptyMap();
         } else {
             final Map<String, AttributeMapping> metadataAttributeMappings =
-                    new LinkedHashMap<>(metadataAttributeNames.length);
-            for (String metadataAttributeName : metadataAttributeNames) {
-                final AttributeMapping attributeMapping = entityPersister.findAttributeMapping(metadataAttributeName);
-                if (attributeMapping == null) {
+                    new LinkedHashMap<>(metadataAttributePaths.length);
+            for (String metadataAttributePath : metadataAttributePaths) {
+                if (!(entityPersister.findByPath(metadataAttributePath) instanceof AttributeMapping attributeMapping)) {
                     throw new IllegalArgumentException(
-                            "Couldn't find metadata attribute with name: " + metadataAttributeName);
+                            "Couldn't find metadata attribute with path: " + metadataAttributePath);
                 }
-                metadataAttributeMappings.put(metadataAttributeName, attributeMapping);
+                metadataAttributeMappings.put(metadataAttributePath, attributeMapping);
             }
             this.metadataAttributeMappings = metadataAttributeMappings;
         }
@@ -263,11 +267,11 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
         values.add(textMetadataParameter);
         updateAction.set(textMetadataAttributeName, excludedRoot.get(textMetadataAttributeName));
 
-        for (String attributeName : metadataAttributeMappings.keySet()) {
-            JpaPath<Object> attributePath = target.get(attributeName);
-            paths.add(attributePath);
-            values.add(criteriaBuilder.parameter(attributePath.getJavaType(), attributeName));
-            updateAction.set(attributeName, excludedRoot.get(attributeName));
+        for (String attributePath : metadataAttributeMappings.keySet()) {
+            JpaPath<Object> path = get(target, attributePath);
+            paths.add(path);
+            values.add(criteriaBuilder.parameter(path.getJavaType(), attributePath));
+            updateAction.set(path, (Object) get(excludedRoot, attributePath));
         }
 
         criteriaInsertValues.setInsertionTargetPaths(paths);
@@ -598,27 +602,27 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
 
                 int i = 0;
                 for (Map.Entry<String, AttributeMapping> metadataAttribute : metadataAttributeMappings.entrySet()) {
-                    final String metadataAttributeName = metadataAttribute.getKey();
+                    final String metadataAttributePath = metadataAttribute.getKey();
                     final JavaType<?> metadataAttributeJavaType =
                             metadataAttribute.getValue().getJavaType();
                     final Object metadataValue = tuple[5 + i];
                     if (metadataValue != null) {
                         if (metadataValue instanceof String string) {
-                            metadata.put(metadataAttributeName, string);
+                            metadata.put(metadataAttributePath, string);
                         } else if (metadataValue instanceof UUID uuid) {
-                            metadata.put(metadataAttributeName, uuid);
+                            metadata.put(metadataAttributePath, uuid);
                         } else if (metadataValue instanceof Integer integerValue) {
-                            metadata.put(metadataAttributeName, integerValue);
+                            metadata.put(metadataAttributePath, integerValue);
                         } else if (metadataValue instanceof Long longValue) {
-                            metadata.put(metadataAttributeName, longValue);
+                            metadata.put(metadataAttributePath, longValue);
                         } else if (metadataValue instanceof Float floatValue) {
-                            metadata.put(metadataAttributeName, floatValue);
+                            metadata.put(metadataAttributePath, floatValue);
                         } else if (metadataValue instanceof Double doubleValue) {
-                            metadata.put(metadataAttributeName, doubleValue);
+                            metadata.put(metadataAttributePath, doubleValue);
                         } else {
                             //noinspection unchecked
                             metadata.put(
-                                    metadataAttributeName,
+                                    metadataAttributePath,
                                     ((JavaType<Object>) metadataAttributeJavaType).toString(metadataValue));
                         }
                     }
@@ -683,8 +687,8 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
             selections[4] = root.get(embeddingTextAttributeMapping.getAttributeName());
         }
         int index = metadataOffset;
-        for (String attributeName : metadataAttributeMappings.keySet()) {
-            selections[index++] = root.get(attributeName);
+        for (String attributePath : metadataAttributeMappings.keySet()) {
+            selections[index++] = get(root, attributePath);
         }
         query.select(criteriaBuilder.array(selections));
     }
@@ -763,6 +767,20 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
         }
     }
 
+    private <X> JpaPath<X> get(JpaRoot<?> root, String path) {
+        if (path.indexOf('.') == -1) {
+            return root.get(path);
+        } else {
+            JpaPath<?> p = root;
+            StringTokenizer tokenizer = new StringTokenizer(path, ".");
+            while (tokenizer.hasMoreTokens()) {
+                p = p.get(tokenizer.nextToken());
+            }
+            //noinspection unchecked
+            return (JpaPath<X>) p;
+        }
+    }
+
     private Object toDomainValue(JavaType<?> attributeJavaType, Object value) {
         if (attributeJavaType.getJavaTypeClass() == String.class) {
             return value.toString();
@@ -775,7 +793,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
             JpaRoot<?> root, HibernateCriteriaBuilder criteriaBuilder, ContainsString containsString) {
         final AttributeMapping attributeMapping = metadataAttributeMappings.get(containsString.key());
         final JpaExpression<String> expression = attributeMapping != null
-                ? root.get(containsString.key())
+                ? get(root, containsString.key())
                 : criteriaBuilder.jsonValue(
                         root.get(textMetadataAttributeMapping.getAttributeName()),
                         criteriaBuilder.literal("$." + containsString.key()));
@@ -796,7 +814,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
     private JpaPredicate mapEqual(JpaRoot<?> root, HibernateCriteriaBuilder criteriaBuilder, IsEqualTo isEqualTo) {
         final AttributeMapping attributeMapping = metadataAttributeMappings.get(isEqualTo.key());
         if (attributeMapping != null) {
-            final JpaExpression<?> valueExpression = root.get(isEqualTo.key());
+            final JpaExpression<?> valueExpression = get(root, isEqualTo.key());
             final Object comparisonValue = isEqualTo.comparisonValue();
             final Object domainValue = toDomainValue(attributeMapping.getJavaType(), comparisonValue);
             return criteriaBuilder.and(
@@ -815,7 +833,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
             JpaRoot<?> root, HibernateCriteriaBuilder criteriaBuilder, IsNotEqualTo isNotEqualTo) {
         final AttributeMapping attributeMapping = metadataAttributeMappings.get(isNotEqualTo.key());
         if (attributeMapping != null) {
-            final JpaExpression<?> valueExpression = root.get(isNotEqualTo.key());
+            final JpaExpression<?> valueExpression = get(root, isNotEqualTo.key());
             final Object comparisonValue = isNotEqualTo.comparisonValue();
             final Object domainValue = toDomainValue(attributeMapping.getJavaType(), comparisonValue);
             return criteriaBuilder.or(valueExpression.isNull(), criteriaBuilder.notEqual(valueExpression, domainValue));
@@ -836,7 +854,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
             final Collection<Object> domainValue = isIn.comparisonValues().stream()
                     .map(value -> toDomainValue(attributeMapping.getJavaType(), value))
                     .collect(Collectors.toList());
-            return criteriaBuilder.in(root.get(isIn.key()), domainValue);
+            return criteriaBuilder.in(get(root, isIn.key()), domainValue);
         } else {
             return criteriaBuilder.in(
                     criteriaBuilder.jsonValue(
@@ -849,7 +867,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
     private JpaPredicate mapNotIn(JpaRoot<?> root, HibernateCriteriaBuilder criteriaBuilder, IsNotIn isNotIn) {
         final AttributeMapping attributeMapping = metadataAttributeMappings.get(isNotIn.key());
         if (attributeMapping != null) {
-            final JpaExpression<?> valueExpression = root.get(isNotIn.key());
+            final JpaExpression<?> valueExpression = get(root, isNotIn.key());
             final Collection<Object> domainValue = isNotIn.comparisonValues().stream()
                     .map(value -> toDomainValue(attributeMapping.getJavaType(), value))
                     .collect(Collectors.toList());
@@ -897,11 +915,12 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                     && !(comparisonValue instanceof String)) {
                 //noinspection unchecked
                 return criteriaBuilder.greaterThan(
-                        root.get(isGreaterThan.key()).cast((Class<Y>) comparisonValue.getClass()), (Y) comparisonValue);
+                        get(root, isGreaterThan.key()).cast((Class<Y>) comparisonValue.getClass()),
+                        (Y) comparisonValue);
             } else {
                 final Object domainValue = toDomainValue(attributeMapping.getJavaType(), comparisonValue);
                 //noinspection unchecked
-                return criteriaBuilder.greaterThan(root.get(isGreaterThan.key()), (Y) domainValue);
+                return criteriaBuilder.greaterThan(get(root, isGreaterThan.key()), (Y) domainValue);
             }
         } else {
             //noinspection unchecked
@@ -923,12 +942,12 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                     && !(comparisonValue instanceof String)) {
                 //noinspection unchecked
                 return criteriaBuilder.greaterThanOrEqualTo(
-                        root.get(isGreaterThanOrEqualTo.key()).cast((Class<Y>) comparisonValue.getClass()),
+                        get(root, isGreaterThanOrEqualTo.key()).cast((Class<Y>) comparisonValue.getClass()),
                         (Y) comparisonValue);
             } else {
                 final Object domainValue = toDomainValue(attributeMapping.getJavaType(), comparisonValue);
                 //noinspection unchecked
-                return criteriaBuilder.greaterThanOrEqualTo(root.get(isGreaterThanOrEqualTo.key()), (Y) domainValue);
+                return criteriaBuilder.greaterThanOrEqualTo(get(root, isGreaterThanOrEqualTo.key()), (Y) domainValue);
             }
         } else {
             //noinspection unchecked
@@ -950,11 +969,11 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                     && !(comparisonValue instanceof String)) {
                 //noinspection unchecked
                 return criteriaBuilder.lessThan(
-                        root.get(isLessThan.key()).cast((Class<Y>) comparisonValue.getClass()), (Y) comparisonValue);
+                        get(root, isLessThan.key()).cast((Class<Y>) comparisonValue.getClass()), (Y) comparisonValue);
             } else {
                 final Object domainValue = toDomainValue(attributeMapping.getJavaType(), comparisonValue);
                 //noinspection unchecked
-                return criteriaBuilder.lessThan(root.get(isLessThan.key()), (Y) domainValue);
+                return criteriaBuilder.lessThan(get(root, isLessThan.key()), (Y) domainValue);
             }
         } else {
             //noinspection unchecked
@@ -976,12 +995,12 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                     && !(comparisonValue instanceof String)) {
                 //noinspection unchecked
                 return criteriaBuilder.lessThanOrEqualTo(
-                        root.get(isLessThanOrEqualTo.key()).cast((Class<Y>) comparisonValue.getClass()),
+                        get(root, isLessThanOrEqualTo.key()).cast((Class<Y>) comparisonValue.getClass()),
                         (Y) comparisonValue);
             } else {
                 final Object domainValue = toDomainValue(attributeMapping.getJavaType(), comparisonValue);
                 //noinspection unchecked
-                return criteriaBuilder.lessThanOrEqualTo(root.get(isLessThanOrEqualTo.key()), (Y) domainValue);
+                return criteriaBuilder.lessThanOrEqualTo(get(root, isLessThanOrEqualTo.key()), (Y) domainValue);
             }
         } else {
             //noinspection unchecked
@@ -1120,12 +1139,19 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                 final Map<String, String> metadataMap =
                         toStringValueMap(embedded.get(i).metadata().toMap());
                 for (Map.Entry<String, AttributeMapping> entry : metadataAttributeMappings.entrySet()) {
-                    final String attributeName = entry.getKey();
-                    final String stringValue = metadataMap.remove(attributeName);
+                    final String attributePath = entry.getKey();
+                    final String stringValue = metadataMap.remove(attributePath);
                     final Object value = stringValue == null
                             ? null
                             : entry.getValue().getJavaType().fromString(stringValue);
-                    values[entry.getValue().getStateArrayPosition()] = value;
+                    if (entry.getValue().getDeclaringType() != entityPersister) {
+                        if (value != null) {
+                            throw new IllegalArgumentException(
+                                    "Can't add metadata from TextSegment for attribute path: " + attributePath);
+                        }
+                    } else {
+                        values[entry.getValue().getStateArrayPosition()] = value;
+                    }
                 }
                 if (textMetadataAttributeMapType != null) {
                     values[textMetadataAttributeMapping.getStateArrayPosition()] = metadataMap;
@@ -1142,8 +1168,10 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                     values[embeddingTextAttributeMapping.getStateArrayPosition()] = null;
                 }
                 values[textMetadataAttributeMapping.getStateArrayPosition()] = null;
-                for (AttributeMapping attributeMapping : metadataAttributeMappings.values()) {
-                    values[attributeMapping.getStateArrayPosition()] = null;
+                for (Map.Entry<String, AttributeMapping> entry : metadataAttributeMappings.entrySet()) {
+                    if (entry.getValue().getDeclaringType() != entityPersister) {
+                        values[entry.getValue().getStateArrayPosition()] = null;
+                    }
                 }
             }
 
@@ -1185,12 +1213,12 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                 final Map<String, String> metadataMap =
                         toStringValueMap(embedded.get(i).metadata().toMap());
                 for (Map.Entry<String, AttributeMapping> entry : metadataAttributeMappings.entrySet()) {
-                    final String attributeName = entry.getKey();
-                    final String stringValue = metadataMap.remove(attributeName);
+                    final String attributePath = entry.getKey();
+                    final String stringValue = metadataMap.remove(attributePath);
                     final Object value = stringValue == null
                             ? null
                             : entry.getValue().getJavaType().fromString(stringValue);
-                    mutationQuery.setParameter(attributeName, value);
+                    mutationQuery.setParameter(attributePath, value);
                 }
                 if (textMetadataAttributeMapType != null) {
                     mutationQuery.setParameter(
@@ -1209,8 +1237,8 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                     mutationQuery.setParameter(embeddingTextAttributeMapping.getAttributeName(), null);
                 }
                 mutationQuery.setParameter(textMetadataAttributeMapping.getAttributeName(), null);
-                for (String attributeName : metadataAttributeMappings.keySet()) {
-                    mutationQuery.setParameter(attributeName, null);
+                for (String attributePath : metadataAttributeMappings.keySet()) {
+                    mutationQuery.setParameter(attributePath, null);
                 }
             }
             mutationQuery.executeUpdate();
@@ -1279,7 +1307,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                 SingularAttribute<?, ?> embeddingAttribute = null;
                 SingularAttribute<?, ?> embeddingTextAttribute = null;
                 SingularAttribute<?, ?> textMetadataAttribute = null;
-                List<SingularAttribute<?, ?>> metadataAttributes = new ArrayList<>();
+                LinkedHashSet<String> metadataAttributes = new LinkedHashSet<>();
                 for (SingularAttribute<?, ?> singularAttribute : entityType.getSingularAttributes()) {
                     final Member member = singularAttribute.getJavaMember();
                     if (member instanceof AnnotatedElement annotatedElement) {
@@ -1315,7 +1343,13 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                         }
                         if (annotatedElement.isAnnotationPresent(
                                 dev.langchain4j.store.embedding.hibernate.Metadata.class)) {
-                            metadataAttributes.add(singularAttribute);
+                            Set<ManagedType<?>> visitedTypes = new HashSet<>();
+                            visitedTypes.add(entityType);
+                            collectMetadataAttributes(
+                                    visitedTypes,
+                                    metadataAttributes,
+                                    singularAttribute.getName(),
+                                    singularAttribute.getType());
                         }
                     }
                 }
@@ -1330,9 +1364,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                 embeddingAttributeName = embeddingAttribute.getName();
                 embeddingTextAttributeName = embeddingTextAttribute == null ? null : embeddingTextAttribute.getName();
                 textMetadataAttributeName = textMetadataAttribute.getName();
-                metadataAttributeNames = metadataAttributes.stream()
-                        .map(SingularAttribute::getName)
-                        .toArray(String[]::new);
+                metadataAttributeNames = metadataAttributes.toArray(new String[0]);
             } else {
                 embeddingAttributeName = this.embeddingAttributeName;
                 embeddingTextAttributeName = this.embeddingTextAttributeName;
@@ -1360,6 +1392,30 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                     textMetadataAttributeName,
                     metadataAttributeNames,
                     this.distanceFunction);
+        }
+
+        private void collectMetadataAttributes(
+                Set<ManagedType<?>> visitedTypes, LinkedHashSet<String> metadataAttributes, String path, Type<?> type) {
+            if (type instanceof ManagedType<?> managedType) {
+                if (visitedTypes.add(managedType)) {
+                    for (SingularAttribute<?, ?> attribute : managedType.getSingularAttributes()) {
+                        if (attribute.getJavaMember() instanceof AnnotatedElement annotatedElement
+                                && annotatedElement.isAnnotationPresent(
+                                        dev.langchain4j.store.embedding.hibernate.Metadata.class)) {
+                            collectMetadataAttributes(
+                                    visitedTypes,
+                                    metadataAttributes,
+                                    path + "." + attribute.getName(),
+                                    attribute.getType());
+                            visitedTypes.remove(managedType);
+                        }
+                    }
+                } else {
+                    // todo: error when metadata annotations can lead to a cycle?
+                }
+            } else {
+                metadataAttributes.add(path);
+            }
         }
 
         public String toString() {

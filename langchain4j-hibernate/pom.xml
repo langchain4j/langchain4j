@@ -14,7 +14,7 @@
 
     <properties>
         <postgresql.version>42.7.7</postgresql.version>
-        <hibernate.version>7.3.0-SNAPSHOT</hibernate.version>
+        <hibernate.version>7.2.5.Final</hibernate.version>
         <!-- TODO: remove enforcer.skipRules -->
         <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
     </properties>
@@ -106,6 +106,19 @@
                 <artifactId>license-maven-plugin</artifactId>
                 <configuration>
                     <skipCompliance>true</skipCompliance>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.hibernate.orm</groupId>
+                            <artifactId>hibernate-processor</artifactId>
+                            <version>${hibernate.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
                 </configuration>
             </plugin>
         </plugins>
