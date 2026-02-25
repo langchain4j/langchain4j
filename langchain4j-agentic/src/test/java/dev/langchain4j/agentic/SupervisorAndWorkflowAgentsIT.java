@@ -2,6 +2,7 @@ package dev.langchain4j.agentic;
 
 import static dev.langchain4j.agentic.Models.baseModel;
 import static dev.langchain4j.agentic.Models.plannerModel;
+import static dev.langchain4j.agentic.observability.HtmlReportGenerator.generateTopology;
 import static dev.langchain4j.agentic.supervisor.SupervisorPlanner.SUPERVISOR_CONTEXT_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -15,6 +16,7 @@ import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;
 import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
 import dev.langchain4j.service.V;
+import java.nio.file.Path;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -113,7 +115,7 @@ public class SupervisorAndWorkflowAgentsIT {
                 .outputKey("story")
                 .build();
 
-        //        generateTopology(styledWriter, Path.of("src", "test", "resources", "supervisor-topology.html"));
+//        generateTopology(styledWriter, Path.of("src", "test", "resources", "supervisor-topology.html"));
 
         ResultWithAgenticScope<String> result =
                 styledWriter.invokeWithAgenticScope("Write a story about dragons and wizards in the style of a comedy");
