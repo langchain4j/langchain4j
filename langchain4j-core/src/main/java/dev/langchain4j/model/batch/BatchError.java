@@ -10,6 +10,6 @@ import org.jspecify.annotations.Nullable;
  * @param code    the error code (e.g., HTTP status code or provider-specific error code)
  * @param message a human-readable description of the error
  * @param details optional additional details about the error, typically containing
- *                provider-specific diagnostic information.qsw l;eswwwwwwwwwwwwwwwwwwwwwwww
+ *                provider-specific diagnostic information.
  */
 public record BatchError(int code, String message, @Nullable List<Map<String, Object>> details) {}
