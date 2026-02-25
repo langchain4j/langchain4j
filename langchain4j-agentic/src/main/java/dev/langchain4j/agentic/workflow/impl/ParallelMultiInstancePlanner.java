@@ -17,11 +17,11 @@ import java.util.List;
 
 public class ParallelMultiInstancePlanner implements Planner, ChatMemoryAccessProvider {
 
-    private final String inputCollection;
+    private final String itemsProvider;
     private AgentExecutor subagent;
 
-    public ParallelMultiInstancePlanner(String inputCollection) {
-        this.inputCollection = inputCollection;
+    public ParallelMultiInstancePlanner(String itemsProvider) {
+        this.itemsProvider = itemsProvider;
     }
 
     @Override
@@ -31,7 +31,7 @@ public class ParallelMultiInstancePlanner implements Planner, ChatMemoryAccessPr
 
     @Override
     public Action firstAction(PlanningContext planningContext) {
-        Object collectionObj = planningContext.agenticScope().readState(inputCollection);
+        Object collectionObj = planningContext.agenticScope().readState(itemsProvider);
         if (collectionObj == null) {
             return done();
         }
@@ -45,7 +45,7 @@ public class ParallelMultiInstancePlanner implements Planner, ChatMemoryAccessPr
             items = java.util.Arrays.asList((Object[]) collectionObj);
         } else {
             throw new IllegalArgumentException(
-                    "The value for inputCollection '" + inputCollection + "' must be a Collection or array, but was: "
+                    "The value for itemsProvider '" + itemsProvider + "' must be a Collection or array, but was: "
                             + collectionObj.getClass().getName());
         }
 
