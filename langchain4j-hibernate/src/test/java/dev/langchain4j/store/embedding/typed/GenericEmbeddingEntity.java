@@ -1,8 +1,8 @@
 package dev.langchain4j.store.embedding.typed;
 
+import dev.langchain4j.store.embedding.hibernate.EmbeddedText;
 import dev.langchain4j.store.embedding.hibernate.Embedding;
-import dev.langchain4j.store.embedding.hibernate.EmbeddingText;
-import dev.langchain4j.store.embedding.hibernate.TextMetadata;
+import dev.langchain4j.store.embedding.hibernate.UnmappedMetadata;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
@@ -17,13 +17,13 @@ public class GenericEmbeddingEntity {
     @GeneratedValue
     private UUID id;
 
-    @EmbeddingText
+    @EmbeddedText
     private String text;
 
     @Embedding
     @Array(length = 384)
     private float[] embedding;
 
-    @TextMetadata
+    @UnmappedMetadata
     private String metadata;
 }

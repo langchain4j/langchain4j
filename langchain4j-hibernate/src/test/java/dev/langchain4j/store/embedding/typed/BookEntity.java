@@ -1,8 +1,8 @@
 package dev.langchain4j.store.embedding.typed;
 
 import dev.langchain4j.store.embedding.hibernate.Embedding;
-import dev.langchain4j.store.embedding.hibernate.Metadata;
-import dev.langchain4j.store.embedding.hibernate.TextMetadata;
+import dev.langchain4j.store.embedding.hibernate.MetadataAttribute;
+import dev.langchain4j.store.embedding.hibernate.UnmappedMetadata;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -21,11 +21,11 @@ public class BookEntity {
     private String title;
     private String content;
 
-    @Metadata
+    @MetadataAttribute
     @Embedded
     private BookDetailsEmbeddable details = new BookDetailsEmbeddable();
 
-    @Metadata
+    @MetadataAttribute
     @ManyToOne(fetch = FetchType.LAZY)
     private AuthorEntity author;
 
@@ -33,7 +33,7 @@ public class BookEntity {
     @Array(length = 384)
     private float[] embedding;
 
-    @TextMetadata
+    @UnmappedMetadata
     private Map<String, Object> metadata;
 
     public Long getId() {

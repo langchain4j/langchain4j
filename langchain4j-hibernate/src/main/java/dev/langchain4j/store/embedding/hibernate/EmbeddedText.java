@@ -16,4 +16,4 @@ import org.hibernate.type.SqlTypes;
 @Target({METHOD, FIELD})
 @Retention(RUNTIME)
 @JdbcTypeCode(SqlTypes.LONG32VARCHAR)
-public @interface EmbeddingText {}
+public @interface EmbeddedText {}

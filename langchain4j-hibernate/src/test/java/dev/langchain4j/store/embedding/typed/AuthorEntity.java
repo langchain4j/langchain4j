@@ -1,6 +1,6 @@
 package dev.langchain4j.store.embedding.typed;
 
-import dev.langchain4j.store.embedding.hibernate.Metadata;
+import dev.langchain4j.store.embedding.hibernate.MetadataAttribute;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
@@ -12,7 +12,7 @@ import java.util.List;
 @Table(name = "authors")
 public class AuthorEntity {
     @Id
-    @Metadata
+    @MetadataAttribute
     @GeneratedValue
     private Long id;
 

@@ -35,7 +35,7 @@ class PgVectorEmbeddingIndexedStoreIT extends EmbeddingStoreWithFilteringIT {
                 .password("test")
                 .table("test" + nextInt(1, 1000))
                 .dimension(embeddingModel.dimension())
-                .useIndex(true)
+                .createIndex(true)
                 .indexType("ivfflat")
                 .indexOptions("lists = 1")
                 .dropTableFirst(true)

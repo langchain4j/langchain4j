@@ -11,13 +11,13 @@ import org.hibernate.type.SqlTypes;
 
 /**
  * Marks the persistent attribute of an {@code @Entity} that represents
- * the generic text metadata e.g. a {@link java.util.Map} or {@link String}
+ * the unmapped metadata e.g. a {@link java.util.Map} or {@link String}
  * mapped as JSON.
- * There may only be a single text metadata attribute, which is the container
- * for all metadata that has no explicit {@code @Metadata} attribute.
- * @see Metadata
+ * There may only be a single unmapped metadata attribute, which is the container
+ * for all metadata that has no explicit {@code @MetadataAttribute} attribute.
+ * @see MetadataAttribute
  */
 @Target({METHOD, FIELD})
 @Retention(RUNTIME)
 @JdbcTypeCode(SqlTypes.JSON)
-public @interface TextMetadata {}
+public @interface UnmappedMetadata {}

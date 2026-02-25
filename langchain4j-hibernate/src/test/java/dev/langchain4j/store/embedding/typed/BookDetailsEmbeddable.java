@@ -1,11 +1,11 @@
 package dev.langchain4j.store.embedding.typed;
 
-import dev.langchain4j.store.embedding.hibernate.Metadata;
+import dev.langchain4j.store.embedding.hibernate.MetadataAttribute;
 import jakarta.persistence.Embeddable;
 
 @Embeddable
 public class BookDetailsEmbeddable {
-    @Metadata
+    @MetadataAttribute
     private String language;
 
     private String abstractText;

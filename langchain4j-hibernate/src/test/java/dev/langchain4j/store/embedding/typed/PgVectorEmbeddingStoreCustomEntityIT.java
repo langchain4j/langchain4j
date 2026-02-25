@@ -150,7 +150,6 @@ class PgVectorEmbeddingStoreCustomEntityIT {
                 .setSchemaExportAction(Action.CREATE_DROP)
                 .setProperty(SchemaToolingSettings.JAKARTA_HBM2DDL_CREATE_SOURCE, SourceType.SCRIPT_THEN_METADATA)
                 .setProperty(SchemaToolingSettings.JAKARTA_HBM2DDL_CREATE_SCRIPT_SOURCE, "/setup.sql")
-                .showSql(true, true, true)
                 .buildSessionFactory();
         sessionFactory.inStatelessTransaction(session -> {
             AuthorEntity a1 = new AuthorEntity();

@@ -13,4 +13,4 @@ import java.lang.annotation.Target;
  */
 @Target({METHOD, FIELD})
 @Retention(RUNTIME)
-public @interface Metadata {}
+public @interface MetadataAttribute {}

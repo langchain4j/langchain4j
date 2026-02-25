@@ -8,13 +8,13 @@ public class EmbeddingEntity {
     @Id
     private UUID id;
 
-    @EmbeddingText
+    @EmbeddedText
     private String text;
 
     @Embedding
     @Array(length = 0) // The length is overridden by the dynamic builder
     private float[] embedding;
 
-    @TextMetadata
+    @UnmappedMetadata
     private String metadata;
 }

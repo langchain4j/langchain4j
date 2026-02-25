@@ -1,10 +1,10 @@
 package dev.langchain4j.store.embedding.typed;
 
+import dev.langchain4j.store.embedding.hibernate.EmbeddedText;
 import dev.langchain4j.store.embedding.hibernate.Embedding;
-import dev.langchain4j.store.embedding.hibernate.EmbeddingText;
 import dev.langchain4j.store.embedding.hibernate.HibernateEmbeddingStore;
-import dev.langchain4j.store.embedding.hibernate.Metadata;
-import dev.langchain4j.store.embedding.hibernate.TextMetadata;
+import dev.langchain4j.store.embedding.hibernate.MetadataAttribute;
+import dev.langchain4j.store.embedding.hibernate.UnmappedMetadata;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -43,104 +43,104 @@ class PgVectorEmbeddingStoreWithColumnsFilteringIT extends PgVectorEmbeddingStor
         @Id
         private UUID id;
 
-        @EmbeddingText
+        @EmbeddedText
         private String text;
 
         @Embedding
         @Array(length = 384)
         private float[] embedding;
 
-        @TextMetadata
+        @UnmappedMetadata
         private Map<String, Object> metadata;
 
-        @Metadata
+        @MetadataAttribute
         private String key;
 
-        @Metadata
+        @MetadataAttribute
         private String name;
 
-        @Metadata
+        @MetadataAttribute
         private Float age;
 
-        @Metadata
+        @MetadataAttribute
         private String city;
 
-        @Metadata
+        @MetadataAttribute
         private String country;
 
-        @Metadata
+        @MetadataAttribute
         private String string_empty;
 
-        @Metadata
+        @MetadataAttribute
         private String string_space;
 
-        @Metadata
+        @MetadataAttribute
         private String string_abc;
 
-        @Metadata
+        @MetadataAttribute
         private UUID uuid;
 
-        @Metadata
+        @MetadataAttribute
         private Integer integer_min;
 
-        @Metadata
+        @MetadataAttribute
         private Integer integer_minus_1;
 
-        @Metadata
+        @MetadataAttribute
         private Integer integer_0;
 
-        @Metadata
+        @MetadataAttribute
         private Integer integer_1;
 
-        @Metadata
+        @MetadataAttribute
         private Integer integer_max;
 
-        @Metadata
+        @MetadataAttribute
         private Long long_min;
 
-        @Metadata
+        @MetadataAttribute
         private Long long_minus_1;
 
-        @Metadata
+        @MetadataAttribute
         private Long long_0;
 
-        @Metadata
+        @MetadataAttribute
         private Long long_1;
 
-        @Metadata
+        @MetadataAttribute
         private Long long_1746714878034235396;
 
-        @Metadata
+        @MetadataAttribute
         private Long long_max;
 
-        @Metadata
+        @MetadataAttribute
         private Float float_min;
 
-        @Metadata
+        @MetadataAttribute
         private Float float_minus_1;
 
-        @Metadata
+        @MetadataAttribute
         private Float float_0;
 
-        @Metadata
+        @MetadataAttribute
         private Float float_1;
 
-        @Metadata
+        @MetadataAttribute
         private Float float_123;
 
-        @Metadata
+        @MetadataAttribute
         private Float float_max;
 
-        @Metadata
+        @MetadataAttribute
         private Double double_minus_1;
 
-        @Metadata
+        @MetadataAttribute
         private Double double_0;
 
-        @Metadata
+        @MetadataAttribute
         private Double double_1;
 
-        @Metadata
+        @MetadataAttribute
         private Double double_123;
     }
 }
