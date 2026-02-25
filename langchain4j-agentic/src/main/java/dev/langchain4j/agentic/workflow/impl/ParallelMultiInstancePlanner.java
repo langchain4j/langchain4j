@@ -5,20 +5,23 @@ import dev.langchain4j.agentic.internal.MultiInstanceAgentInvoker;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
+import dev.langchain4j.agentic.planner.ChatMemoryAccessProvider;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.planner.PlanningContext;
+import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.service.memory.ChatMemoryAccess;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-public class ParallelMultiInstancePlanner implements Planner {
+public class ParallelMultiInstancePlanner implements Planner, ChatMemoryAccessProvider {
 
-    private final String inputKey;
+    private final String inputCollection;
     private AgentExecutor subagent;
 
-    public ParallelMultiInstancePlanner(String inputKey) {
-        this.inputKey = inputKey;
+    public ParallelMultiInstancePlanner(String inputCollection) {
+        this.inputCollection = inputCollection;
     }
 
     @Override
@@ -28,7 +31,7 @@ public class ParallelMultiInstancePlanner implements Planner {
 
     @Override
     public Action firstAction(PlanningContext planningContext) {
-        Object collectionObj = planningContext.agenticScope().readState(inputKey);
+        Object collectionObj = planningContext.agenticScope().readState(inputCollection);
         if (collectionObj == null) {
             return done();
         }
@@ -42,7 +45,7 @@ public class ParallelMultiInstancePlanner implements Planner {
             items = java.util.Arrays.asList((Object[]) collectionObj);
         } else {
             throw new IllegalArgumentException(
-                    "The value for inputKey '" + inputKey + "' must be a Collection or array, but was: "
+                    "The value for inputCollection '" + inputCollection + "' must be a Collection or array, but was: "
                             + collectionObj.getClass().getName());
         }
 
@@ -68,5 +71,10 @@ public class ParallelMultiInstancePlanner implements Planner {
     @Override
     public AgenticSystemTopology topology() {
         return AgenticSystemTopology.PARALLEL;
+    }
+
+    @Override
+    public ChatMemoryAccess chatMemoryAccess(AgenticScope agenticScope) {
+        throw new UnsupportedOperationException("ChatMemory is not supported for ParallelMultiInstanceAgent");
     }
 }

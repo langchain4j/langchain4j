@@ -58,7 +58,9 @@ public class AgentMonitor implements AgentListener {
         execution.afterAgentInvocation(agentResponse);
         if (execution.done()) {
             ongoingExecutions.remove(memoryId);
-            successfulExecutions.computeIfAbsent(memoryId, k -> new ArrayList<>()).add(execution);
+            successfulExecutions
+                    .computeIfAbsent(memoryId, k -> new ArrayList<>())
+                    .add(execution);
         }
     }
 

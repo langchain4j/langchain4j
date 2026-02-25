@@ -7,5 +7,5 @@ public interface ParallelMultiInstanceAgentService<T> extends AgenticService<Par
 
     ParallelMultiInstanceAgentService<T> executor(Executor executor);
 
-    ParallelMultiInstanceAgentService<T> inputKey(String inputKey);
+    ParallelMultiInstanceAgentService<T> inputCollection(String inputCollection);
 }

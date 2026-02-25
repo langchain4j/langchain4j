@@ -69,6 +69,7 @@ import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
+import dev.langchain4j.service.memory.ChatMemoryAccess;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -902,7 +903,7 @@ public class DeclarativeAgentIT {
 
     public interface BatchHoroscopeAgent extends AgentInstance {
 
-        @ParallelMultiInstanceAgent(subAgent = PersonAstrologyAgent.class, inputKey = "persons")
+        @ParallelMultiInstanceAgent(subAgent = PersonAstrologyAgent.class, inputCollection = "persons")
         ResultWithAgenticScope<Object> generateHoroscopes(@V("persons") List<Person> persons);
 
         @ParallelExecutor
@@ -936,5 +937,25 @@ public class DeclarativeAgentIT {
         assertThat(horoscope0).isNotBlank();
         assertThat(horoscope1).isNotBlank();
         assertThat(horoscope2).isNotBlank();
+    }
+
+    public interface BatchHoroscopeAgentWithMemory extends AgentInstance, ChatMemoryAccess {
+
+        @ParallelMultiInstanceAgent(subAgent = PersonAstrologyAgent.class, inputCollection = "persons")
+        ResultWithAgenticScope<Object> generateHoroscopes(@V("persons") List<Person> persons);
+
+        @ParallelExecutor
+        static Executor executor() {
+            return Executors.newFixedThreadPool(3);
+        }
+    }
+
+    @Test
+    void parallel_multi_instance_agent_should_throw_on_chat_memory_access() {
+        BatchHoroscopeAgentWithMemory agent =
+                AgenticServices.createAgenticSystem(BatchHoroscopeAgentWithMemory.class, baseModel());
+
+        assertThat(assertThrows(UnsupportedOperationException.class, () -> agent.getChatMemory("test")))
+                .hasMessageContaining("ChatMemory is not supported for ParallelMultiInstanceAgent");
     }
 }

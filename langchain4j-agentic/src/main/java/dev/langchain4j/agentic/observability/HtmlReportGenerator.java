@@ -142,7 +142,9 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
             String id = "ah-" + Math.abs(kc.getKey().hashCode());
             html.append("<marker id=\"").append(id).append("\" viewBox=\"0 0 10 10\" refX=\"10\" refY=\"5\"");
             html.append(" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto\">");
-            html.append("<path d=\"M0 0 L10 5 L0 10 z\" fill=\"").append(kc.getValue()).append("\"/>");
+            html.append("<path d=\"M0 0 L10 5 L0 10 z\" fill=\"")
+                    .append(kc.getValue())
+                    .append("\"/>");
             html.append("</marker>");
         }
         html.append("</defs></svg>\n");
@@ -159,7 +161,9 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         html.append("<span class=\"df-legend-title\">Data Flow</span>");
         for (Map.Entry<String, String> e : keyColors.entrySet()) {
             html.append("<div class=\"legend-item\">");
-            html.append("<div class=\"legend-dot\" style=\"background:").append(e.getValue()).append("\"></div>");
+            html.append("<div class=\"legend-dot\" style=\"background:")
+                    .append(e.getValue())
+                    .append("\"></div>");
             html.append("<span>").append(esc(e.getKey())).append("</span>");
             html.append("</div>\n");
         }
@@ -174,7 +178,9 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         html.append("<div class=\"legend\">\n");
         for (AgenticSystemTopology t : present) {
             html.append("<div class=\"legend-item\">");
-            html.append("<div class=\"legend-dot\" style=\"background:").append(color(t)).append("\"></div>");
+            html.append("<div class=\"legend-dot\" style=\"background:")
+                    .append(color(t))
+                    .append("\"></div>");
             html.append("<span>").append(label(t)).append("</span>");
             html.append("</div>\n");
         }
@@ -190,12 +196,14 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         }
     }
 
-    private void appendTopologyNode(StringBuilder html, AgentInstance agent, String condition,
-                                    Map<String, String> keyColors) {
+    private void appendTopologyNode(
+            StringBuilder html, AgentInstance agent, String condition, Map<String, String> keyColors) {
         html.append("<li>\n");
 
         if (condition != null && !condition.isEmpty()) {
-            html.append("<div class=\"condition-label\">when: ").append(esc(condition)).append("</div>\n");
+            html.append("<div class=\"condition-label\">when: ")
+                    .append(esc(condition))
+                    .append("</div>\n");
         }
 
         String css = cssCls(agent.topology());
@@ -205,12 +213,15 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         html.append(" data-agent-id=\"").append(esc(agent.agentId())).append("\"");
         if (agent.outputKey() != null && !agent.outputKey().isEmpty()) {
             html.append(" data-output-key=\"").append(esc(agent.outputKey())).append("\"");
-            html.append(" data-output-color=\"").append(keyColors.getOrDefault(agent.outputKey(), "#999")).append("\"");
+            html.append(" data-output-color=\"")
+                    .append(keyColors.getOrDefault(agent.outputKey(), "#999"))
+                    .append("\"");
         }
         if (agent.arguments() != null && !agent.arguments().isEmpty()) {
             String inputKeys = agent.arguments().stream()
                     .map(AgentArgument::name)
-                    .reduce((a, b) -> a + "," + b).orElse("");
+                    .reduce((a, b) -> a + "," + b)
+                    .orElse("");
             html.append(" data-input-keys=\"").append(esc(inputKeys)).append("\"");
         }
         html.append(">\n");
@@ -273,14 +284,18 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         if (hasInputs) {
             for (AgentArgument arg : agent.arguments()) {
                 String c = keyColors.getOrDefault(arg.name(), "#999");
-                html.append("<span class=\"key-pill key-in\" style=\"--kc:").append(c).append("\">");
+                html.append("<span class=\"key-pill key-in\" style=\"--kc:")
+                        .append(c)
+                        .append("\">");
                 html.append("&#8592; ").append(esc(arg.name()));
                 html.append("</span>");
             }
         }
         if (hasOutput) {
             String c = keyColors.getOrDefault(agent.outputKey(), "#999");
-            html.append("<span class=\"key-pill key-out\" style=\"--kc:").append(c).append("\">");
+            html.append("<span class=\"key-pill key-out\" style=\"--kc:")
+                    .append(c)
+                    .append("\">");
             html.append("&#8594; ").append(esc(agent.outputKey()));
             html.append("</span>");
         }
@@ -293,11 +308,17 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         }
         LoopAgentInstance loop = agent.as(LoopAgentInstance.class);
         html.append("<div class=\"loop-info\">");
-        html.append("<span class=\"loop-tag\">max ").append(loop.maxIterations()).append("</span>");
+        html.append("<span class=\"loop-tag\">max ")
+                .append(loop.maxIterations())
+                .append("</span>");
         if (loop.exitCondition() != null && !loop.exitCondition().isEmpty()) {
-            html.append("<span class=\"loop-tag\">exit: ").append(esc(truncate(loop.exitCondition(), 40))).append("</span>");
+            html.append("<span class=\"loop-tag\">exit: ")
+                    .append(esc(truncate(loop.exitCondition(), 40)))
+                    .append("</span>");
         }
-        html.append("<span class=\"loop-tag\">").append(loop.testExitAtLoopEnd() ? "test at end" : "test at start").append("</span>");
+        html.append("<span class=\"loop-tag\">")
+                .append(loop.testExitAtLoopEnd() ? "test at end" : "test at start")
+                .append("</span>");
         html.append("</div>\n");
     }
 
@@ -323,9 +344,7 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
     private void appendExecutionsSection(StringBuilder html) {
         Set<Object> memoryIds;
         if (memoryId != null) {
-            memoryIds = monitor.allMemoryIds().contains(memoryId)
-                    ? Set.of(memoryId)
-                    : Set.of();
+            memoryIds = monitor.allMemoryIds().contains(memoryId) ? Set.of(memoryId) : Set.of();
         } else {
             memoryIds = monitor.allMemoryIds();
         }
@@ -364,11 +383,19 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         if (collapsed) html.append(" collapsed");
         html.append("\" onclick=\"toggle('").append(gid).append("')\">\n");
         html.append("  <span class=\"chevron\">&#9660;</span>");
-        html.append("  <span class=\"execution-memory-id\">Session: ").append(esc(String.valueOf(memoryId))).append("</span>");
+        html.append("  <span class=\"execution-memory-id\">Session: ")
+                .append(esc(String.valueOf(memoryId)))
+                .append("</span>");
         html.append("  <div class=\"execution-meta\">");
         html.append("    <span class=\"section-count\">").append(all.size()).append(" run(s)</span>");
-        if (successCount > 0) html.append("<span class=\"status-badge st-ok\">").append(successCount).append(" success</span>");
-        if (failCount > 0) html.append("<span class=\"status-badge st-fail\">").append(failCount).append(" failed</span>");
+        if (successCount > 0)
+            html.append("<span class=\"status-badge st-ok\">")
+                    .append(successCount)
+                    .append(" success</span>");
+        if (failCount > 0)
+            html.append("<span class=\"status-badge st-fail\">")
+                    .append(failCount)
+                    .append(" failed</span>");
         if (runCount > 0) html.append("<span class=\"status-badge st-run\">in progress</span>");
         html.append("  </div>\n");
         html.append("</div>\n");
@@ -401,9 +428,13 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         // Summary line
         html.append("<div class=\"exec-summary\">");
         html.append("<span class=\"status-dot st-dot-").append(status).append("\"></span>");
-        html.append("<span class=\"exec-agent\">").append(esc(top.agent().name())).append("</span>");
+        html.append("<span class=\"exec-agent\">")
+                .append(esc(top.agent().name()))
+                .append("</span>");
         if (top.done()) {
-            html.append("<span class=\"dur-badge\">").append(fmtDur(top.duration())).append("</span>");
+            html.append("<span class=\"dur-badge\">")
+                    .append(fmtDur(top.duration()))
+                    .append("</span>");
             html.append("<span class=\"exec-time\">").append(top.startTime().format(TIME_FMT));
             html.append(" &#8594; ").append(top.finishTime().format(TIME_FMT)).append("</span>");
         } else {
@@ -414,8 +445,12 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         // Error
         if (exec.hasError()) {
             html.append("<div class=\"error-box\">");
-            html.append("<strong>Error in ").append(esc(exec.error().agentName())).append(":</strong> ");
-            html.append("<code>").append(esc(String.valueOf(exec.error().error().getMessage()))).append("</code>");
+            html.append("<strong>Error in ")
+                    .append(esc(exec.error().agentName()))
+                    .append(":</strong> ");
+            html.append("<code>")
+                    .append(esc(String.valueOf(exec.error().error().getMessage())))
+                    .append("</code>");
             html.append("</div>\n");
         }
 
@@ -427,7 +462,8 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
                     : Math.max(1, Duration.between(base, LocalDateTime.now()).toMillis());
 
             html.append("<table class=\"wf-table\">\n");
-            html.append("<thead><tr><th>Agent</th><th>Duration</th><th class=\"wf-timeline-col\">Timeline</th><th>Input</th><th>Output</th></tr></thead>\n");
+            html.append(
+                    "<thead><tr><th>Agent</th><th>Duration</th><th class=\"wf-timeline-col\">Timeline</th><th>Input</th><th>Output</th></tr></thead>\n");
             html.append("<tbody>\n");
             appendWfRow(html, top, 0, base, totalMs);
             html.append("</tbody></table>\n");
@@ -436,8 +472,7 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         html.append("</div>\n");
     }
 
-    private void appendWfRow(StringBuilder html, AgentInvocation inv, int depth,
-                             LocalDateTime base, long totalMs) {
+    private void appendWfRow(StringBuilder html, AgentInvocation inv, int depth, LocalDateTime base, long totalMs) {
         AgentInstance ag = inv.agent();
         String css = cssCls(ag.topology());
 
@@ -454,10 +489,16 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         html.append("<td><div class=\"wf-agent\">");
         for (int i = 0; i < depth; i++) html.append("<span class=\"wf-indent\"></span>");
         if (depth > 0) html.append("<span class=\"wf-connector\">&#x2514;</span>");
-        html.append("<span class=\"topology-badge sm ").append(css).append("\">").append(label(ag.topology())).append("</span>");
+        html.append("<span class=\"topology-badge sm ")
+                .append(css)
+                .append("\">")
+                .append(label(ag.topology()))
+                .append("</span>");
         html.append(" ").append(esc(ag.name()));
         if (inv.iterationIndex() >= 0) {
-            html.append(" <span class=\"iter-tag\">iter ").append(inv.iterationIndex()).append("</span>");
+            html.append(" <span class=\"iter-tag\">iter ")
+                    .append(inv.iterationIndex())
+                    .append("</span>");
         }
         html.append("</div></td>");
 
@@ -468,10 +509,18 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
 
         // Timeline bar column
         html.append("<td><div class=\"wf-bar-track\">");
-        html.append("<div class=\"wf-bar bar-").append(css).append("\" style=\"left:")
-                .append(fmt(leftPct)).append("%;width:").append(fmt(widthPct)).append("%;\"");
-        html.append(" title=\"").append(esc(ag.name())).append(": ")
-                .append(inv.done() ? fmtDur(inv.duration()) : "running").append("\">");
+        html.append("<div class=\"wf-bar bar-")
+                .append(css)
+                .append("\" style=\"left:")
+                .append(fmt(leftPct))
+                .append("%;width:")
+                .append(fmt(widthPct))
+                .append("%;\"");
+        html.append(" title=\"")
+                .append(esc(ag.name()))
+                .append(": ")
+                .append(inv.done() ? fmtDur(inv.duration()) : "running")
+                .append("\">");
         html.append("</div></div></td>");
 
         // Input column
@@ -521,7 +570,8 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
     // -----------------------------------------------------------------------
 
     private void appendScript(StringBuilder html) {
-        html.append("""
+        html.append(
+                """
                 <script>
                 function toggle(id) {
                     var body = document.getElementById(id);
@@ -636,8 +686,11 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
 
     private static String esc(String s) {
         if (s == null) return "";
-        return s.replace("&", "&amp;").replace("<", "&lt;")
-                .replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&#39;");
+        return s.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
     }
 
     private static String truncate(String s, int max) {
@@ -723,8 +776,8 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
     // -----------------------------------------------------------------------
 
     private static final String[] KEY_PALETTE = {
-            "#e63946", "#457b9d", "#2a9d8f", "#e9c46a", "#7b2d8e",
-            "#f4a261", "#264653", "#d62828", "#6a994e", "#bc6c25"
+        "#e63946", "#457b9d", "#2a9d8f", "#e9c46a", "#7b2d8e",
+        "#f4a261", "#264653", "#d62828", "#6a994e", "#bc6c25"
     };
 
     private Map<String, String> collectStateKeyColors(AgentInstance root) {
@@ -784,7 +837,8 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
     // CSS (embedded)
     // -----------------------------------------------------------------------
 
-    private static final String CSS = """
+    private static final String CSS =
+            """
             :root {
                 --green: #2e8555;
                 --green-dk: #205d3b;
