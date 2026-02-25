@@ -363,6 +363,60 @@ List<EveningPlan> plans = eveningPlannerAgent.plan("romantic");
 
 Here the `output` function of the `AgenticScope` defined in the `EveningPlannerAgent` allows to assemble the outputs of the two subagents, creating a list of `EveningPlan` objects that combine a movie and a meal matching the given mood. The `output` method, even if especially relevant for parallel workflows, can be actually used in any workflow pattern to define how to combine the outputs of the subagents into a single result, instead of simply returning a value from the `AgenticScope`. The `executor` method also allows to optionally provide an `Executor` that will be used to execute the subagents in parallel, otherwise an internal cached thread pool will be used by default.
 
+### Parallel multi-instance workflow
+
+The parallel multi-instance workflow is a variation of the parallel workflow where the same sub-agent is executed multiple times in parallel, once for each item in a collection. This is useful when you need to apply the same operation to a batch of inputs concurrently.
+
+For example, let's create an agent that generates personalized horoscopes for a list of people:
+
+```java
+public interface PersonAstrologyAgent {
+
+    @SystemMessage("""
+        You are an astrologist that generates horoscopes based on the user's name and zodiac sign.
+        """)
+    @UserMessage("""
+        Generate the horoscope for {{person}}.
+        The person has a name and a zodiac sign. Use both to create a personalized horoscope.
+        """)
+    @Agent(description = "An astrologist that generates horoscopes for a person", outputKey = "horoscope")
+    String horoscope(@V("person") Person person);
+}
+```
+
+Using `AgenticServices.parallelMultiInstanceBuilder()`, you can create a workflow that fans out this agent over a collection, automatically creating one instance per item:
+
+```java
+PersonAstrologyAgent personAstrologyAgent = AgenticServices
+        .agentBuilder(PersonAstrologyAgent.class)
+        .chatModel(BASE_MODEL)
+        .outputKey("horoscope")
+        .build();
+
+BatchHoroscopeAgent agent = AgenticServices
+        .parallelMultiInstanceBuilder(BatchHoroscopeAgent.class)
+        .subAgents(personAstrologyAgent)
+        .itemsProvider("persons")
+        .executor(Executors.newFixedThreadPool(3))
+        .build();
+
+List<Person> persons = List.of(
+        new Person("Mario", "aries"),
+        new Person("Luigi", "pisces"),
+        new Person("Peach", "leo"));
+
+ResultWithAgenticScope<Object> result = agent.generateHoroscopes(persons);
+AgenticScope scope = result.agenticScope();
+
+String horoscope0 = (String) scope.readState("horoscope_0");
+String horoscope1 = (String) scope.readState("horoscope_1");
+String horoscope2 = (String) scope.readState("horoscope_2");
+```
+
+The `itemsProvider` specifies which argument contains the collection to iterate over. Each instance of the sub-agent receives one item from the collection and writes its output to a suffixed key (e.g., `horoscope_0`, `horoscope_1`, `horoscope_2`), derived from the sub-agent's `outputKey`. As with the parallel workflow, an `Executor` can be optionally provided.
+
+Note that `ChatMemory` is not supported for `ParallelMultiInstanceAgent` since each instance is stateless and independent.
+
 ### Conditional workflow
 
 Another frequent need is to invoke a certain agent only if a specific condition is satisfied. For example, it could be useful to categorize a user request before processing it, so that the processing can be done by different agents depending on the category of the request. This can be achieved by using the following `CategoryRouter`
