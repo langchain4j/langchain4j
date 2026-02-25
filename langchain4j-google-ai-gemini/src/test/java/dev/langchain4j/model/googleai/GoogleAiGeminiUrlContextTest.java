@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.googleai.GeminiGenerateContentRequest.GeminiTool;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate.GeminiFinishReason;
@@ -133,7 +134,8 @@ class GoogleAiGeminiUrlContextTest {
                                     .build()),
                             "model"),
                     GeminiFinishReason.STOP,
-                    urlContextMetadata);
+                    urlContextMetadata,
+                    null);
 
             var usageMetadata = new GeminiGenerateContentResponse.GeminiUsageMetadata(0, 0, 0);
             var response = new GeminiGenerateContentResponse("id", "model", List.of(candidate), usageMetadata, null);
@@ -141,11 +143,22 @@ class GoogleAiGeminiUrlContextTest {
             when(mockGeminiService.generateContent(any(), any())).thenReturn(response);
 
             // When
-            var chatResponse = model.chat("query");
+            var chatRequest =
+                    ChatRequest.builder().messages(UserMessage.from("query")).build();
+            ChatResponse chatResponse = model.chat(chatRequest);
 
             // Then
             assertThat(chatResponse).isNotNull();
-            assertThat(chatResponse).isEqualTo("Context found");
+            assertThat(chatResponse.aiMessage().text()).isEqualTo("Context found");
+
+            assertThat(chatResponse.metadata()).isInstanceOf(GoogleAiGeminiChatResponseMetadata.class);
+            GoogleAiGeminiChatResponseMetadata metadata = (GoogleAiGeminiChatResponseMetadata) chatResponse.metadata();
+            assertThat(metadata.urlContextMetadata()).isNotNull();
+            assertThat(metadata.urlContextMetadata().urlMetadata()).hasSize(1);
+            assertThat(metadata.urlContextMetadata().urlMetadata().get(0).retrievedUrl())
+                    .isEqualTo("https://example.com/context");
+            assertThat(metadata.urlContextMetadata().urlMetadata().get(0).urlRetrievalStatus())
+                    .isEqualTo("URL_RETRIEVAL_STATUS_SUCCESS");
         }
     }
 
@@ -154,6 +167,7 @@ class GoogleAiGeminiUrlContextTest {
                 new GeminiContent(
                         List.of(GeminiContent.GeminiPart.builder().text(text).build()), "model"),
                 GeminiFinishReason.STOP,
+                null,
                 null);
         var usageMetadata = new GeminiGenerateContentResponse.GeminiUsageMetadata(0, 0, 0);
         return new GeminiGenerateContentResponse("id", "model", List.of(candidate), usageMetadata, null);

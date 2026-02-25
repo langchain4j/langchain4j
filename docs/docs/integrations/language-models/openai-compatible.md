@@ -22,6 +22,29 @@ Many services and tools expose OpenAI-compatible APIs. The general approach to u
             .logResponses(true)
             .build();
     ```
+
+### Configuration for Specific OpenAI-Compatible APIs
+
+Some OpenAI-compatible APIs may have different behaviors in streaming responses, particularly for tool calling. LangChain4j provides configuration options to handle these differences:
+
+#### `accumulateToolCallId` (for `OpenAiStreamingChatModel`)
+
+Controls how tool call IDs are handled in streaming responses. Default is `true`.
+
+- **Enabled (`true`)**: Tool call IDs are accumulated across streaming chunks (standard OpenAI behavior)
+    - Example: Chunk 1 sends "abc", Chunk 2 sends "def" → Final ID: "abcdef"
+- **Disabled (`false`)**: Each chunk's tool call ID replaces the previous one
+    - Example: Chunk 1 sends "abc", Chunk 2 sends "abc" → Final ID: "abc"
+    - Use this for APIs like DeepSeek or Qwen that send the complete tool call ID in every chunk
+
+```java
+StreamingChatModel model = OpenAiStreamingChatModel.builder()
+        .baseUrl("https://api.deepseek.com/v1") // or other provider
+        .apiKey("YOUR_API_KEY")
+        .modelName("deepseek-chat")
+        .accumulateToolCallId(false) // Set to false for DeepSeek, Qwen, etc.
+        .build();
+```
 Below we provide specific examples for popular OpenAI-compatible APIs, including Groq, Docker Model Runner, GPT4All, Ollama, and LM Studio.
 
 ### Contents:
@@ -43,7 +66,7 @@ First, make sure you have the OpenAI module in your `pom.xml` or Gradle build fi
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.10.0</version>
+    <version>1.11.0</version>
 </dependency>
 ```
 
@@ -52,7 +75,7 @@ First, make sure you have the OpenAI module in your `pom.xml` or Gradle build fi
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>1.10.0-beta18</version>
+    <version>1.11.0-beta19</version>
 </dependency>
 ```
 
@@ -159,7 +182,7 @@ ChatModel model = OpenAiChatModel.builder()
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-http-client-jdk</artifactId>
-    <version>1.10.0</version>
+    <version>1.11.0</version>
 </dependency>
 ```
 6. Configure LangChain4j and specify the `httpClientBuilder`

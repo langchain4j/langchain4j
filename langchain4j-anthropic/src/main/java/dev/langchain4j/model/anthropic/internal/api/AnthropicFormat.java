@@ -1,25 +1,25 @@
 package dev.langchain4j.model.anthropic.internal.api;
 
-import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
-import static dev.langchain4j.model.anthropic.internal.api.AnthropicOutputFormatType.JSON_SCHEMA;
-import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSchema;
-
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
+
 import java.util.Map;
 import java.util.Objects;
 
-@JsonDeserialize(builder = AnthropicOutputFormat.Builder.class)
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+import static dev.langchain4j.model.anthropic.internal.api.AnthropicOutputFormatType.JSON_SCHEMA;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSchema;
+
+@JsonDeserialize(builder = AnthropicFormat.Builder.class)
 @JsonInclude(NON_NULL)
 @JsonNaming(SnakeCaseStrategy.class)
-public class AnthropicOutputFormat {
+public class AnthropicFormat {
 
     @JsonProperty
     private final AnthropicOutputFormatType type;
@@ -27,7 +27,7 @@ public class AnthropicOutputFormat {
     @JsonProperty
     private final Map<String, Object> schema;
 
-    private AnthropicOutputFormat(Builder builder) {
+    private AnthropicFormat(Builder builder) {
         this.type = builder.type;
         this.schema = builder.schema;
     }
@@ -40,8 +40,8 @@ public class AnthropicOutputFormat {
         return schema;
     }
 
-    public static AnthropicOutputFormat fromJsonSchema(JsonSchema schema) {
-        return AnthropicOutputFormat.builder()
+    public static AnthropicFormat fromJsonSchema(JsonSchema schema) {
+        return AnthropicFormat.builder()
                 .type(JSON_SCHEMA)
                 .schema(toAnthropicSchema(schema.rootElement()))
                 .build();
@@ -53,7 +53,7 @@ public class AnthropicOutputFormat {
 
     @Override
     public String toString() {
-        return "AnthropicOutputFormat[" + "type" + type + ", jsonSchema" + schema + "]";
+        return "AnthropicFormat[" + "type" + type + ", jsonSchema" + schema + "]";
     }
 
     @Override
@@ -63,16 +63,16 @@ public class AnthropicOutputFormat {
 
     @Override
     public boolean equals(Object other) {
-        return other instanceof AnthropicOutputFormat responseFormat && equalsTo(responseFormat);
+        return other instanceof AnthropicFormat responseFormat && equalsTo(responseFormat);
     }
 
-    public boolean equalsTo(AnthropicOutputFormat other) {
+    public boolean equalsTo(AnthropicFormat other) {
         return Objects.equals(type, other.type) && Objects.equals(schema, other.schema);
     }
 
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
-    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    @JsonNaming(SnakeCaseStrategy.class)
     public static class Builder {
         private AnthropicOutputFormatType type;
         private Map<String, Object> schema;
@@ -87,8 +87,8 @@ public class AnthropicOutputFormat {
             return this;
         }
 
-        public AnthropicOutputFormat build() {
-            return new AnthropicOutputFormat(this);
+        public AnthropicFormat build() {
+            return new AnthropicFormat(this);
         }
     }
 }

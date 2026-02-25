@@ -86,7 +86,7 @@ class GoogleAiGeminiImageModelTest {
         @Test
         void shouldThrowExceptionWhenNoContentInCandidate() {
             // Given
-            var candidate = new GeminiCandidate(null, GeminiFinishReason.STOP, null);
+            var candidate = new GeminiCandidate(null, GeminiFinishReason.STOP, null, null);
             var responseWithNullContent =
                     new GeminiGenerateContentResponse("response-id", "gemini-pro-v1", List.of(candidate), null, null);
             when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
@@ -115,6 +115,7 @@ class GoogleAiGeminiImageModelTest {
                                     .build()),
                             "model"),
                     GeminiFinishReason.STOP,
+                    null,
                     null);
             var textOnlyResponse = new GeminiGenerateContentResponse(
                     "response-id", "gemini-pro-v1", List.of(textOnlyCandidate), null, null);
@@ -321,6 +322,7 @@ class GoogleAiGeminiImageModelTest {
                     .modelName(TEST_MODEL_NAME)
                     .aspectRatio("16:9")
                     .imageSize("2K")
+                    .useGoogleSearchGrounding(true)
                     .build();
 
             setGeminiService(subject, mockGeminiService);
@@ -338,6 +340,7 @@ class GoogleAiGeminiImageModelTest {
             assertThat(request.generationConfig().imageConfig()).isNotNull();
             assertThat(request.generationConfig().imageConfig().aspectRatio()).isEqualTo("16:9");
             assertThat(request.generationConfig().imageConfig().imageSize()).isEqualTo("2K");
+            assertThat(request.tools().googleSearch()).isNotNull();
         }
 
         @Test
@@ -471,6 +474,7 @@ class GoogleAiGeminiImageModelTest {
                                 .build()),
                         "model"),
                 GeminiFinishReason.STOP,
+                null,
                 null);
 
         return new GeminiGenerateContentResponse("response-id-123", "gemini-pro", List.of(candidate), null, null);

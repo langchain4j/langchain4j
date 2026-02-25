@@ -196,11 +196,91 @@ class GoogleAiGeminiGoogleMapsTest {
                                     .build()),
                             "model"),
                     GeminiFinishReason.STOP,
+                    null,
                     null);
 
             var usageMetadata = new GeminiGenerateContentResponse.GeminiUsageMetadata(10, 10, 20);
             var response = new GeminiGenerateContentResponse(
                     "id", "model", List.of(candidate), usageMetadata, groundingMetadata);
+
+            when(mockGeminiService.generateContent(any(), any())).thenReturn(response);
+
+            // When
+            var chatRequest = ChatRequest.builder()
+                    .messages(UserMessage.from("Find me a coffee shop"))
+                    .build();
+            var chatResponse = model.chat(chatRequest);
+
+            // Then
+            assertThat(chatResponse).isNotNull();
+            assertThat(chatResponse.aiMessage().text()).isEqualTo("Found a nice coffee shop.");
+
+            assertThat(chatResponse.metadata()).isInstanceOf(GoogleAiGeminiChatResponseMetadata.class);
+            GoogleAiGeminiChatResponseMetadata metadata = (GoogleAiGeminiChatResponseMetadata) chatResponse.metadata();
+            assertThat(metadata.groundingMetadata()).isNotNull();
+            assertThat(metadata.groundingMetadata().groundingChunks()).hasSize(1);
+            assertThat(metadata.groundingMetadata()
+                            .groundingChunks()
+                            .get(0)
+                            .maps()
+                            .placeId())
+                    .isEqualTo("PLACE_ID_123");
+        }
+
+        @Test
+        void shouldHandleResponseWithCandidateGroundingMetadata() {
+            // Given
+            var model = GoogleAiGeminiChatModel.builder()
+                    .apiKey("test-key")
+                    .modelName(TEST_MODEL_NAME)
+                    .allowGoogleMaps(true)
+                    .build(mockGeminiService);
+
+            // Create GroundingMetadata with all fields populated
+            var maps = new GroundingMetadata.GroundingChunk.Maps(
+                    "https://maps.google.com/...",
+                    "Coffee Shop",
+                    "A great place for coffee",
+                    "PLACE_ID_123",
+                    new GroundingMetadata.GroundingChunk.Maps.PlaceAnswerSources(
+                            List.of(new GroundingMetadata.GroundingChunk.Maps.ReviewSnippet(
+                                    "REVIEW_ID_1", "https://maps.google.com/reviews/1", "Great coffee"))));
+
+            var groundingChunk = new GroundingMetadata.GroundingChunk(
+                    new GroundingMetadata.GroundingChunk.Web("https://example.com", "Example Site"),
+                    new GroundingMetadata.GroundingChunk.RetrievedContext(
+                            "https://context.com", "Context Title", "Context Text"),
+                    maps);
+
+            var segment = new GroundingMetadata.Segment(0, 0, 10, "Coffee Shop");
+            var groundingSupport = new GroundingMetadata.GroundingSupport(List.of(0), List.of(0.95), segment);
+
+            var searchEntryPoint = new GroundingMetadata.SearchEntryPoint("Rendered Content", "SDK Blob");
+            var retrievalMetadata = new GroundingMetadata.RetrievalMetadata(0.85);
+
+            var groundingMetadata = GroundingMetadata.builder()
+                    .groundingChunks(List.of(groundingChunk))
+                    .groundingSupports(List.of(groundingSupport))
+                    .webSearchQueries(List.of("best coffee shops"))
+                    .searchEntryPoint(searchEntryPoint)
+                    .retrievalMetadata(retrievalMetadata)
+                    .googleMapsWidgetContextToken("WIDGET_TOKEN_XYZ")
+                    .build();
+
+            var candidate = new GeminiCandidate(
+                    new GeminiContent(
+                            List.of(GeminiContent.GeminiPart.builder()
+                                    .text("Found a nice coffee shop.")
+                                    .build()),
+                            "model"),
+                    GeminiCandidate.GeminiFinishReason.STOP,
+                    null,
+                    groundingMetadata); // Grounding metadata on candidate
+
+            var usageMetadata = new GeminiGenerateContentResponse.GeminiUsageMetadata(10, 10, 20);
+            var response = new GeminiGenerateContentResponse(
+                    "id", "model", List.of(candidate), usageMetadata, null); // Grounding metadata
+            // null on response
 
             when(mockGeminiService.generateContent(any(), any())).thenReturn(response);
 
@@ -232,6 +312,7 @@ class GoogleAiGeminiGoogleMapsTest {
                 new GeminiContent(
                         List.of(GeminiContent.GeminiPart.builder().text(text).build()), "model"),
                 GeminiFinishReason.STOP,
+                null,
                 null);
         var usageMetadata = new GeminiGenerateContentResponse.GeminiUsageMetadata(0, 0, 0);
         return new GeminiGenerateContentResponse("id", "model", List.of(candidate), usageMetadata, null);

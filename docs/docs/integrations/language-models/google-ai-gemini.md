@@ -38,7 +38,7 @@ https://ai.google.dev/gemini-api/docs
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-google-ai-gemini</artifactId>
-    <version>1.10.0</version>
+    <version>1.11.0</version>
 </dependency>
 ```
 
@@ -119,6 +119,8 @@ ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .responseLogprobs(...)
     .logprobs(...)
     .enableEnhancedCivicAnswers(...)
+    .mediaResolution(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_HIGH)
+    .mediaResolutionPerPartEnabled(true)
     .listeners(...)
     .supportedCapabilities(...)
     .build();
@@ -579,6 +581,50 @@ if (GeneratedImageHelper.hasGeneratedImages(aiMessage)) {
     System.out.println("Text response: " + aiMessage.text());
 }
 ```
+
+### Media Resolution
+
+You can control the resolution of media (images, videos, PDFs) sent to the model. This can be done globally or per-part (per image).
+
+#### Global Media Resolution
+
+To set the media resolution for all media parts in a request, use the `.mediaResolution()` builder method:
+
+```java
+ChatModel gemini = GoogleAiGeminiChatModel.builder()
+    .apiKey(System.getenv("GEMINI_AI_KEY"))
+    .modelName("gemini-2.5-flash")
+    .mediaResolution(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_LOW) // or MEDIUM, HIGH, ULTRA_HIGH, UNSPECIFIED
+    .build();
+```
+
+#### Per-Part Media Resolution (Gemini 3)
+
+With Gemini 3, you can specify the resolution for individual images using the `DetailLevel` in `ImageContent`.
+First, enable this feature in the builder, then set the detail level on `ImageContent`:
+
+```java
+ChatModel gemini = GoogleAiGeminiChatModel.builder()
+    .apiKey(System.getenv("GEMINI_AI_KEY"))
+    .modelName("gemini-3-pro-preview")
+    .mediaResolutionPerPartEnabled(true)
+    .build();
+
+ChatResponse response = gemini.chat(
+    UserMessage.from(
+        ImageContent.from(url1, ImageContent.DetailLevel.LOW),
+        ImageContent.from(url2, ImageContent.DetailLevel.HIGH),
+        TextContent.from("Compare these two images")
+    )
+);
+```
+
+Supported `DetailLevel` values and their mapping to Gemini's resolution levels:
+- `LOW` -> `MEDIA_RESOLUTION_LOW`
+- `MEDIUM` -> `MEDIA_RESOLUTION_MEDIUM`
+- `HIGH` -> `MEDIA_RESOLUTION_HIGH`
+- `ULTRA_HIGH` -> `MEDIA_RESOLUTION_ULTRA_HIGH` (Highest token count, required for specific use cases such as computer use)
+- `AUTO` -> `MEDIA_RESOLUTION_UNSPECIFIED`
 
 ## Thinking
 

@@ -24,6 +24,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+import static dev.langchain4j.agent.tool.SearchBehavior.SEARCHABLE;
+import static dev.langchain4j.agent.tool.ToolSpecification.METADATA_SEARCH_BEHAVIOR;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static java.util.Arrays.stream;
+import static java.util.stream.Collectors.toList;
+
 /**
  * Utility methods for {@link ToolSpecification}s.
  */
@@ -120,7 +126,11 @@ public class ToolSpecifications {
     }
 
     private static Map<String, Object> getMetadata(Tool annotation) {
-        return Json.fromJson(annotation.metadata(), MAP_TYPE);
+        Map<String, Object> metadata = Json.fromJson(annotation.metadata(), MAP_TYPE);
+        if (annotation.searchBehavior() != SEARCHABLE) {
+            metadata.put(METADATA_SEARCH_BEHAVIOR, annotation.searchBehavior());
+        }
+        return metadata;
     }
 
     private static JsonObjectSchema parametersFrom(Parameter[] parameters) {

@@ -1,6 +1,5 @@
 package dev.langchain4j.model.anthropic.common;
 
-import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_HAIKU_4_5_20251001;
 
 import java.util.List;
@@ -22,7 +21,7 @@ class AnthropicChatModelIT extends AbstractChatModelIT {
 
     static final ChatModel ANTHROPIC_CHAT_MODEL = AnthropicChatModel.builder()
             .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-            .modelName(CLAUDE_3_5_HAIKU_20241022)
+            .modelName(CLAUDE_HAIKU_4_5_20251001)
             .temperature(0.0)
             .logRequests(false) // images are huge in logs
             .logResponses(true)
@@ -50,7 +49,7 @@ class AnthropicChatModelIT extends AbstractChatModelIT {
                 .logRequests(true)
                 .logResponses(true);
         if (parameters.modelName() == null) {
-            anthropicChatModelBuilder.modelName(CLAUDE_3_5_HAIKU_20241022);
+            anthropicChatModelBuilder.modelName(CLAUDE_HAIKU_4_5_20251001);
         }
         return anthropicChatModelBuilder.build();
     }

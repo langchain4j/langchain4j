@@ -31,7 +31,7 @@ LangChain4j provides 3 different integrations with OpenAI for using chat models,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.10.0</version>
+    <version>1.11.0</version>
 </dependency>
 ```
 
@@ -40,7 +40,7 @@ LangChain4j provides 3 different integrations with OpenAI for using chat models,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>1.10.0-beta18</version>
+    <version>1.11.0-beta19</version>
 </dependency>
 ```
 
@@ -391,6 +391,24 @@ the Spring's `RestClient` is used as the default HTTP client.
 
 You can customize it or use any other HTTP client of your choice.
 More information can be found [here](/tutorials/customizable-http-client).
+
+## OpenAI Responses API
+
+OpenAI's [Responses API](https://platform.openai.com/docs/api-reference/responses) (`/v1/responses`) is an alternative to the Chat Completions API that provides enhanced control over streaming responses and cancellation.
+
+### Creating `OpenAiResponsesStreamingChatModel`
+
+```java
+StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("gpt-4o-mini")
+        .build();
+```
+
+### Key differences from Chat Completions API
+- **Streaming-only**: Currently only streaming mode is supported
+- **Cancellation**: Supports `StreamingHandle.cancel()` to stop responses
+- **Same features**: Full support for tools, listeners, and all standard parameters
 
 ## Examples
 - [OpenAI Examples](https://github.com/langchain4j/langchain4j-examples/tree/main/open-ai-examples/src/main/java)

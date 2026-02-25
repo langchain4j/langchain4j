@@ -33,6 +33,7 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicImageContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicMessage;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicMessageContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicPdfContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTool;
@@ -410,6 +411,61 @@ class AnthropicMapperTest {
 
         // then
         assertThat(aiMessage.attributes()).doesNotContainKey(SERVER_TOOL_RESULTS_KEY);
+    }
+
+    @Test
+    void should_map_user_message_with_cache_control_metadata() {
+        // Given
+        UserMessage userMessage = UserMessage.from("Hello cached world");
+        userMessage.attributes().put("cache_control", "ephemeral");
+
+        // When
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(userMessage));
+
+        // Then
+        assertThat(anthropicMessages).hasSize(1);
+        AnthropicMessage message = anthropicMessages.get(0);
+
+        assertThat(message.content).hasSize(1);
+
+        AnthropicMessageContent content = message.content.get(0);
+
+        assertThat(content).isInstanceOf(AnthropicTextContent.class);
+
+        AnthropicTextContent textContent = (AnthropicTextContent) content;
+
+        assertThat(textContent.text).isEqualTo("Hello cached world");
+
+        assertThat(textContent.cacheControl).isNotNull();
+        assertThat(textContent.cacheControl).extracting("type").isEqualTo("ephemeral");
+    }
+
+    @Test
+    void should_only_apply_cache_control_to_last_item_when_multiple_items_present() {
+        // Given
+        UserMessage userMessage = UserMessage.from(TextContent.from("First item"), TextContent.from("Second item"));
+        userMessage.attributes().put("cache_control", "ephemeral");
+
+        // When
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(userMessage));
+
+        // Then
+        assertThat(anthropicMessages).hasSize(1);
+        AnthropicMessage message = anthropicMessages.get(0);
+        assertThat(message.content).hasSize(2);
+
+        // First item should NOT have cache control
+        AnthropicTextContent first = (AnthropicTextContent) message.content.get(0);
+        assertThat(first.text).isEqualTo("First item");
+        assertThat(first.cacheControl).isNull();
+
+        // Second (last) item SHOULD have cache control
+        AnthropicTextContent second = (AnthropicTextContent) message.content.get(1);
+        assertThat(second.text).isEqualTo("Second item");
+
+        // FIX: Use extracting("type") to access the internal class field safely
+        assertThat(second.cacheControl).isNotNull();
+        assertThat(second.cacheControl).extracting("type").isEqualTo("ephemeral");
     }
 
     @SafeVarargs
