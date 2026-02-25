@@ -45,6 +45,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
     private volatile McpOperationHandler operationHandler;
     private final HttpClient httpClient;
     private final SSLContext sslContext;
+    private final HttpClient.Version httpVersion;
     private McpInitializeRequest initializeRequest;
     private final AtomicReference<String> mcpSessionId = new AtomicReference<>();
 
@@ -56,7 +57,9 @@ public class StreamableHttpMcpTransport implements McpTransport {
         Duration timeout = getOrDefault(builder.timeout, Duration.ofSeconds(60));
         customHeadersSupplier = getOrDefault(builder.customHeadersSupplier, (i) -> Map.of());
         sslContext = builder.sslContext;
-        HttpClient.Builder clientBuilder = HttpClient.newBuilder().connectTimeout(timeout);
+        httpVersion = builder.forceHttpVersion1_1 ? HttpClient.Version.HTTP_1_1 : HttpClient.Version.HTTP_2;
+        HttpClient.Builder clientBuilder =
+                HttpClient.newBuilder().connectTimeout(timeout).version(httpVersion);
         if (builder.executor != null) {
             clientBuilder.executor(builder.executor);
         }
@@ -253,6 +256,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         private boolean logResponses = false;
         private Logger logger;
         private SSLContext sslContext;
+        private boolean forceHttpVersion1_1;
 
         /**
          * The URL of the MCP server.
@@ -340,6 +344,14 @@ public class StreamableHttpMcpTransport implements McpTransport {
          */
         public StreamableHttpMcpTransport.Builder sslContext(SSLContext sslContext) {
             this.sslContext = sslContext;
+            return this;
+        }
+
+        /**
+         * Forces the transport to use HTTP/1.1 instead of the default HTTP/2.
+         */
+        public StreamableHttpMcpTransport.Builder setHttpVersion1_1() {
+            this.forceHttpVersion1_1 = true;
             return this;
         }
 
