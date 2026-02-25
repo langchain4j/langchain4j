@@ -15,7 +15,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-public class ParallelMultiInstancePlanner implements Planner, ChatMemoryAccessProvider {
+public class ParallelMultiInstancePlanner implements Planner {
 
     private final String itemsProvider;
     private AgentExecutor subagent;
