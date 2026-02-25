@@ -5,20 +5,21 @@ import dev.langchain4j.agentic.internal.MultiInstanceAgentInvoker;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
-import dev.langchain4j.agentic.planner.ChatMemoryAccessProvider;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.planner.PlanningContext;
-import dev.langchain4j.agentic.scope.AgenticScope;
-import dev.langchain4j.service.memory.ChatMemoryAccess;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class ParallelMultiInstancePlanner implements Planner {
 
     private final String itemsProvider;
     private AgentExecutor subagent;
+    private String resultKeyPrefix;
+    private int itemCount;
+    private final AtomicInteger completedCount = new AtomicInteger();
 
     public ParallelMultiInstancePlanner(String itemsProvider) {
         this.itemsProvider = itemsProvider;
@@ -53,6 +54,9 @@ public class ParallelMultiInstancePlanner implements Planner {
             return done();
         }
 
+        this.itemCount = items.size();
+        this.resultKeyPrefix = subagent.agentInvoker().outputKey();
+
         List<AgentInstance> instances = new ArrayList<>(items.size());
         for (int i = 0; i < items.size(); i++) {
             Object item = items.get(i);
@@ -65,6 +69,13 @@ public class ParallelMultiInstancePlanner implements Planner {
 
     @Override
     public Action nextAction(PlanningContext planningContext) {
+        if (completedCount.incrementAndGet() >= itemCount) {
+            List<Object> results = new ArrayList<>(itemCount);
+            for (int i = 0; i < itemCount; i++) {
+                results.add(planningContext.agenticScope().readState(resultKeyPrefix + "_" + i));
+            }
+            return done(results);
+        }
         return done();
     }
 
@@ -72,5 +83,4 @@ public class ParallelMultiInstancePlanner implements Planner {
     public AgenticSystemTopology topology() {
         return AgenticSystemTopology.PARALLEL;
     }
-
 }

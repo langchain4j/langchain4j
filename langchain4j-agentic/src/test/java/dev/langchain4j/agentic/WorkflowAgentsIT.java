@@ -1267,15 +1267,10 @@ public class WorkflowAgentsIT {
                 List.of(new Person("Mario", "aries"), new Person("Luigi", "pisces"), new Person("Peach", "leo"));
 
         ResultWithAgenticScope<Object> result = agent.generateHoroscopes(persons);
-        AgenticScope scope = result.agenticScope();
 
-        String horoscope0 = (String) scope.readState("horoscope_0");
-        String horoscope1 = (String) scope.readState("horoscope_1");
-        String horoscope2 = (String) scope.readState("horoscope_2");
-
-        assertThat(horoscope0).isNotBlank();
-        assertThat(horoscope1).isNotBlank();
-        assertThat(horoscope2).isNotBlank();
+        List<String> horoscopes = (List<String>) result.result();
+        assertThat(horoscopes).hasSize(3);
+        assertThat(horoscopes).allSatisfy(horoscope -> assertThat(horoscope).isNotBlank());
     }
 
     @Test
