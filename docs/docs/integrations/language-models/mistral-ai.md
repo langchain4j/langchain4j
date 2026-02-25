@@ -357,6 +357,7 @@ ChatModel model = MistralAiChatModel.builder()
                                 .build())
                         .build())
                 .build())
+        .strictJsonSchema(true)
         .build();
 ```
 
