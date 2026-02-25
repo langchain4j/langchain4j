@@ -406,14 +406,11 @@ List<Person> persons = List.of(
         new Person("Peach", "leo"));
 
 ResultWithAgenticScope<Object> result = agent.generateHoroscopes(persons);
-AgenticScope scope = result.agenticScope();
 
-String horoscope0 = (String) scope.readState("horoscope_0");
-String horoscope1 = (String) scope.readState("horoscope_1");
-String horoscope2 = (String) scope.readState("horoscope_2");
+List<String> horoscopes = (List<String>) result.result();
 ```
 
-The `itemsProvider` specifies which argument contains the collection to iterate over. Each instance of the sub-agent receives one item from the collection and writes its output to a suffixed key (e.g., `horoscope_0`, `horoscope_1`, `horoscope_2`), derived from the sub-agent's `outputKey`. As with the parallel workflow, an `Executor` can be optionally provided.
+The `itemsProvider` specifies which argument contains the collection to iterate over. Each instance of the sub-agent receives one item from the collection, and once all instances complete, their individual results are automatically aggregated into a list and returned as the workflow result. As with the parallel workflow, an `Executor` can be optionally provided.
 
 Note that `ChatMemory` is not supported for `ParallelMultiInstanceAgent` since each instance is stateless and independent.
 
