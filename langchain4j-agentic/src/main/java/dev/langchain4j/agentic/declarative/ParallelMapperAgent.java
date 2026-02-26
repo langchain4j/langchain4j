@@ -18,7 +18,7 @@ import java.lang.annotation.Target;
  *
  *         @ParallelMapperAgent( outputKey = "results",
  *                 subAgent = ItemProcessor.class,
- *                 inputKey = "items" )
+ *                 itemsProvider = "items" )
  *         List<Result> process(@V("items") List<Item> items);
  *     }
  * }
@@ -67,10 +67,10 @@ public @interface ParallelMapperAgent {
     Class<?> subAgent();
 
     /**
-     * Key referencing a collection in the agentic scope. For each item in this collection,
+     * Variable name referencing a collection in the agentic scope. For each item in this collection,
      * an instance of the sub-agent will be created and executed in parallel.
      *
-     * @return the key of the input collection.
+     * @return the name of the input collection.
      */
     String itemsProvider() default "";
 }
