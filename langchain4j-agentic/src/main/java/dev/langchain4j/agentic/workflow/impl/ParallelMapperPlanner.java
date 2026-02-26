@@ -1,7 +1,7 @@
 package dev.langchain4j.agentic.workflow.impl;
 
 import dev.langchain4j.agentic.internal.AgentExecutor;
-import dev.langchain4j.agentic.internal.MultiInstanceAgentInvoker;
+import dev.langchain4j.agentic.internal.MapperAgentInvoker;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
@@ -13,16 +13,23 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class ParallelMultiInstancePlanner implements Planner {
+import static java.util.Arrays.copyOf;
+
+public class ParallelMapperPlanner implements Planner {
 
     private final String itemsProvider;
+    private final boolean isArrayResult;
+    private final Class<? extends Object[]> arrayclass;
+
     private AgentExecutor subagent;
     private String resultKeyPrefix;
     private int itemCount;
     private final AtomicInteger completedCount = new AtomicInteger();
 
-    public ParallelMultiInstancePlanner(String itemsProvider) {
+    public ParallelMapperPlanner(String itemsProvider, boolean isArrayResult, Class<? extends Object[]> arrayclass) {
         this.itemsProvider = itemsProvider;
+        this.isArrayResult = isArrayResult;
+        this.arrayclass = arrayclass;
     }
 
     @Override
@@ -37,6 +44,26 @@ public class ParallelMultiInstancePlanner implements Planner {
             return done();
         }
 
+        List<?> items = collectItems(collectionObj);
+
+        if (items.isEmpty()) {
+            return done();
+        }
+
+        this.itemCount = items.size();
+        this.resultKeyPrefix = subagent.agentInvoker().outputKey();
+
+        List<AgentInstance> instances = new ArrayList<>(items.size());
+        for (int i = 0; i < items.size(); i++) {
+            Object item = items.get(i);
+            MapperAgentInvoker instanceInvoker = new MapperAgentInvoker(subagent.agentInvoker(), item, i);
+            instances.add(new AgentExecutor(instanceInvoker, subagent.agent()));
+        }
+
+        return call(instances);
+    }
+
+    private List<?> collectItems(Object collectionObj) {
         List<?> items;
         if (collectionObj instanceof List<?> list) {
             items = list;
@@ -49,22 +76,7 @@ public class ParallelMultiInstancePlanner implements Planner {
                     "The value for itemsProvider '" + itemsProvider + "' must be a Collection or array, but was: "
                             + collectionObj.getClass().getName());
         }
-
-        if (items.isEmpty()) {
-            return done();
-        }
-
-        this.itemCount = items.size();
-        this.resultKeyPrefix = subagent.agentInvoker().outputKey();
-
-        List<AgentInstance> instances = new ArrayList<>(items.size());
-        for (int i = 0; i < items.size(); i++) {
-            Object item = items.get(i);
-            MultiInstanceAgentInvoker instanceInvoker = new MultiInstanceAgentInvoker(subagent.agentInvoker(), item, i);
-            instances.add(new AgentExecutor(instanceInvoker, subagent.agent()));
-        }
-
-        return call(instances);
+        return items;
     }
 
     @Override
@@ -74,7 +86,7 @@ public class ParallelMultiInstancePlanner implements Planner {
             for (int i = 0; i < itemCount; i++) {
                 results.add(planningContext.agenticScope().readState(resultKeyPrefix + "_" + i));
             }
-            return done(results);
+            return done(isArrayResult ? copyOf(results.toArray(), results.size(), arrayclass) : results);
         }
         return done();
     }

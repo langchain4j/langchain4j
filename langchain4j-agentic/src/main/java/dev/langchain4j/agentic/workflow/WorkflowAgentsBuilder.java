@@ -19,11 +19,11 @@ public interface WorkflowAgentsBuilder {
 
     <T> ConditionalAgentService<T> conditionalBuilder(Class<T> agentServiceClass);
 
-    default ParallelMultiInstanceAgentService<UntypedAgent> parallelMultiInstanceBuilder() {
+    default ParallelMapperService<UntypedAgent> parallelMapperBuilder() {
         throw new UnsupportedOperationException("Not yet implemented");
     }
 
-    default <T> ParallelMultiInstanceAgentService<T> parallelMultiInstanceBuilder(Class<T> agentServiceClass) {
+    default <T> ParallelMapperService<T> parallelMapperBuilder(Class<T> agentServiceClass) {
         throw new UnsupportedOperationException("Not yet implemented");
     }
 }
