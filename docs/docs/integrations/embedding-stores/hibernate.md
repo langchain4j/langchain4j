@@ -68,7 +68,7 @@ To configure it, use either `HibernateEmbeddingStore.builder()`.
 | `databaseKind`                  | The database kind. Required if kind can't be inferred from the Hibernate ORM dialect.                                                                                                                                                                                                          | None          | Required if kind can't be inferred from the Hibernate ORM dialect                                  |
 | `entityClass`                   | Specifies the entity class of the `SessionFactory` to use for the `EmbeddingStore`.                                                                                                                                                                                                            | None          | Required                                                                                           |
 | `embeddingAttributeName`        | Specifies the name of the entity attribute that represents the vector embedding.                                                                                                                                                                                                               | None          | Optional. If not set, the entity is scanned for an attribute annotated with `@Embedding`           |
-| `embeddedTextAttributeName`     | Specifies the name of the entity attribute that represents the source text of the vector embedding.                                                                                                                                                                                            | None          | Optional. If not set, the entity is scanned for an attribute annotated with `@EmbeddingText`       |
+| `embeddedTextAttributeName`     | Specifies the name of the entity attribute that represents the source text of the vector embedding.                                                                                                                                                                                            | None          | Optional. If not set, the entity is scanned for an attribute annotated with `@EmbeddedText`       |
 | `unmappedMetadataAttributeName` | Specifies the name of the entity attribute that represents the JSON column where unmapped metadata is stored.                                                                                                                                                                                  | None          | Optional. If not set, the entity is scanned for an attribute annotated with `@UnmappedMetadata`    |
 | `metadataAttributeNames`        | Specifies the names of the entity attributes that are explicitly mapped to text metadata.                                                                                                                                                                                                      | None          | Optional. If not set, the entity is scanned for an attribute annotated with `@MetadataAttribute`   |
 | `distanceFunction`              | The distance function to use for vector search. Supports varies based on database: <ul><li>**COSINE**</li><li>**EUCLIDEAN**</li><li>**EUCLIDEAN_SQUARED**</li><li>**MANHATTAN**</li><li>**INNER_PRODUCT**</li><li>**NEGATIVE_INNER_PRODUCT**</li><li>**HAMMING**</li><li>**JACCARD**</li></ul> | `COSINE`      | Optional. If not set, a default configuration is used with `COSINE`.                               |
@@ -151,7 +151,7 @@ Don't forget to close the `HibernateEmbeddingStore` when you don't need it anymo
 #### Custom Hibernate entity
 
 When you want to customize the data model or want to reuse an existing entity as source for the `EmbeddingStore`,
-you can make use of the annotations `@Embedding`, `@EmbeddingText`, `@UnmappedMetadata` and `@MetadataAttribute` to mark the
+you can make use of the annotations `@Embedding`, `@EmbeddedText`, `@UnmappedMetadata` and `@MetadataAttribute` to mark the
 entity attributes to use by the Hibernate `EmbeddingStore` implementation. 
 
 ```java
@@ -162,7 +162,7 @@ public class MyEmbeddingEntity {
     @Embedding
     @Array(length = 384)                // The dimension of the embedding vector based on the embedding model
     float[] embedding;
-    @EmbeddingText
+    @EmbeddedText
     String text;
     @UnmappedMetadata
     Map<String, Object> metadata;       // Can be either a Map<String, Object> or a String
