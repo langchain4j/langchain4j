@@ -63,7 +63,7 @@ public class SkillsIT {
     }
 
     @Test
-    void should_activate_skill_and_load_reference() { // TODO name
+    void should_activate_skill_and_load_resource() { // TODO name
 
         // given
         Skill skill = FileSystemSkillLoader.loadSkill(toPath("skills/using-process-tool"));
@@ -75,6 +75,10 @@ public class SkillsIT {
         assertThat(skillService.systemMessage()).contains("using-process-tool");
         assertThat(getToolNames(skillService.toolProvider()))
                 .containsExactlyInAnyOrder("activate_skill", "read_skill_resource");
+        assertThat(skillService.toolProvider().provideTools(null).tools().keySet().stream()
+                .filter(it -> it.name().equals("read_skill_resource")).findFirst().get()
+                .parameters().properties().get("relative_path").description())
+                .endsWith("For example: references/17.md");
 
         // given
         Tools spyTools = spy(new Tools());
@@ -97,7 +101,7 @@ public class SkillsIT {
     }
 
     @Test
-    void should_activate_skill_and_load_reference__programmatic() { // TODO name
+    void should_activate_skill_and_load_resource__programmatic() {
 
         // given
         Skill skill = Skill.builder()
@@ -184,57 +188,59 @@ public class SkillsIT {
         assertThat(result.content()).containsIgnoringCase("python from hello");
     }
 
-    @Test
-    void should_activate_docx_skill_and_run_scripts() { // TODO name
+    // TODO test multiple skills, cross referencing, etc
 
-        // given
-        Skill skill = FileSystemSkillLoader.loadSkill(toPath("skills/docx"));
-        SkillService skillService = SkillService.builder()
-                .skills(skill)
-                .allowRunningShellCommands(true)
-                .build();
+//    @Test
+//    void should_activate_docx_skill_and_run_scripts() { // TODO name
+//
+//        // given
+//        Skill skill = FileSystemSkillLoader.loadSkill(toPath("skills/docx"));
+//        SkillService skillService = SkillService.builder()
+//                .skills(skill)
+//                .allowRunningShellCommands(true)
+//                .build();
+//
+//        Assistant assistant = AiServices.builder(Assistant.class)
+//                .chatModel(model)
+//                .systemMessage(skillService.systemMessage())
+//                .toolProvider(skillService.toolProvider())
+//                .build();
+//
+//        // when
+//        Result<String> result = assistant.chat("Modify the word document C:\\dev\\output.docx in place, " +
+//                "change the color of the text to blue." +
+//                "Ignore all validation errors");
+//
+//        // then
+////        System.out.println(result.tokenUsage());
+////        assertThat(response).containsIgnoringCase("hello from python");
+//    }
+//
+//    @Test
+//    void should_activate_mcp_skill_and_run_scripts() { // TODO name
+//
+//        // given
+//        Skill skill = FileSystemSkillLoader.loadSkill(toPath("skills/mcp-builder"));
+//        SkillService skillService = SkillService.builder()
+//                .skills(skill)
+//                .allowRunningShellCommands(true)
+//                .build();
+//
+//        Assistant assistant = AiServices.builder(Assistant.class)
+//                .chatModel(model)
+//                .systemMessage(skillService.systemMessage())
+//                .toolProvider(skillService.toolProvider())
+//                .build();
+//
+//        // when
+//        Result<String> result = assistant.chat("Create a simple mcp server in python " +
+//                "with a single tool 'echo' that sends back whatever is sent to it");
+//
+//        // then
 
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(model)
-                .systemMessage(skillService.systemMessage())
-                .toolProvider(skillService.toolProvider())
-                .build();
-
-        // when
-        Result<String> result = assistant.chat("Modify the word document C:\\dev\\output.docx in place, " +
-                "change the color of the text to blue." +
-                "Ignore all validation errors");
-
-        // then
-//        System.out.println(result.tokenUsage());
-//        assertThat(response).containsIgnoringCase("hello from python");
-    }
-
-    @Test
-    void should_activate_mcp_skill_and_run_scripts() { // TODO name
-
-        // given
-        Skill skill = FileSystemSkillLoader.loadSkill(toPath("skills/mcp-builder"));
-        SkillService skillService = SkillService.builder()
-                .skills(skill)
-                .allowRunningShellCommands(true)
-                .build();
-
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(model)
-                .systemMessage(skillService.systemMessage())
-                .toolProvider(skillService.toolProvider())
-                .build();
-
-        // when
-        Result<String> result = assistant.chat("Create a simple mcp server in python " +
-                "with a single tool 'echo' that sends back whatever is sent to it");
-
-        // then
-//        System.out.println(result.tokenUsage());
-//        assertThat(response).containsIgnoringCase("hello from python");
-    }
-
+    /// /        System.out.println(result.tokenUsage());
+    /// /        assertThat(response).containsIgnoringCase("hello from python");
+//    }
     private Path toPath(String fileName) {
         try {
             return Paths.get(getClass().getClassLoader().getResource(fileName).toURI());

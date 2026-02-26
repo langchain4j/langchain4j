@@ -16,31 +16,56 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.toBase64;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 
 class SkillUtils {
 
-    private static final String DEFAULT_ACTIVATE_SKILL_TOOL_NAME = "activate_skill";
-    private static final String DEFAULT_ACTIVATE_SKILL_TOOL_DESCRIPTION = "Activates a skill by name";
-    private static final String DEFAULT_ACTIVATE_SKILL_TOOL_ARGUMENT_NAME = "skill_name";
-    private static final String DEFAULT_ACTIVATE_SKILL_TOOL_ARGUMENT_DESCRIPTION = "The name of the skill to activate";
+    static final String DEFAULT_ACTIVATE_SKILL_TOOL_NAME = "activate_skill";
+    static final String DEFAULT_ACTIVATE_SKILL_TOOL_DESCRIPTION = "Activates a skill by name";
+    static final String DEFAULT_ACTIVATE_SKILL_TOOL_PARAMETER_NAME = "skill_name";
+    static final String DEFAULT_ACTIVATE_SKILL_TOOL_PARAMETER_DESCRIPTION = "The name of the skill to activate";
 
-    static ToolProvider createToolProvider(Collection<? extends Skill> skills,
-                                           boolean allowRunningShellCommands) {
+    static final String DEFAULT_READ_RESOURCE_TOOL_NAME = "read_skill_resource";
+    static final String DEFAULT_READ_RESOURCE_TOOL_DESCRIPTION = "Reads content of a resource referenced in the skill";
+    static final String DEFAULT_READ_RESOURCE_TOOL_SKILL_NAME_PARAMETER_NAME = "skill_name";
+    static final String DEFAULT_READ_RESOURCE_TOOL_SKILL_NAME_PARAMETER_DESCRIPTION = "The name of the skill for which to read the resource";
+    static final String DEFAULT_READ_RESOURCE_TOOL_RELATIVE_PATH_PARAMETER_NAME = "relative_path";
+    static final Function<List<? extends Skill>, String> DEFAULT_READ_RESOURCE_TOOL_RELATIVE_PATH_PARAMETER_DESCRIPTION_PROVIDER =
+            skills -> "Relative path to the resource. For example: " + skills.stream()
+                    .flatMap(skill -> skill.resources().stream())
+                    .findFirst()
+                    .map(SkillResource::relativePath)
+                    .orElseThrow();
+
+    static final String DEFAULT_RUN_SHELL_COMMAND_TOOL_NAME = "run_shell_command";
+    static final String DEFAULT_RUN_SHELL_COMMAND_TOOL_DESCRIPTION = "Runs a shell command using " + System.getProperty("os.name") + ". When skill_name is provided, the command runs with the skill's root directory as the working directory.";
+    static final String DEFAULT_RUN_SHELL_COMMAND_TOOL_COMMAND_PARAMETER_NAME = "command";
+    static final String DEFAULT_RUN_SHELL_COMMAND_TOOL_COMMAND_PARAMETER_DESCRIPTION = "The shell command to execute. For example: 'python scripts/process.py --input data.csv'";
+    static final String DEFAULT_RUN_SHELL_COMMAND_TOOL_SKILL_NAME_PARAMETER_NAME = "skill_name";
+    static final String DEFAULT_RUN_SHELL_COMMAND_TOOL_SKILL_NAME_PARAMETER_DESCRIPTION = "Name of the skill whose root directory to use as the working directory. This is optional parameter.";
+    static final String DEFAULT_RUN_SHELL_COMMAND_TOOL_TIMEOUT_SECONDS_PARAMETER_NAME = "timeout_seconds";
+    static final String DEFAULT_RUN_SHELL_COMMAND_TOOL_TIMEOUT_SECONDS_PARAMETER_DESCRIPTION = "Timeout for the command in seconds. This is optional parameter. Default value: 30 seconds"; // TODO
+
+    static ToolProvider createToolProvider(SkillService.Builder builder) {
+        Collection<? extends Skill> skills = builder.skills;
         ensureNotEmpty(skills, "skills");
 
         Map<String, Skill> skillsByName = new LinkedHashMap<>();
         skills.forEach(skill -> skillsByName.put(skill.name(), skill));
 
+        String activateSkillToolParameterName = getOrDefault(builder.activateSkillToolParameterName, DEFAULT_ACTIVATE_SKILL_TOOL_PARAMETER_NAME);
+
         ToolSpecification activateSkillTool = ToolSpecification.builder()
-                .name(DEFAULT_ACTIVATE_SKILL_TOOL_NAME) // TODO make configurable
-                .description(DEFAULT_ACTIVATE_SKILL_TOOL_DESCRIPTION) // TODO make configurable
+                .name(getOrDefault(builder.activateSkillToolName, DEFAULT_ACTIVATE_SKILL_TOOL_NAME))
+                .description(getOrDefault(builder.activateSkillToolDescription, DEFAULT_ACTIVATE_SKILL_TOOL_DESCRIPTION))
                 .parameters(JsonObjectSchema.builder()
-                        .addStringProperty(DEFAULT_ACTIVATE_SKILL_TOOL_ARGUMENT_NAME, DEFAULT_ACTIVATE_SKILL_TOOL_ARGUMENT_DESCRIPTION) // TODO make configurable
-                        .required(DEFAULT_ACTIVATE_SKILL_TOOL_ARGUMENT_NAME) // TODO make configurable
+                        .addStringProperty(activateSkillToolParameterName, getOrDefault(builder.activateSkillToolParameterDescription, DEFAULT_ACTIVATE_SKILL_TOOL_PARAMETER_DESCRIPTION))
+                        .required(activateSkillToolParameterName)
                         .build())
                 .build();
 
@@ -50,7 +75,7 @@ class SkillUtils {
             public ToolExecutionResult executeWithContext(ToolExecutionRequest request, InvocationContext context) {
 
                 Map<String, Object> arguments = parseArguments(request.arguments());
-                String skillName = getArgument(DEFAULT_ACTIVATE_SKILL_TOOL_ARGUMENT_NAME, arguments); // TODO make configurable
+                String skillName = getArgument(activateSkillToolParameterName, arguments);
 
                 Skill skill = skillsByName.get(skillName);
                 if (skill == null) {
@@ -71,26 +96,26 @@ class SkillUtils {
         Map<ToolSpecification, ToolExecutor> tools = new HashMap<>();
         tools.put(activateSkillTool, activateSkillExecutor);
 
-        if (allowRunningShellCommands) {
-            ToolSpecification runShellCommandTool = createRunShellCommandTool(skills);
-            ToolExecutor runShellCommandToolExecutor = new RunShellCommandToolExecutor(skillsByName);
+        if (getOrDefault(builder.allowRunningShellCommands, false)) {
+            String commandParameterName = getOrDefault(builder.runShellCommandToolCommandParameterName, DEFAULT_RUN_SHELL_COMMAND_TOOL_COMMAND_PARAMETER_NAME);
+            String runShellSkillNameParameterName = getOrDefault(builder.runShellCommandToolSkillNameParameterName, DEFAULT_RUN_SHELL_COMMAND_TOOL_SKILL_NAME_PARAMETER_NAME);
+            String timeoutSecondsParameterName = getOrDefault(builder.runShellCommandToolTimeoutSecondsParameterName, DEFAULT_RUN_SHELL_COMMAND_TOOL_TIMEOUT_SECONDS_PARAMETER_NAME);
+            ToolSpecification runShellCommandTool = createRunShellCommandTool(builder, commandParameterName, runShellSkillNameParameterName, timeoutSecondsParameterName);
+            ToolExecutor runShellCommandToolExecutor = new RunShellCommandToolExecutor(skillsByName, commandParameterName, runShellSkillNameParameterName, timeoutSecondsParameterName);
             tools.put(runShellCommandTool, runShellCommandToolExecutor);
         } else {
             boolean hasResources = skills.stream().anyMatch(skill -> !skill.resources().isEmpty());
             if (hasResources) {
-                String exampleResourcePath = skills.stream()
-                        .flatMap(skill -> skill.resources().stream())
-                        .findFirst()
-                        .map(SkillResource::relativePath)
-                        .orElseThrow();
+                String readResourceToolSkillNameParameterName = getOrDefault(builder.readResourceToolSkillNameParameterName, DEFAULT_READ_RESOURCE_TOOL_SKILL_NAME_PARAMETER_NAME);
+                String readResourceToolRelativePathParameterName = getOrDefault(builder.readResourceToolRelativePathParameterName, DEFAULT_READ_RESOURCE_TOOL_RELATIVE_PATH_PARAMETER_NAME);
 
                 ToolSpecification readResourceTool = ToolSpecification.builder()
-                        .name("read_skill_resource") // TODO make configurable
-                        .description("Reads content of a resource referenced in the skill") // TODO make configurable, fix grammar here and everywhere
+                        .name(getOrDefault(builder.readResourceToolName, DEFAULT_READ_RESOURCE_TOOL_NAME))
+                        .description(getOrDefault(builder.readResourceToolDescription, DEFAULT_READ_RESOURCE_TOOL_DESCRIPTION)) // TODO fix grammar here and everywhere
                         .parameters(JsonObjectSchema.builder()
-                                .addStringProperty("skill_name", "The name of the skill for which to read the resource") // TODO make configurable
-                                .addStringProperty("relative_path", "Relative path to the resource. For example: " + exampleResourcePath)
-                                .required("skill_name", "relative_path")
+                                .addStringProperty(readResourceToolSkillNameParameterName, getOrDefault(builder.readResourceToolSkillNameParameterDescription, DEFAULT_READ_RESOURCE_TOOL_SKILL_NAME_PARAMETER_DESCRIPTION))
+                                .addStringProperty(readResourceToolRelativePathParameterName, resolveRelativePathParameterDescription(builder))
+                                .required(readResourceToolSkillNameParameterName, readResourceToolRelativePathParameterName)
                                 .build())
                         .build();
 
@@ -100,8 +125,8 @@ class SkillUtils {
                     public ToolExecutionResult executeWithContext(ToolExecutionRequest request, InvocationContext context) {
 
                         Map<String, Object> arguments = parseArguments(request.arguments());
-                        String skillName = getArgument("skill_name", arguments); // TODO make configurable
-                        String relativePath = getArgument("relative_path", arguments); // TODO make configurable
+                        String skillName = getArgument(readResourceToolSkillNameParameterName, arguments);
+                        String relativePath = getArgument(readResourceToolRelativePathParameterName, arguments);
 
                         Skill skill = skillsByName.get(skillName);
                         if (skill == null) {
@@ -141,28 +166,36 @@ class SkillUtils {
         return request -> toolProviderResult;
     }
 
-    private static ToolSpecification createRunShellCommandTool(Collection<? extends Skill> skills) {
+    private static ToolSpecification createRunShellCommandTool(SkillService.Builder builder,
+                                                               String commandParameterName,
+                                                               String skillNameParameterName,
+                                                               String timeoutSecondsParameterName) {
         return ToolSpecification.builder()
-                .name("run_shell_command") // TODO make configurable
-                .description("Runs a shell command using " + System.getProperty("os.name") + ". When skill_name is provided, the command runs with the skill's root directory as the working directory."
-                        // TODO
-                        + """
-                        Each invocation starts a fresh shell — shell variables and working directory changes do not persist between calls, but filesystem writes do.
-                        When installing npm packages, always use local installation (npm install <pkg>, never npm install -g <pkg>). \
-                        Global packages are not guaranteed to be found by require() in subsequent calls. \
-                        Local packages are installed into node_modules/ inside the working directory and are always found automatically.
-                        When generating Node.js code to execute via node -e, always output the entire script as a single line with statements separated by semicolons.
-                        Never use multi-line strings, as they break across different shells on Windows.""")
+                .name(getOrDefault(builder.runShellCommandToolName, DEFAULT_RUN_SHELL_COMMAND_TOOL_NAME))
+                .description(getOrDefault(builder.runShellCommandToolDescription, DEFAULT_RUN_SHELL_COMMAND_TOOL_DESCRIPTION))
                 .parameters(JsonObjectSchema.builder()
-                        .addStringProperty("command",
-                                "The shell command to execute. For example: 'python scripts/process.py --input data.csv'")
-                        .addStringProperty("skill_name",
-                                "Optional. Name of the skill whose root directory to use as the working directory")
-                        .addStringProperty("timeout_seconds",
-                                "Optional. Timeout for the command in seconds. Default: 30 seconds") // TODO
-                        .required("command")
+                        .addStringProperty(
+                                commandParameterName,
+                                getOrDefault(builder.runShellCommandToolCommandParameterDescription, DEFAULT_RUN_SHELL_COMMAND_TOOL_COMMAND_PARAMETER_DESCRIPTION))
+                        .addStringProperty(
+                                skillNameParameterName,
+                                getOrDefault(builder.runShellCommandToolSkillNameParameterDescription, DEFAULT_RUN_SHELL_COMMAND_TOOL_SKILL_NAME_PARAMETER_DESCRIPTION))
+                        .addStringProperty(
+                                timeoutSecondsParameterName,
+                                getOrDefault(builder.runShellCommandToolTimeoutSecondsParameterDescription, DEFAULT_RUN_SHELL_COMMAND_TOOL_TIMEOUT_SECONDS_PARAMETER_DESCRIPTION))
+                        .required(commandParameterName)
                         .build())
                 .build();
+    }
+
+    private static String resolveRelativePathParameterDescription(SkillService.Builder builder) {
+        if (builder.readResourceToolRelativePathParameterDescription != null) {
+            return builder.readResourceToolRelativePathParameterDescription;
+        }
+        return getOrDefault(
+                builder.readResourceToolRelativePathParameterDescriptionProvider,
+                DEFAULT_READ_RESOURCE_TOOL_RELATIVE_PATH_PARAMETER_DESCRIPTION_PROVIDER)
+                .apply(List.copyOf(builder.skills));
     }
 
     public static String getArgument(String argumentName, Map<String, Object> arguments) {

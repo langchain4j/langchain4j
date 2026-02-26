@@ -16,18 +16,27 @@ import static dev.langchain4j.skills.SkillUtils.throwException;
 class RunShellCommandToolExecutor implements ToolExecutor {
 
     private final Map<String, Skill> skillsByName;
+    private final String commandParameterName;
+    private final String skillNameParameterName;
+    private final String timeoutSecondsParameterName;
 
-    public RunShellCommandToolExecutor(Map<String, Skill> skillsByName) {
+    public RunShellCommandToolExecutor(Map<String, Skill> skillsByName,
+                                       String commandParameterName,
+                                       String skillNameParameterName,
+                                       String timeoutSecondsParameterName) {
         this.skillsByName = skillsByName;
+        this.commandParameterName = commandParameterName;
+        this.skillNameParameterName = skillNameParameterName;
+        this.timeoutSecondsParameterName = timeoutSecondsParameterName;
     }
 
     @Override
     public ToolExecutionResult executeWithContext(ToolExecutionRequest request, InvocationContext context) {
 
         Map<String, Object> arguments = parseArguments(request.arguments());
-        String command = getArgument("command", arguments); // TODO customizable arguments
-        String skillName = arguments.containsKey("skill_name")
-                ? arguments.get("skill_name").toString() : null;
+        String command = getArgument(commandParameterName, arguments);
+        String skillName = arguments.containsKey(skillNameParameterName)
+                ? arguments.get(skillNameParameterName).toString() : null;
         Integer timeoutSeconds = getTimeoutSeconds(arguments);
 
         Path workingDir = null;
@@ -81,8 +90,8 @@ class RunShellCommandToolExecutor implements ToolExecutor {
         }
     }
 
-    private static Integer getTimeoutSeconds(Map<String, Object> arguments) {
-        Object timeoutSeconds = arguments.get("timeout_seconds");
+    Integer getTimeoutSeconds(Map<String, Object> arguments) {
+        Object timeoutSeconds = arguments.get(timeoutSecondsParameterName);
         if (timeoutSeconds == null) {
             return null;
         }
