@@ -5,47 +5,50 @@ import org.commonmark.ext.front.matter.YamlFrontMatterVisitor;
 import org.commonmark.node.Node;
 import org.commonmark.parser.Parser;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.internal.Exceptions.toRuntimeException;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.StreamSupport.stream;
 
 public class FileSystemSkillLoader {
 
+    // TODO recursively load multiple skills
+
     public static Skill loadSkill(Path skillDirectory) {
         Path skillFile = skillDirectory.resolve("SKILL.md");
 
         if (!Files.exists(skillFile)) {
-            throw new IllegalArgumentException("SKILL.md not found in: " + skillDirectory);
+            throw new IllegalArgumentException("SKILL.md not found in " + skillDirectory);
         }
 
         String markdown = toRuntimeException(() -> Files.readString(skillFile));
 
         Map<String, List<String>> frontMatter = parseFrontMatter(markdown);
-        String body = extractRawBody(markdown);
+        String content = extractContent(markdown);
 
         String name = getSingle(frontMatter, "name");
         String description = getSingle(frontMatter, "description");
 
-        List<DefaultSkillFile> files = loadFiles(skillDirectory);
+        List<DefaultSkillResource> resources = loadResources(skillDirectory);
 
-        return DefaultSkill.builder()
+        return DefaultFileSystemSkill.builder()
                 .name(name)
                 .description(description)
-                .body(body)
-                .files(files)
-                .directory(skillDirectory)
+                .content(content)
+                .resources(resources)
+                .basePath(skillDirectory)
                 .build();
     }
 
     private static Map<String, List<String>> parseFrontMatter(String markdown) {
-        Parser parser = Parser.builder()
+        Parser parser = Parser.builder() // TODO reuse for multiple skills
                 .extensions(List.of(YamlFrontMatterExtension.create()))
                 .build();
         Node document = parser.parse(markdown);
@@ -54,7 +57,7 @@ public class FileSystemSkillLoader {
         return visitor.getData();
     }
 
-    private static String extractRawBody(String markdown) {
+    private static String extractContent(String markdown) {
         if (markdown.startsWith("---")) {
             int secondDelimiter = markdown.indexOf("\n---", 3);
             if (secondDelimiter != -1) {
@@ -71,7 +74,7 @@ public class FileSystemSkillLoader {
                 .orElse(null);
     }
 
-    private static List<DefaultSkillFile> loadFiles(Path skillDirectory) {
+    private static List<DefaultSkillResource> loadResources(Path skillDirectory) {
         try (Stream<Path> files = Files.walk(skillDirectory)) {
             return files
                     .filter(Files::isRegularFile)
@@ -79,21 +82,25 @@ public class FileSystemSkillLoader {
                     .filter(path -> !skillDirectory.relativize(path).startsWith("scripts"))
                     .map(path -> {
                         try {
-                            String formattedPath = stream(skillDirectory.relativize(path).spliterator(), false)
+                            String content = toRuntimeException(() -> Files.readString(path));
+                            if (isNullOrBlank(content)) {
+                                return null; // TODO test
+                            }
+                            String relativePath = stream(skillDirectory.relativize(path).spliterator(), false)
                                     .map(Path::toString)
                                     .collect(joining("/"));
-                            String body = toRuntimeException(() -> Files.readString(path));
-                            return DefaultSkillFile.builder()
-                                    .path(formattedPath)
-                                    .body(body)
+                            return SkillResource.builder()
+                                    .relativePath(relativePath)
+                                    .content(content)
                                     .build();
                         } catch (Exception e) {
-                            throw e; // TODO
+                            throw new RuntimeException("Failed to load skill resource from " + path, e);
                         }
                     })
+                    .filter(Objects::nonNull)
                     .toList();
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to read skill directory: " + skillDirectory, e);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to load skill resources from " + skillDirectory, e);
         }
     }
 }

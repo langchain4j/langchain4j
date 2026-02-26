@@ -1,4 +1,4 @@
-package dev.langchain4j.skills.scripts;
+package dev.langchain4j.skills;
 
 import dev.langchain4j.internal.DefaultExecutorProvider;
 
@@ -13,9 +13,12 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-class ProcessRunner {
+import static dev.langchain4j.internal.Utils.getOrDefault;
 
-    static final int DEFAULT_TIMEOUT_SECONDS = 30;
+class ShellCommandRunner {
+
+    private static final int DEFAULT_TIMEOUT_SECONDS = 30;
+    private static final int DEFAULT_MAX_TIMEOUT_SECONDS = 5 * 60;
     private static final int DEFAULT_MAX_OUTPUT_BYTES = 10 * 1024 * 1024; // 10 MB
 
     record Result(int exitCode, String stdOut, String stdErr) {
@@ -44,12 +47,12 @@ class ProcessRunner {
         }
     }
 
-    static Result run(String command, Path workingDirectory, int timeoutSeconds)
+    static Result run(String command, Path workingDirectory, Integer timeoutSeconds)
             throws IOException, InterruptedException {
         return run(command, workingDirectory, timeoutSeconds, DEFAULT_MAX_OUTPUT_BYTES);
     }
 
-    static Result run(String command, Path workingDirectory, int timeoutSeconds, int maxOutputBytes)
+    static Result run(String command, Path workingDirectory, Integer timeoutSeconds, int maxOutputBytes)
             throws IOException, InterruptedException {
 
         List<String> shellCommand = isWindows()
@@ -65,10 +68,15 @@ class ProcessRunner {
 
         AtomicBoolean timedOut = new AtomicBoolean(false);
 
-        Future<String> stdOutFuture = DefaultExecutorProvider.getDefaultExecutorService() // TODO customizable
+        Future<String> stdOutFuture = DefaultExecutorProvider.getDefaultExecutorService() // TODO make customizable
                 .submit(() -> readStream(process.getInputStream(), maxOutputBytes, timedOut));
-        Future<String> stdErrFuture = DefaultExecutorProvider.getDefaultExecutorService() // TODO customizable
+        Future<String> stdErrFuture = DefaultExecutorProvider.getDefaultExecutorService() // TODO make customizable
                 .submit(() -> readStream(process.getErrorStream(), maxOutputBytes, timedOut));
+
+        timeoutSeconds = getOrDefault(timeoutSeconds, DEFAULT_TIMEOUT_SECONDS);
+        if (timeoutSeconds > DEFAULT_MAX_TIMEOUT_SECONDS) {
+            timeoutSeconds = DEFAULT_MAX_TIMEOUT_SECONDS; // TODO?
+        }
 
         boolean finished = process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
 
@@ -136,7 +144,7 @@ class ProcessRunner {
                 // Stream closed because process was destroyed on timeout — return what we have
                 return sb.toString();
             }
-            throw e; // Real I/O error on the happy path — propagate
+            throw e; // Real I/O error on the happy path - propagate
         }
         return sb.toString();
     }

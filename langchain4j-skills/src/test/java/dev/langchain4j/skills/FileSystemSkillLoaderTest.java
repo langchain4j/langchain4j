@@ -12,12 +12,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 class FileSystemSkillLoaderTest {
 
     @Test
-    void should_load_skill_name_description_and_body() {
+    void should_load_skill_name_and_description_and_content() {
         Skill skill = loadSkill("skills/using-process-tool");
 
         assertThat(skill.name()).isEqualTo("using-process-tool");
         assertThat(skill.description()).isEqualTo("Describes how to correctly use 'process' tool");
-        assertThat(skill.body()).contains(
+        assertThat(skill.content()).contains(
                 "When user asks you to use the 'process' tool",
                 "call the 'generateId' tool",
                 "call the 'process' tool with 3 arguments",
@@ -27,28 +27,29 @@ class FileSystemSkillLoaderTest {
     }
 
     @Test
-    void should_load_files_recursively() {
+    void should_load_resources_recursively() {
         Skill skill = loadSkill("skills/using-process-tool");
 
-        List<? extends SkillFile> files = skill.files();
+        List<? extends SkillResource> files = skill.resources();
         assertThat(files).hasSize(2);
 
         assertThat(files)
                 .anySatisfy(file -> {
-                    assertThat(file.path()).isEqualTo("references/17.md");
-                    assertThat(file.body()).contains("code 17", "finish");
+                    assertThat(file.relativePath()).isEqualTo("references/17.md");
+                    assertThat(file.content()).contains("code 17", "finish");
                 })
                 .anySatisfy(file -> {
-                    assertThat(file.path()).isEqualTo("references/25.md");
-                    assertThat(file.body()).contains("code 25", "reset");
+                    assertThat(file.relativePath()).isEqualTo("references/25.md");
+                    assertThat(file.content()).contains("code 25", "reset");
                 });
     }
 
     @Test
-    void should_not_load_scripts_as_skill_files() {
+    void should_not_load_scripts_as_skill_resources() {
         Skill skill = loadSkill("skills/greeting-user");
 
-        assertThat(skill.files()).isEmpty();
+        assertThat(skill.resources()).hasSize(1);
+        assertThat(skill.resources().get(0).relativePath()).isEqualTo("references/processing-result.md");
     }
 
     @Test
@@ -56,8 +57,8 @@ class FileSystemSkillLoaderTest {
         Path expectedDir = toPath("skills/using-process-tool");
         Skill skill = FileSystemSkillLoader.loadSkill(expectedDir);
 
-        assertThat(skill).isInstanceOf(DefaultSkill.class);
-        assertThat(((DefaultSkill) skill).directory()).isEqualTo(expectedDir);
+        assertThat(skill).isInstanceOf(FileSystemSkill.class);
+        assertThat(((FileSystemSkill) skill).basePath()).isEqualTo(expectedDir);
     }
 
     private Skill loadSkill(String resourcePath) {

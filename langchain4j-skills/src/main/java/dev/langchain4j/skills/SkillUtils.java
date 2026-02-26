@@ -8,9 +8,10 @@ import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
-import dev.langchain4j.skills.scripts.RunScriptToolExecutor;
-import org.jspecify.annotations.NonNull;
+import dev.langchain4j.service.tool.ToolProvider;
+import dev.langchain4j.service.tool.ToolProviderResult;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -19,34 +20,27 @@ import java.util.Map;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.toBase64;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
-import static java.util.Arrays.asList;
 
-public class Skills {
+class SkillUtils {
 
-    public static Map<ToolSpecification, ToolExecutor> createTools(Skill... skills) {
-        return createTools(asList(skills), null);
-    }
+    private static final String DEFAULT_ACTIVATE_SKILL_TOOL_NAME = "activate_skill";
+    private static final String DEFAULT_ACTIVATE_SKILL_TOOL_DESCRIPTION = "Activates a skill by name";
+    private static final String DEFAULT_ACTIVATE_SKILL_TOOL_ARGUMENT_NAME = "skill_name";
+    private static final String DEFAULT_ACTIVATE_SKILL_TOOL_ARGUMENT_DESCRIPTION = "The name of the skill to activate";
 
-    public static Map<ToolSpecification, ToolExecutor> createTools(List<Skill> skills) {
-        return createTools(skills, null);
-    }
-
-    public static Map<ToolSpecification, ToolExecutor> createTools(SkillsConfig config, Skill... skills) {
-        return createTools(asList(skills), config);
-    }
-
-    public static Map<ToolSpecification, ToolExecutor> createTools(List<Skill> skills, SkillsConfig config) {
+    static ToolProvider createToolProvider(Collection<? extends Skill> skills,
+                                           boolean allowRunningShellCommands) {
         ensureNotEmpty(skills, "skills");
 
         Map<String, Skill> skillsByName = new LinkedHashMap<>();
         skills.forEach(skill -> skillsByName.put(skill.name(), skill));
 
         ToolSpecification activateSkillTool = ToolSpecification.builder()
-                .name("activate_skill") // TODO make configurable
-                .description("Activates a skill") // TODO make configurable
+                .name(DEFAULT_ACTIVATE_SKILL_TOOL_NAME) // TODO make configurable
+                .description(DEFAULT_ACTIVATE_SKILL_TOOL_DESCRIPTION) // TODO make configurable
                 .parameters(JsonObjectSchema.builder()
-                        .addStringProperty("name", "The name of the skill to activate. For example: " + skills.get(0).name()) // TODO make configurable
-                        .required("name") // TODO make configurable
+                        .addStringProperty(DEFAULT_ACTIVATE_SKILL_TOOL_ARGUMENT_NAME, DEFAULT_ACTIVATE_SKILL_TOOL_ARGUMENT_DESCRIPTION) // TODO make configurable
+                        .required(DEFAULT_ACTIVATE_SKILL_TOOL_ARGUMENT_NAME) // TODO make configurable
                         .build())
                 .build();
 
@@ -56,7 +50,7 @@ public class Skills {
             public ToolExecutionResult executeWithContext(ToolExecutionRequest request, InvocationContext context) {
 
                 Map<String, Object> arguments = parseArguments(request.arguments());
-                String skillName = getArgument("name", arguments); // TODO customizable
+                String skillName = getArgument(DEFAULT_ACTIVATE_SKILL_TOOL_ARGUMENT_NAME, arguments); // TODO make configurable
 
                 Skill skill = skillsByName.get(skillName);
                 if (skill == null) {
@@ -64,7 +58,7 @@ public class Skills {
                 }
 
                 return ToolExecutionResult.builder()
-                        .resultText(skill.body()) // TODO customizable?
+                        .resultText(skill.content())
                         .build();
             }
 
@@ -74,58 +68,58 @@ public class Skills {
             }
         };
 
-        Map<ToolSpecification, ToolExecutor> result = new HashMap<>();
-        result.put(activateSkillTool, activateSkillExecutor);
+        Map<ToolSpecification, ToolExecutor> tools = new HashMap<>();
+        tools.put(activateSkillTool, activateSkillExecutor);
 
-        if (config != null && config.allowRunScripts()) {
-            ToolSpecification runScriptTool = createRunScriptTool(skills);
-            ToolExecutor runScriptToolExecutor = new RunScriptToolExecutor(skillsByName);
-            result.put(runScriptTool, runScriptToolExecutor);
+        if (allowRunningShellCommands) {
+            ToolSpecification runShellCommandTool = createRunShellCommandTool(skills);
+            ToolExecutor runShellCommandToolExecutor = new RunShellCommandToolExecutor(skillsByName);
+            tools.put(runShellCommandTool, runShellCommandToolExecutor);
         } else {
-            boolean hasFiles = skills.stream().anyMatch(skill -> !skill.files().isEmpty());
-            if (hasFiles) {
-                String exampleFilePath = skills.stream()
-                        .flatMap(skill -> skill.files().stream())
+            boolean hasResources = skills.stream().anyMatch(skill -> !skill.resources().isEmpty());
+            if (hasResources) {
+                String exampleResourcePath = skills.stream()
+                        .flatMap(skill -> skill.resources().stream())
                         .findFirst()
-                        .map(SkillFile::path)
+                        .map(SkillResource::relativePath)
                         .orElseThrow();
 
-                ToolSpecification readFileTool = ToolSpecification.builder()
-                        .name("read_file") // TODO make configurable, make default less generic, to avoid clashes
-                        .description("Reads content of a file") // TODO make configurable
+                ToolSpecification readResourceTool = ToolSpecification.builder()
+                        .name("read_skill_resource") // TODO make configurable
+                        .description("Reads content of a resource referenced in the skill") // TODO make configurable, fix grammar here and everywhere
                         .parameters(JsonObjectSchema.builder()
-                                .addStringProperty("skill_name", "The name of the skill for which to read the file. For example: " + skills.get(0).name()) // TODO make configurable
-                                .addStringProperty("file_path", "Relative path to the file. For example: " + exampleFilePath)
-                                .required("skill_name", "file_path")
+                                .addStringProperty("skill_name", "The name of the skill for which to read the resource") // TODO make configurable
+                                .addStringProperty("relative_path", "Relative path to the resource. For example: " + exampleResourcePath)
+                                .required("skill_name", "relative_path")
                                 .build())
                         .build();
 
-                ToolExecutor readFileExecutor = new ToolExecutor() {
+                ToolExecutor readResourceExecutor = new ToolExecutor() {
 
                     @Override
                     public ToolExecutionResult executeWithContext(ToolExecutionRequest request, InvocationContext context) {
 
                         Map<String, Object> arguments = parseArguments(request.arguments());
-                        String skillName = getArgument("skill_name", arguments); // TODO customizable
-                        String filePath = getArgument("file_path", arguments); // TODO customizable
+                        String skillName = getArgument("skill_name", arguments); // TODO make configurable
+                        String relativePath = getArgument("relative_path", arguments); // TODO make configurable
 
                         Skill skill = skillsByName.get(skillName);
                         if (skill == null) {
                             throwException("There is no skill with name '%s'".formatted(skillName));
                         }
 
-                        List<SkillFile> files = skill.files().stream()
-                                .filter(file -> file.path().equals(filePath)) // TODO customizable
+                        List<SkillResource> resources = skill.resources().stream()
+                                .filter(resource -> resource.relativePath().equals(relativePath)) // TODO make configurable
                                 .toList();
-                        if (files.isEmpty()) {
-                            throwException("There is no file with path '%s'".formatted(filePath));
-                            // TODO add all available files for this skill
+                        if (resources.isEmpty()) {
+                            throwException("There is no resource with path '%s'".formatted(relativePath));
+                            // TODO add all available resources for this skill?
                         }
 
-                        // TODO if matched not exactly, validate that there is no more than 1 file
+                        // TODO if matched not exactly, validate that there is no more than 1 resource
 
                         return ToolExecutionResult.builder()
-                                .resultText(files.get(0).body()) // TODO customizable?
+                                .resultText(resources.get(0).content())
                                 .build();
                     }
 
@@ -135,18 +129,21 @@ public class Skills {
                     }
                 };
 
-                result.put(readFileTool, readFileExecutor); // TODO add it only when runTool is missing?
-                // TODO LLM is trying to use this tool to load files it created.
-                // TODO if yes, test that it can load references properly
+                tools.put(readResourceTool, readResourceExecutor);
             }
         }
 
-        return result;
+        ToolProviderResult toolProviderResult = ToolProviderResult.builder()
+                .addAll(tools)
+                .build();
+
+
+        return request -> toolProviderResult;
     }
 
-    private static @NonNull ToolSpecification createRunScriptTool(List<Skill> skills) {
+    private static ToolSpecification createRunShellCommandTool(Collection<? extends Skill> skills) {
         return ToolSpecification.builder()
-                .name("run_shell_command") // TODO make everything customizable
+                .name("run_shell_command") // TODO make configurable
                 .description("Runs a shell command using " + System.getProperty("os.name") + ". When skill_name is provided, the command runs with the skill's root directory as the working directory."
                         // TODO
                         + """
@@ -160,7 +157,9 @@ public class Skills {
                         .addStringProperty("command",
                                 "The shell command to execute. For example: 'python scripts/process.py --input data.csv'")
                         .addStringProperty("skill_name",
-                                "Optional. Name of the skill whose root directory to use as the working directory. For example: " + skills.get(0).name())
+                                "Optional. Name of the skill whose root directory to use as the working directory")
+                        .addStringProperty("timeout_seconds",
+                                "Optional. Timeout for the command in seconds. Default: 30 seconds") // TODO
                         .required("command")
                         .build())
                 .build();
@@ -201,11 +200,7 @@ public class Skills {
 //        }
     }
 
-    public static String createSystemMessage(Skill... skills) { // TODO name
-        return createSystemMessage(asList(skills));
-    }
-
-    public static String createSystemMessage(List<Skill> skills) { // TODO better name?
+    static String createSystemMessage(Collection<? extends Skill> skills) {
         ensureNotEmpty(skills, "skills");
 
         StringBuilder sb = new StringBuilder();
@@ -229,7 +224,7 @@ public class Skills {
         return sb.toString();
     }
 
-    private static String escapeXml(String value) { // TODO bad idea?
+    static String escapeXml(String value) { // TODO bad idea?
         if (value == null) return "";
         return value
                 .replace("&", "&amp;")
@@ -238,6 +233,4 @@ public class Skills {
                 .replace("\"", "&quot;")
                 .replace("'", "&apos;");
     }
-
-
 }

@@ -2,15 +2,32 @@ package dev.langchain4j.skills;
 
 import java.util.List;
 
+/**
+ * TODO
+ */
 public interface Skill {
 
+    /**
+     * TODO
+     */
     String name();
 
+    /**
+     * TODO
+     */
     String description();
 
-    String body();
+    /**
+     * TODO
+     */
+    String content();
 
-    List<SkillFile> files(); // TODO name: references? should inclide assets
+    /**
+     * TODO
+     */
+    List<SkillResource> resources(); // TODO type
 
-    // TODO what about scripts?
+    static DefaultSkill.Builder builder() {
+        return new DefaultSkill.Builder();
+    }
 }

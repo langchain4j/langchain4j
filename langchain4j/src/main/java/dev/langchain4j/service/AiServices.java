@@ -431,13 +431,53 @@ public abstract class AiServices<T> {
     }
 
     /**
-     * Configures the tool provider that the LLM can use
+     * Configures a tool provider that dynamically supplies tools for each LLM request.
+     * <p>
+     * Unlike {@link #tools(Object...)}, which registers a fixed set of tools upfront,
+     * a {@link ToolProvider} is invoked on every AI service call and can return a
+     * different set of tools based on the current request context (e.g. the user message,
+     * memory ID, or invocation parameters).
      *
-     * @param toolProvider Decides which tools the LLM could use to handle the request
-     * @return builder
+     * @param toolProvider the tool provider to use
+     * @return this builder
+     * @see ToolProvider
      */
     public AiServices<T> toolProvider(ToolProvider toolProvider) {
         context.toolService.toolProvider(toolProvider);
+        return this;
+    }
+
+    /**
+     * Configures multiple tool providers that dynamically supply tools for each LLM request.
+     * <p>
+     * All registered providers are invoked on every AI service call. Tools returned by each
+     * provider are merged and included in the request to the LLM. In case of a conflict
+     * (e.g. duplicate tool names), an exception will be thrown and AI Service invocation will fail.
+     *
+     * @param toolProviders the tool providers to use
+     * @return this builder
+     * @see ToolProvider
+     */
+    public AiServices<T> toolProviders(Collection<ToolProvider> toolProviders) {
+        context.toolService.toolProviders(toolProviders);
+        return this;
+    }
+
+    /**
+     * Configures multiple tool providers that dynamically supply tools for each LLM request.
+     * <p>
+     * All registered providers are invoked on every AI service call. Tools returned by each
+     * provider are merged and included in the request to the LLM. In case of a conflict
+     * (e.g. duplicate tool names), an exception will be thrown and AI Service invocation will fail.
+     *
+     * @param toolProviders the tool providers to use
+     * @return this builder
+     * @see ToolProvider
+     */
+    public AiServices<T> toolProviders(ToolProvider... toolProviders) {
+        if (toolProviders != null && toolProviders.length > 0) {
+            context.toolService.toolProviders(asList(toolProviders));
+        }
         return this;
     }
 
