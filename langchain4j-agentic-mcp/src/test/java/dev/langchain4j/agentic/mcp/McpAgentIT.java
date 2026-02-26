@@ -26,6 +26,7 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import java.time.Duration;
 
+@Disabled("Requires MCP server to be running")
 public class McpAgentIT {
 
     // Set this to a real McpClient before running integration tests
@@ -45,7 +46,6 @@ public class McpAgentIT {
     }
 
     @Test
-    @Disabled("Requires MCP server to be running")
     void mcp_agent_in_sequence_with_loop() {
         class WriterListener implements AgentListener {
             Object requestedTopic;
@@ -104,7 +104,6 @@ public class McpAgentIT {
     }
 
     @Test
-    @Disabled("Requires MCP server to be running")
     void typed_mcp_agent_in_sequence() {
         McpStoryGenerator storyGenerator = McpAgent.builder(mcpClient, McpStoryGenerator.class)
                 .toolName("writer")
@@ -143,7 +142,6 @@ public class McpAgentIT {
     }
 
     @Test
-    @Disabled("Requires MCP server to be running")
     void declarative_sequence_and_loop_tests() {
         StoryCreatorWithReview storyCreator =
                 AgenticServices.createAgenticSystem(StoryCreatorWithReview.class, baseModel());
@@ -166,7 +164,6 @@ public class McpAgentIT {
     }
 
     @Test
-    @Disabled("Requires MCP server to be running")
     void mcp_structured_output_tests() {
         CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
                 .chatModel(baseModel())
