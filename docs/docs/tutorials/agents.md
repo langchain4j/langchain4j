@@ -2110,3 +2110,67 @@ A2ACreativeWriter creativeWriter = AgenticServices
 This agent can then be used in the same way as a local agent, and mixed with them, when defining a workflow or using it as a subagent for a supervisor.
 
 The remote A2A agent must return a [Task](https://a2a-protocol.org/latest/specification/#61-task-object) type.
+
+## MCP-based Tool Agents
+
+The additional `langchain4j-agentic-mcp` module allows wrapping a single [MCP](https://modelcontextprotocol.io/) tool as a non-AI agent in the agentic system. Unlike regular agents that use an LLM, an MCP tool agent simply executes the MCP tool directly and returns its result. This makes it possible to compose MCP tools with other agents in larger agentic systems, without involving an LLM for the tool execution itself.
+
+To create an MCP tool agent, use `McpAgent.builder()` providing the `McpClient` instance. The builder queries the MCP server for the tool specification (name, description, input schema) and creates an agent that forwards invocations to that tool.
+
+For example, if an MCP server exposes a `generate_story` tool, it can be wrapped as an untyped agent:
+
+```java
+McpClient mcpClient = new DefaultMcpClient.Builder()
+        .transport(myMcpTransport)
+        .build();
+
+UntypedAgent storyGenerator = McpAgent.builder(mcpClient)
+        .toolName("generate_story")
+        .inputKeys("topic")
+        .outputKey("story")
+        .build();
+
+String story = (String) storyGenerator.invoke(Map.of("topic", "dragons and wizards"));
+```
+
+The `toolName` specifies which tool to bind when the MCP server exposes multiple tools. If the server exposes only one tool, `toolName` can be omitted and the single available tool will be selected automatically. The `inputKeys` specify the names of the tool's input parameters; for untyped agents these are also automatically derived from the tool's JSON schema if not provided explicitly.
+
+As with other agents, MCP tool agents can also be created with a typed interface:
+
+```java
+public interface StoryGenerator {
+
+    @Agent
+    String generateStory(@V("topic") String topic);
+}
+
+StoryGenerator storyGenerator = McpAgent.builder(mcpClient, StoryGenerator.class)
+        .toolName("generate_story")
+        .outputKey("story")
+        .build();
+
+String story = storyGenerator.generateStory("dragons and wizards");
+```
+
+In this case, the input parameter names are derived from the method parameters (or their `@V` annotations), and the return type determines how the tool's text result is parsed.
+
+Finally, MCP tool agents can also be defined declaratively using the `@McpClientAgent` annotation. The `@McpClientSupplier` annotation marks a static method that provides the `McpClient` instance.
+
+```java
+public interface DeclarativeMcpStoryGenerator {
+
+    @McpClientAgent(toolName = "generate_story", outputKey = "story",
+            description = "Generates a story based on the given topic")
+    String generateStory(@V("topic") String topic);
+
+    @McpClientSupplier
+    static McpClient mcpClient() {
+        McpTransport transport = new StreamableHttpMcpTransport.Builder()
+                .url("http://localhost:8081/mcp")
+                .build();
+        return new DefaultMcpClient.Builder()
+                .transport(transport)
+                .build();
+    }
+}
+```

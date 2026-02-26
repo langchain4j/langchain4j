@@ -19,6 +19,8 @@ import dev.langchain4j.agentic.agent.UntypedAgentBuilder;
 import dev.langchain4j.agentic.declarative.A2AClientAgent;
 import dev.langchain4j.agentic.declarative.ActivationCondition;
 import dev.langchain4j.agentic.declarative.AgentListenerSupplier;
+import dev.langchain4j.agentic.declarative.McpClientAgent;
+import dev.langchain4j.agentic.declarative.McpClientSupplier;
 import dev.langchain4j.agentic.declarative.ChatMemoryProviderSupplier;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
 import dev.langchain4j.agentic.declarative.ConditionalAgent;
@@ -46,6 +48,7 @@ import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.planner.PlannerBasedService;
 import dev.langchain4j.agentic.planner.PlannerBasedServiceImpl;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.internal.McpService;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;
 import dev.langchain4j.agentic.supervisor.SupervisorAgentService;
 import dev.langchain4j.agentic.supervisor.SupervisorAgentServiceImpl;
@@ -835,6 +838,11 @@ public class AgenticServices {
             return createA2AClientAgent(agentServiceClass, a2aClientMethod.get());
         }
 
+        Optional<Method> mcpClientMethod = getAnnotatedMethodOnClass(agentServiceClass, McpClientAgent.class);
+        if (mcpClientMethod.isPresent()) {
+            return createMcpClientAgent(agentServiceClass, mcpClientMethod.get());
+        }
+
         if (!agentServiceClass.isInterface()) {
             Method agenticMethod = nonAiAgentMethod(agentServiceClass);
             if (agenticMethod != null) {
@@ -866,6 +874,33 @@ public class AgenticServices {
                 });
 
         return agentToExecutor(a2aClientBuilder.build());
+    }
+
+    private static AgentExecutor createMcpClientAgent(Class<?> agentServiceClass, Method mcpMethod) {
+        var mcpAgent = mcpMethod.getAnnotation(McpClientAgent.class);
+
+        Object mcpClient = selectMethod(agentServiceClass,
+                method -> method.isAnnotationPresent(McpClientSupplier.class)
+                        && method.getParameterCount() == 0)
+                .map(method -> invokeStatic(method))
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "An MCP client agent requires a method annotated with @McpClientSupplier that returns the McpClient instance."));
+
+        var mcpClientBuilder = McpService.get().mcpBuilder(mcpClient, agentServiceClass)
+                .toolName(mcpAgent.toolName())
+                .inputKeys(Stream.of(mcpMethod.getParameters())
+                        .map(AgentInvoker::parameterName)
+                        .toArray(String[]::new))
+                .outputKey(AgentUtil.outputKey(mcpAgent.outputKey(), mcpAgent.typedOutputKey()))
+                .async(mcpAgent.async());
+
+        getAnnotatedMethodOnClass(agentServiceClass, AgentListenerSupplier.class)
+                .ifPresent(method -> {
+                    checkReturnType(method, AgentListener.class);
+                    mcpClientBuilder.listener(invokeStatic(method));
+                });
+
+        return agentToExecutor(mcpClientBuilder.build());
     }
 
     private static AgentExecutor createHumanInTheLoopAgent(Class<?> agentServiceClass, Method method) {
