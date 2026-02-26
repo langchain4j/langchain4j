@@ -370,8 +370,7 @@ public class AiServicesWithToolSearchToolIT {
                 .build();
 
         // when
-        String answer = assistant.chat("What is the weather in London? " +
-                "Use 'tool_search_tool' tool to discover available tools");
+        String answer = assistant.chat("What is the weather in London?");
 
         // then
         assertThat(answer.toLowerCase()).contains("sun");

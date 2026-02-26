@@ -1,24 +1,5 @@
 package dev.langchain4j.service;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import dev.langchain4j.agent.tool.P;
-import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
-import dev.langchain4j.model.openai.OpenAiChatModel;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
-import org.mockito.Spy;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.util.List;
-
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
 import static java.util.Collections.singletonMap;
@@ -27,6 +8,27 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import dev.langchain4j.agent.tool.P;
+import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.json.JsonArraySchema;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
+import dev.langchain4j.model.chat.request.json.JsonStringSchema;
+import dev.langchain4j.model.openai.OpenAiChatModel;
+import java.util.List;
+import java.util.Optional;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
+import org.mockito.Spy;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
@@ -71,10 +73,8 @@ class AiServicesWithToolsWithRequiredIT {
 
         ToolWithOptionalParameter tool = spy(new ToolWithOptionalParameter());
 
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(model)
-                .tools(tool)
-                .build();
+        Assistant assistant =
+                AiServices.builder(Assistant.class).chatModel(model).tools(tool).build();
 
         String text = "Use 'process' tool to process the following text: Klaus";
 
@@ -88,7 +88,8 @@ class AiServicesWithToolsWithRequiredIT {
         verify(model, times(2)).chat(chatRequestCaptor.capture());
         verifyNoMoreInteractionsFor(model);
 
-        List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
+        List<ToolSpecification> toolSpecifications =
+                chatRequestCaptor.getValue().parameters().toolSpecifications();
         assertThat(toolSpecifications).hasSize(1);
         ToolSpecification toolSpecification = toolSpecifications.get(0);
         assertThat(toolSpecification.name()).isEqualTo("process");
@@ -108,8 +109,7 @@ class AiServicesWithToolsWithRequiredIT {
         // given
         class ToolWithPojoParameter {
 
-            record Person(String name, @JsonProperty(required = false) Integer age) {
-            }
+            record Person(String name, @JsonProperty(required = false) Integer age) {}
 
             @Tool
             void process(Person person) {
@@ -117,21 +117,21 @@ class AiServicesWithToolsWithRequiredIT {
             }
 
             static final JsonSchemaElement EXPECTED_SCHEMA = JsonObjectSchema.builder()
-                    .addProperties(singletonMap("arg0", JsonObjectSchema.builder()
-                            .addStringProperty("name")
-                            .addIntegerProperty("age")
-                            .required("name")
-                            .build()))
+                    .addProperties(singletonMap(
+                            "arg0",
+                            JsonObjectSchema.builder()
+                                    .addStringProperty("name")
+                                    .addIntegerProperty("age")
+                                    .required("name")
+                                    .build()))
                     .required("arg0")
                     .build();
         }
 
         ToolWithPojoParameter tool = spy(new ToolWithPojoParameter());
 
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(model)
-                .tools(tool)
-                .build();
+        Assistant assistant =
+                AiServices.builder(Assistant.class).chatModel(model).tools(tool).build();
 
         String text = "Use 'process' tool to process the following: Klaus is 37 years old";
 
@@ -145,11 +145,102 @@ class AiServicesWithToolsWithRequiredIT {
         verify(model, times(2)).chat(chatRequestCaptor.capture());
         verifyNoMoreInteractionsFor(model);
 
-        List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
+        List<ToolSpecification> toolSpecifications =
+                chatRequestCaptor.getValue().parameters().toolSpecifications();
         assertThat(toolSpecifications).hasSize(1);
         ToolSpecification toolSpecification = toolSpecifications.get(0);
         assertThat(toolSpecification.name()).isEqualTo("process");
         assertThat(toolSpecification.description()).isNull();
         assertThat(toolSpecification.parameters()).isEqualTo(ToolWithPojoParameter.EXPECTED_SCHEMA);
+    }
+
+    @Test
+    void should_execute_tool_with_java_optional_parameter() {
+
+        // given
+        class ToolWithOptionalJavaOptional {
+
+            @Tool
+            void process(@P("name") String name, @P(value = "age") Optional<Integer> age) {
+                // this method is empty
+            }
+
+            static final JsonSchemaElement EXPECTED_SCHEMA = JsonObjectSchema.builder()
+                    .addStringProperty("arg0", "name")
+                    .addIntegerProperty("arg1", "age")
+                    .required("arg0")
+                    .build();
+        }
+
+        ToolWithOptionalJavaOptional tool = spy(new ToolWithOptionalJavaOptional());
+
+        Assistant assistant =
+                AiServices.builder(Assistant.class).chatModel(model).tools(tool).build();
+
+        String text = "Use 'process' tool to process the following text: Klaus";
+
+        // when
+        assistant.chat(text);
+
+        // then
+        verify(tool).process("Klaus", Optional.empty());
+        verifyNoMoreInteractions(tool);
+
+        verify(model, times(2)).chat(chatRequestCaptor.capture());
+        verifyNoMoreInteractionsFor(model);
+
+        List<ToolSpecification> toolSpecifications =
+                chatRequestCaptor.getValue().parameters().toolSpecifications();
+        assertThat(toolSpecifications).hasSize(1);
+        ToolSpecification toolSpecification = toolSpecifications.get(0);
+        assertThat(toolSpecification.name()).isEqualTo("process");
+        assertThat(toolSpecification.description()).isNull();
+        assertThat(toolSpecification.parameters()).isEqualTo(ToolWithOptionalJavaOptional.EXPECTED_SCHEMA);
+    }
+
+    @Test
+    void should_execute_tool_with_java_optional_parameter_containing_complex_type() {
+
+        // given
+        class ToolWithOptionalComplexType {
+
+            @Tool
+            void process(@P("name") String name, @P(value = "items") Optional<List<String>> items) {}
+
+            static final JsonSchemaElement EXPECTED_SCHEMA = JsonObjectSchema.builder()
+                    .addStringProperty("arg0", "name")
+                    .addProperty(
+                            "arg1",
+                            JsonArraySchema.builder()
+                                    .description("items")
+                                    .items(new JsonStringSchema())
+                                    .build())
+                    .required("arg0")
+                    .build();
+        }
+
+        ToolWithOptionalComplexType tool = spy(new ToolWithOptionalComplexType());
+
+        Assistant assistant =
+                AiServices.builder(Assistant.class).chatModel(model).tools(tool).build();
+
+        String text = "Use 'process' tool with name 'test' and no items";
+
+        // when
+        assistant.chat(text);
+
+        // then
+        verify(tool).process("test", Optional.empty());
+        verifyNoMoreInteractions(tool);
+
+        verify(model, times(2)).chat(chatRequestCaptor.capture());
+        verifyNoMoreInteractionsFor(model);
+
+        List<ToolSpecification> toolSpecifications =
+                chatRequestCaptor.getValue().parameters().toolSpecifications();
+        assertThat(toolSpecifications).hasSize(1);
+        ToolSpecification toolSpecification = toolSpecifications.get(0);
+        assertThat(toolSpecification.name()).isEqualTo("process");
+        assertThat(toolSpecification.parameters()).isEqualTo(ToolWithOptionalComplexType.EXPECTED_SCHEMA);
     }
 }

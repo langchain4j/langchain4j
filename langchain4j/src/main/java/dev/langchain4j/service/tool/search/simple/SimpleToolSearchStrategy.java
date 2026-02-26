@@ -21,6 +21,7 @@ import java.util.function.Function;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.toBase64;
+import static java.util.Arrays.stream;
 import static java.util.Comparator.comparingInt;
 
 /**
@@ -42,7 +43,7 @@ public class SimpleToolSearchStrategy implements ToolSearchStrategy {
     private static final String DEFAULT_TOOL_NAME = "tool_search_tool";
     private static final String DEFAULT_TOOL_DESCRIPTION = "Finds available tools whose name or description contains given search terms";
     private static final String DEFAULT_TOOL_ARGUMENT_NAME = "terms";
-    private static final String DEFAULT_TOOL_ARGUMENT_DESCRIPTION = "A list of search terms used to find relevant tools";
+    private static final String DEFAULT_TOOL_ARGUMENT_DESCRIPTION = "A list of individual search terms (single words) used to find relevant tools";
     private static final int DEFAULT_MAX_RESULTS = 5;
     private static final int DEFAULT_MIN_SCORE = 1;
     private static final Function<List<String>, String> DEFAULT_TOOL_RESULT_MESSAGE_TEXT_PROVIDER = foundToolNames -> {
@@ -132,6 +133,7 @@ public class SimpleToolSearchStrategy implements ToolSearchStrategy {
 
     protected List<String> clean(List<String> terms) {
         return terms.stream()
+                .flatMap(term -> stream(term.split("\\s+")))
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
                 .map(String::toLowerCase)
