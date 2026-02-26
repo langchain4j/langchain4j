@@ -273,13 +273,11 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
     protected void should_find_with_min_score() {
 
         // given
-        String firstId = randomUUID();
         Embedding firstEmbedding = embeddingModel().embed("hello").content();
-        embeddingStore().add(firstId, firstEmbedding);
+        String firstId = embeddingStore().add(firstEmbedding);
 
-        String secondId = randomUUID();
         Embedding secondEmbedding = embeddingModel().embed("hi").content();
-        embeddingStore().add(secondId, secondEmbedding);
+        String secondId = embeddingStore().add(secondEmbedding);
         awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(2));
 
         EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
