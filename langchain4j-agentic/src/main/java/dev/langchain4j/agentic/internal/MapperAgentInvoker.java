@@ -7,24 +7,22 @@ import java.util.Map;
 /**
  * Wraps an existing {@link AgentInvoker} to inject a specific item from a collection
  * into the agent's invocation arguments. Each instance represents one element of a
- * parallel multi-instance execution, with a unique name, agentId, and outputKey.
+ * parallel mapper execution, with a unique name, agentId, and outputKey.
  */
-public class MultiInstanceAgentInvoker extends AbstractAgentInvoker {
+public class MapperAgentInvoker extends AbstractAgentInvoker {
 
     private final Object item;
     private final String injectionKey;
-    private final int instanceIndex;
     private final String instanceName;
     private final String instanceAgentId;
     private final String instanceOutputKey;
 
-    public MultiInstanceAgentInvoker(AgentInvoker delegate, Object item, int instanceIndex) {
-        super(delegate.method(), (InternalAgent) delegate);
+    public MapperAgentInvoker(AgentInvoker delegate, Object item, int instanceIndex) {
+        super(delegate.method(), delegate);
         this.item = item;
         this.injectionKey = delegate.arguments().isEmpty()
                 ? null
                 : delegate.arguments().get(0).name();
-        this.instanceIndex = instanceIndex;
         this.instanceName = delegate.name() + "_" + instanceIndex;
         this.instanceAgentId = delegate.agentId() + "_" + instanceIndex;
         this.instanceOutputKey =

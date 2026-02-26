@@ -363,9 +363,9 @@ List<EveningPlan> plans = eveningPlannerAgent.plan("romantic");
 
 Here the `output` function of the `AgenticScope` defined in the `EveningPlannerAgent` allows to assemble the outputs of the two subagents, creating a list of `EveningPlan` objects that combine a movie and a meal matching the given mood. The `output` method, even if especially relevant for parallel workflows, can be actually used in any workflow pattern to define how to combine the outputs of the subagents into a single result, instead of simply returning a value from the `AgenticScope`. The `executor` method also allows to optionally provide an `Executor` that will be used to execute the subagents in parallel, otherwise an internal cached thread pool will be used by default.
 
-### Parallel multi-instance workflow
+### Parallel mapper workflow
 
-The parallel multi-instance workflow is a variation of the parallel workflow where the same sub-agent is executed multiple times in parallel, once for each item in a collection. This is useful when you need to apply the same operation to a batch of inputs concurrently.
+The parallel mapper workflow is a variation of the parallel workflow where the same sub-agent is executed multiple times in parallel, once for each item in a collection. In other words, it maps all the items of a list, processing each of them independently invoking the same sub-agent multiple times. This is useful when you need to apply the same operation to a batch of inputs concurrently.
 
 For example, let's create an agent that generates personalized horoscopes for a list of people:
 
@@ -384,7 +384,7 @@ public interface PersonAstrologyAgent {
 }
 ```
 
-Using `AgenticServices.parallelMultiInstanceBuilder()`, you can create a workflow that fans out this agent over a collection, automatically creating one instance per item:
+Using `AgenticServices.parallelMapperBuilder()`, you can create a workflow that fans out this agent over a collection, automatically creating one instance per item:
 
 ```java
 PersonAstrologyAgent personAstrologyAgent = AgenticServices
@@ -394,7 +394,7 @@ PersonAstrologyAgent personAstrologyAgent = AgenticServices
         .build();
 
 BatchHoroscopeAgent agent = AgenticServices
-        .parallelMultiInstanceBuilder(BatchHoroscopeAgent.class)
+        .parallelMapperBuilder(BatchHoroscopeAgent.class)
         .subAgents(personAstrologyAgent)
         .itemsProvider("persons")
         .executor(Executors.newFixedThreadPool(3))
@@ -405,14 +405,22 @@ List<Person> persons = List.of(
         new Person("Luigi", "pisces"),
         new Person("Peach", "leo"));
 
-ResultWithAgenticScope<Object> result = agent.generateHoroscopes(persons);
-
-List<String> horoscopes = (List<String>) result.result();
+List<String> horoscopes = agent.generateHoroscopes(persons);
 ```
 
-The `itemsProvider` specifies which argument contains the collection to iterate over. Each instance of the sub-agent receives one item from the collection, and once all instances complete, their individual results are automatically aggregated into a list and returned as the workflow result. As with the parallel workflow, an `Executor` can be optionally provided.
+where the `BatchHoroscopeAgent` is defined as follows:
 
-Note that `ChatMemory` is not supported for `ParallelMultiInstanceAgent` since each instance is stateless and independent.
+```java
+public interface BatchHoroscopeAgent extends AgentInstance {
+
+    @Agent
+    List<String> generateHoroscopes(@V("persons") List<Person> persons);
+}
+```
+
+The `itemsProvider` specifies which argument contains the collection to iterate over. However, if there are no ambiguities and there is only one argument that can be iterated (a Collection or an array), as in this example, it can be safely omitted. Each instance of the sub-agent receives one item from the collection, and once all instances complete, their individual results are automatically aggregated into a list and returned as the workflow result. As with the parallel workflow, an `Executor` can be optionally provided.
+
+Note that, since the same agent is invoked indepently to perform repeatdly the same task with different arguments, it doesn't make sense to hold any `ChatMemory` for it. For this reason LangChain4j throws an exception, in case the parallel mapper workflow tries to use a sub-agent configured to use a `ChatMemory`.
 
 ### Conditional workflow
 

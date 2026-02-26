@@ -9,6 +9,7 @@ import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.internal.UserMessageRecorder;
+import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -121,6 +122,9 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
 
     @Override
     public void setParent(InternalAgent parent) {
+        if (builder.hasChatMemory() && parent != null && !parent.allowChatMemory()) {
+            throw new AgenticSystemConfigurationException("Agents with chat memory can't be a subagent of " + parent.type());
+        }
         this.parent = parent;
         registerInheritedParentListener(parent.listener());
     }
