@@ -97,6 +97,7 @@ import org.hibernate.query.criteria.JpaPath;
 import org.hibernate.query.criteria.JpaPredicate;
 import org.hibernate.query.criteria.JpaRoot;
 import org.hibernate.query.restriction.Restriction;
+import org.hibernate.relational.SchemaManager;
 import org.hibernate.tool.schema.Action;
 import org.hibernate.tool.schema.SourceType;
 import org.hibernate.type.descriptor.java.JavaType;
@@ -110,6 +111,17 @@ import org.slf4j.LoggerFactory;
 public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
     private static final Logger log = LoggerFactory.getLogger(HibernateEmbeddingStore.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final boolean IS_HIBERNATE_ORM_7_1;
+
+    static {
+        boolean isHibernateOrm71 = false;
+        try {
+            SchemaManager.class.getMethod("truncateTable", String.class);
+        } catch (NoSuchMethodException e) {
+            isHibernateOrm71 = true;
+        }
+        IS_HIBERNATE_ORM_7_1 = isHibernateOrm71;
+    }
 
     protected final boolean isDynamic;
     protected final SessionFactory sessionFactory;
@@ -410,8 +422,23 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
 
     @Override
     public void removeAll() {
-        final String tableName = entityPersister.getIdentifierTableMapping().getTableName();
-        sessionFactory.getSchemaManager().truncateTable(tableName);
+        if (isDynamic) {
+            sessionFactory.getSchemaManager().truncate();
+        } else if (isIsHibernateOrm71()) {
+            sessionFactory.inStatelessTransaction(session -> {
+                session.createMutationQuery("delete from " + entityPersister.getEntityName())
+                        .executeUpdate();
+            });
+        } else {
+            sessionFactory
+                    .getSchemaManager()
+                    .truncateTable(entityPersister.getIdentifierTableMapping().getTableName());
+        }
+    }
+
+    // Allows replacing this logic for native image generation
+    private static boolean isIsHibernateOrm71() {
+        return IS_HIBERNATE_ORM_7_1;
     }
 
     /**
