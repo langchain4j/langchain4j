@@ -16,4 +16,8 @@ public interface InternalAgent extends AgentInstance {
     default boolean allowStreamingOutput() {
         throw new UnsupportedOperationException();
     }
+
+    default boolean allowChatMemory() {
+        return true;
+    }
 }

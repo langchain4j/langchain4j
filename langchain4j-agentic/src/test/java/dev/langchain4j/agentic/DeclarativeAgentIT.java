@@ -34,7 +34,7 @@ import dev.langchain4j.agentic.declarative.LoopCounter;
 import dev.langchain4j.agentic.declarative.Output;
 import dev.langchain4j.agentic.declarative.ParallelAgent;
 import dev.langchain4j.agentic.declarative.ParallelExecutor;
-import dev.langchain4j.agentic.declarative.ParallelMultiInstanceAgent;
+import dev.langchain4j.agentic.declarative.ParallelMapperAgent;
 import dev.langchain4j.agentic.declarative.PlannerAgent;
 import dev.langchain4j.agentic.declarative.PlannerSupplier;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
@@ -49,6 +49,7 @@ import dev.langchain4j.agentic.observability.AgentRequest;
 import dev.langchain4j.agentic.observability.AgentResponse;
 import dev.langchain4j.agentic.observability.MonitoredExecution;
 import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -903,8 +904,8 @@ public class DeclarativeAgentIT {
 
     public interface BatchHoroscopeAgent extends AgentInstance {
 
-        @ParallelMultiInstanceAgent(subAgent = PersonAstrologyAgent.class, itemsProvider = "persons")
-        ResultWithAgenticScope<Object> generateHoroscopes(@V("persons") List<Person> persons);
+        @ParallelMapperAgent(subAgent = PersonAstrologyAgent.class)
+        List<String> generateHoroscopes(@V("persons") List<Person> persons);
 
         @ParallelExecutor
         static Executor executor() {
@@ -913,7 +914,7 @@ public class DeclarativeAgentIT {
     }
 
     @Test
-    void declarative_parallel_multi_instance_tests() {
+    void declarative_parallel_mapper_tests() {
         BatchHoroscopeAgent agent = AgenticServices.createAgenticSystem(BatchHoroscopeAgent.class, baseModel());
 
         assertThat(agent.name()).isEqualTo("generateHoroscopes");
@@ -927,21 +928,19 @@ public class DeclarativeAgentIT {
         List<Person> persons =
                 List.of(new Person("Mario", "aries"), new Person("Luigi", "pisces"), new Person("Peach", "leo"));
 
-        ResultWithAgenticScope<Object> result = agent.generateHoroscopes(persons);
-
-        List<String> horoscopes = (List<String>) result.result();
-        assertThat(horoscopes).hasSize(3);
-        assertThat(horoscopes).allSatisfy(horoscope -> assertThat(horoscope).isNotBlank());
+        List<String> horoscopes = agent.generateHoroscopes(persons);
+        assertThat(horoscopes).hasSize(3).allSatisfy(horoscope -> assertThat(horoscope).isNotBlank());
     }
 
-    public interface BatchHoroscopeAgentWithMemory extends AgentInstance, ChatMemoryAccess {
+    public interface BatchHoroscopeAgentWith2Lists extends AgentInstance {
 
-        @ParallelMultiInstanceAgent(subAgent = PersonAstrologyAgent.class, itemsProvider = "persons")
-        ResultWithAgenticScope<Object> generateHoroscopes(@V("persons") List<Person> persons);
+        @ParallelMapperAgent(subAgent = PersonAstrologyAgent.class)
+        List<String> generateHoroscopes(@V("persons") List<Person> persons, @V("moods") List<String> moods);
+    }
 
-        @ParallelExecutor
-        static Executor executor() {
-            return Executors.newFixedThreadPool(3);
-        }
+    @Test
+    void parallel_mapper_with_ambigous_items_provider_throws_tests() {
+        assertThat(assertThrows(AgenticSystemConfigurationException.class, () ->
+                AgenticServices.createAgenticSystem(BatchHoroscopeAgentWith2Lists.class, baseModel())));
     }
 }

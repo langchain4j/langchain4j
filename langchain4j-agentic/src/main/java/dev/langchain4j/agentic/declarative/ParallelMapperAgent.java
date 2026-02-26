@@ -16,9 +16,9 @@ import java.lang.annotation.Target;
  * {@code
  *     public interface BatchProcessorAgent {
  *
- *         @ParallelMultiInstanceAgent( outputKey = "results",
+ *         @ParallelMapperAgent( outputKey = "results",
  *                 subAgent = ItemProcessor.class,
- *                 inputKey = "items" )
+ *                 itemsProvider = "items" )
  *         List<Result> process(@V("items") List<Item> items);
  *     }
  * }
@@ -26,7 +26,7 @@ import java.lang.annotation.Target;
  */
 @Retention(RUNTIME)
 @Target({METHOD})
-public @interface ParallelMultiInstanceAgent {
+public @interface ParallelMapperAgent {
 
     /**
      * Name of the agent. If not provided, method name will be used.
@@ -67,10 +67,10 @@ public @interface ParallelMultiInstanceAgent {
     Class<?> subAgent();
 
     /**
-     * Key referencing a collection in the agentic scope. For each item in this collection,
+     * Variable name referencing a collection in the agentic scope. For each item in this collection,
      * an instance of the sub-agent will be created and executed in parallel.
      *
-     * @return the key of the input collection.
+     * @return the name of the input collection.
      */
-    String itemsProvider();
+    String itemsProvider() default "";
 }

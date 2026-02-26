@@ -1239,23 +1239,23 @@ public class WorkflowAgentsIT {
     }
 
     public interface BatchHoroscopeAgent extends AgentInstance {
-        ResultWithAgenticScope<Object> generateHoroscopes(@V("persons") List<Person> persons);
+
+        @Agent
+        String[] generateHoroscopes(@V("persons") Person... persons);
     }
 
     @Test
-    void parallel_multi_instance_agent_tests() {
+    void parallel_mapper_tests() {
         PersonAstrologyAgent personAstrologyAgent = AgenticServices.agentBuilder(PersonAstrologyAgent.class)
                 .chatModel(baseModel())
                 .outputKey("horoscope")
                 .build();
 
-        BatchHoroscopeAgent agent = AgenticServices.parallelMultiInstanceBuilder(BatchHoroscopeAgent.class)
+        BatchHoroscopeAgent agent = AgenticServices.parallelMapperBuilder(BatchHoroscopeAgent.class)
                 .subAgents(personAstrologyAgent)
-                .itemsProvider("persons")
-                .executor(Executors.newFixedThreadPool(3))
                 .build();
 
-        assertThat(agent.name()).isEqualTo("ParallelMultiInstance");
+        assertThat(agent.name()).isEqualTo("generateHoroscopes");
         assertThat(agent.topology()).isEqualTo(AgenticSystemTopology.PARALLEL);
         assertThat(agent.subagents()).hasSize(1);
 
@@ -1263,14 +1263,41 @@ public class WorkflowAgentsIT {
         assertThat(subagent.name()).isEqualTo("horoscope");
         assertThat(subagent.outputKey()).isEqualTo("horoscope");
 
+        String[] horoscopes = agent.generateHoroscopes(new Person("Mario", "aries"), new Person("Luigi", "pisces"), new Person("Peach", "leo"));
+        assertThat(horoscopes).hasSize(3).allSatisfy(horoscope -> assertThat(horoscope).isNotBlank());
+    }
+
+    @Test
+    void parallel_mapper_with_memory_throws_tests() {
+        PersonAstrologyAgent personAstrologyAgent = AgenticServices.agentBuilder(PersonAstrologyAgent.class)
+                .chatModel(baseModel())
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
+                .outputKey("horoscope")
+                .build();
+
+        assertThat(assertThrows(Exception.class, () -> AgenticServices.parallelMapperBuilder(BatchHoroscopeAgent.class)
+                .subAgents(personAstrologyAgent)
+                .build())).rootCause().isInstanceOf(AgenticSystemConfigurationException.class);
+    }
+
+    @Test
+    void untyped_parallel_mapper_tests() {
         List<Person> persons =
                 List.of(new Person("Mario", "aries"), new Person("Luigi", "pisces"), new Person("Peach", "leo"));
 
-        ResultWithAgenticScope<Object> result = agent.generateHoroscopes(persons);
+        PersonAstrologyAgent personAstrologyAgent = AgenticServices.agentBuilder(PersonAstrologyAgent.class)
+                .chatModel(baseModel())
+                .outputKey("horoscope")
+                .build();
 
-        List<String> horoscopes = (List<String>) result.result();
-        assertThat(horoscopes).hasSize(3);
-        assertThat(horoscopes).allSatisfy(horoscope -> assertThat(horoscope).isNotBlank());
+        UntypedAgent agent = AgenticServices.parallelMapperBuilder()
+                .subAgents(personAstrologyAgent)
+                .itemsProvider("persons")
+                .executor(Executors.newFixedThreadPool(persons.size()))
+                .build();
+
+        List<String> horoscopes = (List<String>) agent.invoke(Map.of("persons", persons));
+        assertThat(horoscopes).hasSize(persons.size()).allSatisfy(horoscope -> assertThat(horoscope).isNotBlank());
     }
 
     @Test

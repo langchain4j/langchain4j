@@ -43,7 +43,7 @@ import dev.langchain4j.agentic.scope.AgenticScopeAccess;
 import dev.langchain4j.agentic.scope.AgenticScopeRegistry;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
-import dev.langchain4j.agentic.workflow.LoopAgentInstance;
+import dev.langchain4j.agentic.workflow.impl.ParallelMapperServiceImpl;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.ParameterNameResolver;
@@ -298,6 +298,11 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
     @Override
     public boolean allowStreamingOutput() {
         return allowStreamingOutput;
+    }
+
+    @Override
+    public boolean allowChatMemory() {
+        return !ParallelMapperServiceImpl.SERVICE_TYPE.equals(service.serviceType());
     }
 
     @Override

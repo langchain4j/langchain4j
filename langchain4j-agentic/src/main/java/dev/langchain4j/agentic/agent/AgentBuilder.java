@@ -284,6 +284,10 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         return (B) this;
     }
 
+    boolean hasChatMemory() {
+        return chatMemory != null || chatMemoryProvider != null;
+    }
+
     boolean hasNonDefaultChatMemory() {
         return chatMemoryProvider != null;
     }

@@ -4,7 +4,7 @@ import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.workflow.ConditionalAgentService;
 import dev.langchain4j.agentic.workflow.LoopAgentService;
 import dev.langchain4j.agentic.workflow.ParallelAgentService;
-import dev.langchain4j.agentic.workflow.ParallelMultiInstanceAgentService;
+import dev.langchain4j.agentic.workflow.ParallelMapperService;
 import dev.langchain4j.agentic.workflow.SequentialAgentService;
 import dev.langchain4j.agentic.workflow.WorkflowAgentsBuilder;
 
@@ -52,12 +52,12 @@ public enum WorkflowAgentsBuilderImpl implements WorkflowAgentsBuilder {
     }
 
     @Override
-    public ParallelMultiInstanceAgentService<UntypedAgent> parallelMultiInstanceBuilder() {
-        return ParallelMultiInstanceAgentServiceImpl.builder();
+    public ParallelMapperService<UntypedAgent> parallelMapperBuilder() {
+        return ParallelMapperServiceImpl.builder();
     }
 
     @Override
-    public <T> ParallelMultiInstanceAgentService<T> parallelMultiInstanceBuilder(final Class<T> agentServiceClass) {
-        return ParallelMultiInstanceAgentServiceImpl.builder(agentServiceClass);
+    public <T> ParallelMapperService<T> parallelMapperBuilder(final Class<T> agentServiceClass) {
+        return ParallelMapperServiceImpl.builder(agentServiceClass);
     }
 }
