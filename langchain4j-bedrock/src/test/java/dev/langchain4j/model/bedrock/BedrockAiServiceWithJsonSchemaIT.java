@@ -1,7 +1,5 @@
 package dev.langchain4j.model.bedrock;
 
-import static dev.langchain4j.model.bedrock.BedrockChatModelName.ANTHROPIC_CLAUDE_4_5_HAIKU_V1_0;
-
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceWithJsonSchemaIT;
 import java.util.List;
@@ -13,7 +11,7 @@ class BedrockAiServiceWithJsonSchemaIT extends AbstractAiServiceWithJsonSchemaIT
     @Override
     protected List<ChatModel> models() {
         return List.of(BedrockChatModel.builder()
-                .modelId(ANTHROPIC_CLAUDE_4_5_HAIKU_V1_0.toString())
+                .modelId("anthropic.claude-haiku-4-5-20251001-v1:0")
                 .maxRetries(1)
                 .logRequests(false)
                 .logRequests(true)

@@ -62,6 +62,16 @@ class BedrockChatModelNovaWithVisionIT extends AbstractChatModelIT {
     }
 
     @Override
+    protected boolean supportsJsonResponseFormatWithSchema() {
+        return false; // output format not supported
+    }
+
+    @Override
+    protected boolean supportsJsonResponseFormatWithRawSchema() {
+        return false; // output format not supported
+    }
+
+    @Override
     protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(final ChatModel model) {
         return BedrockChatResponseMetadata.class;
     }
