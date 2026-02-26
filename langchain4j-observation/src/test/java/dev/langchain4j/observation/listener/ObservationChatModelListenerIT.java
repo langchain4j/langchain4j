@@ -12,6 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.ModelNotFoundException;
 import dev.langchain4j.model.azure.AzureOpenAiChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -30,7 +31,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
-public class MicrometerChatModelListenerIT {
+public class ObservationChatModelListenerIT {
 
     private TestObservationRegistry observationRegistry;
     private ObservationChatModelListener listener;
@@ -45,7 +46,7 @@ public class MicrometerChatModelListenerIT {
 
     @Test
     void requestAndResponse_ok() {
-        doChatRequest(System.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"));
+        doChatRequest("gpt-4o-mini");
 
         // Only token usage metrics should be present
         await().atMost(Duration.ofSeconds(5))
@@ -110,8 +111,11 @@ public class MicrometerChatModelListenerIT {
 
     @Test
     void requestError() {
-        doChatRequest("wrongDeploymentName");
-
+        try {
+            doChatRequest("wrongDeploymentName");
+        } catch (ModelNotFoundException expected) {
+            // ignored because expected behavior
+        }
         // No token usage metrics on error
         assertThat(meterRegistry.find(TOKEN_USAGE).meter()).isNull();
         assertThat(meterRegistry
