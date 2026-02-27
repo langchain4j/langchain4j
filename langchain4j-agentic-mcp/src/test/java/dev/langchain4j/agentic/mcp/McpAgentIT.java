@@ -1,5 +1,8 @@
 package dev.langchain4j.agentic.mcp;
 
+import static dev.langchain4j.agentic.mcp.McpServerHelper.getJBangCommand;
+import static dev.langchain4j.agentic.mcp.McpServerHelper.getPathToScript;
+import static dev.langchain4j.agentic.mcp.McpServerHelper.skipTestsIfJbangNotAvailable;
 import static dev.langchain4j.agentic.mcp.Models.baseModel;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -19,14 +22,14 @@ import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.mcp.client.DefaultMcpClient;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.mcp.client.transport.McpTransport;
-import dev.langchain4j.mcp.client.transport.http.StreamableHttpMcpTransport;
+import dev.langchain4j.mcp.client.transport.stdio.StdioMcpTransport;
 import dev.langchain4j.service.V;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import java.time.Duration;
+import java.util.List;
 
-@Disabled("Requires MCP server to be running")
 public class McpAgentIT {
 
     // Set this to a real McpClient before running integration tests
@@ -34,15 +37,23 @@ public class McpAgentIT {
 
     @BeforeAll
     static void setup() {
-        McpTransport transport = new StreamableHttpMcpTransport.Builder()
-                .url("http://localhost:8081/mcp")
-                .logRequests(true)
-                .logResponses(true)
+        skipTestsIfJbangNotAvailable();
+        McpTransport transport = new StdioMcpTransport.Builder()
+                .command(List.of(
+                        getJBangCommand(), "--quiet", "--fresh", "run", getPathToScript("tools_mcp_server.java")))
+                .logEvents(true)
                 .build();
         mcpClient = new DefaultMcpClient.Builder()
                 .transport(transport)
                 .toolExecutionTimeout(Duration.ofSeconds(4))
                 .build();
+    }
+
+    @AfterAll
+    static void teardown() throws Exception {
+        if (mcpClient != null) {
+            mcpClient.close();
+        }
     }
 
     @Test
