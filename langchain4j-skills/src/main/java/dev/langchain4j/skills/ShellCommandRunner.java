@@ -18,7 +18,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 
 class ShellCommandRunner {
 
-    private static final int DEFAULT_TIMEOUT_SECONDS = 30;
+    static final int DEFAULT_TIMEOUT_SECONDS = 30;
     private static final int DEFAULT_MAX_TIMEOUT_SECONDS = 5 * 60;
     private static final int DEFAULT_MAX_OUTPUT_BYTES = 10 * 1024 * 1024; // 10 MB
 

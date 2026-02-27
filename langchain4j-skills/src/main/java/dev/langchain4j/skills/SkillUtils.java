@@ -24,9 +24,12 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.toBase64;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.skills.ShellCommandRunner.DEFAULT_TIMEOUT_SECONDS;
+import static java.util.stream.Collectors.joining;
 
 class SkillUtils {
 
+    // TODO fix grammar here and everywhere
     static final String DEFAULT_ACTIVATE_SKILL_TOOL_NAME = "activate_skill";
     static final String DEFAULT_ACTIVATE_SKILL_TOOL_DESCRIPTION = "Activates a skill by name";
     static final String DEFAULT_ACTIVATE_SKILL_TOOL_PARAMETER_NAME = "skill_name";
@@ -51,7 +54,7 @@ class SkillUtils {
     static final String DEFAULT_RUN_SHELL_COMMAND_TOOL_SKILL_NAME_PARAMETER_NAME = "skill_name";
     static final String DEFAULT_RUN_SHELL_COMMAND_TOOL_SKILL_NAME_PARAMETER_DESCRIPTION = "Name of the skill whose root directory to use as the working directory. This is optional parameter.";
     static final String DEFAULT_RUN_SHELL_COMMAND_TOOL_TIMEOUT_SECONDS_PARAMETER_NAME = "timeout_seconds";
-    static final String DEFAULT_RUN_SHELL_COMMAND_TOOL_TIMEOUT_SECONDS_PARAMETER_DESCRIPTION = "Timeout for the command in seconds. This is optional parameter. Default value: 30 seconds"; // TODO
+    static final String DEFAULT_RUN_SHELL_COMMAND_TOOL_TIMEOUT_SECONDS_PARAMETER_DESCRIPTION = "Timeout for the command in seconds. This is optional parameter. Default value: %s seconds".formatted(DEFAULT_TIMEOUT_SECONDS);
 
     static ToolProvider createToolProvider(SkillService.Builder builder) {
         Collection<? extends Skill> skills = builder.skills;
@@ -114,7 +117,7 @@ class SkillUtils {
 
                 ToolSpecification readResourceTool = ToolSpecification.builder()
                         .name(getOrDefault(builder.readResourceToolName, DEFAULT_READ_RESOURCE_TOOL_NAME))
-                        .description(getOrDefault(builder.readResourceToolDescription, DEFAULT_READ_RESOURCE_TOOL_DESCRIPTION)) // TODO fix grammar here and everywhere
+                        .description(getOrDefault(builder.readResourceToolDescription, DEFAULT_READ_RESOURCE_TOOL_DESCRIPTION))
                         .parameters(JsonObjectSchema.builder()
                                 .addStringProperty(readResourceToolSkillNameParameterName, getOrDefault(builder.readResourceToolSkillNameParameterDescription, DEFAULT_READ_RESOURCE_TOOL_SKILL_NAME_PARAMETER_DESCRIPTION))
                                 .addStringProperty(readResourceToolRelativePathParameterName, resolveRelativePathParameterDescription(builder))
@@ -137,14 +140,14 @@ class SkillUtils {
                         }
 
                         List<SkillResource> resources = skill.resources().stream()
-                                .filter(resource -> resource.relativePath().equals(relativePath)) // TODO make configurable
+                                .filter(resource -> resource.relativePath().equals(relativePath))
                                 .toList();
                         if (resources.isEmpty()) {
-                            throwException("There is no resource with path '%s'".formatted(relativePath));
-                            // TODO add all available resources for this skill?
+                            String availableResources = skill.resources().stream()
+                                    .map(resource -> "'" + resource.relativePath() + "'")
+                                    .collect(joining(", "));
+                            throwException("There is no resource for skill '%s' with the path '%s'. Available resources: [%s]".formatted(skillName, relativePath, availableResources));
                         }
-
-                        // TODO if matched not exactly, validate that there is no more than 1 resource
 
                         return ToolExecutionResult.builder()
                                 .resultText(resources.get(0).content())
