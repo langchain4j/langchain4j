@@ -363,6 +363,65 @@ List<EveningPlan> plans = eveningPlannerAgent.plan("romantic");
 
 Here the `output` function of the `AgenticScope` defined in the `EveningPlannerAgent` allows to assemble the outputs of the two subagents, creating a list of `EveningPlan` objects that combine a movie and a meal matching the given mood. The `output` method, even if especially relevant for parallel workflows, can be actually used in any workflow pattern to define how to combine the outputs of the subagents into a single result, instead of simply returning a value from the `AgenticScope`. The `executor` method also allows to optionally provide an `Executor` that will be used to execute the subagents in parallel, otherwise an internal cached thread pool will be used by default.
 
+### Parallel mapper workflow
+
+The parallel mapper workflow is a variation of the parallel workflow where the same sub-agent is executed multiple times in parallel, once for each item in a collection. In other words, it maps all the items of a list, processing each of them independently invoking the same sub-agent multiple times. This is useful when you need to apply the same operation to a batch of inputs concurrently.
+
+For example, let's create an agent that generates personalized horoscopes for a list of people:
+
+```java
+public interface PersonAstrologyAgent {
+
+    @SystemMessage("""
+        You are an astrologist that generates horoscopes based on the user's name and zodiac sign.
+        """)
+    @UserMessage("""
+        Generate the horoscope for {{person}}.
+        The person has a name and a zodiac sign. Use both to create a personalized horoscope.
+        """)
+    @Agent(description = "An astrologist that generates horoscopes for a person", outputKey = "horoscope")
+    String horoscope(@V("person") Person person);
+}
+```
+
+Using `AgenticServices.parallelMapperBuilder()`, you can create a workflow that fans out this agent over a collection, automatically creating one instance per item:
+
+```java
+PersonAstrologyAgent personAstrologyAgent = AgenticServices
+        .agentBuilder(PersonAstrologyAgent.class)
+        .chatModel(BASE_MODEL)
+        .outputKey("horoscope")
+        .build();
+
+BatchHoroscopeAgent agent = AgenticServices
+        .parallelMapperBuilder(BatchHoroscopeAgent.class)
+        .subAgents(personAstrologyAgent)
+        .itemsProvider("persons")
+        .executor(Executors.newFixedThreadPool(3))
+        .build();
+
+List<Person> persons = List.of(
+        new Person("Mario", "aries"),
+        new Person("Luigi", "pisces"),
+        new Person("Peach", "leo"));
+
+List<String> horoscopes = agent.generateHoroscopes(persons);
+```
+
+where the `BatchHoroscopeAgent` is defined as follows:
+
+```java
+public interface BatchHoroscopeAgent extends AgentInstance {
+
+    @Agent
+    List<String> generateHoroscopes(@V("persons") List<Person> persons);
+}
+```
+
+The `itemsProvider` specifies which argument contains the collection to iterate over. However, if there are no ambiguities and there is only one argument that can be iterated (a Collection or an array), as in this example, it can be safely omitted. Each instance of the sub-agent receives one item from the collection, and once all instances complete, their individual results are automatically aggregated into a list and returned as the workflow result. As with the parallel workflow, an `Executor` can be optionally provided.
+
+Note that, since the same agent is invoked indepently to perform repeatdly the same task with different arguments, it doesn't make sense to hold any `ChatMemory` for it. For this reason LangChain4j throws an exception, in case the parallel mapper workflow tries to use a sub-agent configured to use a `ChatMemory`.
+
 ### Conditional workflow
 
 Another frequent need is to invoke a certain agent only if a specific condition is satisfied. For example, it could be useful to categorize a user request before processing it, so that the processing can be done by different agents depending on the category of the request. This can be achieved by using the following `CategoryRouter`
@@ -2051,3 +2110,67 @@ A2ACreativeWriter creativeWriter = AgenticServices
 This agent can then be used in the same way as a local agent, and mixed with them, when defining a workflow or using it as a subagent for a supervisor.
 
 The remote A2A agent must return a [Task](https://a2a-protocol.org/latest/specification/#61-task-object) type.
+
+## MCP-based Tool Agents
+
+The additional `langchain4j-agentic-mcp` module allows wrapping a single [MCP](https://modelcontextprotocol.io/) tool as a non-AI agent in the agentic system. Unlike regular agents that use an LLM, an MCP tool agent simply executes the MCP tool directly and returns its result. This makes it possible to compose MCP tools with other agents in larger agentic systems, without involving an LLM for the tool execution itself.
+
+To create an MCP tool agent, use `McpAgent.builder()` providing the `McpClient` instance. The builder queries the MCP server for the tool specification (name, description, input schema) and creates an agent that forwards invocations to that tool.
+
+For example, if an MCP server exposes a `generate_story` tool, it can be wrapped as an untyped agent:
+
+```java
+McpClient mcpClient = new DefaultMcpClient.Builder()
+        .transport(myMcpTransport)
+        .build();
+
+UntypedAgent storyGenerator = McpAgent.builder(mcpClient)
+        .toolName("generate_story")
+        .inputKeys("topic")
+        .outputKey("story")
+        .build();
+
+String story = (String) storyGenerator.invoke(Map.of("topic", "dragons and wizards"));
+```
+
+The `toolName` specifies which tool to bind when the MCP server exposes multiple tools. If the server exposes only one tool, `toolName` can be omitted and the single available tool will be selected automatically. The `inputKeys` specify the names of the tool's input parameters; for untyped agents these are also automatically derived from the tool's JSON schema if not provided explicitly.
+
+As with other agents, MCP tool agents can also be created with a typed interface:
+
+```java
+public interface StoryGenerator {
+
+    @Agent
+    String generateStory(@V("topic") String topic);
+}
+
+StoryGenerator storyGenerator = McpAgent.builder(mcpClient, StoryGenerator.class)
+        .toolName("generate_story")
+        .outputKey("story")
+        .build();
+
+String story = storyGenerator.generateStory("dragons and wizards");
+```
+
+In this case, the input parameter names are derived from the method parameters (or their `@V` annotations), and the return type determines how the tool's text result is parsed.
+
+Finally, MCP tool agents can also be defined declaratively using the `@McpClientAgent` annotation. The `@McpClientSupplier` annotation marks a static method that provides the `McpClient` instance.
+
+```java
+public interface DeclarativeMcpStoryGenerator {
+
+    @McpClientAgent(toolName = "generate_story", outputKey = "story",
+            description = "Generates a story based on the given topic")
+    String generateStory(@V("topic") String topic);
+
+    @McpClientSupplier
+    static McpClient mcpClient() {
+        McpTransport transport = new StreamableHttpMcpTransport.Builder()
+                .url("http://localhost:8081/mcp")
+                .build();
+        return new DefaultMcpClient.Builder()
+                .transport(transport)
+                .build();
+    }
+}
+```

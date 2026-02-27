@@ -33,6 +33,7 @@ class SimpleToolSearchStrategyTest {
         assertThat(result.foundToolNames()).isEmpty();
     }
 
+    @Test
     void score_should_be_zero_when_no_terms_match() {
         int score = score(
                 tool("weather", "Weather forecast"),
@@ -173,6 +174,31 @@ class SimpleToolSearchStrategyTest {
 
         assertThatThrownBy(() -> strategy.search(toolSearchRequest))
                 .isInstanceOf(ToolArgumentsException.class);
+    }
+
+    @Test
+    void score_should_split_multi_word_terms_and_match_individual_words() {
+        int score = score(
+                tool("get_time", "Returns current time for a given location"),
+                List.of("current time", "time in London")
+        );
+
+        // "time": name (+2) + desc (+1)
+        // "current": desc (+1)
+        assertThat(score).isGreaterThan(0);
+    }
+
+    @Test
+    void should_find_time_tool_when_terms_are_multi_word_phrases() {
+        ToolSearchResult result = search(
+                List.of(
+                        tool("get_time", "Returns current time for a given location"),
+                        tool("weather", "Weather forecast")
+                ),
+                List.of("current time", "time in London")
+        );
+
+        assertThat(result.foundToolNames()).contains("get_time");
     }
 
     private ToolSearchResult search(List<ToolSpecification> tools, List<String> terms) {

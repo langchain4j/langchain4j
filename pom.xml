@@ -73,6 +73,7 @@
         <module>langchain4j-coherence</module>
         <module>langchain4j-couchbase</module>
         <module>langchain4j-elasticsearch</module>
+        <module>langchain4j-hibernate</module>
         <module>langchain4j-infinispan</module>
         <module>langchain4j-mariadb</module>
         <module>langchain4j-milvus</module>
@@ -125,10 +126,12 @@
         <module>experimental/langchain4j-experimental-sql</module>
         <module>langchain4j-agentic</module>
         <module>langchain4j-agentic-a2a</module>
+        <module>langchain4j-agentic-mcp</module>
         <module>langchain4j-agentic-patterns</module>
 
         <!-- observability -->
         <module>langchain4j-micrometer-metrics</module>
+        <module>langchain4j-observation</module>
 
         <!-- integration tests -->
         <module>integration-tests</module>

@@ -6,10 +6,10 @@ import static java.util.Collections.singletonMap;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.type.TypeReference;
-import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
+import dev.langchain4j.invocation.InvocationContext;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.assertj.core.api.WithAssertions;
@@ -115,9 +116,8 @@ class DefaultToolExecutorTest implements WithAssertions {
         arguments.put("arg19", new HashSet<>(asList(ExampleEnum.A, ExampleEnum.B)));
         arguments.put("arg20", singletonMap("A", 1.0));
 
-        InvocationContext invocationContext = InvocationContext.builder()
-                .chatMemoryId(memoryId)
-                .build();
+        InvocationContext invocationContext =
+                InvocationContext.builder().chatMemoryId(memoryId).build();
 
         Object[] args = DefaultToolExecutor.prepareArguments(method, arguments, invocationContext);
 
@@ -533,19 +533,17 @@ class DefaultToolExecutorTest implements WithAssertions {
         // given
         String arguments = "{ invalid JSON }";
 
-        ToolExecutionRequest toolRequest = ToolExecutionRequest.builder()
-                .name("tool")
-                .arguments(arguments)
-                .build();
+        ToolExecutionRequest toolRequest =
+                ToolExecutionRequest.builder().name("tool").arguments(arguments).build();
 
         class Tools {
 
             @Tool
-            void tool(String s) {
-            }
+            void tool(String s) {}
         }
 
-        ToolExecutor toolExecutor = new DefaultToolExecutor(new Tools(), Tools.class.getDeclaredMethod("tool", String.class));
+        ToolExecutor toolExecutor =
+                new DefaultToolExecutor(new Tools(), Tools.class.getDeclaredMethod("tool", String.class));
 
         // when-then
         assertThatThrownBy(() -> toolExecutor.execute(toolRequest, "default"))
@@ -570,10 +568,8 @@ class DefaultToolExecutorTest implements WithAssertions {
 
         ToolExecutor toolExecutor = new DefaultToolExecutor(new Tools(), Tools.class.getDeclaredMethod("tool"));
 
-        ToolExecutionRequest toolRequest = ToolExecutionRequest.builder()
-                .name("tool")
-                .arguments("{}")
-                .build();
+        ToolExecutionRequest toolRequest =
+                ToolExecutionRequest.builder().name("tool").arguments("{}").build();
 
         // when
         String toolResult = toolExecutor.execute(toolRequest, "default");
@@ -588,5 +584,54 @@ class DefaultToolExecutorTest implements WithAssertions {
         assertThat(toolExecutionResult.isError()).isTrue();
         assertThat(toolExecutionResult.result()).isNull();
         assertThat(toolExecutionResult.resultText()).isEqualTo(errorMessage);
+    }
+
+    @Test
+    void should_prepare_arguments_with_optional_parameter_provided() throws Exception {
+
+        // given
+        class ToolWithOptional {
+            public void tool(String name, Optional<Integer> age) {}
+        }
+
+        Method method = ToolWithOptional.class.getMethod("tool", String.class, Optional.class);
+        Map<String, Object> arguments = new HashMap<>();
+        arguments.put("arg0", "Klaus");
+        arguments.put("arg1", 42.0);
+
+        InvocationContext context = InvocationContext.builder().build();
+
+        // when
+        Object[] args = DefaultToolExecutor.prepareArguments(method, arguments, context);
+
+        // then
+        assertThat(args).hasSize(2);
+        assertThat(args[0]).isEqualTo("Klaus");
+        assertThat(args[1]).isInstanceOf(Optional.class);
+        assertThat(((Optional<Integer>) args[1]).get()).isEqualTo(42);
+    }
+
+    @Test
+    void should_prepare_arguments_with_optional_parameter_not_provided() throws Exception {
+
+        // given
+        class ToolWithOptional {
+            public void tool(String name, Optional<Integer> age) {}
+        }
+
+        Method method = ToolWithOptional.class.getMethod("tool", String.class, Optional.class);
+        Map<String, Object> arguments = new HashMap<>();
+        arguments.put("arg0", "Klaus");
+
+        InvocationContext context = InvocationContext.builder().build();
+
+        // when
+        Object[] args = DefaultToolExecutor.prepareArguments(method, arguments, context);
+
+        // then
+        assertThat(args).hasSize(2);
+        assertThat(args[0]).isEqualTo("Klaus");
+        assertThat(args[1]).isInstanceOf(Optional.class);
+        assertThat((Optional<?>) args[1]).isEmpty();
     }
 }

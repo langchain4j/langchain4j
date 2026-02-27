@@ -186,6 +186,25 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(chatResponse.aiMessage().text()).containsIgnoringCase("liebe");
     }
 
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_respect_multiple_messages(M model) {
+
+        // given
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(
+                        UserMessage.from("Hi, my favorite color is green"),
+                        AiMessage.from("Hi, nice to meet you"),
+                        UserMessage.from("What is my favorite color?"))
+                .build();
+
+        // when
+        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
+
+        // then
+        assertThat(chatResponse.aiMessage().text()).containsIgnoringCase("green");
+    }
+
     // CHAT PARAMETERS
 
     // TODO test integration-specific default params

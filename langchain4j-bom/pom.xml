@@ -276,6 +276,12 @@
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-hibernate</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-infinispan</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
@@ -579,6 +585,11 @@
             </dependency>
             <dependency>
                 <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-agentic-mcp</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-agentic-patterns</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
@@ -587,6 +598,11 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-micrometer-metrics</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-observation</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
