@@ -1,6 +1,7 @@
 package dev.langchain4j.model.openaiofficial;
 
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.Utils.copy;
@@ -38,6 +39,7 @@ import com.openai.models.responses.ResponseInputContent;
 import com.openai.models.responses.ResponseInputImage;
 import com.openai.models.responses.ResponseInputItem;
 import com.openai.models.responses.ResponseInputText;
+import com.openai.models.responses.ResponseOutputItem;
 import com.openai.models.responses.ResponseOutputItemAddedEvent;
 import com.openai.models.responses.ResponseOutputItemDoneEvent;
 import com.openai.models.responses.ResponseStreamEvent;
@@ -113,7 +115,8 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
     private final String safetyIdentifier;
     private final String promptCacheKey;
     private final String promptCacheRetention;
-    private final String reasoningEffort;
+    private final ReasoningEffort reasoningEffort;
+    private final Reasoning.Summary reasoningSummary;
     private final String textVerbosity;
     private final Boolean streamIncludeObfuscation;
     private final Boolean store;
@@ -155,6 +158,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         this.promptCacheKey = builder.promptCacheKey;
         this.promptCacheRetention = builder.promptCacheRetention;
         this.reasoningEffort = builder.reasoningEffort;
+        this.reasoningSummary = builder.reasoningSummary;
         this.textVerbosity = builder.textVerbosity;
         this.streamIncludeObfuscation = builder.streamIncludeObfuscation;
         this.store = getOrDefault(builder.store, false);
@@ -247,10 +251,15 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 paramsBuilder.putAdditionalBodyProperty(
                         PROMPT_CACHE_RETENTION_FIELD, JsonValue.from(promptCacheRetention));
             }
-            if (reasoningEffort != null && !reasoningEffort.isEmpty()) {
-                paramsBuilder.reasoning(Reasoning.builder()
-                        .effort(ReasoningEffort.of(reasoningEffort))
-                        .build());
+            if (reasoningEffort != null || reasoningSummary != null) {
+                Reasoning.Builder reasoningBuilder = Reasoning.builder();
+                if (reasoningEffort != null) {
+                    reasoningBuilder.effort(reasoningEffort);
+                }
+                if (reasoningSummary != null) {
+                    reasoningBuilder.summary(reasoningSummary);
+                }
+                paramsBuilder.reasoning(reasoningBuilder.build());
             }
             if (streamIncludeObfuscation != null) {
                 paramsBuilder.streamOptions(ResponseCreateParams.StreamOptions.builder()
@@ -522,7 +531,8 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         private String safetyIdentifier;
         private String promptCacheKey;
         private String promptCacheRetention;
-        private String reasoningEffort;
+        private ReasoningEffort reasoningEffort;
+        private Reasoning.Summary reasoningSummary;
         private String textVerbosity;
         private Boolean streamIncludeObfuscation;
         private Boolean store;
@@ -618,6 +628,11 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             return this;
         }
 
+        public Builder modelName(ChatModel modelName) {
+            this.modelName = modelName.toString();
+            return this;
+        }
+
         public Builder temperature(Double temperature) {
             this.temperature = temperature;
             return this;
@@ -688,7 +703,28 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         }
 
         public Builder reasoningEffort(String reasoningEffort) {
+            this.reasoningEffort =
+                    reasoningEffort == null || reasoningEffort.isEmpty() ? null : ReasoningEffort.of(reasoningEffort);
+            return this;
+        }
+
+        public Builder reasoningEffort(ReasoningEffort reasoningEffort) {
             this.reasoningEffort = reasoningEffort;
+            return this;
+        }
+
+        /**
+         * Sets the reasoning summary mode. Accepts values like "auto", "concise", or "detailed".
+         */
+        public Builder reasoningSummary(String reasoningSummary) {
+            this.reasoningSummary = reasoningSummary == null || reasoningSummary.isEmpty()
+                    ? null
+                    : Reasoning.Summary.of(reasoningSummary);
+            return this;
+        }
+
+        public Builder reasoningSummary(Reasoning.Summary reasoningSummary) {
+            this.reasoningSummary = reasoningSummary;
             return this;
         }
 
@@ -748,6 +784,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         private final Map<String, Integer> toolCallIndices = new HashMap<>();
         private final List<ToolExecutionRequest> completedToolCalls = new ArrayList<>();
         private final StringBuilder textBuilder = new StringBuilder();
+        private final StringBuilder reasoningSummaryBuilder = new StringBuilder();
         private OpenAiOfficialTokenUsage tokenUsage;
         private String responseId;
         private String finishReason;
@@ -770,9 +807,9 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             }
 
             try {
-                // TODO: process reasoning events, specifically ResponseReasoningSummaryTextDoneEvent and
-                //   ResponseReasoningTextDoneEvent. It makes little sense to map them to onPartialThinking,
-                //   need reasoning callbacks.
+                // Note: reasoning summary stream events (reasoning_summary_*) are mapped to onPartialThinking
+                // because LangChain4j currently exposes a single "thinking" streaming callback.
+                // TODO: consider mapping other reasoning-related stream events once we have richer callbacks.
                 if (event.isCreated()) {
                     handleCreated(event.asCreated());
                 } else if (event.isInProgress()) {
@@ -781,8 +818,16 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                     handleContentPartAdded(event.contentPartAdded().get());
                 } else if (event.isOutputTextDelta()) {
                     handleOutputTextDelta(event.asOutputTextDelta());
+                } else if (event.isReasoningSummaryPartAdded()) {
+                    handleReasoningSummaryPartAdded(event.asReasoningSummaryPartAdded());
+                } else if (event.isReasoningSummaryTextDelta()) {
+                    handleReasoningSummaryTextDelta(event.asReasoningSummaryTextDelta());
                 } else if (event.outputTextDone().isPresent()) {
                     handleOutputTextDone(event.outputTextDone().get());
+                } else if (event.isReasoningSummaryTextDone()) {
+                    handleReasoningSummaryTextDone(event.asReasoningSummaryTextDone());
+                } else if (event.isReasoningSummaryPartDone()) {
+                    handleReasoningSummaryPartDone(event.asReasoningSummaryPartDone());
                 } else if (event.contentPartDone().isPresent()) {
                     handleContentPartDone(event.contentPartDone().get());
                 } else if (event.isOutputItemAdded()) {
@@ -835,8 +880,32 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             }
         }
 
+        private void handleReasoningSummaryTextDelta(
+                com.openai.models.responses.ResponseReasoningSummaryTextDeltaEvent event) {
+            String delta = event.delta();
+            if (delta != null && !delta.isEmpty()) {
+                reasoningSummaryBuilder.append(delta);
+                onPartialThinking(handler, delta, streamingHandle);
+            }
+        }
+
+        private void handleReasoningSummaryPartAdded(
+                com.openai.models.responses.ResponseReasoningSummaryPartAddedEvent event) {
+            // No-op - we track only the text deltas.
+        }
+
         private void handleOutputTextDone(Object event) {
             // No-op - text is already accumulated in textBuilder
+        }
+
+        private void handleReasoningSummaryTextDone(
+                com.openai.models.responses.ResponseReasoningSummaryTextDoneEvent event) {
+            // No-op - summary is already accumulated in reasoningSummaryBuilder
+        }
+
+        private void handleReasoningSummaryPartDone(
+                com.openai.models.responses.ResponseReasoningSummaryPartDoneEvent event) {
+            // No-op - we track only the text deltas.
         }
 
         private void handleContentPartDone(Object event) {
@@ -952,13 +1021,19 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 tokenUsage = builder.build();
             });
 
-            // Build final AI message
-            var text = !textBuilder.isEmpty() ? textBuilder.toString() : null;
-            var aiMessage = !completedToolCalls.isEmpty() && text != null
-                    ? new AiMessage(text, completedToolCalls)
-                    : !completedToolCalls.isEmpty()
-                            ? AiMessage.from(completedToolCalls)
-                            : new AiMessage(textBuilder.toString());
+            // Build final AI message (include reasoning summary if present)
+            String text = !textBuilder.isEmpty() ? textBuilder.toString() : (completedToolCalls.isEmpty() ? "" : null);
+            String reasoning = extractReasoningSummary(response);
+            if ((reasoning == null || reasoning.isBlank()) && reasoningSummaryBuilder.length() > 0) {
+                reasoning = reasoningSummaryBuilder.toString();
+            }
+
+            AiMessage.Builder aiMessageBuilder = AiMessage.builder()
+                    .text(text)
+                    .thinking(reasoning == null || reasoning.isBlank() ? null : reasoning)
+                    .toolExecutionRequests(completedToolCalls);
+
+            AiMessage aiMessage = aiMessageBuilder.build();
 
             // Build metadata
             var metadataBuilder =
@@ -982,6 +1057,51 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             } catch (Exception e) {
                 withLoggingExceptions(() -> handler.onError(e));
             }
+        }
+
+        private static String extractReasoningSummary(com.openai.models.responses.Response response) {
+            if (response == null) {
+                return null;
+            }
+            List<ResponseOutputItem> outputItems;
+            try {
+                outputItems = response.output();
+            } catch (RuntimeException ex) {
+                logger.debug("Failed to read response output while extracting reasoning summary", ex);
+                return null;
+            }
+            if (outputItems == null || outputItems.isEmpty()) {
+                return null;
+            }
+            List<String> reasoningSummaryParts = new ArrayList<>();
+            for (ResponseOutputItem item : outputItems) {
+                if (item == null) {
+                    continue;
+                }
+                try {
+                    if (item.reasoning().isEmpty()) {
+                        continue;
+                    }
+                    var reasoningItem = item.reasoning().get();
+                    var summaryParts = reasoningItem.summary();
+                    if (summaryParts == null || summaryParts.isEmpty()) {
+                        continue;
+                    }
+                    for (var summaryPart : summaryParts) {
+                        if (summaryPart == null) {
+                            continue;
+                        }
+                        String text = summaryPart.text();
+                        if (text == null || text.isBlank()) {
+                            continue;
+                        }
+                        reasoningSummaryParts.add(text);
+                    }
+                } catch (RuntimeException ex) {
+                    logger.debug("Failed to extract reasoning summary from response output item", ex);
+                }
+            }
+            return reasoningSummaryParts.isEmpty() ? null : String.join("\n", reasoningSummaryParts);
         }
     }
 
