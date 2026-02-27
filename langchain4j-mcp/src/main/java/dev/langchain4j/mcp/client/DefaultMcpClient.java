@@ -520,7 +520,7 @@ public class DefaultMcpClient implements McpClient {
             try {
                 checkHealth();
             } catch (Exception e) {
-                log.warn("mcp server health check failed. Attempting to reconnect...", e);
+                log.warn("MCP server health check (client key: " + key + ") failed. Attempting to reconnect...", e);
                 triggerReconnection();
             }
         };
