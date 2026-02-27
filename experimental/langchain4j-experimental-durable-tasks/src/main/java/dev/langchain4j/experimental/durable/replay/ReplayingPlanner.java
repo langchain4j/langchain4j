@@ -78,7 +78,10 @@ public class ReplayingPlanner implements Planner {
             return delegate.firstAction(planningContext);
         }
 
-        LOG.info("Replaying {} completed invocations and {} resume events from journal", completedEvents.size(), resumedEvents.size());
+        LOG.info(
+                "Replaying {} completed invocations and {} resume events from journal",
+                completedEvents.size(),
+                resumedEvents.size());
 
         AgenticScope scope = planningContext.agenticScope();
 

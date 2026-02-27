@@ -77,8 +77,8 @@ public class InMemoryTaskExecutionStore implements TaskExecutionStore {
                 cp.metadata().updatedAt(),
                 cp.metadata().failureReason(),
                 cp.metadata().labels());
-        return Optional.of(new Checkpoint(
-                cp.taskId(), metaSnapshot, cp.serializedScope(), cp.eventCount(), cp.createdAt()));
+        return Optional.of(
+                new Checkpoint(cp.taskId(), metaSnapshot, cp.serializedScope(), cp.eventCount(), cp.createdAt()));
     }
 
     @Override

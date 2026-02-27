@@ -623,8 +623,10 @@ public class LongLivedTaskService implements AutoCloseable {
                         if (fresh == null || fresh.status().isTerminal()) {
                             return;
                         }
-                        LOG.warn("Task {} CAS to RUNNING failed twice (current: {}), aborting attempt",
-                                taskId, fresh.status());
+                        LOG.warn(
+                                "Task {} CAS to RUNNING failed twice (current: {}), aborting attempt",
+                                taskId,
+                                fresh.status());
                         return;
                     } else {
                         metadata = running.get();
@@ -714,7 +716,11 @@ public class LongLivedTaskService implements AutoCloseable {
                     }
                     future.completeExceptionally(pausedException);
                     activeHandles.remove(taskId);
-                    LOG.info("Task {} paused (unwrapped from {}): {}", taskId, e.getClass().getSimpleName(), pausedException.reason());
+                    LOG.info(
+                            "Task {} paused (unwrapped from {}): {}",
+                            taskId,
+                            e.getClass().getSimpleName(),
+                            pausedException.reason());
                     return;
                 }
 

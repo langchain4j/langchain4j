@@ -67,7 +67,8 @@ public class FileTaskExecutionStore implements TaskExecutionStore {
 
     private FileTaskExecutionStore(Builder builder) {
         this.baseDir = builder.baseDir;
-        this.objectMapper = builder.objectMapper != null ? builder.objectMapper : ObjectMapperFactory.createPrettyPrinting();
+        this.objectMapper =
+                builder.objectMapper != null ? builder.objectMapper : ObjectMapperFactory.createPrettyPrinting();
         this.compactWriter = objectMapper.writer().without(SerializationFeature.INDENT_OUTPUT);
         ensureDirectoryExists(this.baseDir);
     }

@@ -110,8 +110,7 @@ class ReplayingPlannerTest {
         List<TaskEvent> events = List.of(
                 new TaskStartedEvent(taskId, now, Map.of()),
                 new TaskResumedEvent(taskId, now, Map.of("approvalKey", "approved")),
-                new TaskResumedEvent(taskId, now, Map.of("otherKey", 42))
-        );
+                new TaskResumedEvent(taskId, now, Map.of("otherKey", 42)));
 
         TestSequentialPlanner delegate = new TestSequentialPlanner(1);
         AgenticScope scope = Mockito.mock(AgenticScope.class);

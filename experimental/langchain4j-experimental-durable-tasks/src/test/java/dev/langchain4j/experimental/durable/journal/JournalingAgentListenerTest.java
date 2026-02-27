@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 import dev.langchain4j.agentic.observability.AgentInvocationError;
 import dev.langchain4j.agentic.observability.AgentRequest;
 import dev.langchain4j.agentic.observability.AgentResponse;
+import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.experimental.durable.store.InMemoryTaskExecutionStore;
 import dev.langchain4j.experimental.durable.store.event.AgentInvocationCompletedEvent;
@@ -33,6 +34,19 @@ class JournalingAgentListenerTest {
         listener = new JournalingAgentListener(taskId, store);
     }
 
+    /**
+     * Creates a mockable AgentInstance (interface) with the given name and id.
+     * AgentRequest/AgentResponse/AgentInvocationError are Java records and cannot be
+     * mocked by Mockito on JVM versions that enforce record integrity (Java 17+).
+     * We therefore construct the records directly, using a mocked AgentInstance for name/id.
+     */
+    private AgentInstance agentInstance(String name, String id) {
+        AgentInstance agent = mock(AgentInstance.class);
+        when(agent.name()).thenReturn(name);
+        when(agent.agentId()).thenReturn(id);
+        return agent;
+    }
+
     @Test
     void should_return_task_id() {
         assertThat(listener.taskId()).isEqualTo(taskId);
@@ -45,10 +59,8 @@ class JournalingAgentListenerTest {
 
     @Test
     void should_record_agent_invocation_started_event() {
-        AgentRequest request = mock(AgentRequest.class);
-        when(request.agentName()).thenReturn("summarizer");
-        when(request.agentId()).thenReturn("sum-1");
-        when(request.inputs()).thenReturn(Map.of("text", "hello world"));
+        AgentRequest request = new AgentRequest(
+                null, agentInstance("summarizer", "sum-1"), Map.<String, Object>of("text", "hello world"));
 
         listener.beforeAgentInvocation(request);
 
@@ -65,10 +77,7 @@ class JournalingAgentListenerTest {
 
     @Test
     void should_record_agent_invocation_completed_event() {
-        AgentResponse response = mock(AgentResponse.class);
-        when(response.agentName()).thenReturn("classifier");
-        when(response.agentId()).thenReturn("cls-1");
-        when(response.output()).thenReturn("positive");
+        AgentResponse response = new AgentResponse(null, agentInstance("classifier", "cls-1"), Map.of(), "positive");
 
         listener.afterAgentInvocation(response);
 
@@ -86,10 +95,8 @@ class JournalingAgentListenerTest {
     @Test
     void should_record_agent_invocation_failed_event() {
         RuntimeException error = new RuntimeException("connection timeout");
-        AgentInvocationError invocationError = mock(AgentInvocationError.class);
-        when(invocationError.agentName()).thenReturn("fetcher");
-        when(invocationError.agentId()).thenReturn("fetch-1");
-        when(invocationError.error()).thenReturn(error);
+        AgentInvocationError invocationError =
+                new AgentInvocationError(null, agentInstance("fetcher", "fetch-1"), Map.of(), error);
 
         listener.onAgentInvocationError(invocationError);
 
@@ -106,15 +113,8 @@ class JournalingAgentListenerTest {
 
     @Test
     void should_record_events_in_order() {
-        AgentRequest request = mock(AgentRequest.class);
-        when(request.agentName()).thenReturn("agent");
-        when(request.agentId()).thenReturn("a-1");
-        when(request.inputs()).thenReturn(Map.of());
-
-        AgentResponse response = mock(AgentResponse.class);
-        when(response.agentName()).thenReturn("agent");
-        when(response.agentId()).thenReturn("a-1");
-        when(response.output()).thenReturn("output");
+        AgentRequest request = new AgentRequest(null, agentInstance("agent", "a-1"), Map.of());
+        AgentResponse response = new AgentResponse(null, agentInstance("agent", "a-1"), Map.of(), "output");
 
         listener.beforeAgentInvocation(request);
         listener.afterAgentInvocation(response);
@@ -127,10 +127,7 @@ class JournalingAgentListenerTest {
 
     @Test
     void should_handle_null_output_gracefully() {
-        AgentResponse response = mock(AgentResponse.class);
-        when(response.agentName()).thenReturn("nullOutputAgent");
-        when(response.agentId()).thenReturn("null-1");
-        when(response.output()).thenReturn(null);
+        AgentResponse response = new AgentResponse(null, agentInstance("nullOutputAgent", "null-1"), Map.of(), null);
 
         // Should not throw
         listener.afterAgentInvocation(response);
@@ -151,11 +148,8 @@ class JournalingAgentListenerTest {
         JournalingAgentListener listenerWithCallback =
                 new JournalingAgentListener(taskId, store, receivedScope::set, null);
 
-        AgentResponse response = mock(AgentResponse.class);
-        when(response.agentName()).thenReturn("agent");
-        when(response.agentId()).thenReturn("a-1");
-        when(response.output()).thenReturn("result");
-        when(response.agenticScope()).thenReturn(mockScope);
+        // Construct record directly — agenticScope() returns the first record component
+        AgentResponse response = new AgentResponse(mockScope, agentInstance("agent", "a-1"), Map.of(), "result");
 
         listenerWithCallback.afterAgentInvocation(response);
 
@@ -165,10 +159,7 @@ class JournalingAgentListenerTest {
     @Test
     void should_not_call_after_agent_checkpoint_when_null() {
         // The 2-arg constructor sets afterAgentCheckpoint to null — no NPE expected
-        AgentResponse response = mock(AgentResponse.class);
-        when(response.agentName()).thenReturn("agent");
-        when(response.agentId()).thenReturn("a-1");
-        when(response.output()).thenReturn("result");
+        AgentResponse response = new AgentResponse(null, agentInstance("agent", "a-1"), Map.of(), "result");
 
         listener.afterAgentInvocation(response);
 
