@@ -33,12 +33,16 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.internal.Json;
+import dev.langchain4j.internal.JsonSchemaElementUtils;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
+import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
@@ -72,7 +76,12 @@ import software.amazon.awssdk.services.bedrockruntime.model.GuardrailTrace;
 import software.amazon.awssdk.services.bedrockruntime.model.ImageBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ImageSource;
 import software.amazon.awssdk.services.bedrockruntime.model.InferenceConfiguration;
+import software.amazon.awssdk.services.bedrockruntime.model.JsonSchemaDefinition;
 import software.amazon.awssdk.services.bedrockruntime.model.Message;
+import software.amazon.awssdk.services.bedrockruntime.model.OutputConfig;
+import software.amazon.awssdk.services.bedrockruntime.model.OutputFormat;
+import software.amazon.awssdk.services.bedrockruntime.model.OutputFormatStructure;
+import software.amazon.awssdk.services.bedrockruntime.model.OutputFormatType;
 import software.amazon.awssdk.services.bedrockruntime.model.ReasoningContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ReasoningTextBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.StopReason;
@@ -897,10 +906,46 @@ abstract class AbstractBedrockChatModel {
         if (parameters.presencePenalty() != null) {
             throw new UnsupportedFeatureException(String.format(errorTemplate, "'presencePenalty' parameter"));
         }
-        if (nonNull(parameters.responseFormat())
-                && parameters.responseFormat().type().equals(ResponseFormatType.JSON)) {
-            throw new UnsupportedFeatureException(String.format(errorTemplate, "JSON response format"));
+    }
+
+    /**
+     * Builds OutputConfig for structured output support based on the ResponseFormat.
+     * When a JSON schema is provided, it creates the appropriate TextFormat configuration.
+     *
+     * @param responseFormat the response format specification
+     * @return OutputConfig if JSON format with schema is requested, null otherwise
+     */
+    protected static OutputConfig outputConfigFrom(ResponseFormat responseFormat) {
+        if (responseFormat == null || responseFormat.type() != ResponseFormatType.JSON) {
+            return null;
         }
+
+        if (responseFormat.jsonSchema() == null) {
+            throw new UnsupportedFeatureException("JSON response format is not supported without a schema");
+        }
+
+        // JSON with schema - use structured output
+        String schemaJson;
+        if (responseFormat.jsonSchema().rootElement() instanceof JsonRawSchema rawSchema) {
+            // For raw JSON schema, use the raw string directly
+            schemaJson = rawSchema.schema();
+        } else {
+            // For structured schema, convert to Map then to JSON string
+            Map<String, Object> jsonSchemaMap =
+                    JsonSchemaElementUtils.toMap(responseFormat.jsonSchema().rootElement());
+            schemaJson = Json.toJson(jsonSchemaMap);
+        }
+
+        return OutputConfig.builder()
+                .textFormat(OutputFormat.builder()
+                        .type(OutputFormatType.JSON_SCHEMA)
+                        .structure(OutputFormatStructure.builder()
+                                .jsonSchema(JsonSchemaDefinition.builder()
+                                        .schema(schemaJson)
+                                        .build())
+                                .build())
+                        .build())
+                .build();
     }
 
     protected static Float dblToFloat(Double d) {
