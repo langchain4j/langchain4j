@@ -477,11 +477,11 @@ ChatResponse response = chatModel.chat(ChatRequest.builder()
         .build());
 ```
 
-## Micrometer observation API
+## Micrometer Observation API
 
 This implements the `ChatModelListener` using the [Micrometer Observation API](https://docs.micrometer.io/micrometer/reference/observation.html) allowing transparent generation of Metrics and Traces. 
 
-This is implemnted in the  `langchain4j-observation` library.
+This is implemnted in the  `langchain4j-observation` module.
 
 ### Produced telemetry
 

@@ -370,7 +370,7 @@ For Maven:
 ```
 For Gradle:
 ```gradle
-implementation 'dev.langchain4j:langchain4j-micrometer-metrics'
+implementation 'dev.langchain4j:langchain4j-observation'
 ```
 
 You need to instantiate the Observation listener as follows...
