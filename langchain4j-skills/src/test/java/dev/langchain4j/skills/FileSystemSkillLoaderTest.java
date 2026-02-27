@@ -12,6 +12,23 @@ import static org.assertj.core.api.Assertions.assertThat;
 class FileSystemSkillLoaderTest {
 
     @Test
+    void should_load_all_skills_from_directory() {
+        List<Skill> skills = FileSystemSkillLoader.loadSkills(toPath("skills"));
+
+        assertThat(skills)
+                .extracting(Skill::name)
+                .containsExactlyInAnyOrder("docx", "greeting-user", "mcp-builder", "using-process-tool");
+    }
+
+    @Test
+    void should_skip_directories_without_skill_md() {
+        // using-process-tool/references/ has no SKILL.md, so loadSkills should return nothing
+        List<Skill> skills = FileSystemSkillLoader.loadSkills(toPath("skills/using-process-tool"));
+
+        assertThat(skills).isEmpty();
+    }
+
+    @Test
     void should_load_skill_name_and_description_and_content() {
         Skill skill = loadSkill("skills/using-process-tool");
 

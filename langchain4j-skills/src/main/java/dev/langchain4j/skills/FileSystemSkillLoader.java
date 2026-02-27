@@ -19,7 +19,17 @@ import static java.util.stream.StreamSupport.stream;
 
 public class FileSystemSkillLoader {
 
-    // TODO recursively load multiple skills
+    public static List<Skill> loadSkills(Path directory) {
+        try (Stream<Path> entries = Files.list(directory)) {
+            return entries
+                    .filter(Files::isDirectory)
+                    .filter(dir -> Files.exists(dir.resolve("SKILL.md")))
+                    .map(FileSystemSkillLoader::loadSkill)
+                    .toList();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to load skills from " + directory, e);
+        }
+    }
 
     public static Skill loadSkill(Path skillDirectory) {
         Path skillFile = skillDirectory.resolve("SKILL.md");
