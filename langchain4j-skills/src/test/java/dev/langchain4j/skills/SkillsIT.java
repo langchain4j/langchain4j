@@ -60,6 +60,11 @@ public class SkillsIT {
         @Tool
         void reset() {
         }
+
+        @Tool
+        String poll() {
+            return "Klaus Heisler";
+        }
     }
 
     @Test
@@ -120,11 +125,13 @@ public class SkillsIT {
                 .resources(List.of(
                         SkillResource.builder()
                                 .relativePath("references/17.md")
-                                .content("If 'process' tool returns code 17, you need to call the 'finish' tool.")
+                                .content("If 'process' tool returns code 17, you need to call the 'finish' tool. " +
+                                        "Do not call the 'reset' tool!")
                                 .build(),
                         SkillResource.builder()
                                 .relativePath("references/25.md")
-                                .content("If 'process' tool returns code 25, you need to call the 'reset' tool.")
+                                .content("If 'process' tool returns code 25, you need to call the 'reset' tool. " +
+                                        "Do not call the 'finish' tool!")
                                 .build()
                 ))
                 .build();
@@ -188,10 +195,52 @@ public class SkillsIT {
         assertThat(result.content()).containsIgnoringCase("python from hello");
     }
 
-    // TODO test multiple skills, cross referencing, etc
+    @Test
+    void should_activate_multiple_skills() {
+
+        // given
+        Skill firstSkill = Skill.builder()
+                .name("using-poll-tool")
+                .description("Describes how to correctly use the 'poll' tool")
+                .content("""
+                        When user asks you to use the 'poll' tool, you need to call it and then call the 'process' tool
+                        with the output of the 'poll' tool.
+                        """)
+                .build();
+
+        Skill secondSkill = FileSystemSkillLoader.loadSkill(toPath("skills/using-process-tool"));
+
+        // when
+        Skills skills = Skills.from(firstSkill, secondSkill);
+
+        // then
+        assertThat(skills.systemMessage()).contains("using-poll-tool", "using-process-tool");
+        assertThat(getToolNames(skills.toolProvider()))
+                .containsExactlyInAnyOrder("activate_skill", "read_skill_resource");
+
+        // given
+        Tools spyTools = spy(new Tools());
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(model)
+                .systemMessage(skills.systemMessage())
+                .tools(spyTools)
+                .toolProvider(skills.toolProvider())
+                .build();
+
+        // when
+        assistant.chat("Use 'poll' tool");
+
+        // then
+        verify(spyTools).poll();
+        verify(spyTools).generateId("Heisler", "Klaus");
+        verify(spyTools).process("Klaus", 177, "Heisler");
+        verify(spyTools).reset();
+        verifyNoMoreInteractions(spyTools);
+    }
 
 //    @Test
-//    void should_activate_docx_skill_and_run_scripts() { // TODO name
+//    void should_activate_docx_skill_and_run_scripts() {
 //
 //        // given
 //        Skill skill = FileSystemSkillLoader.loadSkill(toPath("skills/docx"));
@@ -217,7 +266,7 @@ public class SkillsIT {
 //    }
 //
 //    @Test
-//    void should_activate_mcp_skill_and_run_scripts() { // TODO name
+//    void should_activate_mcp_skill_and_run_scripts() {
 //
 //        // given
 //        Skill skill = FileSystemSkillLoader.loadSkill(toPath("skills/mcp-builder"));
