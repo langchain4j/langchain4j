@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
 import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.skills.Skills.getArgument;
@@ -25,19 +26,25 @@ class RunShellCommandToolExecutor implements ToolExecutor {
     private final String timeoutSecondsParameterName;
     private final ExecutorService executorService;
     private final boolean throwToolArgumentsExceptions;
+    private final int maxStdoutChars;
+    private final int maxStderrChars;
 
     public RunShellCommandToolExecutor(Map<String, Skill> skillsByName,
                                        String commandParameterName,
                                        String skillNameParameterName,
                                        String timeoutSecondsParameterName,
                                        ExecutorService executorService,
-                                       boolean throwToolArgumentsExceptions) {
+                                       boolean throwToolArgumentsExceptions,
+                                       int maxStdoutChars,
+                                       int maxStderrChars) {
         this.skillsByName = copy(skillsByName);
         this.commandParameterName = ensureNotBlank(commandParameterName, "commandParameterName");
         this.skillNameParameterName = ensureNotBlank(skillNameParameterName, "skillNameParameterName");
         this.timeoutSecondsParameterName = ensureNotBlank(timeoutSecondsParameterName, "timeoutSecondsParameterName");
         this.executorService = ensureNotNull(executorService, "executorService");
         this.throwToolArgumentsExceptions = throwToolArgumentsExceptions;
+        this.maxStdoutChars = ensureGreaterThanZero(maxStdoutChars, "maxStdoutChars");
+        this.maxStderrChars = ensureGreaterThanZero(maxStderrChars, "maxStderrChars");
     }
 
     @Override
@@ -69,17 +76,18 @@ class RunShellCommandToolExecutor implements ToolExecutor {
 
         try {
             ShellCommandRunner.Result runResult = ShellCommandRunner.run(command, workingDir, timeoutSeconds, executorService);
-            // TODO truncate output to N chars
             if (runResult.isSuccess()) {
-                String output = runResult.stdOut().isBlank() ? "(no output)" : runResult.stdOut();
+                String output = runResult.stdOut().isBlank() ? "(empty)" : truncate(runResult.stdOut(), maxStdoutChars);
                 return ToolExecutionResult.builder()
-                        .resultText(cwdHeader + "Output: " + output) // TODO truncate, configurable
+                        .resultText(cwdHeader + "Output: " + output)
                         .build();
             } else {
+                String stdout = runResult.stdOut().isEmpty() ? "(empty)" : truncate(runResult.stdOut(), maxStdoutChars);
+                String stderr = runResult.stdErr().isEmpty() ? "(empty)" : truncate(runResult.stdErr(), maxStderrChars);
                 String errorText = cwdHeader
                         + "Exit code: " + runResult.exitCode() + "\n"
-                        + "STDOUT:\n" + (runResult.stdOut().isEmpty() ? "(empty)" : runResult.stdOut()) + "\n"
-                        + "STDERR:\n" + (runResult.stdErr().isEmpty() ? "(empty)" : runResult.stdErr());
+                        + "STDOUT:\n" + stdout + "\n"
+                        + "STDERR:\n" + stderr;
                 return ToolExecutionResult.builder()
                         .isError(true)
                         .resultText(errorText)
@@ -88,7 +96,7 @@ class RunShellCommandToolExecutor implements ToolExecutor {
         } catch (ShellCommandRunner.TimeoutException e) {
             return ToolExecutionResult.builder()
                     .isError(true)
-                    .resultText(e.getMessage() + "\n\nSTDOUT: " + e.partialStdOut() + "\n\nSTDERR: " + e.partialStdErr())
+                    .resultText(e.getMessage() + "\n\nSTDOUT: " + truncate(e.partialStdOut(), maxStdoutChars) + "\n\nSTDERR: " + truncate(e.partialStdErr(), maxStderrChars))
                     .build();
         } catch (IOException | InterruptedException e) {
             if (e instanceof InterruptedException) Thread.currentThread().interrupt();
@@ -97,6 +105,12 @@ class RunShellCommandToolExecutor implements ToolExecutor {
                     .resultText("Failed to run command: " + e.getMessage())
                     .build();
         }
+    }
+
+    private static String truncate(String text, int maxChars) {
+        if (text.length() <= maxChars) return text;
+        return "[truncated: showing last " + maxChars + " of " + text.length() + " chars]\n"
+                + text.substring(text.length() - maxChars);
     }
 
     Integer getTimeoutSeconds(Map<String, Object> arguments) {

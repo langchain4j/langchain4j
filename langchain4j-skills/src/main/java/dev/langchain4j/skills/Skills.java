@@ -58,6 +58,8 @@ public class Skills {
     static final String DEFAULT_RUN_SHELL_COMMAND_TOOL_SKILL_NAME_PARAMETER_DESCRIPTION = "Name of the skill whose root directory to use as the working directory. This is optional parameter.";
     static final String DEFAULT_RUN_SHELL_COMMAND_TOOL_TIMEOUT_SECONDS_PARAMETER_NAME = "timeout_seconds";
     static final String DEFAULT_RUN_SHELL_COMMAND_TOOL_TIMEOUT_SECONDS_PARAMETER_DESCRIPTION = "Timeout for the command in seconds. This is optional parameter. Default value: %s seconds".formatted(DEFAULT_TIMEOUT_SECONDS);
+    static final int DEFAULT_RUN_SHELL_COMMAND_TOOL_MAX_STDOUT_CHARS = 10_000;
+    static final int DEFAULT_RUN_SHELL_COMMAND_TOOL_MAX_STDERR_CHARS = 10_000;
 
     private final List<Skill> skills;
     private final ToolProvider toolProvider;
@@ -136,8 +138,10 @@ public class Skills {
             String runShellSkillNameParameterName = getOrDefault(builder.runShellCommandToolSkillNameParameterName, DEFAULT_RUN_SHELL_COMMAND_TOOL_SKILL_NAME_PARAMETER_NAME);
             String timeoutSecondsParameterName = getOrDefault(builder.runShellCommandToolTimeoutSecondsParameterName, DEFAULT_RUN_SHELL_COMMAND_TOOL_TIMEOUT_SECONDS_PARAMETER_NAME);
             ExecutorService executorService = getOrDefault(builder.executorService, getDefaultExecutorService());
+            int maxStdoutChars = getOrDefault(builder.runShellCommandToolMaxStdoutChars, DEFAULT_RUN_SHELL_COMMAND_TOOL_MAX_STDOUT_CHARS);
+            int maxStderrChars = getOrDefault(builder.runShellCommandToolMaxStderrChars, DEFAULT_RUN_SHELL_COMMAND_TOOL_MAX_STDERR_CHARS);
             ToolSpecification runShellCommandTool = createRunShellCommandTool(builder, commandParameterName, runShellSkillNameParameterName, timeoutSecondsParameterName);
-            ToolExecutor runShellCommandToolExecutor = new RunShellCommandToolExecutor(skillsByName, commandParameterName, runShellSkillNameParameterName, timeoutSecondsParameterName, executorService, throwToolArgumentsExceptions);
+            ToolExecutor runShellCommandToolExecutor = new RunShellCommandToolExecutor(skillsByName, commandParameterName, runShellSkillNameParameterName, timeoutSecondsParameterName, executorService, throwToolArgumentsExceptions, maxStdoutChars, maxStderrChars);
             tools.put(runShellCommandTool, runShellCommandToolExecutor);
         } else {
             boolean hasResources = skills.stream().anyMatch(skill -> !skill.resources().isEmpty());
@@ -351,6 +355,8 @@ public class Skills {
         String runShellCommandToolSkillNameParameterDescription;
         String runShellCommandToolTimeoutSecondsParameterName;
         String runShellCommandToolTimeoutSecondsParameterDescription;
+        Integer runShellCommandToolMaxStdoutChars;
+        Integer runShellCommandToolMaxStderrChars;
 
         public Builder skills(Collection<? extends Skill> skills) {
             this.skills = skills;
@@ -588,6 +594,28 @@ public class Skills {
          */
         public Builder runShellCommandToolTimeoutSecondsParameterDescription(String runShellCommandToolTimeoutSecondsParameterDescription) {
             this.runShellCommandToolTimeoutSecondsParameterDescription = runShellCommandToolTimeoutSecondsParameterDescription;
+            return this;
+        }
+
+        /**
+         * Sets the maximum number of characters of stdout to include in the tool result returned to the LLM.
+         * If the output exceeds this limit, the beginning is discarded and a truncation notice is prepended.
+         * <p>
+         * Default value is {@value Skills#DEFAULT_RUN_SHELL_COMMAND_TOOL_MAX_STDOUT_CHARS}.
+         */
+        public Builder runShellCommandToolMaxStdoutChars(Integer runShellCommandToolMaxStdoutChars) {
+            this.runShellCommandToolMaxStdoutChars = runShellCommandToolMaxStdoutChars;
+            return this;
+        }
+
+        /**
+         * Sets the maximum number of characters of stderr to include in the tool result returned to the LLM.
+         * If the output exceeds this limit, the beginning is discarded and a truncation notice is prepended.
+         * <p>
+         * Default value is {@value Skills#DEFAULT_RUN_SHELL_COMMAND_TOOL_MAX_STDERR_CHARS}.
+         */
+        public Builder runShellCommandToolMaxStderrChars(Integer runShellCommandToolMaxStderrChars) {
+            this.runShellCommandToolMaxStderrChars = runShellCommandToolMaxStderrChars;
             return this;
         }
 
