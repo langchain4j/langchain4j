@@ -17,7 +17,7 @@ class FileSystemSkillLoaderTest {
 
         assertThat(skills)
                 .extracting(Skill::name)
-                .containsExactlyInAnyOrder("docx", "greeting-user", "mcp-builder", "using-process-tool", "test-skill");
+                .containsExactly("greeting-user", "test-skill", "using-process-tool");
     }
 
     @Test
