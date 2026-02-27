@@ -140,10 +140,10 @@ public class Skills {
             String runShellSkillNameParameterName = getOrDefault(rsc.skillNameParameterName, DEFAULT_RUN_SHELL_COMMAND_TOOL_SKILL_NAME_PARAMETER_NAME);
             String timeoutSecondsParameterName = getOrDefault(rsc.timeoutSecondsParameterName, DEFAULT_RUN_SHELL_COMMAND_TOOL_TIMEOUT_SECONDS_PARAMETER_NAME);
             ExecutorService executorService = getOrDefault(rsc.executorService, getDefaultExecutorService());
-            int maxStdoutChars = getOrDefault(rsc.maxStdoutChars, DEFAULT_RUN_SHELL_COMMAND_TOOL_MAX_STDOUT_CHARS);
-            int maxStderrChars = getOrDefault(rsc.maxStderrChars, DEFAULT_RUN_SHELL_COMMAND_TOOL_MAX_STDERR_CHARS);
+            int maxStdOutChars = getOrDefault(rsc.maxStdOutChars, DEFAULT_RUN_SHELL_COMMAND_TOOL_MAX_STDOUT_CHARS);
+            int maxStdErrChars = getOrDefault(rsc.maxStdErrChars, DEFAULT_RUN_SHELL_COMMAND_TOOL_MAX_STDERR_CHARS);
             ToolSpecification runShellCommandTool = createRunShellCommandTool(rsc, commandParameterName, runShellSkillNameParameterName, timeoutSecondsParameterName);
-            ToolExecutor runShellCommandToolExecutor = new RunShellCommandToolExecutor(skillsByName, commandParameterName, runShellSkillNameParameterName, timeoutSecondsParameterName, executorService, throwToolArgumentsExceptions, maxStdoutChars, maxStderrChars);
+            ToolExecutor runShellCommandToolExecutor = new RunShellCommandToolExecutor(skillsByName, commandParameterName, runShellSkillNameParameterName, timeoutSecondsParameterName, executorService, throwToolArgumentsExceptions, maxStdOutChars, maxStdErrChars);
             tools.put(runShellCommandTool, runShellCommandToolExecutor);
         } else {
             boolean hasResources = skills.stream().anyMatch(skill -> !skill.resources().isEmpty());

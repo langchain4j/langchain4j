@@ -12,8 +12,8 @@ public class RunShellCommandToolConfig {
     final String skillNameParameterDescription;
     final String timeoutSecondsParameterName;
     final String timeoutSecondsParameterDescription;
-    final Integer maxStdoutChars;
-    final Integer maxStderrChars;
+    final Integer maxStdOutChars;
+    final Integer maxStdErrChars;
     final ExecutorService executorService;
 
     private RunShellCommandToolConfig(Builder builder) {
@@ -25,8 +25,8 @@ public class RunShellCommandToolConfig {
         this.skillNameParameterDescription = builder.skillNameParameterDescription;
         this.timeoutSecondsParameterName = builder.timeoutSecondsParameterName;
         this.timeoutSecondsParameterDescription = builder.timeoutSecondsParameterDescription;
-        this.maxStdoutChars = builder.maxStdoutChars;
-        this.maxStderrChars = builder.maxStderrChars;
+        this.maxStdOutChars = builder.maxStdOutChars;
+        this.maxStdErrChars = builder.maxStdErrChars;
         this.executorService = builder.executorService;
     }
 
@@ -44,8 +44,8 @@ public class RunShellCommandToolConfig {
         private String skillNameParameterDescription;
         private String timeoutSecondsParameterName;
         private String timeoutSecondsParameterDescription;
-        private Integer maxStdoutChars;
-        private Integer maxStderrChars;
+        private Integer maxStdOutChars;
+        private Integer maxStdErrChars;
         private ExecutorService executorService;
 
         /**
@@ -134,8 +134,8 @@ public class RunShellCommandToolConfig {
          * <p>
          * Default value is {@value Skills#DEFAULT_RUN_SHELL_COMMAND_TOOL_MAX_STDOUT_CHARS}.
          */
-        public Builder maxStdoutChars(Integer maxStdoutChars) {
-            this.maxStdoutChars = maxStdoutChars;
+        public Builder maxStdOutChars(Integer maxStdOutChars) {
+            this.maxStdOutChars = maxStdOutChars;
             return this;
         }
 
@@ -145,8 +145,8 @@ public class RunShellCommandToolConfig {
          * <p>
          * Default value is {@value Skills#DEFAULT_RUN_SHELL_COMMAND_TOOL_MAX_STDERR_CHARS}.
          */
-        public Builder maxStderrChars(Integer maxStderrChars) {
-            this.maxStderrChars = maxStderrChars;
+        public Builder maxStdErrChars(Integer maxStdErrChars) {
+            this.maxStdErrChars = maxStdErrChars;
             return this;
         }
 

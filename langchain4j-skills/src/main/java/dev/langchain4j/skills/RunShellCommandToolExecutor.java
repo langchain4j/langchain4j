@@ -4,6 +4,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
+import dev.langchain4j.skills.ShellCommandRunner.Result;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -26,8 +27,8 @@ class RunShellCommandToolExecutor implements ToolExecutor {
     private final String timeoutSecondsParameterName;
     private final ExecutorService executorService;
     private final boolean throwToolArgumentsExceptions;
-    private final int maxStdoutChars;
-    private final int maxStderrChars;
+    private final int maxStdOutChars;
+    private final int maxStdErrChars;
 
     public RunShellCommandToolExecutor(Map<String, Skill> skillsByName,
                                        String commandParameterName,
@@ -35,16 +36,16 @@ class RunShellCommandToolExecutor implements ToolExecutor {
                                        String timeoutSecondsParameterName,
                                        ExecutorService executorService,
                                        boolean throwToolArgumentsExceptions,
-                                       int maxStdoutChars,
-                                       int maxStderrChars) {
+                                       int maxStdOutChars,
+                                       int maxStdErrChars) {
         this.skillsByName = copy(skillsByName);
         this.commandParameterName = ensureNotBlank(commandParameterName, "commandParameterName");
         this.skillNameParameterName = ensureNotBlank(skillNameParameterName, "skillNameParameterName");
         this.timeoutSecondsParameterName = ensureNotBlank(timeoutSecondsParameterName, "timeoutSecondsParameterName");
         this.executorService = ensureNotNull(executorService, "executorService");
         this.throwToolArgumentsExceptions = throwToolArgumentsExceptions;
-        this.maxStdoutChars = ensureGreaterThanZero(maxStdoutChars, "maxStdoutChars");
-        this.maxStderrChars = ensureGreaterThanZero(maxStderrChars, "maxStderrChars");
+        this.maxStdOutChars = ensureGreaterThanZero(maxStdOutChars, "maxStdOutChars");
+        this.maxStdErrChars = ensureGreaterThanZero(maxStdErrChars, "maxStdErrChars");
     }
 
     @Override
@@ -69,34 +70,41 @@ class RunShellCommandToolExecutor implements ToolExecutor {
         // Resolve the effective CWD so it can be included in every result.
         // The LLM needs to know the absolute path to construct reliable paths
         // across commands, since each invocation starts a fresh shell process.
-        Path resolvedCwd = workingDir != null
-                ? workingDir.toAbsolutePath()
-                : Path.of(System.getProperty("user.dir"));
-        String cwdHeader = "Working directory: " + resolvedCwd + "\n"; // TODO opt-in
+        Path resolvedCwd = workingDir != null ? workingDir.toAbsolutePath() : Path.of(System.getProperty("user.dir"));
 
         try {
-            ShellCommandRunner.Result runResult = ShellCommandRunner.run(command, workingDir, timeoutSeconds, executorService);
-            if (runResult.isSuccess()) {
-                String output = runResult.stdOut().isBlank() ? "(empty)" : truncate(runResult.stdOut(), maxStdoutChars);
+            Result result = ShellCommandRunner.run(command, workingDir, timeoutSeconds, executorService);
+            String stdOut = formatStdOut(result.stdOut());
+            if (result.isSuccess()) {
+                String resultText = """
+                        <working_dir>%s</working_dir>
+                        <stdout>%s</stdout>"
+                        """.formatted(resolvedCwd, stdOut);
                 return ToolExecutionResult.builder()
-                        .resultText(cwdHeader + "Output: " + output)
+                        .resultText(resultText)
                         .build();
             } else {
-                String stdout = runResult.stdOut().isEmpty() ? "(empty)" : truncate(runResult.stdOut(), maxStdoutChars);
-                String stderr = runResult.stdErr().isEmpty() ? "(empty)" : truncate(runResult.stdErr(), maxStderrChars);
-                String errorText = cwdHeader
-                        + "Exit code: " + runResult.exitCode() + "\n"
-                        + "STDOUT:\n" + stdout + "\n"
-                        + "STDERR:\n" + stderr;
+                String stdErr = formatStdErr(result.stdErr());
+                String resultText = """
+                        <working_dir>%s</working_dir>
+                        <exit_code>%s</exit_code>
+                        <stdout>%s</stdout>"
+                        <stderr>%s</stderr>"
+                        """.formatted(resolvedCwd, result.exitCode(), stdOut, stdErr);
                 return ToolExecutionResult.builder()
                         .isError(true)
-                        .resultText(errorText)
+                        .resultText(resultText)
                         .build();
             }
         } catch (ShellCommandRunner.TimeoutException e) {
+            String resultText = """
+                    <working_dir>%s</working_dir>
+                    <std_out>%s</std_out>"
+                    <std_err>%s</std_err>"
+                    """.formatted(resolvedCwd, formatStdOut(e.partialStdOut()), formatStdErr(e.partialStdErr()));
             return ToolExecutionResult.builder()
                     .isError(true)
-                    .resultText(e.getMessage() + "\n\nSTDOUT: " + truncate(e.partialStdOut(), maxStdoutChars) + "\n\nSTDERR: " + truncate(e.partialStdErr(), maxStderrChars))
+                    .resultText(resultText)
                     .build();
         } catch (IOException | InterruptedException e) {
             if (e instanceof InterruptedException) Thread.currentThread().interrupt();
@@ -105,6 +113,14 @@ class RunShellCommandToolExecutor implements ToolExecutor {
                     .resultText("Failed to run command: " + e.getMessage())
                     .build();
         }
+    }
+
+    private String formatStdOut(String stdOut) {
+        return stdOut.isEmpty() ? "(empty)" : truncate(stdOut, maxStdOutChars);
+    }
+
+    private String formatStdErr(String stdErr) {
+        return stdErr.isEmpty() ? "(empty)" : truncate(stdErr, maxStdErrChars);
     }
 
     private static String truncate(String text, int maxChars) {

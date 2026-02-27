@@ -79,7 +79,7 @@ class RunShellCommandToolExecutorTest {
                 .executeWithContext(request("seq 1 100; exit 1"), null);
 
         assertThat(result.isError()).isTrue();
-        assertThat(result.resultText()).contains("STDOUT:");
+        assertThat(result.resultText()).contains("<stdout>");
         assertThat(result.resultText()).contains("[truncated:");
         assertThat(result.resultText()).contains("100");
     }
@@ -91,7 +91,7 @@ class RunShellCommandToolExecutorTest {
                 .executeWithContext(request("(for /l %i in (1,1,100) do @echo %i) & exit /b 1"), null);
 
         assertThat(result.isError()).isTrue();
-        assertThat(result.resultText()).contains("STDOUT:");
+        assertThat(result.resultText()).contains("<stdout>");
         assertThat(result.resultText()).contains("[truncated:");
         assertThat(result.resultText()).contains("100");
     }
@@ -105,7 +105,7 @@ class RunShellCommandToolExecutorTest {
                 .executeWithContext(request("echo err >&2; exit 1"), null);
 
         assertThat(result.isError()).isTrue();
-        assertThat(result.resultText()).contains("STDERR:");
+        assertThat(result.resultText()).contains("<stderr>");
         assertThat(result.resultText()).contains("err");
         assertThat(result.resultText()).doesNotContain("[truncated:");
     }
@@ -117,7 +117,7 @@ class RunShellCommandToolExecutorTest {
                 .executeWithContext(request("echo err 1>&2 & exit /b 1"), null);
 
         assertThat(result.isError()).isTrue();
-        assertThat(result.resultText()).contains("STDERR:");
+        assertThat(result.resultText()).contains("<stderr>");
         assertThat(result.resultText()).contains("err");
         assertThat(result.resultText()).doesNotContain("[truncated:");
     }
@@ -129,7 +129,7 @@ class RunShellCommandToolExecutorTest {
                 .executeWithContext(request("seq 1 100 >&2; exit 1"), null);
 
         assertThat(result.isError()).isTrue();
-        assertThat(result.resultText()).contains("STDERR:");
+        assertThat(result.resultText()).contains("<stderr>");
         assertThat(result.resultText()).contains("[truncated:");
         assertThat(result.resultText()).contains("100");
     }
@@ -141,14 +141,14 @@ class RunShellCommandToolExecutorTest {
                 .executeWithContext(request("(for /l %i in (1,1,100) do @echo %i 1>&2) & exit /b 1"), null);
 
         assertThat(result.isError()).isTrue();
-        assertThat(result.resultText()).contains("STDERR:");
+        assertThat(result.resultText()).contains("<stderr>");
         assertThat(result.resultText()).contains("[truncated:");
         assertThat(result.resultText()).contains("100");
     }
 
     // --- helpers ---
 
-    private RunShellCommandToolExecutor executor(int maxStdoutChars, int maxStderrChars) {
+    private RunShellCommandToolExecutor executor(int maxStdOutChars, int maxStdErrChars) {
         return new RunShellCommandToolExecutor(
                 Map.of(),
                 "command",
@@ -156,8 +156,8 @@ class RunShellCommandToolExecutorTest {
                 "timeout_seconds",
                 Executors.newFixedThreadPool(2),
                 false,
-                maxStdoutChars,
-                maxStderrChars
+                maxStdOutChars,
+                maxStdErrChars
         );
     }
 
