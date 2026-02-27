@@ -40,6 +40,7 @@ public class Models {
     private static final ChatModel OPENAI_PLANNER_MODEL = OPENAI_BASE_MODEL;
 
     private static final StreamingChatModel OPENAI_STREAMING_BASE_MODEL = OpenAiStreamingChatModel.builder()
+            .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
             .modelName(OpenAiChatModelName.GPT_4_O_MINI)
