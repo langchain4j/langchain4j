@@ -53,6 +53,7 @@ public class PgVectorEmbeddingStoreConfigIT extends EmbeddingStoreWithFilteringI
                 .dataSource(dataSource)
                 .table(TABLE_NAME)
                 .dimension(TABLE_DIMENSION)
+                .createTable(true)
                 .dropTableFirst(true)
                 .build();
     }
