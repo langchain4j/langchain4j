@@ -10,16 +10,16 @@
 
     <artifactId>langchain4j-gpu-llama3</artifactId>
     <name>LangChain4j :: Integration :: GPULlama3.java</name>
-    <description>GPULlama3.java: GPU-enabled LLM Inference Engine for Java based on TornadoVM. Requires Java 21 only (uses preview features)</description>
+    <description>GPULlama3.java: GPU-enabled LLM Inference Engine for Java based on TornadoVM. Requires Java 25</description>
 
     <properties>
-        <maven.compiler.release>21</maven.compiler.release>
+        <maven.compiler.release>25</maven.compiler.release>
         <tornado.sdk>${env.TORNADOVM_HOME}</tornado.sdk>
         <maven.test.skip>true</maven.test.skip>
         <maven.compiler.testSkip>true</maven.compiler.testSkip>
         <skipTests>true</skipTests>
         <skipITs>true</skipITs>
-        <!-- Always skip javadoc - preview features break aggregate javadoc -->
+        <!-- Skip javadoc - gpu-llama3 uses preview features (jdk.incubator.vector) -->
         <maven.javadoc.skip>true</maven.javadoc.skip>
     </properties>
 
@@ -28,7 +28,7 @@
         <dependency>
             <groupId>io.github.beehive-lab</groupId>
             <artifactId>gpu-llama3</artifactId>
-            <version>0.3.3</version>
+            <version>0.4.0-jdk25</version>
         </dependency>
 
         <dependency>
@@ -124,10 +124,18 @@
                 </configuration>
             </plugin>
 
+            <!-- gpu-llama3 uses --enable-preview and jdk.incubator.vector (JEP 508, 10th Incubator in JDK 25) -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.14.0</version>
+                <configuration>
+                    <compilerArgs>
+                        <arg>--enable-preview</arg>
+                        <arg>--add-modules</arg>
+                        <arg>jdk.incubator.vector</arg>
+                    </compilerArgs>
+                </configuration>
             </plugin>
 
             <!-- TornadoVM Test Runner -->
@@ -143,6 +151,8 @@
                         <argument>-XX:+EnableJVMCI</argument>
                         <argument>-XX:-UseCompressedClassPointers</argument>
                         <argument>--enable-preview</argument>
+                        <argument>--add-modules</argument>
+                        <argument>jdk.incubator.vector</argument>
                         <argument>-Xms20g</argument>
                         <argument>-Xmx20g</argument>
                         <argument>-Djava.library.path=${tornado.sdk}/lib</argument>
@@ -188,34 +198,11 @@
     </build>
 
     <profiles>
-        <!-- JDK 21: Enable preview features required by gpu-llama3 dependency -->
-        <profile>
-            <id>jdk21-preview</id>
-            <activation>
-                <jdk>21</jdk>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-compiler-plugin</artifactId>
-                        <version>3.14.0</version>
-                        <configuration>
-                            <compilerArgs>
-                                <arg>--enable-preview</arg>
-                            </compilerArgs>
-                            <release>21</release>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-
-        <!-- JDK 22+: Skip compilation - preview features are version-locked -->
+        <!-- JDK 26+: Skip compilation - not yet supported -->
         <profile>
             <id>skip-on-incompatible-jdk</id>
             <activation>
-                <jdk>[22,)</jdk>
+                <jdk>[26,)</jdk>
             </activation>
             <properties>
                 <maven.install.skip>true</maven.install.skip>
