@@ -2,6 +2,7 @@ package dev.langchain4j.agentic;
 
 import static dev.langchain4j.agentic.Models.baseModel;
 import static dev.langchain4j.agentic.Models.plannerModel;
+import static dev.langchain4j.agentic.observability.HtmlReportGenerator.generateReport;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -47,6 +48,7 @@ import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentMonitor;
 import dev.langchain4j.agentic.observability.AgentRequest;
 import dev.langchain4j.agentic.observability.AgentResponse;
+import dev.langchain4j.agentic.observability.MonitoredAgent;
 import dev.langchain4j.agentic.observability.MonitoredExecution;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
@@ -71,6 +73,7 @@ import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -449,9 +452,7 @@ public class DeclarativeAgentIT {
         assertThat(agenticScope.readState("category")).isEqualTo(RequestCategory.MEDICAL);
     }
 
-    private static AgentMonitor PARALLEL_AGENTS_MONITOR = new AgentMonitor();
-
-    public interface EveningPlannerAgent {
+    public interface EveningPlannerAgent extends MonitoredAgent {
 
         @ParallelAgent(
                 outputKey = "plans",
@@ -474,11 +475,6 @@ public class DeclarativeAgentIT {
             }
             return moviesAndMeals;
         }
-
-        @AgentListenerSupplier
-        static AgentListener monitor() {
-            return PARALLEL_AGENTS_MONITOR;
-        }
     }
 
     @Test
@@ -488,15 +484,18 @@ public class DeclarativeAgentIT {
         List<Agents.EveningPlan> plans = eveningPlannerAgent.plan("romantic");
         assertThat(plans).hasSize(3);
 
-        MonitoredExecution execution =
-                PARALLEL_AGENTS_MONITOR.successfulExecutions().get(0);
+        AgentMonitor agentMonitor = eveningPlannerAgent.agentMonitor();
+        MonitoredExecution execution = agentMonitor.successfulExecutions().get(0);
         System.out.println(execution);
+
         assertThat(execution.done()).isTrue();
         assertThat(execution.ongoingInvocations()).isEmpty();
         AgentInvocation topLevelInvocation = execution.topLevelInvocations();
         assertThat(topLevelInvocation.agent().name()).isEqualTo("plan");
         assertThat(topLevelInvocation.inputs()).containsKey("mood").containsValue("romantic");
         assertThat(topLevelInvocation.nestedInvocations()).hasSize(2);
+
+        // generateReport(agentMonitor, Path.of("src", "test", "resources", "parallel.html"));
     }
 
     public interface SupervisorStoryCreator {
