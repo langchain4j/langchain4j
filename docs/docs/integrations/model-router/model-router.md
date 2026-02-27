@@ -10,7 +10,7 @@ The module comes with two default implementations: FailoverStrategy and LowestTo
 
 ## Maven Dependencies
 
-The `langchain4j-azure-open-ai` library is available on Maven Central.
+The `langchain4j-community-model-router`library is available on Maven Central.
 
 ```xml
 <dependency>
