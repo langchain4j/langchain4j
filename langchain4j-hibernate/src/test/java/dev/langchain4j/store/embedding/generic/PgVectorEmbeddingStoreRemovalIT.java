@@ -36,6 +36,7 @@ class PgVectorEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
                 .password("test")
                 .table("test" + nextInt(2000, 3000))
                 .dimension(384)
+                .createTable(true)
                 .dropTableFirst(true)
                 .build();
     }
