@@ -4,6 +4,7 @@ import dev.langchain4j.service.tool.ToolProvider;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
 import java.util.function.Function;
 
 import static dev.langchain4j.skills.SkillUtils.createSystemMessage;
@@ -44,6 +45,7 @@ public class SkillService { // TODO name: SkillRepository?
 
         Collection<? extends Skill> skills;
         Boolean allowRunningShellCommands;
+        ExecutorService executorService;
 
         // activate_skill tool
         String activateSkillToolName;
@@ -81,6 +83,17 @@ public class SkillService { // TODO name: SkillRepository?
 
         public Builder allowRunningShellCommands(Boolean allowRunningShellCommands) { // TODO name
             this.allowRunningShellCommands = allowRunningShellCommands;
+            return this;
+        }
+
+        /**
+         * Sets the {@link ExecutorService} used to read the stdout and stderr streams
+         * of shell commands submitted via the {@code run_shell_command} tool.
+         * <p>
+         * By default, {@link dev.langchain4j.internal.DefaultExecutorProvider#getDefaultExecutorService()} is used.
+         */
+        public Builder executorService(ExecutorService executorService) {
+            this.executorService = executorService;
             return this;
         }
 

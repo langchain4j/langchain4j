@@ -9,6 +9,7 @@ import java.io.InputStreamReader;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -49,10 +50,25 @@ class ShellCommandRunner {
 
     static Result run(String command, Path workingDirectory, Integer timeoutSeconds)
             throws IOException, InterruptedException {
-        return run(command, workingDirectory, timeoutSeconds, DEFAULT_MAX_OUTPUT_BYTES);
+        return run(command, workingDirectory, timeoutSeconds, DEFAULT_MAX_OUTPUT_BYTES, DefaultExecutorProvider.getDefaultExecutorService());
     }
 
     static Result run(String command, Path workingDirectory, Integer timeoutSeconds, int maxOutputBytes)
+            throws IOException, InterruptedException {
+        return run(command, workingDirectory, timeoutSeconds, maxOutputBytes, DefaultExecutorProvider.getDefaultExecutorService());
+    }
+
+    static Result run(String command,
+                      Path workingDirectory, Integer timeoutSeconds, ExecutorService executorService)
+            throws IOException, InterruptedException {
+        return run(command, workingDirectory, timeoutSeconds, DEFAULT_MAX_OUTPUT_BYTES, executorService);
+    }
+
+    static Result run(String command,
+                      Path workingDirectory,
+                      Integer timeoutSeconds,
+                      int maxOutputBytes,
+                      ExecutorService executorService)
             throws IOException, InterruptedException {
 
         List<String> shellCommand = isWindows()
@@ -68,10 +84,10 @@ class ShellCommandRunner {
 
         AtomicBoolean timedOut = new AtomicBoolean(false);
 
-        Future<String> stdOutFuture = DefaultExecutorProvider.getDefaultExecutorService() // TODO make customizable
-                .submit(() -> readStream(process.getInputStream(), maxOutputBytes, timedOut));
-        Future<String> stdErrFuture = DefaultExecutorProvider.getDefaultExecutorService() // TODO make customizable
-                .submit(() -> readStream(process.getErrorStream(), maxOutputBytes, timedOut));
+        Future<String> stdOutFuture = executorService.submit(() ->
+                readStream(process.getInputStream(), maxOutputBytes, timedOut));
+        Future<String> stdErrFuture = executorService.submit(() ->
+                readStream(process.getErrorStream(), maxOutputBytes, timedOut));
 
         timeoutSeconds = getOrDefault(timeoutSeconds, DEFAULT_TIMEOUT_SECONDS);
         if (timeoutSeconds > DEFAULT_MAX_TIMEOUT_SECONDS) {
