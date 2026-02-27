@@ -27,9 +27,11 @@ import dev.langchain4j.service.V;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import java.time.Duration;
 import java.util.List;
 
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 public class McpAgentIT {
 
     // Set this to a real McpClient before running integration tests
