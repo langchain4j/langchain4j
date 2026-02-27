@@ -832,6 +832,32 @@ will produce a report file `review-loop.html` in the current working directory s
 
 ![](/img/agent-monitor.png)
 
+Another alternative to manually creating an `AgentMonitor` and registering it as a listener, is making your agent service interface to extend the `MonitoredAgent` one. When doing so, the builder automatically creates and registers an `AgentMonitor` as a listener, and this monitor becomes accessible directly from the agent instance via the `agentMonitor()` method.
+
+For example, the sequence agent defined in the previous examples can be turned into a typed and monitored agent by defining an interface `StyledWriter` that also extends the `MonitoredAgent` interface:
+
+```java
+public interface StyledWriter extends MonitoredAgent {
+    @Agent("Write a creative story about the given topic")
+    String generateStoryWithStyle(@V("topic") String topic, @V("style") String style);
+}
+```
+
+When building this agent, there is no need to explicitly create or register an `AgentMonitor`:
+
+```java
+StyledWriter styledWriter = AgenticServices.sequenceBuilder(StyledWriter.class)
+        .subAgents(creativeWriter, styleReviewLoop)
+        .outputKey("story")
+        .build();
+```
+
+The monitor is automatically registered and can be retrieved at any time from the agent itself:
+
+```java
+AgentMonitor monitor = styledWriter.agentMonitor();
+```
+
 ## Declarative API
 
 All the workflow patterns discussed so far can be defined using a declarative API, which allows you to define workflows in a more concise and readable way. The `langchain4j-agentic` module provides a set of annotations that can be used to define agents and their workflows in a more declarative style.

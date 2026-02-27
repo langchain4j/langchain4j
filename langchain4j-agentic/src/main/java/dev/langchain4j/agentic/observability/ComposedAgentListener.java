@@ -98,6 +98,18 @@ public class ComposedAgentListener implements AgentListener {
         }
     }
 
+    public boolean contains(AgentListener listener) {
+        if (listener instanceof ComposedAgentListener composed) {
+            return listeners.containsAll(composed.listeners);
+        }
+        return listeners.contains(listener);
+    }
+
+    @Override
+    public boolean inheritedBySubagents() {
+        return listeners.stream().anyMatch(AgentListener::inheritedBySubagents);
+    }
+
     public static AgentListener composeWithInherited(AgentListener localListener, AgentListener parentListener) {
         if (parentListener == null) {
             return localListener;
@@ -137,15 +149,17 @@ public class ComposedAgentListener implements AgentListener {
         };
     }
 
-    public boolean contains(AgentListener listener) {
-        if (listener instanceof ComposedAgentListener composed) {
-            return listeners.containsAll(composed.listeners);
+    public static <T extends AgentListener> T listenerOfType(AgentListener rootListener, Class<T> listenerType) {
+        if (listenerType.isInstance(rootListener)) {
+            return (T) rootListener;
         }
-        return listeners.contains(listener);
-    }
-
-    @Override
-    public boolean inheritedBySubagents() {
-        return listeners.stream().anyMatch(AgentListener::inheritedBySubagents);
+        if (rootListener instanceof ComposedAgentListener composed) {
+            for (AgentListener listener : composed.listeners) {
+                if (listenerType.isInstance(listener)) {
+                    return (T) listener;
+                }
+            }
+        }
+        return null;
     }
 }
