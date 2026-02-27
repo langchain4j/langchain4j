@@ -477,11 +477,61 @@ ChatResponse response = chatModel.chat(ChatRequest.builder()
         .build());
 ```
 
+## Micrometer Observation API
+
+This implements the `ChatModelListener` using the [Micrometer Observation API](https://docs.micrometer.io/micrometer/reference/observation.html) allowing transparent generation of Metrics and Traces. 
+
+This is implemnted in the  `langchain4j-observation` module.
+
+### Produced telemetry
+
+#### Traces 
+
+This will provide spans per chat interaction.
+
+Example:
+![observation trace](../../static/img/observation-trace.png)
+
+#### Metrics
+Histograms for:
+- gen_ai_client_token_usage
+- gen_ai_client_operation_duration
+
+Example:
+```log
+# HELP gen_ai_client_operation_duration_active_seconds  
+# TYPE gen_ai_client_operation_duration_active_seconds summary
+gen_ai_client_operation_duration_active_seconds_count{gen_ai_operation_name="chat",gen_ai_provider_name="OPEN_AI",gen_ai_request_model="gpt-4o-mini",gen_ai_response_model="unknown",outcome="SUCCESS"} 0
+gen_ai_client_operation_duration_active_seconds_sum{gen_ai_operation_name="chat",gen_ai_provider_name="OPEN_AI",gen_ai_request_model="gpt-4o-mini",gen_ai_response_model="unknown",outcome="SUCCESS"} 0.0
+# HELP gen_ai_client_operation_duration_active_seconds_max  
+# TYPE gen_ai_client_operation_duration_active_seconds_max gauge
+gen_ai_client_operation_duration_active_seconds_max{gen_ai_operation_name="chat",gen_ai_provider_name="OPEN_AI",gen_ai_request_model="gpt-4o-mini",gen_ai_response_model="unknown",outcome="SUCCESS"} 0.0
+# HELP gen_ai_client_operation_duration_seconds  
+# TYPE gen_ai_client_operation_duration_seconds summary
+gen_ai_client_operation_duration_seconds_count{error="none",gen_ai_operation_name="chat",gen_ai_provider_name="OPEN_AI",gen_ai_request_model="gpt-4o-mini",gen_ai_response_model="gpt-4o-mini-2024-07-18",outcome="SUCCESS"} 2
+gen_ai_client_operation_duration_seconds_sum{error="none",gen_ai_operation_name="chat",gen_ai_provider_name="OPEN_AI",gen_ai_request_model="gpt-4o-mini",gen_ai_response_model="gpt-4o-mini-2024-07-18",outcome="SUCCESS"} 3.384050045
+# HELP gen_ai_client_operation_duration_seconds_max  
+# TYPE gen_ai_client_operation_duration_seconds_max gauge
+gen_ai_client_operation_duration_seconds_max{error="none",gen_ai_operation_name="chat",gen_ai_provider_name="OPEN_AI",gen_ai_request_model="gpt-4o-mini",gen_ai_response_model="gpt-4o-mini-2024-07-18",outcome="SUCCESS"} 2.115592691
+# HELP gen_ai_client_token_usage_tokens Measures the quantity of used tokens
+# TYPE gen_ai_client_token_usage_tokens summary
+gen_ai_client_token_usage_tokens_count{gen_ai_operation_name="chat",gen_ai_provider_name="OPEN_AI",gen_ai_request_model="gpt-4o-mini",gen_ai_response_model="gpt-4o-mini-2024-07-18",gen_ai_token_type="input"} 2
+gen_ai_client_token_usage_tokens_sum{gen_ai_operation_name="chat",gen_ai_provider_name="OPEN_AI",gen_ai_request_model="gpt-4o-mini",gen_ai_response_model="gpt-4o-mini-2024-07-18",gen_ai_token_type="input"} 508.0
+gen_ai_client_token_usage_tokens_count{gen_ai_operation_name="chat",gen_ai_provider_name="OPEN_AI",gen_ai_request_model="gpt-4o-mini",gen_ai_response_model="gpt-4o-mini-2024-07-18",gen_ai_token_type="output"} 2
+gen_ai_client_token_usage_tokens_sum{gen_ai_operation_name="chat",gen_ai_provider_name="OPEN_AI",gen_ai_request_model="gpt-4o-mini",gen_ai_response_model="gpt-4o-mini-2024-07-18",gen_ai_token_type="output"} 53.0
+# HELP gen_ai_client_token_usage_tokens_max Measures the quantity of used tokens
+# TYPE gen_ai_client_token_usage_tokens_max gauge
+gen_ai_client_token_usage_tokens_max{gen_ai_operation_name="chat",gen_ai_provider_name="OPEN_AI",gen_ai_request_model="gpt-4o-mini",gen_ai_response_model="gpt-4o-mini-2024-07-18",gen_ai_token_type="input"} 273.0
+gen_ai_client_token_usage_tokens_max{gen_ai_operation_name="chat",gen_ai_provider_name="OPEN_AI",gen_ai_request_model="gpt-4o-mini",gen_ai_response_model="gpt-4o-mini-2024-07-18",gen_ai_token_type="output"} 27.0
+```
+
 ## Observability in Spring Boot Application
 
 See more details [here](/tutorials/spring-boot-integration#observability).
 
 See more details on how to collect Micrometer Metrics in Spring Boot application [here](/tutorials/spring-boot-integration#micrometer-metrics). 
+
+Details on how to integrate the Micrometer Observation API library with SpringBoot can be found [here](spring-boot-integration.md#micrometer-observation).
 
 ## Third-party Integrations
 
