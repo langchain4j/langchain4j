@@ -357,7 +357,7 @@ The `gen_ai.token.type` tag indicates whether the tokens were used for input or 
 
 > **Note**: The `gen_ai.client.token.usage` metric is a histogram (DistributionSummary). The endpoint without any tags shows aggregated statistics (count, total, max) across all token types, models, and providers.
 
-### Micrometer Observation
+### Micrometer Observation API
 
 This implements the `ChatModelListener` using the [Micrometer Observation API](https://docs.micrometer.io/micrometer/reference/observation.html) allowing transparent generation of Metrics and Traces by adding the following dependency:
 
