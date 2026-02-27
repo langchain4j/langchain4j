@@ -19,7 +19,8 @@ class RunShellCommandToolExecutorTest {
                 "does not matter",
                 "does not matter",
                 timeoutSecondsParameterName,
-                Executors.newSingleThreadExecutor()
+                Executors.newSingleThreadExecutor(),
+                false
         );
 
         assertThat(executor.getTimeoutSeconds(Map.of())).isNull();

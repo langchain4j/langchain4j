@@ -63,19 +63,19 @@ public class SkillsIT {
     }
 
     @Test
-    void should_activate_skill_and_load_resource() { // TODO name
+    void should_activate_skill_and_load_resource() {
 
         // given
         Skill skill = FileSystemSkillLoader.loadSkill(toPath("skills/using-process-tool"));
 
         // when
-        SkillService skillService = SkillService.from(skill);
+        Skills skills = Skills.from(skill);
 
         // then
-        assertThat(skillService.systemMessage()).contains("using-process-tool");
-        assertThat(getToolNames(skillService.toolProvider()))
+        assertThat(skills.systemMessage()).contains("using-process-tool");
+        assertThat(getToolNames(skills.toolProvider()))
                 .containsExactlyInAnyOrder("activate_skill", "read_skill_resource");
-        assertThat(skillService.toolProvider().provideTools(null).tools().keySet().stream()
+        assertThat(skills.toolProvider().provideTools(null).tools().keySet().stream()
                 .filter(it -> it.name().equals("read_skill_resource")).findFirst().get()
                 .parameters().properties().get("relative_path").description())
                 .endsWith("For example: references/17.md");
@@ -85,9 +85,9 @@ public class SkillsIT {
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
-                .systemMessage(skillService.systemMessage())
+                .systemMessage(skills.systemMessage())
                 .tools(spyTools)
-                .toolProvider(skillService.toolProvider())
+                .toolProvider(skills.toolProvider())
                 .build();
 
         // when
@@ -130,11 +130,11 @@ public class SkillsIT {
                 .build();
 
         // when
-        SkillService skillService = SkillService.from(skill);
+        Skills skills = Skills.from(skill);
 
         // then
-        assertThat(skillService.systemMessage()).contains("using-process-tool");
-        assertThat(getToolNames(skillService.toolProvider()))
+        assertThat(skills.systemMessage()).contains("using-process-tool");
+        assertThat(getToolNames(skills.toolProvider()))
                 .containsExactlyInAnyOrder("activate_skill", "read_skill_resource");
 
         // given
@@ -142,9 +142,9 @@ public class SkillsIT {
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
-                .systemMessage(skillService.systemMessage())
+                .systemMessage(skills.systemMessage())
                 .tools(spyTools)
-                .toolProvider(skillService.toolProvider())
+                .toolProvider(skills.toolProvider())
                 .build();
 
         // when
@@ -164,21 +164,21 @@ public class SkillsIT {
         Skill skill = FileSystemSkillLoader.loadSkill(toPath("skills/greeting-user"));
 
         // when
-        SkillService skillService = SkillService.builder()
+        Skills skills = Skills.builder()
                 .skills(skill)
                 .allowRunningShellCommands(true)
                 .build();
 
         // then
-        assertThat(skillService.systemMessage()).contains("greeting-user");
-        assertThat(getToolNames(skillService.toolProvider()))
+        assertThat(skills.systemMessage()).contains("greeting-user");
+        assertThat(getToolNames(skills.toolProvider()))
                 .containsExactlyInAnyOrder("activate_skill", "run_shell_command");
 
         // given
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
-                .systemMessage(skillService.systemMessage())
-                .toolProvider(skillService.toolProvider())
+                .systemMessage(skills.systemMessage())
+                .toolProvider(skills.toolProvider())
                 .build();
 
         // when

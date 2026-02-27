@@ -13,9 +13,9 @@ import java.util.concurrent.ExecutorService;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.skills.SkillUtils.getArgument;
-import static dev.langchain4j.skills.SkillUtils.parseArguments;
-import static dev.langchain4j.skills.SkillUtils.throwException;
+import static dev.langchain4j.skills.Skills.getArgument;
+import static dev.langchain4j.skills.Skills.parseArguments;
+import static dev.langchain4j.skills.Skills.throwException;
 
 class RunShellCommandToolExecutor implements ToolExecutor {
 
@@ -24,24 +24,27 @@ class RunShellCommandToolExecutor implements ToolExecutor {
     private final String skillNameParameterName;
     private final String timeoutSecondsParameterName;
     private final ExecutorService executorService;
+    private final boolean throwToolArgumentsExceptions;
 
     public RunShellCommandToolExecutor(Map<String, Skill> skillsByName,
                                        String commandParameterName,
                                        String skillNameParameterName,
                                        String timeoutSecondsParameterName,
-                                       ExecutorService executorService) {
+                                       ExecutorService executorService,
+                                       boolean throwToolArgumentsExceptions) {
         this.skillsByName = copy(skillsByName);
         this.commandParameterName = ensureNotBlank(commandParameterName, "commandParameterName");
         this.skillNameParameterName = ensureNotBlank(skillNameParameterName, "skillNameParameterName");
         this.timeoutSecondsParameterName = ensureNotBlank(timeoutSecondsParameterName, "timeoutSecondsParameterName");
         this.executorService = ensureNotNull(executorService, "executorService");
+        this.throwToolArgumentsExceptions = throwToolArgumentsExceptions;
     }
 
     @Override
     public ToolExecutionResult executeWithContext(ToolExecutionRequest request, InvocationContext context) {
 
-        Map<String, Object> arguments = parseArguments(request.arguments());
-        String command = getArgument(commandParameterName, arguments);
+        Map<String, Object> arguments = parseArguments(request.arguments(), throwToolArgumentsExceptions);
+        String command = getArgument(commandParameterName, arguments, throwToolArgumentsExceptions);
         String skillName = arguments.containsKey(skillNameParameterName) ? arguments.get(skillNameParameterName).toString() : null;
         Integer timeoutSeconds = getTimeoutSeconds(arguments);
 
@@ -49,7 +52,7 @@ class RunShellCommandToolExecutor implements ToolExecutor {
         if (skillName != null && !skillName.isBlank()) {
             Skill skill = skillsByName.get(skillName);
             if (skill == null) {
-                throwException("There is no skill with name '%s'".formatted(skillName));
+                throwException("There is no skill with name '%s'".formatted(skillName), throwToolArgumentsExceptions);
             }
             if (skill instanceof FileSystemSkill fileSystemSkill) {
                 workingDir = fileSystemSkill.basePath();

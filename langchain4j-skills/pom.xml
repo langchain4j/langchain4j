@@ -10,7 +10,6 @@
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
-    <!-- TODO artifactId, name-->
     <artifactId>langchain4j-skills</artifactId>
     <name>LangChain4j :: Skills</name>
 
