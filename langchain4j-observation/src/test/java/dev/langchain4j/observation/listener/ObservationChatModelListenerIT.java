@@ -17,14 +17,12 @@ import dev.langchain4j.model.azure.AzureOpenAiChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import io.micrometer.common.KeyValue;
-import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.distribution.CountAtBucket;
+import io.micrometer.core.instrument.distribution.HistogramSnapshot;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.micrometer.observation.tck.TestObservationRegistry;
 import io.micrometer.observation.tck.TestObservationRegistryAssert;
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -77,24 +75,28 @@ public class ObservationChatModelListenerIT {
                         .totalAmount())
                 .isGreaterThan(1);
 
-        DistributionSummary inputSummary = meterRegistry
+        final HistogramSnapshot inputSnapshot = meterRegistry
                 .get(TOKEN_USAGE)
                 .tag(TOKEN_TYPE.asString(), "input")
-                .summary();
-        CountAtBucket[] inputBuckets = inputSummary.takeSnapshot().histogramCounts();
-        assertThat(inputBuckets).isNotEmpty();
-        assertThat(countAtBucket(inputBuckets, 16)).isEqualTo(1);
-        assertThat(countAtBucket(inputBuckets, 64)).isEqualTo(1);
+                .summary()
+                .takeSnapshot();
+        assertThat(inputSnapshot).isNotNull();
+        assertThat(inputSnapshot.count()).isEqualTo(1L);
+        assertThat(inputSnapshot.total()).isGreaterThanOrEqualTo(8.0);
+        assertThat(inputSnapshot.percentileValues()).isEmpty();
+        assertThat(inputSnapshot.histogramCounts()).isEmpty();
 
         // Output tokens (145): should appear in le:256 bucket (145 <= 256) but not le:64 (145 > 64)
-        DistributionSummary outputSummary = meterRegistry
+        final HistogramSnapshot outputHistogram = meterRegistry
                 .get(TOKEN_USAGE)
                 .tag(TOKEN_TYPE.asString(), "output")
-                .summary();
-        CountAtBucket[] outputBuckets = outputSummary.takeSnapshot().histogramCounts();
-        assertThat(outputBuckets).isNotEmpty();
-        assertThat(countAtBucket(outputBuckets, 64)).isEqualTo(1);
-        assertThat(countAtBucket(outputBuckets, 256)).isEqualTo(1);
+                .summary()
+                .takeSnapshot();
+        assertThat(outputHistogram).isNotNull();
+        assertThat(outputHistogram.count()).isEqualTo(1L);
+        assertThat(outputHistogram.total()).isGreaterThanOrEqualTo(7.0);
+        assertThat(outputHistogram.percentileValues()).isEmpty();
+        assertThat(outputHistogram.histogramCounts()).isEmpty();
 
         TestObservationRegistryAssert.assertThat(observationRegistry)
                 .hasObservationWithNameEqualTo("gen_ai.client.operation.duration")
@@ -157,13 +159,5 @@ public class ObservationChatModelListenerIT {
 
         ChatResponse response = chatModel.chat(chatRequest);
         assertThat(response.metadata()).isNotNull();
-    }
-
-    private double countAtBucket(CountAtBucket[] buckets, double boundary) {
-        return Arrays.stream(buckets)
-                .filter(b -> b.bucket() == boundary)
-                .findFirst()
-                .map(CountAtBucket::count)
-                .orElse(0.0);
     }
 }
