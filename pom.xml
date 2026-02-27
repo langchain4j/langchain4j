@@ -131,6 +131,7 @@
 
         <!-- observability -->
         <module>langchain4j-micrometer-metrics</module>
+        <module>langchain4j-observation</module>
 
         <!-- integration tests -->
         <module>integration-tests</module>

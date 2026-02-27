@@ -357,6 +357,44 @@ The `gen_ai.token.type` tag indicates whether the tokens were used for input or 
 
 > **Note**: The `gen_ai.client.token.usage` metric is a histogram (DistributionSummary). The endpoint without any tags shows aggregated statistics (count, total, max) across all token types, models, and providers.
 
+### Micrometer Observation API
+
+This implements the `ChatModelListener` using the [Micrometer Observation API](https://docs.micrometer.io/micrometer/reference/observation.html) allowing transparent generation of Metrics and Traces by adding the following dependency:
+
+For Maven:
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-observation</artifactId>
+</dependency>
+```
+For Gradle:
+```gradle
+implementation 'dev.langchain4j:langchain4j-observation'
+```
+
+You need to instantiate the Observation listener as follows...
+
+#### Configure the ObservationChatModelListener bean
+
+```java
+@Configuration
+public class ObservationConfig {
+
+    @Bean
+    public ObservationChatModelListener listener(ObservationRegistry observationRegistry, MeterRegistry meterRegistry) {
+        return new ObservationChatModelListener(observationRegistry, meterRegistry);
+    }
+}
+```
+
+This dependency requires the configuration of the [SpringBoot Actuator](spring-boot-integration.md#micrometer-actuator-configuration), as described above.
+
+For additional observability requirements on a SpringBoot application please follow:
+[Building Your First Observed Application](https://spring.io/blog/2022/10/12/observability-with-spring-boot-3#building-your-first-observed-application)
+
+For more details about the `langchain4j-observation` library, please check the [Observability documentation](observability.md#micrometer-observation-api). 
+
 
 ## Testing
 
