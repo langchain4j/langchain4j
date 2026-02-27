@@ -17,7 +17,7 @@ class FileSystemSkillLoaderTest {
 
         assertThat(skills)
                 .extracting(Skill::name)
-                .containsExactlyInAnyOrder("docx", "greeting-user", "mcp-builder", "using-process-tool");
+                .containsExactlyInAnyOrder("docx", "greeting-user", "mcp-builder", "using-process-tool", "test-skill");
     }
 
     @Test
@@ -76,6 +76,15 @@ class FileSystemSkillLoaderTest {
 
         assertThat(skill).isInstanceOf(FileSystemSkill.class);
         assertThat(((FileSystemSkill) skill).basePath()).isEqualTo(expectedDir);
+    }
+
+    @Test
+    void should_ignore_empty_resources() {
+        Skill skill = FileSystemSkillLoader.loadSkill(toPath("skills/test-skill"));
+
+        assertThat(skill.resources().stream().map(SkillResource::relativePath))
+                .doesNotContain("references/empty.md")
+                .containsExactly("references/full.md");
     }
 
     private Skill loadSkill(String resourcePath) {

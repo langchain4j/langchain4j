@@ -19,6 +19,10 @@ import static java.util.stream.StreamSupport.stream;
 
 public class FileSystemSkillLoader {
 
+    private static final Parser PARSER = Parser.builder()
+            .extensions(List.of(YamlFrontMatterExtension.create()))
+            .build();
+
     public static List<Skill> loadSkills(Path directory) {
         try (Stream<Path> entries = Files.list(directory)) {
             return entries
@@ -58,10 +62,7 @@ public class FileSystemSkillLoader {
     }
 
     private static Map<String, List<String>> parseFrontMatter(String markdown) {
-        Parser parser = Parser.builder() // TODO reuse for multiple skills
-                .extensions(List.of(YamlFrontMatterExtension.create()))
-                .build();
-        Node document = parser.parse(markdown);
+        Node document = PARSER.parse(markdown);
         YamlFrontMatterVisitor visitor = new YamlFrontMatterVisitor();
         document.accept(visitor);
         return visitor.getData();
@@ -94,7 +95,7 @@ public class FileSystemSkillLoader {
                         try {
                             String content = toRuntimeException(() -> Files.readString(path));
                             if (isNullOrBlank(content)) {
-                                return null; // TODO test
+                                return null;
                             }
                             String relativePath = stream(skillDirectory.relativize(path).spliterator(), false)
                                     .map(Path::toString)
