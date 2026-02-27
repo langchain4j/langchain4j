@@ -95,13 +95,14 @@ public class Skills {
         Map<String, Skill> skillsByName = new LinkedHashMap<>();
         skills.forEach(skill -> skillsByName.put(skill.name(), skill));
 
-        String activateSkillToolParameterName = getOrDefault(builder.activateSkillToolParameterName, DEFAULT_ACTIVATE_SKILL_TOOL_PARAMETER_NAME);
+        ActivateSkillToolConfig a = builder.activateSkillToolConfig != null ? builder.activateSkillToolConfig : ActivateSkillToolConfig.builder().build();
+        String activateSkillToolParameterName = getOrDefault(a.parameterName, DEFAULT_ACTIVATE_SKILL_TOOL_PARAMETER_NAME);
 
         ToolSpecification activateSkillTool = ToolSpecification.builder()
-                .name(getOrDefault(builder.activateSkillToolName, DEFAULT_ACTIVATE_SKILL_TOOL_NAME))
-                .description(getOrDefault(builder.activateSkillToolDescription, DEFAULT_ACTIVATE_SKILL_TOOL_DESCRIPTION))
+                .name(getOrDefault(a.name, DEFAULT_ACTIVATE_SKILL_TOOL_NAME))
+                .description(getOrDefault(a.description, DEFAULT_ACTIVATE_SKILL_TOOL_DESCRIPTION))
                 .parameters(JsonObjectSchema.builder()
-                        .addStringProperty(activateSkillToolParameterName, getOrDefault(builder.activateSkillToolParameterDescription, DEFAULT_ACTIVATE_SKILL_TOOL_PARAMETER_DESCRIPTION))
+                        .addStringProperty(activateSkillToolParameterName, getOrDefault(a.parameterDescription, DEFAULT_ACTIVATE_SKILL_TOOL_PARAMETER_DESCRIPTION))
                         .required(activateSkillToolParameterName)
                         .build())
                 .build();
@@ -134,27 +135,29 @@ public class Skills {
         tools.put(activateSkillTool, activateSkillExecutor);
 
         if (getOrDefault(builder.allowRunningShellCommands, false)) {
-            String commandParameterName = getOrDefault(builder.runShellCommandToolCommandParameterName, DEFAULT_RUN_SHELL_COMMAND_TOOL_COMMAND_PARAMETER_NAME);
-            String runShellSkillNameParameterName = getOrDefault(builder.runShellCommandToolSkillNameParameterName, DEFAULT_RUN_SHELL_COMMAND_TOOL_SKILL_NAME_PARAMETER_NAME);
-            String timeoutSecondsParameterName = getOrDefault(builder.runShellCommandToolTimeoutSecondsParameterName, DEFAULT_RUN_SHELL_COMMAND_TOOL_TIMEOUT_SECONDS_PARAMETER_NAME);
-            ExecutorService executorService = getOrDefault(builder.executorService, getDefaultExecutorService());
-            int maxStdoutChars = getOrDefault(builder.runShellCommandToolMaxStdoutChars, DEFAULT_RUN_SHELL_COMMAND_TOOL_MAX_STDOUT_CHARS);
-            int maxStderrChars = getOrDefault(builder.runShellCommandToolMaxStderrChars, DEFAULT_RUN_SHELL_COMMAND_TOOL_MAX_STDERR_CHARS);
-            ToolSpecification runShellCommandTool = createRunShellCommandTool(builder, commandParameterName, runShellSkillNameParameterName, timeoutSecondsParameterName);
+            RunShellCommandToolConfig rsc = builder.runShellCommandToolConfig != null ? builder.runShellCommandToolConfig : RunShellCommandToolConfig.builder().build();
+            String commandParameterName = getOrDefault(rsc.commandParameterName, DEFAULT_RUN_SHELL_COMMAND_TOOL_COMMAND_PARAMETER_NAME);
+            String runShellSkillNameParameterName = getOrDefault(rsc.skillNameParameterName, DEFAULT_RUN_SHELL_COMMAND_TOOL_SKILL_NAME_PARAMETER_NAME);
+            String timeoutSecondsParameterName = getOrDefault(rsc.timeoutSecondsParameterName, DEFAULT_RUN_SHELL_COMMAND_TOOL_TIMEOUT_SECONDS_PARAMETER_NAME);
+            ExecutorService executorService = getOrDefault(rsc.executorService, getDefaultExecutorService());
+            int maxStdoutChars = getOrDefault(rsc.maxStdoutChars, DEFAULT_RUN_SHELL_COMMAND_TOOL_MAX_STDOUT_CHARS);
+            int maxStderrChars = getOrDefault(rsc.maxStderrChars, DEFAULT_RUN_SHELL_COMMAND_TOOL_MAX_STDERR_CHARS);
+            ToolSpecification runShellCommandTool = createRunShellCommandTool(rsc, commandParameterName, runShellSkillNameParameterName, timeoutSecondsParameterName);
             ToolExecutor runShellCommandToolExecutor = new RunShellCommandToolExecutor(skillsByName, commandParameterName, runShellSkillNameParameterName, timeoutSecondsParameterName, executorService, throwToolArgumentsExceptions, maxStdoutChars, maxStderrChars);
             tools.put(runShellCommandTool, runShellCommandToolExecutor);
         } else {
             boolean hasResources = skills.stream().anyMatch(skill -> !skill.resources().isEmpty());
             if (hasResources) {
-                String readResourceToolSkillNameParameterName = getOrDefault(builder.readResourceToolSkillNameParameterName, DEFAULT_READ_RESOURCE_TOOL_SKILL_NAME_PARAMETER_NAME);
-                String readResourceToolRelativePathParameterName = getOrDefault(builder.readResourceToolRelativePathParameterName, DEFAULT_READ_RESOURCE_TOOL_RELATIVE_PATH_PARAMETER_NAME);
+                ReadResourceToolConfig rrc = builder.readResourceToolConfig != null ? builder.readResourceToolConfig : ReadResourceToolConfig.builder().build();
+                String readResourceToolSkillNameParameterName = getOrDefault(rrc.skillNameParameterName, DEFAULT_READ_RESOURCE_TOOL_SKILL_NAME_PARAMETER_NAME);
+                String readResourceToolRelativePathParameterName = getOrDefault(rrc.relativePathParameterName, DEFAULT_READ_RESOURCE_TOOL_RELATIVE_PATH_PARAMETER_NAME);
 
                 ToolSpecification readResourceTool = ToolSpecification.builder()
-                        .name(getOrDefault(builder.readResourceToolName, DEFAULT_READ_RESOURCE_TOOL_NAME))
-                        .description(getOrDefault(builder.readResourceToolDescription, DEFAULT_READ_RESOURCE_TOOL_DESCRIPTION))
+                        .name(getOrDefault(rrc.name, DEFAULT_READ_RESOURCE_TOOL_NAME))
+                        .description(getOrDefault(rrc.description, DEFAULT_READ_RESOURCE_TOOL_DESCRIPTION))
                         .parameters(JsonObjectSchema.builder()
-                                .addStringProperty(readResourceToolSkillNameParameterName, getOrDefault(builder.readResourceToolSkillNameParameterDescription, DEFAULT_READ_RESOURCE_TOOL_SKILL_NAME_PARAMETER_DESCRIPTION))
-                                .addStringProperty(readResourceToolRelativePathParameterName, resolveRelativePathParameterDescription(builder))
+                                .addStringProperty(readResourceToolSkillNameParameterName, getOrDefault(rrc.skillNameParameterDescription, DEFAULT_READ_RESOURCE_TOOL_SKILL_NAME_PARAMETER_DESCRIPTION))
+                                .addStringProperty(readResourceToolRelativePathParameterName, resolveRelativePathParameterDescription(rrc))
                                 .required(readResourceToolSkillNameParameterName, readResourceToolRelativePathParameterName)
                                 .build())
                         .build();
@@ -206,36 +209,36 @@ public class Skills {
         return request -> toolProviderResult;
     }
 
-    private static ToolSpecification createRunShellCommandTool(Builder builder,
+    private static ToolSpecification createRunShellCommandTool(RunShellCommandToolConfig rsc,
                                                                String commandParameterName,
                                                                String skillNameParameterName,
                                                                String timeoutSecondsParameterName) {
         return ToolSpecification.builder()
-                .name(getOrDefault(builder.runShellCommandToolName, DEFAULT_RUN_SHELL_COMMAND_TOOL_NAME))
-                .description(getOrDefault(builder.runShellCommandToolDescription, DEFAULT_RUN_SHELL_COMMAND_TOOL_DESCRIPTION))
+                .name(getOrDefault(rsc.name, DEFAULT_RUN_SHELL_COMMAND_TOOL_NAME))
+                .description(getOrDefault(rsc.description, DEFAULT_RUN_SHELL_COMMAND_TOOL_DESCRIPTION))
                 .parameters(JsonObjectSchema.builder()
                         .addStringProperty(
                                 commandParameterName,
-                                getOrDefault(builder.runShellCommandToolCommandParameterDescription, DEFAULT_RUN_SHELL_COMMAND_TOOL_COMMAND_PARAMETER_DESCRIPTION))
+                                getOrDefault(rsc.commandParameterDescription, DEFAULT_RUN_SHELL_COMMAND_TOOL_COMMAND_PARAMETER_DESCRIPTION))
                         .addStringProperty(
                                 skillNameParameterName,
-                                getOrDefault(builder.runShellCommandToolSkillNameParameterDescription, DEFAULT_RUN_SHELL_COMMAND_TOOL_SKILL_NAME_PARAMETER_DESCRIPTION))
+                                getOrDefault(rsc.skillNameParameterDescription, DEFAULT_RUN_SHELL_COMMAND_TOOL_SKILL_NAME_PARAMETER_DESCRIPTION))
                         .addStringProperty(
                                 timeoutSecondsParameterName,
-                                getOrDefault(builder.runShellCommandToolTimeoutSecondsParameterDescription, DEFAULT_RUN_SHELL_COMMAND_TOOL_TIMEOUT_SECONDS_PARAMETER_DESCRIPTION))
+                                getOrDefault(rsc.timeoutSecondsParameterDescription, DEFAULT_RUN_SHELL_COMMAND_TOOL_TIMEOUT_SECONDS_PARAMETER_DESCRIPTION))
                         .required(commandParameterName)
                         .build())
                 .build();
     }
 
-    private static String resolveRelativePathParameterDescription(Builder builder) {
-        if (builder.readResourceToolRelativePathParameterDescription != null) {
-            return builder.readResourceToolRelativePathParameterDescription;
+    private String resolveRelativePathParameterDescription(ReadResourceToolConfig rrc) {
+        if (rrc.relativePathParameterDescription != null) {
+            return rrc.relativePathParameterDescription;
         }
         return getOrDefault(
-                builder.readResourceToolRelativePathParameterDescriptionProvider,
+                rrc.relativePathParameterDescriptionProvider,
                 DEFAULT_READ_RESOURCE_TOOL_RELATIVE_PATH_PARAMETER_DESCRIPTION_PROVIDER)
-                .apply(List.copyOf(builder.skills));
+                .apply(skills);
     }
 
     private String getArgument(String argumentName, Map<String, Object> arguments) {
@@ -327,36 +330,11 @@ public class Skills {
     public static class Builder {
 
         Collection<? extends Skill> skills;
+        ActivateSkillToolConfig activateSkillToolConfig;
+        ReadResourceToolConfig readResourceToolConfig;
         Boolean allowRunningShellCommands;
-        ExecutorService executorService;
+        RunShellCommandToolConfig runShellCommandToolConfig;
         Boolean throwToolArgumentsExceptions;
-
-        // activate_skill tool
-        String activateSkillToolName;
-        String activateSkillToolDescription;
-        String activateSkillToolParameterName;
-        String activateSkillToolParameterDescription;
-
-        // read_skill_resource tool
-        String readResourceToolName;
-        String readResourceToolDescription;
-        String readResourceToolSkillNameParameterName;
-        String readResourceToolSkillNameParameterDescription;
-        String readResourceToolRelativePathParameterName;
-        String readResourceToolRelativePathParameterDescription;
-        Function<List<? extends Skill>, String> readResourceToolRelativePathParameterDescriptionProvider;
-
-        // run_shell_command tool
-        String runShellCommandToolName;
-        String runShellCommandToolDescription;
-        String runShellCommandToolCommandParameterName;
-        String runShellCommandToolCommandParameterDescription;
-        String runShellCommandToolSkillNameParameterName;
-        String runShellCommandToolSkillNameParameterDescription;
-        String runShellCommandToolTimeoutSecondsParameterName;
-        String runShellCommandToolTimeoutSecondsParameterDescription;
-        Integer runShellCommandToolMaxStdoutChars;
-        Integer runShellCommandToolMaxStderrChars;
 
         public Builder skills(Collection<? extends Skill> skills) {
             this.skills = skills;
@@ -367,255 +345,60 @@ public class Skills {
             return skills(asList(skills));
         }
 
+        /**
+         * Configures the {@code activate_skill} tool.
+         */
+        public Builder activateSkillToolConfig(ActivateSkillToolConfig activateSkillToolConfig) {
+            this.activateSkillToolConfig = activateSkillToolConfig;
+            return this;
+        }
+
+        /**
+         * Configures the {@code read_skill_resource} tool.
+         */
+        public Builder readResourceToolConfig(ReadResourceToolConfig readResourceToolConfig) {
+            this.readResourceToolConfig = readResourceToolConfig;
+            return this;
+        }
+
+        /**
+         * TODO document
+         */
         public Builder allowRunningShellCommands(Boolean allowRunningShellCommands) {
             this.allowRunningShellCommands = allowRunningShellCommands;
             return this;
         }
 
         /**
-         * Sets the {@link ExecutorService} used to read the stdout and stderr streams
-         * of shell commands submitted via the {@code run_shell_command} tool.
-         * <p>
-         * By default, {@link dev.langchain4j.internal.DefaultExecutorProvider#getDefaultExecutorService()} is used.
+         * Configures the {@code run_shell_command} tool.
          */
-        public Builder executorService(ExecutorService executorService) {
-            this.executorService = executorService;
+        public Builder runShellCommandToolConfig(RunShellCommandToolConfig runShellCommandToolConfig) {
+            this.runShellCommandToolConfig = runShellCommandToolConfig;
             return this;
         }
 
         /**
-         * Controls which exception type is thrown when tool arguments are missing,
-         * invalid, or cannot be parsed.
+         * Controls which exception type is thrown when tool arguments
+         * are missing, invalid, or cannot be parsed.
          * <p>
-         * When set to {@code true}, {@link dev.langchain4j.exception.ToolArgumentsException} is thrown.
-         * When set to {@code false} (default), {@link dev.langchain4j.exception.ToolExecutionException} is thrown,
-         * which allows the error message to be returned to the LLM rather than failing fast.
+         * Although all errors produced by this tool are argument-related,
+         * this strategy throws {@link ToolExecutionException} by default
+         * instead of {@link ToolArgumentsException}.
          * <p>
-         * Default value: {@code false}.
+         * The reason is historical: by default, AI Services fail fast when
+         * a {@link ToolArgumentsException} is thrown, whereas
+         * {@link ToolExecutionException} allows the error message to be
+         * returned to the LLM. For these tools, returning the error message
+         * to the LLM is usually the desired behavior.
+         * <p>
+         * If this flag is set to {@code true}, {@link ToolArgumentsException}
+         * will be thrown instead.
+         *
+         * @param throwToolArgumentsExceptions whether to throw {@link ToolArgumentsException}
+         * @return this builder
          */
         public Builder throwToolArgumentsExceptions(Boolean throwToolArgumentsExceptions) {
             this.throwToolArgumentsExceptions = throwToolArgumentsExceptions;
-            return this;
-        }
-
-        /**
-         * Sets the name of the {@code activate_skill} tool.
-         * <p>
-         * Default value is {@value Skills#DEFAULT_ACTIVATE_SKILL_TOOL_NAME}.
-         */
-        public Builder activateSkillToolName(String activateSkillToolName) {
-            this.activateSkillToolName = activateSkillToolName;
-            return this;
-        }
-
-        /**
-         * Sets the description of the {@code activate_skill} tool.
-         * <p>
-         * Default value is {@value Skills#DEFAULT_ACTIVATE_SKILL_TOOL_DESCRIPTION}.
-         */
-        public Builder activateSkillToolDescription(String activateSkillToolDescription) {
-            this.activateSkillToolDescription = activateSkillToolDescription;
-            return this;
-        }
-
-        /**
-         * Sets the name of the parameter that specifies which skill to activate.
-         * <p>
-         * Default value is {@value Skills#DEFAULT_ACTIVATE_SKILL_TOOL_PARAMETER_NAME}.
-         */
-        public Builder activateSkillToolParameterName(String activateSkillToolParameterName) {
-            this.activateSkillToolParameterName = activateSkillToolParameterName;
-            return this;
-        }
-
-        /**
-         * Sets the description of the parameter that specifies which skill to activate.
-         * <p>
-         * Default value is {@value Skills#DEFAULT_ACTIVATE_SKILL_TOOL_PARAMETER_DESCRIPTION}.
-         */
-        public Builder activateSkillToolParameterDescription(String activateSkillToolParameterDescription) {
-            this.activateSkillToolParameterDescription = activateSkillToolParameterDescription;
-            return this;
-        }
-
-        /**
-         * Sets the name of the {@code read_skill_resource} tool.
-         * <p>
-         * Default value is {@value Skills#DEFAULT_READ_RESOURCE_TOOL_NAME}.
-         */
-        public Builder readResourceToolName(String readResourceToolName) {
-            this.readResourceToolName = readResourceToolName;
-            return this;
-        }
-
-        /**
-         * Sets the description of the {@code read_skill_resource} tool.
-         * <p>
-         * Default value is {@value Skills#DEFAULT_READ_RESOURCE_TOOL_DESCRIPTION}.
-         */
-        public Builder readResourceToolDescription(String readResourceToolDescription) {
-            this.readResourceToolDescription = readResourceToolDescription;
-            return this;
-        }
-
-        /**
-         * Sets the name of the {@code skill_name} parameter of the {@code read_skill_resource} tool.
-         * <p>
-         * Default value is {@value Skills#DEFAULT_READ_RESOURCE_TOOL_SKILL_NAME_PARAMETER_NAME}.
-         */
-        public Builder readResourceToolSkillNameParameterName(String readResourceToolSkillNameParameterName) {
-            this.readResourceToolSkillNameParameterName = readResourceToolSkillNameParameterName;
-            return this;
-        }
-
-        /**
-         * Sets the description of the {@code skill_name} parameter of the {@code read_skill_resource} tool.
-         * <p>
-         * Default value is {@value Skills#DEFAULT_READ_RESOURCE_TOOL_SKILL_NAME_PARAMETER_DESCRIPTION}.
-         */
-        public Builder readResourceToolSkillNameParameterDescription(String readResourceToolSkillNameParameterDescription) {
-            this.readResourceToolSkillNameParameterDescription = readResourceToolSkillNameParameterDescription;
-            return this;
-        }
-
-        /**
-         * Sets the name of the {@code relative_path} parameter of the {@code read_skill_resource} tool.
-         * <p>
-         * Default value is {@value Skills#DEFAULT_READ_RESOURCE_TOOL_RELATIVE_PATH_PARAMETER_NAME}.
-         */
-        public Builder readResourceToolRelativePathParameterName(String readResourceToolRelativePathParameterName) {
-            this.readResourceToolRelativePathParameterName = readResourceToolRelativePathParameterName;
-            return this;
-        }
-
-        /**
-         * Sets the description of the {@code relative_path} parameter of the {@code read_skill_resource} tool.
-         * <p>
-         * By default, the description is generated dynamically and includes an example path
-         * taken from the first available skill resource.
-         * <p>
-         * Takes precedence over {@link #readResourceToolRelativePathParameterDescriptionProvider(Function)}.
-         */
-        public Builder readResourceToolRelativePathParameterDescription(String readResourceToolRelativePathParameterDescription) {
-            this.readResourceToolRelativePathParameterDescription = readResourceToolRelativePathParameterDescription;
-            return this;
-        }
-
-        /**
-         * Sets a function that produces the description of the {@code relative_path} parameter
-         * of the {@code read_skill_resource} tool.
-         * <p>
-         * The function receives the list of configured skills and returns the full parameter description.
-         * This allows customizing the description template while still incorporating dynamic information
-         * such as an example path derived from the available skill resources.
-         * Ignored if {@link #readResourceToolRelativePathParameterDescription(String)} is set.
-         * <p>
-         * Default: {@code skills -> "Relative path to the resource. For example: " + <first resource path>}
-         */
-        public Builder readResourceToolRelativePathParameterDescriptionProvider(Function<List<? extends Skill>, String> readResourceToolRelativePathParameterDescriptionProvider) {
-            this.readResourceToolRelativePathParameterDescriptionProvider = readResourceToolRelativePathParameterDescriptionProvider;
-            return this;
-        }
-
-        /**
-         * Sets the name of the {@code run_shell_command} tool.
-         * <p>
-         * Default value is {@value Skills#DEFAULT_RUN_SHELL_COMMAND_TOOL_NAME}.
-         */
-        public Builder runShellCommandToolName(String runShellCommandToolName) {
-            this.runShellCommandToolName = runShellCommandToolName;
-            return this;
-        }
-
-        /**
-         * Sets the description of the {@code run_shell_command} tool.
-         * <p>
-         * By default, the description is generated dynamically and includes the current OS name.
-         */
-        public Builder runShellCommandToolDescription(String runShellCommandToolDescription) {
-            this.runShellCommandToolDescription = runShellCommandToolDescription;
-            return this;
-        }
-
-        /**
-         * Sets the name of the {@code command} parameter of the {@code run_shell_command} tool.
-         * <p>
-         * Default value is {@value Skills#DEFAULT_RUN_SHELL_COMMAND_TOOL_COMMAND_PARAMETER_NAME}.
-         */
-        public Builder runShellCommandToolCommandParameterName(String runShellCommandToolCommandParameterName) {
-            this.runShellCommandToolCommandParameterName = runShellCommandToolCommandParameterName;
-            return this;
-        }
-
-        /**
-         * Sets the description of the {@code command} parameter of the {@code run_shell_command} tool.
-         * <p>
-         * Default value is {@value Skills#DEFAULT_RUN_SHELL_COMMAND_TOOL_COMMAND_PARAMETER_DESCRIPTION}.
-         */
-        public Builder runShellCommandToolCommandParameterDescription(String runShellCommandToolCommandParameterDescription) {
-            this.runShellCommandToolCommandParameterDescription = runShellCommandToolCommandParameterDescription;
-            return this;
-        }
-
-        /**
-         * Sets the name of the {@code skill_name} parameter of the {@code run_shell_command} tool.
-         * <p>
-         * Default value is {@value Skills#DEFAULT_RUN_SHELL_COMMAND_TOOL_SKILL_NAME_PARAMETER_NAME}.
-         */
-        public Builder runShellCommandToolSkillNameParameterName(String runShellCommandToolSkillNameParameterName) {
-            this.runShellCommandToolSkillNameParameterName = runShellCommandToolSkillNameParameterName;
-            return this;
-        }
-
-        /**
-         * Sets the description of the {@code skill_name} parameter of the {@code run_shell_command} tool.
-         * <p>
-         * Default value is {@value Skills#DEFAULT_RUN_SHELL_COMMAND_TOOL_SKILL_NAME_PARAMETER_DESCRIPTION}.
-         */
-        public Builder runShellCommandToolSkillNameParameterDescription(String runShellCommandToolSkillNameParameterDescription) {
-            this.runShellCommandToolSkillNameParameterDescription = runShellCommandToolSkillNameParameterDescription;
-            return this;
-        }
-
-        /**
-         * Sets the name of the {@code timeout_seconds} parameter of the {@code run_shell_command} tool.
-         * <p>
-         * Default value is {@value Skills#DEFAULT_RUN_SHELL_COMMAND_TOOL_TIMEOUT_SECONDS_PARAMETER_NAME}.
-         */
-        public Builder runShellCommandToolTimeoutSecondsParameterName(String runShellCommandToolTimeoutSecondsParameterName) {
-            this.runShellCommandToolTimeoutSecondsParameterName = runShellCommandToolTimeoutSecondsParameterName;
-            return this;
-        }
-
-        /**
-         * Sets the description of the {@code timeout_seconds} parameter of the {@code run_shell_command} tool.
-         * <p>
-         * Default value is {@value Skills#DEFAULT_RUN_SHELL_COMMAND_TOOL_TIMEOUT_SECONDS_PARAMETER_DESCRIPTION}.
-         */
-        public Builder runShellCommandToolTimeoutSecondsParameterDescription(String runShellCommandToolTimeoutSecondsParameterDescription) {
-            this.runShellCommandToolTimeoutSecondsParameterDescription = runShellCommandToolTimeoutSecondsParameterDescription;
-            return this;
-        }
-
-        /**
-         * Sets the maximum number of characters of stdout to include in the tool result returned to the LLM.
-         * If the output exceeds this limit, the beginning is discarded and a truncation notice is prepended.
-         * <p>
-         * Default value is {@value Skills#DEFAULT_RUN_SHELL_COMMAND_TOOL_MAX_STDOUT_CHARS}.
-         */
-        public Builder runShellCommandToolMaxStdoutChars(Integer runShellCommandToolMaxStdoutChars) {
-            this.runShellCommandToolMaxStdoutChars = runShellCommandToolMaxStdoutChars;
-            return this;
-        }
-
-        /**
-         * Sets the maximum number of characters of stderr to include in the tool result returned to the LLM.
-         * If the output exceeds this limit, the beginning is discarded and a truncation notice is prepended.
-         * <p>
-         * Default value is {@value Skills#DEFAULT_RUN_SHELL_COMMAND_TOOL_MAX_STDERR_CHARS}.
-         */
-        public Builder runShellCommandToolMaxStderrChars(Integer runShellCommandToolMaxStderrChars) {
-            this.runShellCommandToolMaxStderrChars = runShellCommandToolMaxStderrChars;
             return this;
         }
 
