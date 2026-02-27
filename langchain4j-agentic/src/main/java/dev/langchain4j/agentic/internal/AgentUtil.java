@@ -120,9 +120,15 @@ public class AgentUtil {
 
     public static AgentExecutor agentToExecutor(InternalAgent agent) {
         for (Method method : agent.getClass().getMethods()) {
-            Optional<AgentExecutor> executor = A2AService.get().isPresent()
-                    ? A2AService.get().methodToAgentExecutor(agent, method)
-                    : methodToAgentExecutor(agent, method);
+            Optional<AgentExecutor> executor = McpService.get().methodToAgentExecutor(agent, method);
+            if (executor.isPresent()) {
+                return executor.get();
+            }
+            executor = A2AService.get().methodToAgentExecutor(agent, method);
+            if (executor.isPresent()) {
+                return executor.get();
+            }
+            executor = methodToAgentExecutor(agent, method);
             if (executor.isPresent()) {
                 return executor.get();
             }

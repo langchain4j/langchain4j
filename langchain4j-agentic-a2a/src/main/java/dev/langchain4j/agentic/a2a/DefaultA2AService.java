@@ -5,7 +5,6 @@ import dev.langchain4j.agentic.declarative.A2AClientAgent;
 import dev.langchain4j.agentic.internal.A2AClientBuilder;
 import dev.langchain4j.agentic.internal.A2AService;
 import dev.langchain4j.agentic.internal.AgentExecutor;
-import dev.langchain4j.agentic.internal.AgentInvoker;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import java.lang.reflect.Method;
 import java.util.Optional;
@@ -13,11 +12,6 @@ import java.util.Optional;
 import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 
 public class DefaultA2AService implements A2AService {
-
-    @Override
-    public boolean isPresent() {
-        return true;
-    }
 
     @Override
     public <T> A2AClientBuilder<T> a2aBuilder(String a2aServerUrl, Class<T> agentServiceClass) {
@@ -35,6 +29,6 @@ public class DefaultA2AService implements A2AService {
             }
             return a2aAgentExecutor;
         }
-        return getAnnotatedMethod(method, Agent.class)
-                .map(agentMethod -> new AgentExecutor(AgentInvoker.fromMethod(agent, agentMethod), agent));    }
+        return Optional.empty();
+    }
 }

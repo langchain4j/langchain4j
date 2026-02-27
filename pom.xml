@@ -126,6 +126,7 @@
         <module>experimental/langchain4j-experimental-sql</module>
         <module>langchain4j-agentic</module>
         <module>langchain4j-agentic-a2a</module>
+        <module>langchain4j-agentic-mcp</module>
         <module>langchain4j-agentic-patterns</module>
 
         <!-- observability -->
