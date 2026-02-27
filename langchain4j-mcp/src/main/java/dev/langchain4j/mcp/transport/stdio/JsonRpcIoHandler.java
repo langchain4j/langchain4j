@@ -81,7 +81,7 @@ public class JsonRpcIoHandler implements Runnable, Closeable {
     @Override
     public void close() throws IOException {
         closed = true;
-        input.close();
         out.close();
+        input.close();
     }
 }
