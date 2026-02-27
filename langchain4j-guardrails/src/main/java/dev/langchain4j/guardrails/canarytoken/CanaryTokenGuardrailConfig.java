@@ -1,11 +1,34 @@
 package dev.langchain4j.guardrails.canarytoken;
 
+import dev.langchain4j.invocation.LangChain4jManaged;
 import java.util.function.Supplier;
 
 /**
- * Configuration for the Canary Token feature to detect system prompt leakage.
+ * Configuration for the Canary Token guardrails to detect system prompt leakage.
+ * <p>
+ * Implements {@link LangChain4jManaged} so that an instance can be stored directly in
+ * {@link dev.langchain4j.invocation.InvocationContext#managedParameters()}, keyed by
+ * {@code CanaryTokenGuardrailConfig.class}. Both {@link CanaryTokenInputGuardrail} and
+ * {@link CanaryTokenOutputGuardrail} resolve their config from there at validation time,
+ * enabling a fully stateless, annotation-friendly design.
+ * </p>
+ * <p>
+ * <b>Example — place config into the InvocationContext before guardrails run:</b>
+ * <pre>{@code
+ * CanaryTokenGuardrailConfig config = CanaryTokenGuardrailConfig.builder()
+ *     .remediation(CanaryTokenLeakageRemediation.REDACT)
+ *     .build();
+ *
+ * Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managed = new HashMap<>();
+ * managed.put(CanaryTokenGuardrailConfig.class, config);
+ *
+ * InvocationContext ctx = InvocationContext.builder()
+ *     .managedParameters(managed)
+ *     .build();
+ * }</pre>
+ * </p>
  */
-public class CanaryTokenGuardrailConfig {
+public class CanaryTokenGuardrailConfig implements LangChain4jManaged {
 
     private final boolean enabled;
     private final CanaryTokenLeakageRemediation remediation;
@@ -23,8 +46,8 @@ public class CanaryTokenGuardrailConfig {
         this.blockedMessage = builder.blockedMessage;
     }
 
-    public boolean isEnabled() {
-        return enabled;
+    public boolean isDisabled() {
+        return !enabled;
     }
 
     public CanaryTokenLeakageRemediation getRemediation() {
@@ -55,7 +78,7 @@ public class CanaryTokenGuardrailConfig {
      * Builder for CanaryTokenGuardrailConfig.
      */
     public static class Builder {
-        private boolean enabled = true; // Enabled by default with BLOCK remediation
+        private boolean enabled = true;
         private CanaryTokenLeakageRemediation remediation = CanaryTokenLeakageRemediation.BLOCK;
         private Supplier<String> canaryGenerator = CanaryTokenGenerator::generateDefault;
         private String steeringInstruction =

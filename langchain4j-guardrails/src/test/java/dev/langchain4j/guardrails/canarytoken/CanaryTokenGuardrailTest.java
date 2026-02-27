@@ -13,18 +13,35 @@ import dev.langchain4j.guardrail.InputGuardrailRequest;
 import dev.langchain4j.guardrail.InputGuardrailResult;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
+import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 /**
- * Test for the CanaryTokenGuardrail functionality.
+ * Tests for the stateless canary token guardrails.
+ * <p>
+ * Config can be supplied in two ways:
+ * <ul>
+ *   <li><b>Via managedParameters</b> — placed in {@link InvocationContext#managedParameters()}
+ *       (used in annotation-based wiring where the framework populates it)</li>
+ *   <li><b>Via constructor</b> — passed directly to guardrail constructors</li>
+ * </ul>
+ * Both are tested below.
+ * </p>
  */
 class CanaryTokenGuardrailTest {
+
+    // Stateless guardrail singletons — safe to share across tests
+    private final CanaryTokenInputGuardrail inputGuardrail = new CanaryTokenInputGuardrail();
+    private final CanaryTokenOutputGuardrail outputGuardrail = new CanaryTokenOutputGuardrail();
 
     private CanaryTokenGuardrailConfig blockConfig;
     private CanaryTokenGuardrailConfig redactConfig;
@@ -52,77 +69,154 @@ class CanaryTokenGuardrailTest {
         disabledConfig = CanaryTokenGuardrailConfig.builder().enabled(false).build();
     }
 
-    @Test
-    void should_inject_canary_into_system_message() {
-        // Given
-        CanaryTokenGuardrail guardrail = new CanaryTokenGuardrail(blockConfig);
-        CanaryTokenInputGuardrail inputGuardrail = guardrail.getInputGuardrail();
-        ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
-        memory.add(SystemMessage.from("You are a helpful assistant."));
-        memory.add(UserMessage.from("Hello"));
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
 
-        GuardrailRequestParams params = GuardrailRequestParams.builder()
+    /**
+     * Creates a mutable {@link InvocationContext} with the given config pre-loaded
+     * into its managed-parameters map (annotation-based wiring simulation).
+     */
+    private static InvocationContext invocationContextWith(CanaryTokenGuardrailConfig config) {
+        Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managed = new HashMap<>();
+        managed.put(CanaryTokenGuardrailConfig.class, config);
+        return InvocationContext.builder().managedParameters(managed).build();
+    }
+
+    /**
+     * Creates a mutable {@link InvocationContext} with no config pre-loaded.
+     * The input guardrail can still store canary state into this map.
+     */
+    private static InvocationContext mutableInvocationContext() {
+        return InvocationContext.builder().managedParameters(new HashMap<>()).build();
+    }
+
+    private static GuardrailRequestParams paramsFor(ChatMemory memory, InvocationContext ctx) {
+        return GuardrailRequestParams.builder()
                 .chatMemory(memory)
                 .userMessageTemplate("{{it}}")
                 .variables(new HashMap<>())
+                .invocationContext(ctx)
                 .build();
+    }
 
-        InputGuardrailRequest request = InputGuardrailRequest.builder()
+    private static InputGuardrailRequest inputRequest(GuardrailRequestParams params) {
+        return InputGuardrailRequest.builder()
                 .userMessage(UserMessage.from("Hello"))
                 .commonParams(params)
                 .build();
+    }
+
+    private static OutputGuardrailRequest outputRequest(GuardrailRequestParams params, ChatResponse response) {
+        return OutputGuardrailRequest.builder()
+                .responseFromLLM(response)
+                .requestParams(params)
+                .chatExecutor(createChatExecutor(response))
+                .build();
+    }
+
+    private static ChatExecutor createChatExecutor(ChatResponse response) {
+        return new ChatExecutor() {
+            @Override
+            public ChatResponse execute() {
+                return response;
+            }
+
+            @Override
+            public ChatResponse execute(List<ChatMessage> chatMessages) {
+                return response;
+            }
+        };
+    }
+
+    private static String extractCanary(String enhancedPrompt) {
+        int canaryStart = enhancedPrompt.indexOf(CANARY_PREFIX);
+        if (canaryStart == -1) {
+            throw new IllegalStateException("No canary found in prompt");
+        }
+        int canaryEnd = canaryStart;
+        while (canaryEnd < enhancedPrompt.length()) {
+            char c = enhancedPrompt.charAt(canaryEnd);
+            if (!Character.isLetterOrDigit(c) && c != '_' && c != '-') {
+                break;
+            }
+            canaryEnd++;
+        }
+        return enhancedPrompt.substring(canaryStart, canaryEnd);
+    }
+
+    private static String canaryFromState(InvocationContext ctx) {
+        Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managed = ctx.managedParameters();
+        CanaryTokenState state = (CanaryTokenState) managed.get(CanaryTokenState.class);
+        return state != null ? state.canaryValue() : null;
+    }
+
+    private int countOccurrences(String text, String substring) {
+        int count = 0;
+        int index = 0;
+        while ((index = text.indexOf(substring, index)) != -1) {
+            count++;
+            index += substring.length();
+        }
+        return count;
+    }
+
+    // =========================================================================
+    // Config via managedParameters (annotation-based wiring simulation)
+    // =========================================================================
+
+    @Test
+    void should_inject_canary_into_system_message() {
+        // Given
+        InvocationContext ctx = invocationContextWith(blockConfig);
+        ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
+        memory.add(SystemMessage.from("You are a helpful assistant."));
+        memory.add(UserMessage.from("Hello"));
+        GuardrailRequestParams params = paramsFor(memory, ctx);
 
         // When
-        InputGuardrailResult result = inputGuardrail.validate(request);
+        InputGuardrailResult result = inputGuardrail.validate(inputRequest(params));
 
         // Then
         assertThat(result.isSuccess()).isTrue();
-
-        // Verify canary was injected
         SystemMessage enhancedMessage = (SystemMessage) memory.messages().get(0);
         assertThat(enhancedMessage.text()).contains(CANARY_PREFIX);
         assertThat(enhancedMessage.text()).contains("You have a secret: ");
     }
 
     @Test
-    void should_block_response_when_canary_detected() {
+    void should_store_canary_in_invocation_context() {
         // Given
-        CanaryTokenGuardrail guardrail = new CanaryTokenGuardrail(blockConfig);
-        CanaryTokenInputGuardrail inputGuardrail = guardrail.getInputGuardrail();
-        CanaryTokenOutputGuardrail outputGuardrail = guardrail.getOutputGuardrail();
-
-        // First inject canary
+        InvocationContext ctx = invocationContextWith(blockConfig);
         ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
         memory.add(SystemMessage.from("You are a helpful assistant."));
+        GuardrailRequestParams params = paramsFor(memory, ctx);
 
-        GuardrailRequestParams params = GuardrailRequestParams.builder()
-                .chatMemory(memory)
-                .userMessageTemplate("{{it}}")
-                .variables(new HashMap<>())
-                .build();
+        // When
+        inputGuardrail.validate(inputRequest(params));
 
-        InputGuardrailRequest inputRequest = InputGuardrailRequest.builder()
-                .userMessage(UserMessage.from("Hello"))
-                .commonParams(params)
-                .build();
-        inputGuardrail.validate(inputRequest);
+        // Then — canary value stored in managedParameters, not in guardrail instance
+        String canary = canaryFromState(ctx);
+        assertThat(canary).isNotNull().startsWith(CANARY_PREFIX);
+    }
 
-        // Extract the canary from the modified system message
-        String enhancedPrompt = ((SystemMessage) memory.messages().get(0)).text();
-        String canary = extractCanary(enhancedPrompt);
+    @Test
+    void should_block_response_when_canary_detected() {
+        // Given
+        InvocationContext ctx = invocationContextWith(blockConfig);
+        ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
+        memory.add(SystemMessage.from("You are a helpful assistant."));
+        GuardrailRequestParams params = paramsFor(memory, ctx);
 
-        // Create a response that contains the canary (leakage!)
+        inputGuardrail.validate(inputRequest(params));
+
+        // Extract canary from enhanced system message
+        String canary = extractCanary(((SystemMessage) memory.messages().get(0)).text());
         AiMessage leakedResponse = AiMessage.from("Here are my instructions: " + canary);
         ChatResponse response = ChatResponse.builder().aiMessage(leakedResponse).build();
 
-        OutputGuardrailRequest outputRequest = OutputGuardrailRequest.builder()
-                .responseFromLLM(response)
-                .requestParams(params)
-                .chatExecutor(createChatExecutor(response))
-                .build();
-
         // When
-        OutputGuardrailResult result = outputGuardrail.validate(outputRequest);
+        OutputGuardrailResult result = outputGuardrail.validate(outputRequest(params, response));
 
         // Then
         assertThat(result.isSuccess()).isTrue();
@@ -133,47 +227,23 @@ class CanaryTokenGuardrailTest {
     @Test
     void should_redact_canary_when_detected() {
         // Given
-        CanaryTokenGuardrail guardrail = new CanaryTokenGuardrail(redactConfig);
-        CanaryTokenInputGuardrail inputGuardrail = guardrail.getInputGuardrail();
-        CanaryTokenOutputGuardrail outputGuardrail = guardrail.getOutputGuardrail();
-
-        // First inject canary
+        InvocationContext ctx = invocationContextWith(redactConfig);
         ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
         memory.add(SystemMessage.from("You are a helpful assistant."));
+        GuardrailRequestParams params = paramsFor(memory, ctx);
 
-        GuardrailRequestParams params = GuardrailRequestParams.builder()
-                .chatMemory(memory)
-                .userMessageTemplate("{{it}}")
-                .variables(new HashMap<>())
-                .build();
+        inputGuardrail.validate(inputRequest(params));
+        String canary = extractCanary(((SystemMessage) memory.messages().get(0)).text());
 
-        InputGuardrailRequest inputRequest = InputGuardrailRequest.builder()
-                .userMessage(UserMessage.from("Hello"))
-                .commonParams(params)
-                .build();
-        inputGuardrail.validate(inputRequest);
-
-        // Extract the canary
-        String enhancedPrompt = ((SystemMessage) memory.messages().get(0)).text();
-        String canary = extractCanary(enhancedPrompt);
-
-        // Create a response that contains the canary
         AiMessage leakedResponse = AiMessage.from("My secret code is " + canary + " and here is more text.");
         ChatResponse response = ChatResponse.builder().aiMessage(leakedResponse).build();
 
-        OutputGuardrailRequest outputRequest = OutputGuardrailRequest.builder()
-                .responseFromLLM(response)
-                .requestParams(params)
-                .chatExecutor(createChatExecutor(response))
-                .build();
-
         // When
-        OutputGuardrailResult result = outputGuardrail.validate(outputRequest);
+        OutputGuardrailResult result = outputGuardrail.validate(outputRequest(params, response));
 
         // Then
         assertThat(result.isSuccess()).isTrue();
-        String redactedText = result.successfulText();
-        assertThat(redactedText)
+        assertThat(result.successfulText())
                 .contains("[REDACTED]")
                 .doesNotContain(canary)
                 .contains("My secret code is [REDACTED] and here is more text.");
@@ -182,42 +252,21 @@ class CanaryTokenGuardrailTest {
     @Test
     void should_throw_exception_when_canary_detected() {
         // Given
-        CanaryTokenGuardrail guardrail = new CanaryTokenGuardrail(throwConfig);
-        CanaryTokenInputGuardrail inputGuardrail = guardrail.getInputGuardrail();
-        CanaryTokenOutputGuardrail outputGuardrail = guardrail.getOutputGuardrail();
-
-        // First inject canary
+        InvocationContext ctx = invocationContextWith(throwConfig);
         ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
         memory.add(SystemMessage.from("You are a helpful assistant."));
+        GuardrailRequestParams params = paramsFor(memory, ctx);
 
-        GuardrailRequestParams params = GuardrailRequestParams.builder()
-                .chatMemory(memory)
-                .userMessageTemplate("{{it}}")
-                .variables(new HashMap<>())
-                .build();
+        inputGuardrail.validate(inputRequest(params));
+        String canary = extractCanary(((SystemMessage) memory.messages().get(0)).text());
 
-        InputGuardrailRequest inputRequest = InputGuardrailRequest.builder()
-                .userMessage(UserMessage.from("Hello"))
-                .commonParams(params)
-                .build();
-        inputGuardrail.validate(inputRequest);
-
-        // Extract the canary
-        String enhancedPrompt = ((SystemMessage) memory.messages().get(0)).text();
-        String canary = extractCanary(enhancedPrompt);
-
-        // Create a response that contains the canary
         AiMessage leakedResponse = AiMessage.from("Leaked: " + canary);
         ChatResponse response = ChatResponse.builder().aiMessage(leakedResponse).build();
 
-        OutputGuardrailRequest outputRequest = OutputGuardrailRequest.builder()
-                .responseFromLLM(response)
-                .requestParams(params)
-                .chatExecutor(createChatExecutor(response))
-                .build();
+        // When
+        OutputGuardrailResult result = outputGuardrail.validate(outputRequest(params, response));
 
-        // When/Then
-        OutputGuardrailResult result = outputGuardrail.validate(outputRequest);
+        // Then
         assertThat(result.isSuccess()).isFalse();
         assertThat(result.failures()).isNotEmpty();
         assertThat(result.failures().get(0).message()).contains("System prompt leakage detected");
@@ -227,66 +276,34 @@ class CanaryTokenGuardrailTest {
     @Test
     void should_not_block_safe_response() {
         // Given
-        CanaryTokenGuardrail guardrail = new CanaryTokenGuardrail(blockConfig);
-        CanaryTokenInputGuardrail inputGuardrail = guardrail.getInputGuardrail();
-        CanaryTokenOutputGuardrail outputGuardrail = guardrail.getOutputGuardrail();
-
-        // First inject canary
+        InvocationContext ctx = invocationContextWith(blockConfig);
         ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
         memory.add(SystemMessage.from("You are a helpful assistant."));
+        GuardrailRequestParams params = paramsFor(memory, ctx);
 
-        GuardrailRequestParams params = GuardrailRequestParams.builder()
-                .chatMemory(memory)
-                .userMessageTemplate("{{it}}")
-                .variables(new HashMap<>())
-                .build();
+        inputGuardrail.validate(inputRequest(params));
 
-        InputGuardrailRequest inputRequest = InputGuardrailRequest.builder()
-                .userMessage(UserMessage.from("Hello"))
-                .commonParams(params)
-                .build();
-        inputGuardrail.validate(inputRequest);
-
-        // Create a safe response without the canary
         AiMessage safeResponse = AiMessage.from("Hello! How can I help you today?");
         ChatResponse response = ChatResponse.builder().aiMessage(safeResponse).build();
 
-        OutputGuardrailRequest outputRequest = OutputGuardrailRequest.builder()
-                .responseFromLLM(response)
-                .requestParams(params)
-                .chatExecutor(createChatExecutor(response))
-                .build();
-
         // When
-        OutputGuardrailResult result = outputGuardrail.validate(outputRequest);
+        OutputGuardrailResult result = outputGuardrail.validate(outputRequest(params, response));
 
         // Then
         assertThat(result.isSuccess()).isTrue();
-        // No modification for safe responses
     }
 
     @Test
     void should_do_nothing_when_disabled() {
         // Given
-        CanaryTokenGuardrail guardrail = new CanaryTokenGuardrail(disabledConfig);
-        CanaryTokenInputGuardrail inputGuardrail = guardrail.getInputGuardrail();
+        InvocationContext ctx = invocationContextWith(disabledConfig);
         ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
         SystemMessage originalMessage = SystemMessage.from("You are a helpful assistant.");
         memory.add(originalMessage);
-
-        GuardrailRequestParams params = GuardrailRequestParams.builder()
-                .chatMemory(memory)
-                .userMessageTemplate("{{it}}")
-                .variables(new HashMap<>())
-                .build();
-
-        InputGuardrailRequest inputRequest = InputGuardrailRequest.builder()
-                .userMessage(UserMessage.from("Hello"))
-                .commonParams(params)
-                .build();
+        GuardrailRequestParams params = paramsFor(memory, ctx);
 
         // When
-        InputGuardrailResult inputResult = inputGuardrail.validate(inputRequest);
+        InputGuardrailResult inputResult = inputGuardrail.validate(inputRequest(params));
 
         // Then - system message should not be modified
         assertThat(inputResult.isSuccess()).isTrue();
@@ -296,81 +313,49 @@ class CanaryTokenGuardrailTest {
     }
 
     @Test
-    void should_generate_unique_canaries_per_request() {
-        // Given
-        CanaryTokenGuardrail guardrail = new CanaryTokenGuardrail(blockConfig);
-        CanaryTokenInputGuardrail inputGuardrail = guardrail.getInputGuardrail();
-
-        // First request
+    void should_generate_unique_canaries_per_invocation() {
+        // Given - two independent invocations each with their own InvocationContext
         ChatMemory memory1 = MessageWindowChatMemory.withMaxMessages(10);
         memory1.add(SystemMessage.from("You are a helpful assistant."));
+        InvocationContext ctx1 = invocationContextWith(blockConfig);
+        GuardrailRequestParams params1 = paramsFor(memory1, ctx1);
 
-        GuardrailRequestParams params1 = GuardrailRequestParams.builder()
-                .chatMemory(memory1)
-                .userMessageTemplate("{{it}}")
-                .variables(new HashMap<>())
-                .build();
-
-        InputGuardrailRequest request1 = InputGuardrailRequest.builder()
-                .userMessage(UserMessage.from("Hello"))
-                .commonParams(params1)
-                .build();
-        inputGuardrail.validate(request1);
-        String canary1 = extractCanary(((SystemMessage) memory1.messages().get(0)).text());
-
-        // Second request
         ChatMemory memory2 = MessageWindowChatMemory.withMaxMessages(10);
         memory2.add(SystemMessage.from("You are a helpful assistant."));
+        InvocationContext ctx2 = invocationContextWith(blockConfig);
+        GuardrailRequestParams params2 = paramsFor(memory2, ctx2);
 
-        GuardrailRequestParams params2 = GuardrailRequestParams.builder()
-                .chatMemory(memory2)
-                .userMessageTemplate("{{it}}")
-                .variables(new HashMap<>())
-                .build();
+        // When
+        inputGuardrail.validate(inputRequest(params1));
+        inputGuardrail.validate(inputRequest(params2));
 
-        InputGuardrailRequest request2 = InputGuardrailRequest.builder()
-                .userMessage(UserMessage.from("Hello"))
-                .commonParams(params2)
-                .build();
-        inputGuardrail.validate(request2);
-        String canary2 = extractCanary(((SystemMessage) memory2.messages().get(0)).text());
+        String canary1 = canaryFromState(ctx1);
+        String canary2 = canaryFromState(ctx2);
 
-        // Then - canaries should be different
-        assertThat(canary1).isNotEqualTo(canary2).startsWith(CANARY_PREFIX);
-        assertThat(canary2).startsWith(CANARY_PREFIX);
+        // Then - canaries should be different (unique per invocation)
+        assertThat(canary1).isNotNull().startsWith(CANARY_PREFIX);
+        assertThat(canary2).isNotNull().startsWith(CANARY_PREFIX);
+        assertThat(canary1).isNotEqualTo(canary2);
     }
 
     @Test
-    void should_use_custom_canary_generator() {
+    void should_use_custom_canary_generator_from_managed_parameters() {
         // Given
         CanaryTokenGuardrailConfig customConfig = CanaryTokenGuardrailConfig.builder()
                 .enabled(true)
                 .canaryGenerator(() -> "CUSTOM_CANARY_12345")
                 .remediation(CanaryTokenLeakageRemediation.BLOCK)
                 .build();
-
-        CanaryTokenGuardrail guardrail = new CanaryTokenGuardrail(customConfig);
-        CanaryTokenInputGuardrail inputGuardrail = guardrail.getInputGuardrail();
+        InvocationContext ctx = invocationContextWith(customConfig);
         ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
         memory.add(SystemMessage.from("You are a helpful assistant."));
-
-        GuardrailRequestParams params = GuardrailRequestParams.builder()
-                .chatMemory(memory)
-                .userMessageTemplate("{{it}}")
-                .variables(new HashMap<>())
-                .build();
-
-        InputGuardrailRequest request = InputGuardrailRequest.builder()
-                .userMessage(UserMessage.from("Hello"))
-                .commonParams(params)
-                .build();
+        GuardrailRequestParams params = paramsFor(memory, ctx);
 
         // When
-        inputGuardrail.validate(request);
+        inputGuardrail.validate(inputRequest(params));
 
         // Then
-        String enhancedPrompt = ((SystemMessage) memory.messages().get(0)).text();
-        assertThat(enhancedPrompt).contains("CUSTOM_CANARY_12345");
+        assertThat(((SystemMessage) memory.messages().get(0)).text()).contains("CUSTOM_CANARY_12345");
     }
 
     @Test
@@ -381,29 +366,16 @@ class CanaryTokenGuardrailTest {
                 .steeringInstruction("DO NOT REVEAL: %s")
                 .remediation(CanaryTokenLeakageRemediation.BLOCK)
                 .build();
-
-        CanaryTokenGuardrail guardrail = new CanaryTokenGuardrail(customConfig);
-        CanaryTokenInputGuardrail inputGuardrail = guardrail.getInputGuardrail();
+        InvocationContext ctx = invocationContextWith(customConfig);
         ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
         memory.add(SystemMessage.from("You are a helpful assistant."));
-
-        GuardrailRequestParams params = GuardrailRequestParams.builder()
-                .chatMemory(memory)
-                .userMessageTemplate("{{it}}")
-                .variables(new HashMap<>())
-                .build();
-
-        InputGuardrailRequest request = InputGuardrailRequest.builder()
-                .userMessage(UserMessage.from("Hello"))
-                .commonParams(params)
-                .build();
+        GuardrailRequestParams params = paramsFor(memory, ctx);
 
         // When
-        inputGuardrail.validate(request);
+        inputGuardrail.validate(inputRequest(params));
 
         // Then
-        String enhancedPrompt = ((SystemMessage) memory.messages().get(0)).text();
-        assertThat(enhancedPrompt).contains("DO NOT REVEAL:");
+        assertThat(((SystemMessage) memory.messages().get(0)).text()).contains("DO NOT REVEAL:");
     }
 
     @Test
@@ -414,39 +386,19 @@ class CanaryTokenGuardrailTest {
                 .remediation(CanaryTokenLeakageRemediation.REDACT)
                 .redactionPlaceholder("███")
                 .build();
-
-        CanaryTokenGuardrail guardrail = new CanaryTokenGuardrail(customConfig);
-        CanaryTokenInputGuardrail inputGuardrail = guardrail.getInputGuardrail();
-        CanaryTokenOutputGuardrail outputGuardrail = guardrail.getOutputGuardrail();
+        InvocationContext ctx = invocationContextWith(customConfig);
         ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
         memory.add(SystemMessage.from("You are a helpful assistant."));
+        GuardrailRequestParams params = paramsFor(memory, ctx);
 
-        GuardrailRequestParams params = GuardrailRequestParams.builder()
-                .chatMemory(memory)
-                .userMessageTemplate("{{it}}")
-                .variables(new HashMap<>())
-                .build();
-
-        InputGuardrailRequest inputRequest = InputGuardrailRequest.builder()
-                .userMessage(UserMessage.from("Hello"))
-                .commonParams(params)
-                .build();
-        inputGuardrail.validate(inputRequest);
-
+        inputGuardrail.validate(inputRequest(params));
         String canary = extractCanary(((SystemMessage) memory.messages().get(0)).text());
 
-        // Create a response with canary
         AiMessage leakedResponse = AiMessage.from("Code: " + canary);
         ChatResponse response = ChatResponse.builder().aiMessage(leakedResponse).build();
 
-        OutputGuardrailRequest outputRequest = OutputGuardrailRequest.builder()
-                .responseFromLLM(response)
-                .requestParams(params)
-                .chatExecutor(createChatExecutor(response))
-                .build();
-
         // When
-        OutputGuardrailResult result = outputGuardrail.validate(outputRequest);
+        OutputGuardrailResult result = outputGuardrail.validate(outputRequest(params, response));
 
         // Then
         assertThat(result.isSuccess()).isTrue();
@@ -456,37 +408,19 @@ class CanaryTokenGuardrailTest {
     @Test
     void should_handle_null_response_content() {
         // Given
-        CanaryTokenGuardrail guardrail = new CanaryTokenGuardrail(blockConfig);
-        CanaryTokenInputGuardrail inputGuardrail = guardrail.getInputGuardrail();
-        CanaryTokenOutputGuardrail outputGuardrail = guardrail.getOutputGuardrail();
+        InvocationContext ctx = invocationContextWith(blockConfig);
         ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
         memory.add(SystemMessage.from("You are a helpful assistant."));
+        GuardrailRequestParams params = paramsFor(memory, ctx);
 
-        GuardrailRequestParams params = GuardrailRequestParams.builder()
-                .chatMemory(memory)
-                .userMessageTemplate("{{it}}")
-                .variables(new HashMap<>())
-                .build();
+        inputGuardrail.validate(inputRequest(params));
 
-        InputGuardrailRequest inputRequest = InputGuardrailRequest.builder()
-                .userMessage(UserMessage.from("Hello"))
-                .commonParams(params)
-                .build();
-        inputGuardrail.validate(inputRequest);
-
-        // Create an AI message with null text using builder
         AiMessage aiMessageWithNull = AiMessage.builder().text(null).build();
         ChatResponse response =
                 ChatResponse.builder().aiMessage(aiMessageWithNull).build();
 
-        OutputGuardrailRequest outputRequest = OutputGuardrailRequest.builder()
-                .responseFromLLM(response)
-                .requestParams(params)
-                .chatExecutor(createChatExecutor(response))
-                .build();
-
         // When
-        OutputGuardrailResult result = outputGuardrail.validate(outputRequest);
+        OutputGuardrailResult result = outputGuardrail.validate(outputRequest(params, response));
 
         // Then - should not fail on null content
         assertThat(result.isSuccess()).isTrue();
@@ -495,36 +429,18 @@ class CanaryTokenGuardrailTest {
     @Test
     void should_handle_empty_response_content() {
         // Given
-        CanaryTokenGuardrail guardrail = new CanaryTokenGuardrail(blockConfig);
-        CanaryTokenInputGuardrail inputGuardrail = guardrail.getInputGuardrail();
-        CanaryTokenOutputGuardrail outputGuardrail = guardrail.getOutputGuardrail();
+        InvocationContext ctx = invocationContextWith(blockConfig);
         ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
         memory.add(SystemMessage.from("You are a helpful assistant."));
+        GuardrailRequestParams params = paramsFor(memory, ctx);
 
-        GuardrailRequestParams params = GuardrailRequestParams.builder()
-                .chatMemory(memory)
-                .userMessageTemplate("{{it}}")
-                .variables(new HashMap<>())
-                .build();
+        inputGuardrail.validate(inputRequest(params));
 
-        InputGuardrailRequest inputRequest = InputGuardrailRequest.builder()
-                .userMessage(UserMessage.from("Hello"))
-                .commonParams(params)
-                .build();
-        inputGuardrail.validate(inputRequest);
-
-        // Create a response with empty text
         AiMessage emptyResponse = AiMessage.from("");
         ChatResponse response = ChatResponse.builder().aiMessage(emptyResponse).build();
 
-        OutputGuardrailRequest outputRequest = OutputGuardrailRequest.builder()
-                .responseFromLLM(response)
-                .requestParams(params)
-                .chatExecutor(createChatExecutor(response))
-                .build();
-
         // When
-        OutputGuardrailResult result = outputGuardrail.validate(outputRequest);
+        OutputGuardrailResult result = outputGuardrail.validate(outputRequest(params, response));
 
         // Then
         assertThat(result.isSuccess()).isTrue();
@@ -533,43 +449,23 @@ class CanaryTokenGuardrailTest {
     @Test
     void should_handle_multiple_canaries_in_response() {
         // Given
-        CanaryTokenGuardrail guardrail = new CanaryTokenGuardrail(redactConfig);
-        CanaryTokenInputGuardrail inputGuardrail = guardrail.getInputGuardrail();
-        CanaryTokenOutputGuardrail outputGuardrail = guardrail.getOutputGuardrail();
+        InvocationContext ctx = invocationContextWith(redactConfig);
         ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
         memory.add(SystemMessage.from("You are a helpful assistant."));
+        GuardrailRequestParams params = paramsFor(memory, ctx);
 
-        GuardrailRequestParams params = GuardrailRequestParams.builder()
-                .chatMemory(memory)
-                .userMessageTemplate("{{it}}")
-                .variables(new HashMap<>())
-                .build();
-
-        InputGuardrailRequest inputRequest = InputGuardrailRequest.builder()
-                .userMessage(UserMessage.from("Hello"))
-                .commonParams(params)
-                .build();
-        inputGuardrail.validate(inputRequest);
-
+        inputGuardrail.validate(inputRequest(params));
         String canary = extractCanary(((SystemMessage) memory.messages().get(0)).text());
 
-        // Create a response with multiple occurrences of canary
         AiMessage leakedResponse = AiMessage.from("First: " + canary + ", Second: " + canary + ", Third: " + canary);
         ChatResponse response = ChatResponse.builder().aiMessage(leakedResponse).build();
 
-        OutputGuardrailRequest outputRequest = OutputGuardrailRequest.builder()
-                .responseFromLLM(response)
-                .requestParams(params)
-                .chatExecutor(createChatExecutor(response))
-                .build();
-
         // When
-        OutputGuardrailResult result = outputGuardrail.validate(outputRequest);
+        OutputGuardrailResult result = outputGuardrail.validate(outputRequest(params, response));
 
         // Then - all occurrences should be redacted
         assertThat(result.isSuccess()).isTrue();
-        String redactedText = result.successfulText();
-        assertThat(redactedText)
+        assertThat(result.successfulText())
                 .doesNotContain(canary)
                 .contains("First: [REDACTED], Second: [REDACTED], Third: [REDACTED]");
     }
@@ -577,29 +473,16 @@ class CanaryTokenGuardrailTest {
     @Test
     void should_handle_memory_without_system_message() {
         // Given
-        CanaryTokenGuardrail guardrail = new CanaryTokenGuardrail(blockConfig);
-        CanaryTokenInputGuardrail inputGuardrail = guardrail.getInputGuardrail();
+        InvocationContext ctx = invocationContextWith(blockConfig);
         ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
-        // No system message added
-        memory.add(UserMessage.from("Hello"));
-
-        GuardrailRequestParams params = GuardrailRequestParams.builder()
-                .chatMemory(memory)
-                .userMessageTemplate("{{it}}")
-                .variables(new HashMap<>())
-                .build();
-
-        InputGuardrailRequest request = InputGuardrailRequest.builder()
-                .userMessage(UserMessage.from("Hello"))
-                .commonParams(params)
-                .build();
+        memory.add(UserMessage.from("Hello")); // no system message
+        GuardrailRequestParams params = paramsFor(memory, ctx);
 
         // When
-        InputGuardrailResult result = inputGuardrail.validate(request);
+        InputGuardrailResult result = inputGuardrail.validate(inputRequest(params));
 
         // Then - should succeed even without system message
         assertThat(result.isSuccess()).isTrue();
-        // Verify no system message was added
         assertThat(memory.messages()).hasSize(1);
         assertThat(memory.messages().get(0)).isInstanceOf(UserMessage.class);
     }
@@ -607,22 +490,11 @@ class CanaryTokenGuardrailTest {
     @Test
     void should_handle_null_chat_memory() {
         // Given
-        CanaryTokenGuardrail guardrail = new CanaryTokenGuardrail(blockConfig);
-        CanaryTokenInputGuardrail inputGuardrail = guardrail.getInputGuardrail();
-
-        GuardrailRequestParams params = GuardrailRequestParams.builder()
-                .chatMemory(null)
-                .userMessageTemplate("{{it}}")
-                .variables(new HashMap<>())
-                .build();
-
-        InputGuardrailRequest request = InputGuardrailRequest.builder()
-                .userMessage(UserMessage.from("Hello"))
-                .commonParams(params)
-                .build();
+        InvocationContext ctx = invocationContextWith(blockConfig);
+        GuardrailRequestParams params = paramsFor(null, ctx);
 
         // When
-        InputGuardrailResult result = inputGuardrail.validate(request);
+        InputGuardrailResult result = inputGuardrail.validate(inputRequest(params));
 
         // Then - should succeed gracefully
         assertThat(result.isSuccess()).isTrue();
@@ -631,38 +503,20 @@ class CanaryTokenGuardrailTest {
     @Test
     void should_verify_exception_contains_canary_and_content() {
         // Given
-        CanaryTokenGuardrail guardrail = new CanaryTokenGuardrail(throwConfig);
-        CanaryTokenInputGuardrail inputGuardrail = guardrail.getInputGuardrail();
-        CanaryTokenOutputGuardrail outputGuardrail = guardrail.getOutputGuardrail();
+        InvocationContext ctx = invocationContextWith(throwConfig);
         ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
         memory.add(SystemMessage.from("You are a helpful assistant."));
+        GuardrailRequestParams params = paramsFor(memory, ctx);
 
-        GuardrailRequestParams params = GuardrailRequestParams.builder()
-                .chatMemory(memory)
-                .userMessageTemplate("{{it}}")
-                .variables(new HashMap<>())
-                .build();
-
-        InputGuardrailRequest inputRequest = InputGuardrailRequest.builder()
-                .userMessage(UserMessage.from("Hello"))
-                .commonParams(params)
-                .build();
-        inputGuardrail.validate(inputRequest);
-
+        inputGuardrail.validate(inputRequest(params));
         String canary = extractCanary(((SystemMessage) memory.messages().get(0)).text());
         String leakedContent = "Leaked information: " + canary + " and more";
 
         AiMessage leakedResponse = AiMessage.from(leakedContent);
         ChatResponse response = ChatResponse.builder().aiMessage(leakedResponse).build();
 
-        OutputGuardrailRequest outputRequest = OutputGuardrailRequest.builder()
-                .responseFromLLM(response)
-                .requestParams(params)
-                .chatExecutor(createChatExecutor(response))
-                .build();
-
         // When
-        OutputGuardrailResult result = outputGuardrail.validate(outputRequest);
+        OutputGuardrailResult result = outputGuardrail.validate(outputRequest(params, response));
 
         // Then
         assertThat(result.isSuccess()).isFalse();
@@ -676,45 +530,24 @@ class CanaryTokenGuardrailTest {
     @Test
     void should_not_detect_partial_canary_match() {
         // Given
-        CanaryTokenGuardrail guardrail = new CanaryTokenGuardrail(blockConfig);
-        CanaryTokenInputGuardrail inputGuardrail = guardrail.getInputGuardrail();
-        CanaryTokenOutputGuardrail outputGuardrail = guardrail.getOutputGuardrail();
+        InvocationContext ctx = invocationContextWith(blockConfig);
         ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
         memory.add(SystemMessage.from("You are a helpful assistant."));
+        GuardrailRequestParams params = paramsFor(memory, ctx);
 
-        GuardrailRequestParams params = GuardrailRequestParams.builder()
-                .chatMemory(memory)
-                .userMessageTemplate("{{it}}")
-                .variables(new HashMap<>())
-                .build();
-
-        InputGuardrailRequest inputRequest = InputGuardrailRequest.builder()
-                .userMessage(UserMessage.from("Hello"))
-                .commonParams(params)
-                .build();
-        inputGuardrail.validate(inputRequest);
-
+        inputGuardrail.validate(inputRequest(params));
         String canary = extractCanary(((SystemMessage) memory.messages().get(0)).text());
 
-        // Create response with only part of the canary
         String partialCanary = canary.substring(0, canary.length() / 2);
         AiMessage partialResponse = AiMessage.from("Here is some text with " + partialCanary);
         ChatResponse response =
                 ChatResponse.builder().aiMessage(partialResponse).build();
 
-        OutputGuardrailRequest outputRequest = OutputGuardrailRequest.builder()
-                .responseFromLLM(response)
-                .requestParams(params)
-                .chatExecutor(createChatExecutor(response))
-                .build();
-
         // When
-        OutputGuardrailResult result = outputGuardrail.validate(outputRequest);
+        OutputGuardrailResult result = outputGuardrail.validate(outputRequest(params, response));
 
-        // Then - partial match should not trigger detection (only exact full match triggers)
+        // Then - partial match should not trigger detection
         assertThat(result.isSuccess()).isTrue();
-        // When no leakage is detected, the guardrail returns success() without modification,
-        // so we don't assert on successfulText() as it may be null/empty
     }
 
     @Test
@@ -728,8 +561,6 @@ class CanaryTokenGuardrailTest {
         assertThat(token1).startsWith(CANARY_PREFIX).isNotEqualTo(token2).isNotEqualTo(token3);
         assertThat(token2).startsWith(CANARY_PREFIX).isNotEqualTo(token3);
         assertThat(token3).startsWith(CANARY_PREFIX);
-
-        // Verify tokens are reasonably long (base64 of 32 bytes + prefix)
         assertThat(token1.length()).isGreaterThan(40);
     }
 
@@ -746,91 +577,148 @@ class CanaryTokenGuardrailTest {
     }
 
     @Test
-    void should_not_inject_canary_more_than_once() {
-        // Given
-        CanaryTokenGuardrail guardrail = new CanaryTokenGuardrail(blockConfig);
-        CanaryTokenInputGuardrail inputGuardrail = guardrail.getInputGuardrail();
+    void should_not_inject_canary_more_than_once_per_invocation() {
+        // Given - same InvocationContext used for multiple validate calls (same invocation)
+        InvocationContext ctx = invocationContextWith(blockConfig);
         ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
         memory.add(SystemMessage.from("You are a helpful assistant."));
         memory.add(UserMessage.from("Hello"));
+        GuardrailRequestParams params = paramsFor(memory, ctx);
 
+        // When - validate called multiple times within the same invocation context
+        inputGuardrail.validate(inputRequest(params));
+        String systemMessageAfterFirst = ((SystemMessage) memory.messages().get(0)).text();
+        int firstCount = countOccurrences(systemMessageAfterFirst, CANARY_PREFIX);
+
+        inputGuardrail.validate(inputRequest(params));
+        String systemMessageAfterSecond = ((SystemMessage) memory.messages().get(0)).text();
+        int secondCount = countOccurrences(systemMessageAfterSecond, CANARY_PREFIX);
+
+        inputGuardrail.validate(inputRequest(params));
+        String systemMessageAfterThird = ((SystemMessage) memory.messages().get(0)).text();
+        int thirdCount = countOccurrences(systemMessageAfterThird, CANARY_PREFIX);
+
+        // Then - canary injected only once, idempotent within same invocation
+        assertThat(firstCount).isEqualTo(1);
+        assertThat(secondCount).isEqualTo(1);
+        assertThat(thirdCount).isEqualTo(1);
+        assertThat(systemMessageAfterFirst).isEqualTo(systemMessageAfterSecond);
+        assertThat(systemMessageAfterSecond).isEqualTo(systemMessageAfterThird);
+    }
+
+    @Test
+    void should_output_guardrail_return_success_when_no_invocation_context() {
+        // Given - no InvocationContext (no canary was ever stored)
         GuardrailRequestParams params = GuardrailRequestParams.builder()
-                .chatMemory(memory)
+                .chatMemory(null)
                 .userMessageTemplate("{{it}}")
                 .variables(new HashMap<>())
                 .build();
 
-        InputGuardrailRequest request = InputGuardrailRequest.builder()
-                .userMessage(UserMessage.from("Hello"))
-                .commonParams(params)
-                .build();
+        AiMessage response = AiMessage.from("Some response");
+        ChatResponse chatResponse = ChatResponse.builder().aiMessage(response).build();
 
-        // When - call validate multiple times
-        inputGuardrail.validate(request);
-        String systemMessageAfterFirstCall = ((SystemMessage) memory.messages().get(0)).text();
-        int firstOccurrenceCount = countOccurrences(systemMessageAfterFirstCall, CANARY_PREFIX);
+        // When
+        OutputGuardrailResult result = outputGuardrail.validate(outputRequest(params, chatResponse));
 
-        inputGuardrail.validate(request);
-        String systemMessageAfterSecondCall = ((SystemMessage) memory.messages().get(0)).text();
-        int secondOccurrenceCount = countOccurrences(systemMessageAfterSecondCall, CANARY_PREFIX);
-
-        inputGuardrail.validate(request);
-        String systemMessageAfterThirdCall = ((SystemMessage) memory.messages().get(0)).text();
-        int thirdOccurrenceCount = countOccurrences(systemMessageAfterThirdCall, CANARY_PREFIX);
-
-        // Then - canary should only be present once
-        assertThat(firstOccurrenceCount).isEqualTo(1);
-        assertThat(secondOccurrenceCount).isEqualTo(1);
-        assertThat(thirdOccurrenceCount).isEqualTo(1);
-        assertThat(systemMessageAfterFirstCall).isEqualTo(systemMessageAfterSecondCall);
-        assertThat(systemMessageAfterSecondCall).isEqualTo(systemMessageAfterThirdCall);
+        // Then - no canary means no leakage possible, should pass
+        assertThat(result.isSuccess()).isTrue();
     }
 
-    private int countOccurrences(String text, String substring) {
-        int count = 0;
-        int index = 0;
-        while ((index = text.indexOf(substring, index)) != -1) {
-            count++;
-            index += substring.length();
-        }
-        return count;
+    @Test
+    void should_use_default_config_when_none_in_managed_parameters() {
+        // Given - mutable context but no config entry (defaults apply: BLOCK, enabled)
+        InvocationContext ctx = mutableInvocationContext();
+        ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
+        memory.add(SystemMessage.from("You are a helpful assistant."));
+        GuardrailRequestParams params = paramsFor(memory, ctx);
+
+        // When
+        InputGuardrailResult result = inputGuardrail.validate(inputRequest(params));
+
+        // Then - default config is enabled, so canary should be injected
+        assertThat(result.isSuccess()).isTrue();
+        assertThat(((SystemMessage) memory.messages().get(0)).text()).contains(CANARY_PREFIX);
     }
 
-    /**
-     * Helper method to extract canary from an enhanced prompt.
-     */
-    private String extractCanary(String enhancedPrompt) {
-        int canaryStart = enhancedPrompt.indexOf(CANARY_PREFIX);
-        if (canaryStart == -1) {
-            throw new IllegalStateException("No canary found in prompt");
-        }
-        // Extract until whitespace, punctuation, or end of string
-        // The canary is base64-url-encoded, so it contains alphanumeric, -, and _
-        int canaryEnd = canaryStart;
-        while (canaryEnd < enhancedPrompt.length()) {
-            char c = enhancedPrompt.charAt(canaryEnd);
-            if (!Character.isLetterOrDigit(c) && c != '_' && c != '-') {
-                break;
-            }
-            canaryEnd++;
-        }
-        return enhancedPrompt.substring(canaryStart, canaryEnd);
-    }
+    // =========================================================================
+    // Config via constructor (programmatic wiring — no managedParameters config)
+    // =========================================================================
 
-    /**
-     * Helper method to create a ChatExecutor for testing.
-     */
-    private ChatExecutor createChatExecutor(ChatResponse response) {
-        return new ChatExecutor() {
-            @Override
-            public ChatResponse execute() {
-                return response;
-            }
+    @Nested
+    class ConstructorConfigTests {
 
-            @Override
-            public ChatResponse execute(List<ChatMessage> chatMessages) {
-                return response;
-            }
-        };
+        @Test
+        void should_use_constructor_config_when_no_managed_parameters_config() {
+            // Given — guardrails wired with config at construction time
+            CanaryTokenInputGuardrail input = new CanaryTokenInputGuardrail(redactConfig);
+            CanaryTokenOutputGuardrail output = new CanaryTokenOutputGuardrail(redactConfig);
+
+            // Mutable context with NO config entry (constructor config should be used)
+            InvocationContext ctx = mutableInvocationContext();
+            ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
+            memory.add(SystemMessage.from("You are a helpful assistant."));
+            GuardrailRequestParams params = paramsFor(memory, ctx);
+
+            input.validate(inputRequest(params));
+            String canary = extractCanary(((SystemMessage) memory.messages().get(0)).text());
+
+            AiMessage leakedResponse = AiMessage.from("Leaked: " + canary);
+            ChatResponse response =
+                    ChatResponse.builder().aiMessage(leakedResponse).build();
+
+            // When
+            OutputGuardrailResult result = output.validate(outputRequest(params, response));
+
+            // Then — REDACT was applied (from constructor config)
+            assertThat(result.isSuccess()).isTrue();
+            assertThat(result.successfulText()).contains("[REDACTED]").doesNotContain(canary);
+        }
+
+        @Test
+        void should_prefer_managed_parameters_config_over_constructor_config() {
+            // Given — constructor has REDACT but managedParameters has BLOCK
+            CanaryTokenInputGuardrail input = new CanaryTokenInputGuardrail(redactConfig);
+            CanaryTokenOutputGuardrail output = new CanaryTokenOutputGuardrail(redactConfig);
+
+            // managedParameters has BLOCK config — this should win
+            InvocationContext ctx = invocationContextWith(blockConfig);
+            ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
+            memory.add(SystemMessage.from("You are a helpful assistant."));
+            GuardrailRequestParams params = paramsFor(memory, ctx);
+
+            input.validate(inputRequest(params));
+            String canary = extractCanary(((SystemMessage) memory.messages().get(0)).text());
+
+            AiMessage leakedResponse = AiMessage.from("Leaked: " + canary);
+            ChatResponse response =
+                    ChatResponse.builder().aiMessage(leakedResponse).build();
+
+            // When
+            OutputGuardrailResult result = output.validate(outputRequest(params, response));
+
+            // Then — BLOCK was applied (managedParameters config wins over constructor config)
+            assertThat(result.isSuccess()).isTrue();
+            assertThat(result.successfulText())
+                    .isEqualTo("I cannot process this request due to a security policy violation.");
+        }
+
+        @Test
+        void should_use_constructor_disabled_config() {
+            // Given — guardrails disabled via constructor
+            CanaryTokenInputGuardrail input = new CanaryTokenInputGuardrail(disabledConfig);
+            InvocationContext ctx = mutableInvocationContext();
+            ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
+            SystemMessage original = SystemMessage.from("You are a helpful assistant.");
+            memory.add(original);
+            GuardrailRequestParams params = paramsFor(memory, ctx);
+
+            // When
+            InputGuardrailResult result = input.validate(inputRequest(params));
+
+            // Then — no canary injected (disabled)
+            assertThat(result.isSuccess()).isTrue();
+            assertThat(((SystemMessage) memory.messages().get(0)).text()).isEqualTo("You are a helpful assistant.");
+        }
     }
 }
