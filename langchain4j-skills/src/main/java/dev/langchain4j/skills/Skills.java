@@ -33,15 +33,10 @@ import static java.util.stream.Collectors.joining;
 public class Skills {
 
     // TODO fix grammar here and everywhere
-    static final String DEFAULT_ACTIVATE_SKILL_TOOL_NAME = "activate_skill";
-    static final String DEFAULT_ACTIVATE_SKILL_TOOL_DESCRIPTION = "Activates a skill by name";
-    static final String DEFAULT_ACTIVATE_SKILL_TOOL_PARAMETER_NAME = "skill_name";
-    static final String DEFAULT_ACTIVATE_SKILL_TOOL_PARAMETER_DESCRIPTION = "The name of the skill to activate";
-
     static final String DEFAULT_READ_RESOURCE_TOOL_NAME = "read_skill_resource";
-    static final String DEFAULT_READ_RESOURCE_TOOL_DESCRIPTION = "Reads content of a resource referenced in the skill";
+    static final String DEFAULT_READ_RESOURCE_TOOL_DESCRIPTION = "Reads the content of a resource referenced in the skill";
     static final String DEFAULT_READ_RESOURCE_TOOL_SKILL_NAME_PARAMETER_NAME = "skill_name";
-    static final String DEFAULT_READ_RESOURCE_TOOL_SKILL_NAME_PARAMETER_DESCRIPTION = "The name of the skill for which to read the resource";
+    static final String DEFAULT_READ_RESOURCE_TOOL_SKILL_NAME_PARAMETER_DESCRIPTION = "The name of the skill for which the resource should be read";
     static final String DEFAULT_READ_RESOURCE_TOOL_RELATIVE_PATH_PARAMETER_NAME = "relative_path";
     static final Function<List<? extends Skill>, String> DEFAULT_READ_RESOURCE_TOOL_RELATIVE_PATH_PARAMETER_DESCRIPTION_PROVIDER =
             skills -> "Relative path to the resource. For example: " + skills.stream()
@@ -51,13 +46,13 @@ public class Skills {
                     .orElseThrow();
 
     static final String DEFAULT_RUN_SHELL_COMMAND_TOOL_NAME = "run_shell_command";
-    static final String DEFAULT_RUN_SHELL_COMMAND_TOOL_DESCRIPTION = "Runs a shell command using " + System.getProperty("os.name") + ". When skill_name is provided, the command runs with the skill's root directory as the working directory.";
+    static final String DEFAULT_RUN_SHELL_COMMAND_TOOL_DESCRIPTION = "Runs a shell command using " + System.getProperty("os.name") + ". If skill name is specified, the command runs in the skill's root directory.";
     static final String DEFAULT_RUN_SHELL_COMMAND_TOOL_COMMAND_PARAMETER_NAME = "command";
     static final String DEFAULT_RUN_SHELL_COMMAND_TOOL_COMMAND_PARAMETER_DESCRIPTION = "The shell command to execute. For example: 'python scripts/process.py --input data.csv'";
     static final String DEFAULT_RUN_SHELL_COMMAND_TOOL_SKILL_NAME_PARAMETER_NAME = "skill_name";
-    static final String DEFAULT_RUN_SHELL_COMMAND_TOOL_SKILL_NAME_PARAMETER_DESCRIPTION = "Name of the skill whose root directory to use as the working directory. This is optional parameter.";
+    static final String DEFAULT_RUN_SHELL_COMMAND_TOOL_SKILL_NAME_PARAMETER_DESCRIPTION = "Optional. The name of the skill whose root directory will be used as the working directory.";
     static final String DEFAULT_RUN_SHELL_COMMAND_TOOL_TIMEOUT_SECONDS_PARAMETER_NAME = "timeout_seconds";
-    static final String DEFAULT_RUN_SHELL_COMMAND_TOOL_TIMEOUT_SECONDS_PARAMETER_DESCRIPTION = "Timeout for the command in seconds. This is optional parameter. Default value: %s seconds".formatted(DEFAULT_TIMEOUT_SECONDS);
+    static final String DEFAULT_RUN_SHELL_COMMAND_TOOL_TIMEOUT_SECONDS_PARAMETER_DESCRIPTION = "Optional. The command timeout in seconds. Default: %s seconds.".formatted(DEFAULT_TIMEOUT_SECONDS);
     static final int DEFAULT_RUN_SHELL_COMMAND_TOOL_MAX_STDOUT_CHARS = 10_000;
     static final int DEFAULT_RUN_SHELL_COMMAND_TOOL_MAX_STDERR_CHARS = 10_000;
 
@@ -75,7 +70,7 @@ public class Skills {
         return toolProvider;
     }
 
-    public String systemMessage() {
+    public String systemMessage() { // TODO name
         return createSystemMessage(skills);
     }
 
@@ -95,15 +90,14 @@ public class Skills {
         Map<String, Skill> skillsByName = new LinkedHashMap<>();
         skills.forEach(skill -> skillsByName.put(skill.name(), skill));
 
-        ActivateSkillToolConfig a = builder.activateSkillToolConfig != null ? builder.activateSkillToolConfig : ActivateSkillToolConfig.builder().build();
-        String activateSkillToolParameterName = getOrDefault(a.parameterName, DEFAULT_ACTIVATE_SKILL_TOOL_PARAMETER_NAME);
+        ActivateSkillToolConfig config = getOrDefault(builder.activateSkillToolConfig, ActivateSkillToolConfig.builder().build());
 
         ToolSpecification activateSkillTool = ToolSpecification.builder()
-                .name(getOrDefault(a.name, DEFAULT_ACTIVATE_SKILL_TOOL_NAME))
-                .description(getOrDefault(a.description, DEFAULT_ACTIVATE_SKILL_TOOL_DESCRIPTION))
+                .name(config.name)
+                .description(config.description)
                 .parameters(JsonObjectSchema.builder()
-                        .addStringProperty(activateSkillToolParameterName, getOrDefault(a.parameterDescription, DEFAULT_ACTIVATE_SKILL_TOOL_PARAMETER_DESCRIPTION))
-                        .required(activateSkillToolParameterName)
+                        .addStringProperty(config.parameterName, config.parameterDescription)
+                        .required(config.parameterName)
                         .build())
                 .build();
 
@@ -113,7 +107,7 @@ public class Skills {
             public ToolExecutionResult executeWithContext(ToolExecutionRequest request, InvocationContext context) {
 
                 Map<String, Object> arguments = parseArguments(request.arguments());
-                String skillName = getArgument(activateSkillToolParameterName, arguments);
+                String skillName = getArgument(config.parameterName, arguments);
 
                 Skill skill = skillsByName.get(skillName);
                 if (skill == null) {
@@ -292,13 +286,9 @@ public class Skills {
     }
 
     private static String createSystemMessage(List<Skill> skills) {
-        ensureNotEmpty(skills, "skills");
-
         StringBuilder sb = new StringBuilder();
-
-        sb.append("You have access to the following skills:\n"); // TODO customizable
+        sb.append("You have access to the following skills:\n");
         sb.append("<available_skills>\n");
-
         for (Skill skill : skills) {
             sb.append("<skill>\n")
                     .append("<name>")
@@ -309,9 +299,7 @@ public class Skills {
                     .append("</description>\n")
                     .append("</skill>\n");
         }
-
         sb.append("</available_skills>");
-
         return sb.toString();
     }
 

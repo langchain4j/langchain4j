@@ -91,7 +91,7 @@ class ShellCommandRunner {
 
         timeoutSeconds = getOrDefault(timeoutSeconds, DEFAULT_TIMEOUT_SECONDS);
         if (timeoutSeconds > DEFAULT_MAX_TIMEOUT_SECONDS) {
-            timeoutSeconds = DEFAULT_MAX_TIMEOUT_SECONDS; // TODO?
+            timeoutSeconds = DEFAULT_MAX_TIMEOUT_SECONDS;
         }
 
         boolean finished = process.waitFor(timeoutSeconds, TimeUnit.SECONDS);

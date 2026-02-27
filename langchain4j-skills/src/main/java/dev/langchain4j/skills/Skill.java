@@ -25,7 +25,7 @@ public interface Skill {
     /**
      * TODO
      */
-    List<SkillResource> resources(); // TODO type
+    List<SkillResource> resources();
 
     static DefaultSkill.Builder builder() {
         return new DefaultSkill.Builder();
