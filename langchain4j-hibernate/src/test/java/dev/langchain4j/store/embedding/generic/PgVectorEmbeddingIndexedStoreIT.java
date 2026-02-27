@@ -38,6 +38,7 @@ class PgVectorEmbeddingIndexedStoreIT extends EmbeddingStoreWithFilteringIT {
                 .createIndex(true)
                 .indexType("ivfflat")
                 .indexOptions("lists = 1")
+                .createTable(true)
                 .dropTableFirst(true)
                 .build();
     }

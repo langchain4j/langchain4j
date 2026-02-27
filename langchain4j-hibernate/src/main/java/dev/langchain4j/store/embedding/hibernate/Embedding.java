@@ -27,5 +27,5 @@ import org.hibernate.type.SqlTypes;
  */
 @Target({METHOD, FIELD})
 @Retention(RUNTIME)
-@JdbcTypeCode(SqlTypes.VECTOR_FLOAT32)
+@JdbcTypeCode(SqlTypes.VECTOR)
 public @interface Embedding {}
