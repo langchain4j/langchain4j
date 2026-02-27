@@ -193,16 +193,16 @@ public abstract class AbstractBaseChatModelIT<M> {
         // given
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(
-                        UserMessage.from("Hi, my name is Klaus"),
-                        AiMessage.from("Hi Klaus, nice to meet you"),
-                        UserMessage.from("What is my name?"))
+                        UserMessage.from("Hi, my favorite color is green"),
+                        AiMessage.from("Hi, nice to meet you"),
+                        UserMessage.from("What is my favorite color?"))
                 .build();
 
         // when
         ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
 
         // then
-        assertThat(chatResponse.aiMessage().text()).containsIgnoringCase("Klaus");
+        assertThat(chatResponse.aiMessage().text()).containsIgnoringCase("green");
     }
 
     // CHAT PARAMETERS
