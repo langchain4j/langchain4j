@@ -1,5 +1,10 @@
 package dev.langchain4j.experimental.rag.content.retriever.sql;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.singletonList;
+
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -11,25 +16,23 @@ import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
-import net.sf.jsqlparser.JSQLParserException;
-import net.sf.jsqlparser.parser.CCJSqlParserUtil;
-import net.sf.jsqlparser.statement.select.Select;
-
-import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
+import java.util.Set;
+import javax.sql.DataSource;
+import net.sf.jsqlparser.JSQLParserException;
+import net.sf.jsqlparser.parser.CCJSqlParserUtil;
+import net.sf.jsqlparser.statement.select.Select;
 
 /**
  * <b>
@@ -53,17 +56,22 @@ import static java.util.Collections.singletonList;
 @Experimental
 public class SqlDatabaseContentRetriever implements ContentRetriever {
 
-    private static final PromptTemplate DEFAULT_PROMPT_TEMPLATE = PromptTemplate.from(
-            "You are an expert in writing SQL queries.\n" +
-                    "You have access to a {{sqlDialect}} database with the following structure:\n" +
-                    "{{databaseStructure}}\n" +
-                    "If a user asks a question that can be answered by querying this database, generate an SQL SELECT query.\n" +
-                    "Do not output anything else aside from a valid SQL statement!"
-    );
+    private static final PromptTemplate DEFAULT_PROMPT_TEMPLATE =
+            PromptTemplate.from("You are an expert in writing SQL queries.\n"
+                    + "You have access to a {{sqlDialect}} database with the following structure:\n"
+                    + "{{databaseStructure}}\n"
+                    + "{{sampleData}}"
+                    + "If a user asks a question that can be answered by querying this database, generate an SQL SELECT query.\n"
+                    + "Do not output anything else aside from a valid SQL statement!");
 
     private final DataSource dataSource;
     private final String sqlDialect;
     private final String databaseStructure;
+    private final String sampleData;
+
+    private final Set<String> includeTables;
+    private final Set<String> excludeTables;
+    private final int maxSampleRows;
 
     private final PromptTemplate promptTemplate;
     private final ChatModel chatModel;
@@ -93,25 +101,43 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
      * @param maxRetries        The maximum number of retries to perform if the database cannot execute the generated SQL query.
      *                          An error message will be sent back to the LLM to try correcting the query.
      *                          This is an optional parameter. Default: 0.
+     * @param includeTables     A collection of table names to include in the database structure provided to the LLM.
+     *                          When specified, only these tables will be visible. If both {@code includeTables} and
+     *                          {@code excludeTables} are specified, {@code includeTables} takes precedence.
+     *                          This is an optional parameter. Default: all tables.
+     * @param excludeTables     A collection of table names to exclude from the database structure provided to the LLM.
+     *                          When specified, these tables will be hidden. Ignored if {@code includeTables} is specified.
+     *                          This is an optional parameter. Default: none.
+     * @param maxSampleRows     The maximum number of sample rows to include per table in the prompt.
+     *                          Providing sample data helps the LLM understand column formats and typical values,
+     *                          leading to more accurate SQL generation.
+     *                          This is an optional parameter. Default: 0 (no sample rows).
      */
     @Experimental
-    public SqlDatabaseContentRetriever(DataSource dataSource,
-                                       String sqlDialect,
-                                       String databaseStructure,
-                                       PromptTemplate promptTemplate,
-                                       ChatModel chatModel,
-                                       Integer maxRetries) {
+    public SqlDatabaseContentRetriever(
+            DataSource dataSource,
+            String sqlDialect,
+            String databaseStructure,
+            PromptTemplate promptTemplate,
+            ChatModel chatModel,
+            Integer maxRetries,
+            Collection<String> includeTables,
+            Collection<String> excludeTables,
+            Integer maxSampleRows) {
         this.dataSource = ensureNotNull(dataSource, "dataSource");
+        this.includeTables = includeTables != null ? new LinkedHashSet<>(includeTables) : null;
+        this.excludeTables = excludeTables != null ? new LinkedHashSet<>(excludeTables) : null;
+        this.maxSampleRows = getOrDefault(maxSampleRows, 0);
         this.sqlDialect = getOrDefault(sqlDialect, () -> getSqlDialect(dataSource));
-        this.databaseStructure = getOrDefault(databaseStructure, () -> generateDDL(dataSource));
+        this.databaseStructure =
+                getOrDefault(databaseStructure, () -> generateDDL(dataSource, this.includeTables, this.excludeTables));
+        this.sampleData = this.maxSampleRows > 0
+                ? generateSampleData(dataSource, this.databaseStructure, this.maxSampleRows)
+                : "";
         this.promptTemplate = getOrDefault(promptTemplate, DEFAULT_PROMPT_TEMPLATE);
         this.chatModel = ensureNotNull(chatModel, "chatModel");
         this.maxRetries = getOrDefault(maxRetries, 0);
     }
-
-    // TODO (for v2)
-    // - provide a few rows of data for each table in the prompt
-    // - option to select a list of tables to use/ignore
 
     public static String getSqlDialect(DataSource dataSource) {
         try (Connection connection = dataSource.getConnection()) {
@@ -122,16 +148,19 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
         }
     }
 
-    private static String generateDDL(DataSource dataSource) {
+    private static String generateDDL(DataSource dataSource, Set<String> includeTables, Set<String> excludeTables) {
         StringBuilder ddl = new StringBuilder();
 
         try (Connection connection = dataSource.getConnection()) {
             DatabaseMetaData metaData = connection.getMetaData();
 
-            ResultSet tables = metaData.getTables(null, null, "%", new String[]{"TABLE"});
+            ResultSet tables = metaData.getTables(null, null, "%", new String[] {"TABLE"});
 
             while (tables.next()) {
                 String tableName = tables.getString("TABLE_NAME");
+                if (!shouldIncludeTable(tableName, includeTables, excludeTables)) {
+                    continue;
+                }
                 String createTableStatement = generateCreateTableStatement(tableName, metaData);
                 ddl.append(createTableStatement).append("\n");
             }
@@ -140,6 +169,90 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
         }
 
         return ddl.toString();
+    }
+
+    private static boolean shouldIncludeTable(String tableName, Set<String> includeTables, Set<String> excludeTables) {
+        if (includeTables != null && !includeTables.isEmpty()) {
+            return includeTables.stream().anyMatch(t -> t.equalsIgnoreCase(tableName));
+        }
+        if (excludeTables != null && !excludeTables.isEmpty()) {
+            return excludeTables.stream().noneMatch(t -> t.equalsIgnoreCase(tableName));
+        }
+        return true;
+    }
+
+    static String generateSampleData(DataSource dataSource, String databaseStructure, int maxRows) {
+        if (maxRows <= 0) {
+            return "";
+        }
+
+        List<String> tableNames = extractTableNames(databaseStructure);
+        if (tableNames.isEmpty()) {
+            return "";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("Here are some sample rows from each table:\n");
+
+        try (Connection connection = dataSource.getConnection()) {
+            for (String tableName : tableNames) {
+                sb.append("\nTable ").append(tableName).append(":\n");
+                try (Statement stmt = connection.createStatement();
+                        ResultSet rs = stmt.executeQuery("SELECT * FROM " + tableName + " LIMIT " + maxRows)) {
+                    ResultSetMetaData rsMeta = rs.getMetaData();
+                    int columnCount = rsMeta.getColumnCount();
+
+                    List<String> headers = new ArrayList<>();
+                    for (int i = 1; i <= columnCount; i++) {
+                        headers.add(rsMeta.getColumnName(i));
+                    }
+                    sb.append(String.join(", ", headers)).append("\n");
+
+                    while (rs.next()) {
+                        List<String> values = new ArrayList<>();
+                        for (int i = 1; i <= columnCount; i++) {
+                            Object val = rs.getObject(i);
+                            values.add(val == null ? "NULL" : val.toString());
+                        }
+                        sb.append(String.join(", ", values)).append("\n");
+                    }
+                } catch (SQLException e) {
+                    // Skip tables that cannot be queried
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
+        return sb.toString();
+    }
+
+    static List<String> extractTableNames(String databaseStructure) {
+        List<String> tableNames = new ArrayList<>();
+        String upperDDL = databaseStructure.toUpperCase();
+        int idx = 0;
+        while (true) {
+            int pos = upperDDL.indexOf("CREATE TABLE", idx);
+            if (pos == -1) {
+                break;
+            }
+            int start = pos + "CREATE TABLE".length();
+            // skip whitespace
+            while (start < databaseStructure.length() && Character.isWhitespace(databaseStructure.charAt(start))) {
+                start++;
+            }
+            int end = start;
+            while (end < databaseStructure.length()
+                    && !Character.isWhitespace(databaseStructure.charAt(end))
+                    && databaseStructure.charAt(end) != '(') {
+                end++;
+            }
+            if (end > start) {
+                tableNames.add(databaseStructure.substring(start, end));
+            }
+            idx = end;
+        }
+        return tableNames;
     }
 
     private static String generateCreateTableStatement(String tableName, DatabaseMetaData metaData) {
@@ -155,17 +268,15 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
                 primaryKeyColumn = pk.getString("COLUMN_NAME");
             }
 
-            createTableStatement
-                    .append("CREATE TABLE ")
-                    .append(tableName)
-                    .append(" (\n");
+            createTableStatement.append("CREATE TABLE ").append(tableName).append(" (\n");
 
             while (columns.next()) {
                 String columnName = columns.getString("COLUMN_NAME");
                 String columnType = columns.getString("TYPE_NAME");
                 int size = columns.getInt("COLUMN_SIZE");
                 String nullable = columns.getString("IS_NULLABLE").equals("YES") ? " NULL" : " NOT NULL";
-                String columnDef = columns.getString("COLUMN_DEF") != null ? " DEFAULT " + columns.getString("COLUMN_DEF") : "";
+                String columnDef =
+                        columns.getString("COLUMN_DEF") != null ? " DEFAULT " + columns.getString("COLUMN_DEF") : "";
                 String comment = columns.getString("REMARKS");
 
                 createTableStatement
@@ -262,7 +373,7 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
                 validate(sqlQuery);
 
                 try (Connection connection = dataSource.getConnection();
-                     Statement statement = connection.createStatement()) {
+                        Statement statement = connection.createStatement()) {
 
                     String result = execute(sqlQuery, statement);
                     Content content = format(result, sqlQuery);
@@ -276,7 +387,8 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
         return emptyList();
     }
 
-    protected String generateSqlQuery(Query naturalLanguageQuery, String previousSqlQuery, String previousErrorMessage) {
+    protected String generateSqlQuery(
+            Query naturalLanguageQuery, String previousSqlQuery, String previousErrorMessage) {
 
         List<ChatMessage> messages = new ArrayList<>();
         messages.add(createSystemPrompt().toSystemMessage());
@@ -294,6 +406,7 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
         Map<String, Object> variables = new HashMap<>();
         variables.put("sqlDialect", sqlDialect);
         variables.put("databaseStructure", databaseStructure);
+        variables.put("sampleData", sampleData != null ? sampleData : "");
         return promptTemplate.apply(variables);
     }
 
@@ -306,9 +419,7 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
         return sqlQuery;
     }
 
-    protected void validate(String sqlQuery) {
-
-    }
+    protected void validate(String sqlQuery) {}
 
     protected boolean isSelect(String sqlQuery) {
         try {
@@ -337,7 +448,9 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
                 List<String> columnValues = new ArrayList<>();
                 for (int i = 1; i <= columnCount; i++) {
 
-                    String columnValue = resultSet.getObject(i) == null ? "" : resultSet.getObject(i).toString();
+                    String columnValue = resultSet.getObject(i) == null
+                            ? ""
+                            : resultSet.getObject(i).toString();
 
                     if (columnValue.contains(",")) {
                         columnValue = "\"" + columnValue + "\"";
@@ -362,9 +475,11 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
         private PromptTemplate promptTemplate;
         private ChatModel chatModel;
         private Integer maxRetries;
+        private Collection<String> includeTables;
+        private Collection<String> excludeTables;
+        private Integer maxSampleRows;
 
-        SqlDatabaseContentRetrieverBuilder() {
-        }
+        SqlDatabaseContentRetrieverBuilder() {}
 
         public SqlDatabaseContentRetrieverBuilder dataSource(DataSource dataSource) {
             this.dataSource = dataSource;
@@ -396,12 +511,53 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
             return this;
         }
 
+        /**
+         * Specifies the tables to include. Only these tables will be visible to the LLM.
+         * Takes precedence over {@link #excludeTables(Collection)}.
+         */
+        public SqlDatabaseContentRetrieverBuilder includeTables(Collection<String> includeTables) {
+            this.includeTables = includeTables;
+            return this;
+        }
+
+        /**
+         * Specifies the tables to exclude. These tables will be hidden from the LLM.
+         * Ignored if {@link #includeTables(Collection)} is specified.
+         */
+        public SqlDatabaseContentRetrieverBuilder excludeTables(Collection<String> excludeTables) {
+            this.excludeTables = excludeTables;
+            return this;
+        }
+
+        /**
+         * Sets the maximum number of sample rows per table to include in the prompt.
+         * Sample rows help the LLM understand column formats and typical values.
+         * Default: 0 (no sample rows).
+         */
+        public SqlDatabaseContentRetrieverBuilder maxSampleRows(Integer maxSampleRows) {
+            this.maxSampleRows = maxSampleRows;
+            return this;
+        }
+
         public SqlDatabaseContentRetriever build() {
-            return new SqlDatabaseContentRetriever(this.dataSource, this.sqlDialect, this.databaseStructure, this.promptTemplate, this.chatModel, this.maxRetries);
+            return new SqlDatabaseContentRetriever(
+                    this.dataSource,
+                    this.sqlDialect,
+                    this.databaseStructure,
+                    this.promptTemplate,
+                    this.chatModel,
+                    this.maxRetries,
+                    this.includeTables,
+                    this.excludeTables,
+                    this.maxSampleRows);
         }
 
         public String toString() {
-            return "SqlDatabaseContentRetriever.SqlDatabaseContentRetrieverBuilder(dataSource=" + this.dataSource + ", sqlDialect=" + this.sqlDialect + ", databaseStructure=" + this.databaseStructure + ", promptTemplate=" + this.promptTemplate + ", chatModel=" + this.chatModel + ", maxRetries=" + this.maxRetries + ")";
+            return "SqlDatabaseContentRetriever.SqlDatabaseContentRetrieverBuilder(dataSource=" + this.dataSource
+                    + ", sqlDialect=" + this.sqlDialect + ", databaseStructure=" + this.databaseStructure
+                    + ", promptTemplate=" + this.promptTemplate + ", chatModel=" + this.chatModel + ", maxRetries="
+                    + this.maxRetries + ", includeTables=" + this.includeTables + ", excludeTables="
+                    + this.excludeTables + ", maxSampleRows=" + this.maxSampleRows + ")";
         }
     }
 }
