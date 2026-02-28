@@ -68,6 +68,7 @@ import software.amazon.awssdk.services.bedrockruntime.model.DocumentFormat;
 import software.amazon.awssdk.services.bedrockruntime.model.DocumentSource;
 import software.amazon.awssdk.services.bedrockruntime.model.GuardrailConfiguration;
 import software.amazon.awssdk.services.bedrockruntime.model.GuardrailStreamConfiguration;
+import software.amazon.awssdk.services.bedrockruntime.model.GuardrailStreamProcessingMode;
 import software.amazon.awssdk.services.bedrockruntime.model.GuardrailTrace;
 import software.amazon.awssdk.services.bedrockruntime.model.ImageBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ImageSource;
@@ -75,6 +76,8 @@ import software.amazon.awssdk.services.bedrockruntime.model.InferenceConfigurati
 import software.amazon.awssdk.services.bedrockruntime.model.Message;
 import software.amazon.awssdk.services.bedrockruntime.model.ReasoningContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ReasoningTextBlock;
+import software.amazon.awssdk.services.bedrockruntime.model.ServiceTier;
+import software.amazon.awssdk.services.bedrockruntime.model.ServiceTierType;
 import software.amazon.awssdk.services.bedrockruntime.model.StopReason;
 import software.amazon.awssdk.services.bedrockruntime.model.SystemContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.Tool;
@@ -228,6 +231,17 @@ abstract class AbstractBedrockChatModel {
         List<ContentBlock> currentBlocks = new ArrayList<>();
         boolean firstUserMessageProcessed = false;
 
+        // Find the index of the last user message for AFTER_LAST_USER_MESSAGE placement
+        int lastUserMessageIndex = -1;
+        if (cachePointPlacement == BedrockCachePointPlacement.AFTER_LAST_USER_MESSAGE) {
+            for (int i = messages.size() - 1; i >= 0; i--) {
+                if (messages.get(i) instanceof UserMessage) {
+                    lastUserMessageIndex = i;
+                    break;
+                }
+            }
+        }
+
         for (int i = 0; i < messages.size(); i++) {
             ChatMessage msg = messages.get(i);
             if (msg == null) {
@@ -235,13 +249,23 @@ abstract class AbstractBedrockChatModel {
             }
             if (msg instanceof ToolExecutionResultMessage toolResult) {
                 handleToolResult(toolResult, currentBlocks, bedrockMessages, i, messages);
-            } else if (!(msg instanceof SystemMessage) && !(msg instanceof BedrockSystemMessage)) {
+            } else if ((msg instanceof UserMessage) || (msg instanceof AiMessage)) {
                 Message bedrockMessage = convertToBedRockMessage(msg);
 
-                if (cachePointPlacement == BedrockCachePointPlacement.AFTER_USER_MESSAGE
-                        && msg instanceof UserMessage
-                        && !firstUserMessageProcessed) {
+                boolean shouldAddCachePoint = false;
 
+                if (msg instanceof UserMessage) {
+                    if (cachePointPlacement == BedrockCachePointPlacement.AFTER_USER_MESSAGE
+                            && !firstUserMessageProcessed) {
+                        shouldAddCachePoint = true;
+                        firstUserMessageProcessed = true;
+                    } else if (cachePointPlacement == BedrockCachePointPlacement.AFTER_LAST_USER_MESSAGE
+                            && i == lastUserMessageIndex) {
+                        shouldAddCachePoint = true;
+                    }
+                }
+
+                if (shouldAddCachePoint) {
                     List<ContentBlock> contentWithCachePoint = new ArrayList<>(bedrockMessage.content());
                     contentWithCachePoint.add(ContentBlock.builder()
                             .cachePoint(software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock.builder()
@@ -253,8 +277,6 @@ abstract class AbstractBedrockChatModel {
                             .role(bedrockMessage.role())
                             .content(contentWithCachePoint)
                             .build();
-
-                    firstUserMessageProcessed = true;
                 }
 
                 bedrockMessages.add(bedrockMessage);
@@ -488,6 +510,7 @@ abstract class AbstractBedrockChatModel {
      *       Note: AFTER_SYSTEM is ignored if the last system message is a BedrockSystemMessage,
      *       as granular cache points take precedence.</li>
      *   <li><b>AFTER_USER_MESSAGE placement:</b> Adds 1 cache point if configured and user messages exist</li>
+     *   <li><b>AFTER_LAST_USER_MESSAGE placement:</b> Adds 1 cache point if configured and user messages exist</li>
      *   <li><b>AFTER_TOOLS placement:</b> Adds 1 cache point if configured and tools are present</li>
      * </ol>
      *
@@ -539,6 +562,10 @@ abstract class AbstractBedrockChatModel {
             }
             // AFTER_USER_MESSAGE adds cache point after the first user message
             if (cachePointPlacement == BedrockCachePointPlacement.AFTER_USER_MESSAGE && hasUserMessage) {
+                count++;
+            }
+            // AFTER_LAST_USER_MESSAGE adds cache point after the last user message
+            if (cachePointPlacement == BedrockCachePointPlacement.AFTER_LAST_USER_MESSAGE && hasUserMessage) {
                 count++;
             }
             // AFTER_TOOLS adds cache point after tool definitions (only if tools exist)
@@ -660,11 +687,39 @@ abstract class AbstractBedrockChatModel {
             return null;
         }
 
+        GuardrailStreamProcessingMode mode = null;
+
+        if (bedrockGuardrailConfiguration.streamProcessingMode() != null) {
+            switch (bedrockGuardrailConfiguration.streamProcessingMode()) {
+                case SYNC -> mode = GuardrailStreamProcessingMode.SYNC;
+                case ASYNC -> mode = GuardrailStreamProcessingMode.ASYNC;
+            }
+        }
+
         return GuardrailStreamConfiguration.builder()
                 .guardrailVersion(bedrockGuardrailConfiguration.guardrailVersion())
                 .guardrailIdentifier(bedrockGuardrailConfiguration.guardrailIdentifier())
                 .trace(GuardrailTrace.ENABLED)
+                .streamProcessingMode(mode)
                 .build();
+    }
+
+    protected ServiceTier serviceTierFor(BedrockServiceTier bedrockServiceTier) {
+        if (bedrockServiceTier == null) {
+            return null;
+        }
+
+        ServiceTierType serviceTierType;
+
+        switch (bedrockServiceTier) {
+            case PRIORITY -> serviceTierType = ServiceTierType.PRIORITY;
+            case DEFAULT -> serviceTierType = ServiceTierType.DEFAULT;
+            case FLEX -> serviceTierType = ServiceTierType.FLEX;
+            case RESERVED -> serviceTierType = ServiceTierType.RESERVED;
+            default -> throw new IllegalArgumentException("Unknown service tier type: " + bedrockServiceTier);
+        }
+
+        return ServiceTier.builder().type(serviceTierType).build();
     }
 
     protected Document additionalRequestModelFieldsFrom(ChatRequestParameters chatRequestParameters) {
