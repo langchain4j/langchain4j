@@ -15,6 +15,7 @@ import dev.langchain4j.service.guardrail.GuardrailService;
 import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.service.tool.ToolService;
 import dev.langchain4j.spi.services.AiServiceContextFactory;
+import dev.langchain4j.store.prompt.PromptResourceLoaderRegistry;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
@@ -46,6 +47,8 @@ public class AiServiceContext {
     public RetrievalAugmentor retrievalAugmentor;
 
     public boolean storeRetrievedContentInChatMemory = true;
+
+    public PromptResourceLoaderRegistry promptResourceLoaderRegistry = PromptResourceLoaderRegistry.getDefault();
 
     public Function<Object, Optional<String>> userMessageProvider = DEFAULT_USER_MESSAGE_PROVIDER;
     public Function<Object, Optional<String>> systemMessageProvider = DEFAULT_SYSTEM_MESSAGE_PROVIDER;
