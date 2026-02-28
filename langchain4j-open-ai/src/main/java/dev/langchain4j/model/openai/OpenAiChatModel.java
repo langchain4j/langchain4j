@@ -114,6 +114,8 @@ public class OpenAiChatModel implements ChatModel {
                 .metadata(getOrDefault(builder.metadata, openAiParameters.metadata()))
                 .serviceTier(getOrDefault(builder.serviceTier, openAiParameters.serviceTier()))
                 .reasoningEffort(getOrDefault(builder.reasoningEffort, openAiParameters.reasoningEffort()))
+                .logprobs(getOrDefault(builder.logprobs, openAiParameters.logprobs()))
+                .topLogprobs(getOrDefault(builder.topLogprobs, openAiParameters.topLogprobs()))
                 .customParameters(getOrDefault(builder.customParameters, openAiParameters.customParameters()))
                 .build();
         this.responseFormatString = builder.responseFormatString;
@@ -164,6 +166,7 @@ public class OpenAiChatModel implements ChatModel {
                 .serviceTier(openAiResponse.serviceTier())
                 .systemFingerprint(openAiResponse.systemFingerprint())
                 .rawHttpResponse(parsedAndRawResponse.rawHttpResponse())
+                .logProbs(openAiResponse.choices().get(0).logprobs())
                 .build();
 
         return ChatResponse.builder()
@@ -222,6 +225,8 @@ public class OpenAiChatModel implements ChatModel {
         private Boolean returnThinking;
         private Boolean sendThinking;
         private String thinkingFieldName;
+        private Boolean logprobs;
+        private Integer topLogprobs;
         private Duration timeout;
         private Integer maxRetries;
         private Boolean logRequests;
@@ -445,6 +450,16 @@ public class OpenAiChatModel implements ChatModel {
         public OpenAiChatModelBuilder sendThinking(Boolean sendThinking) {
             this.sendThinking = sendThinking;
             this.thinkingFieldName = "reasoning_content";
+            return this;
+        }
+
+        public OpenAiChatModelBuilder logprobs(Boolean logprobs) {
+            this.logprobs = logprobs;
+            return this;
+        }
+
+        public OpenAiChatModelBuilder topLogprobs(Integer topLogprobs) {
+            this.topLogprobs = topLogprobs;
             return this;
         }
 
