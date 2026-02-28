@@ -443,6 +443,5 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
 
     @Override
     @Disabled("Can't do it reliably")
-    protected void should_execute_multiple_tools_in_parallel_then_answer(StreamingChatModel model) {
-    }
+    protected void should_execute_multiple_tools_in_parallel_then_answer(StreamingChatModel model) {}
 }

@@ -4,6 +4,11 @@ import static dev.langchain4j.internal.Utils.firstNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.model.batch.BatchError;
+import dev.langchain4j.model.batch.BatchId;
+import dev.langchain4j.model.batch.BatchPage;
+import dev.langchain4j.model.batch.BatchResponse;
+import dev.langchain4j.model.batch.BatchState;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateFileRequest;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateFileRequest.FileBatch;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateFileRequest.FileInputConfig;
@@ -13,11 +18,6 @@ import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateRequest.In
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateRequest.InputConfig;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateRequest.Requests;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateResponse;
-import dev.langchain4j.model.googleai.BatchRequestResponse.BatchJobState;
-import dev.langchain4j.model.googleai.BatchRequestResponse.BatchList;
-import dev.langchain4j.model.googleai.BatchRequestResponse.BatchName;
-import dev.langchain4j.model.googleai.BatchRequestResponse.BatchResponse;
-import dev.langchain4j.model.googleai.BatchRequestResponse.BatchSuccess;
 import dev.langchain4j.model.googleai.BatchRequestResponse.Operation;
 import java.util.List;
 import java.util.Map;
@@ -46,7 +46,7 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
     /**
      * Creates and enqueues a batch of requests for asynchronous processing.
      */
-    BatchResponse<RESPONSE> createBatchInline(
+    BatchResponse<RESPONSE> createBatch(
             String displayName,
             @Nullable Long priority,
             List<REQUEST> requests,
@@ -61,7 +61,7 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
         var request = new BatchCreateRequest<>(new Batch<>(
                 displayName, new InputConfig<>(new Requests<>(inlineRequests)), getOrDefault(priority, 0L)));
 
-        return processResponse(geminiService.batchCreate(modelName, request, operationType), preparer);
+        return processResponse(geminiService.batchCreate(modelName, request, operationType));
     }
 
     BatchResponse<RESPONSE> createBatchFromFile(
@@ -69,34 +69,32 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
             GeminiFiles.GeminiFile file,
             String modelName,
             GeminiService.BatchOperationType operationType) {
-        return processResponse(
-                geminiService.batchCreate(
-                        modelName,
-                        new BatchCreateFileRequest(new FileBatch(displayName, new FileInputConfig(file.name()))),
-                        operationType),
-                preparer);
+        return processResponse(geminiService.batchCreate(
+                modelName,
+                new BatchCreateFileRequest(new FileBatch(displayName, new FileInputConfig(file.name()))),
+                operationType));
     }
 
     /**
      * Retrieves the current state and results of a batch operation.
      */
     @SuppressWarnings("unchecked")
-    BatchResponse<RESPONSE> retrieveBatchResults(BatchName name) {
+    BatchResponse<RESPONSE> retrieveBatchResults(BatchId name) {
         var operation = geminiService.batchRetrieveBatch(name.value());
-        return processResponse((Operation<API_RESPONSE>) operation, preparer);
+        return processResponse((Operation<API_RESPONSE>) operation);
     }
 
     /**
      * Cancels a batch operation that is currently pending or running.
      */
-    void cancelBatchJob(BatchName name) {
+    void cancelBatchJob(BatchId name) {
         geminiService.batchCancelBatch(name.value());
     }
 
     /**
      * Deletes a batch job.
      */
-    void deleteBatchJob(BatchName name) {
+    void deleteBatchJob(BatchId name) {
         geminiService.batchDeleteBatch(name.value());
     }
 
@@ -104,58 +102,56 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
      * Lists batch jobs.
      */
     @SuppressWarnings("unchecked")
-    BatchList<RESPONSE> listBatchJobs(@Nullable Integer pageSize, @Nullable String pageToken) {
+    BatchPage<RESPONSE> listBatchJobs(@Nullable Integer pageSize, @Nullable String pageToken) {
         var response = geminiService.<List<API_RESPONSE>>batchListBatches(pageSize, pageToken);
 
-        return new BatchList<>(
-                response.nextPageToken(),
+        return new BatchPage<>(
                 firstNotNull("operationsResponse", response.operations(), List.of()).stream()
-                        .map(operation -> processResponse((Operation<API_RESPONSE>) operation, preparer))
-                        .toList());
+                        .map(operation -> processResponse((Operation<API_RESPONSE>) operation))
+                        .toList(),
+                response.nextPageToken());
     }
 
     /**
      * Processes the operation response and returns the appropriate BatchResponse.
      */
-    private BatchResponse<RESPONSE> processResponse(
-            Operation<API_RESPONSE> operation, RequestPreparer<REQUEST, API_REQUEST, API_RESPONSE, RESPONSE> preparer) {
+    private BatchResponse<RESPONSE> processResponse(Operation<API_RESPONSE> operation) {
+        var state = extractBatchState(operation.metadata());
+        var batchId = new BatchId(operation.name());
+
         if (operation.done()) {
+            var error = operation.error();
             if (operation.error() != null) {
-                return new BatchRequestResponse.BatchError<>(
-                        new BatchName(operation.name()),
-                        operation.error().code(),
-                        operation.error().message(),
-                        extractBatchState(operation.metadata()),
-                        operation.error().details());
+                return new BatchResponse<>(batchId, BatchState.FAILED, List.of(), List.of(error.toGenericStatus()));
             } else {
-                var extractedResults = preparer.extractResults(operation.response());
-                return new BatchSuccess<>(
-                        new BatchName(operation.name()), extractedResults.responses(), extractedResults.errors());
+                var responses = preparer.extractResults(operation.response());
+                return new BatchResponse<>(batchId, BatchState.SUCCEEDED, responses.responses(), responses.errors());
             }
         } else {
-            return new BatchRequestResponse.BatchIncomplete<>(
-                    new BatchName(operation.name()), extractBatchState(operation.metadata()));
+            return new BatchResponse<>(batchId, state, List.of(), null);
         }
     }
 
-    private BatchJobState extractBatchState(Map<String, Object> metadata) {
+    private BatchState extractBatchState(@Nullable Map<String, Object> metadata) {
         if (metadata == null) {
-            return BatchJobState.UNSPECIFIED;
+            return BatchState.UNSPECIFIED;
         }
 
         var stateObj = metadata.get("state");
         if (stateObj == null) {
-            return BatchJobState.UNSPECIFIED;
+            return BatchState.UNSPECIFIED;
         }
 
         try {
-            return BatchJobState.valueOf(stateObj.toString());
+            String stateStr = stateObj.toString();
+            if (stateStr.startsWith("BATCH_STATE_")) {
+                stateStr = stateStr.substring("BATCH_STATE_".length());
+            }
+            return BatchState.valueOf(stateStr);
         } catch (IllegalArgumentException e) {
-            return BatchJobState.UNSPECIFIED;
+            return BatchState.UNSPECIFIED;
         }
     }
-
-    record ExtractedBatchResults<T>(List<T> responses, List<BatchRequestResponse.Operation.Status> errors) {}
 
     /**
      * Interface for preparing requests and extracting responses.
@@ -167,4 +163,17 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
 
         ExtractedBatchResults<RESPONSE> extractResults(BatchCreateResponse<API_RESPONSE> response);
     }
+
+    /**
+     * Contains the extracted results from a batch operation, separating successful responses from errors.
+     *
+     * <p>This record is used internally by batch processors to return both successful responses
+     * and any errors that occurred during batch processing. Each batch request may succeed or fail
+     * independently, so a single batch operation can produce both responses and errors.</p>
+     *
+     * @param <T>       the type of successful response (e.g., {@code ChatResponse}, {@code Embedding})
+     * @param responses the list of successful responses from the batch operation
+     * @param errors    the list of errors that occurred for individual requests in the batch
+     */
+    record ExtractedBatchResults<T>(List<T> responses, List<BatchError> errors) {}
 }
