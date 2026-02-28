@@ -472,8 +472,8 @@ public class Utils {
         if (map == null) {
             return Map.of();
         }
-
-        return unmodifiableMap(map);
+        // LinkedHashMap to preserve iteration order (important for deterministic toString)
+        return unmodifiableMap(new java.util.LinkedHashMap<>(map));
     }
 
     /**

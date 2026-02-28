@@ -359,6 +359,19 @@ class UtilsTest {
     }
 
     @Test
+    void copied_map_should_not_change_if_original_map_is_updated() {
+        Map<String, Integer> original = new HashMap<>();
+        original.put("k1", 1);
+
+        Map<String, Integer> copy = Utils.copy(original);
+
+        // mutate original after copy
+        original.put("k2", 2);
+
+        assertThat(copy).containsExactly(entry("k1", 1));
+    }
+
+    @Test
     void ensure_trailing_forward_slash() {
         assertThat(Utils.ensureTrailingForwardSlash("https://example.com")).isEqualTo("https://example.com/");
         assertThat(Utils.ensureTrailingForwardSlash("https://example.com/")).isEqualTo("https://example.com/");
