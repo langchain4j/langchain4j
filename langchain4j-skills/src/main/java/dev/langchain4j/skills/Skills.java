@@ -35,7 +35,9 @@ import static java.util.Arrays.asList;
  *
  * MyAiService service = AiServices.builder(MyAiService.class)
  *         .chatModel(chatModel)
- *         .systemMessageTransformer(systemMessage -> systemMessage + "\n" + skills.availableSkillsDescription())
+ *         .systemMessage("You have access to the following skills: " + skills.formatNamesAndDescriptions())
+ *         // OR
+ *         .systemMessageTransformer(systemMessage -> systemMessage + "\n\nYou have access to the following skills: " + skills.formatNamesAndDescriptions())
  *         .toolProvider(skills.toolProvider())
  *         .build();
  * }</pre>
@@ -64,9 +66,8 @@ public class Skills {
      * Returns an XML-formatted string listing all configured skills with their names and descriptions.
      * Intended to be included in the system message to inform the LLM which skills are available.
      */
-    public String availableSkillsDescription() { // TODO name
+    public String formatNamesAndDescriptions() {
         StringBuilder sb = new StringBuilder();
-        sb.append("You have access to the following skills:\n");
         sb.append("<available_skills>\n");
         for (Skill skill : skills) {
             sb.append("<skill>\n")

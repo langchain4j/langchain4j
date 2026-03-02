@@ -77,7 +77,7 @@ class SkillsIT {
         Skills skills = Skills.from(skill);
 
         // then
-        assertThat(skills.availableSkillsDescription()).contains("using-process-tool");
+        assertThat(skills.formatNamesAndDescriptions()).contains("using-process-tool");
         assertThat(getToolNames(skills.toolProvider()))
                 .containsExactlyInAnyOrder("activate_skill", "read_skill_resource");
         assertThat(skills.toolProvider().provideTools(null).tools().keySet().stream()
@@ -90,7 +90,7 @@ class SkillsIT {
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
-                .systemMessageTransformer(systemMessage -> systemMessage + "\n" + skills.availableSkillsDescription())
+                .systemMessage("You have access to the following skills: " + skills.formatNamesAndDescriptions())
                 .tools(spyTools)
                 .toolProvider(skills.toolProvider())
                 .build();
@@ -140,7 +140,7 @@ class SkillsIT {
         Skills skills = Skills.from(skill);
 
         // then
-        assertThat(skills.availableSkillsDescription()).contains("using-process-tool");
+        assertThat(skills.formatNamesAndDescriptions()).contains("using-process-tool");
         assertThat(getToolNames(skills.toolProvider()))
                 .containsExactlyInAnyOrder("activate_skill", "read_skill_resource");
 
@@ -149,7 +149,7 @@ class SkillsIT {
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
-                .systemMessage(skills.availableSkillsDescription())
+                .systemMessage("You have access to the following skills: " + skills.formatNamesAndDescriptions())
                 .tools(spyTools)
                 .toolProvider(skills.toolProvider())
                 .build();
@@ -177,14 +177,14 @@ class SkillsIT {
                 .build();
 
         // then
-        assertThat(skills.availableSkillsDescription()).contains("greeting-user");
+        assertThat(skills.formatNamesAndDescriptions()).contains("greeting-user");
         assertThat(getToolNames(skills.toolProvider()))
                 .containsExactlyInAnyOrder("activate_skill", "run_shell_command");
 
         // given
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
-                .systemMessage(skills.availableSkillsDescription())
+                .systemMessage("You have access to the following skills: " + skills.formatNamesAndDescriptions())
                 .toolProvider(skills.toolProvider())
                 .build();
 
@@ -214,7 +214,7 @@ class SkillsIT {
         Skills skills = Skills.from(firstSkill, secondSkill);
 
         // then
-        assertThat(skills.availableSkillsDescription()).contains("using-poll-tool", "using-process-tool");
+        assertThat(skills.formatNamesAndDescriptions()).contains("using-poll-tool", "using-process-tool");
         assertThat(getToolNames(skills.toolProvider()))
                 .containsExactlyInAnyOrder("activate_skill", "read_skill_resource");
 
@@ -223,7 +223,7 @@ class SkillsIT {
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
-                .systemMessage(skills.availableSkillsDescription())
+                .systemMessage("You have access to the following skills: " + skills.formatNamesAndDescriptions())
                 .tools(spyTools)
                 .toolProvider(skills.toolProvider())
                 .build();
@@ -239,7 +239,7 @@ class SkillsIT {
         verifyNoMoreInteractions(spyTools);
     }
 
-//    @Test
+//    @Test TODO
 //    void should_activate_docx_skill_and_run_scripts() {
 //
 //        // given

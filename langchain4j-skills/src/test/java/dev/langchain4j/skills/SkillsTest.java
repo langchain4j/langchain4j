@@ -16,9 +16,8 @@ class SkillsTest {
                         .build()
         );
 
-        assertThat(skills.availableSkillsDescription()).isEqualTo(
+        assertThat(skills.formatNamesAndDescriptions()).isEqualTo(
                 """
-                You have access to the following skills:
                 <available_skills>
                 <skill>
                 <name>docx</name>
@@ -43,9 +42,8 @@ class SkillsTest {
                         .build()
         );
 
-        assertThat(skills.availableSkillsDescription()).isEqualTo(
+        assertThat(skills.formatNamesAndDescriptions()).isEqualTo(
                 """
-                You have access to the following skills:
                 <available_skills>
                 <skill>
                 <name>docx</name>
@@ -69,9 +67,8 @@ class SkillsTest {
                         .build()
         );
 
-        assertThat(skills.availableSkillsDescription()).isEqualTo(
+        assertThat(skills.formatNamesAndDescriptions()).isEqualTo(
                 """
-                You have access to the following skills:
                 <available_skills>
                 <skill>
                 <name>skill&lt;&gt;&amp;&quot;&apos;</name>
