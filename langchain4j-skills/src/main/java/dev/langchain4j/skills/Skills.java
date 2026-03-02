@@ -35,8 +35,8 @@ import static java.util.Arrays.asList;
  *
  * MyAiService service = AiServices.builder(MyAiService.class)
  *         .chatModel(chatModel)
+ *         .systemMessageTransformer(systemMessage -> systemMessage + "\n" + skills.availableSkillsDescription())
  *         .toolProvider(skills.toolProvider())
- *         .systemMessage(skills.availableSkillsDescription()) // TODO
  *         .build();
  * }</pre>
  */

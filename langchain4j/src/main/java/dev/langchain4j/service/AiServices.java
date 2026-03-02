@@ -8,6 +8,7 @@ import static java.util.stream.Collectors.toList;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ReturnBehavior;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -272,6 +273,51 @@ public abstract class AiServices<T> {
      */
     public AiServices<T> systemMessageProvider(Function<Object, String> systemMessageProvider) {
         context.systemMessageProvider = systemMessageProvider.andThen(Optional::ofNullable);
+        return this;
+    }
+
+    /**
+     * Configures a transformer that will be applied to the system message on each AI service invocation,
+     * after all other system message configuration (i.e., {@code @SystemMessage} annotation and
+     * {@link #systemMessageProvider(Function)}) has been applied, but before the
+     * {@link #chatRequestTransformer(UnaryOperator)} is invoked.
+     * <p>
+     * This can be used to dynamically modify the content of the system message.
+     * The transformer receives the current system message text (or {@code null} if no system message
+     * has been configured) and must return the new system message text, or {@code null} to produce
+     * no system message.
+     *
+     * @param systemMessageTransformer A {@link UnaryOperator} that accepts the current system message
+     *                                 text and returns the transformed text.
+     * @return builder
+     * @see #systemMessageTransformer(BiFunction)
+     * @since 1.12.0
+     */
+    public AiServices<T> systemMessageTransformer(UnaryOperator<String> systemMessageTransformer) {
+        context.systemMessageTransformer = (msg, ctx) -> systemMessageTransformer.apply(msg);
+        return this;
+    }
+
+    /**
+     * Configures a transformer that will be applied to the system message on each AI service invocation,
+     * after all other system message configuration (i.e., {@code @SystemMessage} annotation and
+     * {@link #systemMessageProvider(Function)}) has been applied, but before the
+     * {@link #chatRequestTransformer(UnaryOperator)} is invoked.
+     * <p>
+     * This can be used to dynamically modify the content of the system message.
+     * The transformer receives the current system message text (or {@code null} if no system message
+     * has been configured) and the {@link InvocationContext} of the current invocation,
+     * and must return the new system message text, or {@code null} to produce no system message.
+     *
+     * @param systemMessageTransformer A {@link BiFunction} that accepts the current system message text
+     *                                 and the {@link InvocationContext}, and returns the transformed text.
+     * @return builder
+     * @see #systemMessageTransformer(UnaryOperator)
+     * @since 1.12.0
+     */
+    public AiServices<T> systemMessageTransformer(
+            BiFunction<String, InvocationContext, String> systemMessageTransformer) {
+        context.systemMessageTransformer = systemMessageTransformer;
         return this;
     }
 

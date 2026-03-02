@@ -90,7 +90,7 @@ class SkillsIT {
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
-                .systemMessage(skills.availableSkillsDescription())
+                .systemMessageTransformer(systemMessage -> systemMessage + "\n" + skills.availableSkillsDescription())
                 .tools(spyTools)
                 .toolProvider(skills.toolProvider())
                 .build();
