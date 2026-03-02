@@ -487,6 +487,8 @@ public abstract class AiServices<T> {
      *
      * @param toolProvider the tool provider to use
      * @return this builder
+     * @see #toolProviders(Collection)
+     * @see #toolProviders(ToolProvider...)
      * @see ToolProvider
      */
     public AiServices<T> toolProvider(ToolProvider toolProvider) {
@@ -503,6 +505,8 @@ public abstract class AiServices<T> {
      *
      * @param toolProviders the tool providers to use
      * @return this builder
+     * @see #toolProvider(ToolProvider)
+     * @see #toolProviders(ToolProvider...)
      * @see ToolProvider
      */
     public AiServices<T> toolProviders(Collection<ToolProvider> toolProviders) {
@@ -519,6 +523,8 @@ public abstract class AiServices<T> {
      *
      * @param toolProviders the tool providers to use
      * @return this builder
+     * @see #toolProvider(ToolProvider)
+     * @see #toolProviders(Collection)
      * @see ToolProvider
      */
     public AiServices<T> toolProviders(ToolProvider... toolProviders) {
