@@ -14,9 +14,9 @@ class ActivateSkillToolExecutor extends AbstractSkillToolExecutor {
     private final ActivateSkillToolConfig config;
     private final Map<String, Skill> skillsByName;
 
-    public ActivateSkillToolExecutor(ActivateSkillToolConfig config,
-                                     Map<String, Skill> skillsByName,
-                                     boolean throwToolArgumentsExceptions) {
+    ActivateSkillToolExecutor(ActivateSkillToolConfig config,
+                              Map<String, Skill> skillsByName,
+                              boolean throwToolArgumentsExceptions) {
         super(throwToolArgumentsExceptions);
         this.config = ensureNotNull(config, "config");
         this.skillsByName = copy(skillsByName);

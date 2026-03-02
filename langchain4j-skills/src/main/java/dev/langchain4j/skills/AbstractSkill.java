@@ -8,7 +8,7 @@ import java.util.Set;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
-public abstract class AbstractSkill implements Skill { // TODO check all access qualifiers
+public abstract class AbstractSkill implements Skill {
 
     private final String name;
     private final String description;

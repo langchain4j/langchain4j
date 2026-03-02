@@ -16,9 +16,9 @@ class ReadResourceToolExecutor extends AbstractSkillToolExecutor {
     private final ReadResourceToolConfig config;
     private final Map<String, Skill> skillsByName;
 
-    public ReadResourceToolExecutor(ReadResourceToolConfig config,
-                                    Map<String, Skill> skillsByName,
-                                    boolean throwToolArgumentsExceptions) {
+    ReadResourceToolExecutor(ReadResourceToolConfig config,
+                             Map<String, Skill> skillsByName,
+                             boolean throwToolArgumentsExceptions) {
         super(throwToolArgumentsExceptions);
         this.config = ensureNotNull(config, "config");
         this.skillsByName = copy(skillsByName);
