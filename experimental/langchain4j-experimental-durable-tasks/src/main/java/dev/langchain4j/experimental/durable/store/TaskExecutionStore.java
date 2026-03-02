@@ -15,11 +15,12 @@ import java.util.Set;
  * <p>Implementations must be safe for concurrent access from multiple threads.
  * All mutating operations should be atomic with respect to a single task.
  *
- * <p>Two built-in implementations are provided:
+ * <p>A built-in file-based implementation is provided:
  * <ul>
- *   <li>{@code InMemoryTaskExecutionStore} — for testing and development</li>
- *   <li>{@code FileTaskExecutionStore} — for single-node production use</li>
+ *   <li>{@code FileTaskExecutionStore} — append-only JSON journal for single-node production use</li>
  * </ul>
+ *
+ * <p>For testing, an in-memory implementation is available in the {@code test} scope.
  */
 @Experimental
 public interface TaskExecutionStore {

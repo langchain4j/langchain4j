@@ -1,6 +1,5 @@
 package dev.langchain4j.experimental.durable.store;
 
-import dev.langchain4j.Experimental;
 import dev.langchain4j.experimental.durable.store.event.TaskEvent;
 import dev.langchain4j.experimental.durable.task.TaskId;
 import dev.langchain4j.experimental.durable.task.TaskMetadata;
@@ -14,15 +13,15 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
- * In-memory implementation of {@link TaskExecutionStore} backed by concurrent hash maps.
+ * Test-only in-memory implementation of {@link TaskExecutionStore}.
  *
- * <p>This implementation is suitable for testing and development. All data is lost when
- * the JVM exits. For production use, consider {@code FileTaskExecutionStore} or a
- * custom database-backed implementation.
+ * <p><strong>Not suitable for production use.</strong> All data is lost when the JVM exits.
+ * This class exists solely as a test helper and is not part of the module's public API.
+ * For production use, see {@link dev.langchain4j.experimental.durable.store.file.FileTaskExecutionStore}
+ * or provide a custom database-backed implementation of {@link TaskExecutionStore}.
  *
  * <p>All operations are thread-safe.
  */
-@Experimental
 public class InMemoryTaskExecutionStore implements TaskExecutionStore {
 
     private final ConcurrentHashMap<TaskId, TaskMetadata> metadataMap = new ConcurrentHashMap<>();
