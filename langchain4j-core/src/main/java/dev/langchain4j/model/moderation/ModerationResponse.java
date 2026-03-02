@@ -1,11 +1,10 @@
 package dev.langchain4j.model.moderation;
 
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import java.util.Map;
 import java.util.Objects;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Represents a moderation response.
@@ -14,12 +13,11 @@ public class ModerationResponse {
 
     private final Moderation moderation;
 
-    @Nullable
     private final Map<String, Object> metadata;
 
     private ModerationResponse(Builder builder) {
         this.moderation = ensureNotNull(builder.moderation, "moderation");
-        this.metadata = copyIfNotNull(builder.metadata);
+        this.metadata = copy(builder.metadata);
     }
 
     /**
@@ -32,11 +30,10 @@ public class ModerationResponse {
     }
 
     /**
-     * Returns the metadata, if available.
+     * Returns the metadata.
      *
-     * @return the metadata, or {@code null} if not available.
+     * @return the metadata.
      */
-    @Nullable
     public Map<String, Object> metadata() {
         return metadata;
     }

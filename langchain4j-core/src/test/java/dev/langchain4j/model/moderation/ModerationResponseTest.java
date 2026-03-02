@@ -33,7 +33,7 @@ class ModerationResponseTest {
 
         // then
         assertThat(response.moderation()).isEqualTo(moderation);
-        assertThat(response.metadata()).isNull();
+        assertThat(response.metadata()).isEmpty();
     }
 
     @Test
