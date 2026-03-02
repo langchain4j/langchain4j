@@ -25,8 +25,8 @@ class MilvusV2EmbeddingStoreCloudIT extends EmbeddingStoreWithFilteringIT {
     private static final String COLLECTION_NAME = "test_collection";
 
     MilvusV2EmbeddingStore embeddingStore = MilvusV2EmbeddingStore.builder()
-            .uri("https://in03-867b3b928640632.serverless.gcp-us-west1.cloud.zilliz.com")
-            .token("ddde4f5fa2c753683fbc184b858c9348edbef1a1fa1b0cf50ffea468ae586df4bd7f37f0bd9ee1424e80c8129d4ddf0300936b93")
+            .uri(System.getenv("MILVUS_API_URI"))
+            .token(System.getenv("MILVUS_API_KEY"))
             .collectionName(COLLECTION_NAME)
             .consistencyLevel(ConsistencyLevel.STRONG)
             .dimension(384)
@@ -54,8 +54,8 @@ class MilvusV2EmbeddingStoreCloudIT extends EmbeddingStoreWithFilteringIT {
     @Test
     void should_not_retrieve_embeddings_when_searching() {
         EmbeddingStore<TextSegment> embeddingStore = MilvusV2EmbeddingStore.builder()
-                .uri("https://in03-867b3b928640632.serverless.gcp-us-west1.cloud.zilliz.com")
-                .token("ddde4f5fa2c753683fbc184b858c9348edbef1a1fa1b0cf50ffea468ae586df4bd7f37f0bd9ee1424e80c8129d4ddf0300936b93")
+                .uri(System.getenv("MILVUS_API_URI"))
+                .token(System.getenv("MILVUS_API_KEY"))
                 .collectionName(COLLECTION_NAME)
                 .consistencyLevel(ConsistencyLevel.STRONG)
                 .dimension(384)
@@ -88,8 +88,8 @@ class MilvusV2EmbeddingStoreCloudIT extends EmbeddingStoreWithFilteringIT {
         // given
         String hybridColl = COLLECTION_NAME + "_hybrid";
         MilvusV2EmbeddingStore hybridStore = MilvusV2EmbeddingStore.builder()
-                .uri("https://in03-867b3b928640632.serverless.gcp-us-west1.cloud.zilliz.com")
-                .token("ddde4f5fa2c753683fbc184b858c9348edbef1a1fa1b0cf50ffea468ae586df4bd7f37f0bd9ee1424e80c8129d4ddf0300936b93")
+                .uri(System.getenv("MILVUS_API_URI"))
+                .token(System.getenv("MILVUS_API_KEY"))
                 .collectionName(hybridColl)
                 .consistencyLevel(ConsistencyLevel.STRONG)
                 .dimension(384)
@@ -135,8 +135,8 @@ class MilvusV2EmbeddingStoreCloudIT extends EmbeddingStoreWithFilteringIT {
     void should_perform_hybrid_search_bm25_in_cloud() {
         String coll = COLLECTION_NAME + "_bm25_hybrid_" + System.currentTimeMillis();
         MilvusV2EmbeddingStore store = MilvusV2EmbeddingStore.builder()
-                .uri("https://in03-867b3b928640632.serverless.gcp-us-west1.cloud.zilliz.com")
-                .token("ddde4f5fa2c753683fbc184b858c9348edbef1a1fa1b0cf50ffea468ae586df4bd7f37f0bd9ee1424e80c8129d4ddf0300936b93")
+                .uri(System.getenv("MILVUS_API_URI"))
+                .token(System.getenv("MILVUS_API_KEY"))
                 .collectionName(coll)
                 .consistencyLevel(ConsistencyLevel.STRONG)
                 .dimension(384)
