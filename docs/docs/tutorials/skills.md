@@ -92,12 +92,14 @@ You can create them from any source — a database, a remote API, generated at r
 
 ```java
 Skill skill = Skill.builder()
-        .name("greeting-user") // TODO use another example, more real-world
-        .description("Explains how to properly greet the user")
+        .name("incident-response")
+        .description("Step-by-step runbook for diagnosing and resolving production incidents")
         .content("""
-                Always greet the user by their first name.
-                If you don't know the user's name, ask for it before proceeding.
-                Use a friendly but professional tone.
+                When a production alert fires:
+                1. Call `fetchRecentLogs(serviceName)` to retrieve the last 5 minutes of logs.
+                2. Call `checkServiceHealth(serviceName)` to get current health metrics.
+                3. Based on the findings, call `createIncidentTicket(summary, severity)`.
+                4. If severity is CRITICAL, also call `pageOnCall(incidentId)`.
                 """)
         .build();
 
@@ -120,73 +122,21 @@ Skill skill = Skill.builder()
         .build();
 ```
 
-## Integrating with an AI Service
+## Use Cases
 
-Pass the `ToolProvider` from `Skills` to your AI Service builder.
-Use `availableSkillsDescription()` as (part of) the system message so the LLM knows which
-skills it can activate:
+Skills can be integrated with an AI Service in two distinct ways, depending on how much
+control and trust you need.
 
-```java
-Skills skills = Skills.from(FileSystemSkillLoader.loadSkills(Path.of("skills/")));
+### Use Case 1: Skills with Tools (Recommended)
 
-MyAiService service = AiServices.builder(MyAiService.class)
-        .chatModel(chatModel)
-        .toolProvider(skills.toolProvider())
-        .systemMessageTransformer(systemMessage ->
-                systemMessage + "\n" + skills.availableSkillsDescription())
-        .build();
-```
+In this mode the LLM activates a skill to receive step-by-step instructions, then carries
+them out by calling the [Tools (function calling)](/tutorials/tools) you have explicitly
+registered. Because only your pre-defined `@Tool` methods can be invoked, **there is no
+risk of arbitrary code execution**.
 
-`availableSkillsDescription()` produces an XML-formatted block listing each skill's name and description, for example:
-
-```xml
-You have access to the following skills:
-<available_skills>
-<skill>
-<name>docx</name>
-<description>Edit and review Word documents</description>
-</skill>
-<skill>
-<name>data-analysis</name>
-<description>Analyse tabular data and produce charts</description>
-</skill>
-</available_skills>
-```
-
-## Script Execution
-
-:::warning
-**Script execution is inherently unsafe.**
-Commands run directly in the host process environment **without any sandboxing, containerisation,
-or privilege restriction**. A misbehaving or prompt-injected LLM can execute arbitrary commands
-on the machine running your application.
-Only enable this feature in controlled environments where you fully trust the input and accept
-the associated risks.
-:::
-
-Script execution is **disabled by default**. You can enable it with `allowRunningShellCommands(true)`:
-
-```java
-Skills skills = Skills.builder()
-        .skills(FileSystemSkillLoader.loadSkills(Path.of("skills/")))
-        .allowRunningShellCommands(true)
-        .build();
-```
-
-When enabled, the `run_shell_command` tool is registered instead of `read_skill_resource`.
-The LLM can run any shell command, optionally scoped to a specific skill's root directory
-as the working directory.
-
-### Scripts vs. Tools — What to Use in Production
-
-// TODO it is useful when user wants to take existing skills created by someone else for experimentation and prototyping
-Script execution is primarily useful for **experimentation and prototyping**
-quickly wiring up a workflow without writing Java tool methods.
-
-For production use, prefer defining actions that LLM can perform as [Tools (function calling)](/tutorials/tools).
-Skills excel at describing _how_ to use those tools — specifying the exact order of calls,
-required arguments, error-handling steps, and worked examples — while the actual execution
-stays in type-safe, tested, sandboxed Java code:
+This is the recommended approach for production. Skills describe the *policy* — the exact
+order of calls, required arguments, error-handling steps, and worked examples — while the
+actual execution stays in type-safe, tested Java code:
 
 ```markdown
 ---
@@ -203,8 +153,74 @@ To process an order:
 If any step fails, call `rollbackOrder(orderId)` before reporting the error.
 ```
 
-The LLM activates this skill to receive the step-by-step instructions, then uses your
-registered Java `@Tool` methods to carry them out.
+Pass the `ToolProvider` from `Skills` to your AI Service builder alongside your regular tools.
+Use `availableSkillsDescription()` as (part of) the system message so the LLM
+knows which skills it can activate:
+
+```java
+Skills skills = Skills.from(FileSystemSkillLoader.loadSkills(Path.of("skills/")));
+
+MyAiService service = AiServices.builder(MyAiService.class)
+        .chatModel(chatModel)
+        .tools(new OrderTools()) // your @Tool methods
+        .toolProvider(skills.toolProvider()) // or .toolProviders(mcpToolProvider, skills.toolProvider())
+        .systemMessageTransformer(systemMessage ->
+                systemMessage + "\n" + skills.availableSkillsDescription())
+        .build();
+```
+
+`availableSkillsDescription()` produces an XML-formatted block listing each skill's name and description, for example:
+
+```xml
+You have access to the following skills:
+<available_skills>
+<skill>
+<name>process-order</name>
+<description>Processes a customer order end-to-end</description>
+</skill>
+<skill>
+<name>data-analysis</name>
+<description>Analyse tabular data and produce charts</description>
+</skill>
+</available_skills>
+```
+
+### Use Case 2: Skills with Scripts (Experimental)
+
+:::warning
+**Script execution is inherently unsafe.**
+Commands run directly in the host process environment **without any sandboxing, containerisation,
+or privilege restriction**. A misbehaving or prompt-injected LLM can execute arbitrary commands
+on the machine running your application.
+Only enable this feature in controlled environments where you fully trust the input and accept
+the associated risks.
+:::
+
+Script execution is **disabled by default**. Enable it with `allowRunningShellCommands(true)`:
+
+```java
+Skills skills = Skills.builder()
+        .skills(FileSystemSkillLoader.loadSkills(Path.of("skills/")))
+        .allowRunningShellCommands(true)
+        .build();
+
+MyAiService service = AiServices.builder(MyAiService.class)
+        .chatModel(chatModel)
+        .toolProvider(skills.toolProvider())
+        .systemMessageTransformer(systemMessage ->
+                systemMessage + "\n" + skills.availableSkillsDescription())
+        .build();
+```
+
+When enabled, the `run_shell_command` tool is registered instead of `read_skill_resource`.
+The LLM can run any shell command, optionally scoped to a specific skill's root directory
+as the working directory.
+
+This mode is best suited for **experimentation, prototyping**, or when you want to use
+third-party skills published by the community (e.g. from the
+[agentskills.io](https://agentskills.io) ecosystem) without first porting them to Java.
+It lets you wire up a working workflow quickly, then migrate individual actions to proper
+`@Tool` methods as the solution matures.
 
 ## Customisation
 
