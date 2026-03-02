@@ -59,8 +59,7 @@ class RunShellCommandToolExecutor extends AbstractSkillToolExecutor {
             if (result.isSuccess()) {
                 String resultText = """
                         <working_dir>%s</working_dir>
-                        <stdout>%s</stdout>
-                        """.formatted(resolvedWorkingDir, stdOut);
+                        <stdout>%s</stdout>""".formatted(resolvedWorkingDir, stdOut);
                 return ToolExecutionResult.builder()
                         .resultText(resultText)
                         .build();
@@ -70,19 +69,19 @@ class RunShellCommandToolExecutor extends AbstractSkillToolExecutor {
                         <working_dir>%s</working_dir>
                         <exit_code>%s</exit_code>
                         <stdout>%s</stdout>
-                        <stderr>%s</stderr>
-                        """.formatted(resolvedWorkingDir, result.exitCode(), stdOut, stdErr);
+                        <stderr>%s</stderr>""".formatted(resolvedWorkingDir, result.exitCode(), stdOut, stdErr);
                 return ToolExecutionResult.builder()
                         .isError(true)
                         .resultText(resultText)
                         .build();
             }
         } catch (ShellCommandRunner.TimeoutException e) {
+            String stdOut = formatStdOut(e.partialStdOut());
+            String stdErr = formatStdErr(e.partialStdErr());
             String resultText = """
                     <working_dir>%s</working_dir>
                     <std_out>%s</std_out>
-                    <std_err>%s</std_err>
-                    """.formatted(resolvedWorkingDir, formatStdOut(e.partialStdOut()), formatStdErr(e.partialStdErr()));
+                    <std_err>%s</std_err>""".formatted(resolvedWorkingDir, stdOut, stdErr);
             return ToolExecutionResult.builder()
                     .isError(true)
                     .resultText(resultText)
