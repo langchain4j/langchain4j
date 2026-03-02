@@ -222,16 +222,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     @Override
     public void onCompleteToolCall(CompleteToolCall completeToolCall) {
-        if (toolExecutor != null) {
-            ToolExecutionRequest toolRequest = completeToolCall.toolExecutionRequest();
-            var future = CompletableFuture.supplyAsync(
-                    () -> {
-                        ToolExecutionResult toolResult = execute(toolRequest);
-                        return new ToolRequestResult(toolRequest, toolResult);
-                    },
-                    toolExecutor);
-            toolExecutionFutures.add(future);
-        }
+        // Tool execution is deferred to onCompleteResponse() to guarantee
+        // intermediateResponseHandler fires before any tool starts executing.
     }
 
     private <T> void fireInvocationComplete(T result) {
@@ -292,6 +284,15 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             boolean immediateToolReturn = true;
 
             if (toolExecutor != null) {
+                for (ToolExecutionRequest toolRequest : aiMessage.toolExecutionRequests()) {
+                    var future = CompletableFuture.supplyAsync(
+                            () -> {
+                                ToolExecutionResult toolResult = execute(toolRequest);
+                                return new ToolRequestResult(toolRequest, toolResult);
+                            },
+                            toolExecutor);
+                    toolExecutionFutures.add(future);
+                }
                 for (Future<ToolRequestResult> toolExecutionFuture : toolExecutionFutures) {
                     try {
                         ToolRequestResult toolRequestResult = toolExecutionFuture.get();
