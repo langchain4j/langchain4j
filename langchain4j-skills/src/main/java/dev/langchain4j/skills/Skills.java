@@ -96,19 +96,19 @@ public class Skills {
         Map<String, Skill> skillsByName = new LinkedHashMap<>();
         skills.forEach(skill -> skillsByName.put(skill.name(), skill));
 
-        ActivateSkillToolConfig config = getOrDefault(builder.activateSkillToolConfig, ActivateSkillToolConfig.builder().build());
+        ActivateSkillToolConfig asc = getOrDefault(builder.activateSkillToolConfig, ActivateSkillToolConfig.builder().build());
 
         ToolSpecification activateSkillTool = ToolSpecification.builder()
-                .name(config.name)
-                .description(config.description)
+                .name(asc.name)
+                .description(asc.description)
                 .parameters(JsonObjectSchema.builder()
-                        .addStringProperty(config.parameterName, config.parameterDescription)
-                        .required(config.parameterName)
+                        .addStringProperty(asc.parameterName, asc.parameterDescription)
+                        .required(asc.parameterName)
                         .build())
                 .addMetadata(METADATA_SEARCH_BEHAVIOR, ALWAYS_VISIBLE)
                 .build();
 
-        ToolExecutor activateSkillExecutor = new ActivateSkillToolExecutor(config, skillsByName, throwToolArgumentsExceptions);
+        ToolExecutor activateSkillExecutor = new ActivateSkillToolExecutor(asc, skillsByName, throwToolArgumentsExceptions);
 
         Map<ToolSpecification, ToolExecutor> tools = new HashMap<>();
         tools.put(activateSkillTool, activateSkillExecutor);

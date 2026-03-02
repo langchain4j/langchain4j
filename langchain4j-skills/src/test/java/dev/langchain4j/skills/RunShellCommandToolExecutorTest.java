@@ -25,8 +25,6 @@ class RunShellCommandToolExecutorTest {
         assertThat(executor.resolveTimeout(Map.of(timeoutSecondsParameterName, "1"))).isEqualTo(1);
     }
 
-    // --- stdout truncation on success ---
-
     @Test
     @DisabledOnOs(OS.WINDOWS)
     void should_not_truncate_stdout_on_success_when_within_limit_on_unix() {
@@ -70,8 +68,6 @@ class RunShellCommandToolExecutorTest {
         assertThat(result.resultText()).contains("100");
     }
 
-    // --- stdout truncation on error ---
-
     @Test
     @DisabledOnOs(OS.WINDOWS)
     void should_truncate_stdout_on_error_when_exceeds_limit_on_unix() {
@@ -95,8 +91,6 @@ class RunShellCommandToolExecutorTest {
         assertThat(result.resultText()).contains("[truncated:");
         assertThat(result.resultText()).contains("100");
     }
-
-    // --- stderr truncation on error ---
 
     @Test
     @DisabledOnOs(OS.WINDOWS)
@@ -145,8 +139,6 @@ class RunShellCommandToolExecutorTest {
         assertThat(result.resultText()).contains("[truncated:");
         assertThat(result.resultText()).contains("100");
     }
-
-    // --- helpers ---
 
     private RunShellCommandToolExecutor executor(int maxStdOutChars, int maxStdErrChars) {
         return new RunShellCommandToolExecutor(
