@@ -32,8 +32,8 @@ public interface Skill {
 
     /**
      * Returns the list of additional resources associated with this skill
-     * (e.g. references, assets, etc.).
-     * The LLM can read them via the {@code read_skill_resource} tool once the skill is activated.
+     * (e.g. references, assets, templates, etc.).
+     * The LLM can read them by calling the {@code read_skill_resource} tool once the skill is activated.
      */
     List<SkillResource> resources();
 

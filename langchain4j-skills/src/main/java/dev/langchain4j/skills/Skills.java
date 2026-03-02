@@ -40,7 +40,7 @@ import static java.util.Arrays.asList;
  *         .systemMessage("You have access to the following skills: " + skills.formatNamesAndDescriptions() + "\nWhen the user's request relates to one of these skills, activate it first using the 'activate_skill' tool before proceeding.")
  *         // or, if you already have a system message configured:
  *         .systemMessageTransformer(systemMessage -> systemMessage + "\n\nYou have access to the following skills: " + skills.formatNamesAndDescriptions() + "\nWhen the user's request relates to one of these skills, activate it first using the 'activate_skill' tool before proceeding.")
- *         .toolProvider(skills.toolProvider())
+ *         .toolProvider(skills.toolProvider()) // or .toolProviders(mcpToolProvider, skills.toolProvider())
  *         .build();
  * }</pre>
  */
@@ -48,11 +48,13 @@ public class Skills {
 
     private final List<Skill> skills;
     private final ToolProvider toolProvider;
+    private final String namesAndDescriptions;
     private final boolean throwToolArgumentsExceptions;
 
     public Skills(Builder builder) {
         this.skills = copy(ensureNotEmpty(builder.skills, "skills"));
         this.toolProvider = createToolProvider(builder);
+        this.namesAndDescriptions = formatNamesAndDescriptions(builder.skills);
         this.throwToolArgumentsExceptions = getOrDefault(builder.throwToolArgumentsExceptions, false);
     }
 
@@ -69,20 +71,7 @@ public class Skills {
      * Intended to be included in the system message to inform the LLM which skills are available.
      */
     public String formatNamesAndDescriptions() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("<available_skills>\n");
-        for (Skill skill : skills) {
-            sb.append("<skill>\n")
-                    .append("<name>")
-                    .append(escapeXml(skill.name()))
-                    .append("</name>\n")
-                    .append("<description>")
-                    .append(escapeXml(skill.description()))
-                    .append("</description>\n")
-                    .append("</skill>\n");
-        }
-        sb.append("</available_skills>");
-        return sb.toString();
+        return namesAndDescriptions;
     }
 
     /**
@@ -180,6 +169,23 @@ public class Skills {
             return rrc.relativePathParameterDescription;
         }
         return rrc.relativePathParameterDescriptionProvider.apply(skills);
+    }
+
+    private static String formatNamesAndDescriptions(Collection<? extends Skill> skills) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("<available_skills>\n");
+        for (Skill skill : skills) {
+            sb.append("<skill>\n")
+                    .append("<name>")
+                    .append(escapeXml(skill.name()))
+                    .append("</name>\n")
+                    .append("<description>")
+                    .append(escapeXml(skill.description()))
+                    .append("</description>\n")
+                    .append("</skill>\n");
+        }
+        sb.append("</available_skills>");
+        return sb.toString();
     }
 
     private static String escapeXml(String input) {

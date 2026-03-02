@@ -15,14 +15,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 class RunShellCommandToolExecutorTest {
 
     @Test
-    void test_getTimeoutSeconds() {
+    void test_resolveTimeout() {
         String timeoutSecondsParameterName = RunShellCommandToolConfig.DEFAULT_TIMEOUT_SECONDS_PARAMETER_NAME;
 
         RunShellCommandToolExecutor executor = executor(1, 1);
 
-        assertThat(executor.getTimeoutSeconds(Map.of())).isNull();
-        assertThat(executor.getTimeoutSeconds(Map.of(timeoutSecondsParameterName, 1))).isEqualTo(1);
-        assertThat(executor.getTimeoutSeconds(Map.of(timeoutSecondsParameterName, "1"))).isEqualTo(1);
+        assertThat(executor.resolveTimeout(Map.of())).isNull();
+        assertThat(executor.resolveTimeout(Map.of(timeoutSecondsParameterName, 1))).isEqualTo(1);
+        assertThat(executor.resolveTimeout(Map.of(timeoutSecondsParameterName, "1"))).isEqualTo(1);
     }
 
     // --- stdout truncation on success ---

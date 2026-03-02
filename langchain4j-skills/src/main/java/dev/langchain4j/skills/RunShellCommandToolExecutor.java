@@ -35,7 +35,7 @@ class RunShellCommandToolExecutor extends AbstractSkillToolExecutor {
         Map<String, Object> arguments = parseArguments(request.arguments());
         String command = getRequiredArgument(config.commandParameterName, arguments);
         String skillName = arguments.containsKey(config.skillNameParameterName) ? arguments.get(config.skillNameParameterName).toString() : null;
-        Integer timeoutSeconds = getTimeoutSeconds(arguments);
+        Integer timeoutSeconds = resolveTimeout(arguments);
 
         Path workingDir = null;
         if (skillName != null && !skillName.isBlank()) {
@@ -96,11 +96,11 @@ class RunShellCommandToolExecutor extends AbstractSkillToolExecutor {
     }
 
     private String formatStdOut(String stdOut) {
-        return stdOut.isEmpty() ? "(empty)" : truncate(stdOut, config.maxStdOutChars);
+        return truncate(stdOut, config.maxStdOutChars);
     }
 
     private String formatStdErr(String stdErr) {
-        return stdErr.isEmpty() ? "(empty)" : truncate(stdErr, config.maxStdErrChars);
+        return truncate(stdErr, config.maxStdErrChars);
     }
 
     private static String truncate(String text, int maxChars) {
@@ -109,7 +109,7 @@ class RunShellCommandToolExecutor extends AbstractSkillToolExecutor {
                 + text.substring(text.length() - maxChars);
     }
 
-    Integer getTimeoutSeconds(Map<String, Object> arguments) {
+    Integer resolveTimeout(Map<String, Object> arguments) {
         Object timeoutSeconds = arguments.get(config.timeoutSecondsParameterName);
         if (timeoutSeconds == null) {
             return null;
