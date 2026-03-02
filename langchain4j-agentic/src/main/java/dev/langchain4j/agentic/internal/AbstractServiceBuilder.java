@@ -3,6 +3,7 @@ package dev.langchain4j.agentic.internal;
 import static dev.langchain4j.agentic.internal.AgentUtil.agentsToExecutors;
 import static dev.langchain4j.agentic.internal.AgentUtil.buildAgent;
 import static dev.langchain4j.agentic.internal.AgentUtil.keyName;
+import static dev.langchain4j.agentic.observability.ComposedAgentListener.listenerOfType;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import dev.langchain4j.agentic.Agent;
@@ -12,6 +13,7 @@ import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentMonitor;
 import dev.langchain4j.agentic.observability.ComposedAgentListener;
+import dev.langchain4j.agentic.observability.MonitoredAgent;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -144,19 +146,16 @@ public abstract class AbstractServiceBuilder<T, S> {
     }
 
     public T build(Supplier<Planner> plannerSupplier) {
-        AgentInstance agent = (AgentInstance) build(new PlannerBasedInvocationHandler(this, plannerSupplier));
-        registerRootAgentOnMonitor(agent);
-        return (T) agent;
-    }
-
-    private void registerRootAgentOnMonitor(AgentInstance agent) {
-        if (agentListener instanceof AgentMonitor monitor) {
-            monitor.setRootAgent(agent);
-        } else if (agentListener instanceof ComposedAgentListener composed) {
-            composed.listeners().stream().filter(AgentMonitor.class::isInstance)
-                    .map(AgentMonitor.class::cast)
-                    .forEach(monitor -> monitor.setRootAgent(agent));
+        AgentMonitor monitor = listenerOfType(agentListener, AgentMonitor.class);
+        if (MonitoredAgent.class.isAssignableFrom(agentServiceClass) && monitor == null) {
+            monitor = new AgentMonitor();
+            listener(monitor);
         }
+        AgentInstance agent = (AgentInstance) build(new PlannerBasedInvocationHandler(this, plannerSupplier));
+        if (monitor != null) {
+            monitor.setRootAgent(agent);
+        }
+        return (T) agent;
     }
 
     public T build(InvocationHandler invocationHandler) {
