@@ -35,9 +35,9 @@ import static java.util.Arrays.asList;
  *
  * MyAiService service = AiServices.builder(MyAiService.class)
  *         .chatModel(chatModel)
- *         .systemMessage("You have access to the following skills: " + skills.formatNamesAndDescriptions())
- *         // OR
- *         .systemMessageTransformer(systemMessage -> systemMessage + "\n\nYou have access to the following skills: " + skills.formatNamesAndDescriptions())
+ *         .systemMessage("You have access to the following skills: " + skills.formatNamesAndDescriptions() + "\nWhen the user's request relates to one of these skills, activate it first using the 'activate_skill' tool before proceeding.")
+ *         // or, if you already have a system message configured:
+ *         .systemMessageTransformer(systemMessage -> systemMessage + "\n\nYou have access to the following skills: " + skills.formatNamesAndDescriptions() + "\nWhen the user's request relates to one of these skills, activate it first using the 'activate_skill' tool before proceeding.")
  *         .toolProvider(skills.toolProvider())
  *         .build();
  * }</pre>
