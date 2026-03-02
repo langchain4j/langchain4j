@@ -18,9 +18,9 @@ import static java.util.stream.Collectors.joining;
 import static java.util.stream.StreamSupport.stream;
 
 /**
- * Loads {@link FileSystemSkill} instances from the file system.
+ * Loads skills from the file system.
  * <p>
- * Each skill resides in its own subdirectory containing a {@code SKILL.md} file.
+ * Each skill must reside in its own directory containing a {@code SKILL.md} file.
  * The file must have a YAML front matter block that declares the skill's {@code name}
  * and {@code description}. The body of the file (below the front matter) becomes the
  * skill's {@link Skill#content() content}.
@@ -36,7 +36,7 @@ import static java.util.stream.StreamSupport.stream;
  * description: Does something useful
  * ---
  *
- * Instructions for the LLM go here.
+ * Detailed instructions for the LLM go here.
  * }</pre>
  */
 public class FileSystemSkillLoader {
