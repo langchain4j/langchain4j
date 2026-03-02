@@ -166,17 +166,23 @@ public class Skills {
         RunShellCommandToolConfig runShellCommandToolConfig;
         Boolean throwToolArgumentsExceptions;
 
+        /**
+         * TODO
+         */
         public Builder skills(Collection<? extends Skill> skills) {
             this.skills = skills;
             return this;
         }
 
+        /**
+         * TODO
+         */
         public Builder skills(Skill... skills) {
             return skills(asList(skills));
         }
 
         /**
-         * Configures the {@code activate_skill} tool.
+         * Customizes the {@code activate_skill} tool.
          */
         public Builder activateSkillToolConfig(ActivateSkillToolConfig activateSkillToolConfig) {
             this.activateSkillToolConfig = activateSkillToolConfig;
@@ -184,7 +190,7 @@ public class Skills {
         }
 
         /**
-         * Configures the {@code read_skill_resource} tool.
+         * Customizes the {@code read_skill_resource} tool.
          */
         public Builder readResourceToolConfig(ReadResourceToolConfig readResourceToolConfig) {
             this.readResourceToolConfig = readResourceToolConfig;
@@ -192,7 +198,7 @@ public class Skills {
         }
 
         /**
-         * TODO document
+         * TODO
          */
         public Builder allowRunningShellCommands(Boolean allowRunningShellCommands) {
             this.allowRunningShellCommands = allowRunningShellCommands;
@@ -200,7 +206,7 @@ public class Skills {
         }
 
         /**
-         * Configures the {@code run_shell_command} tool.
+         * Customizes the {@code run_shell_command} tool.
          */
         public Builder runShellCommandToolConfig(RunShellCommandToolConfig runShellCommandToolConfig) {
             this.runShellCommandToolConfig = runShellCommandToolConfig;
