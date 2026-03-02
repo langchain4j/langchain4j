@@ -543,7 +543,7 @@ The community-maintained [otel-genai-bridges](https://github.com/dineshkumarkumm
 
 #### Why use it?
 
-- Wraps any `ChatLanguageModel` bean and emits spans, events, and metrics.
+- Wraps any `ChatModel` bean and emits spans, events, and metrics.
 - Captures prompts, completions, tool calls, latency, token usage, cost, and RAG retrieval latency out of the box.
 - Provides Docker Compose samples (Collector → Tempo/Prometheus → Grafana) with prebuilt Grafana dashboards.
 
@@ -578,7 +578,7 @@ otel:
 
 The nested `cost` stanza is optional; include it when you want cost-per-token metrics.
 
-With the dependency on the classpath, the starter locates `ChatLanguageModel` beans automatically and wraps them with telemetry.
+With the dependency on the classpath, the starter locates `ChatModel` beans automatically and wraps them with telemetry.
 
 #### Observability view
 

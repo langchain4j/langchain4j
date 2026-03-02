@@ -190,7 +190,7 @@ This example shows how to query the RAG system with a user question:
 ```java
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 
@@ -228,7 +228,7 @@ String promptWithContext = String.format("""
         """, context, question);
 
 // Send to LLM with context
-ChatLanguageModel chatModel = OpenAiChatModel.builder()
+ChatModel chatModel = OpenAiChatModel.builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
         .modelName("gpt-4")
         .build();
