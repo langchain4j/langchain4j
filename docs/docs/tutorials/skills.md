@@ -154,8 +154,8 @@ If any step fails, call `rollbackOrder(orderId)` before reporting the error.
 ```
 
 Pass the `ToolProvider` from `Skills` to your AI Service builder alongside your regular tools.
-Use `availableSkillsDescription()` as (part of) the system message so the LLM
-knows which skills it can activate:
+Use `formatNamesAndDescriptions()` to inject the skill catalogue into the system message so
+the LLM knows which skills it can activate:
 
 ```java
 Skills skills = Skills.from(FileSystemSkillLoader.loadSkills(Path.of("skills/")));
@@ -164,15 +164,17 @@ MyAiService service = AiServices.builder(MyAiService.class)
         .chatModel(chatModel)
         .tools(new OrderTools()) // your @Tool methods
         .toolProvider(skills.toolProvider()) // or .toolProviders(mcpToolProvider, skills.toolProvider())
-        .systemMessageTransformer(systemMessage ->
-                systemMessage + "\n" + skills.availableSkillsDescription())
+        .systemMessage("You have access to the following skills:\n" + skills.formatNamesAndDescriptions()
+                + "\nWhen the user's request relates to one of these skills, activate it first using the `activate_skill` tool before proceeding.")
+        // or, if you already have a system message configured:
+        // .systemMessageTransformer(systemMessage -> systemMessage + "\n\nYou have access to the following skills:\n" + skills.formatNamesAndDescriptions()
+        //         + "\nWhen the user's request relates to one of these skills, activate it first using the `activate_skill` tool before proceeding.")
         .build();
 ```
 
-`availableSkillsDescription()` produces an XML-formatted block listing each skill's name and description, for example:
+`formatNamesAndDescriptions()` returns an XML-formatted block listing each skill's name and description, for example:
 
 ```xml
-You have access to the following skills:
 <available_skills>
 <skill>
 <name>process-order</name>
@@ -207,8 +209,11 @@ Skills skills = Skills.builder()
 MyAiService service = AiServices.builder(MyAiService.class)
         .chatModel(chatModel)
         .toolProvider(skills.toolProvider())
-        .systemMessageTransformer(systemMessage ->
-                systemMessage + "\n" + skills.availableSkillsDescription())
+        .systemMessage("You have access to the following skills:\n" + skills.formatNamesAndDescriptions()
+                + "\nWhen the user's request relates to one of these skills, activate it first using the `activate_skill` tool before proceeding.")
+        // or, if you already have a system message configured:
+        // .systemMessageTransformer(systemMessage -> systemMessage + "\n\nYou have access to the following skills:\n" + skills.formatNamesAndDescriptions()
+        //         + "\nWhen the user's request relates to one of these skills, activate it first using the `activate_skill` tool before proceeding.")
         .build();
 ```
 
