@@ -66,4 +66,21 @@
 
     </dependencies>
 
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.honton.chas</groupId>
+                <artifactId>license-maven-plugin</artifactId>
+                <configuration>
+                    <acceptableLicenses combine.children="append">
+                        <license>
+                            <name>BSD-2-Clause</name>
+                            <url>https://opensource.org/licenses/BSD-2-Clause</url>
+                        </license>
+                    </acceptableLicenses>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
 </project>
