@@ -112,11 +112,10 @@ class ShellCommandRunner {
                 process.getErrorStream().close();
             } catch (IOException ignored) {
             }
-            stdOutFuture.cancel(true);
-            stdErrFuture.cancel(true);
-
             String partialStdOut = getPartialOutput(stdOutFuture);
             String partialStdErr = getPartialOutput(stdErrFuture);
+            stdOutFuture.cancel(true);
+            stdErrFuture.cancel(true);
             throw new TimeoutException(
                     "Command timed out after " + timeoutSeconds + " seconds",
                     partialStdOut,
