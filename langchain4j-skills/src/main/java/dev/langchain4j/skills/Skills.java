@@ -21,7 +21,24 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static java.util.Arrays.asList;
 
 /**
- * TODO
+ * Configures and exposes a set of {@link Skill}s to an LLM.
+ * <p>
+ * Always provides an {@code activate_skill} tool that the LLM uses to load a skill's content.
+ * If any of the configured skills have {@link Skill#resources() resources}, a
+ * {@code read_skill_resource} tool is also added so the LLM can read them.
+ * Alternatively, if {@link Builder#allowRunningShellCommands(Boolean)} is enabled, a
+ * {@code run_shell_command} tool is provided instead.
+ * <p>
+ * Typical usage with an AI Service:
+ * <pre>{@code
+ * Skills skills = Skills.from(FileSystemSkillLoader.loadSkills(skillsDir));
+ *
+ * MyAiService service = AiServices.builder(MyAiService.class)
+ *         .chatModel(chatModel)
+ *         .toolProvider(skills.toolProvider())
+ *         .systemMessage(skills.availableSkillsDescription()) // TODO
+ *         .build();
+ * }</pre>
  */
 public class Skills {
 
@@ -36,7 +53,8 @@ public class Skills {
     }
 
     /**
-     * TODO
+     * Returns the {@link ToolProvider} that exposes the skill tools to the LLM.
+     * Pass this to {@code AiServices.builder(...).toolProvider(...)}.
      */
     public ToolProvider toolProvider() {
         return toolProvider;
@@ -65,14 +83,14 @@ public class Skills {
     }
 
     /**
-     * TODO
+     * Creates a {@code Skills} instance with default configuration from the given collection of skills.
      */
     public static Skills from(Collection<? extends Skill> skills) {
         return builder().skills(skills).build();
     }
 
     /**
-     * TODO
+     * Creates a {@code Skills} instance with default configuration from the given skills.
      */
     public static Skills from(Skill... skills) {
         return builder().skills(skills).build();
