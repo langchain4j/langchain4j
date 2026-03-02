@@ -64,7 +64,7 @@ public class Skills {
      * Returns an XML-formatted string listing all configured skills with their names and descriptions.
      * Intended to be included in the system message to inform the LLM which skills are available.
      */
-    public String availableSkillsDescription() {
+    public String availableSkillsDescription() { // TODO name
         StringBuilder sb = new StringBuilder();
         sb.append("You have access to the following skills:\n");
         sb.append("<available_skills>\n");
