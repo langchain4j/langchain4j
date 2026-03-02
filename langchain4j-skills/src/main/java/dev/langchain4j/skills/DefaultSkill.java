@@ -11,6 +11,7 @@ public class DefaultSkill extends AbstractSkill {
     }
 
     public static class Builder extends AbstractSkill.BaseBuilder<Builder> {
+
         public DefaultSkill build() {
             return new DefaultSkill(this);
         }

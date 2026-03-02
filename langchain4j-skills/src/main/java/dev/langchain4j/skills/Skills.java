@@ -4,7 +4,6 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.internal.DefaultExecutorProvider;
-import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
@@ -18,8 +17,6 @@ import java.util.Map;
 
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.Utils.toBase64;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static java.util.Arrays.asList;
 
@@ -39,8 +36,22 @@ public class Skills {
         return toolProvider;
     }
 
-    public String systemMessage() { // TODO name
-        return createSystemMessage(skills);
+    public String availableSkillsDescription() { // TODO name
+        StringBuilder sb = new StringBuilder();
+        sb.append("You have access to the following skills:\n");
+        sb.append("<available_skills>\n");
+        for (Skill skill : skills) {
+            sb.append("<skill>\n")
+                    .append("<name>")
+                    .append(escapeXml(skill.name()))
+                    .append("</name>\n")
+                    .append("<description>")
+                    .append(escapeXml(skill.description()))
+                    .append("</description>\n")
+                    .append("</skill>\n");
+        }
+        sb.append("</available_skills>");
+        return sb.toString();
     }
 
     public static Skills from(Collection<? extends Skill> skills) {
@@ -132,58 +143,6 @@ public class Skills {
             return rrc.relativePathParameterDescription;
         }
         return rrc.relativePathParameterDescriptionProvider.apply(skills);
-    }
-
-    static String getArgument(String argumentName, Map<String, Object> arguments, boolean throwToolArgumentsExceptions) {
-        if (isNullOrEmpty(arguments) || !arguments.containsKey(argumentName)) {
-            throwException("Missing required tool argument '%s'".formatted(argumentName), throwToolArgumentsExceptions);
-        }
-
-        return arguments.get(argumentName).toString();
-    }
-
-    static Map<String, Object> parseArguments(String json, boolean throwToolArgumentsExceptions) {
-        try {
-            return Json.fromJson(json, Map.class);
-        } catch (Exception e) {
-            String message = "Failed to parse tool search arguments: '%s' (base64: '%s')".formatted(json, toBase64(json));
-            throwException(message, e, throwToolArgumentsExceptions);
-            return null; // unreachable
-        }
-    }
-
-    static void throwException(String message, boolean throwToolArgumentsExceptions) {
-        throwException(message, null, throwToolArgumentsExceptions);
-    }
-
-    static void throwException(String message, Exception e, boolean throwToolArgumentsExceptions) {
-        if (throwToolArgumentsExceptions) {
-            throw e == null
-                    ? new ToolArgumentsException(message)
-                    : new ToolArgumentsException(message, e);
-        } else {
-            throw e == null
-                    ? new ToolExecutionException(message)
-                    : new ToolExecutionException(message, e);
-        }
-    }
-
-    private static String createSystemMessage(List<Skill> skills) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("You have access to the following skills:\n");
-        sb.append("<available_skills>\n");
-        for (Skill skill : skills) {
-            sb.append("<skill>\n")
-                    .append("<name>")
-                    .append(escapeXml(skill.name()))
-                    .append("</name>\n")
-                    .append("<description>")
-                    .append(escapeXml(skill.description()))
-                    .append("</description>\n")
-                    .append("</skill>\n");
-        }
-        sb.append("</available_skills>");
-        return sb.toString();
     }
 
     private static String escapeXml(String input) {

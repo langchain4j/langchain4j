@@ -4,7 +4,6 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 
 public class ActivateSkillToolConfig {
 
-    // TODO others
     static final String DEFAULT_NAME = "activate_skill";
     static final String DEFAULT_DESCRIPTION = "Activates a skill by its name";
     static final String DEFAULT_PARAMETER_NAME = "skill_name";

@@ -3,7 +3,6 @@ package dev.langchain4j.skills;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.service.tool.ToolExecutionResult;
-import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.skills.ShellCommandRunner.Result;
 
 import java.io.IOException;
@@ -13,32 +12,28 @@ import java.util.concurrent.ExecutorService;
 
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.skills.Skills.getArgument;
-import static dev.langchain4j.skills.Skills.parseArguments;
-import static dev.langchain4j.skills.Skills.throwException;
 
-class RunShellCommandToolExecutor implements ToolExecutor {
+class RunShellCommandToolExecutor extends AbstractSkillToolExecutor {
 
     private final RunShellCommandToolConfig config;
     private final Map<String, Skill> skillsByName;
     private final ExecutorService executorService;
-    private final boolean throwToolArgumentsExceptions;
 
     public RunShellCommandToolExecutor(RunShellCommandToolConfig config,
                                        Map<String, Skill> skillsByName,
                                        ExecutorService executorService,
                                        boolean throwToolArgumentsExceptions) {
+        super(throwToolArgumentsExceptions);
         this.config = ensureNotNull(config, "config");
         this.skillsByName = copy(skillsByName);
         this.executorService = ensureNotNull(executorService, "executorService");
-        this.throwToolArgumentsExceptions = throwToolArgumentsExceptions;
     }
 
     @Override
     public ToolExecutionResult executeWithContext(ToolExecutionRequest request, InvocationContext context) {
 
-        Map<String, Object> arguments = parseArguments(request.arguments(), throwToolArgumentsExceptions);
-        String command = getArgument(config.commandParameterName, arguments, throwToolArgumentsExceptions);
+        Map<String, Object> arguments = parseArguments(request.arguments());
+        String command = getRequiredArgument(config.commandParameterName, arguments);
         String skillName = arguments.containsKey(config.skillNameParameterName) ? arguments.get(config.skillNameParameterName).toString() : null;
         Integer timeoutSeconds = getTimeoutSeconds(arguments);
 
@@ -46,26 +41,26 @@ class RunShellCommandToolExecutor implements ToolExecutor {
         if (skillName != null && !skillName.isBlank()) {
             Skill skill = skillsByName.get(skillName);
             if (skill == null) {
-                throwException("There is no skill with name '%s'".formatted(skillName), throwToolArgumentsExceptions);
+                throwException("There is no skill with name '%s'".formatted(skillName));
             }
             if (skill instanceof FileSystemSkill fileSystemSkill) {
                 workingDir = fileSystemSkill.basePath();
             }
         }
 
-        // Resolve the effective CWD so it can be included in every result.
         // The LLM needs to know the absolute path to construct reliable paths
         // across commands, since each invocation starts a fresh shell process.
-        Path resolvedCwd = workingDir != null ? workingDir.toAbsolutePath() : Path.of(System.getProperty("user.dir"));
+        Path resolvedWorkingDir = workingDir != null ? workingDir.toAbsolutePath() : Path.of(System.getProperty("user.dir"));
 
         try {
             Result result = ShellCommandRunner.run(command, workingDir, timeoutSeconds, executorService);
+
             String stdOut = formatStdOut(result.stdOut());
             if (result.isSuccess()) {
                 String resultText = """
                         <working_dir>%s</working_dir>
-                        <stdout>%s</stdout>"
-                        """.formatted(resolvedCwd, stdOut);
+                        <stdout>%s</stdout>
+                        """.formatted(resolvedWorkingDir, stdOut);
                 return ToolExecutionResult.builder()
                         .resultText(resultText)
                         .build();
@@ -74,9 +69,9 @@ class RunShellCommandToolExecutor implements ToolExecutor {
                 String resultText = """
                         <working_dir>%s</working_dir>
                         <exit_code>%s</exit_code>
-                        <stdout>%s</stdout>"
-                        <stderr>%s</stderr>"
-                        """.formatted(resolvedCwd, result.exitCode(), stdOut, stdErr);
+                        <stdout>%s</stdout>
+                        <stderr>%s</stderr>
+                        """.formatted(resolvedWorkingDir, result.exitCode(), stdOut, stdErr);
                 return ToolExecutionResult.builder()
                         .isError(true)
                         .resultText(resultText)
@@ -85,9 +80,9 @@ class RunShellCommandToolExecutor implements ToolExecutor {
         } catch (ShellCommandRunner.TimeoutException e) {
             String resultText = """
                     <working_dir>%s</working_dir>
-                    <std_out>%s</std_out>"
-                    <std_err>%s</std_err>"
-                    """.formatted(resolvedCwd, formatStdOut(e.partialStdOut()), formatStdErr(e.partialStdErr()));
+                    <std_out>%s</std_out>
+                    <std_err>%s</std_err>
+                    """.formatted(resolvedWorkingDir, formatStdOut(e.partialStdOut()), formatStdErr(e.partialStdErr()));
             return ToolExecutionResult.builder()
                     .isError(true)
                     .resultText(resultText)
@@ -124,10 +119,5 @@ class RunShellCommandToolExecutor implements ToolExecutor {
             return i;
         }
         return Integer.valueOf(timeoutSeconds.toString());
-    }
-
-    @Override
-    public String execute(ToolExecutionRequest request, Object memoryId) {
-        throw new IllegalStateException("executeWithContext must be called instead");
     }
 }

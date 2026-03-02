@@ -10,7 +10,7 @@ public class RunShellCommandToolConfig {
     static final String DEFAULT_NAME = "run_shell_command";
     static final String DEFAULT_DESCRIPTION = "Runs a shell command using " + System.getProperty("os.name") + ". If skill name is specified, the command runs in the skill's root directory.";
     static final String DEFAULT_COMMAND_PARAMETER_NAME = "command";
-    static final String DEFAULT_COMMAND_PARAMETER_DESCRIPTION = "The shell command to execute. For example: 'python scripts/process.py --input data.csv'";
+    static final String DEFAULT_COMMAND_PARAMETER_DESCRIPTION = "The shell command to execute";
     static final String DEFAULT_SKILL_NAME_PARAMETER_NAME = "skill_name";
     static final String DEFAULT_SKILL_NAME_PARAMETER_DESCRIPTION = "Optional. The name of the skill whose root directory will be used as the working directory.";
     static final String DEFAULT_TIMEOUT_SECONDS_PARAMETER_NAME = "timeout_seconds";

@@ -16,7 +16,7 @@ class RunShellCommandToolExecutorTest {
 
     @Test
     void test_getTimeoutSeconds() {
-        String timeoutSecondsParameterName = "timeout_seconds";
+        String timeoutSecondsParameterName = RunShellCommandToolConfig.DEFAULT_TIMEOUT_SECONDS_PARAMETER_NAME;
 
         RunShellCommandToolExecutor executor = executor(1, 1);
 

@@ -3,42 +3,37 @@ package dev.langchain4j.skills;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.service.tool.ToolExecutionResult;
-import dev.langchain4j.service.tool.ToolExecutor;
 
 import java.util.List;
 import java.util.Map;
 
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.skills.Skills.getArgument;
-import static dev.langchain4j.skills.Skills.parseArguments;
-import static dev.langchain4j.skills.Skills.throwException;
 import static java.util.stream.Collectors.joining;
 
-class ReadResourceToolExecutor implements ToolExecutor {
+class ReadResourceToolExecutor extends AbstractSkillToolExecutor {
 
     private final ReadResourceToolConfig config;
     private final Map<String, Skill> skillsByName;
-    private final boolean throwToolArgumentsExceptions;
 
     public ReadResourceToolExecutor(ReadResourceToolConfig config,
                                     Map<String, Skill> skillsByName,
                                     boolean throwToolArgumentsExceptions) {
+        super(throwToolArgumentsExceptions);
         this.config = ensureNotNull(config, "config");
         this.skillsByName = copy(skillsByName);
-        this.throwToolArgumentsExceptions = throwToolArgumentsExceptions;
     }
 
     @Override
     public ToolExecutionResult executeWithContext(ToolExecutionRequest request, InvocationContext context) {
 
-        Map<String, Object> arguments = parseArguments(request.arguments(), throwToolArgumentsExceptions);
-        String skillName = getArgument(config.skillNameParameterName, arguments, throwToolArgumentsExceptions);
-        String relativePath = getArgument(config.relativePathParameterName, arguments, throwToolArgumentsExceptions);
+        Map<String, Object> arguments = parseArguments(request.arguments());
+        String skillName = getRequiredArgument(config.skillNameParameterName, arguments);
+        String relativePath = getRequiredArgument(config.relativePathParameterName, arguments);
 
         Skill skill = skillsByName.get(skillName);
         if (skill == null) {
-            throwException("There is no skill with name '%s'".formatted(skillName), throwToolArgumentsExceptions);
+            throwException("There is no skill with name '%s'".formatted(skillName));
         }
 
         List<SkillResource> resources = skill.resources().stream()
@@ -48,16 +43,11 @@ class ReadResourceToolExecutor implements ToolExecutor {
             String availableResources = skill.resources().stream()
                     .map(resource -> "'" + resource.relativePath() + "'")
                     .collect(joining(", "));
-            throwException("There is no resource for skill '%s' with the path '%s'. Available resources: [%s]".formatted(skillName, relativePath, availableResources), throwToolArgumentsExceptions);
+            throwException("There is no resource for skill '%s' with the path '%s'. Available resources: [%s]".formatted(skillName, relativePath, availableResources));
         }
 
         return ToolExecutionResult.builder()
                 .resultText(resources.get(0).content())
                 .build();
-    }
-
-    @Override
-    public String execute(ToolExecutionRequest request, Object memoryId) {
-        throw new IllegalStateException("executeWithContext must be called instead");
     }
 }

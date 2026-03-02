@@ -77,7 +77,7 @@ public class SkillsIT {
         Skills skills = Skills.from(skill);
 
         // then
-        assertThat(skills.systemMessage()).contains("using-process-tool");
+        assertThat(skills.availableSkillsDescription()).contains("using-process-tool");
         assertThat(getToolNames(skills.toolProvider()))
                 .containsExactlyInAnyOrder("activate_skill", "read_skill_resource");
         assertThat(skills.toolProvider().provideTools(null).tools().keySet().stream()
@@ -90,7 +90,7 @@ public class SkillsIT {
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
-                .systemMessage(skills.systemMessage())
+                .systemMessage(skills.availableSkillsDescription())
                 .tools(spyTools)
                 .toolProvider(skills.toolProvider())
                 .build();
@@ -140,7 +140,7 @@ public class SkillsIT {
         Skills skills = Skills.from(skill);
 
         // then
-        assertThat(skills.systemMessage()).contains("using-process-tool");
+        assertThat(skills.availableSkillsDescription()).contains("using-process-tool");
         assertThat(getToolNames(skills.toolProvider()))
                 .containsExactlyInAnyOrder("activate_skill", "read_skill_resource");
 
@@ -149,7 +149,7 @@ public class SkillsIT {
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
-                .systemMessage(skills.systemMessage())
+                .systemMessage(skills.availableSkillsDescription())
                 .tools(spyTools)
                 .toolProvider(skills.toolProvider())
                 .build();
@@ -177,14 +177,14 @@ public class SkillsIT {
                 .build();
 
         // then
-        assertThat(skills.systemMessage()).contains("greeting-user");
+        assertThat(skills.availableSkillsDescription()).contains("greeting-user");
         assertThat(getToolNames(skills.toolProvider()))
                 .containsExactlyInAnyOrder("activate_skill", "run_shell_command");
 
         // given
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
-                .systemMessage(skills.systemMessage())
+                .systemMessage(skills.availableSkillsDescription())
                 .toolProvider(skills.toolProvider())
                 .build();
 
@@ -214,7 +214,7 @@ public class SkillsIT {
         Skills skills = Skills.from(firstSkill, secondSkill);
 
         // then
-        assertThat(skills.systemMessage()).contains("using-poll-tool", "using-process-tool");
+        assertThat(skills.availableSkillsDescription()).contains("using-poll-tool", "using-process-tool");
         assertThat(getToolNames(skills.toolProvider()))
                 .containsExactlyInAnyOrder("activate_skill", "read_skill_resource");
 
@@ -223,7 +223,7 @@ public class SkillsIT {
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
-                .systemMessage(skills.systemMessage())
+                .systemMessage(skills.availableSkillsDescription())
                 .tools(spyTools)
                 .toolProvider(skills.toolProvider())
                 .build();
