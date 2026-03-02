@@ -61,13 +61,14 @@ public class MistralAiModerationModel implements ModerationModel {
     @Override
     public ModerationResponse doModerate(ModerationRequest moderationRequest) {
         List<String> inputs = ModerationModel.toInputs(moderationRequest);
-        return moderateInternal(inputs);
+        String effectiveModelName = getOrDefault(moderationRequest.modelName(), modelName);
+        return moderateInternal(inputs, effectiveModelName);
     }
 
-    private ModerationResponse moderateInternal(List<String> inputs) {
+    private ModerationResponse moderateInternal(List<String> inputs, String effectiveModelName) {
 
         MistralAiModerationRequest request = MistralAiModerationRequest.builder()
-                .model(modelName)
+                .model(effectiveModelName)
                 .input(inputs)
                 .build();
 

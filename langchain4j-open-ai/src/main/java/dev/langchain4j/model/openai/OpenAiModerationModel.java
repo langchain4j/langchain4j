@@ -74,14 +74,15 @@ public class OpenAiModerationModel implements ModerationModel {
     @Override
     public ModerationResponse doModerate(ModerationRequest moderationRequest) {
         List<String> inputs = ModerationModel.toInputs(moderationRequest);
-        return moderateInternal(inputs);
+        String effectiveModelName = getOrDefault(moderationRequest.modelName(), modelName);
+        return moderateInternal(inputs, effectiveModelName);
     }
 
-    private ModerationResponse moderateInternal(List<String> inputs) {
+    private ModerationResponse moderateInternal(List<String> inputs, String effectiveModelName) {
 
         dev.langchain4j.model.openai.internal.moderation.ModerationRequest request =
                 dev.langchain4j.model.openai.internal.moderation.ModerationRequest.builder()
-                        .model(modelName)
+                        .model(effectiveModelName)
                         .input(inputs)
                         .build();
 

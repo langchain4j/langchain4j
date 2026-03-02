@@ -33,21 +33,11 @@ class ModerationRequestTest {
 
         // then
         assertThat(request.texts()).containsExactly("some text");
+        assertThat(request.modelName()).isNull();
     }
 
     @Test
     void should_create_request_with_multiple_messages() {
-        // when
-        ModerationRequest request = ModerationRequest.builder()
-                .texts(List.of("first", "second", "third"))
-                .build();
-
-        // then
-        assertThat(request.texts()).containsExactly("first", "second", "third");
-    }
-
-    @Test
-    void should_preserve_order_of_messages() {
         // when
         ModerationRequest request = ModerationRequest.builder()
                 .texts(List.of("first", "second", "third"))
@@ -66,24 +56,56 @@ class ModerationRequestTest {
                 ModerationRequest.builder().texts(List.of("text")).build();
         ModerationRequest request3 =
                 ModerationRequest.builder().texts(List.of("other")).build();
+        ModerationRequest request4 = ModerationRequest.builder()
+                .texts(List.of("text"))
+                .modelName("model-a")
+                .build();
+        ModerationRequest request5 = ModerationRequest.builder()
+                .texts(List.of("text"))
+                .modelName("model-a")
+                .build();
 
         // then
         assertThat(request1).isEqualTo(request2);
         assertThat(request1.hashCode()).isEqualTo(request2.hashCode());
         assertThat(request1).isNotEqualTo(request3);
+        assertThat(request4).isEqualTo(request5);
+        assertThat(request4.hashCode()).isEqualTo(request5.hashCode());
+        assertThat(request1).isNotEqualTo(request4);
     }
 
     @Test
     void should_create_copy_with_toBuilder() {
         // given
-        ModerationRequest original =
-                ModerationRequest.builder().texts(List.of("original")).build();
+        ModerationRequest original = ModerationRequest.builder()
+                .texts(List.of("original"))
+                .modelName("original-model")
+                .build();
 
         // when
-        ModerationRequest copy = original.toBuilder().texts(List.of("modified")).build();
+        ModerationRequest copy = original.toBuilder().build();
+        ModerationRequest modified = original.toBuilder()
+                .texts(List.of("modified"))
+                .modelName("modified-model")
+                .build();
 
         // then
-        assertThat(original.texts()).containsExactly("original");
-        assertThat(copy.texts()).containsExactly("modified");
+        assertThat(copy.texts()).containsExactly("original");
+        assertThat(copy.modelName()).isEqualTo("original-model");
+        assertThat(modified.texts()).containsExactly("modified");
+        assertThat(modified.modelName()).isEqualTo("modified-model");
+    }
+
+    @Test
+    void should_create_request_with_modelName() {
+        // when
+        ModerationRequest request = ModerationRequest.builder()
+                .texts(List.of("some text"))
+                .modelName("custom-model")
+                .build();
+
+        // then
+        assertThat(request.texts()).containsExactly("some text");
+        assertThat(request.modelName()).isEqualTo("custom-model");
     }
 }

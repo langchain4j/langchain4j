@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 
 import java.util.List;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Represents a moderation request.
@@ -13,8 +14,12 @@ public class ModerationRequest {
 
     private final List<String> texts;
 
+    @Nullable
+    private final String modelName;
+
     private ModerationRequest(Builder builder) {
         this.texts = copyIfNotNull(builder.texts);
+        this.modelName = builder.modelName;
     }
 
     /**
@@ -26,22 +31,33 @@ public class ModerationRequest {
         return texts;
     }
 
+    /**
+     * Returns the model name to use for this request.
+     * When set, this overrides the model name configured when the {@link ModerationModel} was created.
+     *
+     * @return the model name, or {@code null} if not specified.
+     */
+    @Nullable
+    public String modelName() {
+        return modelName;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         ModerationRequest that = (ModerationRequest) o;
-        return Objects.equals(texts, that.texts);
+        return Objects.equals(texts, that.texts) && Objects.equals(modelName, that.modelName);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(texts);
+        return Objects.hash(texts, modelName);
     }
 
     @Override
     public String toString() {
-        return "ModerationRequest{" + "texts=" + texts + '}';
+        return "ModerationRequest{" + "texts=" + texts + ", modelName='" + modelName + '\'' + '}';
     }
 
     /**
@@ -69,11 +85,13 @@ public class ModerationRequest {
     public static class Builder {
 
         private List<String> texts;
+        private String modelName;
 
         private Builder() {}
 
         private Builder(ModerationRequest request) {
             this.texts = request.texts;
+            this.modelName = request.modelName;
         }
 
         /**
@@ -84,6 +102,18 @@ public class ModerationRequest {
          */
         public Builder texts(List<String> texts) {
             this.texts = texts;
+            return this;
+        }
+
+        /**
+         * Sets the model name to use for this request.
+         * When set, this overrides the model name configured when the {@link ModerationModel} was created.
+         *
+         * @param modelName the model name.
+         * @return this builder.
+         */
+        public Builder modelName(String modelName) {
+            this.modelName = modelName;
             return this;
         }
 
