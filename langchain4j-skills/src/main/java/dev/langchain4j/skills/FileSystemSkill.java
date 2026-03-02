@@ -3,12 +3,15 @@ package dev.langchain4j.skills;
 import java.nio.file.Path;
 
 /**
- * TODO
+ * A {@link Skill} backed by the file system.
+ * Provides a {@link #basePath()} that is used as the working directory
+ * when the LLM runs shell commands via the {@code run_shell_command} tool.
  */
 public interface FileSystemSkill extends Skill {
 
     /**
-     * TODO
+     * Returns the base directory path of this skill.
+     * Used as the working directory when the LLM runs shell commands for this skill.
      */
     Path basePath();
 

@@ -20,6 +20,9 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static java.util.Arrays.asList;
 
+/**
+ * TODO
+ */
 public class Skills {
 
     private final List<Skill> skills;
@@ -32,11 +35,18 @@ public class Skills {
         this.throwToolArgumentsExceptions = getOrDefault(builder.throwToolArgumentsExceptions, false);
     }
 
+    /**
+     * TODO
+     */
     public ToolProvider toolProvider() {
         return toolProvider;
     }
 
-    public String availableSkillsDescription() { // TODO name
+    /**
+     * Returns an XML-formatted string listing all configured skills with their names and descriptions.
+     * Intended to be included in the system message to inform the LLM which skills are available.
+     */
+    public String availableSkillsDescription() {
         StringBuilder sb = new StringBuilder();
         sb.append("You have access to the following skills:\n");
         sb.append("<available_skills>\n");
@@ -54,10 +64,16 @@ public class Skills {
         return sb.toString();
     }
 
+    /**
+     * TODO
+     */
     public static Skills from(Collection<? extends Skill> skills) {
         return builder().skills(skills).build();
     }
 
+    /**
+     * TODO
+     */
     public static Skills from(Skill... skills) {
         return builder().skills(skills).build();
     }
@@ -167,7 +183,7 @@ public class Skills {
         Boolean throwToolArgumentsExceptions;
 
         /**
-         * TODO
+         * Sets the skills to make available to the LLM.
          */
         public Builder skills(Collection<? extends Skill> skills) {
             this.skills = skills;
@@ -175,7 +191,7 @@ public class Skills {
         }
 
         /**
-         * TODO
+         * Sets the skills to make available to the LLM.
          */
         public Builder skills(Skill... skills) {
             return skills(asList(skills));
@@ -198,7 +214,11 @@ public class Skills {
         }
 
         /**
-         * TODO
+         * When set to {@code true}, enables the {@code run_shell_command} tool,
+         * which allows the LLM to execute shell commands.
+         * When enabled, the {@code read_skill_resource} tool is not added.
+         * <p>
+         * Default: {@code false}.
          */
         public Builder allowRunningShellCommands(Boolean allowRunningShellCommands) {
             this.allowRunningShellCommands = allowRunningShellCommands;

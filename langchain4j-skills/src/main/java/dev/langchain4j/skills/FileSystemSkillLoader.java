@@ -17,12 +17,43 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.StreamSupport.stream;
 
+/**
+ * Loads {@link FileSystemSkill} instances from the file system.
+ * <p>
+ * Each skill resides in its own subdirectory containing a {@code SKILL.md} file.
+ * The file must have a YAML front matter block that declares the skill's {@code name}
+ * and {@code description}. The body of the file (below the front matter) becomes the
+ * skill's {@link Skill#content() content}.
+ * <p>
+ * Any additional files in the skill directory are loaded as {@link SkillResource}s,
+ * with the exception of {@code SKILL.md} itself and any files under a {@code scripts/}
+ * subdirectory. Empty files are silently skipped.
+ * <p>
+ * Example {@code SKILL.md} structure:
+ * <pre>{@code
+ * ---
+ * name: my-skill
+ * description: Does something useful
+ * ---
+ *
+ * Instructions for the LLM go here.
+ * }</pre>
+ */
 public class FileSystemSkillLoader {
 
     private static final Parser PARSER = Parser.builder()
             .extensions(List.of(YamlFrontMatterExtension.create()))
             .build();
 
+    /**
+     * Loads all skills found in immediate subdirectories of the given directory.
+     * A subdirectory is treated as a skill only if it contains a {@code SKILL.md} file;
+     * subdirectories without one are silently skipped.
+     *
+     * @param directory the directory whose immediate subdirectories are scanned for skills
+     * @return the list of loaded skills, in filesystem iteration order
+     * @throws RuntimeException if the directory cannot be listed or a skill fails to load
+     */
     public static List<Skill> loadSkills(Path directory) {
         try (Stream<Path> entries = Files.list(directory)) {
             return entries
@@ -35,6 +66,16 @@ public class FileSystemSkillLoader {
         }
     }
 
+    /**
+     * Loads a single skill from the given directory.
+     * The directory must contain a {@code SKILL.md} file with a YAML front matter block
+     * declaring the skill's {@code name} and {@code description}.
+     *
+     * @param skillDirectory the directory to load the skill from
+     * @return the loaded skill
+     * @throws IllegalArgumentException if {@code SKILL.md} is not found in the directory
+     * @throws RuntimeException if the file cannot be read or resources cannot be loaded
+     */
     public static Skill loadSkill(Path skillDirectory) {
         Path skillFile = skillDirectory.resolve("SKILL.md");
 

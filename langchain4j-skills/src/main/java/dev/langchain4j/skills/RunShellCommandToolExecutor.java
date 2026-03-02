@@ -19,7 +19,7 @@ class RunShellCommandToolExecutor extends AbstractSkillToolExecutor {
     private final Map<String, Skill> skillsByName;
     private final ExecutorService executorService;
 
-    public RunShellCommandToolExecutor(RunShellCommandToolConfig config,
+    RunShellCommandToolExecutor(RunShellCommandToolConfig config,
                                        Map<String, Skill> skillsByName,
                                        ExecutorService executorService,
                                        boolean throwToolArgumentsExceptions) {
