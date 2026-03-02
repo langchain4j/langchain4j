@@ -12,8 +12,6 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
 import static dev.langchain4j.internal.Utils.copy;
-import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.skills.Skills.getArgument;
 import static dev.langchain4j.skills.Skills.parseArguments;
@@ -21,39 +19,27 @@ import static dev.langchain4j.skills.Skills.throwException;
 
 class RunShellCommandToolExecutor implements ToolExecutor {
 
+    private final RunShellCommandToolConfig config;
     private final Map<String, Skill> skillsByName;
-    private final String commandParameterName;
-    private final String skillNameParameterName;
-    private final String timeoutSecondsParameterName;
     private final ExecutorService executorService;
     private final boolean throwToolArgumentsExceptions;
-    private final int maxStdOutChars;
-    private final int maxStdErrChars;
 
-    public RunShellCommandToolExecutor(Map<String, Skill> skillsByName,
-                                       String commandParameterName,
-                                       String skillNameParameterName,
-                                       String timeoutSecondsParameterName,
+    public RunShellCommandToolExecutor(RunShellCommandToolConfig config,
+                                       Map<String, Skill> skillsByName,
                                        ExecutorService executorService,
-                                       boolean throwToolArgumentsExceptions,
-                                       int maxStdOutChars,
-                                       int maxStdErrChars) {
+                                       boolean throwToolArgumentsExceptions) {
+        this.config = ensureNotNull(config, "config");
         this.skillsByName = copy(skillsByName);
-        this.commandParameterName = ensureNotBlank(commandParameterName, "commandParameterName");
-        this.skillNameParameterName = ensureNotBlank(skillNameParameterName, "skillNameParameterName");
-        this.timeoutSecondsParameterName = ensureNotBlank(timeoutSecondsParameterName, "timeoutSecondsParameterName");
         this.executorService = ensureNotNull(executorService, "executorService");
         this.throwToolArgumentsExceptions = throwToolArgumentsExceptions;
-        this.maxStdOutChars = ensureGreaterThanZero(maxStdOutChars, "maxStdOutChars");
-        this.maxStdErrChars = ensureGreaterThanZero(maxStdErrChars, "maxStdErrChars");
     }
 
     @Override
     public ToolExecutionResult executeWithContext(ToolExecutionRequest request, InvocationContext context) {
 
         Map<String, Object> arguments = parseArguments(request.arguments(), throwToolArgumentsExceptions);
-        String command = getArgument(commandParameterName, arguments, throwToolArgumentsExceptions);
-        String skillName = arguments.containsKey(skillNameParameterName) ? arguments.get(skillNameParameterName).toString() : null;
+        String command = getArgument(config.commandParameterName, arguments, throwToolArgumentsExceptions);
+        String skillName = arguments.containsKey(config.skillNameParameterName) ? arguments.get(config.skillNameParameterName).toString() : null;
         Integer timeoutSeconds = getTimeoutSeconds(arguments);
 
         Path workingDir = null;
@@ -116,11 +102,11 @@ class RunShellCommandToolExecutor implements ToolExecutor {
     }
 
     private String formatStdOut(String stdOut) {
-        return stdOut.isEmpty() ? "(empty)" : truncate(stdOut, maxStdOutChars);
+        return stdOut.isEmpty() ? "(empty)" : truncate(stdOut, config.maxStdOutChars);
     }
 
     private String formatStdErr(String stdErr) {
-        return stdErr.isEmpty() ? "(empty)" : truncate(stdErr, maxStdErrChars);
+        return stdErr.isEmpty() ? "(empty)" : truncate(stdErr, config.maxStdErrChars);
     }
 
     private static String truncate(String text, int maxChars) {
@@ -130,7 +116,7 @@ class RunShellCommandToolExecutor implements ToolExecutor {
     }
 
     Integer getTimeoutSeconds(Map<String, Object> arguments) {
-        Object timeoutSeconds = arguments.get(timeoutSecondsParameterName);
+        Object timeoutSeconds = arguments.get(config.timeoutSecondsParameterName);
         if (timeoutSeconds == null) {
             return null;
         }

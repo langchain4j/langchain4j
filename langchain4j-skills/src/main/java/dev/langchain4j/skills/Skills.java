@@ -1,13 +1,11 @@
 package dev.langchain4j.skills;
 
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
+import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.internal.Json;
-import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderResult;
@@ -17,44 +15,15 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.function.Function;
 
-import static dev.langchain4j.internal.DefaultExecutorProvider.getDefaultExecutorService;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.toBase64;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
-import static dev.langchain4j.skills.ShellCommandRunner.DEFAULT_TIMEOUT_SECONDS;
 import static java.util.Arrays.asList;
-import static java.util.stream.Collectors.joining;
 
 public class Skills {
-
-    // TODO fix grammar here and everywhere
-    static final String DEFAULT_READ_RESOURCE_TOOL_NAME = "read_skill_resource";
-    static final String DEFAULT_READ_RESOURCE_TOOL_DESCRIPTION = "Reads the content of a resource referenced in the skill";
-    static final String DEFAULT_READ_RESOURCE_TOOL_SKILL_NAME_PARAMETER_NAME = "skill_name";
-    static final String DEFAULT_READ_RESOURCE_TOOL_SKILL_NAME_PARAMETER_DESCRIPTION = "The name of the skill for which the resource should be read";
-    static final String DEFAULT_READ_RESOURCE_TOOL_RELATIVE_PATH_PARAMETER_NAME = "relative_path";
-    static final Function<List<? extends Skill>, String> DEFAULT_READ_RESOURCE_TOOL_RELATIVE_PATH_PARAMETER_DESCRIPTION_PROVIDER =
-            skills -> "Relative path to the resource. For example: " + skills.stream()
-                    .flatMap(skill -> skill.resources().stream())
-                    .findFirst()
-                    .map(SkillResource::relativePath)
-                    .orElseThrow();
-
-    static final String DEFAULT_RUN_SHELL_COMMAND_TOOL_NAME = "run_shell_command";
-    static final String DEFAULT_RUN_SHELL_COMMAND_TOOL_DESCRIPTION = "Runs a shell command using " + System.getProperty("os.name") + ". If skill name is specified, the command runs in the skill's root directory.";
-    static final String DEFAULT_RUN_SHELL_COMMAND_TOOL_COMMAND_PARAMETER_NAME = "command";
-    static final String DEFAULT_RUN_SHELL_COMMAND_TOOL_COMMAND_PARAMETER_DESCRIPTION = "The shell command to execute. For example: 'python scripts/process.py --input data.csv'";
-    static final String DEFAULT_RUN_SHELL_COMMAND_TOOL_SKILL_NAME_PARAMETER_NAME = "skill_name";
-    static final String DEFAULT_RUN_SHELL_COMMAND_TOOL_SKILL_NAME_PARAMETER_DESCRIPTION = "Optional. The name of the skill whose root directory will be used as the working directory.";
-    static final String DEFAULT_RUN_SHELL_COMMAND_TOOL_TIMEOUT_SECONDS_PARAMETER_NAME = "timeout_seconds";
-    static final String DEFAULT_RUN_SHELL_COMMAND_TOOL_TIMEOUT_SECONDS_PARAMETER_DESCRIPTION = "Optional. The command timeout in seconds. Default: %s seconds.".formatted(DEFAULT_TIMEOUT_SECONDS);
-    static final int DEFAULT_RUN_SHELL_COMMAND_TOOL_MAX_STDOUT_CHARS = 10_000;
-    static final int DEFAULT_RUN_SHELL_COMMAND_TOOL_MAX_STDERR_CHARS = 10_000;
 
     private final List<Skill> skills;
     private final ToolProvider toolProvider;
@@ -101,95 +70,37 @@ public class Skills {
                         .build())
                 .build();
 
-        ToolExecutor activateSkillExecutor = new ToolExecutor() {
-
-            @Override
-            public ToolExecutionResult executeWithContext(ToolExecutionRequest request, InvocationContext context) {
-
-                Map<String, Object> arguments = parseArguments(request.arguments());
-                String skillName = getArgument(config.parameterName, arguments);
-
-                Skill skill = skillsByName.get(skillName);
-                if (skill == null) {
-                    throwException("There is no skill with name '%s'".formatted(skillName));
-                }
-
-                return ToolExecutionResult.builder()
-                        .resultText(skill.content())
-                        .build();
-            }
-
-            @Override
-            public String execute(ToolExecutionRequest request, Object memoryId) {
-                throw new IllegalStateException("executeWithContext must be called instead");
-            }
-        };
+        ToolExecutor activateSkillExecutor = new ActivateSkillToolExecutor(config, skillsByName, throwToolArgumentsExceptions);
 
         Map<ToolSpecification, ToolExecutor> tools = new HashMap<>();
         tools.put(activateSkillTool, activateSkillExecutor);
 
         if (getOrDefault(builder.allowRunningShellCommands, false)) {
-            RunShellCommandToolConfig rsc = builder.runShellCommandToolConfig != null ? builder.runShellCommandToolConfig : RunShellCommandToolConfig.builder().build();
-            String commandParameterName = getOrDefault(rsc.commandParameterName, DEFAULT_RUN_SHELL_COMMAND_TOOL_COMMAND_PARAMETER_NAME);
-            String runShellSkillNameParameterName = getOrDefault(rsc.skillNameParameterName, DEFAULT_RUN_SHELL_COMMAND_TOOL_SKILL_NAME_PARAMETER_NAME);
-            String timeoutSecondsParameterName = getOrDefault(rsc.timeoutSecondsParameterName, DEFAULT_RUN_SHELL_COMMAND_TOOL_TIMEOUT_SECONDS_PARAMETER_NAME);
-            ExecutorService executorService = getOrDefault(rsc.executorService, getDefaultExecutorService());
-            int maxStdOutChars = getOrDefault(rsc.maxStdOutChars, DEFAULT_RUN_SHELL_COMMAND_TOOL_MAX_STDOUT_CHARS);
-            int maxStdErrChars = getOrDefault(rsc.maxStdErrChars, DEFAULT_RUN_SHELL_COMMAND_TOOL_MAX_STDERR_CHARS);
-            ToolSpecification runShellCommandTool = createRunShellCommandTool(rsc, commandParameterName, runShellSkillNameParameterName, timeoutSecondsParameterName);
-            ToolExecutor runShellCommandToolExecutor = new RunShellCommandToolExecutor(skillsByName, commandParameterName, runShellSkillNameParameterName, timeoutSecondsParameterName, executorService, throwToolArgumentsExceptions, maxStdOutChars, maxStdErrChars);
+            RunShellCommandToolConfig rsc = getOrDefault(builder.runShellCommandToolConfig, RunShellCommandToolConfig.builder().build());
+            ToolSpecification runShellCommandTool = createRunShellCommandTool(rsc);
+            ToolExecutor runShellCommandToolExecutor = new RunShellCommandToolExecutor(
+                    rsc,
+                    skillsByName,
+                    getOrDefault(rsc.executorService, DefaultExecutorProvider::getDefaultExecutorService),
+                    throwToolArgumentsExceptions
+            );
             tools.put(runShellCommandTool, runShellCommandToolExecutor);
         } else {
             boolean hasResources = skills.stream().anyMatch(skill -> !skill.resources().isEmpty());
             if (hasResources) {
-                ReadResourceToolConfig rrc = builder.readResourceToolConfig != null ? builder.readResourceToolConfig : ReadResourceToolConfig.builder().build();
-                String readResourceToolSkillNameParameterName = getOrDefault(rrc.skillNameParameterName, DEFAULT_READ_RESOURCE_TOOL_SKILL_NAME_PARAMETER_NAME);
-                String readResourceToolRelativePathParameterName = getOrDefault(rrc.relativePathParameterName, DEFAULT_READ_RESOURCE_TOOL_RELATIVE_PATH_PARAMETER_NAME);
+                ReadResourceToolConfig rrc = getOrDefault(builder.readResourceToolConfig, ReadResourceToolConfig.builder().build());
 
                 ToolSpecification readResourceTool = ToolSpecification.builder()
-                        .name(getOrDefault(rrc.name, DEFAULT_READ_RESOURCE_TOOL_NAME))
-                        .description(getOrDefault(rrc.description, DEFAULT_READ_RESOURCE_TOOL_DESCRIPTION))
+                        .name(rrc.name)
+                        .description(rrc.description)
                         .parameters(JsonObjectSchema.builder()
-                                .addStringProperty(readResourceToolSkillNameParameterName, getOrDefault(rrc.skillNameParameterDescription, DEFAULT_READ_RESOURCE_TOOL_SKILL_NAME_PARAMETER_DESCRIPTION))
-                                .addStringProperty(readResourceToolRelativePathParameterName, resolveRelativePathParameterDescription(rrc))
-                                .required(readResourceToolSkillNameParameterName, readResourceToolRelativePathParameterName)
+                                .addStringProperty(rrc.skillNameParameterName, rrc.skillNameParameterDescription)
+                                .addStringProperty(rrc.relativePathParameterName, resolveRelativePathParameterDescription(rrc))
+                                .required(rrc.skillNameParameterName, rrc.relativePathParameterName)
                                 .build())
                         .build();
 
-                ToolExecutor readResourceExecutor = new ToolExecutor() {
-
-                    @Override
-                    public ToolExecutionResult executeWithContext(ToolExecutionRequest request, InvocationContext context) {
-
-                        Map<String, Object> arguments = parseArguments(request.arguments());
-                        String skillName = getArgument(readResourceToolSkillNameParameterName, arguments);
-                        String relativePath = getArgument(readResourceToolRelativePathParameterName, arguments);
-
-                        Skill skill = skillsByName.get(skillName);
-                        if (skill == null) {
-                            throwException("There is no skill with name '%s'".formatted(skillName));
-                        }
-
-                        List<SkillResource> resources = skill.resources().stream()
-                                .filter(resource -> resource.relativePath().equals(relativePath))
-                                .toList();
-                        if (resources.isEmpty()) {
-                            String availableResources = skill.resources().stream()
-                                    .map(resource -> "'" + resource.relativePath() + "'")
-                                    .collect(joining(", "));
-                            throwException("There is no resource for skill '%s' with the path '%s'. Available resources: [%s]".formatted(skillName, relativePath, availableResources));
-                        }
-
-                        return ToolExecutionResult.builder()
-                                .resultText(resources.get(0).content())
-                                .build();
-                    }
-
-                    @Override
-                    public String execute(ToolExecutionRequest request, Object memoryId) {
-                        throw new IllegalStateException("executeWithContext must be called instead");
-                    }
-                };
+                ToolExecutor readResourceExecutor = new ReadResourceToolExecutor(rrc, skillsByName, throwToolArgumentsExceptions);
 
                 tools.put(readResourceTool, readResourceExecutor);
             }
@@ -203,24 +114,15 @@ public class Skills {
         return request -> toolProviderResult;
     }
 
-    private static ToolSpecification createRunShellCommandTool(RunShellCommandToolConfig rsc,
-                                                               String commandParameterName,
-                                                               String skillNameParameterName,
-                                                               String timeoutSecondsParameterName) {
+    private static ToolSpecification createRunShellCommandTool(RunShellCommandToolConfig rsc) {
         return ToolSpecification.builder()
-                .name(getOrDefault(rsc.name, DEFAULT_RUN_SHELL_COMMAND_TOOL_NAME))
-                .description(getOrDefault(rsc.description, DEFAULT_RUN_SHELL_COMMAND_TOOL_DESCRIPTION))
+                .name(rsc.name)
+                .description(rsc.description)
                 .parameters(JsonObjectSchema.builder()
-                        .addStringProperty(
-                                commandParameterName,
-                                getOrDefault(rsc.commandParameterDescription, DEFAULT_RUN_SHELL_COMMAND_TOOL_COMMAND_PARAMETER_DESCRIPTION))
-                        .addStringProperty(
-                                skillNameParameterName,
-                                getOrDefault(rsc.skillNameParameterDescription, DEFAULT_RUN_SHELL_COMMAND_TOOL_SKILL_NAME_PARAMETER_DESCRIPTION))
-                        .addStringProperty(
-                                timeoutSecondsParameterName,
-                                getOrDefault(rsc.timeoutSecondsParameterDescription, DEFAULT_RUN_SHELL_COMMAND_TOOL_TIMEOUT_SECONDS_PARAMETER_DESCRIPTION))
-                        .required(commandParameterName)
+                        .addStringProperty(rsc.commandParameterName, rsc.commandParameterDescription)
+                        .addStringProperty(rsc.skillNameParameterName, rsc.skillNameParameterDescription)
+                        .addStringProperty(rsc.timeoutSecondsParameterName, rsc.timeoutSecondsParameterDescription)
+                        .required(rsc.commandParameterName)
                         .build())
                 .build();
     }
@@ -229,14 +131,7 @@ public class Skills {
         if (rrc.relativePathParameterDescription != null) {
             return rrc.relativePathParameterDescription;
         }
-        return getOrDefault(
-                rrc.relativePathParameterDescriptionProvider,
-                DEFAULT_READ_RESOURCE_TOOL_RELATIVE_PATH_PARAMETER_DESCRIPTION_PROVIDER)
-                .apply(skills);
-    }
-
-    private String getArgument(String argumentName, Map<String, Object> arguments) {
-        return getArgument(argumentName, arguments, throwToolArgumentsExceptions);
+        return rrc.relativePathParameterDescriptionProvider.apply(skills);
     }
 
     static String getArgument(String argumentName, Map<String, Object> arguments, boolean throwToolArgumentsExceptions) {
@@ -245,10 +140,6 @@ public class Skills {
         }
 
         return arguments.get(argumentName).toString();
-    }
-
-    private Map<String, Object> parseArguments(String json) {
-        return parseArguments(json, throwToolArgumentsExceptions);
     }
 
     static Map<String, Object> parseArguments(String json, boolean throwToolArgumentsExceptions) {
@@ -261,16 +152,8 @@ public class Skills {
         }
     }
 
-    void throwException(String message) {
-        throwException(message, throwToolArgumentsExceptions);
-    }
-
     static void throwException(String message, boolean throwToolArgumentsExceptions) {
         throwException(message, null, throwToolArgumentsExceptions);
-    }
-
-    private void throwException(String message, Exception e) {
-        throwException(message, e, throwToolArgumentsExceptions);
     }
 
     static void throwException(String message, Exception e, boolean throwToolArgumentsExceptions) {

@@ -150,14 +150,13 @@ class RunShellCommandToolExecutorTest {
 
     private RunShellCommandToolExecutor executor(int maxStdOutChars, int maxStdErrChars) {
         return new RunShellCommandToolExecutor(
+                RunShellCommandToolConfig.builder()
+                        .maxStdOutChars(maxStdOutChars)
+                        .maxStdErrChars(maxStdErrChars)
+                        .build(),
                 Map.of(),
-                "command",
-                "skill_name",
-                "timeout_seconds",
                 Executors.newFixedThreadPool(2),
-                false,
-                maxStdOutChars,
-                maxStdErrChars
+                false
         );
     }
 

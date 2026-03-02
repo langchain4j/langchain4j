@@ -3,7 +3,21 @@ package dev.langchain4j.skills;
 import java.util.List;
 import java.util.function.Function;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+
 public class ReadResourceToolConfig {
+
+    static final String DEFAULT_NAME = "read_skill_resource";
+    static final String DEFAULT_DESCRIPTION = "Reads the content of a resource referenced in the skill";
+    static final String DEFAULT_SKILL_NAME_PARAMETER_NAME = "skill_name";
+    static final String DEFAULT_SKILL_NAME_PARAMETER_DESCRIPTION = "The name of the skill for which the resource should be read";
+    static final String DEFAULT_RELATIVE_PATH_PARAMETER_NAME = "relative_path";
+    static final Function<List<? extends Skill>, String> DEFAULT_RELATIVE_PATH_PARAMETER_DESCRIPTION_PROVIDER =
+            skills -> "Relative path to the resource. For example: " + skills.stream()
+                    .flatMap(skill -> skill.resources().stream())
+                    .findFirst()
+                    .map(SkillResource::relativePath)
+                    .orElseThrow();
 
     final String name;
     final String description;
@@ -14,13 +28,13 @@ public class ReadResourceToolConfig {
     final Function<List<? extends Skill>, String> relativePathParameterDescriptionProvider;
 
     private ReadResourceToolConfig(Builder builder) {
-        this.name = builder.name;
-        this.description = builder.description;
-        this.skillNameParameterName = builder.skillNameParameterName;
-        this.skillNameParameterDescription = builder.skillNameParameterDescription;
-        this.relativePathParameterName = builder.relativePathParameterName;
+        this.name = getOrDefault(builder.name, DEFAULT_NAME);
+        this.description = getOrDefault(builder.description, DEFAULT_DESCRIPTION);
+        this.skillNameParameterName = getOrDefault(builder.skillNameParameterName, DEFAULT_SKILL_NAME_PARAMETER_NAME);
+        this.skillNameParameterDescription = getOrDefault(builder.skillNameParameterDescription, DEFAULT_SKILL_NAME_PARAMETER_DESCRIPTION);
+        this.relativePathParameterName = getOrDefault(builder.relativePathParameterName, DEFAULT_RELATIVE_PATH_PARAMETER_NAME);
         this.relativePathParameterDescription = builder.relativePathParameterDescription;
-        this.relativePathParameterDescriptionProvider = builder.relativePathParameterDescriptionProvider;
+        this.relativePathParameterDescriptionProvider = getOrDefault(builder.relativePathParameterDescriptionProvider, DEFAULT_RELATIVE_PATH_PARAMETER_DESCRIPTION_PROVIDER);
     }
 
     public static Builder builder() {
@@ -40,7 +54,7 @@ public class ReadResourceToolConfig {
         /**
          * Sets the name of the {@code read_skill_resource} tool.
          * <p>
-         * Default value is {@value Skills#DEFAULT_READ_RESOURCE_TOOL_NAME}.
+         * Default value is {@value ReadResourceToolConfig#DEFAULT_NAME}.
          */
         public Builder name(String name) {
             this.name = name;
@@ -50,7 +64,7 @@ public class ReadResourceToolConfig {
         /**
          * Sets the description of the {@code read_skill_resource} tool.
          * <p>
-         * Default value is {@value Skills#DEFAULT_READ_RESOURCE_TOOL_DESCRIPTION}.
+         * Default value is {@value ReadResourceToolConfig#DEFAULT_DESCRIPTION}.
          */
         public Builder description(String description) {
             this.description = description;
@@ -60,7 +74,7 @@ public class ReadResourceToolConfig {
         /**
          * Sets the name of the {@code skill_name} parameter of the {@code read_skill_resource} tool.
          * <p>
-         * Default value is {@value Skills#DEFAULT_READ_RESOURCE_TOOL_SKILL_NAME_PARAMETER_NAME}.
+         * Default value is {@value ReadResourceToolConfig#DEFAULT_SKILL_NAME_PARAMETER_NAME}.
          */
         public Builder skillNameParameterName(String skillNameParameterName) {
             this.skillNameParameterName = skillNameParameterName;
@@ -70,7 +84,7 @@ public class ReadResourceToolConfig {
         /**
          * Sets the description of the {@code skill_name} parameter of the {@code read_skill_resource} tool.
          * <p>
-         * Default value is {@value Skills#DEFAULT_READ_RESOURCE_TOOL_SKILL_NAME_PARAMETER_DESCRIPTION}.
+         * Default value is {@value ReadResourceToolConfig#DEFAULT_SKILL_NAME_PARAMETER_DESCRIPTION}.
          */
         public Builder skillNameParameterDescription(String skillNameParameterDescription) {
             this.skillNameParameterDescription = skillNameParameterDescription;
@@ -80,7 +94,7 @@ public class ReadResourceToolConfig {
         /**
          * Sets the name of the {@code relative_path} parameter of the {@code read_skill_resource} tool.
          * <p>
-         * Default value is {@value Skills#DEFAULT_READ_RESOURCE_TOOL_RELATIVE_PATH_PARAMETER_NAME}.
+         * Default value is {@value ReadResourceToolConfig#DEFAULT_RELATIVE_PATH_PARAMETER_NAME}.
          */
         public Builder relativePathParameterName(String relativePathParameterName) {
             this.relativePathParameterName = relativePathParameterName;

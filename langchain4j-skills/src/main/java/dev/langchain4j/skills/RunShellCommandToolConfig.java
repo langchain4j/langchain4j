@@ -2,7 +2,21 @@ package dev.langchain4j.skills;
 
 import java.util.concurrent.ExecutorService;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.skills.ShellCommandRunner.DEFAULT_TIMEOUT_SECONDS;
+
 public class RunShellCommandToolConfig {
+
+    static final String DEFAULT_NAME = "run_shell_command";
+    static final String DEFAULT_DESCRIPTION = "Runs a shell command using " + System.getProperty("os.name") + ". If skill name is specified, the command runs in the skill's root directory.";
+    static final String DEFAULT_COMMAND_PARAMETER_NAME = "command";
+    static final String DEFAULT_COMMAND_PARAMETER_DESCRIPTION = "The shell command to execute. For example: 'python scripts/process.py --input data.csv'";
+    static final String DEFAULT_SKILL_NAME_PARAMETER_NAME = "skill_name";
+    static final String DEFAULT_SKILL_NAME_PARAMETER_DESCRIPTION = "Optional. The name of the skill whose root directory will be used as the working directory.";
+    static final String DEFAULT_TIMEOUT_SECONDS_PARAMETER_NAME = "timeout_seconds";
+    static final String DEFAULT_TIMEOUT_SECONDS_PARAMETER_DESCRIPTION = "Optional. The command timeout in seconds. Default: %s seconds.".formatted(DEFAULT_TIMEOUT_SECONDS);
+    static final int DEFAULT_MAX_STDOUT_CHARS = 10_000;
+    static final int DEFAULT_MAX_STDERR_CHARS = 10_000;
 
     final String name;
     final String description;
@@ -12,21 +26,21 @@ public class RunShellCommandToolConfig {
     final String skillNameParameterDescription;
     final String timeoutSecondsParameterName;
     final String timeoutSecondsParameterDescription;
-    final Integer maxStdOutChars;
-    final Integer maxStdErrChars;
+    final int maxStdOutChars;
+    final int maxStdErrChars;
     final ExecutorService executorService;
 
     private RunShellCommandToolConfig(Builder builder) {
-        this.name = builder.name;
-        this.description = builder.description;
-        this.commandParameterName = builder.commandParameterName;
-        this.commandParameterDescription = builder.commandParameterDescription;
-        this.skillNameParameterName = builder.skillNameParameterName;
-        this.skillNameParameterDescription = builder.skillNameParameterDescription;
-        this.timeoutSecondsParameterName = builder.timeoutSecondsParameterName;
-        this.timeoutSecondsParameterDescription = builder.timeoutSecondsParameterDescription;
-        this.maxStdOutChars = builder.maxStdOutChars;
-        this.maxStdErrChars = builder.maxStdErrChars;
+        this.name = getOrDefault(builder.name, DEFAULT_NAME);
+        this.description = getOrDefault(builder.description, DEFAULT_DESCRIPTION);
+        this.commandParameterName = getOrDefault(builder.commandParameterName, DEFAULT_COMMAND_PARAMETER_NAME);
+        this.commandParameterDescription = getOrDefault(builder.commandParameterDescription, DEFAULT_COMMAND_PARAMETER_DESCRIPTION);
+        this.skillNameParameterName = getOrDefault(builder.skillNameParameterName, DEFAULT_SKILL_NAME_PARAMETER_NAME);
+        this.skillNameParameterDescription = getOrDefault(builder.skillNameParameterDescription, DEFAULT_SKILL_NAME_PARAMETER_DESCRIPTION);
+        this.timeoutSecondsParameterName = getOrDefault(builder.timeoutSecondsParameterName, DEFAULT_TIMEOUT_SECONDS_PARAMETER_NAME);
+        this.timeoutSecondsParameterDescription = getOrDefault(builder.timeoutSecondsParameterDescription, DEFAULT_TIMEOUT_SECONDS_PARAMETER_DESCRIPTION);
+        this.maxStdOutChars = getOrDefault(builder.maxStdOutChars, DEFAULT_MAX_STDOUT_CHARS);
+        this.maxStdErrChars = getOrDefault(builder.maxStdErrChars, DEFAULT_MAX_STDERR_CHARS);
         this.executorService = builder.executorService;
     }
 
@@ -51,7 +65,7 @@ public class RunShellCommandToolConfig {
         /**
          * Sets the name of the {@code run_shell_command} tool.
          * <p>
-         * Default value is {@value Skills#DEFAULT_RUN_SHELL_COMMAND_TOOL_NAME}.
+         * Default value is {@value RunShellCommandToolConfig#DEFAULT_NAME}.
          */
         public Builder name(String name) {
             this.name = name;
@@ -71,7 +85,7 @@ public class RunShellCommandToolConfig {
         /**
          * Sets the name of the {@code command} parameter of the {@code run_shell_command} tool.
          * <p>
-         * Default value is {@value Skills#DEFAULT_RUN_SHELL_COMMAND_TOOL_COMMAND_PARAMETER_NAME}.
+         * Default value is {@value RunShellCommandToolConfig#DEFAULT_COMMAND_PARAMETER_NAME}.
          */
         public Builder commandParameterName(String commandParameterName) {
             this.commandParameterName = commandParameterName;
@@ -81,7 +95,7 @@ public class RunShellCommandToolConfig {
         /**
          * Sets the description of the {@code command} parameter of the {@code run_shell_command} tool.
          * <p>
-         * Default value is {@value Skills#DEFAULT_RUN_SHELL_COMMAND_TOOL_COMMAND_PARAMETER_DESCRIPTION}.
+         * Default value is {@value RunShellCommandToolConfig#DEFAULT_COMMAND_PARAMETER_DESCRIPTION}.
          */
         public Builder commandParameterDescription(String commandParameterDescription) {
             this.commandParameterDescription = commandParameterDescription;
@@ -91,7 +105,7 @@ public class RunShellCommandToolConfig {
         /**
          * Sets the name of the {@code skill_name} parameter of the {@code run_shell_command} tool.
          * <p>
-         * Default value is {@value Skills#DEFAULT_RUN_SHELL_COMMAND_TOOL_SKILL_NAME_PARAMETER_NAME}.
+         * Default value is {@value RunShellCommandToolConfig#DEFAULT_SKILL_NAME_PARAMETER_NAME}.
          */
         public Builder skillNameParameterName(String skillNameParameterName) {
             this.skillNameParameterName = skillNameParameterName;
@@ -101,7 +115,7 @@ public class RunShellCommandToolConfig {
         /**
          * Sets the description of the {@code skill_name} parameter of the {@code run_shell_command} tool.
          * <p>
-         * Default value is {@value Skills#DEFAULT_RUN_SHELL_COMMAND_TOOL_SKILL_NAME_PARAMETER_DESCRIPTION}.
+         * Default value is {@value RunShellCommandToolConfig#DEFAULT_SKILL_NAME_PARAMETER_DESCRIPTION}.
          */
         public Builder skillNameParameterDescription(String skillNameParameterDescription) {
             this.skillNameParameterDescription = skillNameParameterDescription;
@@ -111,7 +125,7 @@ public class RunShellCommandToolConfig {
         /**
          * Sets the name of the {@code timeout_seconds} parameter of the {@code run_shell_command} tool.
          * <p>
-         * Default value is {@value Skills#DEFAULT_RUN_SHELL_COMMAND_TOOL_TIMEOUT_SECONDS_PARAMETER_NAME}.
+         * Default value is {@value RunShellCommandToolConfig#DEFAULT_TIMEOUT_SECONDS_PARAMETER_NAME}.
          */
         public Builder timeoutSecondsParameterName(String timeoutSecondsParameterName) {
             this.timeoutSecondsParameterName = timeoutSecondsParameterName;
@@ -121,7 +135,7 @@ public class RunShellCommandToolConfig {
         /**
          * Sets the description of the {@code timeout_seconds} parameter of the {@code run_shell_command} tool.
          * <p>
-         * Default value is {@value Skills#DEFAULT_RUN_SHELL_COMMAND_TOOL_TIMEOUT_SECONDS_PARAMETER_DESCRIPTION}.
+         * Default value is {@value RunShellCommandToolConfig#DEFAULT_TIMEOUT_SECONDS_PARAMETER_NAME}.
          */
         public Builder timeoutSecondsParameterDescription(String timeoutSecondsParameterDescription) {
             this.timeoutSecondsParameterDescription = timeoutSecondsParameterDescription;
@@ -132,7 +146,7 @@ public class RunShellCommandToolConfig {
          * Sets the maximum number of characters of stdout to include in the tool result returned to the LLM.
          * If the output exceeds this limit, the beginning is discarded and a truncation notice is prepended.
          * <p>
-         * Default value is {@value Skills#DEFAULT_RUN_SHELL_COMMAND_TOOL_MAX_STDOUT_CHARS}.
+         * Default value is {@value RunShellCommandToolConfig#DEFAULT_MAX_STDOUT_CHARS}.
          */
         public Builder maxStdOutChars(Integer maxStdOutChars) {
             this.maxStdOutChars = maxStdOutChars;
@@ -143,7 +157,7 @@ public class RunShellCommandToolConfig {
          * Sets the maximum number of characters of stderr to include in the tool result returned to the LLM.
          * If the output exceeds this limit, the beginning is discarded and a truncation notice is prepended.
          * <p>
-         * Default value is {@value Skills#DEFAULT_RUN_SHELL_COMMAND_TOOL_MAX_STDERR_CHARS}.
+         * Default value is {@value RunShellCommandToolConfig#DEFAULT_MAX_STDERR_CHARS}.
          */
         public Builder maxStdErrChars(Integer maxStdErrChars) {
             this.maxStdErrChars = maxStdErrChars;
