@@ -282,10 +282,10 @@ public abstract class AiServices<T> {
      * {@link #systemMessageProvider(Function)}) has been applied, but before the
      * {@link #chatRequestTransformer(UnaryOperator)} is invoked.
      * <p>
-     * This can be used to dynamically modify the content of the system message.
+     * This can be used to dynamically modify the content of the system message,
+     * for example to append or prepend additional instructions.
      * The transformer receives the current system message text (or {@code null} if no system message
-     * has been configured) and must return the new system message text, or {@code null} to produce
-     * no system message.
+     * has been configured) and must return the new system message text.
      *
      * @param systemMessageTransformer A {@link UnaryOperator} that accepts the current system message
      *                                 text and returns the transformed text.
@@ -304,10 +304,11 @@ public abstract class AiServices<T> {
      * {@link #systemMessageProvider(Function)}) has been applied, but before the
      * {@link #chatRequestTransformer(UnaryOperator)} is invoked.
      * <p>
-     * This can be used to dynamically modify the content of the system message.
+     * This can be used to dynamically modify the content of the system message,
+     * for example to append or prepend additional instructions.
      * The transformer receives the current system message text (or {@code null} if no system message
      * has been configured) and the {@link InvocationContext} of the current invocation,
-     * and must return the new system message text, or {@code null} to produce no system message.
+     * and must return the new system message text.
      *
      * @param systemMessageTransformer A {@link BiFunction} that accepts the current system message text
      *                                 and the {@link InvocationContext}, and returns the transformed text.
