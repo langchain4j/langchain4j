@@ -63,7 +63,7 @@ public interface ModerationModel {
      */
     default Response<Moderation> moderate(String text) {
         ModerationRequest request =
-                ModerationRequest.builder().messages(List.of(text)).build();
+                ModerationRequest.builder().texts(List.of(text)).build();
         ModerationResponse response = moderate(request);
         return Response.from(response.moderation(), null, null, response.metadata());
     }
@@ -96,7 +96,7 @@ public interface ModerationModel {
      */
     default Response<Moderation> moderate(List<ChatMessage> messages) {
         List<String> texts = messages.stream().map(ModerationModel::toText).toList();
-        ModerationRequest request = ModerationRequest.builder().messages(texts).build();
+        ModerationRequest request = ModerationRequest.builder().texts(texts).build();
         ModerationResponse response = moderate(request);
         return Response.from(response.moderation(), null, null, response.metadata());
     }
@@ -119,7 +119,7 @@ public interface ModerationModel {
      * @return a list of text inputs extracted from the request
      */
     static List<String> toInputs(ModerationRequest moderationRequest) {
-        return moderationRequest.messages();
+        return moderationRequest.texts();
     }
 
     /**

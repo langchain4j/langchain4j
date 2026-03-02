@@ -11,19 +11,19 @@ import java.util.Objects;
  */
 public class ModerationRequest {
 
-    private final List<String> messages;
+    private final List<String> texts;
 
     private ModerationRequest(Builder builder) {
-        this.messages = copyIfNotNull(builder.messages);
+        this.texts = copyIfNotNull(builder.texts);
     }
 
     /**
-     * Returns the list of text messages to moderate.
+     * Returns the list of texts to moderate.
      *
-     * @return the list of text messages to moderate.
+     * @return the list of texts to moderate.
      */
-    public List<String> messages() {
-        return messages;
+    public List<String> texts() {
+        return texts;
     }
 
     @Override
@@ -31,17 +31,17 @@ public class ModerationRequest {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         ModerationRequest that = (ModerationRequest) o;
-        return Objects.equals(messages, that.messages);
+        return Objects.equals(texts, that.texts);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(messages);
+        return Objects.hash(texts);
     }
 
     @Override
     public String toString() {
-        return "ModerationRequest{" + "messages=" + messages + '}';
+        return "ModerationRequest{" + "texts=" + texts + '}';
     }
 
     /**
@@ -68,22 +68,22 @@ public class ModerationRequest {
      */
     public static class Builder {
 
-        private List<String> messages;
+        private List<String> texts;
 
         private Builder() {}
 
         private Builder(ModerationRequest request) {
-            this.messages = request.messages;
+            this.texts = request.texts;
         }
 
         /**
-         * Sets the list of text messages to moderate.
+         * Sets the list of texts to moderate.
          *
-         * @param messages the list of text messages to moderate.
+         * @param texts the list of texts to moderate.
          * @return this builder.
          */
-        public Builder messages(List<String> messages) {
-            this.messages = messages;
+        public Builder texts(List<String> texts) {
+            this.texts = texts;
             return this;
         }
 
@@ -91,10 +91,10 @@ public class ModerationRequest {
          * Builds a new {@link ModerationRequest}.
          *
          * @return a new {@link ModerationRequest}.
-         * @throws IllegalArgumentException if messages is null or empty.
+         * @throws IllegalArgumentException if texts is null or empty.
          */
         public ModerationRequest build() {
-            ensureNotEmpty(messages, "messages");
+            ensureNotEmpty(texts, "texts");
             return new ModerationRequest(this);
         }
     }
