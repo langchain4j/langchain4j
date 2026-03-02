@@ -25,7 +25,7 @@ class LoggingChatModelListenerTest {
                 {
                     "a": 0
                 }
-                """)).isEqualTo("{\"a\":0}");
+                """)).isEqualTo("0");
 
         assertThat(LoggingChatModelListener.formatArguments("""
                 {
