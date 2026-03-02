@@ -34,6 +34,7 @@ class ActivateSkillToolExecutor extends AbstractSkillToolExecutor {
         }
 
         return ToolExecutionResult.builder()
+                .result(skill)
                 .resultText(skill.content())
                 .build();
     }

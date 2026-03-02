@@ -47,7 +47,7 @@ public class Exceptions {
         }
     }
 
-    public static <T> T toRuntimeException(Callable<T> callable) { // TODO name
+    public static <T> T unchecked(Callable<T> callable) {
         try {
             return callable.call();
         } catch (Exception e) {

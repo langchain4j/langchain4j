@@ -12,7 +12,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
 
-import static dev.langchain4j.internal.Exceptions.toRuntimeException;
+import static dev.langchain4j.internal.Exceptions.unchecked;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.StreamSupport.stream;
@@ -83,7 +83,7 @@ public class FileSystemSkillLoader {
             throw new IllegalArgumentException("SKILL.md not found in " + skillDirectory);
         }
 
-        String markdown = toRuntimeException(() -> Files.readString(skillFile));
+        String markdown = unchecked(() -> Files.readString(skillFile));
 
         Map<String, List<String>> frontMatter = parseFrontMatter(markdown);
         String content = extractContent(markdown);
@@ -134,7 +134,7 @@ public class FileSystemSkillLoader {
                     .filter(path -> !skillDirectory.relativize(path).startsWith("scripts"))
                     .map(path -> {
                         try {
-                            String content = toRuntimeException(() -> Files.readString(path));
+                            String content = unchecked(() -> Files.readString(path));
                             if (isNullOrBlank(content)) {
                                 return null;
                             }

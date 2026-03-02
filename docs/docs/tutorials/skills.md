@@ -38,8 +38,7 @@ A typical interaction looks like this:
 
 ### From the File System
 
-The most convenient way to load skills is with `FileSystemSkillLoader`.
-Each skill lives in its own subdirectory containing a `SKILL.md` file.
+Typically, each skill lives in its own directory containing a `SKILL.md` file.
 The file must start with a YAML front matter block that declares the skill's `name` and `description`.
 Everything below the front matter becomes the skill's content — the instructions given to the LLM
 when it activates the skill.
@@ -68,22 +67,20 @@ When the user asks you to edit a Word document:
 ...
 ```
 
-Loading all skills from a directory:
-
-```java
-List<Skill> skills = FileSystemSkillLoader.loadSkills(Path.of("skills/"));
-Skills skills = Skills.from(skills);
-```
-
-Loading a single skill:
-
-```java
-Skill skill = FileSystemSkillLoader.loadSkill(Path.of("skills/docx"));
-```
-
 Any file in the skill directory (other than `SKILL.md` itself and files under a `scripts/`
 subdirectory) is automatically loaded as a `SkillResource` that the LLM can read via the
 `read_skill_resource` tool.
+
+Use `FileSystemSkillLoader` to load skills from the file system:
+
+```java
+// Load all skills found in immediate subdirectories:
+List<Skill> skillList = FileSystemSkillLoader.loadSkills(Path.of("skills/"));
+Skills skills = Skills.from(skillList);
+
+// Or load a single skill by its directory:
+Skills skills = Skills.from(FileSystemSkillLoader.loadSkill(Path.of("skills/docx")));
+```
 
 ### Programmatically
 

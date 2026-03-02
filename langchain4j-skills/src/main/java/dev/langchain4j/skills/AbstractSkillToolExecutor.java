@@ -23,7 +23,7 @@ abstract class AbstractSkillToolExecutor implements ToolExecutor {
         try {
             return Json.fromJson(json, Map.class);
         } catch (Exception e) {
-            String message = "Failed to parse tool search arguments: '%s' (base64: '%s')".formatted(json, toBase64(json));
+            String message = "Failed to parse tool arguments: '%s' (base64: '%s')".formatted(json, toBase64(json));
             throwException(message, e);
             return null; // unreachable
         }

@@ -46,8 +46,11 @@ class ReadResourceToolExecutor extends AbstractSkillToolExecutor {
             throwException("There is no resource for skill '%s' with the path '%s'. Available resources: [%s]".formatted(skillName, relativePath, availableResources));
         }
 
+        SkillResource resource = resources.get(0);
+
         return ToolExecutionResult.builder()
-                .resultText(resources.get(0).content())
+                .result(resource)
+                .resultText(resource.content())
                 .build();
     }
 }

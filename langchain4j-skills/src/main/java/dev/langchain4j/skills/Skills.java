@@ -15,6 +15,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static dev.langchain4j.agent.tool.SearchBehavior.ALWAYS_VISIBLE;
+import static dev.langchain4j.agent.tool.ToolSpecification.METADATA_SEARCH_BEHAVIOR;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
@@ -114,6 +116,7 @@ public class Skills {
                         .addStringProperty(config.parameterName, config.parameterDescription)
                         .required(config.parameterName)
                         .build())
+                .addMetadata(METADATA_SEARCH_BEHAVIOR, ALWAYS_VISIBLE)
                 .build();
 
         ToolExecutor activateSkillExecutor = new ActivateSkillToolExecutor(config, skillsByName, throwToolArgumentsExceptions);
@@ -123,7 +126,19 @@ public class Skills {
 
         if (getOrDefault(builder.allowRunningShellCommands, false)) {
             RunShellCommandToolConfig rsc = getOrDefault(builder.runShellCommandToolConfig, RunShellCommandToolConfig.builder().build());
-            ToolSpecification runShellCommandTool = createRunShellCommandTool(rsc);
+
+            ToolSpecification runShellCommandTool = ToolSpecification.builder()
+                    .name(rsc.name)
+                    .description(rsc.description)
+                    .parameters(JsonObjectSchema.builder()
+                            .addStringProperty(rsc.commandParameterName, rsc.commandParameterDescription)
+                            .addStringProperty(rsc.skillNameParameterName, rsc.skillNameParameterDescription)
+                            .addStringProperty(rsc.timeoutSecondsParameterName, rsc.timeoutSecondsParameterDescription)
+                            .required(rsc.commandParameterName)
+                            .build())
+                    .addMetadata(METADATA_SEARCH_BEHAVIOR, ALWAYS_VISIBLE)
+                    .build();
+
             ToolExecutor runShellCommandToolExecutor = new RunShellCommandToolExecutor(
                     rsc,
                     skillsByName,
@@ -144,6 +159,7 @@ public class Skills {
                                 .addStringProperty(rrc.relativePathParameterName, resolveRelativePathParameterDescription(rrc))
                                 .required(rrc.skillNameParameterName, rrc.relativePathParameterName)
                                 .build())
+                        .addMetadata(METADATA_SEARCH_BEHAVIOR, ALWAYS_VISIBLE)
                         .build();
 
                 ToolExecutor readResourceExecutor = new ReadResourceToolExecutor(rrc, skillsByName, throwToolArgumentsExceptions);
@@ -156,21 +172,7 @@ public class Skills {
                 .addAll(tools)
                 .build();
 
-
         return request -> toolProviderResult;
-    }
-
-    private static ToolSpecification createRunShellCommandTool(RunShellCommandToolConfig rsc) {
-        return ToolSpecification.builder()
-                .name(rsc.name)
-                .description(rsc.description)
-                .parameters(JsonObjectSchema.builder()
-                        .addStringProperty(rsc.commandParameterName, rsc.commandParameterDescription)
-                        .addStringProperty(rsc.skillNameParameterName, rsc.skillNameParameterDescription)
-                        .addStringProperty(rsc.timeoutSecondsParameterName, rsc.timeoutSecondsParameterDescription)
-                        .required(rsc.commandParameterName)
-                        .build())
-                .build();
     }
 
     private String resolveRelativePathParameterDescription(ReadResourceToolConfig rrc) {
