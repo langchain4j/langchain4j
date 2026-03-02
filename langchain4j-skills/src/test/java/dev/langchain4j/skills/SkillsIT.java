@@ -223,7 +223,12 @@ class SkillsIT {
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
-                .systemMessage("You have access to the following skills: " + skills.formatNamesAndDescriptions())
+                .systemMessage("""
+                        You have access to the following skills:
+                        %s
+                        When the user's request relates to one of these skills,
+                        activate it first using the 'activate_skill' tool before proceeding.
+                        """.formatted(skills.formatNamesAndDescriptions()))
                 .tools(spyTools)
                 .toolProvider(skills.toolProvider())
                 .build();
@@ -239,57 +244,6 @@ class SkillsIT {
         verifyNoMoreInteractions(spyTools);
     }
 
-//    @Test TODO
-//    void should_activate_docx_skill_and_run_scripts() {
-//
-//        // given
-//        Skill skill = FileSystemSkillLoader.loadSkill(toPath("skills/docx"));
-//        SkillService skillService = SkillService.builder()
-//                .skills(skill)
-//                .allowRunningShellCommands(true)
-//                .build();
-//
-//        Assistant assistant = AiServices.builder(Assistant.class)
-//                .chatModel(model)
-//                .systemMessage(skillService.systemMessage())
-//                .toolProvider(skillService.toolProvider())
-//                .build();
-//
-//        // when
-//        Result<String> result = assistant.chat("Modify the word document C:\\dev\\output.docx in place, " +
-//                "change the color of the text to blue." +
-//                "Ignore all validation errors");
-//
-//        // then
-////        System.out.println(result.tokenUsage());
-////        assertThat(response).containsIgnoringCase("hello from python");
-//    }
-//
-//    @Test
-//    void should_activate_mcp_skill_and_run_scripts() {
-//
-//        // given
-//        Skill skill = FileSystemSkillLoader.loadSkill(toPath("skills/mcp-builder"));
-//        SkillService skillService = SkillService.builder()
-//                .skills(skill)
-//                .allowRunningShellCommands(true)
-//                .build();
-//
-//        Assistant assistant = AiServices.builder(Assistant.class)
-//                .chatModel(model)
-//                .systemMessage(skillService.systemMessage())
-//                .toolProvider(skillService.toolProvider())
-//                .build();
-//
-//        // when
-//        Result<String> result = assistant.chat("Create a simple mcp server in python " +
-//                "with a single tool 'echo' that sends back whatever is sent to it");
-//
-//        // then
-
-    /// /        System.out.println(result.tokenUsage());
-    /// /        assertThat(response).containsIgnoringCase("hello from python");
-//    }
     private Path toPath(String fileName) {
         try {
             return Paths.get(getClass().getClassLoader().getResource(fileName).toURI());
