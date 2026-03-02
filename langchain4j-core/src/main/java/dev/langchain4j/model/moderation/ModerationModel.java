@@ -31,16 +31,21 @@ public interface ModerationModel {
      * @return a {@link ModerationResponse}, containing all the outputs from the moderation model
      */
     default ModerationResponse moderate(ModerationRequest moderationRequest) {
+        ModerationRequest finalRequest = moderationRequest.toBuilder()
+                .modelName(moderationRequest.modelName() != null ? moderationRequest.modelName() : modelName())
+                .build();
+
+        ModelProvider modelProvider = provider();
         List<ModerationModelListener> listeners = listeners();
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
 
-        onRequest(moderationRequest, provider(), modelName(), attributes, listeners);
+        onRequest(finalRequest, modelProvider, attributes, listeners);
         try {
-            ModerationResponse moderationResponse = doModerate(moderationRequest);
-            onResponse(moderationResponse, moderationRequest, provider(), modelName(), attributes, listeners);
+            ModerationResponse moderationResponse = doModerate(finalRequest);
+            onResponse(moderationResponse, finalRequest, modelProvider, attributes, listeners);
             return moderationResponse;
         } catch (Exception error) {
-            onError(error, moderationRequest, provider(), modelName(), attributes, listeners);
+            onError(error, finalRequest, modelProvider, attributes, listeners);
             throw error;
         }
     }

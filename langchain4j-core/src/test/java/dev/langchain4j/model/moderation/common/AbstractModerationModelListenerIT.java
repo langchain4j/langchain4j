@@ -68,7 +68,7 @@ public abstract class AbstractModerationModelListenerIT {
                         .isNotNull()
                         .isEqualTo(modelReference.get().provider());
 
-                assertThat(requestContext.modelName())
+                assertThat(requestContext.moderationRequest().modelName())
                         .isEqualTo(modelReference.get().modelName());
 
                 requestContext.attributes().put("id", "12345");
@@ -85,7 +85,7 @@ public abstract class AbstractModerationModelListenerIT {
                         .isNotNull()
                         .isEqualTo(modelReference.get().provider());
 
-                assertThat(responseContext.modelName())
+                assertThat(responseContext.moderationRequest().modelName())
                         .isEqualTo(modelReference.get().modelName());
 
                 assertThat(responseContext.attributes()).containsEntry("id", "12345");
@@ -143,7 +143,7 @@ public abstract class AbstractModerationModelListenerIT {
                         .isNotNull()
                         .isEqualTo(modelReference.get().provider());
 
-                assertThat(requestContext.modelName())
+                assertThat(requestContext.moderationRequest().modelName())
                         .isEqualTo(modelReference.get().modelName());
 
                 requestContext.attributes().put("id", "12345");
@@ -165,7 +165,7 @@ public abstract class AbstractModerationModelListenerIT {
                         .isNotNull()
                         .isEqualTo(modelReference.get().provider());
 
-                assertThat(errorContext.modelName())
+                assertThat(errorContext.moderationRequest().modelName())
                         .isEqualTo(modelReference.get().modelName());
 
                 assertThat(errorContext.attributes()).containsEntry("id", "12345");

@@ -10,7 +10,7 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * The moderation model response context.
- * It contains {@link ModerationResponse}, corresponding {@link ModerationRequest}, {@link ModelProvider}, model name and attributes.
+ * It contains {@link ModerationResponse}, corresponding {@link ModerationRequest}, {@link ModelProvider} and attributes.
  * The attributes can be used to pass data between methods of a {@link ModerationModelListener}
  * or between multiple {@link ModerationModelListener}s.
  */
@@ -22,9 +22,6 @@ public class ModerationModelResponseContext {
     @Nullable
     private final ModelProvider modelProvider;
 
-    @Nullable
-    private final String modelName;
-
     private final Map<Object, Object> attributes;
 
     /**
@@ -33,19 +30,16 @@ public class ModerationModelResponseContext {
      * @param moderationResponse the moderation response.
      * @param moderationRequest  the moderation request.
      * @param modelProvider      the model provider, or {@code null} if not available.
-     * @param modelName          the model name, or {@code null} if not available.
      * @param attributes         the attributes map.
      */
     public ModerationModelResponseContext(
             ModerationResponse moderationResponse,
             ModerationRequest moderationRequest,
             @Nullable ModelProvider modelProvider,
-            @Nullable String modelName,
             Map<Object, Object> attributes) {
         this.moderationResponse = ensureNotNull(moderationResponse, "moderationResponse");
         this.moderationRequest = ensureNotNull(moderationRequest, "moderationRequest");
         this.modelProvider = modelProvider;
-        this.modelName = modelName;
         this.attributes = ensureNotNull(attributes, "attributes");
     }
 
@@ -72,16 +66,6 @@ public class ModerationModelResponseContext {
     }
 
     /**
-     * Returns the model name.
-     *
-     * @return the model name, or {@code null} if not available.
-     */
-    @Nullable
-    public String modelName() {
-        return modelName;
-    }
-
-    /**
      * @return The attributes map. It can be used to pass data between methods of a {@link ModerationModelListener}
      * or between multiple {@link ModerationModelListener}s.
      */
@@ -94,8 +78,7 @@ public class ModerationModelResponseContext {
         return "ModerationModelResponseContext{" + "moderationResponse="
                 + moderationResponse + ", moderationRequest="
                 + moderationRequest + ", modelProvider="
-                + modelProvider + ", modelName='"
-                + modelName + '\'' + ", attributes="
+                + modelProvider + ", attributes="
                 + attributes + '}';
     }
 }

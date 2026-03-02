@@ -23,14 +23,13 @@ class ModerationModelListenerUtils {
     static void onRequest(
             ModerationRequest moderationRequest,
             ModelProvider modelProvider,
-            String modelName,
             Map<Object, Object> attributes,
             List<ModerationModelListener> listeners) {
         if (isNullOrEmpty(listeners)) {
             return;
         }
         ModerationModelRequestContext requestContext =
-                new ModerationModelRequestContext(moderationRequest, modelProvider, modelName, attributes);
+                new ModerationModelRequestContext(moderationRequest, modelProvider, attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onRequest(requestContext);
@@ -48,14 +47,13 @@ class ModerationModelListenerUtils {
             ModerationResponse moderationResponse,
             ModerationRequest moderationRequest,
             ModelProvider modelProvider,
-            String modelName,
             Map<Object, Object> attributes,
             List<ModerationModelListener> listeners) {
         if (isNullOrEmpty(listeners)) {
             return;
         }
-        ModerationModelResponseContext responseContext = new ModerationModelResponseContext(
-                moderationResponse, moderationRequest, modelProvider, modelName, attributes);
+        ModerationModelResponseContext responseContext =
+                new ModerationModelResponseContext(moderationResponse, moderationRequest, modelProvider, attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onResponse(responseContext);
@@ -73,14 +71,13 @@ class ModerationModelListenerUtils {
             Throwable error,
             ModerationRequest moderationRequest,
             ModelProvider modelProvider,
-            String modelName,
             Map<Object, Object> attributes,
             List<ModerationModelListener> listeners) {
         if (isNullOrEmpty(listeners)) {
             return;
         }
         ModerationModelErrorContext errorContext =
-                new ModerationModelErrorContext(error, moderationRequest, modelProvider, modelName, attributes);
+                new ModerationModelErrorContext(error, moderationRequest, modelProvider, attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onError(errorContext);
