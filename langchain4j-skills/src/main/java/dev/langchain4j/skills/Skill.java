@@ -7,7 +7,7 @@ import java.util.List;
  * A skill bundles instructions (its {@link #content()}),
  * optional {@link #resources()}, and metadata ({@link #name()} and {@link #description()})
  * into a self-contained unit that can be provided to the LLM via the {@code activate_skill} tool.
- * </p>
+ * <p>
  * See more details <a href="http://agentskills.io">here</a>.
  */
 public interface Skill {
