@@ -6,7 +6,7 @@ sidebar_position: 32
 
 Skills is a mechanism for equipping an LLM with reusable, self-contained behavioral instructions.
 A skill bundles a name, a short description, and a body of instructions (its _content_),
-together with optional reference files (_resources_).
+together with optional resources (e.g., references, assets, templates, etc.).
 The LLM loads a skill on demand, keeping the initial context small and only pulling in
 the detailed instructions when they are actually needed.
 
@@ -38,7 +38,7 @@ A typical interaction looks like this:
 
 ### From the File System
 
-The most convenient way to manage skills is with `FileSystemSkillLoader`.
+The most convenient way to load skills is with `FileSystemSkillLoader`.
 Each skill lives in its own subdirectory containing a `SKILL.md` file.
 The file must start with a YAML front matter block that declares the skill's `name` and `description`.
 Everything below the front matter becomes the skill's content — the instructions given to the LLM
@@ -130,8 +130,8 @@ control and trust you need.
 ### Use Case 1: Skills with Tools (Recommended)
 
 In this mode the LLM activates a skill to receive step-by-step instructions, then carries
-them out by calling the [Tools (function calling)](/tutorials/tools) you have explicitly
-registered. Because only your pre-defined `@Tool` methods can be invoked, **there is no
+them out by calling the [tools](/tutorials/tools) you have explicitly
+registered. Because only your pre-defined tools can be invoked, **there is no
 risk of arbitrary code execution**.
 
 This is the recommended approach for production. Skills describe the *policy* — the exact
@@ -162,7 +162,7 @@ Skills skills = Skills.from(FileSystemSkillLoader.loadSkills(Path.of("skills/"))
 
 MyAiService service = AiServices.builder(MyAiService.class)
         .chatModel(chatModel)
-        .tools(new OrderTools()) // your @Tool methods
+        .tools(new OrderTools()) // your tools
         .toolProvider(skills.toolProvider()) // or .toolProviders(mcpToolProvider, skills.toolProvider())
         .systemMessage("You have access to the following skills:\n" + skills.formatNamesAndDescriptions()
                 + "\nWhen the user's request relates to one of these skills, activate it first using the `activate_skill` tool before proceeding.")
@@ -191,14 +191,14 @@ MyAiService service = AiServices.builder(MyAiService.class)
 
 :::warning
 **Script execution is inherently unsafe.**
-Commands run directly in the host process environment **without any sandboxing, containerisation,
+Commands run directly in the host process environment **without any sandboxing, containerization,
 or privilege restriction**. A misbehaving or prompt-injected LLM can execute arbitrary commands
 on the machine running your application.
 Only enable this feature in controlled environments where you fully trust the input and accept
 the associated risks.
 :::
 
-Script execution is **disabled by default**. Enable it with `allowRunningShellCommands(true)`:
+Script execution is **disabled by default**. You can enable it with `allowRunningShellCommands(true)`:
 
 ```java
 Skills skills = Skills.builder()
@@ -224,8 +224,8 @@ as the working directory.
 This mode is best suited for **experimentation, prototyping**, or when you want to use
 third-party skills published by the community (e.g. from the
 [agentskills.io](https://agentskills.io) ecosystem) without first porting them to Java.
-It lets you wire up a working workflow quickly, then migrate individual actions to proper
-`@Tool` methods as the solution matures.
+It lets you wire up a working workflow quickly, then migrate individual actions
+to tools as the solution matures.
 
 ## Customisation
 
