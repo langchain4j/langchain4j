@@ -80,8 +80,8 @@ class RunShellCommandToolExecutor extends AbstractSkillToolExecutor {
             String stdErr = formatStdErr(e.partialStdErr());
             String resultText = """
                     <working_dir>%s</working_dir>
-                    <std_out>%s</std_out>
-                    <std_err>%s</std_err>""".formatted(resolvedWorkingDir, stdOut, stdErr);
+                    <stdout>%s</stdout>
+                    <stderr>%s</stderr>""".formatted(resolvedWorkingDir, stdOut, stdErr);
             return ToolExecutionResult.builder()
                     .isError(true)
                     .resultText(resultText)

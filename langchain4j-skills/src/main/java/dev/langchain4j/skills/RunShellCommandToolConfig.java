@@ -138,7 +138,7 @@ public class RunShellCommandToolConfig {
         /**
          * Sets the description of the {@code timeout_seconds} parameter of the {@code run_shell_command} tool.
          * <p>
-         * Default value is {@value RunShellCommandToolConfig#DEFAULT_TIMEOUT_SECONDS_PARAMETER_NAME}.
+         * Default value is {@value RunShellCommandToolConfig#DEFAULT_TIMEOUT_SECONDS_PARAMETER_DESCRIPTION}.
          */
         public Builder timeoutSecondsParameterDescription(String timeoutSecondsParameterDescription) {
             this.timeoutSecondsParameterDescription = timeoutSecondsParameterDescription;

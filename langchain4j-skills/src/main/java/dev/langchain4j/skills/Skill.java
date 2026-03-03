@@ -10,7 +10,7 @@ import java.util.List;
  * optional {@link #resources()}, and metadata ({@link #name()} and {@link #description()})
  * into a self-contained unit that can be provided to the LLM via the {@code activate_skill} tool.
  * <p>
- * See more details <a href="http://agentskills.io">here</a>.
+ * See more details <a href="https://agentskills.io">here</a>.
  */
 @Experimental
 public interface Skill {

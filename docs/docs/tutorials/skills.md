@@ -67,7 +67,6 @@ description: Edit and review Word documents using tracked changes
 
 When the user asks you to edit a Word document:
 1. Always use tracked changes so edits can be reviewed.
-2. Run `python scripts/accept_changes.py` to accept all pending changes before editing.
 ...
 ```
 
