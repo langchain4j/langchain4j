@@ -1,5 +1,7 @@
 package dev.langchain4j.agentic.workflow.impl;
 
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.buildAgentFeatures;
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureOutput;
 import static dev.langchain4j.agentic.internal.AgentUtil.agentsToExecutors;
 import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 
@@ -10,6 +12,7 @@ import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.workflow.ConditionalAgent;
 import dev.langchain4j.agentic.workflow.ConditionalAgentService;
+import dev.langchain4j.agentic.workflow.SequentialAgentService;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +24,7 @@ public class ConditionalAgentServiceImpl<T> extends AbstractServiceBuilder<T, Co
 
     public ConditionalAgentServiceImpl(Class<T> agentServiceClass, Method agenticMethod) {
         super(agentServiceClass, agenticMethod);
+        configureConditional(agentServiceClass);
     }
 
     @Override
@@ -81,5 +85,10 @@ public class ConditionalAgentServiceImpl<T> extends AbstractServiceBuilder<T, Co
     @Override
     public String serviceType() {
         return "Conditional";
+    }
+
+    private void configureConditional(Class<T> agentServiceClass) {
+        configureOutput(agentServiceClass, this);
+        buildAgentFeatures(agentServiceClass, this);
     }
 }

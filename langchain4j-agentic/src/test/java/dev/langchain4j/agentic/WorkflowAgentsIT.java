@@ -16,6 +16,7 @@ import dev.langchain4j.agentic.Agents.CreativeWriter;
 import dev.langchain4j.agentic.Agents.CreativeWriterWithArgMessage;
 import dev.langchain4j.agentic.Agents.EveningPlan;
 import dev.langchain4j.agentic.Agents.EveningPlannerAgent;
+import dev.langchain4j.agentic.Agents.EveningPlannerAgentWithOutput;
 import dev.langchain4j.agentic.Agents.ExpertInvokerAgentWithMemory;
 import dev.langchain4j.agentic.Agents.ExpertRouterAgent;
 import dev.langchain4j.agentic.Agents.ExpertRouterAgentWithMemory;
@@ -1047,22 +1048,9 @@ public class WorkflowAgentsIT {
                 .outputKey("movies")
                 .build();
 
-        var builder = AgenticServices.parallelBuilder(EveningPlannerAgent.class)
+        var builder = AgenticServices.parallelBuilder(EveningPlannerAgentWithOutput.class)
                 .subAgents(foodExpert, movieExpert)
-                .outputKey("plans")
-                .output(agenticScope -> {
-                    List<String> movies = agenticScope.readState("movies", List.of());
-                    List<String> meals = agenticScope.readState("meals", List.of());
-
-                    List<EveningPlan> moviesAndMeals = new ArrayList<>();
-                    for (int i = 0; i < movies.size(); i++) {
-                        if (i >= meals.size()) {
-                            break;
-                        }
-                        moviesAndMeals.add(new EveningPlan(movies.get(i), meals.get(i)));
-                    }
-                    return moviesAndMeals;
-                });
+                .outputKey("plans");
 
         if (!useDefaultExecutor) {
             builder.executor(Executors.newFixedThreadPool(2));

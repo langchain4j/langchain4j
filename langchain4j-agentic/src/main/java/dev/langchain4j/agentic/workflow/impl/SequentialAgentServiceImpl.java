@@ -5,12 +5,15 @@ import dev.langchain4j.agentic.internal.AbstractServiceBuilder;
 import dev.langchain4j.agentic.workflow.SequentialAgentService;
 import java.lang.reflect.Method;
 
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.buildAgentFeatures;
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureOutput;
 import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 
 public class SequentialAgentServiceImpl<T> extends AbstractServiceBuilder<T, SequentialAgentService<T>> implements SequentialAgentService<T> {
 
     public SequentialAgentServiceImpl(Class<T> agentServiceClass, Method agenticMethod) {
         super(agentServiceClass, agenticMethod);
+        configureSequential(agentServiceClass);
     }
 
     @Override
@@ -29,5 +32,10 @@ public class SequentialAgentServiceImpl<T> extends AbstractServiceBuilder<T, Seq
     @Override
     public String serviceType() {
         return "Sequential";
+    }
+
+    private void configureSequential(Class<T> agentServiceClass) {
+        configureOutput(agentServiceClass, this);
+        buildAgentFeatures(agentServiceClass, this);
     }
 }

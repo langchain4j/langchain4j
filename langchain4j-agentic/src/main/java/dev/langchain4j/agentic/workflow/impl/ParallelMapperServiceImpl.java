@@ -1,9 +1,13 @@
 package dev.langchain4j.agentic.workflow.impl;
 
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.buildAgentFeatures;
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureOutput;
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.selectMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 
 import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.declarative.ParallelExecutor;
 import dev.langchain4j.agentic.declarative.ParallelMapperAgent;
 import dev.langchain4j.agentic.internal.AbstractServiceBuilder;
 import dev.langchain4j.agentic.planner.AgentArgument;
@@ -12,6 +16,7 @@ import dev.langchain4j.agentic.workflow.ParallelMapperService;
 import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.Executor;
 
 public class ParallelMapperServiceImpl<T>
         extends AbstractServiceBuilder<T, ParallelMapperService<T>>
@@ -23,6 +28,7 @@ public class ParallelMapperServiceImpl<T>
 
     public ParallelMapperServiceImpl(Class<T> agentServiceClass, Method agenticMethod) {
         super(agentServiceClass, agenticMethod);
+        configureParallelMapper(agentServiceClass);
     }
 
     @Override
@@ -98,5 +104,24 @@ public class ParallelMapperServiceImpl<T>
     @Override
     public String serviceType() {
         return SERVICE_TYPE;
+    }
+
+    private void configureParallelMapper(Class<T> agentServiceClass) {
+        configureOutput(agentServiceClass, this);
+        buildAgentFeatures(agentServiceClass, this);
+
+        selectMethod(
+                agentServiceClass,
+                method -> method.isAnnotationPresent(ParallelExecutor.class)
+                        && Executor.class.isAssignableFrom(method.getReturnType())
+                        && method.getParameterCount() == 0)
+                .map(method -> {
+                    try {
+                        return (Executor) method.invoke(null);
+                    } catch (Exception e) {
+                        throw new RuntimeException("Error invoking executor method: " + method.getName(), e);
+                    }
+                })
+                .ifPresent(this::executor);
     }
 }

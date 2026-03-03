@@ -1,6 +1,8 @@
 package dev.langchain4j.agentic;
 
 import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agentic.declarative.ExitCondition;
+import dev.langchain4j.agentic.declarative.Output;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScopeAccess;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
@@ -8,6 +10,7 @@ import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
+import java.util.ArrayList;
 import java.util.List;
 
 public class Agents {
@@ -197,6 +200,14 @@ public class Agents {
         String scoreAndReview(@V("story") String story, @V("style") String style);
     }
 
+    public interface StyleReviewLoopWithExitCondition extends StyleReviewLoop {
+
+        @ExitCondition
+        static boolean exitCondition(@V("score") double score) {
+            return score >= 0.8;
+        }
+    }
+
     public interface StyledWriter extends AgentInstance, AgenticScopeAccess {
 
         @Agent
@@ -234,6 +245,18 @@ public class Agents {
 
         @Agent
         List<EveningPlan> plan(@V("mood") String mood);
+    }
+
+    public interface EveningPlannerAgentWithOutput extends EveningPlannerAgent {
+
+        @Output
+        static List<EveningPlan> createPlans(@V("movies") List<String> movies, @V("meals") List<String> meals) {
+            List<EveningPlan> moviesAndMeals = new ArrayList<>();
+            for (int i = 0; i < Math.min(movies.size(), meals.size()); i++) {
+                moviesAndMeals.add(new EveningPlan(movies.get(i), meals.get(i)));
+            }
+            return moviesAndMeals;
+        }
     }
 
     public interface ColorExpert {
