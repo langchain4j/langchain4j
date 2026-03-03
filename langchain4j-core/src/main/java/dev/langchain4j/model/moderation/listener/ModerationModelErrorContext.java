@@ -1,11 +1,11 @@
 package dev.langchain4j.model.moderation.listener;
 
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.moderation.ModerationRequest;
+
 import java.util.Map;
-import org.jspecify.annotations.Nullable;
+
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * The moderation model error context.
@@ -17,28 +17,25 @@ public class ModerationModelErrorContext {
 
     private final Throwable error;
     private final ModerationRequest moderationRequest;
-
-    @Nullable
     private final ModelProvider modelProvider;
-
     private final Map<Object, Object> attributes;
 
     /**
      * Creates a new {@link ModerationModelErrorContext}.
      *
-     * @param error              the error that occurred.
-     * @param moderationRequest  the moderation request.
-     * @param modelProvider      the model provider, or {@code null} if not available.
-     * @param attributes         the attributes map.
+     * @param error             the error that occurred.
+     * @param moderationRequest the moderation request.
+     * @param modelProvider     the model provider
+     * @param attributes        the attributes map.
      */
     public ModerationModelErrorContext(
             Throwable error,
             ModerationRequest moderationRequest,
-            @Nullable ModelProvider modelProvider,
+            ModelProvider modelProvider,
             Map<Object, Object> attributes) {
         this.error = ensureNotNull(error, "error");
         this.moderationRequest = ensureNotNull(moderationRequest, "moderationRequest");
-        this.modelProvider = modelProvider;
+        this.modelProvider = ensureNotNull(modelProvider, "modelProvider");
         this.attributes = ensureNotNull(attributes, "attributes");
     }
 
@@ -57,9 +54,8 @@ public class ModerationModelErrorContext {
     }
 
     /**
-     * @return The model provider, or {@code null} if not available.
+     * @return The model provider.
      */
-    @Nullable
     public ModelProvider modelProvider() {
         return modelProvider;
     }

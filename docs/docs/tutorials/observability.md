@@ -287,8 +287,8 @@ ModerationModelListener listener = new ModerationModelListener() {
     public void onRequest(ModerationModelRequestContext requestContext) {
         ModerationRequest moderationRequest = requestContext.moderationRequest();
 
-        // Access messages being moderated
-        System.out.println("Moderating messages: " + moderationRequest.texts());
+        // Access texts being moderated
+        System.out.println("Moderating texts: " + moderationRequest.texts());
 
         System.out.println(requestContext.modelProvider());
         System.out.println(moderationRequest.modelName());

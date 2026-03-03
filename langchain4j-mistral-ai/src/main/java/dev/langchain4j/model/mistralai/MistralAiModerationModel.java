@@ -1,7 +1,7 @@
 package dev.langchain4j.model.mistralai;
 
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
@@ -40,7 +40,7 @@ public class MistralAiModerationModel implements ModerationModel {
                 .build();
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
-        this.listeners = copyIfNotNull(builder.listeners);
+        this.listeners = copy(builder.listeners);
     }
 
     @Override
@@ -60,15 +60,9 @@ public class MistralAiModerationModel implements ModerationModel {
 
     @Override
     public ModerationResponse doModerate(ModerationRequest moderationRequest) {
-        List<String> inputs = ModerationModel.toInputs(moderationRequest);
-        return moderateInternal(inputs, moderationRequest.modelName());
-    }
-
-    private ModerationResponse moderateInternal(List<String> inputs, String modelName) {
-
         MistralAiModerationRequest request = MistralAiModerationRequest.builder()
-                .model(modelName)
-                .input(inputs)
+                .model(moderationRequest.modelName())
+                .input(moderationRequest.texts())
                 .build();
 
         MistralAiModerationResponse response = withRetryMappingExceptions(() -> client.moderation(request), maxRetries);
@@ -78,7 +72,7 @@ public class MistralAiModerationModel implements ModerationModel {
 
             if (isAnyCategoryFlagged(moderationResult.getCategories())) {
                 return ModerationResponse.builder()
-                        .moderation(Moderation.flagged(inputs.get(i)))
+                        .moderation(Moderation.flagged(moderationRequest.texts().get(i)))
                         .build();
             }
             i++;

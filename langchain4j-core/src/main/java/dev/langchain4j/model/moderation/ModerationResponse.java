@@ -12,7 +12,6 @@ import java.util.Objects;
 public class ModerationResponse {
 
     private final Moderation moderation;
-
     private final Map<String, Object> metadata;
 
     private ModerationResponse(Builder builder) {

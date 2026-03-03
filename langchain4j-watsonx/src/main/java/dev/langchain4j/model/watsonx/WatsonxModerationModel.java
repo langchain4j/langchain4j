@@ -9,6 +9,7 @@ import com.ibm.watsonx.ai.detection.DetectionTextRequest;
 import com.ibm.watsonx.ai.detection.DetectionTextResponse;
 import com.ibm.watsonx.ai.detection.detector.BaseDetector;
 import dev.langchain4j.exception.LangChain4jException;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.moderation.Moderation;
@@ -37,6 +38,7 @@ import java.util.concurrent.CompletionException;
  *
  */
 public class WatsonxModerationModel implements ModerationModel {
+
     private final List<BaseDetector> detectors;
     private final DetectionService detectionService;
     private final List<ModerationModelListener> listeners;
@@ -79,12 +81,11 @@ public class WatsonxModerationModel implements ModerationModel {
 
     @Override
     public ModerationResponse doModerate(ModerationRequest moderationRequest) {
-        List<String> inputs = ModerationModel.toInputs(moderationRequest);
-        return moderateInternal(inputs);
-    }
+        if (moderationRequest.modelName() != null) {
+            throw new UnsupportedFeatureException("can't change model name dynamically");
+        }
 
-    private ModerationResponse moderateInternal(List<String> inputs) {
-        var futures = inputs.stream()
+        var futures = moderationRequest.texts().stream()
                 .map(input -> CompletableFuture.supplyAsync(
                         () -> moderateSingleInput(input), DefaultExecutorProvider.getDefaultExecutorService()))
                 .toList();
