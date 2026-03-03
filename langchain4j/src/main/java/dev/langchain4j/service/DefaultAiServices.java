@@ -54,7 +54,6 @@ import dev.langchain4j.service.output.ServiceOutputParser;
 import dev.langchain4j.service.tool.ToolServiceContext;
 import dev.langchain4j.service.tool.ToolServiceResult;
 import dev.langchain4j.spi.services.TokenStreamAdapter;
-import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -68,7 +67,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Scanner;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -211,7 +209,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                         UserMessage userMessage = invokeInputGuardrails(
                                 context.guardrailService(), method, userMessageForAugmentation, commonGuardrailParam);
 
-                        Type returnType = context.returnType != null ? context.returnType : method.getGenericReturnType();
+                        Type returnType =
+                                context.returnType != null ? context.returnType : method.getGenericReturnType();
                         boolean streaming = returnType == TokenStream.class || canAdaptTokenStreamTo(returnType);
 
                         // TODO should it be called when returnType==String?
@@ -236,7 +235,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     allContents.add(content);
                                 }
                             }
-                            userMessage = userMessage.toBuilder().contents(allContents).build();
+                            userMessage = userMessage.toBuilder()
+                                    .contents(allContents)
+                                    .build();
                         }
 
                         List<ChatMessage> messages = new ArrayList<>();
@@ -612,8 +613,10 @@ class DefaultAiServices<T> extends AiServices<T> {
             return "";
         }
 
-        return context.userMessageProvider.apply(memoryId)
-                .orElseThrow(() -> illegalConfiguration("Error: The method '%s' does not have a user message defined.", method.getName()));
+        return context.userMessageProvider
+                .apply(memoryId)
+                .orElseThrow(() -> illegalConfiguration(
+                        "Error: The method '%s' does not have a user message defined.", method.getName()));
     }
 
     private static boolean hasContentArgument(Method method, Object[] args) {
@@ -632,7 +635,7 @@ class DefaultAiServices<T> extends AiServices<T> {
         return false;
     }
 
-    private static Optional<String> findUserMessageTemplateFromMethodAnnotation(Method method) {
+    private Optional<String> findUserMessageTemplateFromMethodAnnotation(Method method) {
         return Optional.ofNullable(method.getAnnotation(dev.langchain4j.service.UserMessage.class))
                 .map(a -> getTemplate(method, "User", a.fromResource(), a.value(), a.delimiter()));
     }
@@ -678,7 +681,7 @@ class DefaultAiServices<T> extends AiServices<T> {
         return Optional.empty();
     }
 
-    private static Optional<List<Content>> findContents(Method method, Object[] args) {
+    private Optional<List<Content>> findContents(Method method, Object[] args) {
         List<Content> contents = new ArrayList<>();
 
         if (findUserMessageTemplateFromMethodAnnotation(method).isPresent()) {
@@ -719,7 +722,7 @@ class DefaultAiServices<T> extends AiServices<T> {
         return o instanceof List<?> list && list.stream().allMatch(Content.class::isInstance);
     }
 
-    private static String getTemplate(Method method, String type, String resource, String[] value, String delimiter) {
+    private String getTemplate(Method method, String type, String resource, String[] value, String delimiter) {
         String messageTemplate;
         if (!resource.trim().isEmpty()) {
             messageTemplate = getResourceText(method.getDeclaringClass(), resource);
@@ -735,22 +738,8 @@ class DefaultAiServices<T> extends AiServices<T> {
         return messageTemplate;
     }
 
-    private static String getResourceText(Class<?> clazz, String resource) {
-        InputStream inputStream = clazz.getResourceAsStream(resource);
-        if (inputStream == null) {
-            inputStream = clazz.getResourceAsStream("/" + resource);
-        }
-        return getText(inputStream);
-    }
-
-    private static String getText(InputStream inputStream) {
-        if (inputStream == null) {
-            return null;
-        }
-        try (Scanner scanner = new Scanner(inputStream);
-                Scanner s = scanner.useDelimiter("\\A")) {
-            return s.hasNext() ? s.next() : "";
-        }
+    private String getResourceText(Class<?> clazz, String resource) {
+        return context.promptResourceLoaderRegistry.loadResource(resource, clazz);
     }
 
     private static Optional<Object> findMemoryId(Method method, Object[] args) {

@@ -608,6 +608,22 @@ public class AiServicesIT {
         Recipe createRecipeWithBlankResource(String... ingredients);
     }
 
+    interface ChefWithSpiResources {
+        @UserMessage(fromResource = "mock:simple-recipe")
+        Recipe createRecipeFromMockResource(String... ingredients);
+
+        @SystemMessage(fromResource = "mock:with-system")
+        @UserMessage("Create recipe for {{ingredients}}")
+        Recipe createRecipeWithMockSystemMessage(
+                @V("character") String character, @V("ingredients") String ingredients);
+
+        @UserMessage(fromResource = "mock:non-existent")
+        Recipe createRecipeFromNonExistentMockResource(String... ingredients);
+
+        @UserMessage(fromResource = "unknown:resource")
+        Recipe createRecipeFromUnsupportedProtocol(String... ingredients);
+    }
+
     @Test
     void should_fail_when_user_message_resource_is_not_found() {
         BadChef badChef = AiServices.create(BadChef.class, chatModel);
@@ -634,6 +650,93 @@ public class AiServicesIT {
         assertThatThrownBy(() -> badChef.createRecipeWithBlankResource("cucumber", "tomato", "feta", "onion", "olives"))
                 .isInstanceOf(IllegalConfigurationException.class)
                 .hasMessage("@UserMessage's template cannot be empty");
+    }
+
+    @Test
+    void should_load_prompt_from_spi_loader() {
+        ChefWithSpiResources chef = AiServices.create(ChefWithSpiResources.class, chatModel);
+
+        Recipe recipe = chef.createRecipeFromMockResource("cucumber", "tomato", "feta", "onion", "olives");
+
+        assertThat(recipe.title).isNotBlank();
+        assertThat(recipe.description).isNotBlank();
+        assertThat(recipe.steps).isNotEmpty();
+        assertThat(recipe.preparationTimeMinutes).isPositive();
+
+        verify(chatModel)
+                .chat(chatRequest("Create a simple recipe using [cucumber, tomato, feta, onion, olives]\n"
+                        + "You must answer strictly in the following JSON format: {\n"
+                        + "\"title\": (type: string),\n"
+                        + "\"description\": (type: string),\n"
+                        + "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n"
+                        + "\"preparationTimeMinutes\": (type: integer)\n"
+                        + "}"));
+    }
+
+    @Test
+    void should_load_system_message_from_spi_loader() {
+        ChefWithSpiResources chef = AiServices.create(ChefWithSpiResources.class, chatModel);
+
+        Recipe recipe = chef.createRecipeWithMockSystemMessage("Italian", "pasta, tomato, basil");
+
+        assertThat(recipe.title).isNotBlank();
+        assertThat(recipe.description).isNotBlank();
+        assertThat(recipe.steps).isNotEmpty();
+        assertThat(recipe.preparationTimeMinutes).isPositive();
+
+        verify(chatModel)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage("You are a Italian chef"),
+                                userMessage("Create recipe for pasta, tomato, basil\n"
+                                        + "You must answer strictly in the following JSON format: {\n"
+                                        + "\"title\": (type: string),\n"
+                                        + "\"description\": (type: string),\n"
+                                        + "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n"
+                                        + "\"preparationTimeMinutes\": (type: integer)\n"
+                                        + "}"))
+                        .build());
+    }
+
+    @Test
+    void should_fallback_to_classpath_when_no_protocol() {
+        Chef chef = AiServices.create(Chef.class, chatModel);
+
+        // Test that existing classpath-based loading still works
+        Recipe recipe = chef.createRecipeFromUsingResource("cucumber", "tomato", "feta", "onion", "olives");
+
+        assertThat(recipe.title).isNotBlank();
+        assertThat(recipe.description).isNotBlank();
+        assertThat(recipe.steps).isNotEmpty();
+        assertThat(recipe.preparationTimeMinutes).isPositive();
+
+        verify(chatModel)
+                .chat(chatRequest("Create recipe using only [cucumber, tomato, feta, onion, olives]\n"
+                        + "You must answer strictly in the following JSON format: {\n"
+                        + "\"title\": (type: string),\n"
+                        + "\"description\": (type: string),\n"
+                        + "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n"
+                        + "\"preparationTimeMinutes\": (type: integer)\n"
+                        + "}"));
+    }
+
+    @Test
+    void should_fail_when_spi_resource_not_found() {
+        ChefWithSpiResources chef = AiServices.create(ChefWithSpiResources.class, chatModel);
+
+        assertThatThrownBy(() -> chef.createRecipeFromNonExistentMockResource("cucumber", "tomato"))
+                .isInstanceOf(IllegalConfigurationException.class)
+                .hasMessageContaining("Failed to load prompt resource 'mock:non-existent'")
+                .hasMessageContaining("MockPromptResourceLoader");
+    }
+
+    @Test
+    void should_fail_when_protocol_not_supported() {
+        ChefWithSpiResources chef = AiServices.create(ChefWithSpiResources.class, chatModel);
+
+        assertThatThrownBy(() -> chef.createRecipeFromUnsupportedProtocol("cucumber", "tomato"))
+                .isInstanceOf(IllegalConfigurationException.class)
+                .hasMessageContaining("No loader found for protocol 'unknown'");
     }
 
     @StructuredPrompt("Create a recipe of a {{dish}} that can be prepared using only {{ingredients}}")
@@ -971,9 +1074,9 @@ public class AiServicesIT {
                             return chatRequest; // No transformation needed
                         }
                         List<ChatMessage> messages = chatRequest.messages().stream()
-                                .map(message -> message == userMessage ?
-                                        dev.langchain4j.data.message.UserMessage.from(transformedMessage) :
-                                        message)
+                                .map(message -> message == userMessage
+                                        ? dev.langchain4j.data.message.UserMessage.from(transformedMessage)
+                                        : message)
                                 .toList();
                         return ChatRequest.builder()
                                 .messages(messages)
@@ -1033,9 +1136,8 @@ public class AiServicesIT {
                 .chatModel(modelWithReasoningEffort)
                 .build();
 
-        OpenAiChatRequestParameters openAiParams = OpenAiChatRequestParameters.builder()
-                .reasoningEffort("low")
-                .build();
+        OpenAiChatRequestParameters openAiParams =
+                OpenAiChatRequestParameters.builder().reasoningEffort("low").build();
 
         Response<AiMessage> response = assistant.chat("Hello, I'm passing custom parameters!", openAiParams);
 
@@ -1043,7 +1145,8 @@ public class AiServicesIT {
         ChatRequest actualRequest = chatRequestCaptor.getValue();
 
         assertThat(actualRequest.parameters()).isInstanceOf(OpenAiChatRequestParameters.class);
-        assertThat(((OpenAiChatRequestParameters)actualRequest.parameters()).reasoningEffort()).isEqualTo("low");
+        assertThat(((OpenAiChatRequestParameters) actualRequest.parameters()).reasoningEffort())
+                .isEqualTo("low");
 
         assertThat(response.content()).isNotNull();
     }

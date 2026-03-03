@@ -47,6 +47,7 @@ import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.search.ToolSearchStrategy;
 import dev.langchain4j.spi.services.AiServicesFactory;
+import dev.langchain4j.store.prompt.PromptResourceLoaderRegistry;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -1069,6 +1070,40 @@ public abstract class AiServices<T> {
      */
     public AiServices<T> storeRetrievedContentInChatMemory(boolean storeRetrievedContentInChatMemory) {
         context.storeRetrievedContentInChatMemory = storeRetrievedContentInChatMemory;
+        return this;
+    }
+
+    /**
+     * Configures a custom prompt resource loader registry.
+     * <p>
+     * By default, the AI Service uses {@link PromptResourceLoaderRegistry#getDefault()},
+     * which loads prompts via SPI-discovered loaders and classpath resources.
+     * <p>
+     * This method allows frameworks like Spring or Micronaut to provide their own
+     * registry implementation that can load prompts from databases, external services,
+     * or other custom sources.
+     * <p>
+     * Example usage in Spring:
+     * <pre>{@code
+     * @Bean
+     * public PromptResourceLoaderRegistry springPromptRegistry() {
+     *     return (resource, contextClass) -> {
+     *         // Load from database, REST API, etc.
+     *         return promptService.loadPrompt(resource);
+     *     };
+     * }
+     *
+     * Assistant assistant = AiServices.builder(Assistant.class)
+     *     .chatModel(model)
+     *     .promptResourceLoaderRegistry(springPromptRegistry())
+     *     .build();
+     * }</pre>
+     *
+     * @param registry the custom prompt resource loader registry to use
+     * @return builder
+     */
+    public AiServices<T> promptResourceLoaderRegistry(PromptResourceLoaderRegistry registry) {
+        context.promptResourceLoaderRegistry = registry;
         return this;
     }
 
