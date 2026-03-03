@@ -2,8 +2,9 @@ package dev.langchain4j.service;
 
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 
-import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.Internal;
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.input.structured.StructuredPromptProcessor;
 import java.lang.reflect.Array;
@@ -42,6 +43,7 @@ public class InternalReflectionVariableResolver {
             if (variableValue instanceof Map<?, ?> variablesMap) {
                 variablesMap.entrySet().stream()
                         .filter(e -> e.getKey().getClass() == String.class)
+                        .filter(e -> !(e.getValue() instanceof Content))
                         .forEach(e -> variables.put((String) e.getKey(), e.getValue()));
             }
         }

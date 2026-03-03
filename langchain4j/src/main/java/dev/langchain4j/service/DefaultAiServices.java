@@ -211,7 +211,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                         UserMessage userMessage = invokeInputGuardrails(
                                 context.guardrailService(), method, userMessageForAugmentation, commonGuardrailParam);
 
-                        Type returnType = context.returnType != null ? context.returnType : method.getGenericReturnType();
+                        Type returnType =
+                                context.returnType != null ? context.returnType : method.getGenericReturnType();
                         boolean streaming = returnType == TokenStream.class || canAdaptTokenStreamTo(returnType);
 
                         // TODO should it be called when returnType==String?
@@ -236,7 +237,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     allContents.add(content);
                                 }
                             }
-                            userMessage = userMessage.toBuilder().contents(allContents).build();
+                            userMessage = userMessage.toBuilder()
+                                    .contents(allContents)
+                                    .build();
                         }
 
                         List<ChatMessage> messages = new ArrayList<>();
@@ -555,8 +558,8 @@ class DefaultAiServices<T> extends AiServices<T> {
 
         Optional<String> maybeUserName = findUserName(method.getParameters(), args);
 
+        List<Content> contents = new ArrayList<>();
         if (userMessageTemplate.isEmpty()) {
-            List<Content> contents = new ArrayList<>();
 
             for (Object arg : args) {
                 if (arg instanceof Content content) {
@@ -577,6 +580,19 @@ class DefaultAiServices<T> extends AiServices<T> {
         }
 
         Prompt prompt = PromptTemplate.from(userMessageTemplate).apply(variables);
+
+        if (args != null && args.length == 1 && args[0] instanceof Map<?, ?> map && !map.isEmpty()) {
+            for (Object value : map.values()) {
+                if (value instanceof Content content) {
+                    contents.add(content);
+                }
+            }
+
+            if (!contents.isEmpty()) {
+                contents.add(TextContent.from(prompt.text()));
+                return UserMessage.from(contents);
+            }
+        }
 
         return maybeUserName
                 .map(userName -> UserMessage.from(userName, prompt.text()))
@@ -612,8 +628,10 @@ class DefaultAiServices<T> extends AiServices<T> {
             return "";
         }
 
-        return context.userMessageProvider.apply(memoryId)
-                .orElseThrow(() -> illegalConfiguration("Error: The method '%s' does not have a user message defined.", method.getName()));
+        return context.userMessageProvider
+                .apply(memoryId)
+                .orElseThrow(() -> illegalConfiguration(
+                        "Error: The method '%s' does not have a user message defined.", method.getName()));
     }
 
     private static boolean hasContentArgument(Method method, Object[] args) {
@@ -661,7 +679,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
     private static Optional<String> findUserMessageTemplateFromTheOnlyArgument(Parameter[] parameters, Object[] args) {
         if (parameters != null && parameters.length == 1 && !hasAnyValidAnnotation(parameters[0])) {
-            if (args[0] instanceof Content || isListOfContents(args[0])) {
+            if (args[0] instanceof Map || args[0] instanceof Content || isListOfContents(args[0])) {
                 return Optional.empty();
             }
             return Optional.of(InternalReflectionVariableResolver.asString(args[0]));
