@@ -61,7 +61,7 @@ public class FileSystemSkillLoader {
      * @return the list of loaded skills, in filesystem iteration order
      * @throws RuntimeException if the directory cannot be listed or a skill fails to load
      */
-    public static List<Skill> loadSkills(Path directory) {
+    public static List<FileSystemSkill> loadSkills(Path directory) {
         try (Stream<Path> entries = Files.list(directory)) {
             return entries
                     .filter(Files::isDirectory)
@@ -83,7 +83,7 @@ public class FileSystemSkillLoader {
      * @throws IllegalArgumentException if {@code SKILL.md} is not found in the directory
      * @throws RuntimeException if the file cannot be read or resources cannot be loaded
      */
-    public static Skill loadSkill(Path skillDirectory) {
+    public static FileSystemSkill loadSkill(Path skillDirectory) {
         Path skillFile = skillDirectory.resolve("SKILL.md");
 
         if (!Files.exists(skillFile)) {

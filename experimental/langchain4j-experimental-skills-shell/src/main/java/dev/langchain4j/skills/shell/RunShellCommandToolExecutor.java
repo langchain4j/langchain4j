@@ -1,32 +1,32 @@
-package dev.langchain4j.skills;
+package dev.langchain4j.skills.shell;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.exception.ToolArgumentsException;
+import dev.langchain4j.exception.ToolExecutionException;
+import dev.langchain4j.internal.Json;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.service.tool.ToolExecutionResult;
-import dev.langchain4j.skills.ShellCommandRunner.Result;
+import dev.langchain4j.service.tool.ToolExecutor;
+import dev.langchain4j.skills.shell.ShellCommandRunner.Result;
 
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
 
-import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-class RunShellCommandToolExecutor extends AbstractSkillToolExecutor {
+class RunShellCommandToolExecutor implements ToolExecutor {
 
     private final RunShellCommandToolConfig config;
-    private final Map<String, Skill> skillsByName;
-    private final ExecutorService executorService;
 
-    RunShellCommandToolExecutor(RunShellCommandToolConfig config,
-                                       Map<String, Skill> skillsByName,
-                                       ExecutorService executorService,
-                                       boolean throwToolArgumentsExceptions) {
-        super(throwToolArgumentsExceptions);
+    RunShellCommandToolExecutor(RunShellCommandToolConfig config) {
         this.config = ensureNotNull(config, "config");
-        this.skillsByName = copy(skillsByName);
-        this.executorService = ensureNotNull(executorService, "executorService");
+    }
+
+    @Override
+    public String execute(ToolExecutionRequest request, Object memoryId) {
+        throw new IllegalStateException("executeWithContext must be called instead");
     }
 
     @Override
@@ -34,26 +34,12 @@ class RunShellCommandToolExecutor extends AbstractSkillToolExecutor {
 
         Map<String, Object> arguments = parseArguments(request.arguments());
         String command = getRequiredArgument(config.commandParameterName, arguments);
-        String skillName = arguments.containsKey(config.skillNameParameterName) ? arguments.get(config.skillNameParameterName).toString() : null;
         Integer timeoutSeconds = resolveTimeout(arguments);
 
-        Path workingDir = null;
-        if (skillName != null && !skillName.isBlank()) {
-            Skill skill = skillsByName.get(skillName);
-            if (skill == null) {
-                throwException("There is no skill with name '%s'".formatted(skillName));
-            }
-            if (skill instanceof FileSystemSkill fileSystemSkill) {
-                workingDir = fileSystemSkill.basePath();
-            }
-        }
-
-        // The LLM needs to know the absolute path to construct reliable paths
-        // across commands, since each invocation starts a fresh shell process.
-        Path resolvedWorkingDir = workingDir != null ? workingDir.toAbsolutePath() : Path.of(System.getProperty("user.dir"));
+        Path workingDir = Path.of(System.getProperty("user.dir"));
 
         try {
-            Result result = ShellCommandRunner.run(command, workingDir, timeoutSeconds, executorService);
+            Result result = ShellCommandRunner.run(command, workingDir, timeoutSeconds, config.executorService);
 
             String stdOut = formatStdOut(result.stdOut());
             if (result.isSuccess()) {
@@ -61,13 +47,13 @@ class RunShellCommandToolExecutor extends AbstractSkillToolExecutor {
                 if (result.stdErr().isBlank()) {
                     resultText = """
                             <working_dir>%s</working_dir>
-                            <stdout>%s</stdout>""".formatted(resolvedWorkingDir, stdOut);
+                            <stdout>%s</stdout>""".formatted(workingDir, stdOut);
                 } else {
                     String stdErr = formatStdErr(result.stdErr());
                     resultText = """
                             <working_dir>%s</working_dir>
                             <stdout>%s</stdout>
-                            <stderr>%s</stderr>""".formatted(resolvedWorkingDir, stdOut, stdErr);
+                            <stderr>%s</stderr>""".formatted(workingDir, stdOut, stdErr);
                 }
                 return ToolExecutionResult.builder()
                         .resultText(resultText)
@@ -78,7 +64,7 @@ class RunShellCommandToolExecutor extends AbstractSkillToolExecutor {
                         <working_dir>%s</working_dir>
                         <exit_code>%s</exit_code>
                         <stdout>%s</stdout>
-                        <stderr>%s</stderr>""".formatted(resolvedWorkingDir, result.exitCode(), stdOut, stdErr);
+                        <stderr>%s</stderr>""".formatted(workingDir, result.exitCode(), stdOut, stdErr);
                 return ToolExecutionResult.builder()
                         .isError(true)
                         .resultText(resultText)
@@ -91,7 +77,7 @@ class RunShellCommandToolExecutor extends AbstractSkillToolExecutor {
                     <working_dir>%s</working_dir>
                     <error>%s</error>
                     <stdout>%s</stdout>
-                    <stderr>%s</stderr>""".formatted(resolvedWorkingDir, e.getMessage(), stdOut, stdErr);
+                    <stderr>%s</stderr>""".formatted(workingDir, e.getMessage(), stdOut, stdErr);
             return ToolExecutionResult.builder()
                     .isError(true)
                     .resultText(resultText)
@@ -103,6 +89,49 @@ class RunShellCommandToolExecutor extends AbstractSkillToolExecutor {
                     .resultText("Failed to run command: " + e.getMessage())
                     .build();
         }
+    }
+
+    private Map<String, Object> parseArguments(String json) {
+        try {
+            return Json.fromJson(json, Map.class);
+        } catch (Exception e) {
+            throwException("Failed to parse tool arguments: '%s'".formatted(json), e);
+            return null; // unreachable
+        }
+    }
+
+    private String getRequiredArgument(String argumentName, Map<String, Object> arguments) {
+        if (isNullOrEmpty(arguments) || !arguments.containsKey(argumentName)) {
+            throwException("Missing required tool argument '%s'".formatted(argumentName));
+        }
+        return arguments.get(argumentName).toString();
+    }
+
+    private void throwException(String message) {
+        throwException(message, null);
+    }
+
+    private void throwException(String message, Exception e) {
+        if (config.throwToolArgumentsExceptions) {
+            throw e == null
+                    ? new ToolArgumentsException(message)
+                    : new ToolArgumentsException(message, e);
+        } else {
+            throw e == null
+                    ? new ToolExecutionException(message)
+                    : new ToolExecutionException(message, e);
+        }
+    }
+
+    Integer resolveTimeout(Map<String, Object> arguments) {
+        Object timeoutSeconds = arguments.get(config.timeoutSecondsParameterName);
+        if (timeoutSeconds == null) {
+            return null;
+        }
+        if (timeoutSeconds instanceof Integer i) {
+            return i;
+        }
+        return Integer.valueOf(timeoutSeconds.toString());
     }
 
     private String formatStdOut(String stdOut) {
@@ -117,16 +146,5 @@ class RunShellCommandToolExecutor extends AbstractSkillToolExecutor {
         if (text.length() <= maxChars) return text;
         return "[truncated: showing last " + maxChars + " of " + text.length() + " chars]\n"
                 + text.substring(text.length() - maxChars);
-    }
-
-    Integer resolveTimeout(Map<String, Object> arguments) {
-        Object timeoutSeconds = arguments.get(config.timeoutSecondsParameterName);
-        if (timeoutSeconds == null) {
-            return null;
-        }
-        if (timeoutSeconds instanceof Integer i) {
-            return i;
-        }
-        return Integer.valueOf(timeoutSeconds.toString());
     }
 }

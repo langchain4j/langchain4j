@@ -1,4 +1,4 @@
-package dev.langchain4j.skills;
+package dev.langchain4j.skills.shell;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledOnOs;

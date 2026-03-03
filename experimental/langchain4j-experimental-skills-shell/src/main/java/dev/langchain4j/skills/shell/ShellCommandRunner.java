@@ -1,4 +1,4 @@
-package dev.langchain4j.skills;
+package dev.langchain4j.skills.shell;
 
 import dev.langchain4j.internal.DefaultExecutorProvider;
 

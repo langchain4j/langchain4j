@@ -2,9 +2,6 @@ package dev.langchain4j.skills;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.exception.ToolArgumentsException;
-import dev.langchain4j.exception.ToolExecutionException;
-import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
@@ -26,19 +23,13 @@ import static java.util.Arrays.asList;
 /**
  * Configures and exposes a set of {@link Skill}s to an LLM.
  * <p>
- * Implements the <em>Tool-based agents</em> integration approach from the
- * <a href="https://agentskills.io/integrate-skills">Agent Skills specification</a>.
- * All skill content and resources are loaded into memory at construction time.
- * The LLM has no access to the file system at inference time: the {@code read_skill_resource}
- * tool returns pre-loaded, in-memory content, so only explicitly registered tools can be invoked
- * and there is no risk of arbitrary code execution.
- * <p>
- * Always provides an {@code activate_skill} tool that the LLM uses to load a skill's content.
- * If any of the configured skills have {@link Skill#resources() resources}, a
- * {@code read_skill_resource} tool is also added so the LLM can read them.
- * Alternatively, if {@link Builder#allowRunningShellCommands(Boolean)} is enabled, a
- * {@code run_shell_command} tool is provided instead (corresponding to the
- * <em>Filesystem-based agents</em> approach, which does allow arbitrary shell command execution).
+ * Implements the <strong>Tool-based agents</strong> integration approach from the
+ * <a href="https://agentskills.io/integrate-skills">Agent Skills specification</a>:
+ * all skill content and resources are loaded into memory at construction time.
+ * An {@code activate_skill} tool lets the LLM load a skill's instructions on demand,
+ * and an optional {@code read_skill_resource} tool serves pre-loaded resource content.
+ * The LLM has no access to the file system at inference time, so only explicitly
+ * registered tools can be invoked and there is no risk of arbitrary code execution.
  * <p>
  * Typical usage with an AI Service:
  * <pre>{@code
@@ -46,9 +37,11 @@ import static java.util.Arrays.asList;
  *
  * MyAiService service = AiServices.builder(MyAiService.class)
  *         .chatModel(chatModel)
- *         .systemMessage("You have access to the following skills: " + skills.formatNamesAndDescriptions() + "\nWhen the user's request relates to one of these skills, activate it first using the 'activate_skill' tool before proceeding.")
+ *         .systemMessage("You have access to the following skills:\n" + skills.formatNamesAndDescriptions()
+ *                 + "\nWhen the user's request relates to one of these skills, activate it first using the `activate_skill` tool before proceeding.")
  *         // or, if you already have a system message configured:
- *         .systemMessageTransformer(systemMessage -> systemMessage + "\n\nYou have access to the following skills: " + skills.formatNamesAndDescriptions() + "\nWhen the user's request relates to one of these skills, activate it first using the 'activate_skill' tool before proceeding.")
+ *         .systemMessageTransformer(systemMessage -> systemMessage + "\n\nYou have access to the following skills:\n" + skills.formatNamesAndDescriptions()
+ *                 + "\nWhen the user's request relates to one of these skills, activate it first using the `activate_skill` tool before proceeding.")
  *         .toolProvider(skills.toolProvider()) // or .toolProviders(mcpToolProvider, skills.toolProvider())
  *         .build();
  * }</pre>
@@ -59,13 +52,11 @@ public class Skills {
     private final List<Skill> skills;
     private final ToolProvider toolProvider;
     private final String namesAndDescriptions;
-    private final boolean throwToolArgumentsExceptions;
 
     public Skills(Builder builder) {
         this.skills = copy(ensureNotEmpty(builder.skills, "skills"));
         this.toolProvider = createToolProvider(builder);
         this.namesAndDescriptions = formatNamesAndDescriptions(builder.skills);
-        this.throwToolArgumentsExceptions = getOrDefault(builder.throwToolArgumentsExceptions, false);
     }
 
     /**
@@ -79,8 +70,6 @@ public class Skills {
     /**
      * Returns an XML-formatted string listing all configured skills with their names and descriptions.
      * Intended to be included in the system message to inform the LLM which skills are available.
-     * The {@code <location>} field is intentionally omitted, as recommended for tool-based agents
-     * by the <a href="https://agentskills.io/integrate-skills">Agent Skills specification</a>.
      */
     public String formatNamesAndDescriptions() {
         return namesAndDescriptions;
@@ -108,6 +97,8 @@ public class Skills {
         Map<String, Skill> skillsByName = new LinkedHashMap<>();
         skills.forEach(skill -> skillsByName.put(skill.name(), skill));
 
+        Map<ToolSpecification, ToolExecutor> tools = new HashMap<>();
+
         ActivateSkillToolConfig asc = getOrDefault(builder.activateSkillToolConfig, ActivateSkillToolConfig.builder().build());
 
         ToolSpecification activateSkillTool = ToolSpecification.builder()
@@ -120,53 +111,24 @@ public class Skills {
                 .addMetadata(METADATA_SEARCH_BEHAVIOR, ALWAYS_VISIBLE)
                 .build();
 
-        ToolExecutor activateSkillExecutor = new ActivateSkillToolExecutor(asc, skillsByName, throwToolArgumentsExceptions);
+        tools.put(activateSkillTool, new ActivateSkillToolExecutor(asc, skillsByName));
 
-        Map<ToolSpecification, ToolExecutor> tools = new HashMap<>();
-        tools.put(activateSkillTool, activateSkillExecutor);
+        boolean hasResources = skills.stream().anyMatch(skill -> !skill.resources().isEmpty());
+        if (hasResources) {
+            ReadResourceToolConfig rrc = getOrDefault(builder.readResourceToolConfig, ReadResourceToolConfig.builder().build());
 
-        if (getOrDefault(builder.allowRunningShellCommands, false)) {
-            RunShellCommandToolConfig rsc = getOrDefault(builder.runShellCommandToolConfig, RunShellCommandToolConfig.builder().build());
-
-            ToolSpecification runShellCommandTool = ToolSpecification.builder()
-                    .name(rsc.name)
-                    .description(rsc.description)
+            ToolSpecification readResourceTool = ToolSpecification.builder()
+                    .name(rrc.name)
+                    .description(rrc.description)
                     .parameters(JsonObjectSchema.builder()
-                            .addStringProperty(rsc.commandParameterName, rsc.commandParameterDescription)
-                            .addStringProperty(rsc.skillNameParameterName, rsc.skillNameParameterDescription)
-                            .addStringProperty(rsc.timeoutSecondsParameterName, rsc.timeoutSecondsParameterDescription)
-                            .required(rsc.commandParameterName)
+                            .addStringProperty(rrc.skillNameParameterName, rrc.skillNameParameterDescription)
+                            .addStringProperty(rrc.relativePathParameterName, resolveRelativePathParameterDescription(rrc))
+                            .required(rrc.skillNameParameterName, rrc.relativePathParameterName)
                             .build())
                     .addMetadata(METADATA_SEARCH_BEHAVIOR, ALWAYS_VISIBLE)
                     .build();
 
-            ToolExecutor runShellCommandToolExecutor = new RunShellCommandToolExecutor(
-                    rsc,
-                    skillsByName,
-                    getOrDefault(rsc.executorService, DefaultExecutorProvider::getDefaultExecutorService),
-                    throwToolArgumentsExceptions
-            );
-            tools.put(runShellCommandTool, runShellCommandToolExecutor);
-        } else {
-            boolean hasResources = skills.stream().anyMatch(skill -> !skill.resources().isEmpty());
-            if (hasResources) {
-                ReadResourceToolConfig rrc = getOrDefault(builder.readResourceToolConfig, ReadResourceToolConfig.builder().build());
-
-                ToolSpecification readResourceTool = ToolSpecification.builder()
-                        .name(rrc.name)
-                        .description(rrc.description)
-                        .parameters(JsonObjectSchema.builder()
-                                .addStringProperty(rrc.skillNameParameterName, rrc.skillNameParameterDescription)
-                                .addStringProperty(rrc.relativePathParameterName, resolveRelativePathParameterDescription(rrc))
-                                .required(rrc.skillNameParameterName, rrc.relativePathParameterName)
-                                .build())
-                        .addMetadata(METADATA_SEARCH_BEHAVIOR, ALWAYS_VISIBLE)
-                        .build();
-
-                ToolExecutor readResourceExecutor = new ReadResourceToolExecutor(rrc, skillsByName, throwToolArgumentsExceptions);
-
-                tools.put(readResourceTool, readResourceExecutor);
-            }
+            tools.put(readResourceTool, new ReadResourceToolExecutor(rrc, skillsByName));
         }
 
         ToolProviderResult toolProviderResult = ToolProviderResult.builder()
@@ -217,9 +179,6 @@ public class Skills {
         Collection<? extends Skill> skills;
         ActivateSkillToolConfig activateSkillToolConfig;
         ReadResourceToolConfig readResourceToolConfig;
-        Boolean allowRunningShellCommands;
-        RunShellCommandToolConfig runShellCommandToolConfig;
-        Boolean throwToolArgumentsExceptions;
 
         /**
          * Sets the skills to make available to the LLM.
@@ -249,51 +208,6 @@ public class Skills {
          */
         public Builder readResourceToolConfig(ReadResourceToolConfig readResourceToolConfig) {
             this.readResourceToolConfig = readResourceToolConfig;
-            return this;
-        }
-
-        /**
-         * When set to {@code true}, enables the {@code run_shell_command} tool,
-         * which allows the LLM to execute shell commands.
-         * When enabled, the {@code read_skill_resource} tool is not added.
-         * <p>
-         * Default: {@code false}.
-         */
-        public Builder allowRunningShellCommands(Boolean allowRunningShellCommands) {
-            this.allowRunningShellCommands = allowRunningShellCommands;
-            return this;
-        }
-
-        /**
-         * Customizes the {@code run_shell_command} tool.
-         */
-        public Builder runShellCommandToolConfig(RunShellCommandToolConfig runShellCommandToolConfig) {
-            this.runShellCommandToolConfig = runShellCommandToolConfig;
-            return this;
-        }
-
-        /**
-         * Controls which exception type is thrown when tool arguments
-         * are missing, invalid, or cannot be parsed.
-         * <p>
-         * Although all errors produced by this tool are argument-related,
-         * this strategy throws {@link ToolExecutionException} by default
-         * instead of {@link ToolArgumentsException}.
-         * <p>
-         * The reason is historical: by default, AI Services fail fast when
-         * a {@link ToolArgumentsException} is thrown, whereas
-         * {@link ToolExecutionException} allows the error message to be
-         * returned to the LLM. For these tools, returning the error message
-         * to the LLM is usually the desired behavior.
-         * <p>
-         * If this flag is set to {@code true}, {@link ToolArgumentsException}
-         * will be thrown instead.
-         *
-         * @param throwToolArgumentsExceptions whether to throw {@link ToolArgumentsException}
-         * @return this builder
-         */
-        public Builder throwToolArgumentsExceptions(Boolean throwToolArgumentsExceptions) {
-            this.throwToolArgumentsExceptions = throwToolArgumentsExceptions;
             return this;
         }
 

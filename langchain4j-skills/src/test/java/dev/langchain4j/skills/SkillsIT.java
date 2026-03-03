@@ -165,37 +165,6 @@ class SkillsIT {
     }
 
     @Test
-    void should_activate_skill_and_run_script() {
-
-        // given
-        Skill skill = FileSystemSkillLoader.loadSkill(toPath("skills/greeting-user"));
-
-        // when
-        Skills skills = Skills.builder()
-                .skills(skill)
-                .allowRunningShellCommands(true)
-                .build();
-
-        // then
-        assertThat(skills.formatNamesAndDescriptions()).contains("greeting-user");
-        assertThat(getToolNames(skills.toolProvider()))
-                .containsExactlyInAnyOrder("activate_skill", "run_shell_command");
-
-        // given
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(model)
-                .systemMessage("You have access to the following skills: " + skills.formatNamesAndDescriptions())
-                .toolProvider(skills.toolProvider())
-                .build();
-
-        // when
-        Result<String> result = assistant.chat("Greet the user");
-
-        // then
-        assertThat(result.content()).containsIgnoringCase("python from hello");
-    }
-
-    @Test
     void should_activate_multiple_skills() {
 
         // given

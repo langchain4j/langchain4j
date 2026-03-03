@@ -23,15 +23,15 @@ into the LLM context**, not on script execution.
 ## How It Works
 
 A `Skills` instance registers a fixed set of tools with LangChain4j's `ToolProvider` mechanism.
-Exactly which tools are registered depends on your configuration:
+Exactly which tools are registered depends on which class you use:
 
 | Tool | When registered |
 |---|---|
-| `activate_skill` | Always. The LLM calls this to load a skill's full instructions into the context. |
-| `read_skill_resource` | When at least one skill has resources **and** `allowRunningShellCommands` is `false` (the default). The LLM calls this to read individual reference files. |
-| `run_shell_command` | When `allowRunningShellCommands(true)` is set. Replaces `read_skill_resource`. |
+| `activate_skill` | Always, when using `Skills`. The LLM calls this to load a skill's full instructions into the context. |
+| `read_skill_resource` | When using `Skills` **and** at least one skill has resources. The LLM calls this to read individual reference files. |
+| `run_shell_command` | Always, when using `ShellSkills` (from `langchain4j-experimental-skills-shell`). The LLM reads `SKILL.md` files directly via shell commands. |
 
-A typical interaction looks like this:
+A typical interaction in tool mode looks like this:
 
 1. The system message lists the available skills (names and descriptions) so the LLM can choose.
 2. The user asks a question that requires a specific skill.
@@ -177,7 +177,8 @@ MyAiService service = AiServices.builder(MyAiService.class)
         .build();
 ```
 
-`formatNamesAndDescriptions()` returns an XML-formatted block listing each skill's name and description, for example:
+`formatNamesAndDescriptions()` returns an XML-formatted block listing each skill's name and description.
+In tool mode the `<location>` field is omitted (the LLM has no file-system access anyway):
 
 ```xml
 <available_skills>
@@ -202,32 +203,62 @@ This corresponds to the **Filesystem-based agents** integration approach describ
 Commands run directly in the host process environment **without any sandboxing, containerization,
 or privilege restriction**. A misbehaving or prompt-injected LLM can execute arbitrary commands
 on the machine running your application.
-Only enable this feature in controlled environments where you fully trust the input and accept
+Only use this in controlled environments where you fully trust the input and accept
 the associated risks.
 :::
 
-Script execution is **disabled by default**. You can enable it with `allowRunningShellCommands(true)`:
+Shell execution lives in a separate experimental artifact — add it to your build:
+
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-experimental-skills-shell</artifactId>
+    <version>1.12.0-SNAPSHOT</version>
+</dependency>
+```
+
+Use `ShellSkills` instead of `Skills`:
 
 ```java
-Skills skills = Skills.builder()
-        .skills(FileSystemSkillLoader.loadSkills(Path.of("skills/")))
-        .allowRunningShellCommands(true)
-        .build();
+ShellSkills skills = ShellSkills.from(FileSystemSkillLoader.loadSkills(Path.of("skills/")));
 
 MyAiService service = AiServices.builder(MyAiService.class)
         .chatModel(chatModel)
         .toolProvider(skills.toolProvider()) // or .toolProviders(mcpToolProvider, skills.toolProvider())
         .systemMessage("You have access to the following skills:\n" + skills.formatNamesAndDescriptions()
-                + "\nWhen the user's request relates to one of these skills, activate it first using the `activate_skill` tool before proceeding.")
+                + "\nWhen the user's request relates to one of these skills, read its SKILL.md before proceeding.")
         // or, if you already have a system message configured:
         // .systemMessageTransformer(systemMessage -> systemMessage + "\n\nYou have access to the following skills:\n" + skills.formatNamesAndDescriptions()
-        //         + "\nWhen the user's request relates to one of these skills, activate it first using the `activate_skill` tool before proceeding.")
+        //         + "\nWhen the user's request relates to one of these skills, read its SKILL.md before proceeding.")
         .build();
 ```
 
-When enabled, the `run_shell_command` tool is registered instead of `read_skill_resource`.
-The LLM can run any shell command, optionally scoped to a specific skill's root directory
-as the working directory.
+Only the `run_shell_command` tool is registered — there is no `activate_skill` tool.
+All skills must be filesystem-based (loaded via `FileSystemSkillLoader`). The LLM reads skill
+instructions directly by running shell commands against the absolute paths provided in the
+system message via `<location>`:
+
+```
+run_shell_command(command="cat /path/to/skills/docx/SKILL.md")
+```
+
+`formatNamesAndDescriptions()` always includes a `<location>` field so the LLM knows
+exactly where to find each `SKILL.md`:
+
+```xml
+<available_skills>
+<skill>
+<name>docx</name>
+<description>Edit and review Word documents using tracked changes</description>
+<location>/path/to/skills/docx/SKILL.md</location>
+</skill>
+<skill>
+<name>data-analysis</name>
+<description>Analyse tabular data and produce charts</description>
+<location>/path/to/skills/data-analysis/SKILL.md</location>
+</skill>
+</available_skills>
+```
 
 This mode is best suited for **experimentation, prototyping**, or when you want to use
 third-party skills published by the community (e.g. from the
@@ -252,13 +283,12 @@ Skills skills = Skills.builder()
         .build();
 ```
 
-When shell commands are enabled, use `RunShellCommandToolConfig` to tune timeouts,
+For shell-based skills, use `RunShellCommandToolConfig` to tune timeouts,
 output limits, and parameter names:
 
 ```java
-Skills skills = Skills.builder()
+ShellSkills skills = ShellSkills.builder()
         .skills(mySkills)
-        .allowRunningShellCommands(true)
         .runShellCommandToolConfig(RunShellCommandToolConfig.builder()
                 .maxStdOutChars(5_000)
                 .maxStdErrChars(2_000)

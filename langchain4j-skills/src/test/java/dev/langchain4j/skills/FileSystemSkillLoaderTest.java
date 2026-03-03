@@ -13,7 +13,7 @@ class FileSystemSkillLoaderTest {
 
     @Test
     void should_load_all_skills_from_directory() {
-        List<Skill> skills = FileSystemSkillLoader.loadSkills(toPath("skills"));
+        List<FileSystemSkill> skills = FileSystemSkillLoader.loadSkills(toPath("skills"));
 
         assertThat(skills)
                 .extracting(Skill::name)
@@ -23,7 +23,7 @@ class FileSystemSkillLoaderTest {
     @Test
     void should_skip_directories_without_skill_md() {
         // using-process-tool/references/ has no SKILL.md, so loadSkills should return nothing
-        List<Skill> skills = FileSystemSkillLoader.loadSkills(toPath("skills/using-process-tool"));
+        List<FileSystemSkill> skills = FileSystemSkillLoader.loadSkills(toPath("skills/using-process-tool"));
 
         assertThat(skills).isEmpty();
     }

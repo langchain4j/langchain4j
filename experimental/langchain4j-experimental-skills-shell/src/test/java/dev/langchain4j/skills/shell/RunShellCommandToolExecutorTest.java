@@ -1,4 +1,4 @@
-package dev.langchain4j.skills;
+package dev.langchain4j.skills.shell;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.service.tool.ToolExecutionResult;
@@ -145,10 +145,7 @@ class RunShellCommandToolExecutorTest {
                 RunShellCommandToolConfig.builder()
                         .maxStdOutChars(maxStdOutChars)
                         .maxStdErrChars(maxStdErrChars)
-                        .build(),
-                Map.of(),
-                Executors.newFixedThreadPool(2),
-                false
+                        .build()
         );
     }
 

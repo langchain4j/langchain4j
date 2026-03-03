@@ -1,21 +1,22 @@
-package dev.langchain4j.skills;
+package dev.langchain4j.skills.shell;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.exception.ToolArgumentsException;
+import dev.langchain4j.exception.ToolExecutionException;
+import dev.langchain4j.internal.DefaultExecutorProvider;
 
 import java.util.concurrent.ExecutorService;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.skills.ShellCommandRunner.DEFAULT_TIMEOUT_SECONDS;
+import static dev.langchain4j.skills.shell.ShellCommandRunner.DEFAULT_TIMEOUT_SECONDS;
 
 @Experimental
 public class RunShellCommandToolConfig {
 
     static final String DEFAULT_NAME = "run_shell_command";
-    static final String DEFAULT_DESCRIPTION = "Runs a shell command using " + System.getProperty("os.name") + ". If skill name is specified, the command runs in the skill's root directory.";
+    static final String DEFAULT_DESCRIPTION = "Runs a shell command using " + System.getProperty("os.name");
     static final String DEFAULT_COMMAND_PARAMETER_NAME = "command";
     static final String DEFAULT_COMMAND_PARAMETER_DESCRIPTION = "The shell command to execute";
-    static final String DEFAULT_SKILL_NAME_PARAMETER_NAME = "skill_name";
-    static final String DEFAULT_SKILL_NAME_PARAMETER_DESCRIPTION = "Optional. The name of the skill whose root directory will be used as the working directory.";
     static final String DEFAULT_TIMEOUT_SECONDS_PARAMETER_NAME = "timeout_seconds";
     static final String DEFAULT_TIMEOUT_SECONDS_PARAMETER_DESCRIPTION = "Optional. The command timeout in seconds. Default: %s seconds.".formatted(DEFAULT_TIMEOUT_SECONDS);
     static final int DEFAULT_MAX_STDOUT_CHARS = 10_000;
@@ -25,26 +26,24 @@ public class RunShellCommandToolConfig {
     final String description;
     final String commandParameterName;
     final String commandParameterDescription;
-    final String skillNameParameterName;
-    final String skillNameParameterDescription;
     final String timeoutSecondsParameterName;
     final String timeoutSecondsParameterDescription;
     final int maxStdOutChars;
     final int maxStdErrChars;
     final ExecutorService executorService;
+    final boolean throwToolArgumentsExceptions;
 
     private RunShellCommandToolConfig(Builder builder) {
         this.name = getOrDefault(builder.name, DEFAULT_NAME);
         this.description = getOrDefault(builder.description, DEFAULT_DESCRIPTION);
         this.commandParameterName = getOrDefault(builder.commandParameterName, DEFAULT_COMMAND_PARAMETER_NAME);
         this.commandParameterDescription = getOrDefault(builder.commandParameterDescription, DEFAULT_COMMAND_PARAMETER_DESCRIPTION);
-        this.skillNameParameterName = getOrDefault(builder.skillNameParameterName, DEFAULT_SKILL_NAME_PARAMETER_NAME);
-        this.skillNameParameterDescription = getOrDefault(builder.skillNameParameterDescription, DEFAULT_SKILL_NAME_PARAMETER_DESCRIPTION);
         this.timeoutSecondsParameterName = getOrDefault(builder.timeoutSecondsParameterName, DEFAULT_TIMEOUT_SECONDS_PARAMETER_NAME);
         this.timeoutSecondsParameterDescription = getOrDefault(builder.timeoutSecondsParameterDescription, DEFAULT_TIMEOUT_SECONDS_PARAMETER_DESCRIPTION);
         this.maxStdOutChars = getOrDefault(builder.maxStdOutChars, DEFAULT_MAX_STDOUT_CHARS);
         this.maxStdErrChars = getOrDefault(builder.maxStdErrChars, DEFAULT_MAX_STDERR_CHARS);
-        this.executorService = builder.executorService;
+        this.executorService = getOrDefault(builder.executorService, DefaultExecutorProvider::getDefaultExecutorService);
+        this.throwToolArgumentsExceptions = getOrDefault(builder.throwToolArgumentsExceptions, false);
     }
 
     public static Builder builder() {
@@ -57,13 +56,12 @@ public class RunShellCommandToolConfig {
         private String description;
         private String commandParameterName;
         private String commandParameterDescription;
-        private String skillNameParameterName;
-        private String skillNameParameterDescription;
         private String timeoutSecondsParameterName;
         private String timeoutSecondsParameterDescription;
         private Integer maxStdOutChars;
         private Integer maxStdErrChars;
         private ExecutorService executorService;
+        private Boolean throwToolArgumentsExceptions;
 
         /**
          * Sets the name of the {@code run_shell_command} tool.
@@ -102,26 +100,6 @@ public class RunShellCommandToolConfig {
          */
         public Builder commandParameterDescription(String commandParameterDescription) {
             this.commandParameterDescription = commandParameterDescription;
-            return this;
-        }
-
-        /**
-         * Sets the name of the {@code skill_name} parameter of the {@code run_shell_command} tool.
-         * <p>
-         * Default value is {@value RunShellCommandToolConfig#DEFAULT_SKILL_NAME_PARAMETER_NAME}.
-         */
-        public Builder skillNameParameterName(String skillNameParameterName) {
-            this.skillNameParameterName = skillNameParameterName;
-            return this;
-        }
-
-        /**
-         * Sets the description of the {@code skill_name} parameter of the {@code run_shell_command} tool.
-         * <p>
-         * Default value is {@value RunShellCommandToolConfig#DEFAULT_SKILL_NAME_PARAMETER_DESCRIPTION}.
-         */
-        public Builder skillNameParameterDescription(String skillNameParameterDescription) {
-            this.skillNameParameterDescription = skillNameParameterDescription;
             return this;
         }
 
@@ -175,6 +153,31 @@ public class RunShellCommandToolConfig {
          */
         public Builder executorService(ExecutorService executorService) {
             this.executorService = executorService;
+            return this;
+        }
+
+        /**
+         * Controls which exception type is thrown when tool arguments
+         * are missing, invalid, or cannot be parsed.
+         * <p>
+         * Although all errors produced by this tool are argument-related,
+         * this strategy throws {@link ToolExecutionException} by default
+         * instead of {@link ToolArgumentsException}.
+         * <p>
+         * The reason is historical: by default, AI Services fail fast when
+         * a {@link ToolArgumentsException} is thrown, whereas
+         * {@link ToolExecutionException} allows the error message to be
+         * returned to the LLM. For these tools, returning the error message
+         * to the LLM is usually the desired behavior.
+         * <p>
+         * If this flag is set to {@code true}, {@link ToolArgumentsException}
+         * will be thrown instead.
+         *
+         * @param throwToolArgumentsExceptions whether to throw {@link ToolArgumentsException}
+         * @return this builder
+         */
+        public Builder throwToolArgumentsExceptions(Boolean throwToolArgumentsExceptions) {
+            this.throwToolArgumentsExceptions = throwToolArgumentsExceptions;
             return this;
         }
 
