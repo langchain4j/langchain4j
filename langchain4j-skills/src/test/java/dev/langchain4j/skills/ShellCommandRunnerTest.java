@@ -157,6 +157,43 @@ class ShellCommandRunnerTest {
 
     @Test
     @DisabledOnOs(OS.WINDOWS)
+    void should_keep_tail_when_truncating_stdout_on_unix() throws IOException, InterruptedException {
+        // seq 1 1000 produces 1000 lines; with a tiny byte cap only the last lines are retained
+        ShellCommandRunner.Result result = ShellCommandRunner.run("seq 1 1000", null, 10, 100);
+
+        assertThat(result.stdOut()).startsWith("[truncated: showing last");
+        assertThat(result.stdOut()).contains("1000"); // last line is preserved
+    }
+
+    @Test
+    @EnabledOnOs(OS.WINDOWS)
+    void should_keep_tail_when_truncating_stdout_on_windows() throws IOException, InterruptedException {
+        ShellCommandRunner.Result result = ShellCommandRunner.run(
+                "for /l %i in (1,1,1000) do @echo %i", null, 10, 100);
+
+        assertThat(result.stdOut()).startsWith("[truncated: showing last");
+        assertThat(result.stdOut()).contains("1000");
+    }
+
+    @Test
+    @DisabledOnOs(OS.WINDOWS)
+    void should_include_line_counts_in_truncation_notice_on_unix() throws IOException, InterruptedException {
+        ShellCommandRunner.Result result = ShellCommandRunner.run("seq 1 1000", null, 10, 100);
+
+        assertThat(result.stdOut()).matches("(?s)\\[truncated: showing last \\d+ of 1000 lines\\].*");
+    }
+
+    @Test
+    @EnabledOnOs(OS.WINDOWS)
+    void should_include_line_counts_in_truncation_notice_on_windows() throws IOException, InterruptedException {
+        ShellCommandRunner.Result result = ShellCommandRunner.run(
+                "for /l %i in (1,1,1000) do @echo %i", null, 10, 100);
+
+        assertThat(result.stdOut()).matches("(?s)\\[truncated: showing last \\d+ of 1000 lines\\].*");
+    }
+
+    @Test
+    @DisabledOnOs(OS.WINDOWS)
     void should_timeout_on_unix() {
         long start = System.currentTimeMillis();
 

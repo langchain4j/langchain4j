@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.file.Path;
+import java.util.ArrayDeque;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -139,27 +140,40 @@ class ShellCommandRunner {
     }
 
     private static String readStream(InputStream is, int maxBytes, AtomicBoolean timedOut) throws IOException {
-        StringBuilder sb = new StringBuilder();
+        ArrayDeque<String> lines = new ArrayDeque<>();
+        int totalLines = 0;
+        int bytesInDeque = 0;
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(is))) {
-            int bytesRead = 0;
             String line;
             while ((line = reader.readLine()) != null) {
-                bytesRead += line.length() + 1; // approximate
-                if (bytesRead > maxBytes) {
-                    sb.append("\n... [output truncated at ~").append(maxBytes / 1024).append(" KB]");
-                    break;
+                totalLines++;
+                int lineBytes = line.length() + 1; // approximate (newline)
+                lines.addLast(line);
+                bytesInDeque += lineBytes;
+                // Evict oldest lines until we are within the limit
+                while (bytesInDeque > maxBytes && lines.size() > 1) {
+                    String evicted = lines.removeFirst();
+                    bytesInDeque -= evicted.length() + 1;
                 }
-                if (!sb.isEmpty()) {
-                    sb.append('\n');
-                }
-                sb.append(line);
             }
         } catch (IOException e) {
             if (timedOut.get()) {
                 // Stream closed because process was destroyed on timeout — return what we have
-                return sb.toString();
+            } else {
+                throw e; // Real I/O error on the happy path - propagate
             }
-            throw e; // Real I/O error on the happy path - propagate
+        }
+        int droppedLines = totalLines - lines.size();
+        StringBuilder sb = new StringBuilder();
+        if (droppedLines > 0) {
+            sb.append("[truncated: showing last ").append(lines.size())
+                    .append(" of ").append(totalLines).append(" lines]\n");
+        }
+        for (String line : lines) {
+            if (!sb.isEmpty() && sb.charAt(sb.length() - 1) != '\n') {
+                sb.append('\n');
+            }
+            sb.append(line);
         }
         return sb.toString();
     }
