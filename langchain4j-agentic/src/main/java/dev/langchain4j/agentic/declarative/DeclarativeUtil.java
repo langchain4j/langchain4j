@@ -2,9 +2,15 @@ package dev.langchain4j.agentic.declarative;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.agentic.AgenticServices;
+import dev.langchain4j.agentic.AgenticServices.DeclarativeAgentCreationContext;
+import dev.langchain4j.agentic.AgenticServices.DefaultDeclarativeAgentCreationContext;
 import dev.langchain4j.agentic.agent.AgentBuilder;
+import dev.langchain4j.agentic.agent.ErrorContext;
+import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgenticService;
+import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -14,10 +20,18 @@ import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
+import static dev.langchain4j.agentic.internal.AgentUtil.AGENTIC_SCOPE_ARG_NAME;
+import static dev.langchain4j.agentic.internal.AgentUtil.agentInvocationArguments;
+import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.getAnnotatedMethodOnClass;
 
 @Internal
@@ -29,11 +43,11 @@ public class DeclarativeUtil {
         configureAgent(agentType, null, true, agentBuilder, ctx -> { });
     }
 
-    public static void configureAgent(Class<?> agentType, ChatModel chatModel, AgentBuilder<?, ?> agentBuilder, Consumer<AgenticServices.DeclarativeAgentCreationContext> agentConfigurator) {
+    public static void configureAgent(Class<?> agentType, ChatModel chatModel, AgentBuilder<?, ?> agentBuilder, Consumer<DeclarativeAgentCreationContext<?>> agentConfigurator) {
         configureAgent(agentType, chatModel, false, agentBuilder, agentConfigurator);
     }
 
-    private static void configureAgent(Class<?> agentType, ChatModel chatModel, boolean allowNullChatModel, AgentBuilder<?, ?> agentBuilder, Consumer<AgenticServices.DeclarativeAgentCreationContext> agentConfigurator) {
+    private static void configureAgent(Class<?> agentType, ChatModel chatModel, boolean allowNullChatModel, AgentBuilder<?, ?> agentBuilder, Consumer<DeclarativeAgentCreationContext<?>> agentConfigurator) {
         getAnnotatedMethodOnClass(agentType, ToolsSupplier.class)
                 .ifPresent(method -> {
                     checkArguments(method);
@@ -109,7 +123,7 @@ public class DeclarativeUtil {
                     agentBuilder.listener(invokeStatic(listenerMethod));
                 });
 
-        agentConfigurator.accept(new AgenticServices.DefaultDeclarativeAgentCreationContext(agentType, agentBuilder));
+        agentConfigurator.accept(new DefaultDeclarativeAgentCreationContext(agentType, agentBuilder));
     }
 
     public static void checkArguments(Method method, Class<?>... expected) {
@@ -136,5 +150,76 @@ public class DeclarativeUtil {
         } catch (IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public static <T> void configureOutput(Class<T> agentServiceClass, AgenticService<?, ?> builder) {
+        selectMethod(agentServiceClass, method -> method.isAnnotationPresent(Output.class))
+                .map(m -> agenticScopeFunction(m, Object.class))
+                .ifPresent(builder::output);
+    }
+
+    public static Optional<Method> predicateMethod(Class<?> agentServiceClass, Predicate<Method> methodSelector) {
+        return selectMethod(
+                agentServiceClass,
+                methodSelector.and(m -> (m.getReturnType() == boolean.class || m.getReturnType() == Boolean.class)));
+    }
+
+    public static void buildAgentFeatures(Class<?> agentServiceClass, AgenticService<?, ?> builder) {
+        buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
+        buildListener(agentServiceClass, builder);
+    }
+
+    private static <T> Optional<Function<ErrorContext, ErrorRecoveryResult>> buildErrorHandler(
+            Class<T> agentServiceClass) {
+        return selectMethod(agentServiceClass, method -> method.isAnnotationPresent(ErrorHandler.class))
+                .map(m -> errorContext -> invokeStatic(m, errorContext));
+    }
+
+    private static void buildListener(Class<?> agentServiceClass, AgenticService<?, ?> builder) {
+        getAnnotatedMethodOnClass(agentServiceClass, AgentListenerSupplier.class)
+                .ifPresent(listenerMethod -> {
+                    checkReturnType(listenerMethod, AgentListener.class);
+                    builder.listener(invokeStatic(listenerMethod));
+                });
+    }
+
+    public static Optional<Method> selectMethod(Class<?> agentServiceClass, Predicate<Method> methodSelector) {
+        for (Method method : agentServiceClass.getMethods()) {
+            if (methodSelector.test(method) && Modifier.isStatic(method.getModifiers())) {
+                return Optional.of(method);
+            }
+        }
+        if (agentServiceClass.getSuperclass() != null) {
+            Optional<Method> method = selectMethod(agentServiceClass.getSuperclass(), methodSelector);
+            if (method.isPresent()) {
+                return method;
+            }
+        }
+        for (Class<?> interf : agentServiceClass.getInterfaces()) {
+            Optional<Method> method = selectMethod(interf, methodSelector);
+            if (method.isPresent()) {
+                return method;
+            }
+        }
+        return Optional.empty();
+    }
+
+    public static Predicate<AgenticScope> agenticScopePredicate(Method predicateMethod) {
+        return agenticScope ->
+                agenticScopeFunction(predicateMethod, boolean.class).apply(agenticScope);
+    }
+
+    public static <T> Function<AgenticScope, T> agenticScopeFunction(Method functionMethod, Class<T> targetClass) {
+        List<AgentArgument> agentArguments = argumentsFromMethod(functionMethod);
+        return agenticScope -> {
+            try {
+                Object[] args = agentInvocationArguments(
+                        agenticScope, agentArguments, Map.of(AGENTIC_SCOPE_ARG_NAME, agenticScope))
+                        .positionalArgs();
+                return (T) functionMethod.invoke(null, args);
+            } catch (Exception e) {
+                throw new RuntimeException("Error invoking method: " + functionMethod.getName(), e);
+            }
+        };
     }
 }
