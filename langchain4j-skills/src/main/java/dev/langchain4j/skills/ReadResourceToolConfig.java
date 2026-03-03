@@ -11,7 +11,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 public class ReadResourceToolConfig {
 
     static final String DEFAULT_NAME = "read_skill_resource";
-    static final String DEFAULT_DESCRIPTION = "Reads the content of a resource referenced in the skill";
+    static final String DEFAULT_DESCRIPTION = "Returns the content of a resource referenced in the skill";
     static final String DEFAULT_SKILL_NAME_PARAMETER_NAME = "skill_name";
     static final String DEFAULT_SKILL_NAME_PARAMETER_DESCRIPTION = "The name of the skill for which the resource should be read";
     static final String DEFAULT_RELATIVE_PATH_PARAMETER_NAME = "relative_path";

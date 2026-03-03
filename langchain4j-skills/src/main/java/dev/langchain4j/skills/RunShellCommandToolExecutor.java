@@ -57,9 +57,18 @@ class RunShellCommandToolExecutor extends AbstractSkillToolExecutor {
 
             String stdOut = formatStdOut(result.stdOut());
             if (result.isSuccess()) {
-                String resultText = """
-                        <working_dir>%s</working_dir>
-                        <stdout>%s</stdout>""".formatted(resolvedWorkingDir, stdOut);
+                String resultText;
+                if (result.stdErr().isBlank()) {
+                    resultText = """
+                            <working_dir>%s</working_dir>
+                            <stdout>%s</stdout>""".formatted(resolvedWorkingDir, stdOut);
+                } else {
+                    String stdErr = formatStdErr(result.stdErr());
+                    resultText = """
+                            <working_dir>%s</working_dir>
+                            <stdout>%s</stdout>
+                            <stderr>%s</stderr>""".formatted(resolvedWorkingDir, stdOut, stdErr);
+                }
                 return ToolExecutionResult.builder()
                         .resultText(resultText)
                         .build();
@@ -80,8 +89,9 @@ class RunShellCommandToolExecutor extends AbstractSkillToolExecutor {
             String stdErr = formatStdErr(e.partialStdErr());
             String resultText = """
                     <working_dir>%s</working_dir>
+                    <error>%s</error>
                     <stdout>%s</stdout>
-                    <stderr>%s</stderr>""".formatted(resolvedWorkingDir, stdOut, stdErr);
+                    <stderr>%s</stderr>""".formatted(resolvedWorkingDir, e.getMessage(), stdOut, stdErr);
             return ToolExecutionResult.builder()
                     .isError(true)
                     .resultText(resultText)
