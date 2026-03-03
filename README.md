@@ -30,6 +30,7 @@ Versions follow the `{upstream_version}-TB{N}` scheme, where `{upstream_version}
 ### AiServices framework extensions
 - Custom metadata support for `AiServices` and `Result` (token counts, model info, etc.) (`aa3063d`).
 - Per-request `ResponseFormat` via `@Format` annotation — each AiService method can specify its own response format (`d6953f5`).
+- Deferred async tool execution in streaming — tools are submitted to the executor after `intermediateResponseHandler` fires, ensuring intermediate text is delivered before tool execution events (`95b9b3d`).
 
 ### Build & distribution
 - Maven group ID changed to `org.thingsboard.langchain4j` (`d18c050`).
