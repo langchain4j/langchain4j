@@ -1,6 +1,6 @@
 package dev.langchain4j.model.moderation;
 
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 
 import java.util.List;
@@ -18,7 +18,7 @@ public class ModerationRequest {
     private final String modelName;
 
     private ModerationRequest(Builder builder) {
-        this.texts = copyIfNotNull(builder.texts);
+        this.texts = copy(ensureNotEmpty(builder.texts, "texts"));
         this.modelName = builder.modelName;
     }
 
@@ -124,7 +124,6 @@ public class ModerationRequest {
          * @throws IllegalArgumentException if texts is null or empty.
          */
         public ModerationRequest build() {
-            ensureNotEmpty(texts, "texts");
             return new ModerationRequest(this);
         }
     }

@@ -73,16 +73,10 @@ public class OpenAiModerationModel implements ModerationModel {
 
     @Override
     public ModerationResponse doModerate(ModerationRequest moderationRequest) {
-        List<String> inputs = ModerationModel.toInputs(moderationRequest);
-        return moderateInternal(inputs, moderationRequest.modelName());
-    }
-
-    private ModerationResponse moderateInternal(List<String> inputs, String modelName) {
-
         dev.langchain4j.model.openai.internal.moderation.ModerationRequest request =
                 dev.langchain4j.model.openai.internal.moderation.ModerationRequest.builder()
-                        .model(modelName)
-                        .input(inputs)
+                        .model(moderationRequest.modelName())
+                        .input(moderationRequest.texts())
                         .build();
 
         dev.langchain4j.model.openai.internal.moderation.ModerationResponse response =
@@ -92,7 +86,7 @@ public class OpenAiModerationModel implements ModerationModel {
         for (ModerationResult moderationResult : response.results()) {
             if (Boolean.TRUE.equals(moderationResult.isFlagged())) {
                 return ModerationResponse.builder()
-                        .moderation(Moderation.flagged(inputs.get(i)))
+                        .moderation(Moderation.flagged(moderationRequest.texts().get(i)))
                         .build();
             }
             i++;

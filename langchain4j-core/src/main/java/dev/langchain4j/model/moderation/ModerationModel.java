@@ -1,5 +1,6 @@
 package dev.langchain4j.model.moderation;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.ModelProvider.OTHER;
 import static dev.langchain4j.model.moderation.ModerationModelListenerUtils.onError;
 import static dev.langchain4j.model.moderation.ModerationModelListenerUtils.onRequest;
@@ -32,7 +33,7 @@ public interface ModerationModel {
      */
     default ModerationResponse moderate(ModerationRequest moderationRequest) {
         ModerationRequest finalRequest = moderationRequest.toBuilder()
-                .modelName(moderationRequest.modelName() != null ? moderationRequest.modelName() : modelName())
+                .modelName(getOrDefault(moderationRequest.modelName(), modelName()))
                 .build();
 
         ModelProvider modelProvider = provider();
@@ -114,17 +115,6 @@ public interface ModerationModel {
      */
     default Response<Moderation> moderate(TextSegment textSegment) {
         return moderate(textSegment.text());
-    }
-
-    /**
-     * Converts a ModerationRequest into a list of text inputs.
-     * This is a helper method for implementations.
-     *
-     * @param moderationRequest the moderation request
-     * @return a list of text inputs extracted from the request
-     */
-    static List<String> toInputs(ModerationRequest moderationRequest) {
-        return moderationRequest.texts();
     }
 
     /**
