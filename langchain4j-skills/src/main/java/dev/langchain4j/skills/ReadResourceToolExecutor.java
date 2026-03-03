@@ -41,7 +41,8 @@ class ReadResourceToolExecutor extends AbstractSkillToolExecutor {
             String availableResources = skill.resources().stream()
                     .map(resource -> "'" + resource.relativePath() + "'")
                     .collect(joining(", "));
-            throwException("There is no resource for skill '%s' with the path '%s'. Available resources: [%s]".formatted(skillName, relativePath, availableResources));
+            throwException(("There is no resource for skill '%s' with the path '%s'. " +
+                    "Available resources: [%s]").formatted(skillName, relativePath, availableResources));
         }
 
         SkillResource resource = resources.get(0);

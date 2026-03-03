@@ -3,15 +3,15 @@ package dev.langchain4j.skills;
 import dev.langchain4j.Experimental;
 
 /**
- * An additional resource associated with a {@link Skill}, such as a reference file or asset,
- * that the LLM can read by calling the {@code read_skill_resource} tool.
+ * An additional resource associated with a {@link Skill},
+ * such as a reference file, asset, or template that the LLM can read on demand.
  */
 @Experimental
 public interface SkillResource {
 
     /**
      * Returns the relative path of this resource within the skill's directory.
-     * Used to identify the resource when reading it by calling the {@code read_skill_resource} tool.
+     * Used to identify the resource when the LLM requests it.
      */
     String relativePath();
 

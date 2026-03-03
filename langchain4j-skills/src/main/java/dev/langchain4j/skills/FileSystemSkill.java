@@ -6,17 +6,18 @@ import java.nio.file.Path;
 
 /**
  * A {@link Skill} backed by the file system.
- * Provides a {@link #basePath()} that is used as the working directory
- * when the LLM runs shell commands via the {@code run_shell_command} tool. TODO
+ * Extends {@link Skill} with a {@link #basePath()} pointing to the directory
+ * that contains the skill's {@code SKILL.md} and any associated resource files.
  */
 @Experimental
-public interface FileSystemSkill extends Skill { // TODO needed?
+public interface FileSystemSkill extends Skill {
 
     /**
-     * Returns the base directory path of this skill.
-     * Used as the working directory when the LLM runs shell commands for this skill.
+     * Returns the base directory of this skill on the file system.
+     * This directory is expected to contain a {@code SKILL.md} file
+     * and optionally additional resource files.
      */
-    Path basePath(); // TODO needed?
+    Path basePath();
 
     static DefaultFileSystemSkill.Builder builder() {
         return new DefaultFileSystemSkill.Builder();

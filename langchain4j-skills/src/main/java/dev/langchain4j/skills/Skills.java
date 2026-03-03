@@ -26,10 +26,10 @@ import static java.util.Arrays.asList;
  * Implements the <strong>Tool-based agents</strong> integration approach from the
  * <a href="https://agentskills.io/integrate-skills">Agent Skills specification</a>:
  * all skill content and resources are loaded into memory at construction time.
- * An {@code activate_skill} tool lets the LLM load a skill's instructions on demand,
- * and an optional {@code read_skill_resource} tool serves pre-loaded resource content.
- * The LLM has no access to the file system at inference time, so only explicitly
- * registered tools can be invoked and there is no risk of arbitrary code execution.
+ * An {@code activate_skill} tool lets the LLM read a skill's instructions on demand,
+ * and an optional {@code read_skill_resource} tool reads pre-loaded resource content.
+ * The LLM has no access to the file system at inference time,
+ * only abovementioned tools can be called and there is no risk of arbitrary code execution.
  * <p>
  * Typical usage with an AI Service:
  * <pre>{@code
@@ -37,12 +37,15 @@ import static java.util.Arrays.asList;
  *
  * MyAiService service = AiServices.builder(MyAiService.class)
  *         .chatModel(chatModel)
- *         .systemMessage("You have access to the following skills:\n" + skills.formatNamesAndDescriptions()
- *                 + "\nWhen the user's request relates to one of these skills, activate it first using the `activate_skill` tool before proceeding.")
+ *
+ *         .systemMessage("You have access to the following skills:\n" + skills.formatNamesAndDescriptions() + "\nWhen the user's request relates to one of these skills, activate it first using the `activate_skill` tool before proceeding.")
  *         // or, if you already have a system message configured:
- *         .systemMessageTransformer(systemMessage -> systemMessage + "\n\nYou have access to the following skills:\n" + skills.formatNamesAndDescriptions()
- *                 + "\nWhen the user's request relates to one of these skills, activate it first using the `activate_skill` tool before proceeding.")
- *         .toolProvider(skills.toolProvider()) // or .toolProviders(mcpToolProvider, skills.toolProvider())
+ *         .systemMessageTransformer(systemMessage -> systemMessage + "\n\nYou have access to the following skills:\n" + skills.formatNamesAndDescriptions() + "\nWhen the user's request relates to one of these skills, activate it first using the `activate_skill` tool before proceeding.")
+ *
+ *         .toolProvider(skills.toolProvider())
+ *         // or, if you already have an MCP tool provider configured:
+ *         .toolProviders(mcpToolProvider, skills.toolProvider())
+ *
  *         .build();
  * }</pre>
  */
@@ -71,7 +74,7 @@ public class Skills {
      * Returns an XML-formatted string listing all configured skills with their names and descriptions.
      * Intended to be included in the system message to inform the LLM which skills are available.
      */
-    public String formatNamesAndDescriptions() {
+    public String formatNamesAndDescriptions() { // TODO name
         return namesAndDescriptions;
     }
 

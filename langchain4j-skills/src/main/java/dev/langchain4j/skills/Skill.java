@@ -5,10 +5,10 @@ import dev.langchain4j.Experimental;
 import java.util.List;
 
 /**
- * Represents a skill that an LLM can activate and use.
- * A skill bundles instructions (its {@link #content()}),
- * optional {@link #resources()}, and metadata ({@link #name()} and {@link #description()})
- * into a self-contained unit that can be provided to the LLM via the {@code activate_skill} tool.
+ * Represents a skill that can be used by an LLM.
+ * <p>
+ * A skill has a mandatory {@link #name()} and {@link #description()} that the LLM always sees.
+ * The LLM can read the full {@link #content()} and any {@link #resources()} on demand.
  * <p>
  * See more details <a href="https://agentskills.io">here</a>.
  */
@@ -17,26 +17,23 @@ public interface Skill {
 
     /**
      * Returns the unique name of this skill.
-     * Used to identify it when activating and listing available skills.
+     * The LLM uses this name to identify the skill when selecting from the available skills.
      */
     String name();
 
     /**
      * Returns a short description of what this skill does.
-     * Shown to the LLM so it can decide which skill to activate.
+     * Shown to the LLM so it can decide which skill is relevant for the current request.
      */
     String description();
 
     /**
      * Returns the full instructions of this skill (e.g. the contents of a {@code SKILL.md} file).
-     * Returned to the LLM when the skill is activated via the {@code activate_skill} tool.
      */
     String content();
 
     /**
-     * Returns the list of additional resources associated with this skill
-     * (e.g. references, assets, templates, etc.).
-     * The LLM can read them by calling the {@code read_skill_resource} tool once the skill is activated.
+     * Returns the list of additional resources associated with this skill (e.g. references, assets, templates, etc.).
      */
     List<SkillResource> resources();
 

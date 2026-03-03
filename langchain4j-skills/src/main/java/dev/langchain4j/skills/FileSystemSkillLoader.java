@@ -26,15 +26,6 @@ import static java.util.stream.StreamSupport.stream;
  * and {@code description}. The body of the file (below the front matter) becomes the
  * skill's {@link Skill#content() content}.
  * <p>
- * Any additional files in the skill directory are loaded as {@link SkillResource}s,
- * with the exception of {@code SKILL.md} itself and any files under a {@code scripts/}
- * subdirectory. Empty files are silently skipped.
- * <p>
- * All content (skill instructions and resources) is read into memory eagerly at load time.
- * Once loaded, no further file system access occurs at inference time: the LLM retrieves
- * resources via the {@code read_skill_resource} tool, which serves the pre-loaded in-memory
- * content.
- * <p>
  * Example {@code SKILL.md} structure:
  * <pre>{@code
  * ---
@@ -44,6 +35,10 @@ import static java.util.stream.StreamSupport.stream;
  *
  * Detailed instructions for the LLM go here.
  * }</pre>
+ * <p>
+ * Any additional files in the skill directory are loaded as {@link SkillResource}s,
+ * except {@code SKILL.md} itself and any files under a {@code scripts/} subdirectory.
+ * Empty files are silently skipped.
  */
 @Experimental
 public class FileSystemSkillLoader {
@@ -81,7 +76,7 @@ public class FileSystemSkillLoader {
      * @param skillDirectory the directory to load the skill from
      * @return the loaded skill
      * @throws IllegalArgumentException if {@code SKILL.md} is not found in the directory
-     * @throws RuntimeException if the file cannot be read or resources cannot be loaded
+     * @throws RuntimeException         if the file cannot be read or resources cannot be loaded
      */
     public static FileSystemSkill loadSkill(Path skillDirectory) {
         Path skillFile = skillDirectory.resolve("SKILL.md");

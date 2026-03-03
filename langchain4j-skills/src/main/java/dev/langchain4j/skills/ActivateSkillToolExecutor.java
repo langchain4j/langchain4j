@@ -29,23 +29,15 @@ class ActivateSkillToolExecutor extends AbstractSkillToolExecutor {
 
         Skill skill = skillsByName.get(skillName);
         if (skill == null) {
-            String availableNames = skillsByName.keySet().stream()
+            String availableSkillNames = skillsByName.keySet().stream()
                     .map(name -> "'" + name + "'")
                     .collect(joining(", "));
-            throwException("There is no skill with name '%s'. Available skills: [%s]".formatted(skillName, availableNames));
-        }
-
-        String resultText = skill.content();
-        if (!skill.resources().isEmpty()) {
-            String resourceList = skill.resources().stream()
-                    .map(r -> "- " + r.relativePath())
-                    .collect(joining("\n"));
-            resultText += "\n\nAvailable resources:\n" + resourceList;
+            throwException("There is no skill with name '%s'. Available skills: [%s]".formatted(skillName, availableSkillNames));
         }
 
         return ToolExecutionResult.builder()
                 .result(skill)
-                .resultText(resultText)
+                .resultText(skill.content())
                 .build();
     }
 }
