@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.example</groupId>
+    <artifactId>langchain4jChatmemory</artifactId>
+    <version>1.0-SNAPSHOT</version>
+
+    <properties>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <langchain4j.version>0.34.0</langchain4j.version>
+    </properties>
+<dependencies>
+
+    <dependency>
+        <groupId>com.oracle.database.jdbc</groupId>
+        <artifactId>ojdbc11-production</artifactId>
+        <version>21.5.0.0</version>
+        <type>pom</type>
+    </dependency>
+
+    <dependency>
+        <groupId>com.oracle.database.security</groupId>
+        <artifactId>oraclepki</artifactId>
+        <version>21.5.0.0</version>
+        <scope>runtime</scope>
+    </dependency>
+
+    <dependency>
+        <groupId>com.oracle.database.security</groupId>
+        <artifactId>osdt_cert</artifactId>
+        <version>21.5.0.0</version>
+        <scope>runtime</scope>
+    </dependency>
+
+    <dependency>
+        <groupId>com.oracle.database.security</groupId>
+        <artifactId>osdt_core</artifactId>
+        <version>21.5.0.0</version>
+        <scope>runtime</scope>
+    </dependency>
+    <dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-open-ai</artifactId>
+    <version>${langchain4j.version}</version>
+
+</dependency>
+    <dependency>
+        <groupId>dev.langchain4j</groupId>
+        <artifactId>langchain4j</artifactId>
+        <version>${langchain4j.version}</version>
+    </dependency>
+
+    <dependency>
+        <groupId>org.projectlombok</groupId>
+        <artifactId>lombok</artifactId>
+        <version>1.18.32</version>
+        <scope>provided</scope>
+    </dependency>
+   
+</dependencies>
+</project>
