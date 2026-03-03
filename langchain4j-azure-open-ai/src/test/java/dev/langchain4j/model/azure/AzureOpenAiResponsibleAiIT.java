@@ -11,6 +11,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -54,6 +55,7 @@ class AzureOpenAiResponsibleAiIT {
     }
 
     @Test
+    @Disabled("cannot trigger violence filter reliably")
     void streaming_chat_message_should_trigger_content_filter_for_violence() throws Exception {
 
         CompletableFuture<Throwable> futureThrowable = new CompletableFuture<>();
