@@ -1,5 +1,6 @@
 package dev.langchain4j.skills;
 
+import dev.langchain4j.Experimental;
 import org.commonmark.ext.front.matter.YamlFrontMatterExtension;
 import org.commonmark.ext.front.matter.YamlFrontMatterVisitor;
 import org.commonmark.node.Node;
@@ -44,6 +45,7 @@ import static java.util.stream.StreamSupport.stream;
  * Detailed instructions for the LLM go here.
  * }</pre>
  */
+@Experimental
 public class FileSystemSkillLoader {
 
     private static final Parser PARSER = Parser.builder()

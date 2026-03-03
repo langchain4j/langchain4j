@@ -1,5 +1,7 @@
 package dev.langchain4j.skills;
 
+import dev.langchain4j.Experimental;
+
 import java.nio.file.Path;
 
 /**
@@ -7,6 +9,7 @@ import java.nio.file.Path;
  * Provides a {@link #basePath()} that is used as the working directory
  * when the LLM runs shell commands via the {@code run_shell_command} tool.
  */
+@Experimental
 public interface FileSystemSkill extends Skill {
 
     /**

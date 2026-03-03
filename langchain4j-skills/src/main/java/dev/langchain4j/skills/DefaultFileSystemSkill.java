@@ -1,9 +1,12 @@
 package dev.langchain4j.skills;
 
+import dev.langchain4j.Experimental;
+
 import java.nio.file.Path;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+@Experimental
 public class DefaultFileSystemSkill extends AbstractSkill implements FileSystemSkill {
 
     private final Path basePath;

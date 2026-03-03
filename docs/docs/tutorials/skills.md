@@ -4,6 +4,10 @@ sidebar_position: 32
 
 # Skills
 
+:::note
+The Skills API is experimental. APIs and behavior may still change in future releases.
+:::
+
 Skills is a mechanism for equipping an LLM with reusable, self-contained behavioral instructions.
 A skill bundles a name, a short description, and a body of instructions (its _content_),
 together with optional resources (e.g., references, assets, templates, etc.).

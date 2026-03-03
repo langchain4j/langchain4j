@@ -1,10 +1,13 @@
 package dev.langchain4j.skills;
 
+import dev.langchain4j.Experimental;
+
 import java.util.concurrent.ExecutorService;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.skills.ShellCommandRunner.DEFAULT_TIMEOUT_SECONDS;
 
+@Experimental
 public class RunShellCommandToolConfig {
 
     static final String DEFAULT_NAME = "run_shell_command";

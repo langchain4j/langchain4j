@@ -1,5 +1,7 @@
 package dev.langchain4j.skills;
 
+import dev.langchain4j.Experimental;
+
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -8,6 +10,7 @@ import java.util.Set;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
+@Experimental
 public abstract class AbstractSkill implements Skill {
 
     private final String name;

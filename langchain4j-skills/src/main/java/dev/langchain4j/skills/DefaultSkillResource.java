@@ -1,7 +1,10 @@
 package dev.langchain4j.skills;
 
+import dev.langchain4j.Experimental;
+
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
+@Experimental
 public class DefaultSkillResource implements SkillResource {
 
     private final String relativePath;

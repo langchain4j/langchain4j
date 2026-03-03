@@ -1,9 +1,12 @@
 package dev.langchain4j.skills;
 
+import dev.langchain4j.Experimental;
+
 /**
  * An additional resource associated with a {@link Skill}, such as a reference file or asset,
  * that the LLM can read by calling the {@code read_skill_resource} tool.
  */
+@Experimental
 public interface SkillResource {
 
     /**

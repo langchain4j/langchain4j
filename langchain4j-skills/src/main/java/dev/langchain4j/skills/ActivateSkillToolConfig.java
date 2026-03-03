@@ -1,7 +1,10 @@
 package dev.langchain4j.skills;
 
+import dev.langchain4j.Experimental;
+
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
+@Experimental
 public class ActivateSkillToolConfig {
 
     static final String DEFAULT_NAME = "activate_skill";

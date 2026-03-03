@@ -1,5 +1,6 @@
 package dev.langchain4j.skills;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
@@ -52,6 +53,7 @@ import static java.util.Arrays.asList;
  *         .build();
  * }</pre>
  */
+@Experimental
 public class Skills {
 
     private final List<Skill> skills;

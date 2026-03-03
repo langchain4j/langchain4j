@@ -1,10 +1,13 @@
 package dev.langchain4j.skills;
 
+import dev.langchain4j.Experimental;
+
 import java.util.List;
 import java.util.function.Function;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
+@Experimental
 public class ReadResourceToolConfig {
 
     static final String DEFAULT_NAME = "read_skill_resource";

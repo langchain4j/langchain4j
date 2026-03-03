@@ -1,5 +1,8 @@
 package dev.langchain4j.skills;
 
+import dev.langchain4j.Experimental;
+
+@Experimental
 public class DefaultSkill extends AbstractSkill {
 
     public DefaultSkill(Builder builder) {

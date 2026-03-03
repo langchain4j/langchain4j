@@ -1,5 +1,7 @@
 package dev.langchain4j.skills;
 
+import dev.langchain4j.Experimental;
+
 import java.util.List;
 
 /**
@@ -10,6 +12,7 @@ import java.util.List;
  * <p>
  * See more details <a href="http://agentskills.io">here</a>.
  */
+@Experimental
 public interface Skill {
 
     /**
