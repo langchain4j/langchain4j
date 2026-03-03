@@ -25,11 +25,19 @@ import static java.util.Arrays.asList;
 /**
  * Configures and exposes a set of {@link Skill}s to an LLM.
  * <p>
+ * Implements the <em>Tool-based agents</em> integration approach from the
+ * <a href="https://agentskills.io/integrate-skills">Agent Skills specification</a>.
+ * All skill content and resources are loaded into memory at construction time.
+ * The LLM has no access to the file system at inference time: the {@code read_skill_resource}
+ * tool returns pre-loaded, in-memory content, so only explicitly registered tools can be invoked
+ * and there is no risk of arbitrary code execution.
+ * <p>
  * Always provides an {@code activate_skill} tool that the LLM uses to load a skill's content.
  * If any of the configured skills have {@link Skill#resources() resources}, a
  * {@code read_skill_resource} tool is also added so the LLM can read them.
  * Alternatively, if {@link Builder#allowRunningShellCommands(Boolean)} is enabled, a
- * {@code run_shell_command} tool is provided instead.
+ * {@code run_shell_command} tool is provided instead (corresponding to the
+ * <em>Filesystem-based agents</em> approach, which does allow arbitrary shell command execution).
  * <p>
  * Typical usage with an AI Service:
  * <pre>{@code
@@ -69,6 +77,8 @@ public class Skills {
     /**
      * Returns an XML-formatted string listing all configured skills with their names and descriptions.
      * Intended to be included in the system message to inform the LLM which skills are available.
+     * The {@code <location>} field is intentionally omitted, as recommended for tool-based agents
+     * by the <a href="https://agentskills.io/integrate-skills">Agent Skills specification</a>.
      */
     public String formatNamesAndDescriptions() {
         return namesAndDescriptions;

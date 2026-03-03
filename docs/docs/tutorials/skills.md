@@ -126,10 +126,15 @@ control and trust you need.
 
 ### Use Case 1: Skills with Tools (Recommended)
 
+This corresponds to the **Tool-based agents** integration approach described in the
+[Agent Skills specification](https://agentskills.io/integrate-skills).
+
 In this mode the LLM activates a skill to receive step-by-step instructions, then carries
-them out by calling the [tools](/tutorials/tools) you have explicitly
-registered. Because only your pre-defined tools can be invoked, **there is no
-risk of arbitrary code execution**.
+them out by calling the [tools](/tutorials/tools) you have explicitly registered.
+**The LLM has no access to the file system at inference time** — all skill content and
+resources are loaded into memory upfront (e.g. via `FileSystemSkillLoader`), and the
+`read_skill_resource` tool returns that pre-loaded content rather than reading from disk.
+Because only your pre-defined tools can be invoked, **there is no risk of arbitrary code execution**.
 
 This is the recommended approach for production. Skills describe the *policy* — the exact
 order of calls, required arguments, error-handling steps, and worked examples — while the
@@ -185,6 +190,9 @@ MyAiService service = AiServices.builder(MyAiService.class)
 ```
 
 ### Use Case 2: Skills with Scripts (Experimental)
+
+This corresponds to the **Filesystem-based agents** integration approach described in the
+[Agent Skills specification](https://agentskills.io/integrate-skills).
 
 :::warning
 **Script execution is inherently unsafe.**

@@ -29,6 +29,11 @@ import static java.util.stream.StreamSupport.stream;
  * with the exception of {@code SKILL.md} itself and any files under a {@code scripts/}
  * subdirectory. Empty files are silently skipped.
  * <p>
+ * All content (skill instructions and resources) is read into memory eagerly at load time.
+ * Once loaded, no further file system access occurs at inference time: the LLM retrieves
+ * resources via the {@code read_skill_resource} tool, which serves the pre-loaded in-memory
+ * content.
+ * <p>
  * Example {@code SKILL.md} structure:
  * <pre>{@code
  * ---
