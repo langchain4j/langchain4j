@@ -81,7 +81,7 @@ public class WatsonxModerationModel implements ModerationModel {
 
     @Override
     public ModerationResponse doModerate(ModerationRequest moderationRequest) {
-        if (moderationRequest.modelName() != null) {
+        if (!this.modelName().equals(moderationRequest.modelName())) {
             throw new UnsupportedFeatureException("can't change model name dynamically");
         }
 
