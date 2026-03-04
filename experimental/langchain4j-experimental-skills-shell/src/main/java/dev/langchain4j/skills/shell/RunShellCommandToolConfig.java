@@ -5,6 +5,7 @@ import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 
+import java.nio.file.Path;
 import java.util.concurrent.ExecutorService;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -30,6 +31,7 @@ public class RunShellCommandToolConfig {
     final String timeoutSecondsParameterDescription;
     final int maxStdOutChars;
     final int maxStdErrChars;
+    final Path workingDirectory;
     final ExecutorService executorService;
     final boolean throwToolArgumentsExceptions;
 
@@ -42,6 +44,7 @@ public class RunShellCommandToolConfig {
         this.timeoutSecondsParameterDescription = getOrDefault(builder.timeoutSecondsParameterDescription, DEFAULT_TIMEOUT_SECONDS_PARAMETER_DESCRIPTION);
         this.maxStdOutChars = getOrDefault(builder.maxStdOutChars, DEFAULT_MAX_STDOUT_CHARS);
         this.maxStdErrChars = getOrDefault(builder.maxStdErrChars, DEFAULT_MAX_STDERR_CHARS);
+        this.workingDirectory = getOrDefault(builder.workingDirectory, () -> Path.of(System.getProperty("user.dir")));
         this.executorService = getOrDefault(builder.executorService, DefaultExecutorProvider::getDefaultExecutorService);
         this.throwToolArgumentsExceptions = getOrDefault(builder.throwToolArgumentsExceptions, false);
     }
@@ -60,6 +63,7 @@ public class RunShellCommandToolConfig {
         private String timeoutSecondsParameterDescription;
         private Integer maxStdOutChars;
         private Integer maxStdErrChars;
+        private Path workingDirectory;
         private ExecutorService executorService;
         private Boolean throwToolArgumentsExceptions;
 
@@ -142,6 +146,16 @@ public class RunShellCommandToolConfig {
          */
         public Builder maxStdErrChars(Integer maxStdErrChars) {
             this.maxStdErrChars = maxStdErrChars;
+            return this;
+        }
+
+        /**
+         * Sets the working directory in which shell commands will be executed.
+         * <p>
+         * By default, the current JVM working directory ({@code user.dir}) is used.
+         */
+        public Builder workingDirectory(Path workingDirectory) {
+            this.workingDirectory = workingDirectory;
             return this;
         }
 

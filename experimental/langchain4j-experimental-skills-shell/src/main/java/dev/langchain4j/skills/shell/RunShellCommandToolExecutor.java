@@ -25,18 +25,12 @@ class RunShellCommandToolExecutor implements ToolExecutor {
     }
 
     @Override
-    public String execute(ToolExecutionRequest request, Object memoryId) {
-        throw new IllegalStateException("executeWithContext must be called instead");
-    }
-
-    @Override
     public ToolExecutionResult executeWithContext(ToolExecutionRequest request, InvocationContext context) {
 
         Map<String, Object> arguments = parseArguments(request.arguments());
         String command = getRequiredArgument(config.commandParameterName, arguments);
+        Path workingDir = config.workingDirectory;
         Integer timeoutSeconds = resolveTimeout(arguments);
-
-        Path workingDir = Path.of(System.getProperty("user.dir"));
 
         try {
             Result result = ShellCommandRunner.run(command, workingDir, timeoutSeconds, config.executorService);
@@ -146,5 +140,10 @@ class RunShellCommandToolExecutor implements ToolExecutor {
         if (text.length() <= maxChars) return text;
         return "[truncated: showing last " + maxChars + " of " + text.length() + " chars]\n"
                 + text.substring(text.length() - maxChars);
+    }
+
+    @Override
+    public String execute(ToolExecutionRequest request, Object memoryId) {
+        throw new IllegalStateException("executeWithContext must be called instead");
     }
 }
