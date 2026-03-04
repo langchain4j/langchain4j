@@ -124,7 +124,7 @@
                 </configuration>
             </plugin>
 
-            <!-- gpu-llama3 uses --enable-preview and jdk.incubator.vector (JEP 508, 10th Incubator in JDK 25) -->
+            <!-- gpu-llama3 uses 'enable-preview' option and jdk.incubator.vector (JEP 508, 10th Incubator in JDK 25) -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
