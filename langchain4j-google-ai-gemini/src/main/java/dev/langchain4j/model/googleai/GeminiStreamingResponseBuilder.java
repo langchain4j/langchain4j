@@ -5,9 +5,12 @@ import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReaso
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromGPartsToAiMessage;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 
+import static dev.langchain4j.model.googleai.PartsAndContentsMapper.ORIGINAL_PARTS_KEY;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.googleai.GeminiContent.GeminiPart;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
@@ -15,7 +18,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -30,6 +35,7 @@ class GeminiStreamingResponseBuilder {
     private final StringBuilder contentBuilder;
     private final StringBuilder thoughtBuilder;
     private final Map<String, Object> attributes = new ConcurrentHashMap<>();
+    private final Queue<GeminiPart> originalParts = new ConcurrentLinkedQueue<>();
     private final List<ToolExecutionRequest> functionCalls;
 
     private final AtomicReference<String> id = new AtomicReference<>();
@@ -125,10 +131,22 @@ class GeminiStreamingResponseBuilder {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private void updateContentAndFunctionCalls(AiMessage message) {
         Optional.ofNullable(message.text()).ifPresent(contentBuilder::append);
         Optional.ofNullable(message.thinking()).ifPresent(thoughtBuilder::append);
-        attributes.putAll(message.attributes());
+        Map<String, Object> messageAttributes = message.attributes();
+        if (messageAttributes != null) {
+            Object parts = messageAttributes.get(ORIGINAL_PARTS_KEY);
+            if (parts instanceof List<?>) {
+                originalParts.addAll((List<GeminiPart>) parts);
+            }
+            messageAttributes.forEach((key, value) -> {
+                if (!ORIGINAL_PARTS_KEY.equals(key)) {
+                    attributes.put(key, value);
+                }
+            });
+        }
         if (message.hasToolExecutionRequests()) {
             functionCalls.addAll(message.toolExecutionRequests());
         }
@@ -137,6 +155,10 @@ class GeminiStreamingResponseBuilder {
     private AiMessage createAiMessage() {
         String text = contentBuilder.toString();
         String thought = thoughtBuilder.toString();
+
+        if (!originalParts.isEmpty()) {
+            attributes.put(ORIGINAL_PARTS_KEY, new ArrayList<>(originalParts));
+        }
 
         return AiMessage.builder()
                 .text(text.isEmpty() ? null : text)
