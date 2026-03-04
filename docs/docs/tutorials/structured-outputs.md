@@ -120,6 +120,12 @@ ChatModel chatModel = WatsonxChatModel.builder()
         .logRequests(true)
         .logResponses(true)
         .build();
+// OR
+ChatModel chatModel = BedrockChatModel.builder()
+        .modelId("us.anthropic.claude-haiku-4-5-20251001-v1:0")
+        .logRequests(true)
+        .logResponses(true)
+        .build();
 
 ChatResponse chatResponse = chatModel.chat(chatRequest);
 
@@ -449,6 +455,13 @@ ChatModel chatModel = WatsonxChatModel.builder()
         .logRequests(true)
         .logResponses(true)
         .build();
+// OR
+ChatModel chatModel = BedrockChatModel.builder()
+        .modelId("us.anthropic.claude-haiku-4-5-20251001-v1:0")
+        .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA) // see [8] below
+        .logRequests(true)
+        .logResponses(true)
+        .build();
 
 PersonExtractor personExtractor = AiServices.create(PersonExtractor.class, chatModel); // see [1] below
 
@@ -473,6 +486,7 @@ as these beans are created automatically. More info on this:
 - [5] - This is required to enable the JSON Schema feature for [Ollama](/integrations/language-models/ollama).
 - [6] - This is required to enable the JSON Schema feature for [Mistral](/integrations/language-models/mistral-ai).
 - [7] - This is required to enable the JSON Schema feature for [watsonx.ai](/integrations/language-models/watsonx).
+- [8] - This is required to enable the JSON Schema feature for [Amazon Bedrock](/integrations/language-models/amazon-bedrock).
 
 When all the following conditions are met:
 - AI Service method returns a POJO

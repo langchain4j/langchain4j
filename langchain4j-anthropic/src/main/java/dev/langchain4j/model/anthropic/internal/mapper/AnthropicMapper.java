@@ -484,7 +484,7 @@ public class AnthropicMapper {
 
         // Run with strict=false to avoid unsupported features, like union types in enum schemas
         // https://platform.claude.com/docs/en/build-with-claude/structured-outputs#json-schema-limitations
-        return toMap(schemaElement);
+        return toMap(schemaElement, false);
     }
 
     private static Map<String, Map<String, Object>> mapDefs(Map<String, JsonSchemaElement> defs) {
