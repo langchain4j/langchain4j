@@ -690,7 +690,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
             if (!contents.isEmpty()) {
                 prependTextContentsToUserMessage(userMessage, contents);
-                return UserMessage.from(contents);
+                return userMessage.toBuilder().contents(contents).build();
             }
         }
 
@@ -728,7 +728,7 @@ class DefaultAiServices<T> extends AiServices<T> {
             prependTextContentsToUserMessage(userMessage, contents);
         }
 
-        return userMessage.contents().size() == contents.size() ? userMessage : UserMessage.from(contents);
+        return userMessage.contents().size() == contents.size() ? userMessage : userMessage.toBuilder().contents(contents).build();
     }
 
     private static void prependTextContentsToUserMessage(UserMessage userMessage, List<Content> contents) {
