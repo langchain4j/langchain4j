@@ -6,11 +6,11 @@ import static dev.langchain4j.agentic.internal.AgentUtil.keyName;
 import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.listenerOfType;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static java.util.Arrays.asList;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agentic.Agent;
-import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.observability.AfterAgentToolExecution;
@@ -33,6 +33,7 @@ import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
 import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
@@ -49,12 +50,16 @@ import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executor;
+import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
 public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     final Class<T> agentServiceClass;
@@ -78,6 +83,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     private ContentRetriever contentRetriever;
     private RetrievalAugmentor retrievalAugmentor;
     private Function<Object, String> systemMessageProvider;
+    private BiFunction<String, InvocationContext, String> systemMessageTransformer;
     private Function<Object, String> userMessageProvider;
 
     private InputGuardrailsConfig inputGuardrailsConfig;
@@ -90,7 +96,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     private Object[] objectsWithTools;
     private Map<ToolSpecification, ToolExecutor> toolsMap;
     private Set<String> immediateReturnToolNames;
-    private ToolProvider toolProvider;
+    private final List<ToolProvider> toolProviders = new ArrayList<>();
     private Integer maxSequentialToolsInvocations;
     private Function<ToolExecutionRequest, ToolExecutionResultMessage> hallucinatedToolNameStrategy;
     private boolean executeToolsConcurrently;
@@ -166,6 +172,9 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         }
         if (retrievalAugmentor != null) {
             aiServices.retrievalAugmentor(retrievalAugmentor);
+        }
+        if (systemMessageTransformer != null) {
+            aiServices.systemMessageTransformer(systemMessageTransformer);
         }
 
         setupGuardrails(aiServices);
@@ -254,8 +263,8 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
                 aiServices.tools(toolsMap);
             }
         }
-        if (toolProvider != null) {
-            aiServices.toolProvider(toolProvider);
+        if (!toolProviders.isEmpty()) {
+            aiServices.toolProviders(toolProviders);
         }
         if (maxSequentialToolsInvocations != null) {
             aiServices.maxSequentialToolsInvocations(maxSequentialToolsInvocations);
@@ -323,8 +332,17 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     }
 
     public B toolProvider(ToolProvider toolProvider) {
-        this.toolProvider = toolProvider;
+        this.toolProviders.add(toolProvider);
         return (B) this;
+    }
+
+    public B toolProviders(Collection<ToolProvider> toolProviders) {
+        this.toolProviders.addAll(toolProviders);
+        return (B) this;
+    }
+
+    public B toolProviders(ToolProvider... toolProviders) {
+        return toolProviders(asList(toolProviders));
     }
 
     public B maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
@@ -429,6 +447,15 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
     public B userMessageProvider(Function<Object, String> userMessageProvider) {
         this.userMessageProvider = userMessageProvider;
+        return (B) this;
+    }
+
+    public B systemMessageTransformer(UnaryOperator<String> systemMessageTransformer) {
+        return systemMessageTransformer((msg, ctx) -> systemMessageTransformer.apply(msg));
+    }
+
+    public B systemMessageTransformer(BiFunction<String, InvocationContext, String> systemMessageTransformer) {
+        this.systemMessageTransformer = systemMessageTransformer;
         return (B) this;
     }
 
