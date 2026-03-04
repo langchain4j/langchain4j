@@ -3,6 +3,7 @@ package dev.langchain4j.skills;
 import dev.langchain4j.Experimental;
 
 import java.nio.file.Path;
+import java.util.Objects;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
@@ -19,6 +20,30 @@ public class DefaultFileSystemSkill extends AbstractSkill implements FileSystemS
     @Override
     public Path basePath() {
         return basePath;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof DefaultFileSystemSkill that)) return false;
+        if (!super.equals(o)) return false;
+        return Objects.equals(basePath, that.basePath);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), basePath);
+    }
+
+    @Override
+    public String toString() {
+        return "DefaultFileSystemSkill {"
+                + " name = " + name()
+                + ", description = " + description()
+                + ", content = " + content()
+                + ", resources = " + resources()
+                + ", basePath = " + basePath
+                + " }";
     }
 
     public static Builder builder() {

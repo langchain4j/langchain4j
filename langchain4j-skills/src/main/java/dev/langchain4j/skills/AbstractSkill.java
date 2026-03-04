@@ -5,6 +5,7 @@ import dev.langchain4j.Experimental;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 import static dev.langchain4j.internal.Utils.copy;
@@ -44,6 +45,31 @@ public abstract class AbstractSkill implements Skill {
     @Override
     public List<SkillResource> resources() {
         return resources;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof AbstractSkill that)) return false;
+        return Objects.equals(name, that.name)
+                && Objects.equals(description, that.description)
+                && Objects.equals(content, that.content)
+                && Objects.equals(resources, that.resources);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name, description, content, resources);
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + " {"
+                + " name = " + name
+                + ", description = " + description
+                + ", content = " + content
+                + ", resources = " + resources
+                + " }";
     }
 
     private static void validateUniquePaths(List<SkillResource> resources) {

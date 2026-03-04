@@ -2,6 +2,8 @@ package dev.langchain4j.skills;
 
 import dev.langchain4j.Experimental;
 
+import java.util.Objects;
+
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 @Experimental
@@ -23,6 +25,27 @@ public class DefaultSkillResource implements SkillResource {
     @Override
     public String content() {
         return content;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof DefaultSkillResource that)) return false;
+        return Objects.equals(relativePath, that.relativePath)
+                && Objects.equals(content, that.content);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(relativePath, content);
+    }
+
+    @Override
+    public String toString() {
+        return "DefaultSkillResource {"
+                + " relativePath = " + relativePath
+                + ", content = " + content
+                + " }";
     }
 
     public static Builder builder() {
