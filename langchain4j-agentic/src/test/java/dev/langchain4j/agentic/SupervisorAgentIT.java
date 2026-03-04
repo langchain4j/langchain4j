@@ -24,6 +24,7 @@ import dev.langchain4j.agentic.Agents.RouterAgent;
 import dev.langchain4j.agentic.Agents.TechnicalExpert;
 import dev.langchain4j.agentic.Agents.ColorExpert;
 import dev.langchain4j.agentic.Agents.ColorMixerExpert;
+import dev.langchain4j.agentic.declarative.Output;
 import dev.langchain4j.agentic.observability.AfterAgentToolExecution;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentResponse;
@@ -588,6 +589,13 @@ public class SupervisorAgentIT {
 
         @Agent
         TransactionDetails execute(@V("request") String request);
+
+        @Output
+        static TransactionDetails output(@V("withdrawUser") String withdrawUser,
+                                         @V("creditUser") String creditUser,
+                                         @V("amountInUSD") double amountInUSD) {
+            return new TransactionDetails(withdrawUser, creditUser, amountInUSD);
+        }
     }
 
     @Test
@@ -643,10 +651,6 @@ public class SupervisorAgentIT {
 
         var supervisorBuilder = AgenticServices.supervisorBuilder(TypedBankerAgent.class)
                 .chatModel(plannerModel())
-                .output(agenticScope -> new TransactionDetails(
-                        agenticScope.readState("withdrawUser", ""),
-                        agenticScope.readState("creditUser", ""),
-                        agenticScope.readState("amountInUSD", 0.0)))
                 .subAgents(withdrawAgent, creditAgent, exchangeAgent);
 
         if (useMaxAgentsInvocations) {

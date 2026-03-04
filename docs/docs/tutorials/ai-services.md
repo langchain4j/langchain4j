@@ -856,7 +856,7 @@ Instead of using a global RetrievalAugmentor, register the retrieval logic as a 
 
 ```java
 Assistant assistant = AiServices.builder(Assistant.class)
-        .chatLanguageModel(model)
+        .chatModel(model)
         .tools(new SearchTool(contentRetriever))
         .build();
 ```

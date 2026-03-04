@@ -4,17 +4,21 @@ import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureAgent
 import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.keyName;
 import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
+import static dev.langchain4j.agentic.observability.ComposedAgentListener.listenerOfType;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.observability.AfterAgentToolExecution;
 import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.observability.AgentMonitor;
 import dev.langchain4j.agentic.observability.BeforeAgentToolExecution;
 import dev.langchain4j.agentic.observability.ComposedAgentListener;
+import dev.langchain4j.agentic.observability.MonitoredAgent;
 import dev.langchain4j.agentic.internal.AgentUtil;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.internal.Context;
@@ -183,6 +187,12 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
             aiServices.chatRequestTransformer(messageRecorder);
         }
 
+        AgentMonitor monitor = listenerOfType(agentListener, AgentMonitor.class);
+        if (MonitoredAgent.class.isAssignableFrom(agentServiceClass) && monitor == null) {
+            monitor = new AgentMonitor();
+            listener(monitor);
+        }
+
         build(agenticScope, context, aiServices);
 
         AgentInstance agent = (AgentInstance) Proxy.newProxyInstance(
@@ -193,6 +203,10 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
                     ChatMemoryAccess.class, ChatMessagesAccess.class
                 },
                 new AgentInvocationHandler(context, aiServices.build(), this, messageRecorder, agenticScopeDependent));
+
+        if (monitor != null) {
+            monitor.setRootAgent(agent);
+        }
 
         if (agentListener != null) {
             aiServices.beforeToolExecution(beforeToolExecution ->

@@ -29,7 +29,7 @@ class HuggingFaceChatModelIT {
         ChatModel model = OpenAiChatModel.builder()
                 .apiKey(System.getenv("HF_API_KEY"))
                 .baseUrl("https://router.huggingface.co/v1")
-                .modelName("HuggingFaceTB/SmolLM3-3B:hf-inference")
+                .modelName("katanemo/Arch-Router-1.5B:hf-inference")
                 .build();
 
         // when

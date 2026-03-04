@@ -3,8 +3,10 @@ package dev.langchain4j.agentic.agent;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.observability.AfterAgentToolExecution;
 import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.observability.AgentMonitor;
 import dev.langchain4j.agentic.observability.BeforeAgentToolExecution;
 import dev.langchain4j.agentic.observability.ComposedAgentListener;
+import dev.langchain4j.agentic.observability.MonitoredAgent;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
@@ -25,6 +27,7 @@ import java.lang.reflect.Type;
 import java.util.List;
 
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
+import static dev.langchain4j.agentic.observability.ComposedAgentListener.listenerOfType;
 
 public class AgentInvocationHandler implements InvocationHandler, InternalAgent {
 
@@ -100,6 +103,10 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
 
         if (method.getDeclaringClass() == AgentInstance.class || method.getDeclaringClass() == InternalAgent.class) {
             return method.invoke(Proxy.getInvocationHandler(proxy), args);
+        }
+
+        if (method.getDeclaringClass() == MonitoredAgent.class) {
+            return listenerOfType(agentListener, AgentMonitor.class);
         }
 
         if (method.getDeclaringClass() == Object.class) {

@@ -16,6 +16,7 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.DisabledIf;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -135,6 +136,11 @@ class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
         } else {
             super.should_fail_if_tool_choice_REQUIRED_is_not_supported(model);
         }
+    }
+
+    @Disabled("Sorry but I can't tell you that information because is not appropriate to share someone's personal information")
+    @Override
+    protected void should_respect_multiple_messages(ChatModel model) {
     }
 
     @AfterEach

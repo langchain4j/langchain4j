@@ -1,0 +1,8 @@
+{
+  "label": "ModelRrouter",
+  "position": 21,
+  "link": {
+    "type": "generated-index",
+    "description": "ModelRrouter and strategies for routing"
+  }
+}
