@@ -82,52 +82,64 @@ class ShellCommandRunner {
         }
 
         Process process = pb.start();
-
-        AtomicBoolean timedOut = new AtomicBoolean(false);
-
-        Future<String> stdOutFuture = executorService.submit(() ->
-                readStream(process.getInputStream(), maxOutputBytes, timedOut));
-        Future<String> stdErrFuture = executorService.submit(() ->
-                readStream(process.getErrorStream(), maxOutputBytes, timedOut));
-
-        timeoutSeconds = getOrDefault(timeoutSeconds, DEFAULT_TIMEOUT_SECONDS);
-        if (timeoutSeconds > DEFAULT_MAX_TIMEOUT_SECONDS) {
-            timeoutSeconds = DEFAULT_MAX_TIMEOUT_SECONDS;
-        }
-
-        boolean finished = process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
-
-        if (!finished) {
-            timedOut.set(true);
-            process.descendants().forEach(ProcessHandle::destroyForcibly);
-            process.destroyForcibly();
-            try {
-                process.getInputStream().close();
-            } catch (IOException ignored) {
-            }
-            try {
-                process.getOutputStream().close();
-            } catch (IOException ignored) {
-            }
-            try {
-                process.getErrorStream().close();
-            } catch (IOException ignored) {
-            }
-            String partialStdOut = getPartialOutput(stdOutFuture);
-            String partialStdErr = getPartialOutput(stdErrFuture);
-            stdOutFuture.cancel(true);
-            stdErrFuture.cancel(true);
-            throw new TimeoutException(
-                    "Command timed out after " + timeoutSeconds + " seconds",
-                    partialStdOut,
-                    partialStdErr
-            );
-        }
-
         try {
-            return new Result(process.exitValue(), stdOutFuture.get(), stdErrFuture.get());
-        } catch (ExecutionException e) {
-            throw new IOException("Failed to read process output", e.getCause());
+            AtomicBoolean timedOut = new AtomicBoolean(false);
+
+            Future<String> stdOutFuture = executorService.submit(() ->
+                    readStream(process.getInputStream(), maxOutputBytes, timedOut));
+            Future<String> stdErrFuture = executorService.submit(() ->
+                    readStream(process.getErrorStream(), maxOutputBytes, timedOut));
+
+            timeoutSeconds = getOrDefault(timeoutSeconds, DEFAULT_TIMEOUT_SECONDS);
+            if (timeoutSeconds > DEFAULT_MAX_TIMEOUT_SECONDS) {
+                timeoutSeconds = DEFAULT_MAX_TIMEOUT_SECONDS;
+            }
+
+            boolean finished = process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
+
+            if (!finished) {
+                timedOut.set(true);
+                try {
+                    process.descendants().forEach(ProcessHandle::destroyForcibly);
+                } catch (Exception ignored) {
+                }
+                try {
+                    process.destroyForcibly();
+                } catch (Exception ignored) {
+                }
+                try {
+                    process.getInputStream().close();
+                } catch (IOException ignored) {
+                }
+                try {
+                    process.getOutputStream().close();
+                } catch (IOException ignored) {
+                }
+                try {
+                    process.getErrorStream().close();
+                } catch (IOException ignored) {
+                }
+                String partialStdOut = getPartialOutput(stdOutFuture);
+                String partialStdErr = getPartialOutput(stdErrFuture);
+                stdOutFuture.cancel(true);
+                stdErrFuture.cancel(true);
+                throw new TimeoutException(
+                        "Command timed out after " + timeoutSeconds + " seconds",
+                        partialStdOut,
+                        partialStdErr
+                );
+            }
+
+            try {
+                return new Result(process.exitValue(), stdOutFuture.get(), stdErrFuture.get());
+            } catch (ExecutionException e) {
+                throw new IOException("Failed to read process output", e.getCause());
+            }
+        } catch (TimeoutException e) {
+            throw e;
+        } catch (Exception e) {
+            process.destroyForcibly();
+            throw e;
         }
     }
 
