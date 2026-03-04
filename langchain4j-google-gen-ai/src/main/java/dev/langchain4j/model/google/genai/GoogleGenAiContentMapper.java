@@ -138,10 +138,7 @@ class GoogleGenAiContentMapper {
     static Content toContent(ChatMessage message) {
         if (message instanceof UserMessage) {
             UserMessage userMessage = (UserMessage) message;
-            return Content.builder()
-                    .role(USER_ROLE)
-                    .parts(toParts(userMessage))
-                    .build();
+            return Content.builder().role(USER_ROLE).parts(toParts(userMessage)).build();
 
         } else if (message instanceof AiMessage) {
             AiMessage aiMsg = (AiMessage) message;

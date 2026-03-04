@@ -44,9 +44,8 @@ class GoogleGenAiChatModelTest {
 
     @Test
     void should_throw_when_model_name_is_blank() {
-        assertThatThrownBy(() -> GoogleGenAiChatModel.builder()
-                .apiKey("test-key")
-                .build())
+        assertThatThrownBy(
+                        () -> GoogleGenAiChatModel.builder().apiKey("test-key").build())
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

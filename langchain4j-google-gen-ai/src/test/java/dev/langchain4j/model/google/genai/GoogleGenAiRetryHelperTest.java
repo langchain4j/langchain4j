@@ -14,8 +14,7 @@ class GoogleGenAiRetryHelperTest {
 
     @Test
     void should_return_result_on_first_attempt() {
-        String result = GoogleGenAiRetryHelper.executeWithRetry(
-                () -> "success", 3, log);
+        String result = GoogleGenAiRetryHelper.executeWithRetry(() -> "success", 3, log);
 
         assertThat(result).isEqualTo("success");
     }
@@ -24,12 +23,15 @@ class GoogleGenAiRetryHelperTest {
     void should_retry_and_succeed_on_second_attempt() {
         AtomicInteger attempts = new AtomicInteger(0);
 
-        String result = GoogleGenAiRetryHelper.executeWithRetry(() -> {
-            if (attempts.getAndIncrement() == 0) {
-                throw new RuntimeException("First attempt fails");
-            }
-            return "success";
-        }, 3, log);
+        String result = GoogleGenAiRetryHelper.executeWithRetry(
+                () -> {
+                    if (attempts.getAndIncrement() == 0) {
+                        throw new RuntimeException("First attempt fails");
+                    }
+                    return "success";
+                },
+                3,
+                log);
 
         assertThat(result).isEqualTo("success");
         assertThat(attempts.get()).isEqualTo(2);
@@ -37,9 +39,12 @@ class GoogleGenAiRetryHelperTest {
 
     @Test
     void should_throw_after_all_retries_exhausted() {
-        assertThatThrownBy(() -> GoogleGenAiRetryHelper.executeWithRetry(() -> {
-            throw new RuntimeException("Always fails");
-        }, 0, log))
+        assertThatThrownBy(() -> GoogleGenAiRetryHelper.executeWithRetry(
+                        () -> {
+                            throw new RuntimeException("Always fails");
+                        },
+                        0,
+                        log))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Google GenAI call failed");
     }
@@ -50,12 +55,15 @@ class GoogleGenAiRetryHelperTest {
 
         Thread.currentThread().interrupt();
 
-        String result = GoogleGenAiRetryHelper.executeWithRetry(() -> {
-            if (attempts.getAndIncrement() == 0) {
-                throw new RuntimeException("First attempt fails");
-            }
-            return "success";
-        }, 3, log);
+        String result = GoogleGenAiRetryHelper.executeWithRetry(
+                () -> {
+                    if (attempts.getAndIncrement() == 0) {
+                        throw new RuntimeException("First attempt fails");
+                    }
+                    return "success";
+                },
+                3,
+                log);
 
         assertThat(result).isEqualTo("success");
         // Clear interrupted status

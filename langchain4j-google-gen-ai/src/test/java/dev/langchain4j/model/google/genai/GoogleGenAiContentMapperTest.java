@@ -9,7 +9,6 @@ import com.google.genai.types.FunctionCall;
 import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.GenerateContentResponseUsageMetadata;
 import com.google.genai.types.Part;
-import com.google.genai.types.UsageMetadata;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
@@ -47,9 +46,7 @@ class GoogleGenAiContentMapperTest {
 
     @Test
     void should_extract_system_instruction() {
-        List<ChatMessage> messages = List.of(
-                SystemMessage.from("You are helpful"),
-                UserMessage.from("Hello"));
+        List<ChatMessage> messages = List.of(SystemMessage.from("You are helpful"), UserMessage.from("Hello"));
 
         Content result = GoogleGenAiContentMapper.toSystemInstruction(messages);
 
@@ -68,18 +65,15 @@ class GoogleGenAiContentMapperTest {
         Content result = GoogleGenAiContentMapper.toSystemInstruction(messages);
 
         assertThat(result).isNotNull();
-        assertThat(result.parts().get().get(0).text().get())
-                .isEqualTo("First instruction\nSecond instruction");
+        assertThat(result.parts().get().get(0).text().get()).isEqualTo("First instruction\nSecond instruction");
     }
 
     // --- toContents ---
 
     @Test
     void should_filter_out_system_messages() {
-        List<ChatMessage> messages = List.of(
-                SystemMessage.from("System"),
-                UserMessage.from("Hello"),
-                AiMessage.from("Hi"));
+        List<ChatMessage> messages =
+                List.of(SystemMessage.from("System"), UserMessage.from("Hello"), AiMessage.from("Hi"));
 
         List<Content> result = GoogleGenAiContentMapper.toContents(messages);
 
@@ -101,7 +95,8 @@ class GoogleGenAiContentMapperTest {
     @Test
     void should_convert_user_message_with_image_base64() {
         String base64Data = Base64.getEncoder().encodeToString("fake-image".getBytes());
-        Image image = Image.builder().base64Data(base64Data).mimeType("image/png").build();
+        Image image =
+                Image.builder().base64Data(base64Data).mimeType("image/png").build();
         UserMessage message = UserMessage.from(new ImageContent(image));
 
         Content result = GoogleGenAiContentMapper.toContent(message);
@@ -165,10 +160,8 @@ class GoogleGenAiContentMapperTest {
 
     @Test
     void should_convert_ai_message_with_empty_tool_arguments() {
-        ToolExecutionRequest toolRequest = ToolExecutionRequest.builder()
-                .name("doSomething")
-                .arguments("")
-                .build();
+        ToolExecutionRequest toolRequest =
+                ToolExecutionRequest.builder().name("doSomething").arguments("").build();
         AiMessage message = AiMessage.from(toolRequest);
 
         Content result = GoogleGenAiContentMapper.toContent(message);
@@ -253,13 +246,12 @@ class GoogleGenAiContentMapperTest {
     @Test
     void should_convert_text_response() {
         GenerateContentResponse response = GenerateContentResponse.builder()
-                .candidates(List.of(
-                        Candidate.builder()
-                                .content(Content.builder()
-                                        .role("model")
-                                        .parts(Part.builder().text("Hello!").build())
-                                        .build())
-                                .build()))
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .role("model")
+                                .parts(Part.builder().text("Hello!").build())
+                                .build())
+                        .build()))
                 .usageMetadata(GenerateContentResponseUsageMetadata.builder()
                         .promptTokenCount(10)
                         .candidatesTokenCount(5)
@@ -280,18 +272,17 @@ class GoogleGenAiContentMapperTest {
         args.put("city", "London");
 
         GenerateContentResponse response = GenerateContentResponse.builder()
-                .candidates(List.of(
-                        Candidate.builder()
-                                .content(Content.builder()
-                                        .role("model")
-                                        .parts(Part.builder()
-                                                .functionCall(FunctionCall.builder()
-                                                        .name("getWeather")
-                                                        .args(args)
-                                                        .build())
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .role("model")
+                                .parts(Part.builder()
+                                        .functionCall(FunctionCall.builder()
+                                                .name("getWeather")
+                                                .args(args)
                                                 .build())
                                         .build())
-                                .build()))
+                                .build())
+                        .build()))
                 .build();
 
         ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response);
@@ -306,20 +297,21 @@ class GoogleGenAiContentMapperTest {
         args.put("city", "London");
 
         GenerateContentResponse response = GenerateContentResponse.builder()
-                .candidates(List.of(
-                        Candidate.builder()
-                                .content(Content.builder()
-                                        .role("model")
-                                        .parts(
-                                                Part.builder().text("Let me check the weather.").build(),
-                                                Part.builder()
-                                                        .functionCall(FunctionCall.builder()
-                                                                .name("getWeather")
-                                                                .args(args)
-                                                                .build())
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .role("model")
+                                .parts(
+                                        Part.builder()
+                                                .text("Let me check the weather.")
+                                                .build(),
+                                        Part.builder()
+                                                .functionCall(FunctionCall.builder()
+                                                        .name("getWeather")
+                                                        .args(args)
                                                         .build())
-                                        .build())
-                                .build()))
+                                                .build())
+                                .build())
+                        .build()))
                 .build();
 
         ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response);
@@ -343,13 +335,12 @@ class GoogleGenAiContentMapperTest {
     @Test
     void should_handle_response_without_usage_metadata() {
         GenerateContentResponse response = GenerateContentResponse.builder()
-                .candidates(List.of(
-                        Candidate.builder()
-                                .content(Content.builder()
-                                        .role("model")
-                                        .parts(Part.builder().text("Hello").build())
-                                        .build())
-                                .build()))
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .role("model")
+                                .parts(Part.builder().text("Hello").build())
+                                .build())
+                        .build()))
                 .build();
 
         ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response);
@@ -362,28 +353,38 @@ class GoogleGenAiContentMapperTest {
 
     @Test
     void should_detect_image_mime_types() {
-        assertThat(GoogleGenAiContentMapper.detectMimeType(URI.create("file:///test.jpg"))).isEqualTo("image/jpeg");
-        assertThat(GoogleGenAiContentMapper.detectMimeType(URI.create("file:///test.png"))).isEqualTo("image/png");
-        assertThat(GoogleGenAiContentMapper.detectMimeType(URI.create("file:///test.gif"))).isEqualTo("image/gif");
-        assertThat(GoogleGenAiContentMapper.detectMimeType(URI.create("file:///test.webp"))).isEqualTo("image/webp");
+        assertThat(GoogleGenAiContentMapper.detectMimeType(URI.create("file:///test.jpg")))
+                .isEqualTo("image/jpeg");
+        assertThat(GoogleGenAiContentMapper.detectMimeType(URI.create("file:///test.png")))
+                .isEqualTo("image/png");
+        assertThat(GoogleGenAiContentMapper.detectMimeType(URI.create("file:///test.gif")))
+                .isEqualTo("image/gif");
+        assertThat(GoogleGenAiContentMapper.detectMimeType(URI.create("file:///test.webp")))
+                .isEqualTo("image/webp");
     }
 
     @Test
     void should_detect_audio_mime_types() {
-        assertThat(GoogleGenAiContentMapper.detectMimeType(URI.create("file:///test.mp3"))).isEqualTo("audio/mp3");
-        assertThat(GoogleGenAiContentMapper.detectMimeType(URI.create("file:///test.wav"))).isEqualTo("audio/wav");
+        assertThat(GoogleGenAiContentMapper.detectMimeType(URI.create("file:///test.mp3")))
+                .isEqualTo("audio/mp3");
+        assertThat(GoogleGenAiContentMapper.detectMimeType(URI.create("file:///test.wav")))
+                .isEqualTo("audio/wav");
     }
 
     @Test
     void should_detect_video_mime_types() {
-        assertThat(GoogleGenAiContentMapper.detectMimeType(URI.create("file:///test.mp4"))).isEqualTo("video/mp4");
-        assertThat(GoogleGenAiContentMapper.detectMimeType(URI.create("file:///test.avi"))).isEqualTo("video/avi");
+        assertThat(GoogleGenAiContentMapper.detectMimeType(URI.create("file:///test.mp4")))
+                .isEqualTo("video/mp4");
+        assertThat(GoogleGenAiContentMapper.detectMimeType(URI.create("file:///test.avi")))
+                .isEqualTo("video/avi");
     }
 
     @Test
     void should_detect_document_mime_types() {
-        assertThat(GoogleGenAiContentMapper.detectMimeType(URI.create("file:///test.pdf"))).isEqualTo("application/pdf");
-        assertThat(GoogleGenAiContentMapper.detectMimeType(URI.create("file:///test.csv"))).isEqualTo("text/plain");
+        assertThat(GoogleGenAiContentMapper.detectMimeType(URI.create("file:///test.pdf")))
+                .isEqualTo("application/pdf");
+        assertThat(GoogleGenAiContentMapper.detectMimeType(URI.create("file:///test.csv")))
+                .isEqualTo("text/plain");
     }
 
     @Test
@@ -420,7 +421,8 @@ class GoogleGenAiContentMapperTest {
 
     @Test
     void should_throw_when_reading_nonexistent_file() {
-        Image image = Image.builder().url(URI.create("file:///nonexistent/file.png")).build();
+        Image image =
+                Image.builder().url(URI.create("file:///nonexistent/file.png")).build();
         UserMessage message = UserMessage.from(new ImageContent(image));
 
         assertThatThrownBy(() -> GoogleGenAiContentMapper.toContent(message))
@@ -448,11 +450,10 @@ class GoogleGenAiContentMapperTest {
     @Test
     void should_convert_user_message_with_mixed_content() {
         String base64Data = Base64.getEncoder().encodeToString("fake-image".getBytes());
-        Image image = Image.builder().base64Data(base64Data).mimeType("image/jpeg").build();
+        Image image =
+                Image.builder().base64Data(base64Data).mimeType("image/jpeg").build();
 
-        UserMessage message = UserMessage.from(
-                new TextContent("Describe this image"),
-                new ImageContent(image));
+        UserMessage message = UserMessage.from(new TextContent("Describe this image"), new ImageContent(image));
 
         Content result = GoogleGenAiContentMapper.toContent(message);
 

@@ -63,7 +63,10 @@ public class GoogleGenAiChatModel implements ChatModel {
         this.client = builder.client != null
                 ? builder.client
                 : GoogleGenAiClientFactory.createClient(
-                        builder.apiKey, builder.googleCredentials, builder.projectId, builder.location,
+                        builder.apiKey,
+                        builder.googleCredentials,
+                        builder.projectId,
+                        builder.location,
                         builder.timeout);
 
         this.defaultRequestParameters = DefaultChatRequestParameters.builder()
@@ -83,10 +86,21 @@ public class GoogleGenAiChatModel implements ChatModel {
         List<Content> contents = GoogleGenAiContentMapper.toContents(chatRequest.messages());
 
         GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
-                parameters, systemInstruction, safetySettings, responseSchema,
-                responseMimeType, thinkingBudget, seed, googleSearchEnabled, allowedFunctionNames);
+                parameters,
+                systemInstruction,
+                safetySettings,
+                responseSchema,
+                responseMimeType,
+                thinkingBudget,
+                seed,
+                googleSearchEnabled,
+                allowedFunctionNames);
 
-        if (logRequests) log.info("Google Request: model={}, msgCount={}", modelName, chatRequest.messages().size());
+        if (logRequests)
+            log.info(
+                    "Google Request: model={}, msgCount={}",
+                    modelName,
+                    chatRequest.messages().size());
 
         var result = GoogleGenAiRetryHelper.executeWithRetry(
                 () -> client.models.generateContent(modelName, contents, config), maxRetries, log);
