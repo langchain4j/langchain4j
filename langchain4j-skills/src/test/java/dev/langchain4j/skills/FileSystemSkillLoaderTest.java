@@ -36,7 +36,7 @@ class FileSystemSkillLoaderTest {
         assertThat(skill.description()).isEqualTo("Describes how to correctly use 'process' tool");
         assertThat(skill.content()).contains(
                 "When user asks you to use the 'process' tool",
-                "call the 'generateId' tool",
+                "call the 'generate' tool",
                 "call the 'process' tool with 3 arguments",
                 "references/17.md",
                 "references/25.md"

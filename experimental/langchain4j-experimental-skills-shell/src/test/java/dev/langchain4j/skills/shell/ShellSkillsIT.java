@@ -44,13 +44,13 @@ class ShellSkillsIT {
         ShellSkills skills = ShellSkills.from(skill);
 
         // then
-        assertThat(skills.formatNamesAndDescriptions()).contains("greeting-user");
+        assertThat(skills.formatAvailableSkills()).contains("greeting-user");
         assertThat(getToolNames(skills.toolProvider())).containsExactly("run_shell_command");
 
         // given
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
-                .systemMessage("You have access to the following skills:\n" + skills.formatNamesAndDescriptions()
+                .systemMessage("You have access to the following skills:\n" + skills.formatAvailableSkills()
                         + "\nWhen the user's request relates to one of these skills, read its SKILL.md before proceeding.")
                 .toolProvider(skills.toolProvider())
                 .build();

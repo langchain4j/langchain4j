@@ -16,7 +16,7 @@ class SkillsTest {
                         .build()
         );
 
-        assertThat(skills.formatNamesAndDescriptions()).isEqualTo(
+        assertThat(skills.formatAvailableSkills()).isEqualTo(
                 """
                         <available_skills>
                         <skill>
@@ -42,7 +42,7 @@ class SkillsTest {
                         .build()
         );
 
-        assertThat(skills.formatNamesAndDescriptions()).isEqualTo(
+        assertThat(skills.formatAvailableSkills()).isEqualTo(
                 """
                         <available_skills>
                         <skill>
@@ -67,7 +67,7 @@ class SkillsTest {
                         .build()
         );
 
-        assertThat(skills.formatNamesAndDescriptions()).isEqualTo(
+        assertThat(skills.formatAvailableSkills()).isEqualTo(
                 """
                         <available_skills>
                         <skill>

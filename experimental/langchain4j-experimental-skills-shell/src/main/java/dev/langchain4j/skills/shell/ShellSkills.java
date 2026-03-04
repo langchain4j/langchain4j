@@ -35,7 +35,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
  * <p>
  * Only a {@code run_shell_command} tool is registered. The LLM reads {@code SKILL.md} files
  * and other resources directly via shell commands using the absolute paths provided in the
- * system message TODO via {@code <location>}.
+ * {@link #formatAvailableSkills()} via {@code <location>}.
  * <p>
  * Typical usage with an AI Service:
  * <pre>{@code
@@ -43,7 +43,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
  *
  * MyAiService service = AiServices.builder(MyAiService.class)
  *         .chatModel(chatModel)
- *         .systemMessage("You have access to the following skills:\n" + skills.formatNamesAndDescriptions() TODO
+ *         .systemMessage("You have access to the following skills:\n" + skills.formatAvailableSkills()
  *                 + "\nWhen the user's request relates to one of these skills, read its SKILL.md before proceeding.")
  *         .toolProvider(skills.toolProvider())
  *         .build();
@@ -54,12 +54,12 @@ public class ShellSkills {
 
     private final List<FileSystemSkill> skills;
     private final ToolProvider toolProvider;
-    private final String namesAndDescriptions;
+    private final String formattedAvailableSkills;
 
     public ShellSkills(Builder builder) {
         this.skills = copy(ensureNotEmpty(builder.skills, "skills"));
         this.toolProvider = createToolProvider(builder);
-        this.namesAndDescriptions = formatNamesAndDescriptions(this.skills);
+        this.formattedAvailableSkills = formatAvailableSkills(this.skills);
     }
 
     /**
@@ -88,9 +88,9 @@ public class ShellSkills {
      * </available_skills>
      * }</pre>
      */
-    public String formatNamesAndDescriptions() {
-        return namesAndDescriptions;
-    } // TODO name: also locations
+    public String formatAvailableSkills() {
+        return formattedAvailableSkills;
+    }
 
     /**
      * Creates a {@code ShellSkills} instance with default configuration from the given collection of skills.
@@ -136,7 +136,7 @@ public class ShellSkills {
         return request -> toolProviderResult;
     }
 
-    private static String formatNamesAndDescriptions(List<FileSystemSkill> skills) {
+    private static String formatAvailableSkills(List<FileSystemSkill> skills) {
         StringBuilder sb = new StringBuilder();
         sb.append("<available_skills>\n");
         for (FileSystemSkill skill : skills) {

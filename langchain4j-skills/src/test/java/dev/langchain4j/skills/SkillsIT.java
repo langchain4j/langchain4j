@@ -77,7 +77,7 @@ class SkillsIT {
         Skills skills = Skills.from(skill);
 
         // then
-        assertThat(skills.formatNamesAndDescriptions()).contains("using-process-tool");
+        assertThat(skills.formatAvailableSkills()).contains("using-process-tool");
         assertThat(getToolNames(skills.toolProvider()))
                 .containsExactlyInAnyOrder("activate_skill", "read_skill_resource");
         assertThat(skills.toolProvider().provideTools(null).tools().keySet().stream()
@@ -90,7 +90,7 @@ class SkillsIT {
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
-                .systemMessage("You have access to the following skills: " + skills.formatNamesAndDescriptions())
+                .systemMessage("You have access to the following skills: " + skills.formatAvailableSkills())
                 .tools(spyTools)
                 .toolProvider(skills.toolProvider())
                 .build();
@@ -140,7 +140,7 @@ class SkillsIT {
         Skills skills = Skills.from(skill);
 
         // then
-        assertThat(skills.formatNamesAndDescriptions()).contains("using-process-tool");
+        assertThat(skills.formatAvailableSkills()).contains("using-process-tool");
         assertThat(getToolNames(skills.toolProvider()))
                 .containsExactlyInAnyOrder("activate_skill", "read_skill_resource");
 
@@ -149,7 +149,7 @@ class SkillsIT {
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
-                .systemMessage("You have access to the following skills: " + skills.formatNamesAndDescriptions())
+                .systemMessage("You have access to the following skills: " + skills.formatAvailableSkills())
                 .tools(spyTools)
                 .toolProvider(skills.toolProvider())
                 .build();
@@ -183,7 +183,7 @@ class SkillsIT {
         Skills skills = Skills.from(firstSkill, secondSkill);
 
         // then
-        assertThat(skills.formatNamesAndDescriptions()).contains("using-poll-tool", "using-process-tool");
+        assertThat(skills.formatAvailableSkills()).contains("using-poll-tool", "using-process-tool");
         assertThat(getToolNames(skills.toolProvider()))
                 .containsExactlyInAnyOrder("activate_skill", "read_skill_resource");
 
@@ -197,7 +197,7 @@ class SkillsIT {
                         %s
                         When the user's request relates to one of these skills,
                         activate it first using the 'activate_skill' tool before proceeding.
-                        """.formatted(skills.formatNamesAndDescriptions()))
+                        """.formatted(skills.formatAvailableSkills()))
                 .tools(spyTools)
                 .toolProvider(skills.toolProvider())
                 .build();

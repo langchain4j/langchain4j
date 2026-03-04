@@ -164,7 +164,7 @@ If any step fails, call `rollbackOrder(orderId)` before reporting the error.
 #### Wiring It Up
 
 Pass the `ToolProvider` from `Skills` to your AI Service builder alongside your regular tools.
-Use `formatNamesAndDescriptions()` to inject the skill catalogue into the system message so
+Use `formatAvailableSkills()` to inject the skill catalogue into the system message so
 the LLM knows which skills it can activate:
 
 ```java
@@ -174,12 +174,12 @@ MyAiService service = AiServices.builder(MyAiService.class)
         .chatModel(chatModel)
         .tools(new OrderTools()) // your tools
         .toolProvider(skills.toolProvider()) // or .toolProviders(mcpToolProvider, skills.toolProvider())
-        .systemMessage("You have access to the following skills:\n" + skills.formatNamesAndDescriptions()
+        .systemMessage("You have access to the following skills:\n" + skills.formatAvailableSkills()
                 + "\nWhen the user's request relates to one of these skills, activate it first using the `activate_skill` tool before proceeding.")
         .build();
 ```
 
-`formatNamesAndDescriptions()` returns an XML-formatted block listing each skill's name and description:
+`formatAvailableSkills()` returns an XML-formatted block listing each skill's name and description:
 
 ```xml
 
@@ -280,12 +280,12 @@ ShellSkills skills = ShellSkills.from(FileSystemSkillLoader.loadSkills(Path.of("
 MyAiService service = AiServices.builder(MyAiService.class)
         .chatModel(chatModel)
         .toolProvider(skills.toolProvider()) // or .toolProviders(mcpToolProvider, skills.toolProvider())
-        .systemMessage("You have access to the following skills:\n" + skills.formatNamesAndDescriptions()
+        .systemMessage("You have access to the following skills:\n" + skills.formatAvailableSkills()
                 + "\nWhen the user's request relates to one of these skills, read its SKILL.md before proceeding.")
         .build();
 ```
 
-`formatNamesAndDescriptions()` includes a `<location>` field so the LLM knows
+`formatAvailableSkills()` includes a `<location>` field so the LLM knows
 exactly where to find each `SKILL.md`:
 
 ```xml
