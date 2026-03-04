@@ -41,15 +41,43 @@ public class LoggingChatModelListener implements ChatModelListener {
     public void onRequest(ChatModelRequestContext requestContext) {
     }
 
+    @Override
+    public void onResponse(ChatModelResponseContext responseContext) {
+        ChatRequest chatRequest = responseContext.chatRequest();
+        ChatResponse chatResponse = responseContext.chatResponse();
+
+        StringBuilder sb = new StringBuilder();
+        List<ChatMessage> messages = chatRequest.messages();
+        messages.forEach(message -> {
+            sb.append(format(message));
+            sb.append("\n");
+        });
+
+        log.info("""
+                        >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+                        {}TOOLS: {}
+                        ------------------------------------------------------------------------------------------
+                        {}
+                        <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+                        
+                        
+                        """,
+                sb,
+                chatRequest.toolSpecifications().stream().map(ToolSpecification::name).collect(joining(", ")),
+                "AI: " + format(chatResponse.aiMessage())
+        );
+    }
+
     private static String format(ChatMessage message) {
+        // TODO replace newlines with "\n"
         if (message instanceof SystemMessage systemMessage) {
-            return "SYSTEM: " + systemMessage.text();
+            return "SYSTEM: " + escapeNewlines(systemMessage.text());
         } else if (message instanceof UserMessage userMessage) {
-            return "USER: " + format(userMessage);
+            return "USER: " + escapeNewlines(format(userMessage));
         } else if (message instanceof AiMessage aiMessage) {
-            return "AI: " + format(aiMessage);
+            return "AI: " + escapeNewlines(format(aiMessage));
         } else if (message instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
-            return "TOOL: " + toolExecutionResultMessage.text();
+            return "TOOL: " + escapeNewlines(toolExecutionResultMessage.text());
         } else {
             throw new IllegalArgumentException("Unknown message type: " + message.getClass());
         }
@@ -90,53 +118,40 @@ public class LoggingChatModelListener implements ChatModelListener {
                     .append("[")
                     .append(toolExecutionRequest.name())
                     .append("(")
-                    .append(printArguments(toolExecutionRequest.arguments()))
+                    .append(formatArguments(toolExecutionRequest.arguments()))
                     .append(")] ");
         }
         return sb.toString();
     }
 
-    @Override
-    public void onResponse(ChatModelResponseContext responseContext) {
-        ChatRequest chatRequest = responseContext.chatRequest();
-        ChatResponse chatResponse = responseContext.chatResponse();
-
-        StringBuilder sb = new StringBuilder();
-        List<ChatMessage> messages = chatRequest.messages();
-        messages.forEach(message -> {
-            sb.append(format(message));
-            sb.append("\n");
-        });
-
-        log.info("""
-                        >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-                        {}TOOLS: {}
-                        ------------------------------------------------------------------------------------------
-                        {}
-                        <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-                        
-                        
-                        """,
-                sb,
-                chatRequest.toolSpecifications().stream().map(ToolSpecification::name).collect(joining(", ")),
-                "AI: " + format(chatResponse.aiMessage())
-        );
-    }
-
-    private static String printArguments(String json) {
+    static String formatArguments(String json) {
         JsonNode root = null;
         try {
             root = mapper.readTree(json);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
-        return StreamSupport.stream(
-                        Spliterators.spliteratorUnknownSize(root.fields(), 0), false)
-                .sorted(Comparator.comparingInt(e ->
-                        Integer.parseInt(e.getKey().substring(3)))) // arg0, arg1, ...
-                .map(e -> e.getValue().isTextual()
-                        ? "\"" + e.getValue().asText() + "\""
-                        : e.getValue().toString())
-                .collect(Collectors.joining(", "));
+        try {
+            return StreamSupport.stream(
+                            Spliterators.spliteratorUnknownSize(root.fields(), 0), false)
+                    .sorted(Comparator.comparingInt(e ->
+                            Integer.parseInt(e.getKey().substring(3)))) // arg0, arg1, ...
+                    .map(e -> e.getValue().isTextual()
+                            ? "\"" + e.getValue().asText() + "\""
+                            : e.getValue().toString())
+                    .collect(Collectors.joining(", "));
+        } catch (Exception e) {
+            return root.toString();
+        }
+    }
+
+    private static String escapeNewlines(String input) {
+        if (input == null) {
+            return null;
+        }
+        return input
+                .replace("\r\n", "\\n")
+                .replace("\r", "\\n")
+                .replace("\n", "\\n");
     }
 }
