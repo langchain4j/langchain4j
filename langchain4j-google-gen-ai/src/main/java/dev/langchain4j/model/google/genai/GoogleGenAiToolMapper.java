@@ -1,5 +1,7 @@
 package dev.langchain4j.model.google.genai;
 
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+
 import com.google.genai.types.FunctionDeclaration;
 import com.google.genai.types.Schema;
 import com.google.genai.types.Tool;
@@ -13,8 +15,6 @@ import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -62,7 +62,10 @@ public class GoogleGenAiToolMapper {
 
             // Recursively convert properties
             if (objectSchema.properties() != null) {
-                objectSchema.properties().forEach((String key, JsonSchemaElement value) -> properties.put(key, convertToGoogleSchema(value)));
+                objectSchema
+                        .properties()
+                        .forEach((String key, JsonSchemaElement value) ->
+                                properties.put(key, convertToGoogleSchema(value)));
             }
 
             return Schema.builder()

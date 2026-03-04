@@ -6,7 +6,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.google.genai.types.FunctionDeclaration;
 import com.google.genai.types.Schema;
 import com.google.genai.types.Tool;
-import com.google.genai.types.Type;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
@@ -43,10 +42,8 @@ class GoogleGenAiToolMapperTest {
 
     @Test
     void should_convert_tool_with_blank_description() {
-        ToolSpecification spec = ToolSpecification.builder()
-                .name("doSomething")
-                .description("")
-                .build();
+        ToolSpecification spec =
+                ToolSpecification.builder().name("doSomething").description("").build();
 
         Tool tool = GoogleGenAiToolMapper.convertToGoogleTool(spec);
 
@@ -55,9 +52,7 @@ class GoogleGenAiToolMapperTest {
 
     @Test
     void should_convert_tool_with_null_description() {
-        ToolSpecification spec = ToolSpecification.builder()
-                .name("doSomething")
-                .build();
+        ToolSpecification spec = ToolSpecification.builder().name("doSomething").build();
 
         Tool tool = GoogleGenAiToolMapper.convertToGoogleTool(spec);
 
@@ -97,9 +92,7 @@ class GoogleGenAiToolMapperTest {
 
     @Test
     void should_convert_function_with_null_description() {
-        ToolSpecification spec = ToolSpecification.builder()
-                .name("doSomething")
-                .build();
+        ToolSpecification spec = ToolSpecification.builder().name("doSomething").build();
 
         FunctionDeclaration fd = GoogleGenAiToolMapper.convertToGoogleFunction(spec);
 
@@ -162,7 +155,9 @@ class GoogleGenAiToolMapperTest {
                 .name("test")
                 .description("test")
                 .parameters(JsonObjectSchema.builder()
-                        .addProperties(java.util.Map.of("name", JsonStringSchema.builder().description("a name").build()))
+                        .addProperties(java.util.Map.of(
+                                "name",
+                                JsonStringSchema.builder().description("a name").build()))
                         .build())
                 .build();
 
@@ -179,7 +174,8 @@ class GoogleGenAiToolMapperTest {
                 .name("test")
                 .description("test")
                 .parameters(JsonObjectSchema.builder()
-                        .addProperties(java.util.Map.of("name", JsonStringSchema.builder().build()))
+                        .addProperties(java.util.Map.of(
+                                "name", JsonStringSchema.builder().build()))
                         .build())
                 .build();
 
@@ -195,7 +191,8 @@ class GoogleGenAiToolMapperTest {
                 .name("test")
                 .description("test")
                 .parameters(JsonObjectSchema.builder()
-                        .addProperties(java.util.Map.of("color",
+                        .addProperties(java.util.Map.of(
+                                "color",
                                 JsonEnumSchema.builder()
                                         .enumValues(List.of("RED", "GREEN", "BLUE"))
                                         .description("a color")
@@ -217,7 +214,8 @@ class GoogleGenAiToolMapperTest {
                 .name("test")
                 .description("test")
                 .parameters(JsonObjectSchema.builder()
-                        .addProperties(java.util.Map.of("color",
+                        .addProperties(java.util.Map.of(
+                                "color",
                                 JsonEnumSchema.builder()
                                         .enumValues(List.of("RED"))
                                         .build()))
@@ -236,8 +234,11 @@ class GoogleGenAiToolMapperTest {
                 .name("test")
                 .description("test")
                 .parameters(JsonObjectSchema.builder()
-                        .addProperties(java.util.Map.of("count",
-                                JsonIntegerSchema.builder().description("a count").build()))
+                        .addProperties(java.util.Map.of(
+                                "count",
+                                JsonIntegerSchema.builder()
+                                        .description("a count")
+                                        .build()))
                         .build())
                 .build();
 
@@ -254,14 +255,21 @@ class GoogleGenAiToolMapperTest {
                 .name("test")
                 .description("test")
                 .parameters(JsonObjectSchema.builder()
-                        .addProperties(java.util.Map.of("count",
-                                JsonIntegerSchema.builder().build()))
+                        .addProperties(java.util.Map.of(
+                                "count", JsonIntegerSchema.builder().build()))
                         .build())
                 .build();
 
         FunctionDeclaration fd = GoogleGenAiToolMapper.convertToGoogleFunction(spec);
 
-        assertThat(fd.parameters().get().properties().get().get("count").description().get()).isEqualTo("");
+        assertThat(fd.parameters()
+                        .get()
+                        .properties()
+                        .get()
+                        .get("count")
+                        .description()
+                        .get())
+                .isEqualTo("");
     }
 
     @Test
@@ -270,8 +278,11 @@ class GoogleGenAiToolMapperTest {
                 .name("test")
                 .description("test")
                 .parameters(JsonObjectSchema.builder()
-                        .addProperties(java.util.Map.of("price",
-                                JsonNumberSchema.builder().description("a price").build()))
+                        .addProperties(java.util.Map.of(
+                                "price",
+                                JsonNumberSchema.builder()
+                                        .description("a price")
+                                        .build()))
                         .build())
                 .build();
 
@@ -288,14 +299,21 @@ class GoogleGenAiToolMapperTest {
                 .name("test")
                 .description("test")
                 .parameters(JsonObjectSchema.builder()
-                        .addProperties(java.util.Map.of("price",
-                                JsonNumberSchema.builder().build()))
+                        .addProperties(java.util.Map.of(
+                                "price", JsonNumberSchema.builder().build()))
                         .build())
                 .build();
 
         FunctionDeclaration fd = GoogleGenAiToolMapper.convertToGoogleFunction(spec);
 
-        assertThat(fd.parameters().get().properties().get().get("price").description().get()).isEqualTo("");
+        assertThat(fd.parameters()
+                        .get()
+                        .properties()
+                        .get()
+                        .get("price")
+                        .description()
+                        .get())
+                .isEqualTo("");
     }
 
     @Test
@@ -304,8 +322,11 @@ class GoogleGenAiToolMapperTest {
                 .name("test")
                 .description("test")
                 .parameters(JsonObjectSchema.builder()
-                        .addProperties(java.util.Map.of("active",
-                                JsonBooleanSchema.builder().description("is active").build()))
+                        .addProperties(java.util.Map.of(
+                                "active",
+                                JsonBooleanSchema.builder()
+                                        .description("is active")
+                                        .build()))
                         .build())
                 .build();
 
@@ -322,14 +343,21 @@ class GoogleGenAiToolMapperTest {
                 .name("test")
                 .description("test")
                 .parameters(JsonObjectSchema.builder()
-                        .addProperties(java.util.Map.of("active",
-                                JsonBooleanSchema.builder().build()))
+                        .addProperties(java.util.Map.of(
+                                "active", JsonBooleanSchema.builder().build()))
                         .build())
                 .build();
 
         FunctionDeclaration fd = GoogleGenAiToolMapper.convertToGoogleFunction(spec);
 
-        assertThat(fd.parameters().get().properties().get().get("active").description().get()).isEqualTo("");
+        assertThat(fd.parameters()
+                        .get()
+                        .properties()
+                        .get()
+                        .get("active")
+                        .description()
+                        .get())
+                .isEqualTo("");
     }
 
     @Test
@@ -338,7 +366,8 @@ class GoogleGenAiToolMapperTest {
                 .name("test")
                 .description("test")
                 .parameters(JsonObjectSchema.builder()
-                        .addProperties(java.util.Map.of("tags",
+                        .addProperties(java.util.Map.of(
+                                "tags",
                                 JsonArraySchema.builder()
                                         .items(JsonStringSchema.builder().build())
                                         .description("list of tags")
@@ -360,7 +389,8 @@ class GoogleGenAiToolMapperTest {
                 .name("test")
                 .description("test")
                 .parameters(JsonObjectSchema.builder()
-                        .addProperties(java.util.Map.of("tags",
+                        .addProperties(java.util.Map.of(
+                                "tags",
                                 JsonArraySchema.builder()
                                         .items(JsonStringSchema.builder().build())
                                         .build()))
@@ -369,7 +399,14 @@ class GoogleGenAiToolMapperTest {
 
         FunctionDeclaration fd = GoogleGenAiToolMapper.convertToGoogleFunction(spec);
 
-        assertThat(fd.parameters().get().properties().get().get("tags").description().get()).isEqualTo("");
+        assertThat(fd.parameters()
+                        .get()
+                        .properties()
+                        .get()
+                        .get("tags")
+                        .description()
+                        .get())
+                .isEqualTo("");
     }
 
     @Test
@@ -400,7 +437,8 @@ class GoogleGenAiToolMapperTest {
                 .name("test")
                 .description("test")
                 .parameters(JsonObjectSchema.builder()
-                        .addProperties(java.util.Map.of("address",
+                        .addProperties(java.util.Map.of(
+                                "address",
                                 JsonObjectSchema.builder()
                                         .addStringProperty("street", "street name")
                                         .addStringProperty("city", "city name")

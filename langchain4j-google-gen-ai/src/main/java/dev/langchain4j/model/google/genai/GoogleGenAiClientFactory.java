@@ -8,11 +8,7 @@ import java.time.Duration;
 class GoogleGenAiClientFactory {
 
     static Client createClient(
-            String apiKey,
-            GoogleCredentials googleCredentials,
-            String projectId,
-            String location,
-            Duration timeout) {
+            String apiKey, GoogleCredentials googleCredentials, String projectId, String location, Duration timeout) {
 
         HttpOptions.Builder httpOptions = HttpOptions.builder();
         if (timeout != null) {
