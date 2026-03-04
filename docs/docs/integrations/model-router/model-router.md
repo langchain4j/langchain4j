@@ -2,7 +2,7 @@
 sidebar_position: 1
 ---
 
-# ModelRouter
+# Model Router
 
 This is the documentation for the `ModelRouter`, which acts as a router for messages to multiple ChatModel instances and uses pluggable RoutingStrategies.
 The module comes with two default implementations: FailoverStrategy and LowestTokenUsageRoutingStrategy.
