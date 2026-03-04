@@ -345,6 +345,14 @@ class UtilsTest {
     }
 
     @Test
+    void copy_collection() {
+        assertThat(Utils.copy((Collection<?>) null)).isEmpty();
+        assertThat(Utils.copy((Collection<?>) emptyList())).isEmpty();
+        assertThat(Utils.copy((Collection<String>) singletonList("one"))).containsExactly("one");
+        assertThat(Utils.copy((Collection<String>) asList("one", "two"))).containsExactly("one", "two");
+    }
+
+    @Test
     void copy_if_not_null_map() {
         assertThat(Utils.copyIfNotNull((Map<?, ?>) null)).isNull();
         assertThat(Utils.copyIfNotNull(emptyMap())).isEmpty();

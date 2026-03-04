@@ -3,6 +3,7 @@ package dev.langchain4j.service;
 import static dev.langchain4j.spi.ServiceHelper.loadFactory;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
@@ -49,6 +50,8 @@ public class AiServiceContext {
 
     public Function<Object, Optional<String>> userMessageProvider = DEFAULT_USER_MESSAGE_PROVIDER;
     public Function<Object, Optional<String>> systemMessageProvider = DEFAULT_SYSTEM_MESSAGE_PROVIDER;
+
+    public BiFunction<String, InvocationContext, String> systemMessageTransformer = null;
 
     public BiFunction<ChatRequest, Object, ChatRequest> chatRequestTransformer = (req, memId) -> req;
 

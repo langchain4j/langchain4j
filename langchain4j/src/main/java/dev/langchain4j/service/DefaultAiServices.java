@@ -170,6 +170,13 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 : null;
 
                         Optional<SystemMessage> systemMessage = prepareSystemMessage(memoryId, method, args);
+                        if (context.systemMessageTransformer != null) {
+                            String transformedSystemMessage = context.systemMessageTransformer.apply(
+                                    systemMessage.map(SystemMessage::text).orElse(null), invocationContext);
+                            systemMessage = transformedSystemMessage != null
+                                    ? Optional.of(SystemMessage.from(transformedSystemMessage))
+                                    : Optional.empty();
+                        }
                         var userMessageTemplate = getUserMessageTemplate(memoryId, method, args);
                         var variables = InternalReflectionVariableResolver.findTemplateVariables(
                                 userMessageTemplate, method, args);

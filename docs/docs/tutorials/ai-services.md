@@ -138,6 +138,35 @@ Friend friend = AiServices.builder(Friend.class)
 ```
 As you can see, you can provide different system messages based on a chat memory ID (user or conversation).
 
+### System Message Transformer
+
+A system message transformer allows you to dynamically modify the system message on every invocation,
+after it has been resolved from `@SystemMessage` or `systemMessageProvider`, but before the
+[`chatRequestTransformer`](#programmatic-chatrequest-rewriting) runs.
+This is useful when you need to append or prepend content to the system message regardless of how it was originally configured.
+
+```java
+Friend friend = AiServices.builder(Friend.class)
+    .chatModel(model)
+    .systemMessageProvider(chatMemoryId -> "You are a good friend of mine. Answer using slang.")
+    .systemMessageTransformer(systemMessage -> systemMessage + " Today's date is " + LocalDate.now() + ".")
+    .build();
+```
+
+If no system message was configured, the transformer receives `null`.
+
+When you also need access to the invocation context (e.g., the method name or its arguments),
+use the two-argument overload that accepts an `InvocationContext`:
+
+```java
+Friend friend = AiServices.builder(Friend.class)
+    .chatModel(model)
+    .systemMessageProvider(chatMemoryId -> "You are a good friend of mine. Answer using slang.")
+    .systemMessageTransformer((systemMessage, context) ->
+            systemMessage + " Tenant: " + context.invocationParameters().get("tenant") + ".")
+    .build();
+```
+
 ## @UserMessage
 
 Now, let's assume the model we use does not support system messages,

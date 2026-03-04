@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static java.net.HttpURLConnection.HTTP_OK;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.Collections.unmodifiableCollection;
 import static java.util.Collections.unmodifiableList;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
@@ -422,7 +423,7 @@ public class Utils {
      * @param <T>  Generic type of the list.
      * @return The copy of the provided list or an empty list.
      */
-    public static <T> List<T> copy(List<T> list) {
+    public static <T> List<T> copy(List<? extends T> list) {
         if (list == null) {
             return List.of();
         }
@@ -444,6 +445,22 @@ public class Utils {
         }
 
         return new ArrayList<>(list);
+    }
+
+    /**
+     * Returns an (unmodifiable) copy of the provided collection.
+     * Returns an empty list if the provided collection is <code>null</code>.
+     *
+     * @param collection The collection to copy.
+     * @param <T>  Generic type of the collection.
+     * @return The list which is a copy of the provided collection or an empty list.
+     */
+    public static <T> List<T> copy(Collection<? extends T> collection) {
+        if (collection == null) {
+            return List.of();
+        }
+
+        return List.copyOf(collection);
     }
 
     /**
