@@ -10,6 +10,8 @@ import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentLoader;
 import dev.langchain4j.data.document.DocumentParser;
 import dev.langchain4j.data.document.source.gcs.GcsSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +23,8 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * Google Cloud Storage Document Loader to load documents from Google Cloud Storage buckets.
  */
 public class GoogleCloudStorageDocumentLoader {
+
+    private static final Logger log = LoggerFactory.getLogger(GoogleCloudStorageDocumentLoader.class);
 
     private final Storage storage;
 
@@ -58,6 +62,7 @@ public class GoogleCloudStorageDocumentLoader {
 
     /**
      * Load a list of documents from the specified bucket, filtered with a glob pattern.
+     * Skips any documents that fail to load.
      *
      * @param bucket the bucket to load files from
      * @param globPattern filter only files matching the glob pattern, see https://cloud.google.com/storage/docs/json_api/v1/objects/list#list-object-glob
@@ -72,8 +77,12 @@ public class GoogleCloudStorageDocumentLoader {
         List<Document> documents = new ArrayList<>();
 
         for (Blob blob : blobs.iterateAll()) {
-            GcsSource gcsSource = new GcsSource(blob);
-            documents.add(DocumentLoader.load(gcsSource, ensureNotNull(parser, "parser")));
+            try {
+                GcsSource gcsSource = new GcsSource(blob);
+                documents.add(DocumentLoader.load(gcsSource, ensureNotNull(parser, "parser")));
+            } catch (Exception e) {
+                log.warn("Failed to load blob '{}' from bucket '{}', skipping it.", blob.getName(), bucket, e);
+            }
         }
 
         return documents;

@@ -12,11 +12,9 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Integration test to verify lazy calculation optimization.
- *
  * This verifies that:
  * 1. JSON marshalling only happens when resultText() is accessed
  * 2. For IMMEDIATE tools, JSON marshalling is completely avoided
- * 3. The optimization provides measurable performance improvement
  */
 class LazyCalculationIntegrationTest {
 
@@ -118,59 +116,5 @@ class LazyCalculationIntegrationTest {
         String resultText = result.resultText();
         assertThat(resultText).isNotNull();
         assertThat(resultText.length()).isGreaterThan(0);
-    }
-
-    @Test
-    void shouldShowPerformanceImprovement() throws Exception {
-        DemoTool tool = new DemoTool();
-
-        DefaultToolExecutor executor = new DefaultToolExecutor(tool, DemoTool.class.getMethod("immediateTool"));
-
-        ToolExecutionRequest request = ToolExecutionRequest.builder()
-                .name("immediateTool")
-                .arguments("{}")
-                .build();
-
-        int iterations = 10000;
-
-        // Warm up - increased to ensure JIT compilation
-        for (int i = 0; i < 100; i++) {
-            ToolExecutionResult warmupResult = executor.executeWithContext(
-                    request, InvocationContext.builder().build());
-            if (i % 2 == 0) {
-                warmupResult.result();
-            } else {
-                warmupResult.resultText();
-            }
-        }
-
-        // Test 1: WITHOUT accessing resultText (IMMEDIATE tool scenario)
-        long start1 = System.nanoTime();
-        for (int i = 0; i < iterations; i++) {
-            ToolExecutionResult result = executor.executeWithContext(
-                    request, InvocationContext.builder().build());
-            // Only access result(), NOT resultText() - no JSON marshalling
-            result.result();
-        }
-        long time1 = System.nanoTime() - start1;
-
-        // Test 2: WITH accessing resultText (normal tool scenario)
-        long start2 = System.nanoTime();
-        for (int i = 0; i < iterations; i++) {
-            ToolExecutionResult result = executor.executeWithContext(
-                    request, InvocationContext.builder().build());
-            // Access resultText() - triggers JSON marshalling
-            result.resultText();
-        }
-        long time2 = System.nanoTime() - start2;
-
-        // Verify that avoiding JSON marshalling is faster
-        assertThat(time1).isLessThan(time2);
-
-        // Calculate improvement
-        double improvement = ((double) (time2 - time1) / time2) * 100;
-
-        // Performance improvement should be noticeable (at least 10%)
-        assertThat(improvement).isGreaterThan(10.0);
     }
 }

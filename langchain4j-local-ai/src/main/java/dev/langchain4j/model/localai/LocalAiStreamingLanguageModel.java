@@ -122,7 +122,6 @@ public class LocalAiStreamingLanguageModel implements StreamingLanguageModel {
 
         public LocalAiStreamingLanguageModelBuilder() {
             // This is public so it can be extended
-            // By default with Lombok it becomes package private
         }
 
         public LocalAiStreamingLanguageModelBuilder baseUrl(String baseUrl) {

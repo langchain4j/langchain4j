@@ -9,12 +9,17 @@ import static dev.langchain4j.service.AiServiceParamsUtil.chatRequestParameters;
 import static dev.langchain4j.service.AiServiceParamsUtil.findArgumentOfType;
 import static dev.langchain4j.service.AiServiceValidation.validateParameters;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
+import static dev.langchain4j.service.TypeUtils.getRawClass;
+import static dev.langchain4j.service.TypeUtils.isImageType;
+import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterClass;
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
@@ -22,6 +27,7 @@ import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
+import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.invocation.LangChain4jManaged;
@@ -66,7 +72,6 @@ import java.util.Scanner;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 @Internal
@@ -104,8 +109,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                 context.aiServiceClass.getClassLoader(),
                 new Class<?>[] {context.aiServiceClass},
                 new InvocationHandler() {
-
-                    private final ExecutorService executor = Executors.newCachedThreadPool();
 
                     @Override
                     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
@@ -167,32 +170,40 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 : null;
 
                         Optional<SystemMessage> systemMessage = prepareSystemMessage(memoryId, method, args);
-                        var userMessageTemplate = getUserMessageTemplate(method, args);
+                        if (context.systemMessageTransformer != null) {
+                            String transformedSystemMessage = context.systemMessageTransformer.apply(
+                                    systemMessage.map(SystemMessage::text).orElse(null), invocationContext);
+                            systemMessage = transformedSystemMessage != null
+                                    ? Optional.of(SystemMessage.from(transformedSystemMessage))
+                                    : Optional.empty();
+                        }
+                        var userMessageTemplate = getUserMessageTemplate(memoryId, method, args);
                         var variables = InternalReflectionVariableResolver.findTemplateVariables(
                                 userMessageTemplate, method, args);
-                        UserMessage userMessage = prepareUserMessage(method, args, userMessageTemplate, variables);
+                        UserMessage originalUserMessage =
+                                prepareUserMessage(method, args, userMessageTemplate, variables);
 
                         context.eventListenerRegistrar.fireEvent(AiServiceStartedEvent.builder()
                                 .invocationContext(invocationContext)
                                 .systemMessage(systemMessage)
-                                .userMessage(userMessage)
+                                .userMessage(originalUserMessage)
                                 .build());
 
-                        if (context.hasChatMemory()) {
-                            systemMessage.ifPresent(chatMemory::add);
-                        }
+                        UserMessage userMessageForAugmentation = originalUserMessage;
 
                         AugmentationResult augmentationResult = null;
                         if (context.retrievalAugmentor != null) {
                             List<ChatMessage> chatMemoryMessages = chatMemory != null ? chatMemory.messages() : null;
                             Metadata metadata = Metadata.builder()
-                                    .chatMessage(userMessage)
+                                    .chatMessage(userMessageForAugmentation)
+                                    .systemMessage(systemMessage.orElse(null))
                                     .chatMemory(chatMemoryMessages)
                                     .invocationContext(invocationContext)
                                     .build();
-                            AugmentationRequest augmentationRequest = new AugmentationRequest(userMessage, metadata);
+                            AugmentationRequest augmentationRequest =
+                                    new AugmentationRequest(userMessageForAugmentation, metadata);
                             augmentationResult = context.retrievalAugmentor.augment(augmentationRequest);
-                            userMessage = (UserMessage) augmentationResult.chatMessage();
+                            userMessageForAugmentation = (UserMessage) augmentationResult.chatMessage();
                         }
 
                         var commonGuardrailParam = GuardrailRequestParams.builder()
@@ -204,20 +215,21 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .variables(variables)
                                 .build();
 
-                        userMessage = invokeInputGuardrails(
-                                context.guardrailService(), method, userMessage, commonGuardrailParam);
+                        UserMessage userMessage = invokeInputGuardrails(
+                                context.guardrailService(), method, userMessageForAugmentation, commonGuardrailParam);
 
-                        Type returnType = method.getGenericReturnType();
+                        Type returnType = context.returnType != null ? context.returnType : method.getGenericReturnType();
                         boolean streaming = returnType == TokenStream.class || canAdaptTokenStreamTo(returnType);
 
                         // TODO should it be called when returnType==String?
                         boolean supportsJsonSchema = supportsJsonSchema();
-
                         Optional<JsonSchema> jsonSchema = Optional.empty();
-                        if (supportsJsonSchema && !streaming) {
+                        boolean returnsImage = isImage(returnType);
+
+                        if (supportsJsonSchema && !streaming && !returnsImage) {
                             jsonSchema = serviceOutputParser.jsonSchema(returnType);
                         }
-                        if ((!supportsJsonSchema || jsonSchema.isEmpty()) && !streaming) {
+                        if ((!supportsJsonSchema || jsonSchema.isEmpty()) && !streaming && !returnsImage) {
                             userMessage = appendOutputFormatInstructions(returnType, userMessage);
                         }
 
@@ -231,13 +243,19 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     allContents.add(content);
                                 }
                             }
-                            userMessage = UserMessage.from(userMessage.name(), allContents);
+                            userMessage = userMessage.toBuilder().contents(allContents).build();
                         }
 
                         List<ChatMessage> messages = new ArrayList<>();
                         if (context.hasChatMemory()) {
-                            chatMemory.add(userMessage);
+                            systemMessage.ifPresent(chatMemory::add);
                             messages.addAll(chatMemory.messages());
+                            if (context.storeRetrievedContentInChatMemory) {
+                                chatMemory.add(userMessage);
+                            } else {
+                                chatMemory.add(originalUserMessage);
+                            }
+                            messages.add(userMessage);
                         } else {
                             systemMessage.ifPresent(messages::add);
                             messages.add(userMessage);
@@ -246,12 +264,13 @@ class DefaultAiServices<T> extends AiServices<T> {
                         Future<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
 
                         ToolServiceContext toolServiceContext =
-                                context.toolService.createContext(invocationContext, userMessage);
+                                context.toolService.createContext(invocationContext, userMessage, chatMemory);
 
                         if (streaming) {
                             var tokenStreamParameters = AiServiceTokenStreamParameters.builder()
                                     .messages(messages)
-                                    .toolSpecifications(toolServiceContext.toolSpecifications())
+                                    .effectiveTools(toolServiceContext.effectiveTools())
+                                    .availableTools(toolServiceContext.availableTools())
                                     .toolExecutors(toolServiceContext.toolExecutors())
                                     .toolArgumentsErrorHandler(context.toolService.argumentsErrorHandler())
                                     .toolExecutionErrorHandler(context.toolService.executionErrorHandler())
@@ -265,7 +284,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .build();
 
                             TokenStream tokenStream = new AiServiceTokenStream(tokenStreamParameters);
-                            // TODO moderation
                             if (returnType == TokenStream.class) {
                                 return tokenStream;
                             } else {
@@ -293,6 +311,8 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         ChatExecutor chatExecutor = ChatExecutor.builder(context.chatModel)
                                 .chatRequest(chatRequest)
+                                .invocationContext(invocationContext)
+                                .eventListenerRegistrar(context.eventListenerRegistrar)
                                 .build();
 
                         ChatResponse chatResponse = chatExecutor.execute();
@@ -329,12 +349,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .finalResponse(toolServiceResult.finalResponse())
                                     .build();
 
-                            context.eventListenerRegistrar.fireEvent(AiServiceCompletedEvent.builder()
-                                    .invocationContext(invocationContext)
-                                    .result(result)
-                                    .build());
-
-                            return result;
+                            return fireEventAndReturn(invocationContext, result);
                         }
 
                         ChatResponse aggregateResponse = toolServiceResult.aggregateResponse();
@@ -346,13 +361,14 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 chatExecutor,
                                 commonGuardrailParam);
 
-                        if ((response != null) && typeHasRawClass(returnType, response.getClass())) {
-                            context.eventListenerRegistrar.fireEvent(AiServiceCompletedEvent.builder()
-                                    .invocationContext(invocationContext)
-                                    .result(response)
-                                    .build());
+                        if (response != null) {
+                            if (returnsImage && response instanceof ChatResponse cResponse) {
+                                return fireEventAndReturn(invocationContext, parseImages(cResponse, returnType));
+                            }
 
-                            return response;
+                            if (typeHasRawClass(returnType, response.getClass())) {
+                                return fireEventAndReturn(invocationContext, response);
+                            }
                         }
 
                         var parsedResponse = serviceOutputParser.parse((ChatResponse) response, returnType);
@@ -370,12 +386,55 @@ class DefaultAiServices<T> extends AiServices<T> {
                                         .build()
                                 : parsedResponse;
 
+                        return fireEventAndReturn(invocationContext, actualResponse);
+                    }
+
+                    private Object fireEventAndReturn(InvocationContext invocationContext, Object result) {
                         context.eventListenerRegistrar.fireEvent(AiServiceCompletedEvent.builder()
                                 .invocationContext(invocationContext)
-                                .result(actualResponse)
+                                .result(result)
                                 .build());
+                        return result;
+                    }
 
-                        return actualResponse;
+                    private static boolean isImage(Type returnType) {
+                        Class<?> rawReturnType = getRawClass(returnType);
+                        if (isImageType(rawReturnType)) {
+                            return true;
+                        }
+                        if (Collection.class.isAssignableFrom(rawReturnType)) {
+                            Class<?> genericParam = resolveFirstGenericParameterClass(returnType);
+                            return genericParam != null && isImageType(genericParam);
+                        }
+                        return false;
+                    }
+
+                    private static Object parseImages(ChatResponse response, Type returnType) {
+                        List<Image> images = response.aiMessage().images();
+                        Class<?> rawReturnType = getRawClass(returnType);
+                        if (isImage(rawReturnType)) {
+                            if (rawReturnType == ImageContent.class) {
+                                List<ImageContent> imageContents = toImageContents(images);
+                                return imageContents.isEmpty() ? null : imageContents.get(0);
+                            }
+                            if (rawReturnType == Image.class) {
+                                return images.isEmpty() ? null : images.get(0);
+                            }
+                        }
+                        if (Collection.class.isAssignableFrom(rawReturnType)) {
+                            Class<?> genericParam = resolveFirstGenericParameterClass(returnType);
+                            if (genericParam == ImageContent.class) {
+                                return toImageContents(images);
+                            }
+                            if (genericParam == Image.class) {
+                                return images;
+                            }
+                        }
+                        throw new UnsupportedOperationException("Unsupported return type " + rawReturnType);
+                    }
+
+                    private static List<ImageContent> toImageContents(List<Image> images) {
+                        return images.stream().map(ImageContent::from).toList();
                     }
 
                     private boolean canAdaptTokenStreamTo(Type returnType) {
@@ -428,6 +487,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                     private Future<Moderation> triggerModerationIfNeeded(Method method, List<ChatMessage> messages) {
                         if (method.isAnnotationPresent(Moderate.class)) {
+                            ExecutorService executor = DefaultExecutorProvider.getDefaultExecutorService();
                             return executor.submit(() -> {
                                 List<ChatMessage> messagesToModerate = removeToolMessages(messages);
                                 return context.moderationModel
@@ -499,15 +559,38 @@ class DefaultAiServices<T> extends AiServices<T> {
 
     private static UserMessage prepareUserMessage(
             Method method, Object[] args, String userMessageTemplate, Map<String, Object> variables) {
-        Prompt prompt = PromptTemplate.from(userMessageTemplate).apply(variables);
 
         Optional<String> maybeUserName = findUserName(method.getParameters(), args);
+
+        if (userMessageTemplate.isEmpty()) {
+            List<Content> contents = new ArrayList<>();
+
+            for (Object arg : args) {
+                if (arg instanceof Content content) {
+                    contents.add(content);
+                } else if (isListOfContents(arg)) {
+                    contents.addAll((List<Content>) arg);
+                }
+            }
+
+            if (!contents.isEmpty()) {
+                return maybeUserName
+                        .map(userName -> UserMessage.from(userName, contents))
+                        .orElseGet(() -> UserMessage.from(contents));
+            }
+
+            throw illegalConfiguration(
+                    "Error: The method '%s' does not have a user message defined.", method.getName());
+        }
+
+        Prompt prompt = PromptTemplate.from(userMessageTemplate).apply(variables);
+
         return maybeUserName
                 .map(userName -> UserMessage.from(userName, prompt.text()))
                 .orElseGet(prompt::toUserMessage);
     }
 
-    private static String getUserMessageTemplate(Method method, Object[] args) {
+    private String getUserMessageTemplate(Object memoryId, Method method, Object[] args) {
 
         Optional<String> templateFromMethodAnnotation = findUserMessageTemplateFromMethodAnnotation(method);
         Optional<String> templateFromParameterAnnotation =
@@ -532,7 +615,28 @@ class DefaultAiServices<T> extends AiServices<T> {
             return templateFromTheOnlyArgument.get();
         }
 
-        throw illegalConfiguration("Error: The method '%s' does not have a user message defined.", method.getName());
+        if (hasContentArgument(method, args)) {
+            return "";
+        }
+
+        return context.userMessageProvider.apply(memoryId)
+                .orElseThrow(() -> illegalConfiguration("Error: The method '%s' does not have a user message defined.", method.getName()));
+    }
+
+    private static boolean hasContentArgument(Method method, Object[] args) {
+        Parameter[] parameters = method.getParameters();
+        for (int i = 0; i < parameters.length; i++) {
+            if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class)) {
+                if (args[i] instanceof Content || isListOfContents(args[i])) {
+                    return true;
+                }
+            }
+        }
+
+        if (parameters.length == 1 && !hasAnyValidAnnotation(parameters[0])) {
+            return args[0] instanceof Content || isListOfContents(args[0]);
+        }
+        return false;
     }
 
     private static Optional<String> findUserMessageTemplateFromMethodAnnotation(Method method) {
@@ -564,6 +668,9 @@ class DefaultAiServices<T> extends AiServices<T> {
 
     private static Optional<String> findUserMessageTemplateFromTheOnlyArgument(Parameter[] parameters, Object[] args) {
         if (parameters != null && parameters.length == 1 && !hasAnyValidAnnotation(parameters[0])) {
+            if (args[0] instanceof Content || isListOfContents(args[0])) {
+                return Optional.empty();
+            }
             return Optional.of(InternalReflectionVariableResolver.asString(args[0]));
         }
         return Optional.empty();
@@ -595,6 +702,14 @@ class DefaultAiServices<T> extends AiServices<T> {
                 } else {
                     contents.add(null); // placeholder
                 }
+            }
+        }
+
+        if (contents.isEmpty() && parameters.length == 1 && !hasAnyValidAnnotation(parameters[0])) {
+            if (args[0] instanceof Content) {
+                contents.add((Content) args[0]);
+            } else if (isListOfContents(args[0])) {
+                contents.addAll((List<Content>) args[0]);
             }
         }
 

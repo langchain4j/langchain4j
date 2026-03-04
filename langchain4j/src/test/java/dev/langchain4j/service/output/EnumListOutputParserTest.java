@@ -1,5 +1,10 @@
 package dev.langchain4j.service.output;
 
+import dev.langchain4j.model.chat.request.json.JsonArraySchema;
+import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -7,6 +12,7 @@ import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.service.output.EnumListOutputParserTest.Animal.CAT;
@@ -83,5 +89,39 @@ class EnumListOutputParserTest {
                 .isExactlyInstanceOf(OutputParsingException.class)
                 .hasMessageContaining("Failed to parse")
                 .hasMessageContaining("Animal");
+    }
+
+    @Test
+    void should_create_schema_for_enum_with_custom_toString() {
+
+        // given
+        enum MyEnumWithToString {
+            A, B, C;
+
+            @Override
+            public String toString() {
+                return "[" + name() + "]";
+            }
+        }
+
+        assertThat(MyEnumWithToString.A.toString()).isEqualTo("[A]");
+
+        EnumListOutputParser<MyEnumWithToString> parser = new EnumListOutputParser<>(MyEnumWithToString.class);
+
+        // when
+        Optional<JsonSchema> jsonSchema = parser.jsonSchema();
+
+        // then
+        assertThat(jsonSchema).hasValue(JsonSchema.builder()
+                .name("List_of_MyEnumWithToString")
+                .rootElement(JsonObjectSchema.builder()
+                        .addProperty("values", JsonArraySchema.builder()
+                                .items(JsonEnumSchema.builder()
+                                        .enumValues("A", "B", "C")
+                                        .build())
+                                .build())
+                        .required("values")
+                        .build())
+                .build());
     }
 }

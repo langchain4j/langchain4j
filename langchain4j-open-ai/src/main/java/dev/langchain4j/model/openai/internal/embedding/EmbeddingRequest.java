@@ -10,6 +10,8 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
+
 import java.util.List;
 import java.util.Objects;
 
@@ -62,11 +64,13 @@ public final class EmbeddingRequest {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
         return another instanceof EmbeddingRequest && equalTo((EmbeddingRequest) another);
     }
 
+    @JacocoIgnoreCoverageGenerated
     private boolean equalTo(EmbeddingRequest another) {
         return Objects.equals(model, another.model)
                 && Objects.equals(input, another.input)
@@ -76,6 +80,7 @@ public final class EmbeddingRequest {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         int h = 5381;
         h += (h << 5) + Objects.hashCode(model);
@@ -87,6 +92,7 @@ public final class EmbeddingRequest {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public String toString() {
         return "EmbeddingRequest{"
                 + "model=" + model

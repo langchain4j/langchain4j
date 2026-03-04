@@ -1,12 +1,16 @@
 package dev.langchain4j.agentic;
 
 import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agentic.declarative.ExitCondition;
+import dev.langchain4j.agentic.declarative.Output;
+import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScopeAccess;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
+import java.util.ArrayList;
 import java.util.List;
 
 public class Agents {
@@ -21,6 +25,12 @@ public class Agents {
 
         @Agent
         String ask(@MemoryId String memoryId, @V("request") String request);
+    }
+
+    public interface ExpertInvokerAgentWithMemory {
+
+        @Agent
+        String routeToExpert(@MemoryId String memoryId, @V("category") RequestCategory category, @V("request") String request);
     }
 
     public interface CategoryRouter {
@@ -190,7 +200,15 @@ public class Agents {
         String scoreAndReview(@V("story") String story, @V("style") String style);
     }
 
-    public interface StyledWriter extends AgenticScopeAccess {
+    public interface StyleReviewLoopWithExitCondition extends StyleReviewLoop {
+
+        @ExitCondition
+        static boolean exitCondition(@V("score") double score) {
+            return score >= 0.8;
+        }
+    }
+
+    public interface StyledWriter extends AgentInstance, AgenticScopeAccess {
 
         @Agent
         ResultWithAgenticScope<String> writeStoryWithStyle(@V("topic") String topic, @V("style") String style);
@@ -229,6 +247,18 @@ public class Agents {
         List<EveningPlan> plan(@V("mood") String mood);
     }
 
+    public interface EveningPlannerAgentWithOutput extends EveningPlannerAgent {
+
+        @Output
+        static List<EveningPlan> createPlans(@V("movies") List<String> movies, @V("meals") List<String> meals) {
+            List<EveningPlan> moviesAndMeals = new ArrayList<>();
+            for (int i = 0; i < Math.min(movies.size(), meals.size()); i++) {
+                moviesAndMeals.add(new EveningPlan(movies.get(i), meals.get(i)));
+            }
+            return moviesAndMeals;
+        }
+    }
+
     public interface ColorExpert {
 
         @UserMessage("""
@@ -248,5 +278,28 @@ public class Agents {
             """)
         @Agent("Provide the resulting color from mixing given colors")
         String colorMix(@V("colors") List<String> colors);
+    }
+
+    public record LoanApplication(String applicantName, String applicantAge, int amount) { }
+
+    public interface LoanApplicationExtractor {
+
+        @UserMessage("""
+            Convert user request into a structured LoanApplication.
+            The user request is: '{{request}}'.
+            """)
+        @Agent(description = "Extract a loan application from user request.", outputKey = "loanApplication")
+        LoanApplication extract(@V("request") String request);
+    }
+
+    public interface LoanApplicationEvaluator {
+
+        @UserMessage("""
+            Evaluate a loan application. If the applicant's age is less than 18 or the amount is greater than 50000, reject the application.
+            A response should indicate 'approved' or 'rejected'.
+            The loan application is: '{{loanApplication}}'.
+            """)
+        @Agent("Evaluate a loan application.")
+        String evaluate(@V("loanApplication") LoanApplication loanApplication);
     }
 }

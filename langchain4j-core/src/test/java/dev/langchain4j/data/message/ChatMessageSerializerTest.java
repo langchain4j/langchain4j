@@ -8,11 +8,11 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -95,7 +95,33 @@ class ChatMessageSerializerTest {
                         "{\"text\":\"test-text\",\"thinking\":\"test-thinking\",\"toolExecutionRequests\":[{\"name\":\"weather\",\"arguments\":\"{\\\"city\\\": \\\"Munich\\\"}\"}],\"attributes\":{\"name\":\"Klaus\",\"age\":42,\"extra\":[\"one\",\"two\"]},\"type\":\"AI\"}"),
                 Arguments.of(
                         ToolExecutionResultMessage.from("12345", "weather", "sunny"),
-                        "{\"id\":\"12345\",\"toolName\":\"weather\",\"text\":\"sunny\",\"type\":\"TOOL_EXECUTION_RESULT\"}"),
+                        "{\"id\":\"12345\",\"toolName\":\"weather\",\"text\":\"sunny\",\"attributes\":{},\"type\":\"TOOL_EXECUTION_RESULT\"}"),
+                Arguments.of(
+                        ToolExecutionResultMessage.builder()
+                                .id("12345")
+                                .toolName("weather")
+                                .text("error occurred")
+                                .isError(true)
+                                .build(),
+                        "{\"id\":\"12345\",\"toolName\":\"weather\",\"text\":\"error occurred\",\"isError\":true,\"attributes\":{},\"type\":\"TOOL_EXECUTION_RESULT\"}"),
+                Arguments.of(
+                        ToolExecutionResultMessage.from(null, null, "sunny"),
+                        "{\"text\":\"sunny\",\"attributes\":{},\"type\":\"TOOL_EXECUTION_RESULT\"}"),
+                Arguments.of(
+                        ToolExecutionResultMessage.from("", "", "sunny"),
+                        "{\"id\":\"\",\"toolName\":\"\",\"text\":\"sunny\",\"attributes\":{},\"type\":\"TOOL_EXECUTION_RESULT\"}"),
+                Arguments.of(
+                        ToolExecutionResultMessage.builder()
+                                .id("67890")
+                                .toolName("tool_search_tool")
+                                .text("Tools found: weather, time")
+                                .attributes(new LinkedHashMap<>() {
+                                    {
+                                        put("found_tools", List.of("weather", "time"));
+                                    }
+                                })
+                                .build(),
+                        "{\"id\":\"67890\",\"toolName\":\"tool_search_tool\",\"text\":\"Tools found: weather, time\",\"attributes\":{\"found_tools\":[\"weather\", \"time\"]},\"type\":\"TOOL_EXECUTION_RESULT\"}"),
                 Arguments.of(
                         CustomMessage.from(new LinkedHashMap<>() {
                             {
@@ -137,7 +163,8 @@ class ChatMessageSerializerTest {
     @Test
     void should_deserialize_UserMessage_without_attributes() {
 
-        UserMessage deserialized = (UserMessage) messageFromJson("{\"contents\":[{\"text\":\"hello\",\"type\":\"TEXT\"}],\"type\":\"USER\"}");
+        UserMessage deserialized = (UserMessage)
+                messageFromJson("{\"contents\":[{\"text\":\"hello\",\"type\":\"TEXT\"}],\"type\":\"USER\"}");
 
         assertThat(deserialized.name()).isNull();
         assertThat(deserialized.contents()).containsExactly(TextContent.from("hello"));
@@ -155,6 +182,30 @@ class ChatMessageSerializerTest {
         assertThat(deserialized.text()).isNull();
         assertThat(deserialized.thinking()).isNull();
         assertThat(deserialized.toolExecutionRequests()).isEmpty();
+        assertThat(deserialized.attributes()).isEmpty();
+    }
+
+    @Test
+    void should_deserialize_ToolExecutionResultMessage_without_isError() {
+
+        ToolExecutionResultMessage deserialized = (ToolExecutionResultMessage) messageFromJson(
+                "{\"id\":\"12345\",\"toolName\":\"weather\",\"text\":\"sunny\",\"type\":\"TOOL_EXECUTION_RESULT\"}");
+
+        assertThat(deserialized.id()).isEqualTo("12345");
+        assertThat(deserialized.toolName()).isEqualTo("weather");
+        assertThat(deserialized.text()).isEqualTo("sunny");
+        assertThat(deserialized.isError()).isNull();
+    }
+
+    @Test
+    void should_deserialize_ToolExecutionResultMessage_without_attributes() {
+
+        ToolExecutionResultMessage deserialized = (ToolExecutionResultMessage) messageFromJson(
+                "{\"id\":\"12345\",\"toolName\":\"weather\",\"text\":\"sunny\",\"type\":\"TOOL_EXECUTION_RESULT\"}");
+
+        assertThat(deserialized.id()).isEqualTo("12345");
+        assertThat(deserialized.toolName()).isEqualTo("weather");
+        assertThat(deserialized.text()).isEqualTo("sunny");
         assertThat(deserialized.attributes()).isEmpty();
     }
 }

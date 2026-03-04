@@ -71,6 +71,7 @@ jobs:
       - name: Setup JBang
         # Required for MCP module
         uses: jbangdev/setup-jbang@main
+        continue-on-error: true
 
       - name: Build with JDK 17
         run: |
@@ -100,6 +101,7 @@ jobs:
           AZURE_OPENAI_AUDIO_DEPLOYMENT_NAME: ${{ secrets.AZURE_OPENAI_AUDIO_DEPLOYMENT_NAME }}
           AZURE_OPENAI_AUDIO_ENDPOINT: ${{ secrets.AZURE_OPENAI_AUDIO_ENDPOINT }}
           AZURE_OPENAI_AUDIO_KEY: ${{ secrets.AZURE_OPENAI_AUDIO_KEY }}
+          AZURE_OPENAI_DEPLOYMENT_NAME: ${{ secrets.AZURE_OPENAI_DEPLOYMENT_NAME }}
           AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           AZURE_OPENAI_KEY: ${{ secrets.AZURE_OPENAI_KEY }}
           AZURE_SEARCH_ENDPOINT: ${{ secrets.AZURE_SEARCH_ENDPOINT }}
@@ -116,6 +118,8 @@ jobs:
           GOOGLE_AI_GEMINI_API_KEY: ${{ secrets.GOOGLE_AI_GEMINI_API_KEY }}
           HF_API_KEY: ${{ secrets.HF_API_KEY }}
           JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
+          MICROSOFT_FOUNDRY_API_KEY: ${{ secrets.MICROSOFT_FOUNDRY_API_KEY }}
+          MICROSOFT_FOUNDRY_ENDPOINT: ${{ secrets.MICROSOFT_FOUNDRY_ENDPOINT }}
           MILVUS_API_KEY: ${{ secrets.MILVUS_API_KEY }}
           MILVUS_URI: ${{ secrets.MILVUS_URI }}
           MISTRAL_AI_API_KEY: ${{ secrets.MISTRAL_AI_API_KEY }}
@@ -133,7 +137,7 @@ jobs:
           CI_DELAY_SECONDS_AZURE_OPENAI: 3
           CI_DELAY_SECONDS_BEDROCK: 3
           CI_DELAY_SECONDS_GITHUB_MODELS: 7
-          CI_DELAY_SECONDS_GOOGLE_AI_GEMINI_BATCH: 10
+          CI_DELAY_SECONDS_GOOGLE_AI_GEMINI_BATCH: 20
           CI_DELAY_SECONDS_VERTEX_AI_GEMINI: 12
           CI_DELAY_SECONDS_VOYAGE_AI: 22
 
@@ -153,3 +157,17 @@ jobs:
         with:
           report_paths: '**/target/*-reports/TEST-*.xml'
           annotate_only: true
+
+      - name: Upload JaCoCo Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-${{ strategy.job-index }}
+          path: '**/target/site/jacoco/**'
+
+      - name: Upload JaCoCo Execution Data
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-exec-${{ strategy.job-index }}
+          path: '**/target/jacoco.exec'

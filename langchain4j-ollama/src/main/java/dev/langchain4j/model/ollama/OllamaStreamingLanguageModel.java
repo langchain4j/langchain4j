@@ -13,6 +13,7 @@ import dev.langchain4j.model.ollama.spi.OllamaStreamingLanguageModelBuilderFacto
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 /**
  * <a href="https://github.com/jmorganca/ollama/blob/main/docs/api.md">Ollama API reference</a>
@@ -33,7 +34,7 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
                 .timeout(builder.timeout)
                 .logRequests(builder.logRequests)
                 .logResponses(builder.logResponses)
-                .customHeaders(builder.customHeaders)
+                .customHeaders(builder.customHeadersSupplier)
                 .build();
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
         this.options = Options.builder()
@@ -85,13 +86,12 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
         private List<String> stop;
         private ResponseFormat responseFormat;
         private Duration timeout;
-        private Map<String, String> customHeaders;
+        private Supplier<Map<String, String>> customHeadersSupplier;
         private Boolean logRequests;
         private Boolean logResponses;
 
         public OllamaStreamingLanguageModelBuilder() {
             // This is public so it can be extended
-            // By default with Lombok it becomes package private
         }
 
         /**
@@ -165,8 +165,21 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
             return this;
         }
 
+        /**
+         * Sets custom HTTP headers.
+         */
         public OllamaStreamingLanguageModelBuilder customHeaders(Map<String, String> customHeaders) {
-            this.customHeaders = customHeaders;
+            this.customHeadersSupplier = () -> customHeaders;
+            return this;
+        }
+
+        /**
+         * Sets a supplier for custom HTTP headers.
+         * The supplier is called before each request, allowing dynamic header values.
+         * For example, this is useful for OAuth2 tokens that expire and need refreshing.
+         */
+        public OllamaStreamingLanguageModelBuilder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
             return this;
         }
 

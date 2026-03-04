@@ -63,8 +63,8 @@ public class JsonSchemaElementUtils {
         if (clazz.isEnum()) {
             return JsonEnumSchema.builder()
                     .enumValues(stream(clazz.getEnumConstants())
-                            .map(Object::toString)
-                            .collect(Collectors.toList()))
+                            .map(e -> ((Enum<?>) e).name())
+                            .toList())
                     .description(Optional.ofNullable(fieldDescription).orElse(descriptionFrom(clazz)))
                     .build();
         }

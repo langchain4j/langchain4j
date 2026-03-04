@@ -1,6 +1,7 @@
 package dev.langchain4j.http.client;
 
 import static dev.langchain4j.http.client.HttpMethod.GET;
+import static dev.langchain4j.http.client.HttpMethod.POST;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
@@ -464,5 +465,32 @@ class HttpRequestTest {
 
         // then
         assertThat(builder.build().url()).isEqualTo("http://example.com/api");
+    }
+
+    @Test
+    void should_handle_null_form_data_map_with_replace() {
+        // given
+        HttpRequest.Builder builder = HttpRequest.builder().method(POST).url("http://example.com/api");
+
+        // when
+        builder.addFormDataField("key", "value").formDataFields(null);
+
+        // then
+        assertThat(builder.build().url()).isEqualTo("http://example.com/api");
+        assertThat(builder.build().formDataFields()).isEmpty();
+    }
+
+    @Test
+    void should_handle_empty_form_data_map_with_replace() {
+        // given
+        HttpRequest.Builder builder = HttpRequest.builder().method(POST).url("http://example.com/api");
+        Map<String, String> emptyFormData = new LinkedHashMap<>();
+
+        // when
+        builder.addFormDataField("key", "value").formDataFields(emptyFormData);
+
+        // then
+        assertThat(builder.build().url()).isEqualTo("http://example.com/api");
+        assertThat(builder.build().formDataFields()).isEmpty();
     }
 }

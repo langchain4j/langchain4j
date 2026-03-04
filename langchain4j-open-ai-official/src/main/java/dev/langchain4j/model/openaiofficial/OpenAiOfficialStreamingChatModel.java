@@ -49,10 +49,10 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                     builder.baseUrl,
                     builder.apiKey,
                     builder.credential,
-                    builder.azureDeploymentName,
+                    builder.microsoftFoundryDeploymentName,
                     builder.azureOpenAIServiceVersion,
                     builder.organizationId,
-                    builder.isAzure,
+                    builder.isMicrosoftFoundry,
                     builder.isGitHubModels,
                     builder.defaultRequestParameters,
                     builder.modelName,
@@ -96,7 +96,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                         ChatCompletionStreamOptions.builder().includeUsage(true).build())
                 .build();
 
-        if (this.modelProvider.equals(ModelProvider.AZURE_OPEN_AI)
+        if (this.modelProvider.equals(ModelProvider.MICROSOFT_FOUNDRY)
                 || this.modelProvider.equals(ModelProvider.GITHUB_MODELS)) {
             if (!parameters.modelName().equals(this.modelName)) {
                 // The model name can't be changed in Microsoft Foundry, where it's part of the URL.
@@ -241,10 +241,10 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
         private String baseUrl;
         private String apiKey;
         private Credential credential;
-        private String azureDeploymentName;
+        private String microsoftFoundryDeploymentName;
         private AzureOpenAIServiceVersion azureOpenAIServiceVersion;
         private String organizationId;
-        private boolean isAzure;
+        private boolean isMicrosoftFoundry;
         private boolean isGitHubModels;
         private OpenAIClientAsync openAIClientAsync;
 
@@ -315,8 +315,17 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
             return this;
         }
 
+        /**
+         * @deprecated Use {@link #microsoftFoundryDeploymentName(String)} instead
+         */
+        @Deprecated
         public Builder azureDeploymentName(String azureDeploymentName) {
-            this.azureDeploymentName = azureDeploymentName;
+            this.microsoftFoundryDeploymentName = azureDeploymentName;
+            return this;
+        }
+
+        public Builder microsoftFoundryDeploymentName(String microsoftFoundryDeploymentName) {
+            this.microsoftFoundryDeploymentName = microsoftFoundryDeploymentName;
             return this;
         }
 
@@ -330,8 +339,17 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
             return this;
         }
 
+        /**
+         * @deprecated Use {@link #isMicrosoftFoundry(boolean)} instead
+         */
+        @Deprecated
         public Builder isAzure(boolean isAzure) {
-            this.isAzure = isAzure;
+            this.isMicrosoftFoundry = isAzure;
+            return this;
+        }
+
+        public Builder isMicrosoftFoundry(boolean isMicrosoftFoundry) {
+            this.isMicrosoftFoundry = isMicrosoftFoundry;
             return this;
         }
 

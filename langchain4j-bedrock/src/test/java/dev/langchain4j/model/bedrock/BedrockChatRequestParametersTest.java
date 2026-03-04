@@ -126,4 +126,30 @@ class BedrockChatRequestParametersTest {
         assertThat(merged.cachePointPlacement()).isEqualTo(BedrockCachePointPlacement.AFTER_SYSTEM);
         assertThat(merged.additionalModelRequestFields()).isNullOrEmpty();
     }
+
+    @Test
+    void should_override_with_guardrail_parameters() {
+        // Given
+        BedrockChatRequestParameters original = BedrockChatRequestParameters.builder()
+                .guardrailConfiguration(BedrockGuardrailConfiguration.builder()
+                        .guardrailIdentifier("12345")
+                        .guardrailVersion("DRAFT")
+                        .build())
+                .build();
+
+        BedrockChatRequestParameters override = BedrockChatRequestParameters.builder()
+                .guardrailConfiguration(BedrockGuardrailConfiguration.builder()
+                        .guardrailIdentifier("67890")
+                        .guardrailVersion("LIVE")
+                        .build())
+                .build();
+
+        // When
+        BedrockChatRequestParameters merged = original.overrideWith(override);
+
+        // Then
+        assertThat(merged.bedrockGuardrailConfiguration().guardrailIdentifier())
+                .isEqualTo("67890");
+        assertThat(merged.bedrockGuardrailConfiguration().guardrailVersion()).isEqualTo("LIVE");
+    }
 }

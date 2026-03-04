@@ -6,8 +6,8 @@ import dev.langchain4j.agentic.agent.ChatMessagesAccess;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.declarative.TypedKey;
+import dev.langchain4j.agentic.internal.DelayedResponse;
 import dev.langchain4j.agentic.planner.AgentInstance;
-import dev.langchain4j.agentic.internal.AsyncResponse;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -42,7 +42,6 @@ public class DefaultAgenticScope implements AgenticScope {
     private final Map<String, Object> state = new ConcurrentHashMap<>();
     private final List<AgentInvocation> agentInvocations = Collections.synchronizedList(new ArrayList<>());
     private final List<AgentMessage> context = Collections.synchronizedList(new ArrayList<>());
-    private transient AgentListener agentListener;
 
     private final transient Map<String, Object> agents = new ConcurrentHashMap<>();
 
@@ -131,7 +130,7 @@ public class DefaultAgenticScope implements AgenticScope {
     }
 
     private Object readStateBlocking(String key, Object state) {
-        if (state instanceof AsyncResponse asyncResponse) {
+        if (state instanceof DelayedResponse asyncResponse) {
             state = asyncResponse.blockingGet();
             writeState(key, state);
         }
@@ -157,7 +156,7 @@ public class DefaultAgenticScope implements AgenticScope {
     public void rootCallStarted(AgenticScopeRegistry registry) {
     }
 
-    public void rootCallEnded(AgenticScopeRegistry registry) {
+    public void rootCallEnded(AgenticScopeRegistry registry, AgentListener agentListener) {
         // ensure that all pending async operations are completed before ending the root call
         state.replaceAll(this::readStateBlocking);
 
@@ -295,21 +294,5 @@ public class DefaultAgenticScope implements AgenticScope {
 
     public ErrorRecoveryResult handleError(String agentName, AgentInvocationException exception) {
         return errorHandler.apply(new ErrorContext(agentName, this, exception));
-    }
-
-    public AgentListener replaceListener(AgentListener agentListener) {
-        AgentListener oldListener = this.agentListener;
-        if (agentListener != null) {
-            this.agentListener = agentListener;
-        }
-        return oldListener;
-    }
-
-    public void setListener(AgentListener agentListener) {
-        this.agentListener = agentListener;
-    }
-
-    public AgentListener listener() {
-        return agentListener;
     }
 }

@@ -11,6 +11,7 @@ public class GeminiSafetySetting {
 
     @JsonProperty
     private GeminiHarmCategory category;
+
     @JsonProperty
     private GeminiHarmBlockThreshold threshold;
 

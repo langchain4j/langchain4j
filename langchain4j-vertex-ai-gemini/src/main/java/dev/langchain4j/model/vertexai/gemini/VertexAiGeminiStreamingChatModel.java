@@ -588,7 +588,6 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
 
         public VertexAiGeminiStreamingChatModelBuilder() {
             // This is public so it can be extended
-            // By default with Lombok it becomes package private
         }
 
         public VertexAiGeminiStreamingChatModelBuilder executor(Executor executor) {

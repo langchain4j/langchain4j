@@ -5,7 +5,12 @@ import static dev.langchain4j.service.output.EnumOutputParserTest.Weather.SUNNY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.output.structured.Description;
+
+import java.util.List;
+import java.util.Optional;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -184,5 +189,35 @@ class EnumOutputParserTest {
         assertThatThrownBy(() -> parser.parse("{\"value\":1}"))
                 .isExactlyInstanceOf(OutputParsingException.class)
                 .hasMessageContaining("Failed to parse");
+    }
+
+    @Test
+    void should_create_schema_for_enum_with_custom_toString() {
+
+        // given
+        enum MyEnumWithToString {
+            A, B, C;
+
+            @Override
+            public String toString() {
+                return "[" + name() + "]";
+            }
+        }
+
+        assertThat(MyEnumWithToString.A.toString()).isEqualTo("[A]");
+
+        EnumOutputParser<MyEnumWithToString> parser = new EnumOutputParser<>(MyEnumWithToString.class);
+
+        // when
+        Optional<JsonSchema> jsonSchema = parser.jsonSchema();
+
+        // then
+        assertThat(jsonSchema).hasValue(JsonSchema.builder()
+                .name("MyEnumWithToString")
+                .rootElement(JsonObjectSchema.builder()
+                        .addEnumProperty("value", List.of("A", "B", "C"))
+                        .required("value")
+                        .build())
+                .build());
     }
 }

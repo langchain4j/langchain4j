@@ -53,6 +53,23 @@ public @interface Tool {
     ReturnBehavior returnBehavior() default ReturnBehavior.TO_LLM;
 
     /**
+     * Specifies how this tool participates in tool search.
+     * <p>
+     * This setting controls whether the tool is searchable via {@code ToolSearchStrategy}
+     * or always visible to the LLM.
+     * <p>
+     * By default, tools are {@link SearchBehavior#SEARCHABLE}, meaning they
+     * become visible to the LLM only after being found by the configured {@code ToolSearchStrategy}.
+     * <p>
+     * NOTE: This setting has effect only when a {@code ToolSearchStrategy} is configured for the AI Service.
+     *
+     * @return search behavior of the tool.
+     * @since 1.12.0
+     */
+    @Experimental
+    SearchBehavior searchBehavior() default SearchBehavior.SEARCHABLE;
+
+    /**
      * A valid JSON string that contains LLM-provider-specific tool metadata entries.
      * This string is parsed into a {@link ToolSpecification#metadata()} map
      * when {@code @Tool}-annotated method is converted into {@link ToolSpecification}.

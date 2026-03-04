@@ -260,7 +260,7 @@ public class AnthropicChatModel implements ChatModel {
         }
 
         public AnthropicChatModelBuilder toolChoiceName(String toolChoiceName) {
-            this.toolChoiceName = this.toolChoiceName;
+            this.toolChoiceName = toolChoiceName;
             return this;
         }
 
@@ -423,6 +423,10 @@ public class AnthropicChatModel implements ChatModel {
         public AnthropicChatModelBuilder listeners(List<ChatModelListener> listeners) {
             this.listeners = listeners;
             return this;
+        }
+
+        public AnthropicChatModelBuilder listeners(ChatModelListener... listeners) {
+            return listeners(asList(listeners));
         }
 
         public AnthropicChatModelBuilder defaultRequestParameters(ChatRequestParameters parameters) {

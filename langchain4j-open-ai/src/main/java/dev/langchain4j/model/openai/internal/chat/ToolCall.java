@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 
 import java.util.Locale;
 import java.util.Objects;
@@ -51,12 +52,14 @@ public class ToolCall {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
         return another instanceof ToolCall
                 && equalTo((ToolCall) another);
     }
 
+    @JacocoIgnoreCoverageGenerated
     private boolean equalTo(ToolCall another) {
         return Objects.equals(id, another.id)
                 && Objects.equals(index, another.index)
@@ -65,6 +68,7 @@ public class ToolCall {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         int h = 5381;
         h += (h << 5) + Objects.hashCode(id);
@@ -75,6 +79,7 @@ public class ToolCall {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public String toString() {
         return "ToolCall{"
                 + "id=" + id

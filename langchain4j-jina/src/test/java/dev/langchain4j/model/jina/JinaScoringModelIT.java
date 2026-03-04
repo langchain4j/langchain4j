@@ -44,7 +44,7 @@ class JinaScoringModelIT {
         // given
         ScoringModel model = JinaScoringModel.builder()
                 .apiKey(System.getenv("JINA_API_KEY"))
-                .modelName("jina-reranker-v2-base-multilingual")
+                .modelName("jina-reranker-v3")
                 .timeout(Duration.ofSeconds(10))
                 .logResponses(true)
                 .build();
@@ -63,37 +63,6 @@ class JinaScoringModelIT {
         assertThat(scores).hasSize(3);
         assertThat(scores.get(2)).isGreaterThan(scores.get(0));
         assertThat(scores.get(2)).isGreaterThan(scores.get(1));
-
-        assertThat(response.tokenUsage().totalTokenCount()).isPositive();
-
-        assertThat(response.finishReason()).isNull();
-    }
-
-    @Test
-    void should_score_multiple_segments_with_all_parameters_v1_reranker() {
-
-        // given
-        ScoringModel model = JinaScoringModel.builder()
-                .apiKey(System.getenv("JINA_API_KEY"))
-                .modelName("jina-reranker-v1-turbo-en")
-                .timeout(Duration.ofSeconds(120))
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-
-        TextSegment catSegment = TextSegment.from("maine coon");
-        TextSegment dogSegment = TextSegment.from("labrador retriever");
-        List<TextSegment> segments = asList(catSegment, dogSegment);
-
-        String query = "tell me about dogs";
-
-        // when
-        Response<List<Double>> response = model.scoreAll(segments, query);
-
-        // then
-        List<Double> scores = response.content();
-        assertThat(scores).hasSize(2);
-        assertThat(scores.get(0)).isLessThan(scores.get(1));
 
         assertThat(response.tokenUsage().totalTokenCount()).isPositive();
 

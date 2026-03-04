@@ -90,7 +90,6 @@ public class JlamaLanguageModel implements LanguageModel {
 
         public JlamaLanguageModelBuilder() {
             // This is public, so it can be extended
-            // By default with Lombok it becomes package private
         }
 
         public JlamaLanguageModelBuilder modelCachePath(Path modelCachePath) {

@@ -35,8 +35,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * A tool for executing code in Azure ACA dynamic sessions.
- * See the examples here for more information:
- * https://github.com/langchain4j/langchain4j-examples/tree/main/code-execution/azure-acads-examples
  *
  * Overview:
  * SessionsREPLTool provides a mechanism to execute code snippets within an Azure

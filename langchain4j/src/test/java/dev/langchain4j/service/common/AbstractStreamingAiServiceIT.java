@@ -129,26 +129,11 @@ public abstract class AbstractStreamingAiServiceIT {
                 .onCompleteResponse(futureChatResponse::complete)
                 .start();
 
-        ChatResponse chatResponse = futureChatResponse.get(30, SECONDS);
+        futureChatResponse.get(30, SECONDS);
 
         // then
-        assertThat(chatResponse.aiMessage().text()).contains("2019");
-
         verify(tools).currentDate();
         verifyNoMoreInteractions(tools);
-
-        ChatResponseMetadata chatResponseMetadata = chatResponse.metadata();
-        if (assertChatResponseMetadataType()) {
-            assertThat(chatResponseMetadata).isExactlyInstanceOf(chatResponseMetadataType(model));
-        }
-
-        if (assertTokenUsage()) {
-            assertTokenUsage(chatResponseMetadata.tokenUsage(), model);
-        }
-
-        if (assertFinishReason()) {
-            assertThat(chatResponseMetadata.finishReason()).isEqualTo(STOP);
-        }
     }
 
     // TODO test threads

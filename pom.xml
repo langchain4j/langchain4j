@@ -4,7 +4,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-aggregator</artifactId>
-    <version>1.10.0-beta18-SNAPSHOT</version>
+    <version>1.12.0-beta20-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>LangChain4j :: Aggregator</name>
 
@@ -25,6 +25,7 @@
         <!-- http clients -->
         <module>langchain4j-http-client</module>
         <module>http-clients/langchain4j-http-client-jdk</module>
+        <module>http-clients/langchain4j-http-client-apache</module>
 
         <!-- model providers -->
         <module>langchain4j-anthropic</module>
@@ -72,6 +73,7 @@
         <module>langchain4j-coherence</module>
         <module>langchain4j-couchbase</module>
         <module>langchain4j-elasticsearch</module>
+        <module>langchain4j-hibernate</module>
         <module>langchain4j-infinispan</module>
         <module>langchain4j-mariadb</module>
         <module>langchain4j-milvus</module>
@@ -122,9 +124,16 @@
 
         <!-- experimental -->
         <module>experimental/langchain4j-experimental-sql</module>
+        <module>experimental/langchain4j-experimental-skills-shell</module>
         <module>langchain4j-agentic</module>
         <module>langchain4j-agentic-a2a</module>
+        <module>langchain4j-agentic-mcp</module>
         <module>langchain4j-agentic-patterns</module>
+        <module>langchain4j-skills</module>
+
+        <!-- observability -->
+        <module>langchain4j-micrometer-metrics</module>
+        <module>langchain4j-observation</module>
 
         <!-- integration tests -->
         <module>integration-tests</module>
@@ -134,8 +143,8 @@
     </modules>
 
     <properties>
-        <langchain4j.stable.version>1.10.0-SNAPSHOT</langchain4j.stable.version>
-        <langchain4j.beta.version>1.10.0-beta18-SNAPSHOT</langchain4j.beta.version>
+        <langchain4j.stable.version>1.12.0-SNAPSHOT</langchain4j.stable.version>
+        <langchain4j.beta.version>1.12.0-beta20-SNAPSHOT</langchain4j.beta.version>
         <gib.disable>true</gib.disable>
     </properties>
 

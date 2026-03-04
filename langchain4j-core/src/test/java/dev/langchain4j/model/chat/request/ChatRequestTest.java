@@ -7,6 +7,8 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.UserMessage;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 class ChatRequestTest {
 
     @Test
@@ -221,5 +223,143 @@ class ChatRequestTest {
                         .build())
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Cannot set both 'parameters' and 'toolSpecifications' on ChatRequest");
+    }
+
+    @Test
+    void should_fail_when_no_messages_provided() {
+        // when/then
+        assertThatThrownBy(() -> ChatRequest.builder().build())
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("messages cannot be null or empty");
+    }
+
+    @Test
+    void should_fail_when_empty_messages_array_provided() {
+        // when/then
+        assertThatThrownBy(() -> ChatRequest.builder().messages().build())
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("messages cannot be null or empty");
+    }
+
+    @Test
+    void should_fail_when_parameters_contains_conflicting_tool_specifications() {
+        // given
+        ToolSpecification paramTool =
+                ToolSpecification.builder().name("paramTool").build();
+        ToolSpecification builderTool =
+                ToolSpecification.builder().name("builderTool").build();
+
+        ChatRequestParameters parameters =
+                ChatRequestParameters.builder().toolSpecifications(paramTool).build();
+
+        // when/then
+        assertThatThrownBy(() -> ChatRequest.builder()
+                .messages(UserMessage.from("hi"))
+                .parameters(parameters)
+                .toolSpecifications(builderTool)
+                .build())
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Cannot set both 'parameters' and 'toolSpecifications' on ChatRequest");
+    }
+
+    @Test
+    void should_fail_when_messages_are_null() {
+        assertThatThrownBy(() ->
+                ChatRequest.builder().build()
+        )
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("messages");
+    }
+
+    @Test
+    void should_fail_when_messages_are_empty() {
+        assertThatThrownBy(() ->
+                ChatRequest.builder()
+                        .messages(List.of())
+                        .build()
+        )
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("messages");
+    }
+
+    @Test
+    void should_fail_when_parameters_and_modelName_are_both_set() {
+        assertThatThrownBy(() ->
+                ChatRequest.builder()
+                        .messages(UserMessage.from("hello"))
+                        .parameters(ChatRequestParameters.builder().modelName("gpt-4").build())
+                        .modelName("gpt-3.5")
+                        .build()
+        )
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("parameters")
+                .hasMessageContaining("modelName");
+    }
+
+    @Test
+    void should_fail_when_parameters_and_temperature_are_both_set() {
+        assertThatThrownBy(() ->
+                ChatRequest.builder()
+                        .messages(UserMessage.from("hello"))
+                        .parameters(ChatRequestParameters.builder().temperature(0.5).build())
+                        .temperature(0.7)
+                        .build()
+        )
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("parameters")
+                .hasMessageContaining("temperature");
+    }
+
+    @Test
+    void should_fail_when_parameters_and_stopSequences_are_both_set() {
+        assertThatThrownBy(() ->
+                ChatRequest.builder()
+                        .messages(UserMessage.from("hello"))
+                        .parameters(ChatRequestParameters.builder()
+                                .stopSequences(List.of("STOP"))
+                                .build())
+                        .stopSequences(List.of("END"))
+                        .build()
+        )
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("parameters")
+                .hasMessageContaining("stopSequences");
+    }
+
+    @Test
+    void should_fail_when_parameters_and_toolSpecifications_are_both_set() {
+        ToolSpecification tool = ToolSpecification.builder()
+                .name("tool")
+                .description("desc")
+                .build();
+
+        assertThatThrownBy(() ->
+                ChatRequest.builder()
+                        .messages(UserMessage.from("hello"))
+                        .parameters(ChatRequestParameters.builder()
+                                .toolSpecifications(List.of(tool))
+                                .build())
+                        .toolSpecifications(tool)
+                        .build()
+        )
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("parameters")
+                .hasMessageContaining("toolSpecifications");
+    }
+
+    @Test
+    void should_fail_when_parameters_and_responseFormat_are_both_set() {
+        assertThatThrownBy(() ->
+                ChatRequest.builder()
+                        .messages(UserMessage.from("hello"))
+                        .parameters(ChatRequestParameters.builder()
+                                .responseFormat(ResponseFormat.JSON)
+                                .build())
+                        .responseFormat(ResponseFormat.TEXT)
+                        .build()
+        )
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("parameters")
+                .hasMessageContaining("responseFormat");
     }
 }
