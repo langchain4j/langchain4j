@@ -80,21 +80,27 @@ class BedrockStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected boolean supportsJsonResponseFormat() {
-        return false; // output format not supported
+        return false; // JSON response format without schema is not supported
     }
 
     @Override
     protected boolean supportsJsonResponseFormatWithSchema() {
-        return false; // output format not supported
+        return false; // not supported for models used in this class
     }
 
     @Override
     protected boolean supportsJsonResponseFormatWithRawSchema() {
-        return false; // output format not supported
+        return false; // not supported for models used in this class
     }
 
     @Override
-    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(final StreamingChatModel model) {
+    protected boolean assertExceptionType() {
+        // Bedrock throws InvalidRequestException, while test expects UnsupportedFeatureException
+        return false;
+    }
+
+    @Override
+    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(StreamingChatModel model) {
         return BedrockChatResponseMetadata.class;
     }
 

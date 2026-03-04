@@ -1,5 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
@@ -19,6 +20,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Objects.nonNull;
 import static software.amazon.awssdk.core.SdkBytes.fromByteArray;
+import static software.amazon.awssdk.services.bedrockruntime.model.OutputFormatType.JSON_SCHEMA;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -34,7 +36,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.Json;
-import dev.langchain4j.internal.JsonSchemaElementUtils;
+import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -43,18 +45,21 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonRawSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import java.net.URI;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -121,6 +126,7 @@ abstract class AbstractBedrockChatModel {
     protected final boolean sendThinking;
     protected final BedrockChatRequestParameters defaultRequestParameters;
     protected final List<ChatModelListener> listeners;
+    protected final Set<Capability> supportedCapabilities;
 
     protected AbstractBedrockChatModel(AbstractBuilder<?> builder) {
         this.region = getOrDefault(builder.region, Region.US_EAST_1);
@@ -128,6 +134,7 @@ abstract class AbstractBedrockChatModel {
         this.returnThinking = getOrDefault(builder.returnThinking, false);
         this.sendThinking = getOrDefault(builder.sendThinking, true);
         this.listeners = copy(builder.listeners);
+        this.supportedCapabilities = copy(builder.supportedCapabilities);
 
         ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
@@ -920,28 +927,27 @@ abstract class AbstractBedrockChatModel {
             return null;
         }
 
-        if (responseFormat.jsonSchema() == null) {
+        JsonSchema jsonSchema = responseFormat.jsonSchema();
+        if (jsonSchema == null) {
             throw new UnsupportedFeatureException("JSON response format is not supported without a schema");
         }
 
-        // JSON with schema - use structured output
-        String schemaJson;
-        if (responseFormat.jsonSchema().rootElement() instanceof JsonRawSchema rawSchema) {
-            // For raw JSON schema, use the raw string directly
-            schemaJson = rawSchema.schema();
+        String jsonSchemaString;
+        if (jsonSchema.rootElement() instanceof JsonRawSchema rawSchema) {
+            jsonSchemaString = rawSchema.schema();
         } else {
-            // For structured schema, convert to Map then to JSON string
             Map<String, Object> jsonSchemaMap =
-                    JsonSchemaElementUtils.toMap(responseFormat.jsonSchema().rootElement());
-            schemaJson = Json.toJson(jsonSchemaMap);
+                    toMap(jsonSchema.rootElement(), true, true, "string");
+            jsonSchemaString = Json.toJson(jsonSchemaMap);
         }
 
         return OutputConfig.builder()
                 .textFormat(OutputFormat.builder()
-                        .type(OutputFormatType.JSON_SCHEMA)
+                        .type(JSON_SCHEMA)
                         .structure(OutputFormatStructure.builder()
                                 .jsonSchema(JsonSchemaDefinition.builder()
-                                        .schema(schemaJson)
+                                        .schema(jsonSchemaString)
+                                        .name(jsonSchema.name())
                                         .build())
                                 .build())
                         .build())
@@ -975,6 +981,7 @@ abstract class AbstractBedrockChatModel {
         protected Boolean logResponses;
         protected Logger logger;
         protected List<ChatModelListener> listeners;
+        protected Set<Capability> supportedCapabilities;
 
         @SuppressWarnings("unchecked")
         public T self() {
@@ -1079,6 +1086,16 @@ abstract class AbstractBedrockChatModel {
 
         public T listeners(ChatModelListener... listeners) {
             return listeners(asList(listeners));
+        }
+
+        public T supportedCapabilities(Set<Capability> supportedCapabilities) {
+            this.supportedCapabilities = supportedCapabilities;
+            return self();
+        }
+
+        public T supportedCapabilities(Capability... supportedCapabilities) {
+            this.supportedCapabilities = Arrays.stream(supportedCapabilities).collect(Collectors.toSet());
+            return self();
         }
     }
 }
