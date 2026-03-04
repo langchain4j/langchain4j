@@ -18,12 +18,12 @@ class SkillsTest {
 
         assertThat(skills.formatNamesAndDescriptions()).isEqualTo(
                 """
-                <available_skills>
-                <skill>
-                <name>docx</name>
-                <description>Edit Word documents</description>
-                </skill>
-                </available_skills>"""
+                        <available_skills>
+                        <skill>
+                        <name>docx</name>
+                        <description>Edit Word documents</description>
+                        </skill>
+                        </available_skills>"""
         );
     }
 
@@ -44,16 +44,16 @@ class SkillsTest {
 
         assertThat(skills.formatNamesAndDescriptions()).isEqualTo(
                 """
-                <available_skills>
-                <skill>
-                <name>docx</name>
-                <description>Edit Word documents</description>
-                </skill>
-                <skill>
-                <name>mcp-builder</name>
-                <description>Build MCP servers</description>
-                </skill>
-                </available_skills>"""
+                        <available_skills>
+                        <skill>
+                        <name>docx</name>
+                        <description>Edit Word documents</description>
+                        </skill>
+                        <skill>
+                        <name>mcp-builder</name>
+                        <description>Build MCP servers</description>
+                        </skill>
+                        </available_skills>"""
         );
     }
 
@@ -69,12 +69,12 @@ class SkillsTest {
 
         assertThat(skills.formatNamesAndDescriptions()).isEqualTo(
                 """
-                <available_skills>
-                <skill>
-                <name>skill&lt;&gt;&amp;&quot;&apos;</name>
-                <description>desc&lt;&gt;&amp;&quot;&apos;</description>
-                </skill>
-                </available_skills>"""
+                        <available_skills>
+                        <skill>
+                        <name>skill&lt;&gt;&amp;&quot;&apos;</name>
+                        <description>desc&lt;&gt;&amp;&quot;&apos;</description>
+                        </skill>
+                        </available_skills>"""
         );
     }
 }

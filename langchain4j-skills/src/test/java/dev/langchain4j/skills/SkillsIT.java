@@ -49,7 +49,7 @@ class SkillsIT {
         }
 
         @Tool
-        int generateId(String surname, String name) {
+        int generate(String surname, String name) {
             return 177;
         }
 
@@ -99,7 +99,7 @@ class SkillsIT {
         assistant.chat("Use 'process' tool for Klaus Heisler");
 
         // then
-        verify(spyTools).generateId("Heisler", "Klaus");
+        verify(spyTools).generate("Heisler", "Klaus");
         verify(spyTools).process("Klaus", 177, "Heisler");
         verify(spyTools).reset();
         verifyNoMoreInteractions(spyTools);
@@ -113,7 +113,7 @@ class SkillsIT {
                 .name("using-process-tool")
                 .description("Describes how to correctly use 'process' tool")
                 .content("""
-                        When user asks you to use the 'process' tool, you need to first call the 'generateId' tool with
+                        When user asks you to use the 'process' tool, you need to first call the 'generate' tool with
                         2 arguments: arg0 (surname) and arg1 (name).
                         
                         When you have an id, call the 'process' tool with 3 arguments:
@@ -158,7 +158,7 @@ class SkillsIT {
         assistant.chat("Use 'process' tool for Klaus Heisler");
 
         // then
-        verify(spyTools).generateId("Heisler", "Klaus");
+        verify(spyTools).generate("Heisler", "Klaus");
         verify(spyTools).process("Klaus", 177, "Heisler");
         verify(spyTools).reset();
         verifyNoMoreInteractions(spyTools);
@@ -207,7 +207,7 @@ class SkillsIT {
 
         // then
         verify(spyTools).poll();
-        verify(spyTools).generateId("Heisler", "Klaus");
+        verify(spyTools).generate("Heisler", "Klaus");
         verify(spyTools).process("Klaus", 177, "Heisler");
         verify(spyTools).reset();
         verifyNoMoreInteractions(spyTools);

@@ -27,7 +27,7 @@ import static java.util.Arrays.asList;
  * <a href="https://agentskills.io/integrate-skills">Agent Skills specification</a>:
  * all skill content and resources are loaded into memory at construction time.
  * An {@code activate_skill} tool lets the LLM read a skill's instructions on demand,
- * and an optional {@code read_skill_resource} tool reads pre-loaded resource content.
+ * and an optional {@code read_skill_resource} tool reads preloaded resource content.
  * The LLM has no access to the file system at inference time,
  * only abovementioned tools can be called and there is no risk of arbitrary code execution.
  * <p>
@@ -63,7 +63,8 @@ public class Skills {
     }
 
     /**
-     * Returns the {@link ToolProvider} that exposes the skill tools to the LLM.
+     * Returns the {@link ToolProvider} that exposes the {@code activate_skill}
+     * and {@code read_skill_resource} tools to the LLM.
      * Pass this to {@code AiServices.builder(...).toolProvider(...)}.
      */
     public ToolProvider toolProvider() {
