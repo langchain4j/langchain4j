@@ -15,28 +15,8 @@ The LLM loads a skill on demand, keeping the initial context small and only pull
 the detailed instructions when they are actually needed.
 
 :::note
-Skills are designed around the [Agent Skills specification](https://agentskills.io).
-The primary focus of the LangChain4j implementation is on **progressive loading of content
-into the LLM context**, not on script execution.
+Skills are designed according to the [Agent Skills specification](https://agentskills.io).
 :::
-
-## How It Works
-
-A `Skills` instance registers a fixed set of tools with LangChain4j's `ToolProvider` mechanism.
-Exactly which tools are registered depends on which class you use:
-
-| Tool | When registered |
-|---|---|
-| `activate_skill` | Always, when using `Skills`. The LLM calls this to load a skill's full instructions into the context. |
-| `read_skill_resource` | When using `Skills` **and** at least one skill has resources. The LLM calls this to read individual reference files. |
-| `run_shell_command` | Always, when using `ShellSkills` (from `langchain4j-experimental-skills-shell`). The LLM reads `SKILL.md` files directly via shell commands. |
-
-A typical interaction in tool mode looks like this:
-
-1. The system message lists the available skills (names and descriptions) so the LLM can choose.
-2. The user asks a question that requires a specific skill.
-3. The LLM calls `activate_skill("my-skill")` to receive its instructions.
-4. The LLM follows those instructions to complete the task, optionally reading resource files along the way.
 
 ## Creating Skills
 
@@ -66,23 +46,30 @@ description: Edit and review Word documents using tracked changes
 ---
 
 When the user asks you to edit a Word document:
+
 1. Always use tracked changes so edits can be reviewed.
-...
+   ...
 ```
 
 Any file in the skill directory (other than `SKILL.md` itself and files under a `scripts/`
-subdirectory) is automatically loaded as a `SkillResource` that the LLM can read via the
-`read_skill_resource` tool.
+subdirectory) is automatically loaded as a `SkillResource` that the LLM can read on demand.
 
-Use `FileSystemSkillLoader` to load skills from the file system:
+Use `FileSystemSkillLoader` from the `langchain4j-skills` module to load skills from the file system:
+
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-skills</artifactId>
+    <version>1.12.0-beta20</version>
+</dependency>
+```
 
 ```java
 // Load all skills found in immediate subdirectories:
-List<Skill> skillList = FileSystemSkillLoader.loadSkills(Path.of("skills/"));
-Skills skills = Skills.from(skillList);
+List<FileSystemSkill> skills = FileSystemSkillLoader.loadSkills(Path.of("skills/"));
 
 // Or load a single skill by its directory:
-Skills skills = Skills.from(FileSystemSkillLoader.loadSkill(Path.of("skills/docx")));
+FileSystemSkill skill = FileSystemSkillLoader.loadSkill(Path.of("skills/docx"));
 ```
 
 ### Programmatically
@@ -102,8 +89,6 @@ Skill skill = Skill.builder()
                 4. If severity is CRITICAL, also call `pageOnCall(incidentId)`.
                 """)
         .build();
-
-Skills skills = Skills.from(skill);
 ```
 
 You can also attach resources programmatically:
@@ -122,26 +107,43 @@ Skill skill = Skill.builder()
         .build();
 ```
 
-## Use Cases
+## Modes
 
-Skills can be integrated with an AI Service in two distinct ways, depending on how much
+Skills can be integrated with an AI Service in two distinct modes, depending on how much
 control and trust you need.
 
-### Use Case 1: Skills with Tools (Recommended)
+### Tool Mode (Recommended)
+
+**Class:** `Skills` (from the `langchain4j-skills` module)
 
 This corresponds to the **Tool-based agents** integration approach described in the
 [Agent Skills specification](https://agentskills.io/integrate-skills).
 
-In this mode the LLM activates a skill to receive step-by-step instructions, then carries
+In this mode, the LLM activates a skill to receive step-by-step instructions, then carries
 them out by calling the [tools](/tutorials/tools) you have explicitly registered.
 **The LLM has no access to the file system at inference time** — all skill content and
-resources are loaded into memory upfront (e.g. via `FileSystemSkillLoader`), and the
-`read_skill_resource` tool returns that pre-loaded content rather than reading from disk.
+resources are loaded into memory upfront (e.g. via `FileSystemSkillLoader`), and the `activate_skill`
+and `read_skill_resource` tools returns that preloaded content rather than reading from disk.
 Because only your pre-defined tools can be invoked, **there is no risk of arbitrary code execution**.
 
-This is the recommended approach for production. Skills describe the *policy* — the exact
-order of calls, required arguments, error-handling steps, and worked examples — while the
-actual execution stays in type-safe, tested Java code:
+#### Registered Tools
+
+| Tool                  | When registered                                                                               |
+|-----------------------|-----------------------------------------------------------------------------------------------|
+| `activate_skill`      | Always. The LLM calls this to load a skill's full instructions into the context.              |
+| `read_skill_resource` | When at least one skill has resources. The LLM calls this to read individual reference files. |
+
+#### How It Works
+
+1. The system message lists the available skills (names and descriptions) so the LLM can choose.
+2. The user asks a question that requires a specific skill.
+3. The LLM calls `activate_skill("my-skill")` to receive its instructions.
+4. The LLM follows those instructions to complete the task, optionally reading resource files along the way.
+
+#### Example Skill
+
+Skills describe the _policy_ — the exact order of calls, required arguments, error-handling steps,
+and worked examples — while the actual execution stays in type-safe, tested Java code:
 
 ```markdown
 ---
@@ -150,6 +152,7 @@ description: Processes a customer order end-to-end
 ---
 
 To process an order:
+
 1. Call `validateOrder(orderId)` to check the order is valid.
 2. Call `reserveInventory(orderId)` to reserve the required stock.
 3. Only if reservation succeeds, call `chargePayment(orderId)`.
@@ -157,6 +160,8 @@ To process an order:
 
 If any step fails, call `rollbackOrder(orderId)` before reporting the error.
 ```
+
+#### Wiring It Up
 
 Pass the `ToolProvider` from `Skills` to your AI Service builder alongside your regular tools.
 Use `formatNamesAndDescriptions()` to inject the skill catalogue into the system message so
@@ -171,35 +176,62 @@ MyAiService service = AiServices.builder(MyAiService.class)
         .toolProvider(skills.toolProvider()) // or .toolProviders(mcpToolProvider, skills.toolProvider())
         .systemMessage("You have access to the following skills:\n" + skills.formatNamesAndDescriptions()
                 + "\nWhen the user's request relates to one of these skills, activate it first using the `activate_skill` tool before proceeding.")
-        // or, if you already have a system message configured:
-        // .systemMessageTransformer(systemMessage -> systemMessage + "\n\nYou have access to the following skills:\n" + skills.formatNamesAndDescriptions()
-        //         + "\nWhen the user's request relates to one of these skills, activate it first using the `activate_skill` tool before proceeding.")
         .build();
 ```
 
-`formatNamesAndDescriptions()` returns an XML-formatted block listing each skill's name and description.
-In tool mode the `<location>` field is omitted (the LLM has no file-system access anyway):
+`formatNamesAndDescriptions()` returns an XML-formatted block listing each skill's name and description:
 
 ```xml
+
 <available_skills>
-<skill>
-<name>process-order</name>
-<description>Processes a customer order end-to-end</description>
-</skill>
-<skill>
-<name>data-analysis</name>
-<description>Analyse tabular data and produce charts</description>
-</skill>
+    <skill>
+        <name>process-order</name>
+        <description>Processes a customer order end-to-end</description>
+    </skill>
+    <skill>
+        <name>data-analysis</name>
+        <description>Analyse tabular data and produce charts</description>
+    </skill>
 </available_skills>
 ```
 
-### Use Case 2: Skills with Scripts (Experimental)
+#### Customisation
+
+The name, description, and parameter metadata of each tool can be overridden through the
+corresponding config class on the builder:
+
+```java
+Skills skills = Skills.builder()
+        .skills(mySkills)
+        .activateSkillToolConfig(ActivateSkillToolConfig.builder()
+                .name(...)                    // tool name (default: "activate_skill")
+                .description(...)             // tool description
+                .parameterName(...)           // parameter name (default: "skill_name")
+                .parameterDescription(...)    // parameter description
+                .throwToolArgumentsExceptions(...) // throw ToolArgumentsException instead of ToolExecutionException (default: false)
+                .build())
+        .readResourceToolConfig(ReadResourceToolConfig.builder()
+                .name(...)                              // tool name (default: "read_skill_resource")
+                .description(...)                       // tool description
+                .skillNameParameterName(...)             // skill_name parameter name (default: "skill_name")
+                .skillNameParameterDescription(...)      // skill_name parameter description
+                .relativePathParameterName(...)          // relative_path parameter name (default: "relative_path")
+                .relativePathParameterDescription(...)   // static description (takes precedence over provider)
+                .relativePathParameterDescriptionProvider(...) // dynamic description based on available resources
+                .throwToolArgumentsExceptions(...)       // throw ToolArgumentsException instead of ToolExecutionException (default: false)
+                .build())
+        .build();
+```
+
+### Shell Mode (Experimental)
+
+**Class:** `ShellSkills` (from the `langchain4j-experimental-skills-shell` module)
 
 This corresponds to the **Filesystem-based agents** integration approach described in the
 [Agent Skills specification](https://agentskills.io/integrate-skills).
 
 :::warning
-**Script execution is inherently unsafe.**
+**Shell execution is inherently unsafe.**
 Commands run directly in the host process environment **without any sandboxing, containerization,
 or privilege restriction**. A misbehaving or prompt-injected LLM can execute arbitrary commands
 on the machine running your application.
@@ -207,16 +239,39 @@ Only use this in controlled environments where you fully trust the input and acc
 the associated risks.
 :::
 
+In this mode, the LLM is given a single `run_shell_command` tool and reads skill instructions
+directly from the file system using shell commands. There is no `activate_skill` or
+`read_skill_resource` tool — the LLM navigates skill files like a human developer would.
+
+#### Registered Tools
+
+| Tool                | When registered                                                                                   |
+|---------------------|---------------------------------------------------------------------------------------------------|
+| `run_shell_command` | Always. The LLM runs shell commands to read `SKILL.md` files, resource files and execute scripts. |
+
+#### How It Works
+
+1. The system message lists available skills with their absolute filesystem paths.
+2. The user asks a question that requires a specific skill.
+3. The LLM runs `cat /path/to/skills/docx/SKILL.md` to read the instructions.
+4. The LLM follows those instructions by running further shell commands.
+
+#### Dependency
+
 Shell execution lives in a separate experimental artifact — add it to your build:
 
 ```xml
+
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-experimental-skills-shell</artifactId>
-    <version>1.12.0-SNAPSHOT</version>
+    <version>1.12.0-beta20</version>
 </dependency>
 ```
 
+#### Wiring It Up
+
+All skills must be filesystem-based (loaded via `FileSystemSkillLoader`).
 Use `ShellSkills` instead of `Skills`:
 
 ```java
@@ -227,71 +282,56 @@ MyAiService service = AiServices.builder(MyAiService.class)
         .toolProvider(skills.toolProvider()) // or .toolProviders(mcpToolProvider, skills.toolProvider())
         .systemMessage("You have access to the following skills:\n" + skills.formatNamesAndDescriptions()
                 + "\nWhen the user's request relates to one of these skills, read its SKILL.md before proceeding.")
-        // or, if you already have a system message configured:
-        // .systemMessageTransformer(systemMessage -> systemMessage + "\n\nYou have access to the following skills:\n" + skills.formatNamesAndDescriptions()
-        //         + "\nWhen the user's request relates to one of these skills, read its SKILL.md before proceeding.")
         .build();
 ```
 
-Only the `run_shell_command` tool is registered — there is no `activate_skill` tool.
-All skills must be filesystem-based (loaded via `FileSystemSkillLoader`). The LLM reads skill
-instructions directly by running shell commands against the absolute paths provided in the
-system message via `<location>`:
-
-```
-run_shell_command(command="cat /path/to/skills/docx/SKILL.md")
-```
-
-`formatNamesAndDescriptions()` always includes a `<location>` field so the LLM knows
+`formatNamesAndDescriptions()` includes a `<location>` field so the LLM knows
 exactly where to find each `SKILL.md`:
 
 ```xml
+
 <available_skills>
-<skill>
-<name>docx</name>
-<description>Edit and review Word documents using tracked changes</description>
-<location>/path/to/skills/docx/SKILL.md</location>
-</skill>
-<skill>
-<name>data-analysis</name>
-<description>Analyse tabular data and produce charts</description>
-<location>/path/to/skills/data-analysis/SKILL.md</location>
-</skill>
+    <skill>
+        <name>docx</name>
+        <description>Edit and review Word documents using tracked changes</description>
+        <location>/path/to/skills/docx/SKILL.md</location>
+    </skill>
+    <skill>
+        <name>data-analysis</name>
+        <description>Analyse tabular data and produce charts</description>
+        <location>/path/to/skills/data-analysis/SKILL.md</location>
+    </skill>
 </available_skills>
 ```
 
-This mode is best suited for **experimentation, prototyping**, or when you want to use
+#### When to Use Shell Mode
+
+This mode is best suited for **experimentation and prototyping**, or when you want to use
 third-party skills published by the community (e.g. from the
 [agentskills.io](https://agentskills.io) ecosystem) without first porting them to Java.
 It lets you wire up a working workflow quickly, then migrate individual actions
 to tools as the solution matures.
 
-## Customisation
+#### Customisation
 
-The name, description, and parameter metadata of each tool can be overridden through the
-corresponding config class on the builder:
-
-```java
-Skills skills = Skills.builder()
-        .skills(mySkills)
-        .activateSkillToolConfig(ActivateSkillToolConfig.builder()
-                .description("Load the instructions for a skill by name")
-                .build())
-        .readResourceToolConfig(ReadResourceToolConfig.builder()
-                .description("Read a reference file belonging to the active skill")
-                .build())
-        .build();
-```
-
-For shell-based skills, use `RunShellCommandToolConfig` to tune timeouts,
-output limits, and parameter names:
+Use `RunShellCommandToolConfig` to tune the working directory, output limits,
+and parameter names:
 
 ```java
 ShellSkills skills = ShellSkills.builder()
         .skills(mySkills)
         .runShellCommandToolConfig(RunShellCommandToolConfig.builder()
-                .maxStdOutChars(5_000)
-                .maxStdErrChars(2_000)
+                .name(...)                              // tool name (default: "run_shell_command")
+                .description(...)                       // tool description (default: includes OS name)
+                .commandParameterName(...)              // command parameter name (default: "command")
+                .commandParameterDescription(...)       // command parameter description
+                .timeoutSecondsParameterName(...)       // timeout parameter name (default: "timeout_seconds")
+                .timeoutSecondsParameterDescription(...) // timeout parameter description
+                .workingDirectory(...)                  // working directory for commands (default: JVM's user.dir)
+                .maxStdOutChars(...)                    // max stdout chars in result (default: 10_000)
+                .maxStdErrChars(...)                    // max stderr chars in result (default: 10_000)
+                .executorService(...)                   // ExecutorService for reading stdout/stderr streams
+                .throwToolArgumentsExceptions(...)      // throw ToolArgumentsException instead of ToolExecutionException (default: false)
                 .build())
         .build();
 ```
