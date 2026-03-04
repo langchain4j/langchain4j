@@ -66,7 +66,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Scanner;
 import java.util.Set;
@@ -233,18 +232,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                             userMessage = appendOutputFormatInstructions(returnType, userMessage);
                         }
 
-                        Optional<List<Content>> maybeContents = findContents(method, args);
-                        if (maybeContents.isPresent()) {
-                            List<Content> allContents = new ArrayList<>();
-                            for (Content content : maybeContents.get()) {
-                                if (content == null) { // placeholder
-                                    allContents.addAll(userMessage.contents());
-                                } else {
-                                    allContents.add(content);
-                                }
-                            }
-                            userMessage = userMessage.toBuilder().contents(allContents).build();
-                        }
+                        userMessage = addContentsToUserMessage(method, args, userMessage);
 
                         List<ChatMessage> messages = new ArrayList<>();
                         if (context.hasChatMemory()) {
@@ -668,7 +656,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
     private static Optional<String> findUserMessageTemplateFromTheOnlyArgument(Parameter[] parameters, Object[] args) {
         if (parameters != null && parameters.length == 1 && !hasAnyValidAnnotation(parameters[0])) {
-            if (args[0] instanceof Content || isListOfContents(args[0])) {
+            if (args[0] instanceof Content || isListOfContents(args[0]) || isMapOfContents(args[0])) {
                 return Optional.empty();
             }
             return Optional.of(InternalReflectionVariableResolver.asString(args[0]));
@@ -685,41 +673,75 @@ class DefaultAiServices<T> extends AiServices<T> {
         return Optional.empty();
     }
 
-    private static Optional<List<Content>> findContents(Method method, Object[] args) {
+    private static UserMessage addContentsToUserMessage(Method method, Object[] args, UserMessage userMessage) {
+        boolean hasTextContent = false;
         List<Content> contents = new ArrayList<>();
 
-        if (findUserMessageTemplateFromMethodAnnotation(method).isPresent()) {
-            contents.add(null); // placeholder
+        if (args != null && args.length == 1 && args[0] instanceof Map<?, ?> map && !map.isEmpty()) {
+            for (Object value : map.values()) {
+                if (value instanceof Content content) {
+                    hasTextContent |= value instanceof TextContent;
+                    contents.add(content);
+                } else if (isListOfContents(value)) {
+                    hasTextContent |= ((List<Content>) value).stream().anyMatch(TextContent.class::isInstance);
+                    contents.addAll((List<Content>) value);
+                }
+            }
+
+            if (!contents.isEmpty()) {
+                prependTextContentsToUserMessage(userMessage, contents);
+                return UserMessage.from(contents);
+            }
         }
 
         Parameter[] parameters = method.getParameters();
         for (int i = 0; i < parameters.length; i++) {
             if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class)) {
-                if (args[i] instanceof Content) {
-                    contents.add((Content) args[i]);
+                if (args[i] instanceof Content content) {
+                    contents.add(content);
                 } else if (isListOfContents(args[i])) {
+                    hasTextContent |= ((List<Content>) args[i]).stream().anyMatch(TextContent.class::isInstance);
                     contents.addAll((List<Content>) args[i]);
                 } else {
-                    contents.add(null); // placeholder
+                    if (hasTextContent) {
+                        throw illegalConfiguration(
+                                "Error: The method '%s' has multiple @UserMessage annotations. Please use only one.",
+                                method.getName());
+                    }
+                    contents.addAll(userMessage.contents());
+                    hasTextContent = true;
                 }
             }
         }
 
         if (contents.isEmpty() && parameters.length == 1 && !hasAnyValidAnnotation(parameters[0])) {
             if (args[0] instanceof Content) {
+                hasTextContent |= args[0] instanceof TextContent;
                 contents.add((Content) args[0]);
             } else if (isListOfContents(args[0])) {
+                hasTextContent |= ((List<Content>) args[0]).stream().anyMatch(TextContent.class::isInstance);
                 contents.addAll((List<Content>) args[0]);
             }
         }
 
-        if (contents.stream().filter(Objects::isNull).count() > 1) {
-            throw illegalConfiguration(
-                    "Error: The method '%s' has multiple @UserMessage for text content. Please use only one.",
-                    method.getName());
+        if (!hasTextContent) {
+            prependTextContentsToUserMessage(userMessage, contents);
         }
 
-        return contents.isEmpty() ? Optional.empty() : Optional.of(contents);
+        return userMessage.contents().size() == contents.size() ? userMessage : UserMessage.from(contents);
+    }
+
+    private static void prependTextContentsToUserMessage(UserMessage userMessage, List<Content> contents) {
+        List<Content> originalContent = userMessage.contents();
+        for (int i = originalContent.size()-1; i >= 0; i--) {
+            if (originalContent.get(i) instanceof TextContent textContent) {
+                contents.add(0, textContent);
+            }
+        }
+    }
+
+    private static boolean isMapOfContents(Object o) {
+        return o instanceof Map<?,?> map && map.values().stream().allMatch(Content.class::isInstance);
     }
 
     private static boolean isListOfContents(Object o) {
