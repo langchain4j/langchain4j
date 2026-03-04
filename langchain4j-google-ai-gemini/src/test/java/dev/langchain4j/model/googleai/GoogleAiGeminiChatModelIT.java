@@ -715,7 +715,7 @@ class GoogleAiGeminiChatModelIT {
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("gemini-2.5-flash-lite")
                 .mediaResolution(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_LOW)
-                .logRequests(true)
+                .logRequests(false) // images are huge in logs
                 .logResponses(true)
                 .build();
 
@@ -743,7 +743,7 @@ class GoogleAiGeminiChatModelIT {
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("gemini-2.5-flash-lite")
                 .mediaResolution(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_HIGH)
-                .logRequests(true)
+                .logRequests(false) // images are huge in logs
                 .logResponses(true)
                 .build();
 
@@ -771,7 +771,7 @@ class GoogleAiGeminiChatModelIT {
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("gemini-2.5-flash-lite")
                 .mediaResolution(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_MEDIUM)
-                .logRequests(true)
+                .logRequests(false) // images are huge in logs
                 .logResponses(true)
                 .build();
 
@@ -799,7 +799,7 @@ class GoogleAiGeminiChatModelIT {
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("gemini-2.5-flash-lite")
                 .mediaResolution(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_UNSPECIFIED)
-                .logRequests(true)
+                .logRequests(false) // images are huge in logs
                 .logResponses(true)
                 .build();
 
@@ -827,7 +827,7 @@ class GoogleAiGeminiChatModelIT {
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("gemini-2.5-flash-lite")
                 .mediaResolution(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_LOW)
-                .logRequests(true)
+                .logRequests(false) // video is huge in logs
                 .logResponses(true)
                 .build();
 
