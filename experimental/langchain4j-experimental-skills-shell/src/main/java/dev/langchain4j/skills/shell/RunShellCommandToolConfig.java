@@ -19,7 +19,7 @@ public class RunShellCommandToolConfig {
     static final String DEFAULT_COMMAND_PARAMETER_NAME = "command";
     static final String DEFAULT_COMMAND_PARAMETER_DESCRIPTION = "The shell command to execute";
     static final String DEFAULT_TIMEOUT_SECONDS_PARAMETER_NAME = "timeout_seconds";
-    static final String DEFAULT_TIMEOUT_SECONDS_PARAMETER_DESCRIPTION = "Optional. The command timeout in seconds. Default: %s seconds.".formatted(DEFAULT_TIMEOUT_SECONDS);
+    static final String DEFAULT_TIMEOUT_SECONDS_PARAMETER_DESCRIPTION = "Optional. The command timeout in seconds. Default: 30 seconds";
     static final int DEFAULT_MAX_STDOUT_CHARS = 10_000;
     static final int DEFAULT_MAX_STDERR_CHARS = 10_000;
 
