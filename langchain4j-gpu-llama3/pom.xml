@@ -19,17 +19,9 @@
         <maven.compiler.testSkip>true</maven.compiler.testSkip>
         <skipTests>true</skipTests>
         <skipITs>true</skipITs>
-        <!-- Skip javadoc - gpu-llama3 uses preview features (jdk.incubator.vector) -->
-        <maven.javadoc.skip>true</maven.javadoc.skip>
     </properties>
 
     <dependencies>
-
-        <dependency>
-            <groupId>io.github.beehive-lab</groupId>
-            <artifactId>gpu-llama3</artifactId>
-            <version>0.4.0-jdk25</version>
-        </dependency>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
@@ -37,17 +29,10 @@
             <version>1.12.0-SNAPSHOT</version>
         </dependency>
 
-        <!-- logging dependencies -->
         <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-            <version>2.0.17</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-simple</artifactId>
-            <version>2.0.17</version>
+            <groupId>io.github.beehive-lab</groupId>
+            <artifactId>gpu-llama3</artifactId>
+            <version>0.4.0-jdk25</version>
         </dependency>
 
         <!-- test dependencies -->
@@ -88,47 +73,10 @@
 
     <build>
         <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-javadoc-plugin</artifactId>
-                <version>3.5.0</version>
-                <configuration>
-                    <skip>true</skip>
-                </configuration>
-            </plugin>
 
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-dependency-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>build-test-classpath</id>
-                        <goals>
-                            <goal>build-classpath</goal>
-                        </goals>
-                        <phase>generate-test-resources</phase>
-                        <configuration>
-                            <includeScope>test</includeScope>
-                            <outputProperty>test.classpath</outputProperty>
-                        </configuration>
-                    </execution>
-                    <!-- Skip inherited analyze-only executions: ASM in dependency-plugin
-                         does not yet support JDK 25 class files (major version 69) -->
-                    <execution>
-                        <id>detect-unused-dependencies</id>
-                        <phase>none</phase>
-                    </execution>
-                    <execution>
-                        <id>analyze-all</id>
-                        <phase>none</phase>
-                    </execution>
-                </executions>
-            </plugin>
-            <!-- Skip standard tests -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.0.0-M9</version>
                 <configuration>
                     <skipTests>true</skipTests>
                 </configuration>
@@ -205,9 +153,11 @@
                 </configuration>
             </plugin>
         </plugins>
+
     </build>
 
     <profiles>
+
         <profile>
             <id>skip-on-incompatible-jdk</id>
             <activation>
@@ -254,5 +204,7 @@
                 <defaultGoal>clean generate-test-resources compile test-compile exec:exec</defaultGoal>
             </build>
         </profile>
+
     </profiles>
+
 </project>
