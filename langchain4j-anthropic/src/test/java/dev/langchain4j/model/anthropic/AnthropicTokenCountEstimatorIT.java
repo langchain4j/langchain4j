@@ -1,6 +1,6 @@
 package dev.langchain4j.model.anthropic;
 
-import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_HAIKU_4_5_20251001;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -21,7 +21,7 @@ class AnthropicTokenCountEstimatorIT {
     void should_estimate_token_count_in_text() {
         // given
         TokenCountEstimator tokenCountEstimator = AnthropicTokenCountEstimator.builder()
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .apiKey(ANTHROPIC_API_KEY)
                 .logRequests(true)
                 .logResponses(true)
@@ -40,7 +40,7 @@ class AnthropicTokenCountEstimatorIT {
     void should_estimate_token_count_in_message() {
         // given
         TokenCountEstimator tokenCountEstimator = AnthropicTokenCountEstimator.builder()
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .apiKey(ANTHROPIC_API_KEY)
                 .logRequests(true)
                 .logResponses(true)
@@ -59,7 +59,7 @@ class AnthropicTokenCountEstimatorIT {
     void should_estimate_token_count_in_messages() {
         // given
         TokenCountEstimator tokenCountEstimator = AnthropicTokenCountEstimator.builder()
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .apiKey(ANTHROPIC_API_KEY)
                 .logRequests(true)
                 .logResponses(true)
@@ -81,7 +81,7 @@ class AnthropicTokenCountEstimatorIT {
     void should_estimate_token_count_in_messages_with_system_prompt() {
         // given
         TokenCountEstimator tokenCountEstimator = AnthropicTokenCountEstimator.builder()
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .apiKey(ANTHROPIC_API_KEY)
                 .logRequests(true)
                 .logResponses(true)
@@ -103,7 +103,7 @@ class AnthropicTokenCountEstimatorIT {
     @Test
     void should_estimate_token_count_when_only_system_message_provided_and_dummy_user_inserted() {
         TokenCountEstimator tokenCountEstimator = AnthropicTokenCountEstimator.builder()
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .apiKey(ANTHROPIC_API_KEY)
                 .addDummyUserMessageIfNoUserMessages()
                 .logRequests(true)
@@ -119,7 +119,7 @@ class AnthropicTokenCountEstimatorIT {
     @Test
     void should_fail_when_only_system_message_is_provided() {
         TokenCountEstimator tokenCountEstimator = AnthropicTokenCountEstimator.builder()
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .apiKey(ANTHROPIC_API_KEY)
                 .logRequests(true)
                 .logResponses(true)

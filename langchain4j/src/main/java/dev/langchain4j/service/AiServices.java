@@ -8,6 +8,7 @@ import static java.util.stream.Collectors.toList;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ReturnBehavior;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -45,6 +46,7 @@ import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
+import dev.langchain4j.service.tool.search.ToolSearchStrategy;
 import dev.langchain4j.spi.services.AiServicesFactory;
 import java.util.Collection;
 import java.util.List;
@@ -275,6 +277,52 @@ public abstract class AiServices<T> {
     }
 
     /**
+     * Configures a transformer that will be applied to the system message on each AI service invocation,
+     * after all other system message configuration (i.e., {@code @SystemMessage} annotation and
+     * {@link #systemMessageProvider(Function)}) has been applied, but before the
+     * {@link #chatRequestTransformer(UnaryOperator)} is invoked.
+     * <p>
+     * This can be used to dynamically modify the content of the system message,
+     * for example to append or prepend additional instructions.
+     * The transformer receives the current system message text (or {@code null} if no system message
+     * has been configured) and must return the new system message text.
+     *
+     * @param systemMessageTransformer A {@link UnaryOperator} that accepts the current system message
+     *                                 text and returns the transformed text.
+     * @return builder
+     * @see #systemMessageTransformer(BiFunction)
+     * @since 1.12.0
+     */
+    public AiServices<T> systemMessageTransformer(UnaryOperator<String> systemMessageTransformer) {
+        context.systemMessageTransformer = (msg, ctx) -> systemMessageTransformer.apply(msg);
+        return this;
+    }
+
+    /**
+     * Configures a transformer that will be applied to the system message on each AI service invocation,
+     * after all other system message configuration (i.e., {@code @SystemMessage} annotation and
+     * {@link #systemMessageProvider(Function)}) has been applied, but before the
+     * {@link #chatRequestTransformer(UnaryOperator)} is invoked.
+     * <p>
+     * This can be used to dynamically modify the content of the system message,
+     * for example to append or prepend additional instructions.
+     * The transformer receives the current system message text (or {@code null} if no system message
+     * has been configured) and the {@link InvocationContext} of the current invocation,
+     * and must return the new system message text.
+     *
+     * @param systemMessageTransformer A {@link BiFunction} that accepts the current system message text
+     *                                 and the {@link InvocationContext}, and returns the transformed text.
+     * @return builder
+     * @see #systemMessageTransformer(UnaryOperator)
+     * @since 1.12.0
+     */
+    public AiServices<T> systemMessageTransformer(
+            BiFunction<String, InvocationContext, String> systemMessageTransformer) {
+        context.systemMessageTransformer = systemMessageTransformer;
+        return this;
+    }
+
+    /**
      * Configures the user message to be used each time an AI service is invoked.
      * It can be either a complete user message or a user message template containing unresolved template
      * variables (e.g. "{{name}}"), which will be resolved using the values of method parameters annotated with @{@link V}.
@@ -430,13 +478,59 @@ public abstract class AiServices<T> {
     }
 
     /**
-     * Configures the tool provider that the LLM can use
+     * Configures a tool provider that dynamically supplies tools for each LLM request.
+     * <p>
+     * Unlike {@link #tools(Object...)}, which registers a fixed set of tools upfront,
+     * a {@link ToolProvider} is invoked on every AI service call and can return a
+     * different set of tools based on the current request context (e.g. the user message,
+     * memory ID, or invocation parameters).
      *
-     * @param toolProvider Decides which tools the LLM could use to handle the request
-     * @return builder
+     * @param toolProvider the tool provider to use
+     * @return this builder
+     * @see #toolProviders(Collection)
+     * @see #toolProviders(ToolProvider...)
+     * @see ToolProvider
      */
     public AiServices<T> toolProvider(ToolProvider toolProvider) {
         context.toolService.toolProvider(toolProvider);
+        return this;
+    }
+
+    /**
+     * Configures multiple tool providers that dynamically supply tools for each LLM request.
+     * <p>
+     * All registered providers are invoked on every AI service call. Tools returned by each
+     * provider are merged and included in the request to the LLM. In case of a conflict
+     * (e.g. duplicate tool names), an exception will be thrown and AI Service invocation will fail.
+     *
+     * @param toolProviders the tool providers to use
+     * @return this builder
+     * @see #toolProvider(ToolProvider)
+     * @see #toolProviders(ToolProvider...)
+     * @see ToolProvider
+     */
+    public AiServices<T> toolProviders(Collection<ToolProvider> toolProviders) {
+        context.toolService.toolProviders(toolProviders);
+        return this;
+    }
+
+    /**
+     * Configures multiple tool providers that dynamically supply tools for each LLM request.
+     * <p>
+     * All registered providers are invoked on every AI service call. Tools returned by each
+     * provider are merged and included in the request to the LLM. In case of a conflict
+     * (e.g. duplicate tool names), an exception will be thrown and AI Service invocation will fail.
+     *
+     * @param toolProviders the tool providers to use
+     * @return this builder
+     * @see #toolProvider(ToolProvider)
+     * @see #toolProviders(Collection)
+     * @see ToolProvider
+     */
+    public AiServices<T> toolProviders(ToolProvider... toolProviders) {
+        if (toolProviders != null && toolProviders.length > 0) {
+            context.toolService.toolProviders(asList(toolProviders));
+        }
         return this;
     }
 
@@ -634,6 +728,29 @@ public abstract class AiServices<T> {
      */
     public AiServices<T> toolExecutionErrorHandler(ToolExecutionErrorHandler handler) {
         context.toolService.executionErrorHandler(handler);
+        return this;
+    }
+
+    /**
+     * Configures a tool search strategy that can be used to reduce token usage.
+     * <p>
+     * When configured, the LLM initially "sees" only a single special tool, which it can call
+     * to discover additional tools. Once tools are found, they are included in subsequent
+     * requests to the LLM.
+     * <p>
+     * Previously found tools are accumulated until the {@link ToolExecutionResultMessage}
+     * containing the tool search results is evicted from the {@link ChatMemory}.
+     * <p>
+     * You can use one of the out-of-the-box implementations, such as
+     * {@link dev.langchain4j.service.tool.search.simple.SimpleToolSearchStrategy}
+     * or {@link dev.langchain4j.service.tool.search.vector.VectorToolSearchStrategy}, or implement your own.
+     *
+     * @param toolSearchStrategy the tool search strategy to use
+     * @return builder
+     * @since 1.12.0
+     */
+    public AiServices<T> toolSearchStrategy(ToolSearchStrategy toolSearchStrategy) {
+        context.toolService.toolSearchStrategy(toolSearchStrategy);
         return this;
     }
 

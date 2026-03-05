@@ -25,6 +25,11 @@ class LocalAzureBlobStorageDocumentLoaderIT {
     @Container
     private static final GenericContainer<?> azurite = new GenericContainer<>(
                     "mcr.microsoft.com/azure-storage/azurite:latest")
+            .withCommand(
+                    "azurite-blob",
+                    "--skipApiVersionCheck",
+                    "--blobHost",
+                    "0.0.0.0") // remove the version check because of https://github.com/Azure/Azurite/issues/2623
             .withExposedPorts(AZURE_STORAGE_BLOB_PORT);
 
     private static final String TEST_CONTAINER = "test-container";

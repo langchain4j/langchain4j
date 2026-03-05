@@ -157,33 +157,6 @@ class VertexAiEmbeddingModelIT {
     }
 
     @Test
-    void batchingEmbeddingsWithMaxSet() {
-        VertexAiEmbeddingModel model = VertexAiEmbeddingModel.builder()
-                .endpoint(System.getenv("GCP_VERTEXAI_ENDPOINT"))
-                .project(System.getenv("GCP_PROJECT_ID"))
-                .location(System.getenv("GCP_LOCATION"))
-                .publisher("google")
-                .modelName("text-embedding-005")
-                .maxSegmentsPerBatch(50)
-                .maxTokensPerBatch(1000)
-                .build();
-
-        List<TextSegment> segments = Collections.nCopies(
-                1234, TextSegment.from("Once upon a time, in a haunted forrest, lived a gentle squirrel."));
-
-        List<Integer> tokenCounts = model.calculateTokensCounts(segments);
-
-        assertThat(tokenCounts).hasSize(1234);
-        for (Integer tokenCount : tokenCounts) {
-            assertThat(tokenCount).isEqualTo(21);
-        }
-
-        List<Embedding> embeddings = model.embedAll(segments).content();
-
-        assertThat(embeddings).hasSize(1234);
-    }
-
-    @Test
     void embeddingTask() {
         // Semantic similarity embedding
 

@@ -1,14 +1,18 @@
 package dev.langchain4j.model.vertexai.gemini;
 
-import com.google.cloud.vertexai.api.Schema;
-import com.google.cloud.vertexai.api.Type;
-import org.junit.jupiter.api.Test;
-
-import java.util.Arrays;
-import java.util.Collections;
-
 import static dev.langchain4j.model.vertexai.gemini.SchemaHelper.fromClass;
 import static org.assertj.core.api.Assertions.assertThat;
+
+import com.google.cloud.vertexai.api.Schema;
+import com.google.cloud.vertexai.api.Type;
+import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
+import dev.langchain4j.model.chat.request.json.JsonNullSchema;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
+import dev.langchain4j.model.chat.request.json.JsonStringSchema;
+import java.util.Arrays;
+import java.util.Collections;
+import org.junit.jupiter.api.Test;
 
 class SchemaHelperTest {
 
@@ -104,8 +108,7 @@ class SchemaHelperTest {
     static class SentimentClassification {
         private Sentiment sentiment;
 
-        public SentimentClassification() {
-        }
+        public SentimentClassification() {}
 
         public Sentiment getSentiment() {
             return this.sentiment;
@@ -170,7 +173,9 @@ class SchemaHelperTest {
 
         // given
         enum MyEnumWithToString {
-            A, B, C;
+            A,
+            B,
+            C;
 
             @Override
             public String toString() {
@@ -184,9 +189,70 @@ class SchemaHelperTest {
         Schema schema = fromClass(MyEnumWithToString.class);
 
         // then
-        assertThat(schema).isEqualTo(Schema.newBuilder()
-                .setType(Type.STRING)
-                .addAllEnum(Arrays.asList("A", "B", "C"))
-                .build());
+        assertThat(schema)
+                .isEqualTo(Schema.newBuilder()
+                        .setType(Type.STRING)
+                        .addAllEnum(Arrays.asList("A", "B", "C"))
+                        .build());
+    }
+
+    @Test
+    void should_convert_any_of_with_null_schema() {
+        // given
+        JsonSchemaElement anyOfSchema = JsonAnyOfSchema.builder()
+                .description("Can be string or null")
+                .anyOf(JsonStringSchema.builder().build(), new JsonNullSchema())
+                .build();
+
+        // when
+        Schema schema = SchemaHelper.from(anyOfSchema);
+
+        // then
+        assertThat(schema.getDescription()).isEqualTo("Can be string or null");
+        assertThat(schema.getAnyOfCount()).isEqualTo(2);
+        assertThat(schema.getAnyOf(0).getType()).isEqualTo(Type.STRING);
+        assertThat(schema.getAnyOf(1).getNullable()).isTrue();
+    }
+
+    @Test
+    void should_convert_null_schema() {
+        // when
+        Schema schema = SchemaHelper.from(new JsonNullSchema());
+
+        // then
+        assertThat(schema.getNullable()).isTrue();
+    }
+
+    @Test
+    void should_convert_any_of_without_description() {
+        // given
+        JsonSchemaElement anyOfSchema = JsonAnyOfSchema.builder()
+                .anyOf(JsonStringSchema.builder().build(), new JsonNullSchema())
+                .build();
+
+        // when
+        Schema schema = SchemaHelper.from(anyOfSchema);
+
+        // then
+        assertThat(schema.getDescription()).isEmpty();
+        assertThat(schema.getAnyOfCount()).isEqualTo(2);
+        assertThat(schema.getAnyOf(1).getNullable()).isTrue();
+    }
+
+    @Test
+    void should_convert_object_schema_after_null_check() {
+        // given
+        JsonObjectSchema objectSchema = JsonObjectSchema.builder()
+                .addStringProperty("name")
+                .required("name")
+                .build();
+
+        // when
+        Schema schema = SchemaHelper.from(objectSchema);
+
+        // then
+        assertThat(schema.getType()).isEqualTo(Type.OBJECT);
+        assertThat(schema.getRequiredList()).containsExactly("name");
+        assertThat(schema.getPropertiesMap().get("name").getType()).isEqualTo(Type.STRING);
     }
 }

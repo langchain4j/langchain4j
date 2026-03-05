@@ -2,10 +2,12 @@ package dev.langchain4j.service.tool;
 
 import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
 import static dev.langchain4j.internal.Exceptions.runtime;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
+import static dev.langchain4j.service.tool.search.ToolSearchService.addFoundTools;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ReturnBehavior;
@@ -30,6 +32,9 @@ import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.observability.api.event.ToolExecutedEvent;
 import dev.langchain4j.service.AiServiceContext;
 import dev.langchain4j.service.IllegalConfigurationException;
+import dev.langchain4j.service.tool.search.ToolSearchService;
+import dev.langchain4j.service.tool.search.ToolSearchStrategy;
+
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -65,13 +70,14 @@ public class ToolService {
     private final List<ToolSpecification> toolSpecifications = new ArrayList<>();
     private final Map<String, ToolExecutor> toolExecutors = new HashMap<>();
     private final Set<String> immediateReturnTools = new HashSet<>();
-    private ToolProvider toolProvider;
+    private List<ToolProvider> toolProviders = new ArrayList<>();
     private Executor executor;
     private int maxSequentialToolsInvocations = 100;
     private ToolArgumentsErrorHandler argumentsErrorHandler;
     private ToolExecutionErrorHandler executionErrorHandler;
     private Function<ToolExecutionRequest, ToolExecutionResultMessage> toolHallucinationStrategy =
             HallucinatedToolNameStrategy.THROW_EXCEPTION;
+    private ToolSearchService toolSearchService;
 
     private Consumer<BeforeToolExecution> beforeToolExecution = null;
     private Consumer<ToolExecution> afterToolExecution = null;
@@ -82,7 +88,18 @@ public class ToolService {
     }
 
     public void toolProvider(ToolProvider toolProvider) {
-        this.toolProvider = toolProvider;
+        if (toolProvider != null) {
+            this.toolProviders.add(toolProvider);
+        }
+    }
+
+    /**
+     * @since 1.12.0
+     */
+    public void toolProviders(Collection<ToolProvider> toolProviders) {
+        if (toolProviders != null) {
+            this.toolProviders.addAll(toolProviders);
+        }
     }
 
     public void tools(Map<ToolSpecification, ToolExecutor> tools) {
@@ -219,12 +236,36 @@ public class ToolService {
         return getOrDefault(executionErrorHandler, DEFAULT_TOOL_EXECUTION_ERROR_HANDLER);
     }
 
+    /**
+     * @since 1.12.0
+     */
+    public void toolSearchStrategy(ToolSearchStrategy toolSearchStrategy) {
+        this.toolSearchService = new ToolSearchService(toolSearchStrategy);
+    }
+
+    public ToolServiceContext createContext(InvocationContext invocationContext,
+                                            UserMessage userMessage,
+                                            ChatMemory chatMemory) {
+        ToolServiceContext toolServiceContext = createContext(invocationContext, userMessage);
+        if (toolSearchService == null) {
+            return toolServiceContext;
+        } else {
+            return toolSearchService.adjust(toolServiceContext, chatMemory, invocationContext);
+        }
+    }
+
+    /**
+     * @deprecated use {@link #createContext(InvocationContext, UserMessage, ChatMemory)} instead
+     */
+    @Deprecated(since = "1.12.0")
     public ToolServiceContext createContext(InvocationContext invocationContext, UserMessage userMessage) {
-        if (this.toolProvider == null) {
+        // TODO make private
+        if (this.toolProviders.isEmpty()) {
             return this.toolSpecifications.isEmpty()
                     ? ToolServiceContext.Empty.INSTANCE
                     : ToolServiceContext.builder()
-                            .toolSpecifications(this.toolSpecifications)
+                            .effectiveTools(this.toolSpecifications)
+                            .availableTools(this.toolSpecifications)
                             .toolExecutors(this.toolExecutors)
                             .immediateReturnTools(this.immediateReturnTools)
                             .build();
@@ -237,24 +278,27 @@ public class ToolService {
                 .invocationContext(invocationContext)
                 .userMessage(userMessage)
                 .build();
-        ToolProviderResult toolProviderResult = toolProvider.provideTools(toolProviderRequest);
-        if (toolProviderResult != null) {
-            for (Map.Entry<ToolSpecification, ToolExecutor> entry :
-                    toolProviderResult.tools().entrySet()) {
-                String toolName = entry.getKey().name();
-                if (toolExecutors.putIfAbsent(toolName, entry.getValue()) == null) {
-                    toolSpecifications.add(entry.getKey());
-                } else {
-                    throw new IllegalConfigurationException(
-                            "Duplicated definition for tool: " + entry.getKey().name());
+        toolProviders.forEach(toolProvider -> {
+            ToolProviderResult toolProviderResult = toolProvider.provideTools(toolProviderRequest);
+            if (toolProviderResult != null) {
+                for (Map.Entry<ToolSpecification, ToolExecutor> entry :
+                        toolProviderResult.tools().entrySet()) {
+                    String toolName = entry.getKey().name();
+                    if (toolExecutors.putIfAbsent(toolName, entry.getValue()) == null) {
+                        toolSpecifications.add(entry.getKey());
+                    } else {
+                        throw new IllegalConfigurationException(
+                                "Duplicated definition for tool: " + entry.getKey().name());
+                    }
+                }
+                if (toolProviderResult.immediateReturnToolNames() != null) {
+                    immediateReturnTools.addAll(toolProviderResult.immediateReturnToolNames());
                 }
             }
-            if (toolProviderResult.immediateReturnToolNames() != null) {
-                immediateReturnTools.addAll(toolProviderResult.immediateReturnToolNames());
-            }
-        }
+        });
         return ToolServiceContext.builder()
-                .toolSpecifications(toolSpecifications)
+                .effectiveTools(toolSpecifications)
+                .availableTools(toolSpecifications)
                 .toolExecutors(toolExecutors)
                 .immediateReturnTools(immediateReturnTools)
                 .build();
@@ -309,6 +353,7 @@ public class ToolService {
                         .toolName(request.name())
                         .text(result.resultText())
                         .isError(result.isError())
+                        .attributes(result.attributes())
                         .build();
 
                 ToolExecution toolExecution =
@@ -349,6 +394,10 @@ public class ToolService {
 
             if (chatMemory != null) {
                 messages = chatMemory.messages();
+            }
+
+            if (toolSearchService != null) {
+                parameters = addFoundTools(parameters, toolResults.values(), toolServiceContext.availableTools());
             }
 
             ChatRequest chatRequest = context.chatRequestTransformer.apply(
@@ -585,8 +634,25 @@ public class ToolService {
         return executor;
     }
 
+    /**
+     * @since 1.12.0
+     */
+    public List<ToolProvider> toolProviders() {
+        return copy(toolProviders);
+    }
+
+    /**
+     * @deprecated use {@link #toolProviders()} instead
+     */
+    @Deprecated(since = "1.12.0")
     public ToolProvider toolProvider() {
-        return toolProvider;
+        if (toolProviders.size() == 1) {
+            return toolProviders.get(0);
+        } else if (toolProviders.isEmpty()) {
+            return null;
+        } else {
+            throw new IllegalStateException("There are multiple ToolProvider configured, use toolProviders() instead");
+        }
     }
 
     public boolean isImmediateTool(String toolName) {

@@ -1,6 +1,5 @@
 package dev.langchain4j.model.anthropic.common;
 
-import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_HAIKU_4_5_20251001;
 import static java.lang.System.getenv;
 import static org.mockito.ArgumentMatchers.any;
@@ -18,7 +17,6 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.List;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -30,7 +28,7 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     static final StreamingChatModel ANTHROPIC_STREAMING_CHAT_MODEL = AnthropicStreamingChatModel.builder()
             .apiKey(getenv("ANTHROPIC_API_KEY"))
-            .modelName(CLAUDE_3_5_HAIKU_20241022)
+            .modelName(CLAUDE_HAIKU_4_5_20251001)
             .temperature(0.0)
             .logRequests(false) // images are huge in logs
             .logResponses(true)
@@ -58,7 +56,7 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 .logRequests(true)
                 .logResponses(true);
         if (parameters.modelName() == null) {
-            anthropicChatModelBuilder.modelName(CLAUDE_3_5_HAIKU_20241022);
+            anthropicChatModelBuilder.modelName(CLAUDE_HAIKU_4_5_20251001);
         } else {
             anthropicChatModelBuilder.modelName(parameters.modelName());
         }
@@ -97,7 +95,7 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
     public StreamingChatModel createModelWith(ChatModelListener listener) {
         return AnthropicStreamingChatModel.builder()
                 .apiKey(getenv("ANTHROPIC_API_KEY"))
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .listeners(List.of(listener))
                 .build();
     }

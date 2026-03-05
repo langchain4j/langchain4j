@@ -18,12 +18,8 @@ import java.lang.annotation.Target;
  *     public interface AudienceRetriever {
  *
  *         @HumanInTheLoop(description = "Generate a story based on the given topic", outputKey = "audience", async = true)
- *         static void request(@V("topic") String topic) {
+ *         static String request(@V("topic") String topic) {
  *             request.set("Which audience for topic " + topic + "?");
- *         }
- *
- *         @HumanInTheLoopResponseSupplier
- *         static String response() {
  *             return System.console().readLine();
  *         }
  *     }

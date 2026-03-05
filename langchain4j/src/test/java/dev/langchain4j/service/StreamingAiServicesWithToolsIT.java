@@ -1,5 +1,6 @@
 package dev.langchain4j.service;
 
+import static dev.langchain4j.MockitoUtils.ignoreInteractions;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.service.StreamingAiServicesWithToolsIT.TemperatureUnit.CELSIUS;
 import static dev.langchain4j.service.StreamingAiServicesWithToolsIT.TransactionService.EXPECTED_SPECIFICATION;
@@ -22,6 +23,7 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.LoggingChatModelListener;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -58,6 +60,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -80,8 +83,7 @@ class StreamingAiServicesWithToolsIT {
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(GPT_4_O_MINI)
                 .temperature(0.0)
-                .logRequests(true)
-                .logResponses(true)
+                .listeners(new LoggingChatModelListener())
                 .build());
     }
 
@@ -1429,32 +1431,13 @@ class StreamingAiServicesWithToolsIT {
 
     // TODO all other tests from sync version
 
-    public static void verifyNoMoreInteractionsFor(StreamingChatModel model) {
-        try {
-            verify(model, atLeastOnce()).doChat(any(), any());
-        } catch (Throwable ignored) {
-            // don't care if it was called or not
-        }
-        try {
-            verify(model, atLeastOnce()).defaultRequestParameters();
-        } catch (Throwable ignored) {
-            // don't care if it was called or not
-        }
-        try {
-            verify(model, atLeastOnce()).supportedCapabilities();
-        } catch (Throwable ignored) {
-            // don't care if it was called or not
-        }
-        try {
-            verify(model, atLeastOnce()).listeners();
-        } catch (Throwable ignored) {
-            // don't care if it was called or not
-        }
-        try {
-            verify(model, atLeastOnce()).provider();
-        } catch (Throwable ignored) {
-            // don't care if it was called or not
-        }
+    // TODO rename verifyNoMoreImportantInteractions
+    private static void verifyNoMoreInteractionsFor(StreamingChatModel model) {
+        ignoreInteractions(model).doChat(any(), any());
+        ignoreInteractions(model).defaultRequestParameters();
+        ignoreInteractions(model).supportedCapabilities();
+        ignoreInteractions(model).listeners();
+        ignoreInteractions(model).provider();
         verifyNoMoreInteractions(model);
     }
 }

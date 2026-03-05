@@ -8,6 +8,8 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.mistralai.internal.api.*;
 import dev.langchain4j.spi.ServiceHelper;
 import java.time.Duration;
+import java.util.Map;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 
 @Internal
@@ -27,8 +29,8 @@ public abstract class MistralAiClient {
     public void streamingChatCompletion(
             MistralAiChatCompletionRequest request, StreamingChatResponseHandler handler, boolean returnThinking) {
         if (returnThinking) {
-            throw new UnsupportedFeatureException("Returning thinking/reasoning content is not supported with this " +
-                    "client implementation: " + getClass().getName());
+            throw new UnsupportedFeatureException("Returning thinking/reasoning content is not supported with this "
+                    + "client implementation: " + getClass().getName());
         } else {
             streamingChatCompletion(request, handler);
         }
@@ -57,7 +59,7 @@ public abstract class MistralAiClient {
     public abstract void streamingFimCompletion(
             MistralAiFimCompletionRequest request, StreamingResponseHandler<String> handler);
 
-    @SuppressWarnings("rawtypes")
+    @SuppressWarnings({"rawtypes"})
     public static MistralAiClient.Builder builder() {
         for (MistralAiClientBuilderFactory factory : ServiceHelper.loadFactories(MistralAiClientBuilderFactory.class)) {
             return factory.get();
@@ -76,6 +78,7 @@ public abstract class MistralAiClient {
         public Boolean logResponses;
         public Logger logger;
         public HttpClientBuilder httpClientBuilder;
+        public Supplier<Map<String, String>> customHeadersSupplier;
 
         public abstract T build();
 
@@ -125,6 +128,16 @@ public abstract class MistralAiClient {
 
         public B httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
+            return (B) this;
+        }
+
+        public B customHeaders(java.util.Map<String, String> customHeaders) {
+            this.customHeadersSupplier = () -> customHeaders;
+            return (B) this;
+        }
+
+        public B customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
             return (B) this;
         }
     }

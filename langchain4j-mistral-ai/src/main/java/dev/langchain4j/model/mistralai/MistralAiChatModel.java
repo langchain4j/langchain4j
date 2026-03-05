@@ -28,7 +28,9 @@ import dev.langchain4j.model.mistralai.spi.MistralAiChatModelBuilderFactory;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 
@@ -48,6 +50,7 @@ public class MistralAiChatModel implements ChatModel {
     private final Integer maxRetries;
     private final List<ChatModelListener> listeners;
     private final Set<Capability> supportedCapabilities;
+    private final boolean strictJsonSchema;
     private final ChatRequestParameters defaultRequestParameters;
 
     public MistralAiChatModel(MistralAiChatModelBuilder builder) {
@@ -59,6 +62,7 @@ public class MistralAiChatModel implements ChatModel {
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
                 .logger(builder.logger)
+                .customHeaders(builder.customHeadersSupplier)
                 .build();
 
         this.safePrompt = builder.safePrompt;
@@ -68,6 +72,7 @@ public class MistralAiChatModel implements ChatModel {
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.listeners = copy(builder.listeners);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
+        this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
         this.defaultRequestParameters = initDefaultRequestParameters(builder);
     }
 
@@ -99,7 +104,7 @@ public class MistralAiChatModel implements ChatModel {
         validate(chatRequest.parameters());
 
         MistralAiChatCompletionRequest request =
-                createMistralAiRequest(chatRequest, safePrompt, randomSeed, false, sendThinking);
+                createMistralAiRequest(chatRequest, safePrompt, randomSeed, false, sendThinking, strictJsonSchema);
 
         ParsedAndRawResponse<MistralAiChatCompletionResponse> response =
                 withRetryMappingExceptions(() -> client.chatCompletionWithRawResponse(request), maxRetries);
@@ -170,12 +175,24 @@ public class MistralAiChatModel implements ChatModel {
         private Integer maxRetries;
         private List<ChatModelListener> listeners;
         private Set<Capability> supportedCapabilities;
+        private Boolean strictJsonSchema;
         private ChatRequestParameters defaultRequestParameters;
+        private Supplier<Map<String, String>> customHeadersSupplier;
 
         public MistralAiChatModelBuilder() {}
 
         public MistralAiChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
+
+        public MistralAiChatModelBuilder customHeaders(java.util.Map<String, String> customHeaders) {
+            this.customHeadersSupplier = () -> customHeaders;
+            return this;
+        }
+
+        public MistralAiChatModelBuilder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
             return this;
         }
 
@@ -340,6 +357,11 @@ public class MistralAiChatModel implements ChatModel {
 
         public MistralAiChatModelBuilder supportedCapabilities(Set<Capability> supportedCapabilities) {
             this.supportedCapabilities = Set.copyOf(supportedCapabilities);
+            return this;
+        }
+
+        public MistralAiChatModelBuilder strictJsonSchema(Boolean strictJsonSchema) {
+            this.strictJsonSchema = strictJsonSchema;
             return this;
         }
 
