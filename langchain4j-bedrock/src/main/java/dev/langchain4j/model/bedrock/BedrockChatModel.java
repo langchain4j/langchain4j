@@ -75,6 +75,7 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
 
         BedrockCachePointPlacement cachePointPlacement = parameters.cachePointPlacement();
         BedrockGuardrailConfiguration bedrockGuardrailConfiguration = parameters.bedrockGuardrailConfiguration();
+        BedrockServiceTier bedrockServiceTier = parameters.serviceTier();
 
         // Validate total cache points don't exceed AWS limit
         boolean hasTools = chatRequest.toolSpecifications() != null
@@ -90,6 +91,7 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
                 .additionalModelRequestFields(additionalRequestModelFieldsFrom(chatRequest.parameters()))
                 .guardrailConfig(guardrailConfigFrom(bedrockGuardrailConfiguration))
                 .outputConfig(outputConfigFrom(chatRequest.responseFormat()))
+                .serviceTier(serviceTierFor(bedrockServiceTier))
                 .build();
     }
 

@@ -20,6 +20,11 @@ public class GuardrailAssessmentSummary {
         return ouputAssessments;
     }
 
+    public boolean hasAssessments() {
+        return (inputAssessments != null && !inputAssessments.isEmpty())
+                || (ouputAssessments != null && !ouputAssessments.isEmpty());
+    }
+
     public static Builder builder() {
         return new Builder();
     }
