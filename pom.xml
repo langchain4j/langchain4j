@@ -241,6 +241,15 @@
             </activation>
             <modules>
                 <module>langchain4j-jlama</module>
+            </modules>
+        </profile>
+
+        <profile>
+            <id>jdk25</id>
+            <activation>
+                <jdk>25</jdk>
+            </activation>
+            <modules>
                 <module>langchain4j-gpu-llama3</module>
             </modules>
         </profile>
