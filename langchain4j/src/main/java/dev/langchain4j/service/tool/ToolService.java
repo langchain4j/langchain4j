@@ -41,6 +41,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -70,7 +71,7 @@ public class ToolService {
     private final List<ToolSpecification> toolSpecifications = new ArrayList<>();
     private final Map<String, ToolExecutor> toolExecutors = new HashMap<>();
     private final Set<String> immediateReturnTools = new HashSet<>();
-    private List<ToolProvider> toolProviders = new ArrayList<>();
+    private final Set<ToolProvider> toolProviders = new LinkedHashSet<>();
     private Executor executor;
     private int maxSequentialToolsInvocations = 100;
     private ToolArgumentsErrorHandler argumentsErrorHandler;
@@ -637,7 +638,7 @@ public class ToolService {
     /**
      * @since 1.12.0
      */
-    public List<ToolProvider> toolProviders() {
+    public Set<ToolProvider> toolProviders() {
         return copy(toolProviders);
     }
 
@@ -647,12 +648,12 @@ public class ToolService {
     @Deprecated(since = "1.12.0")
     public ToolProvider toolProvider() {
         if (toolProviders.size() == 1) {
-            return toolProviders.get(0);
-        } else if (toolProviders.isEmpty()) {
-            return null;
-        } else {
-            throw new IllegalStateException("There are multiple ToolProvider configured, use toolProviders() instead");
+            return toolProviders.iterator().next();
         }
+        if (toolProviders.isEmpty()) {
+            return null;
+        }
+        throw new IllegalStateException("There are multiple ToolProvider configured, use toolProviders() instead");
     }
 
     public boolean isImmediateTool(String toolName) {
