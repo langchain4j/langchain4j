@@ -54,6 +54,7 @@ For easier integration, LangChain4j also includes integration with
 - Support for texts and images as inputs (multimodality)
 - [AI Services](/tutorials/ai-services) (high-level LLM API)
 - [Agents and Agentic AI](/tutorials/agents)
+- [Skills](/tutorials/skills)
 - Prompt templates
 - Implementation of persistent and in-memory [chat memory](/tutorials/chat-memory) algorithms: message window and token window
 - [Streaming of responses from LLMs](/tutorials/response-streaming)
