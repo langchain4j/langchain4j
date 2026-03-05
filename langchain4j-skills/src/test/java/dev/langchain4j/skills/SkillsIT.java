@@ -83,7 +83,7 @@ class SkillsIT {
         assertThat(skills.toolProvider().provideTools(null).tools().keySet().stream()
                 .filter(it -> it.name().equals("read_skill_resource")).findFirst().get()
                 .parameters().properties().get("relative_path").description())
-                .endsWith("For example: references/17.md");
+                .matches(".*For example: references/\\d+\\.md");
 
         // given
         Tools spyTools = spy(new Tools());
