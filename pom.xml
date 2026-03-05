@@ -124,10 +124,12 @@
 
         <!-- experimental -->
         <module>experimental/langchain4j-experimental-sql</module>
+        <module>experimental/langchain4j-experimental-skills-shell</module>
         <module>langchain4j-agentic</module>
         <module>langchain4j-agentic-a2a</module>
         <module>langchain4j-agentic-mcp</module>
         <module>langchain4j-agentic-patterns</module>
+        <module>langchain4j-skills</module>
 
         <!-- observability -->
         <module>langchain4j-micrometer-metrics</module>
@@ -239,6 +241,15 @@
             </activation>
             <modules>
                 <module>langchain4j-jlama</module>
+            </modules>
+        </profile>
+
+        <profile>
+            <id>jdk25</id>
+            <activation>
+                <jdk>25</jdk>
+            </activation>
+            <modules>
                 <module>langchain4j-gpu-llama3</module>
             </modules>
         </profile>
