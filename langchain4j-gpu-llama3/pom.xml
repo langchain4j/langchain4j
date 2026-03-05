@@ -198,11 +198,10 @@
     </build>
 
     <profiles>
-        <!-- JDK 26+: Skip compilation - not yet supported -->
         <profile>
             <id>skip-on-incompatible-jdk</id>
             <activation>
-                <jdk>[26,)</jdk>
+                <jdk>!25</jdk>
             </activation>
             <properties>
                 <maven.install.skip>true</maven.install.skip>
