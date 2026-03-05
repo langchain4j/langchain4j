@@ -112,6 +112,16 @@
                             <outputProperty>test.classpath</outputProperty>
                         </configuration>
                     </execution>
+                    <!-- Skip inherited analyze-only executions: ASM in dependency-plugin
+                         does not yet support JDK 25 class files (major version 69) -->
+                    <execution>
+                        <id>detect-unused-dependencies</id>
+                        <phase>none</phase>
+                    </execution>
+                    <execution>
+                        <id>analyze-all</id>
+                        <phase>none</phase>
+                    </execution>
                 </executions>
             </plugin>
             <!-- Skip standard tests -->
