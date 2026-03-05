@@ -175,7 +175,7 @@ mvn clean package
 
 Your main JAR will be located at:
 ```bash
-target/gpullama3.java-example-1.4.0-beta10.jar
+target/gpullama3.java-example-1.12.1-beta21.jar
 ```
 
 #### **Step 4 — Run the program directly with Java**
@@ -183,7 +183,7 @@ You can now run the example with all JVM and Tornado flags:
 
 ```bash
 JAVA_BIN=/home/mikepapadim/.sdkman/candidates/java/current/bin/java
-CP="target/gpullama3.java-example-1.4.0-beta10.jar:$(cat cp.txt)"
+CP="target/gpullama3.java-example-1.12.1-beta21.jar:$(cat cp.txt)"
 
 $JAVA_BIN \
   -server \
