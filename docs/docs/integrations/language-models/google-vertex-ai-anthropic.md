@@ -82,7 +82,7 @@ To get started, add the following dependencies to your project's `pom.xml`:
 or project's `build.gradle`:
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j-vertex-ai-anthropic:1.5.0-beta11'
+implementation 'dev.langchain4j:langchain4j-vertex-ai-anthropic:1.12.1-beta21'
 ```
 
 ### Try out an example code
