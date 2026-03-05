@@ -9,7 +9,6 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
-import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUsageMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.ArrayList;
@@ -110,7 +109,7 @@ class GeminiStreamingResponseBuilder {
         }
     }
 
-    private void updateTokenUsage(GeminiUsageMetadata usageMetadata) {
+    private void updateTokenUsage(UsageMetadata usageMetadata) {
         if (usageMetadata != null) {
             TokenUsage tokenUsage = new TokenUsage(
                     usageMetadata.promptTokenCount(),

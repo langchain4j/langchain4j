@@ -18,6 +18,7 @@ import dev.langchain4j.model.googleai.GroundingMetadata.GroundingSupport;
 import dev.langchain4j.model.googleai.GroundingMetadata.RetrievalMetadata;
 import dev.langchain4j.model.googleai.GroundingMetadata.SearchEntryPoint;
 import dev.langchain4j.model.googleai.GroundingMetadata.Segment;
+import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -199,7 +200,7 @@ class GoogleAiGeminiGoogleMapsTest {
                     null,
                     null);
 
-            var usageMetadata = new GeminiGenerateContentResponse.GeminiUsageMetadata(10, 10, 20);
+            var usageMetadata = new UsageMetadata(10, 10, 20, 15, Collections.emptyList());
             var response = new GeminiGenerateContentResponse(
                     "id", "model", List.of(candidate), usageMetadata, groundingMetadata);
 
@@ -277,7 +278,7 @@ class GoogleAiGeminiGoogleMapsTest {
                     null,
                     groundingMetadata); // Grounding metadata on candidate
 
-            var usageMetadata = new GeminiGenerateContentResponse.GeminiUsageMetadata(10, 10, 20);
+            var usageMetadata = new UsageMetadata(10, 10, 20, 15, Collections.emptyList());
             var response = new GeminiGenerateContentResponse(
                     "id", "model", List.of(candidate), usageMetadata, null); // Grounding metadata
             // null on response
@@ -314,7 +315,7 @@ class GoogleAiGeminiGoogleMapsTest {
                 GeminiFinishReason.STOP,
                 null,
                 null);
-        var usageMetadata = new GeminiGenerateContentResponse.GeminiUsageMetadata(0, 0, 0);
+        var usageMetadata = new UsageMetadata(0, 0, 0, 0, Collections.emptyList());
         return new GeminiGenerateContentResponse("id", "model", List.of(candidate), usageMetadata, null);
     }
 }
