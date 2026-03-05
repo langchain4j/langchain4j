@@ -96,6 +96,29 @@ class BedrockPromptCachingIT {
         assertThat(responseAfterUser.metadata().tokenUsage()).isNotNull();
         assertThat(responseAfterUser.metadata().tokenUsage()).isInstanceOf(BedrockTokenUsage.class);
 
+        // Test AFTER_LAST_USER_MESSAGE placement
+        BedrockChatRequestParameters afterLastUserParams = BedrockChatRequestParameters.builder()
+                .promptCaching(BedrockCachePointPlacement.AFTER_LAST_USER_MESSAGE)
+                .build();
+
+        ChatModel modelAfterLastUser = BedrockChatModel.builder()
+                .modelId(NOVA_MODEL)
+                .defaultRequestParameters(afterLastUserParams)
+                .build();
+
+        ChatRequest requestAfterLastUser = ChatRequest.builder()
+                .messages(Arrays.asList(
+                        SystemMessage.from("You are a helpful assistant."),
+                        UserMessage.from("What is prompt caching?")))
+                .build();
+
+        ChatResponse responseAfterLastUser = modelAfterLastUser.chat(requestAfterLastUser);
+
+        assertThat(responseAfterLastUser).isNotNull();
+        assertThat(responseAfterLastUser.aiMessage().text()).isNotBlank();
+        assertThat(responseAfterLastUser.metadata().tokenUsage()).isNotNull();
+        assertThat(responseAfterLastUser.metadata().tokenUsage()).isInstanceOf(BedrockTokenUsage.class);
+
         // Test AFTER_TOOLS placement (when tools are available)
         BedrockChatRequestParameters afterToolsParams = BedrockChatRequestParameters.builder()
                 .promptCaching(BedrockCachePointPlacement.AFTER_TOOLS)
@@ -592,7 +615,7 @@ class BedrockPromptCachingIT {
 
     @Test
     void should_chat_with_cache_point_after_user_message_placement() {
-        // Test AFTER_USER_MESSAGE placement which adds cache point after user turns
+        // Test AFTER_USER_MESSAGE placement which adds cache point after first user message
         BedrockSystemMessage systemMessage = BedrockSystemMessage.builder()
                 .addTextWithCachePoint("System context to cache")
                 .build();
@@ -619,6 +642,82 @@ class BedrockPromptCachingIT {
 
         assertThat(response).isNotNull();
         assertThat(response.aiMessage()).isNotNull();
+    }
+
+    @Test
+    void should_chat_with_cache_point_after_last_user_message_placement() {
+        // Test AFTER_LAST_USER_MESSAGE placement which adds cache point after the last user message
+        BedrockSystemMessage systemMessage = BedrockSystemMessage.builder()
+                .addTextWithCachePoint("System context to cache")
+                .build();
+
+        BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
+                .promptCaching(BedrockCachePointPlacement.AFTER_LAST_USER_MESSAGE)
+                .build();
+
+        BedrockChatModel model = BedrockChatModel.builder()
+                .modelId(NOVA_MODEL)
+                .region(Region.US_EAST_1)
+                .defaultRequestParameters(params)
+                .build();
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(Arrays.asList(
+                        systemMessage,
+                        UserMessage.from("First question?"),
+                        AiMessage.from("First response."),
+                        UserMessage.from("Follow-up question?")))
+                .build();
+
+        ChatResponse response = model.chat(request);
+
+        assertThat(response).isNotNull();
+        assertThat(response.aiMessage()).isNotNull();
+    }
+
+    @Test
+    void should_add_cache_point_to_last_user_message_in_multi_turn_conversation() {
+        // Test that AFTER_LAST_USER_MESSAGE correctly caches after the last user message
+        // in a multi-turn conversation, which is useful for caching conversation history
+        String largeSystemContent = "You are an AI assistant with extensive knowledge. ".repeat(100);
+
+        BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
+                .promptCaching(BedrockCachePointPlacement.AFTER_LAST_USER_MESSAGE)
+                .build();
+
+        BedrockChatModel model = BedrockChatModel.builder()
+                .modelId(NOVA_MODEL)
+                .region(Region.US_EAST_1)
+                .defaultRequestParameters(params)
+                .build();
+
+        // First request - multi-turn conversation ending with user message
+        ChatRequest request1 = ChatRequest.builder()
+                .messages(Arrays.asList(
+                        SystemMessage.from(largeSystemContent),
+                        UserMessage.from("What is Java?"),
+                        AiMessage.from("Java is a programming language."),
+                        UserMessage.from("What about Python?")))
+                .build();
+
+        ChatResponse response1 = model.chat(request1);
+        assertThat(response1.aiMessage().text()).isNotBlank();
+        assertThat(((BedrockTokenUsage) response1.tokenUsage()).cacheWriteInputTokens())
+                .isGreaterThan(0);
+
+        // Second request - same conversation history, cache point should be on the last user message
+        ChatRequest request2 = ChatRequest.builder()
+                .messages(Arrays.asList(
+                        SystemMessage.from(largeSystemContent),
+                        UserMessage.from("What is Java?"),
+                        AiMessage.from("Java is a programming language."),
+                        UserMessage.from("What about Python?")))
+                .build();
+
+        ChatResponse response2 = model.chat(request2);
+        assertThat(response2.aiMessage().text()).isNotBlank();
+        assertThat(((BedrockTokenUsage) response2.tokenUsage()).cacheReadInputTokens())
+                .isGreaterThan(0);
     }
 
     @Test

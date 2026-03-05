@@ -350,7 +350,7 @@ class OpenAiResponsesClient {
 
             var text = aiMessage.text();
             if (text != null && !text.isEmpty()) {
-                items.add(createMessageEntry(ROLE_ASSISTANT, List.of(createInputTextContent(text))));
+                items.add(createMessageEntry(ROLE_ASSISTANT, List.of(createOutputTextContent(text))));
             }
 
             if (aiMessage.hasToolExecutionRequests()) {
@@ -389,6 +389,13 @@ class OpenAiResponsesClient {
     private Map<String, Object> createInputTextContent(String text) {
         var content = new HashMap<String, Object>();
         content.put(FIELD_TYPE, TYPE_INPUT_TEXT);
+        content.put(FIELD_TEXT, text);
+        return content;
+    }
+
+    private Map<String, Object> createOutputTextContent(String text) {
+        var content = new HashMap<String, Object>();
+        content.put(FIELD_TYPE, TYPE_OUTPUT_TEXT);
         content.put(FIELD_TEXT, text);
         return content;
     }

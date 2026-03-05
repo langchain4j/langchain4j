@@ -1,8 +1,5 @@
 package dev.langchain4j.model.bedrock.common;
 
-import static dev.langchain4j.model.bedrock.TestedModels.CLAUDE_3_HAIKU;
-import static dev.langchain4j.model.bedrock.common.BedrockAiServicesIT.sleepIfNeeded;
-
 import dev.langchain4j.model.bedrock.BedrockChatModel;
 import dev.langchain4j.model.bedrock.BedrockChatResponseMetadata;
 import dev.langchain4j.model.bedrock.BedrockTokenUsage;
@@ -11,16 +8,26 @@ import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.TokenUsage;
-import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+
+import java.util.List;
+
+import static dev.langchain4j.model.bedrock.common.BedrockAiServicesIT.sleepIfNeeded;
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
 class BedrockChatModelWithVisionIT extends AbstractChatModelIT {
 
+    static ChatModel model = BedrockChatModel.builder()
+            .modelId("us.anthropic.claude-haiku-4-5-20251001-v1:0")
+            .logRequests(false) // images are huge in logs
+            .logResponses(true)
+            .build();
+
     @Override
     protected List<ChatModel> models() {
-        return List.of(CLAUDE_3_HAIKU); // , LLAMA_3_2_90B); NOT AVAILABLE FOR ME AT THIS MOMENT
+        return List.of(model);
     }
 
     @Override
@@ -49,17 +56,7 @@ class BedrockChatModelWithVisionIT extends AbstractChatModelIT {
 
     @Override
     protected boolean supportsJsonResponseFormat() {
-        return false; // output format not supported
-    }
-
-    @Override
-    protected boolean supportsJsonResponseFormatWithSchema() {
-        return false; // output format not supported
-    }
-
-    @Override
-    protected boolean supportsJsonResponseFormatWithRawSchema() {
-        return false; // output format not supported
+        return false; // JSON response format *without schema* is not supported
     }
 
     @Override

@@ -60,10 +60,11 @@ McpTransport transport = StreamableHttpMcpTransport.builder()
         .build();
 ```
 
-**_NOTE:_** The Streamable HTTP transport currently does not create a global SSE stream
-(as described in the [spec](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#listening-for-messages-from-the-server)).
-Depending on the MCP server implementation, this may mean features that require server-initiated requests and notifications may or may not work.
-If the server piggybacks requests and notifications over SSE streams created for client-initiated operations, these will work.
+**_NOTE:_** The Streamable HTTP transport can optionally open a subsidiary
+[GET-based SSE stream](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#listening-for-messages-from-the-server)
+for receiving server-initiated notifications and requests. Enable it with `.subsidiaryChannel(true)` on the builder.
+It is disabled by default. If the server does not support it, the transport logs a warning and continues without it.
+If the stream breaks after being established, the transport reconnects automatically (respecting the server's `retry` value, defaulting to 5 seconds).
 
 For the WebSocket transport:
 ```java

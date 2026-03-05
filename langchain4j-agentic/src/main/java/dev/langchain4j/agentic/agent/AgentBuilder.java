@@ -4,21 +4,27 @@ import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureAgent
 import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.keyName;
 import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
+import static dev.langchain4j.agentic.observability.ComposedAgentListener.listenerOfType;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static java.util.Arrays.asList;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agentic.Agent;
-import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.internal.InternalAgent;
+import dev.langchain4j.agentic.observability.AfterAgentToolExecution;
 import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.observability.AgentMonitor;
+import dev.langchain4j.agentic.observability.BeforeAgentToolExecution;
 import dev.langchain4j.agentic.observability.ComposedAgentListener;
+import dev.langchain4j.agentic.observability.MonitoredAgent;
 import dev.langchain4j.agentic.internal.AgentUtil;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.internal.Context;
 import dev.langchain4j.agentic.internal.UserMessageRecorder;
 import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
@@ -27,6 +33,8 @@ import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
 import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
+import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
@@ -42,12 +50,16 @@ import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executor;
+import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
 public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     final Class<T> agentServiceClass;
@@ -71,6 +83,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     private ContentRetriever contentRetriever;
     private RetrievalAugmentor retrievalAugmentor;
     private Function<Object, String> systemMessageProvider;
+    private BiFunction<String, InvocationContext, String> systemMessageTransformer;
     private Function<Object, String> userMessageProvider;
 
     private InputGuardrailsConfig inputGuardrailsConfig;
@@ -83,7 +96,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     private Object[] objectsWithTools;
     private Map<ToolSpecification, ToolExecutor> toolsMap;
     private Set<String> immediateReturnToolNames;
-    private ToolProvider toolProvider;
+    private final List<ToolProvider> toolProviders = new ArrayList<>();
     private Integer maxSequentialToolsInvocations;
     private Function<ToolExecutionRequest, ToolExecutionResultMessage> hallucinatedToolNameStrategy;
     private boolean executeToolsConcurrently;
@@ -160,9 +173,8 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         if (retrievalAugmentor != null) {
             aiServices.retrievalAugmentor(retrievalAugmentor);
         }
-        if (agentListener != null) {
-            aiServices.beforeToolExecution(agentListener::beforeToolExecution);
-            aiServices.afterToolExecution(agentListener::afterToolExecution);
+        if (systemMessageTransformer != null) {
+            aiServices.systemMessageTransformer(systemMessageTransformer);
         }
 
         setupGuardrails(aiServices);
@@ -184,9 +196,15 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
             aiServices.chatRequestTransformer(messageRecorder);
         }
 
+        AgentMonitor monitor = listenerOfType(agentListener, AgentMonitor.class);
+        if (MonitoredAgent.class.isAssignableFrom(agentServiceClass) && monitor == null) {
+            monitor = new AgentMonitor();
+            listener(monitor);
+        }
+
         build(agenticScope, context, aiServices);
 
-        return (T) Proxy.newProxyInstance(
+        AgentInstance agent = (AgentInstance) Proxy.newProxyInstance(
                 agentServiceClass.getClassLoader(),
                 new Class<?>[] {
                     agentServiceClass,
@@ -194,6 +212,21 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
                     ChatMemoryAccess.class, ChatMessagesAccess.class
                 },
                 new AgentInvocationHandler(context, aiServices.build(), this, messageRecorder, agenticScopeDependent));
+
+        if (monitor != null) {
+            monitor.setRootAgent(agent);
+        }
+
+        if (agentListener != null) {
+            aiServices.beforeToolExecution(beforeToolExecution ->
+                    agentListener.beforeAgentToolExecution(new BeforeAgentToolExecution(
+                            (AgenticScope) LangChain4jManaged.current().get(AgenticScope.class), agent, beforeToolExecution)));
+            aiServices.afterToolExecution(afterToolExecution ->
+                    agentListener.afterAgentToolExecution(new AfterAgentToolExecution(
+                            (AgenticScope) LangChain4jManaged.current().get(AgenticScope.class), agent, afterToolExecution)));
+        }
+
+        return (T) agent;
     }
 
     protected void build(DefaultAgenticScope agenticScope, AiServiceContext context, AiServices<T> aiServices) { }
@@ -230,8 +263,8 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
                 aiServices.tools(toolsMap);
             }
         }
-        if (toolProvider != null) {
-            aiServices.toolProvider(toolProvider);
+        if (!toolProviders.isEmpty()) {
+            aiServices.toolProviders(toolProviders);
         }
         if (maxSequentialToolsInvocations != null) {
             aiServices.maxSequentialToolsInvocations(maxSequentialToolsInvocations);
@@ -274,6 +307,10 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         return (B) this;
     }
 
+    boolean hasChatMemory() {
+        return chatMemory != null || chatMemoryProvider != null;
+    }
+
     boolean hasNonDefaultChatMemory() {
         return chatMemoryProvider != null;
     }
@@ -295,8 +332,17 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     }
 
     public B toolProvider(ToolProvider toolProvider) {
-        this.toolProvider = toolProvider;
+        this.toolProviders.add(toolProvider);
         return (B) this;
+    }
+
+    public B toolProviders(Collection<ToolProvider> toolProviders) {
+        this.toolProviders.addAll(toolProviders);
+        return (B) this;
+    }
+
+    public B toolProviders(ToolProvider... toolProviders) {
+        return toolProviders(asList(toolProviders));
     }
 
     public B maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
@@ -401,6 +447,15 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
     public B userMessageProvider(Function<Object, String> userMessageProvider) {
         this.userMessageProvider = userMessageProvider;
+        return (B) this;
+    }
+
+    public B systemMessageTransformer(UnaryOperator<String> systemMessageTransformer) {
+        return systemMessageTransformer((msg, ctx) -> systemMessageTransformer.apply(msg));
+    }
+
+    public B systemMessageTransformer(BiFunction<String, InvocationContext, String> systemMessageTransformer) {
+        this.systemMessageTransformer = systemMessageTransformer;
         return (B) this;
     }
 

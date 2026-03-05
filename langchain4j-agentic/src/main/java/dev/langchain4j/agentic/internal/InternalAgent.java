@@ -7,11 +7,17 @@ public interface InternalAgent extends AgentInstance {
 
     void setParent(InternalAgent parent);
 
+    void registerInheritedParentListener(AgentListener parentListener);
+
     void appendId(String idSuffix);
 
     AgentListener listener();
 
     default boolean allowStreamingOutput() {
         throw new UnsupportedOperationException();
+    }
+
+    default boolean allowChatMemory() {
+        return true;
     }
 }

@@ -20,6 +20,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.LoggingChatModelListener;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -48,6 +49,7 @@ import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderResult;
+
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -61,6 +63,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -81,8 +84,7 @@ class AiServicesWithToolsIT {
                         .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                         .modelName(GPT_4_O_MINI)
                         .temperature(0.0)
-                        .logRequests(true)
-                        .logResponses(true)
+                        .listeners(new LoggingChatModelListener())
                         .build(),
                 OpenAiChatModel.builder()
                         .baseUrl(System.getenv("OPENAI_BASE_URL"))
@@ -91,8 +93,7 @@ class AiServicesWithToolsIT {
                         .modelName(GPT_4_O_MINI)
                         .strictTools(true)
                         .temperature(0.0)
-                        .logRequests(true)
-                        .logResponses(true)
+                        .listeners(new LoggingChatModelListener())
                         .build());
     }
 
@@ -719,6 +720,53 @@ class AiServicesWithToolsIT {
         verify(toolExecutor).executeWithContext(any(), any(InvocationContext.class));
         verify(toolExecutor).execute(any(), any(Object.class));
         verifyNoMoreInteractions(toolExecutor);
+    }
+
+    @Test
+    void should_use_multiple_tool_providers() {
+
+        // given
+        ToolProvider addToolProvider = (toolProviderRequest) -> {
+                ToolSpecification toolSpecification = ToolSpecification.builder()
+                        .name("add")
+                        .parameters(JsonObjectSchema.builder()
+                                .addNumberProperty("a")
+                                .addNumberProperty("b")
+                                .required("a", "b")
+                                .build())
+                        .build();
+                return ToolProviderResult.builder()
+                        .add(toolSpecification, (request, memoryId) -> "does not matter")
+                        .build();
+        };
+
+        ToolProvider multiplyToolProvider = (toolProviderRequest) -> {
+            ToolSpecification toolSpecification = ToolSpecification.builder()
+                    .name("multiply")
+                    .parameters(JsonObjectSchema.builder()
+                            .addNumberProperty("a")
+                            .addNumberProperty("b")
+                            .required("a", "b")
+                            .build())
+                    .build();
+            return ToolProviderResult.builder()
+                    .add(toolSpecification, (request, memoryId) -> "does not matter")
+                    .build();
+        };
+
+        ChatModelMock chatModelMock = ChatModelMock.thatAlwaysResponds("does not matter");
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModelMock)
+                .toolProviders(addToolProvider, multiplyToolProvider)
+                .build();
+
+        // when
+        assistant.chat("does not matter");
+
+        // then
+        assertThat(chatModelMock.request().toolSpecifications().stream().map(ToolSpecification::name))
+                .containsExactly("add", "multiply");
     }
 
     static class Calculator {

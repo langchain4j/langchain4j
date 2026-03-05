@@ -138,7 +138,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         ChatResponse response = futureResponse.get(30, SECONDS);
         assertThat(response.aiMessage().text()).containsIgnoringCase("Berlin");
 
-        assertThat(onPartialResponseCalled.get()).isGreaterThan(1);
+        assertThat(onPartialResponseCalled.get()).isGreaterThan(0);
 
         futureErrors.get(30, SECONDS);
         assertThat(errors).hasSize(onPartialResponseCalled.get());

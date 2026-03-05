@@ -276,4 +276,39 @@ public class MultimodalAgentsIT {
 
 //        writeToDisk(image, "/tmp/output");
     }
+
+    @Test
+    void untyped_agents_pdf_ingestion_test() {
+        UntypedAgent pdfSummarizer = AgenticServices.agentBuilder()
+                .chatModel(baseModel())
+                .systemMessage("You are an expert in summarizing PDF documents.")
+                .userMessage("Provide a summary of the given PDF document.")
+                .description("Provide a summary of the given PDF document.")
+                .inputKey(PdfFileContent.class, "paper")
+                .returnType(String.class)
+                .outputKey("textSummary")
+                .build();
+
+        UntypedAgent infographicGenerator = AgenticServices.agentBuilder()
+                .chatModel(IMAGE_GENERATION_MODEL)
+                .userMessage("A visual infographic summarizing the information of the following text: {{textSummary}}")
+                .description("Generate an infographic of the given text summary")
+                .inputKey(String.class, "textSummary")
+                .returnType(Image.class)
+                .outputKey("infographic")
+                .build();
+
+        UntypedAgent imageExpert = AgenticServices.sequenceBuilder()
+                .subAgents(pdfSummarizer, infographicGenerator)
+                .outputKey("infographic")
+                .build();
+
+        Image image = (Image) imageExpert.invoke(Map.of("paper", PdfFileContent.from(BLACK_HOLES_PAPER_PDF_PATH)));
+
+        assertThat(image).isNotNull();
+        assertThat(image.base64Data()).isNotEmpty();
+        assertThat(image.mimeType()).startsWith("image/");
+
+//        writeToDisk(image, "/tmp/output");
+    }
 }

@@ -21,7 +21,9 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -120,6 +122,8 @@ class AiServicesUserMessageConfigTest {
 
         String chat22_1(@UserMessage Content content1, @UserMessage Content content2);
         String chat22_2(@UserMessage AudioContent audio, @UserMessage ImageContent image);
+
+        String chat23_1(Map<String, ?> args);
 
         // illegal configuration
 
@@ -655,6 +659,35 @@ class AiServicesUserMessageConfigTest {
         verify(chatModel)
                 .chat(ChatRequest.builder()
                         .messages(userMessage(audioContent, imageContent))
+                        .build());
+        verify(chatModel).supportedCapabilities();
+    }
+
+    @Test
+    void user_message_configuration_23_1() {
+        // given
+        String userPrompt = "Test prompt";
+
+        AiService aiService = AiServices.builder(AiService.class)
+                .userMessage(userPrompt)
+                .chatModel(chatModel)
+                .build();
+
+        String base64Data = "AAECAw==";
+        AudioContent audioContent = AudioContent.from(base64Data);
+        ImageContent imageContent = ImageContent.from("https://example.com/image.png");
+
+        Map<String, Object> args = new LinkedHashMap<>();
+        args.put("audio", audioContent);
+        args.put("image", imageContent);
+
+        // when
+        aiService.chat23_1(args);
+
+        // then
+        verify(chatModel)
+                .chat(ChatRequest.builder()
+                        .messages(userMessage(TextContent.from(userPrompt), audioContent, imageContent))
                         .build());
         verify(chatModel).supportedCapabilities();
     }

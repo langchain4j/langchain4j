@@ -135,6 +135,11 @@ public abstract class AbstractAgentInvoker implements AgentInvoker, InternalAgen
     }
 
     @Override
+    public void registerInheritedParentListener(AgentListener parentListener) {
+        agent.registerInheritedParentListener(parentListener);
+    }
+
+    @Override
     public void appendId(String idSuffix) {
         agent.appendId(idSuffix);
     }

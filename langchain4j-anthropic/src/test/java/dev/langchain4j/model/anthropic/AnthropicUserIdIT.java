@@ -1,6 +1,6 @@
 package dev.langchain4j.model.anthropic;
 
-import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_HAIKU_4_5_20251001;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -112,7 +112,7 @@ class AnthropicUserIdIT {
                 .type("message")
                 .role("assistant")
                 .content(Collections.singletonList(createTextContent("Hello response")))
-                .model(CLAUDE_3_5_HAIKU_20241022.toString())
+                .model(CLAUDE_HAIKU_4_5_20251001.toString())
                 .stopReason("end_turn")
                 .stopSequence(null)
                 .usage(createUsage())
@@ -130,7 +130,7 @@ class AnthropicUserIdIT {
     private static ChatModel createChatModelWithMock(AnthropicClient mockClient, String userId) {
         ChatModel model = AnthropicChatModel.builder()
                 .apiKey("dummy-api-key")
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .userId(userId)
                 .maxTokens(10)
                 .build();
@@ -142,7 +142,7 @@ class AnthropicUserIdIT {
     private static StreamingChatModel createStreamingChatModelWithMock(AnthropicClient mockClient, String userId) {
         StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .apiKey("dummy-api-key")
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .userId(userId)
                 .maxTokens(10)
                 .build();
