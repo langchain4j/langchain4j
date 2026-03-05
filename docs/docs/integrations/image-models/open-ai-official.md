@@ -37,7 +37,7 @@ It will also work with models supporting the OpenAI API.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-official</artifactId>
-    <version>1.11.0-beta19</version>
+    <version>1.12.1-beta21</version>
 </dependency>
 ```
 
