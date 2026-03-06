@@ -15,6 +15,7 @@ import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandid
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUrlContextMetadata;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUrlMetadata;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUrlRetrievalStatus;
+import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -137,7 +138,7 @@ class GoogleAiGeminiUrlContextTest {
                     urlContextMetadata,
                     null);
 
-            var usageMetadata = new GeminiGenerateContentResponse.GeminiUsageMetadata(0, 0, 0);
+            var usageMetadata = new UsageMetadata(0, 0, 0, 0, Collections.emptyList());
             var response = new GeminiGenerateContentResponse("id", "model", List.of(candidate), usageMetadata, null);
 
             when(mockGeminiService.generateContent(any(), any())).thenReturn(response);
@@ -169,7 +170,7 @@ class GoogleAiGeminiUrlContextTest {
                 GeminiFinishReason.STOP,
                 null,
                 null);
-        var usageMetadata = new GeminiGenerateContentResponse.GeminiUsageMetadata(0, 0, 0);
+        var usageMetadata = new UsageMetadata(0, 0, 0, 0, Collections.emptyList());
         return new GeminiGenerateContentResponse("id", "model", List.of(candidate), usageMetadata, null);
     }
 }
