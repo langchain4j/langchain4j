@@ -38,6 +38,11 @@ public class ChatRequestOptions {
         return listenerAttributes;
     }
 
+    @Override
+    public String toString() {
+        return "ChatRequestOptions{" + "listenerAttributes=" + listenerAttributes + '}';
+    }
+
     /**
      * Creates a new {@link Builder}.
      *
@@ -63,7 +68,11 @@ public class ChatRequestOptions {
         public Builder listenerAttributes(Map<Object, Object> listenerAttributes) {
             this.listenerAttributes.clear();
             if (listenerAttributes != null) {
-                this.listenerAttributes.putAll(listenerAttributes);
+                listenerAttributes.forEach((key, value) -> {
+                    ensureNotNull(key, "key");
+                    ensureNotNull(value, "value");
+                    this.listenerAttributes.put(key, value);
+                });
             }
             return this;
         }
