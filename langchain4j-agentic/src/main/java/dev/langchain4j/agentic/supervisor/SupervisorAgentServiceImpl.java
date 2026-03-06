@@ -35,8 +35,12 @@ public class SupervisorAgentServiceImpl<T> extends AbstractServiceBuilder<T, Sup
     private String supervisorContext;
 
     public SupervisorAgentServiceImpl(Class<T> agentServiceClass, Method agenticMethod) {
+        this(agentServiceClass, agenticMethod, null);
+    }
+
+    public SupervisorAgentServiceImpl(Class<T> agentServiceClass, Method agenticMethod, ChatModel chatModel) {
         super(agentServiceClass, agenticMethod);
-        configureSupervisor(agentServiceClass);
+        configureSupervisor(agentServiceClass, chatModel);
     }
 
     public T build() {
@@ -113,7 +117,7 @@ public class SupervisorAgentServiceImpl<T> extends AbstractServiceBuilder<T, Sup
         return "Supervisor";
     }
 
-    private void configureSupervisor(Class<T> agentServiceClass) {
+    private void configureSupervisor(Class<T> agentServiceClass, ChatModel chatModel) {
         selectMethod(
                 agentServiceClass,
                 method -> method.isAnnotationPresent(SupervisorRequest.class)
@@ -127,7 +131,7 @@ public class SupervisorAgentServiceImpl<T> extends AbstractServiceBuilder<T, Sup
                         && method.getReturnType() == ChatModel.class
                         && method.getParameterCount() == 0)
                 .map(method -> (ChatModel) invokeStatic(method))
-                .ifPresent(this::chatModel);
+                .ifPresentOrElse(this::chatModel, () -> this.chatModel(chatModel));
 
         selectMethod(
                 agentServiceClass,
