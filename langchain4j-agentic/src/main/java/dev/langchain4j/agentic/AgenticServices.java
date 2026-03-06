@@ -543,7 +543,7 @@ public class AgenticServices {
             Consumer<DeclarativeAgentCreationContext<?>> agentConfigurator) {
         dev.langchain4j.agentic.declarative.SupervisorAgent supervisorAgent =
                 agentMethod.getAnnotation(dev.langchain4j.agentic.declarative.SupervisorAgent.class);
-        var builder = new SupervisorAgentServiceImpl<>(agentServiceClass, agentMethod)
+        var builder = new SupervisorAgentServiceImpl<>(agentServiceClass, agentMethod, chatModel)
                 .maxAgentsInvocations(supervisorAgent.maxAgentsInvocations())
                 .contextGenerationStrategy(supervisorAgent.contextStrategy())
                 .responseStrategy(supervisorAgent.responseStrategy())
