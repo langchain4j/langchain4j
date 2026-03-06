@@ -14,6 +14,7 @@
     <description>In-process all-minilm-l6-v2 embedding model</description>
 
     <properties>
+        <embeddingsSkipDownload>false</embeddingsSkipDownload>
         <embeddingsSkipCache>false</embeddingsSkipCache>
     </properties>
 
@@ -41,6 +42,7 @@
                         </goals>
                         <phase>generate-resources</phase>
                         <configuration>
+                            <skip>${embeddingsSkipDownload}</skip>
                             <url>https://huggingface.co/Xenova/all-MiniLM-L6-v2/resolve/main/onnx/model.onnx</url>
                             <outputDirectory>${project.build.directory}/classes</outputDirectory>
                             <outputFileName>all-minilm-l6-v2.onnx</outputFileName>

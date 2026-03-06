@@ -14,6 +14,7 @@
     <description>In-process bge-small-en (quantized) embedding model</description>
 
     <properties>
+        <embeddingsSkipDownload>false</embeddingsSkipDownload>
         <embeddingsSkipCache>false</embeddingsSkipCache>
     </properties>
 
@@ -41,6 +42,7 @@
                         </goals>
                         <phase>generate-resources</phase>
                         <configuration>
+                            <skip>${embeddingsSkipDownload}</skip>
                             <url>https://huggingface.co/Xenova/bge-small-en/resolve/main/onnx/model_quantized.onnx</url>
                             <outputDirectory>${project.build.directory}/classes</outputDirectory>
                             <outputFileName>bge-small-en-q.onnx</outputFileName>
