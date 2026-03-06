@@ -12,6 +12,13 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.FilterInputStream;
+import java.io.FilterOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.List;
@@ -76,6 +83,81 @@ class InMemoryEmbeddingStoreTest extends EmbeddingStoreWithFilteringIT {
                     .isEqualTo(originalEmbeddingStore.entries)
                     .isInstanceOf(CopyOnWriteArrayList.class);
         }
+    }
+
+    @Test
+    void should_serialize_to_and_deserialize_from_stream() {
+
+        InMemoryEmbeddingStore<TextSegment> originalEmbeddingStore = createEmbeddingStore();
+
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        originalEmbeddingStore.serializeToStream(outputStream);
+
+        ByteArrayInputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray());
+        InMemoryEmbeddingStore<TextSegment> deserializedEmbeddingStore = InMemoryEmbeddingStore.fromStream(inputStream);
+
+        assertThat(deserializedEmbeddingStore.entries)
+                .isEqualTo(originalEmbeddingStore.entries)
+                .isInstanceOf(CopyOnWriteArrayList.class);
+    }
+
+    @Test
+    void should_not_close_provided_streams() {
+
+        InMemoryEmbeddingStore<TextSegment> store = createEmbeddingStore();
+
+        // verify OutputStream is not closed
+        boolean[] outputClosed = {false};
+        OutputStream trackingOutputStream = new FilterOutputStream(new ByteArrayOutputStream()) {
+            @Override
+            public void close() throws IOException {
+                outputClosed[0] = true;
+                super.close();
+            }
+        };
+        store.serializeToStream(trackingOutputStream);
+        assertThat(outputClosed[0]).isFalse();
+
+        // verify InputStream is not closed
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        store.serializeToStream(baos);
+
+        boolean[] inputClosed = {false};
+        InputStream trackingInputStream = new FilterInputStream(new ByteArrayInputStream(baos.toByteArray())) {
+            @Override
+            public void close() throws IOException {
+                inputClosed[0] = true;
+                super.close();
+            }
+        };
+        InMemoryEmbeddingStore.fromStream(trackingInputStream);
+        assertThat(inputClosed[0]).isFalse();
+    }
+
+    @Test
+    void should_wrap_io_exception_from_streams() {
+
+        InMemoryEmbeddingStore<TextSegment> store = createEmbeddingStore();
+
+        OutputStream failingOutputStream = new OutputStream() {
+            @Override
+            public void write(int b) throws IOException {
+                throw new IOException("write failed");
+            }
+        };
+        assertThatExceptionOfType(RuntimeException.class)
+                .isThrownBy(() -> store.serializeToStream(failingOutputStream))
+                .withCauseInstanceOf(IOException.class);
+
+        InputStream failingInputStream = new InputStream() {
+            @Override
+            public int read() throws IOException {
+                throw new IOException("read failed");
+            }
+        };
+        assertThatExceptionOfType(RuntimeException.class)
+                .isThrownBy(() -> InMemoryEmbeddingStore.fromStream(failingInputStream))
+                .withCauseInstanceOf(IOException.class);
     }
 
     @Test
