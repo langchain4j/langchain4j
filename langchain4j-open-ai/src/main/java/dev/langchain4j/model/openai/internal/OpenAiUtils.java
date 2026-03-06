@@ -45,6 +45,7 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.openai.LogProb;
 import dev.langchain4j.model.openai.OpenAiChatRequestParameters;
 import dev.langchain4j.model.openai.OpenAiTokenUsage;
 import dev.langchain4j.model.openai.OpenAiTokenUsage.InputTokensDetails;
@@ -59,6 +60,7 @@ import dev.langchain4j.model.openai.internal.chat.FunctionMessage;
 import dev.langchain4j.model.openai.internal.chat.ImageDetail;
 import dev.langchain4j.model.openai.internal.chat.ImageUrl;
 import dev.langchain4j.model.openai.internal.chat.InputAudio;
+import dev.langchain4j.model.openai.internal.chat.LogProbs;
 import dev.langchain4j.model.openai.internal.chat.Message;
 import dev.langchain4j.model.openai.internal.chat.PdfFile;
 import dev.langchain4j.model.openai.internal.chat.Tool;
@@ -414,6 +416,27 @@ public class OpenAiUtils {
                 .outputTokenCount(openAiUsage.completionTokens())
                 .outputTokensDetails(outputTokensDetails)
                 .totalTokenCount(openAiUsage.totalTokens())
+                .build();
+    }
+
+    public static List<LogProb> logProbsFrom(LogProbs logProbs) {
+        if (logProbs == null || logProbs.content() == null) {
+            return null;
+        }
+        return logProbs.content().stream().map(OpenAiUtils::toLogProb).collect(toList());
+    }
+
+    private static LogProb toLogProb(dev.langchain4j.model.openai.internal.chat.LogProb internal) {
+        return LogProb.builder()
+                .token(internal.token())
+                .logprob(internal.logprob())
+                .bytes(internal.bytes())
+                .topLogprobs(
+                        internal.topLogprobs() == null
+                                ? null
+                                : internal.topLogprobs().stream()
+                                        .map(OpenAiUtils::toLogProb)
+                                        .collect(toList()))
                 .build();
     }
 

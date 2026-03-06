@@ -10,6 +10,7 @@ import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_USER_AGE
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.aiMessageFrom;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.finishReasonFrom;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.fromOpenAiResponseFormat;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.logProbsFrom;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.toOpenAiChatRequest;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.tokenUsageFrom;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.validate;
@@ -166,7 +167,7 @@ public class OpenAiChatModel implements ChatModel {
                 .serviceTier(openAiResponse.serviceTier())
                 .systemFingerprint(openAiResponse.systemFingerprint())
                 .rawHttpResponse(parsedAndRawResponse.rawHttpResponse())
-                .logProbs(openAiResponse.choices().get(0).logprobs())
+                .logProbs(logProbsFrom(openAiResponse.choices().get(0).logprobs()))
                 .build();
 
         return ChatResponse.builder()
