@@ -14,6 +14,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatRequestOptions;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
@@ -394,6 +395,7 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
     }
 
     private static void ignoreOtherInteractions(ChatModel model) {
+        verify(model, atLeast(0)).chat(any(ChatRequest.class), any(ChatRequestOptions.class));
         verify(model, atLeast(0)).doChat(any());
         verify(model, atLeast(0)).defaultRequestParameters();
         verify(model, atLeast(0)).listeners();

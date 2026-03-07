@@ -30,6 +30,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatRequestOptions;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
@@ -94,6 +95,7 @@ public class AiServicesIT {
 
     // TODO rename verifyNoMoreImportantInteractions
     public static void verifyNoMoreInteractionsFor(ChatModel model) {
+        ignoreInteractions(model).chat(any(ChatRequest.class), any(ChatRequestOptions.class));
         ignoreInteractions(model).doChat(any());
         ignoreInteractions(model).defaultRequestParameters();
         ignoreInteractions(model).supportedCapabilities();
