@@ -2,7 +2,7 @@
 sidebar_position: 1
 ---
 
-# ModelRouter
+# Model Router
 
 This is the documentation for the `ModelRouter`, which acts as a router for messages to multiple ChatModel instances and uses pluggable RoutingStrategies.
 The module comes with two default implementations: FailoverStrategy and LowestTokenUsageRoutingStrategy.
@@ -16,7 +16,7 @@ The `langchain4j-community-model-router`library is available on Maven Central.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-community-model-router</artifactId>
-    <version>1.12.0-beta20</version>
+    <version>1.12.1-beta21</version>
 </dependency>
 ```
 ## FailoverStrategy

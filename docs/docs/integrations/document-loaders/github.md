@@ -11,7 +11,7 @@ sidebar_position: 4
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-document-loader-github</artifactId>
-    <version>1.11.0-beta19</version>
+    <version>1.12.1-beta21</version>
 </dependency>
 ```
 
