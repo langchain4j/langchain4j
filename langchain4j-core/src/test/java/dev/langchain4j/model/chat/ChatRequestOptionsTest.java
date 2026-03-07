@@ -130,6 +130,39 @@ class ChatRequestOptionsTest {
     }
 
     @Test
+    void should_be_equal_when_same_attributes() {
+
+        // given
+        ChatRequestOptions options1 =
+                ChatRequestOptions.builder().listenerAttribute("k", "v").build();
+        ChatRequestOptions options2 =
+                ChatRequestOptions.builder().listenerAttribute("k", "v").build();
+
+        // then
+        assertThat(options1).isEqualTo(options2);
+        assertThat(options1.hashCode()).isEqualTo(options2.hashCode());
+    }
+
+    @Test
+    void should_not_be_equal_when_different_attributes() {
+
+        // given
+        ChatRequestOptions options1 =
+                ChatRequestOptions.builder().listenerAttribute("k", "v1").build();
+        ChatRequestOptions options2 =
+                ChatRequestOptions.builder().listenerAttribute("k", "v2").build();
+
+        // then
+        assertThat(options1).isNotEqualTo(options2);
+    }
+
+    @Test
+    void empty_instances_should_be_equal() {
+        assertThat(ChatRequestOptions.EMPTY)
+                .isEqualTo(ChatRequestOptions.builder().build());
+    }
+
+    @Test
     void toString_should_contain_attributes() {
 
         // given

@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Options for a {@link ChatModel#chat(dev.langchain4j.model.chat.request.ChatRequest, ChatRequestOptions)}
@@ -36,6 +37,18 @@ public class ChatRequestOptions {
      */
     public Map<Object, Object> listenerAttributes() {
         return listenerAttributes;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof ChatRequestOptions that)) return false;
+        return Objects.equals(listenerAttributes, that.listenerAttributes);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(listenerAttributes);
     }
 
     @Override
