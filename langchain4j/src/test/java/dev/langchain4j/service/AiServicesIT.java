@@ -15,7 +15,6 @@ import static dev.langchain4j.service.AiServicesIT.IssueCategory.OVERALL_EXPERIE
 import static dev.langchain4j.service.AiServicesIT.IssueCategory.SERVICE_ISSUE;
 import static dev.langchain4j.service.AiServicesIT.Sentiment.POSITIVE;
 import static java.time.Month.JULY;
-import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.data.MapEntry.entry;
@@ -987,9 +986,9 @@ public class AiServicesIT {
                             return chatRequest; // No transformation needed
                         }
                         List<ChatMessage> messages = chatRequest.messages().stream()
-                                .map(message -> message == userMessage ?
-                                        dev.langchain4j.data.message.UserMessage.from(transformedMessage) :
-                                        message)
+                                .map(message -> message == userMessage
+                                        ? dev.langchain4j.data.message.UserMessage.from(transformedMessage)
+                                        : message)
                                 .toList();
                         return ChatRequest.builder()
                                 .messages(messages)
