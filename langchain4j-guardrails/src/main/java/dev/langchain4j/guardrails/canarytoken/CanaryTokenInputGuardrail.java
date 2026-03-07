@@ -127,9 +127,8 @@ public class CanaryTokenInputGuardrail implements InputGuardrail {
             List<ChatMessage> messages = memory.messages();
             for (int i = 0; i < messages.size(); i++) {
                 if (messages.get(i) instanceof SystemMessage systemMessage) {
-                    String enhancedPrompt = systemMessage.text()
-                            + "\n\n"
-                            + String.format(config.getSteeringInstruction(), canary);
+                    String enhancedPrompt =
+                            systemMessage.text() + "\n\n" + String.format(config.getSteeringInstruction(), canary);
 
                     log.debug("Enhanced system prompt:\n{}", enhancedPrompt);
 
@@ -160,6 +159,8 @@ public class CanaryTokenInputGuardrail implements InputGuardrail {
         if (managedConfig != null) {
             return managedConfig;
         }
-        return constructorConfig != null ? constructorConfig : CanaryTokenGuardrailConfig.builder().build();
+        return constructorConfig != null
+                ? constructorConfig
+                : CanaryTokenGuardrailConfig.builder().build();
     }
 }

@@ -141,6 +141,8 @@ public class CanaryTokenOutputGuardrail implements OutputGuardrail {
         if (managedConfig != null) {
             return managedConfig;
         }
-        return constructorConfig != null ? constructorConfig : CanaryTokenGuardrailConfig.builder().build();
+        return constructorConfig != null
+                ? constructorConfig
+                : CanaryTokenGuardrailConfig.builder().build();
     }
 }
