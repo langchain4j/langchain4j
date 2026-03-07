@@ -33,6 +33,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -415,5 +416,44 @@ class OpenAiChatModelIT {
 
         SuccessfulHttpResponse rawResponse = ((OpenAiChatResponseMetadata) chatResponse.metadata()).rawHttpResponse();
         assertThat(rawResponse).isEqualTo(httpResponse);
+    }
+
+    @Test
+    void should_return_logprobs() {
+
+        // given
+        ChatModel model = OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(GPT_4_O_MINI)
+                .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("Say 'Hello'"))
+                .parameters(OpenAiChatRequestParameters.builder()
+                        .logprobs(true)
+                        .topLogprobs(2)
+                        .build())
+                .build();
+
+        // when
+        ChatResponse response = model.chat(chatRequest);
+
+        // then
+        assertThat(response.aiMessage().text()).isNotBlank();
+        assertThat(response.metadata()).isInstanceOf(OpenAiChatResponseMetadata.class);
+
+        OpenAiChatResponseMetadata metadata = (OpenAiChatResponseMetadata) response.metadata();
+        List<LogProb> logProbs = metadata.logProbs();
+        assertThat(logProbs).isNotNull().isNotEmpty();
+
+        LogProb firstToken = logProbs.get(0);
+        assertThat(firstToken.token()).isNotBlank();
+        assertThat(firstToken.logprob()).isNotNull();
+        assertThat(firstToken.topLogprobs()).isNotNull().hasSize(2);
     }
 }
