@@ -140,6 +140,13 @@ class DefaultAiServices<T> extends AiServices<T> {
                                         InvocationParameters.class, args, method.getParameters())
                                 .orElseGet(InvocationParameters::new);
 
+                        // Always use a mutable HashMap so that guardrails (and other framework
+                        // components) can store per-invocation state in managedParameters.
+                        // If a caller has pre-populated the ThreadLocal (e.g. the agentic module),
+                        // we still wrap it in a new HashMap to guarantee mutability.
+                        Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managed = new java.util.HashMap<>(
+                                LangChain4jManaged.current() != null ? LangChain4jManaged.current() : Map.of());
+
                         InvocationContext invocationContext = InvocationContext.builder()
                                 .invocationId(UUID.randomUUID())
                                 .interfaceName(context.aiServiceClass.getName())
@@ -147,7 +154,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .methodArguments(args != null ? Arrays.asList(args) : List.of())
                                 .chatMemoryId(findMemoryId(method, args).orElse(ChatMemoryService.DEFAULT))
                                 .invocationParameters(invocationParameters)
-                                .managedParameters(LangChain4jManaged.current())
+                                .managedParameters(managed)
                                 .timestampNow()
                                 .build();
                         try {
@@ -217,7 +224,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                         UserMessage userMessage = invokeInputGuardrails(
                                 context.guardrailService(), method, userMessageForAugmentation, commonGuardrailParam);
 
-                        Type returnType = context.returnType != null ? context.returnType : method.getGenericReturnType();
+                        Type returnType =
+                                context.returnType != null ? context.returnType : method.getGenericReturnType();
                         boolean streaming = returnType == TokenStream.class || canAdaptTokenStreamTo(returnType);
 
                         // TODO should it be called when returnType==String?
@@ -607,8 +615,10 @@ class DefaultAiServices<T> extends AiServices<T> {
             return "";
         }
 
-        return context.userMessageProvider.apply(memoryId)
-                .orElseThrow(() -> illegalConfiguration("Error: The method '%s' does not have a user message defined.", method.getName()));
+        return context.userMessageProvider
+                .apply(memoryId)
+                .orElseThrow(() -> illegalConfiguration(
+                        "Error: The method '%s' does not have a user message defined.", method.getName()));
     }
 
     private static boolean hasContentArgument(Method method, Object[] args) {
@@ -728,12 +738,14 @@ class DefaultAiServices<T> extends AiServices<T> {
             prependTextContentsToUserMessage(userMessage, contents);
         }
 
-        return userMessage.contents().size() == contents.size() ? userMessage : userMessage.toBuilder().contents(contents).build();
+        return userMessage.contents().size() == contents.size()
+                ? userMessage
+                : userMessage.toBuilder().contents(contents).build();
     }
 
     private static void prependTextContentsToUserMessage(UserMessage userMessage, List<Content> contents) {
         List<Content> originalContent = userMessage.contents();
-        for (int i = originalContent.size()-1; i >= 0; i--) {
+        for (int i = originalContent.size() - 1; i >= 0; i--) {
             if (originalContent.get(i) instanceof TextContent textContent) {
                 contents.add(0, textContent);
             }
@@ -741,7 +753,7 @@ class DefaultAiServices<T> extends AiServices<T> {
     }
 
     private static boolean isMapOfContents(Object o) {
-        return o instanceof Map<?,?> map && map.values().stream().allMatch(Content.class::isInstance);
+        return o instanceof Map<?, ?> map && map.values().stream().allMatch(Content.class::isInstance);
     }
 
     private static boolean isListOfContents(Object o) {
