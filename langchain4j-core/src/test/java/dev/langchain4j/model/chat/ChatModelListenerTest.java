@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
@@ -228,5 +229,133 @@ class ChatModelListenerTest {
 
         // then
         verify(listener2).onError(any());
+    }
+
+    @Test
+    void should_propagate_options_attributes_to_listener_on_request() {
+
+        // given
+        ChatModelListener listener = spy(new ChatModelListener() {
+            @Override
+            public void onRequest(ChatModelRequestContext requestContext) {
+                assertThat(requestContext.attributes()).containsEntry("tenantId", "acme-co");
+            }
+        });
+        TestChatModel model = new TestChatModel(List.of(listener));
+
+        ChatRequestOptions options = ChatRequestOptions.builder()
+                .listenerAttribute("tenantId", "acme-co")
+                .build();
+
+        // when
+        ChatRequest chatRequest =
+                ChatRequest.builder().messages(UserMessage.from("hi")).build();
+        model.chat(chatRequest, options);
+
+        // then
+        verify(listener).onRequest(any());
+        verify(listener).onResponse(any());
+    }
+
+    @Test
+    void should_propagate_options_attributes_to_listener_on_response() {
+
+        // given
+        ChatModelListener listener = spy(new ChatModelListener() {
+            @Override
+            public void onResponse(ChatModelResponseContext responseContext) {
+                assertThat(responseContext.attributes()).containsEntry("correlationId", "abc-123");
+            }
+        });
+        TestChatModel model = new TestChatModel(List.of(listener));
+
+        ChatRequestOptions options = ChatRequestOptions.builder()
+                .listenerAttribute("correlationId", "abc-123")
+                .build();
+
+        // when
+        ChatRequest chatRequest =
+                ChatRequest.builder().messages(UserMessage.from("hi")).build();
+        model.chat(chatRequest, options);
+
+        // then
+        verify(listener).onResponse(any());
+    }
+
+    @Test
+    void should_propagate_options_attributes_to_listener_on_error() {
+
+        // given
+        ChatModelListener listener = spy(new ChatModelListener() {
+            @Override
+            public void onError(ChatModelErrorContext errorContext) {
+                assertThat(errorContext.attributes()).containsEntry("userId", "user-42");
+            }
+        });
+        TestChatModel model = new TestChatModel(List.of(listener)) {
+            @Override
+            public ChatResponse doChat(ChatRequest chatRequest) {
+                throw new RuntimeException("LLM failed");
+            }
+        };
+
+        ChatRequestOptions options = ChatRequestOptions.builder()
+                .listenerAttribute("userId", "user-42")
+                .build();
+
+        // when
+        ChatRequest chatRequest =
+                ChatRequest.builder().messages(UserMessage.from("hi")).build();
+        assertThatThrownBy(() -> model.chat(chatRequest, options));
+
+        // then
+        verify(listener).onError(any());
+    }
+
+    @Test
+    void should_handle_null_options() {
+
+        // given
+        ChatModelListener listener = spy(new SuccessfulListener());
+        TestChatModel model = new TestChatModel(List.of(listener));
+
+        ChatRequest chatRequest =
+                ChatRequest.builder().messages(UserMessage.from("hi")).build();
+
+        // when/then
+        assertThatNoException().isThrownBy(() -> model.chat(chatRequest, (ChatRequestOptions) null));
+        verify(listener).onRequest(any());
+        verify(listener).onResponse(any());
+    }
+
+    @Test
+    void should_allow_listeners_to_mutate_attributes_from_options() {
+
+        // given
+        ChatModelListener listener = spy(new ChatModelListener() {
+            @Override
+            public void onRequest(ChatModelRequestContext requestContext) {
+                assertThat(requestContext.attributes()).containsEntry("key", "value");
+                requestContext.attributes().put("extra", "data");
+            }
+
+            @Override
+            public void onResponse(ChatModelResponseContext responseContext) {
+                assertThat(responseContext.attributes()).containsEntry("extra", "data");
+            }
+        });
+        TestChatModel model = new TestChatModel(List.of(listener));
+
+        ChatRequestOptions options =
+                ChatRequestOptions.builder().listenerAttribute("key", "value").build();
+
+        // when
+        ChatRequest chatRequest =
+                ChatRequest.builder().messages(UserMessage.from("hi")).build();
+        model.chat(chatRequest, options);
+
+        // then
+        verify(listener).onRequest(any());
+        verify(listener).onResponse(any());
     }
 }
