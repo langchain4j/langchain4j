@@ -62,7 +62,6 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
-
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -677,7 +676,8 @@ class StreamingAiServicesWithToolsIT {
         CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
         // when
-        assistant.chat(userMessage)
+        assistant
+                .chat(userMessage)
                 .onPartialResponse(handler::onPartialResponse)
                 .onPartialToolCall(handler::onPartialToolCall)
                 .beforeToolExecution(handler::beforeToolExecution)
@@ -709,9 +709,12 @@ class StreamingAiServicesWithToolsIT {
         // then - verify callback order
         InOrder inOrder = inOrder(handler);
 
-        inOrder.verify(handler, atLeastOnce()).onPartialToolCall(argThat(ptc -> ptc.name().equals("currentTemperature")));
-        inOrder.verify(handler).beforeToolExecution(argThat(bte -> bte.request().name().equals("currentTemperature")));
-        inOrder.verify(handler).onToolExecuted(argThat(te -> te.result().equals(String.valueOf(WeatherService.TEMPERATURE))));
+        inOrder.verify(handler, atLeastOnce())
+                .onPartialToolCall(argThat(ptc -> ptc.name().equals("currentTemperature")));
+        inOrder.verify(handler)
+                .beforeToolExecution(argThat(bte -> bte.request().name().equals("currentTemperature")));
+        inOrder.verify(handler)
+                .onToolExecuted(argThat(te -> te.result().equals(String.valueOf(WeatherService.TEMPERATURE))));
 
         inOrder.verify(handler, atLeastOnce()).onPartialResponse(any());
         inOrder.verify(handler).onCompleteResponse(any());
@@ -1435,7 +1438,8 @@ class StreamingAiServicesWithToolsIT {
 
     // TODO rename verifyNoMoreImportantInteractions
     private static void verifyNoMoreInteractionsFor(StreamingChatModel model) {
-        ignoreInteractions(model).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class), any(ChatRequestOptions.class));
+        ignoreInteractions(model)
+                .chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class), any(ChatRequestOptions.class));
         ignoreInteractions(model).doChat(any(), any());
         ignoreInteractions(model).defaultRequestParameters();
         ignoreInteractions(model).supportedCapabilities();
