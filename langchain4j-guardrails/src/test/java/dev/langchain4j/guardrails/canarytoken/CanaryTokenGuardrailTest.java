@@ -21,6 +21,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -145,10 +146,9 @@ class CanaryTokenGuardrailTest {
         return enhancedPrompt.substring(canaryStart, canaryEnd);
     }
 
-    private static String canaryFromState(InvocationContext ctx) {
-        Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managed = ctx.managedParameters();
-        CanaryTokenState state = (CanaryTokenState) managed.get(CanaryTokenState.class);
-        return state != null ? state.canaryValue() : null;
+    private static String canaryFromState(GuardrailRequestParams params) {
+        Optional<CanaryTokenState> state = CanaryTokenState.from(params);
+        return state.map(CanaryTokenState::canaryValue).orElse(null);
     }
 
     private int countOccurrences(String text, String substring) {
@@ -195,8 +195,8 @@ class CanaryTokenGuardrailTest {
         // When
         inputGuardrail.validate(inputRequest(params));
 
-        // Then — canary value stored in managedParameters, not in guardrail instance
-        String canary = canaryFromState(ctx);
+        // Then — canary value retrievable via GuardrailRequestParams, not stored in guardrail instance
+        String canary = canaryFromState(params);
         assertThat(canary).isNotNull().startsWith(CANARY_PREFIX);
     }
 
@@ -329,8 +329,8 @@ class CanaryTokenGuardrailTest {
         inputGuardrail.validate(inputRequest(params1));
         inputGuardrail.validate(inputRequest(params2));
 
-        String canary1 = canaryFromState(ctx1);
-        String canary2 = canaryFromState(ctx2);
+        String canary1 = canaryFromState(params1);
+        String canary2 = canaryFromState(params2);
 
         // Then - canaries should be different (unique per invocation)
         assertThat(canary1).isNotNull().startsWith(CANARY_PREFIX);

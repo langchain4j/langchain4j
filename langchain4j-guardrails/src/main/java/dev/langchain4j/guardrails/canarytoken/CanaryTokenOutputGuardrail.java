@@ -1,12 +1,11 @@
 package dev.langchain4j.guardrails.canarytoken;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
-import dev.langchain4j.invocation.InvocationContext;
-import dev.langchain4j.invocation.LangChain4jManaged;
-import java.util.Map;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,20 +13,23 @@ import org.slf4j.LoggerFactory;
  * Output guardrail that validates AI responses for canary token leakage.
  * <p>
  * This guardrail is <b>stateless</b>: it reads the canary token value that was stored by
- * {@link CanaryTokenInputGuardrail} in {@link InvocationContext#managedParameters()} under
- * {@link CanaryTokenState}, and reads its {@link CanaryTokenGuardrailConfig} from the same map
- * under the key {@code CanaryTokenGuardrailConfig.class}.
+ * {@link CanaryTokenInputGuardrail} via {@link CanaryTokenState#store(GuardrailRequestParams, CanaryTokenState)},
+ * and resolves its {@link CanaryTokenGuardrailConfig} via
+ * {@link CanaryTokenGuardrailConfig#from(GuardrailRequestParams)}.
+ * Neither this class nor {@link CanaryTokenInputGuardrail} reference {@code InvocationContext}
+ * or {@code LangChain4jManaged} directly - all transport is encapsulated behind
+ * {@link GuardrailRequestParams}.
  * </p>
  * <p>
  * Config resolution order (first match wins):
  * <ol>
- *   <li>{@link InvocationContext#managedParameters()} — keyed by {@code CanaryTokenGuardrailConfig.class}</li>
- *   <li>Config supplied at construction time (if any)</li>
+ *   <li>Config present in the invocation-scoped managed parameters (annotation-based wiring)</li>
+ *   <li>Config supplied at construction time (programmatic wiring)</li>
  *   <li>Built-in defaults (BLOCK remediation, enabled)</li>
  * </ol>
  * </p>
  * <p>
- * Both guardrails can be registered independently — no stateful container
+ * Both guardrails can be registered independently - no stateful container
  * is required and annotation-based wiring works naturally:
  * </p>
  * <pre>{@code
@@ -44,13 +46,16 @@ public class CanaryTokenOutputGuardrail implements OutputGuardrail {
 
     private static final Logger log = LoggerFactory.getLogger(CanaryTokenOutputGuardrail.class);
 
-    /** Fallback config when nothing is found in managedParameters. May be null (use built-in defaults). */
+    /**
+     * Fallback config used when no config is found in the invocation-scoped managed parameters.
+     * May be {@code null} to use built-in defaults.
+     */
     private final CanaryTokenGuardrailConfig constructorConfig;
 
     /**
      * No-arg constructor for annotation-based wiring.
-     * Uses built-in defaults unless a {@link CanaryTokenGuardrailConfig} is present in
-     * {@link InvocationContext#managedParameters()} at validation time.
+     * Uses built-in defaults unless a {@link CanaryTokenGuardrailConfig} is present in the
+     * invocation-scoped managed parameters at validation time.
      */
     public CanaryTokenOutputGuardrail() {
         this(null);
@@ -58,8 +63,8 @@ public class CanaryTokenOutputGuardrail implements OutputGuardrail {
 
     /**
      * Constructor for programmatic wiring with a fixed config.
-     * The config supplied here is used as fallback if no config is found in
-     * {@link InvocationContext#managedParameters()}.
+     * The config supplied here is used as fallback if no config is found in the
+     * invocation-scoped managed parameters.
      *
      * @param config the fallback configuration, or {@code null} to use built-in defaults
      */
@@ -70,7 +75,7 @@ public class CanaryTokenOutputGuardrail implements OutputGuardrail {
     /**
      * Validates the model's response for canary token leakage.
      * <p>
-     * The canary value is retrieved from {@link InvocationContext#managedParameters()}
+     * The canary value is retrieved via {@link CanaryTokenState#from(GuardrailRequestParams)}
      * where {@link CanaryTokenInputGuardrail} stored it during the same invocation.
      * </p>
      *
@@ -79,18 +84,20 @@ public class CanaryTokenOutputGuardrail implements OutputGuardrail {
      */
     @Override
     public OutputGuardrailResult validate(OutputGuardrailRequest request) {
-        CanaryTokenGuardrailConfig config = resolveConfig(request);
+        GuardrailRequestParams params = request.requestParams();
+        CanaryTokenGuardrailConfig config = resolveConfig(params);
 
         if (config.isDisabled()) {
             return success();
         }
 
-        String canary = resolveCanaryValue(request);
-        if (canary == null) {
-            // No canary was stored — input guardrail didn't run or was disabled
+        Optional<CanaryTokenState> state = CanaryTokenState.from(params);
+        if (state.isEmpty()) {
+            // No canary was stored - input guardrail didn't run or was disabled
             return success();
         }
 
+        String canary = state.get().canaryValue();
         AiMessage aiMessage = request.responseFromLLM().aiMessage();
         String content = aiMessage.text();
 
@@ -98,7 +105,7 @@ public class CanaryTokenOutputGuardrail implements OutputGuardrail {
             return success();
         }
 
-        // Leakage detected — apply remediation
+        // Leakage detected - apply remediation
         log.debug("Guardrail detected system prompt leakage in response: {}", content);
 
         return switch (config.getRemediation()) {
@@ -123,46 +130,17 @@ public class CanaryTokenOutputGuardrail implements OutputGuardrail {
     /**
      * Resolves the {@link CanaryTokenGuardrailConfig} for this invocation.
      * <ol>
-     *   <li>Checks {@link InvocationContext#managedParameters()} first.</li>
+     *   <li>Checks the invocation-scoped managed parameters first via
+     *       {@link CanaryTokenGuardrailConfig#fromManaged(GuardrailRequestParams)}.</li>
      *   <li>Falls back to {@link #constructorConfig} if set.</li>
      *   <li>Finally falls back to built-in defaults.</li>
      * </ol>
      */
-    private CanaryTokenGuardrailConfig resolveConfig(OutputGuardrailRequest request) {
-        Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managed =
-                managedMap(request.requestParams().invocationContext());
-        if (managed != null) {
-            LangChain4jManaged value = managed.get(CanaryTokenGuardrailConfig.class);
-            if (value instanceof CanaryTokenGuardrailConfig cfg) {
-                return cfg;
-            }
+    private CanaryTokenGuardrailConfig resolveConfig(GuardrailRequestParams params) {
+        CanaryTokenGuardrailConfig managedConfig = CanaryTokenGuardrailConfig.fromManaged(params);
+        if (managedConfig != null) {
+            return managedConfig;
         }
-        return constructorConfig != null
-                ? constructorConfig
-                : CanaryTokenGuardrailConfig.builder().build();
-    }
-
-    /**
-     * Retrieves the canary value stored by {@link CanaryTokenInputGuardrail}
-     * in {@link InvocationContext#managedParameters()}.
-     *
-     * @return the canary value, or {@code null} if not found
-     */
-    private static String resolveCanaryValue(OutputGuardrailRequest request) {
-        Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managed =
-                managedMap(request.requestParams().invocationContext());
-        if (managed == null) {
-            return null;
-        }
-        LangChain4jManaged state = managed.get(CanaryTokenState.class);
-        return (state instanceof CanaryTokenState canaryState) ? canaryState.canaryValue() : null;
-    }
-
-    private static Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managedMap(
-            InvocationContext invocationContext) {
-        if (invocationContext == null) {
-            return null;
-        }
-        return invocationContext.managedParameters();
+        return constructorConfig != null ? constructorConfig : CanaryTokenGuardrailConfig.builder().build();
     }
 }
