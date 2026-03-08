@@ -205,9 +205,8 @@ class AiServicesBuilderTest {
     void should_not_include_inherited_fields_by_default() {
         ChatModel chatModel = ChatModelMock.thatAlwaysResponds("response");
 
-        AiServices<TestService> builder = AiServices.builder(TestService.class)
-                .chatModel(chatModel)
-                .tools(new InheritedFieldTool());
+        AiServices<TestService> builder =
+                AiServices.builder(TestService.class).chatModel(chatModel).tools(new InheritedFieldTool());
 
         TestService service = builder.build();
         assertThat(service).isNotNull();

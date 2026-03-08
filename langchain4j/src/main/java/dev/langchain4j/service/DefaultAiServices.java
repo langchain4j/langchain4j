@@ -219,7 +219,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                         UserMessage userMessage = invokeInputGuardrails(
                                 context.guardrailService(), method, userMessageForAugmentation, commonGuardrailParam);
 
-                        Type returnType = context.returnType != null ? context.returnType : method.getGenericReturnType();
+                        Type returnType =
+                                context.returnType != null ? context.returnType : method.getGenericReturnType();
                         boolean streaming = returnType == TokenStream.class || canAdaptTokenStreamTo(returnType);
 
                         // TODO should it be called when returnType==String?
@@ -609,8 +610,10 @@ class DefaultAiServices<T> extends AiServices<T> {
             return "";
         }
 
-        return context.userMessageProvider.apply(memoryId)
-                .orElseThrow(() -> illegalConfiguration("Error: The method '%s' does not have a user message defined.", method.getName()));
+        return context.userMessageProvider
+                .apply(memoryId)
+                .orElseThrow(() -> illegalConfiguration(
+                        "Error: The method '%s' does not have a user message defined.", method.getName()));
     }
 
     private static boolean hasContentArgument(Method method, Object[] args) {
@@ -730,12 +733,14 @@ class DefaultAiServices<T> extends AiServices<T> {
             prependTextContentsToUserMessage(userMessage, contents);
         }
 
-        return userMessage.contents().size() == contents.size() ? userMessage : userMessage.toBuilder().contents(contents).build();
+        return userMessage.contents().size() == contents.size()
+                ? userMessage
+                : userMessage.toBuilder().contents(contents).build();
     }
 
     private static void prependTextContentsToUserMessage(UserMessage userMessage, List<Content> contents) {
         List<Content> originalContent = userMessage.contents();
-        for (int i = originalContent.size()-1; i >= 0; i--) {
+        for (int i = originalContent.size() - 1; i >= 0; i--) {
             if (originalContent.get(i) instanceof TextContent textContent) {
                 contents.add(0, textContent);
             }
@@ -743,7 +748,7 @@ class DefaultAiServices<T> extends AiServices<T> {
     }
 
     private static boolean isMapOfContents(Object o) {
-        return o instanceof Map<?,?> map && map.values().stream().allMatch(Content.class::isInstance);
+        return o instanceof Map<?, ?> map && map.values().stream().allMatch(Content.class::isInstance);
     }
 
     private static boolean isListOfContents(Object o) {

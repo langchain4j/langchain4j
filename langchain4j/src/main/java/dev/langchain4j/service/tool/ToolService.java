@@ -34,7 +34,6 @@ import dev.langchain4j.service.AiServiceContext;
 import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.service.tool.search.ToolSearchService;
 import dev.langchain4j.service.tool.search.ToolSearchStrategy;
-
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -269,9 +268,8 @@ public class ToolService {
         this.toolSearchService = new ToolSearchService(toolSearchStrategy);
     }
 
-    public ToolServiceContext createContext(InvocationContext invocationContext,
-                                            UserMessage userMessage,
-                                            ChatMemory chatMemory) {
+    public ToolServiceContext createContext(
+            InvocationContext invocationContext, UserMessage userMessage, ChatMemory chatMemory) {
         ToolServiceContext toolServiceContext = createContext(invocationContext, userMessage);
         if (toolSearchService == null) {
             return toolServiceContext;
@@ -313,8 +311,8 @@ public class ToolService {
                     if (toolExecutors.putIfAbsent(toolName, entry.getValue()) == null) {
                         toolSpecifications.add(entry.getKey());
                     } else {
-                        throw new IllegalConfigurationException(
-                                "Duplicated definition for tool: " + entry.getKey().name());
+                        throw new IllegalConfigurationException("Duplicated definition for tool: "
+                                + entry.getKey().name());
                     }
                 }
                 if (toolProviderResult.immediateReturnToolNames() != null) {

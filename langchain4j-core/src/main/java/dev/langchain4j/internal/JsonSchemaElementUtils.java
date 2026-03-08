@@ -54,8 +54,7 @@ public class JsonSchemaElementUtils {
             String fieldDescription,
             boolean areSubFieldsRequiredByDefault,
             Map<Class<?>, VisitedClassMetadata> visited) {
-        return jsonSchemaElementFrom(
-                clazz, type, fieldDescription, areSubFieldsRequiredByDefault, visited, false);
+        return jsonSchemaElementFrom(clazz, type, fieldDescription, areSubFieldsRequiredByDefault, visited, false);
     }
 
     public static JsonSchemaElement jsonSchemaElementFrom(
@@ -95,7 +94,11 @@ public class JsonSchemaElementUtils {
         if (clazz.isArray()) {
             return JsonArraySchema.builder()
                     .items(jsonSchemaElementFrom(
-                            clazz.getComponentType(), null, null, areSubFieldsRequiredByDefault, visited,
+                            clazz.getComponentType(),
+                            null,
+                            null,
+                            areSubFieldsRequiredByDefault,
+                            visited,
                             includeInheritedFields))
                     .description(fieldDescription)
                     .build();
@@ -104,7 +107,11 @@ public class JsonSchemaElementUtils {
         if (Collection.class.isAssignableFrom(clazz)) {
             return JsonArraySchema.builder()
                     .items(jsonSchemaElementFrom(
-                            getActualType(type), null, null, areSubFieldsRequiredByDefault, visited,
+                            getActualType(type),
+                            null,
+                            null,
+                            areSubFieldsRequiredByDefault,
+                            visited,
                             includeInheritedFields))
                     .description(fieldDescription)
                     .build();
@@ -164,7 +171,11 @@ public class JsonSchemaElementUtils {
             }
             String fieldDescription = descriptionFrom(field);
             JsonSchemaElement jsonSchemaElement = jsonSchemaElementFrom(
-                    field.getType(), field.getGenericType(), fieldDescription, areSubFieldsRequiredByDefault, visited,
+                    field.getType(),
+                    field.getGenericType(),
+                    fieldDescription,
+                    areSubFieldsRequiredByDefault,
+                    visited,
                     includeInheritedFields);
             properties.put(fieldName, jsonSchemaElement);
         }
@@ -290,7 +301,8 @@ public class JsonSchemaElementUtils {
         return toMap(jsonSchemaElement, strict, required, null);
     }
 
-    public static Map<String, Object> toMap(JsonSchemaElement jsonSchemaElement, boolean strict, boolean required, String enumType) {
+    public static Map<String, Object> toMap(
+            JsonSchemaElement jsonSchemaElement, boolean strict, boolean required, String enumType) {
         if (jsonSchemaElement instanceof JsonObjectSchema jsonObjectSchema) {
             Map<String, Object> map = new LinkedHashMap<>();
             map.put("type", type("object", strict, required));

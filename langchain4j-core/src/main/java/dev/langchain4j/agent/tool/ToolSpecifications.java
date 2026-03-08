@@ -227,8 +227,7 @@ public class ToolSpecifications {
     }
 
     private static JsonSchemaElement jsonSchemaElementFrom(
-            Parameter parameter, Map<Class<?>, VisitedClassMetadata> visited,
-            boolean includeInheritedFields) {
+            Parameter parameter, Map<Class<?>, VisitedClassMetadata> visited, boolean includeInheritedFields) {
         P annotation = parameter.getAnnotation(P.class);
         String description = annotation == null ? null : annotation.value();
 
@@ -246,7 +245,7 @@ public class ToolSpecifications {
             }
         }
 
-        return JsonSchemaElementUtils.jsonSchemaElementFrom(clazz, type, description, true, visited,
-                includeInheritedFields);
+        return JsonSchemaElementUtils.jsonSchemaElementFrom(
+                clazz, type, description, true, visited, includeInheritedFields);
     }
 }
