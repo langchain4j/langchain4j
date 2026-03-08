@@ -1,7 +1,6 @@
 package dev.langchain4j.service.output;
 
 import dev.langchain4j.Internal;
-
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.function.Supplier;
@@ -9,8 +8,8 @@ import java.util.function.Supplier;
 @Internal
 class PojoSetOutputParser<T> extends PojoCollectionOutputParser<T, Set<T>> {
 
-    PojoSetOutputParser(Class<T> type) {
-        super(type);
+    PojoSetOutputParser(Class<T> type, OutputParser<T> parser) {
+        super(type, parser);
     }
 
     @Override

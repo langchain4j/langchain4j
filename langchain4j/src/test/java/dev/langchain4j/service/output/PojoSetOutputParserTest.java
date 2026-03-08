@@ -21,7 +21,7 @@ class PojoSetOutputParserTest {
     void should_parse_set_of_pojo(String json, Set<Person> expected) {
 
         // when
-        Set<Person> people = new PojoSetOutputParser<>(Person.class).parse(json);
+        Set<Person> people = new PojoSetOutputParser<>(Person.class, new PojoOutputParser<>(Person.class)).parse(json);
 
         // then
         assertThat(people).isEqualTo(expected);
@@ -44,7 +44,8 @@ class PojoSetOutputParserTest {
     @ValueSource(strings = {"{}", "{\"values\": null}"})
     void should_fail_to_parse_empty_input(String input) {
 
-        assertThatThrownBy(() -> new PojoSetOutputParser<>(Person.class).parse(input))
+        assertThatThrownBy(() ->
+                        new PojoSetOutputParser<>(Person.class, new PojoOutputParser<>(Person.class)).parse(input))
                 .isExactlyInstanceOf(OutputParsingException.class)
                 .hasMessageContaining("Failed to parse")
                 .hasMessageContaining("Person");
@@ -63,7 +64,8 @@ class PojoSetOutputParserTest {
     void should_fail_to_parse_invalid_input(String text) {
 
         // when-then
-        assertThatThrownBy(() -> new PojoSetOutputParser<>(Person.class).parse(text))
+        assertThatThrownBy(
+                        () -> new PojoSetOutputParser<>(Person.class, new PojoOutputParser<>(Person.class)).parse(text))
                 .isExactlyInstanceOf(OutputParsingException.class)
                 .hasMessageContaining("Failed to parse")
                 .hasMessageContaining("Person");
@@ -75,7 +77,7 @@ class PojoSetOutputParserTest {
         String json = "{\"values\":[{\"name\":\"Value1\"}, {\"name\":\"Value1\"}, {\"name\":\"Value2\"}]}";
 
         // When parsing
-        Set<Person> people = new PojoSetOutputParser<>(Person.class).parse(json);
+        Set<Person> people = new PojoSetOutputParser<>(Person.class, new PojoOutputParser<>(Person.class)).parse(json);
 
         // Then duplicates are removed (Set behavior)
         assertThat(people).hasSize(2);
@@ -89,7 +91,7 @@ class PojoSetOutputParserTest {
 
         String json = "{\"values\":[{\"name\":\"Item1\",\"config\":{\"key\":\"Key1\",\"value\":\"Value1\"}}]}";
 
-        Set<Item> items = new PojoSetOutputParser<>(Item.class).parse(json);
+        Set<Item> items = new PojoSetOutputParser<>(Item.class, new PojoOutputParser<>(Item.class)).parse(json);
 
         assertThat(items).hasSize(1);
         assertThat(items.iterator().next().config().value()).isEqualTo("Value1");
@@ -99,7 +101,7 @@ class PojoSetOutputParserTest {
     void should_handle_null_field_values() {
         String json = "{\"values\":[{\"name\":null}]}";
 
-        Set<Person> people = new PojoSetOutputParser<>(Person.class).parse(json);
+        Set<Person> people = new PojoSetOutputParser<>(Person.class, new PojoOutputParser<>(Person.class)).parse(json);
 
         assertThat(people).hasSize(1);
         assertThat(people.iterator().next().name()).isNull();
@@ -110,7 +112,7 @@ class PojoSetOutputParserTest {
         // JSON missing the 'name' field
         String json = "{\"values\":[{}]}";
 
-        Set<Person> people = new PojoSetOutputParser<>(Person.class).parse(json);
+        Set<Person> people = new PojoSetOutputParser<>(Person.class, new PojoOutputParser<>(Person.class)).parse(json);
 
         assertThat(people).hasSize(1);
         assertThat(people.iterator().next().name()).isNull();
@@ -120,7 +122,7 @@ class PojoSetOutputParserTest {
     void should_handle_escaped_characters_in_json() {
         String json = "{\"values\":[{\"name\":\"Value:\\\"test\\\"\"}]}";
 
-        Set<Person> people = new PojoSetOutputParser<>(Person.class).parse(json);
+        Set<Person> people = new PojoSetOutputParser<>(Person.class, new PojoOutputParser<>(Person.class)).parse(json);
 
         assertThat(people).hasSize(1);
         assertThat(people.iterator().next().name()).isEqualTo("Value:\"test\"");
@@ -131,8 +133,8 @@ class PojoSetOutputParserTest {
         String json1 = "{\"values\":[{\"name\":\"Value1\"},{\"name\":\"Value2\"}]}";
         String json2 = "{\"values\":[{\"name\":\"Value2\"},{\"name\":\"Value1\"}]}";
 
-        Set<Person> set1 = new PojoSetOutputParser<>(Person.class).parse(json1);
-        Set<Person> set2 = new PojoSetOutputParser<>(Person.class).parse(json2);
+        Set<Person> set1 = new PojoSetOutputParser<>(Person.class, new PojoOutputParser<>(Person.class)).parse(json1);
+        Set<Person> set2 = new PojoSetOutputParser<>(Person.class, new PojoOutputParser<>(Person.class)).parse(json2);
 
         assertThat(set1).isEqualTo(set2);
     }
