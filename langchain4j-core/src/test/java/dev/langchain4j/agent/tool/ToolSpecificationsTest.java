@@ -432,4 +432,42 @@ class ToolSpecificationsTest implements WithAssertions {
         assertThat(schema.required()).containsExactly("arg0", "arg1"); // both required
         assertThat(schema.properties().keySet()).containsExactly("arg0", "arg1");
     }
+
+    // --- Inherited fields in tool parameters ---
+
+    public static class BaseParam {
+        String baseField;
+    }
+
+    public static class DerivedParam extends BaseParam {
+        String derivedField;
+    }
+
+    @SuppressWarnings("unused")
+    public static class ToolWithInheritedParam {
+        @Tool("tool with inherited param")
+        public void doWork(@P("param") DerivedParam param) {}
+    }
+
+    @Test
+    void should_not_include_inherited_fields_by_default() throws NoSuchMethodException {
+        Method method = ToolWithInheritedParam.class.getMethod("doWork", DerivedParam.class);
+        ToolSpecification ts = ToolSpecifications.toolSpecificationFrom(method);
+
+        JsonObjectSchema paramSchema =
+                (JsonObjectSchema) ts.parameters().properties().get("arg0");
+        assertThat(paramSchema.properties()).containsKey("derivedField");
+        assertThat(paramSchema.properties()).doesNotContainKey("baseField");
+    }
+
+    @Test
+    void should_include_inherited_fields_with_options() throws NoSuchMethodException {
+        Method method = ToolWithInheritedParam.class.getMethod("doWork", DerivedParam.class);
+        ToolSpecification ts = ToolSpecifications.toolSpecificationFrom(method, true);
+
+        JsonObjectSchema paramSchema =
+                (JsonObjectSchema) ts.parameters().properties().get("arg0");
+        assertThat(paramSchema.properties()).containsKey("derivedField");
+        assertThat(paramSchema.properties()).containsKey("baseField");
+    }
 }

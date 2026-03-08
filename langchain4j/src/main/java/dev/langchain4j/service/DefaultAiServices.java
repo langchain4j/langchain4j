@@ -104,6 +104,8 @@ class DefaultAiServices<T> extends AiServices<T> {
     public T build() {
         validate();
 
+        context.toolService.materializeDeferredTools(context.includeInheritedFields);
+
         Object proxyInstance = Proxy.newProxyInstance(
                 context.aiServiceClass.getClassLoader(),
                 new Class<?>[] {context.aiServiceClass},

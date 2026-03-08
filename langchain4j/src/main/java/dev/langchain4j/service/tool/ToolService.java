@@ -1,6 +1,5 @@
 package dev.langchain4j.service.tool;
 
-import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
 import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
@@ -14,6 +13,7 @@ import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.agent.tool.ToolSpecifications;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -83,6 +83,11 @@ public class ToolService {
     private Consumer<BeforeToolExecution> beforeToolExecution = null;
     private Consumer<ToolExecution> afterToolExecution = null;
 
+    private final List<DeferredToolEntry> deferredTools = new ArrayList<>();
+    private final Set<String> deferredToolNames = new LinkedHashSet<>();
+
+    private record DeferredToolEntry(Object object, Method method) {}
+
     public void hallucinatedToolNameStrategy(
             Function<ToolExecutionRequest, ToolExecutionResultMessage> toolHallucinationStrategy) {
         this.toolHallucinationStrategy = toolHallucinationStrategy;
@@ -132,7 +137,7 @@ public class ToolService {
             for (Method method : objectWithTool.getClass().getDeclaredMethods()) {
                 getAnnotatedMethod(method, Tool.class).ifPresent(toolMethod -> {
                     hasToolMethods.set(true);
-                    processToolMethod(objectWithTool, toolMethod);
+                    deferToolMethod(objectWithTool, toolMethod);
                 });
             }
 
@@ -144,18 +149,38 @@ public class ToolService {
         }
     }
 
-    private void processToolMethod(Object object, Method method) {
-        ToolSpecification toolSpecification = toolSpecificationFrom(method);
-        if (toolExecutors.containsKey(toolSpecification.name())) {
-            throw new IllegalConfigurationException("Duplicated definition for tool: " + toolSpecification.name());
+    private void deferToolMethod(Object object, Method method) {
+        Tool tool = method.getAnnotation(Tool.class);
+        String toolName = isNullOrBlank(tool.name()) ? method.getName() : tool.name();
+        if (toolExecutors.containsKey(toolName)) {
+            throw new IllegalConfigurationException("Duplicated definition for tool: " + toolName);
         }
-        toolSpecifications.add(toolSpecification);
 
         ToolExecutor toolExecutor = createToolExecutor(object, method);
-        toolExecutors.put(toolSpecification.name(), toolExecutor);
+        toolExecutors.put(toolName, toolExecutor);
 
-        if (method.getAnnotation(Tool.class).returnBehavior() == ReturnBehavior.IMMEDIATE) {
-            immediateReturnTools.add(toolSpecification.name());
+        if (tool.returnBehavior() == ReturnBehavior.IMMEDIATE) {
+            immediateReturnTools.add(toolName);
+        }
+
+        deferredTools.add(new DeferredToolEntry(object, method));
+        deferredToolNames.add(toolName);
+    }
+
+    /**
+     * Materializes deferred tool specifications.
+     * Must be called during build() after all options are set.
+     * Safe to call multiple times -- previously generated specs are replaced.
+     *
+     * @param includeInheritedFields whether to include inherited fields from superclasses.
+     * @since 1.13.0
+     */
+    public void materializeDeferredTools(boolean includeInheritedFields) {
+        toolSpecifications.removeIf(spec -> deferredToolNames.contains(spec.name()));
+        for (DeferredToolEntry entry : deferredTools) {
+            ToolSpecification toolSpecification =
+                    ToolSpecifications.toolSpecificationFrom(entry.method(), includeInheritedFields);
+            toolSpecifications.add(toolSpecification);
         }
     }
 

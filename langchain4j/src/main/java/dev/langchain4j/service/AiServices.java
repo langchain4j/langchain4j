@@ -451,6 +451,25 @@ public abstract class AiServices<T> {
     }
 
     /**
+     * When enabled, inherited fields from superclasses will be included in the JSON schema
+     * generated for tool parameter types.
+     * <p>
+     * By default, only fields declared directly on the class are included.
+     * <p>
+     * <b>Note:</b> Enabling this may expose fields from parent classes that were not intended
+     * to be part of the tool schema (e.g., internal or sensitive fields). Review your class
+     * hierarchies before enabling.
+     *
+     * @param includeInheritedFields whether to include inherited fields
+     * @return builder
+     * @since 1.13.0
+     */
+    public AiServices<T> includeInheritedFields(boolean includeInheritedFields) {
+        context.includeInheritedFields = includeInheritedFields;
+        return this;
+    }
+
+    /**
      * Configures the tools that the LLM can use.
      *
      * @param objectsWithTools One or more objects whose methods are annotated with {@link Tool}.

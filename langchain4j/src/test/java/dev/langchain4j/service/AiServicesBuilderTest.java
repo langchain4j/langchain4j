@@ -1,12 +1,16 @@
 package dev.langchain4j.service;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.mockito.Mockito.mock;
 
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.agent.tool.ToolSpecifications;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import java.util.Arrays;
@@ -159,5 +163,81 @@ class AiServicesBuilderTest {
                         .tools((Object) listOfTools) // passing a List as a single tool object
                         .build())
                 .withMessageContaining("is an Iterable");
+    }
+
+    // --- includeInheritedFields builder tests ---
+
+    static class BaseToolParam {
+        String baseField;
+    }
+
+    static class DerivedToolParam extends BaseToolParam {
+        String derivedField;
+    }
+
+    static class InheritedFieldTool {
+        @Tool("do work")
+        public void doWork(@P("param") DerivedToolParam param) {}
+    }
+
+    @Test
+    void should_include_inherited_fields_in_tool_schema_when_flag_set() {
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("response");
+
+        // tools() called BEFORE includeInheritedFields() — deferred materialization ensures it works
+        AiServices<TestService> builder = AiServices.builder(TestService.class)
+                .chatModel(chatModel)
+                .tools(new InheritedFieldTool())
+                .includeInheritedFields(true);
+
+        TestService service = builder.build();
+        assertThat(service).isNotNull();
+
+        List<ToolSpecification> specs = ToolSpecifications.toolSpecificationsFrom(new InheritedFieldTool(), true);
+        assertThat(specs).hasSize(1);
+        JsonObjectSchema paramSchema =
+                (JsonObjectSchema) specs.get(0).parameters().properties().get("arg0");
+        assertThat(paramSchema.properties()).containsKey("derivedField");
+        assertThat(paramSchema.properties()).containsKey("baseField");
+    }
+
+    @Test
+    void should_not_include_inherited_fields_by_default() {
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("response");
+
+        AiServices<TestService> builder = AiServices.builder(TestService.class)
+                .chatModel(chatModel)
+                .tools(new InheritedFieldTool());
+
+        TestService service = builder.build();
+        assertThat(service).isNotNull();
+
+        List<ToolSpecification> specs = ToolSpecifications.toolSpecificationsFrom(new InheritedFieldTool());
+        assertThat(specs).hasSize(1);
+        JsonObjectSchema paramSchema =
+                (JsonObjectSchema) specs.get(0).parameters().properties().get("arg0");
+        assertThat(paramSchema.properties()).containsKey("derivedField");
+        assertThat(paramSchema.properties()).doesNotContainKey("baseField");
+    }
+
+    @Test
+    void should_include_inherited_fields_regardless_of_builder_order() {
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("response");
+
+        // includeInheritedFields() called BEFORE tools()
+        AiServices<TestService> builder = AiServices.builder(TestService.class)
+                .chatModel(chatModel)
+                .includeInheritedFields(true)
+                .tools(new InheritedFieldTool());
+
+        TestService service = builder.build();
+        assertThat(service).isNotNull();
+
+        List<ToolSpecification> specs = ToolSpecifications.toolSpecificationsFrom(new InheritedFieldTool(), true);
+        assertThat(specs).hasSize(1);
+        JsonObjectSchema paramSchema =
+                (JsonObjectSchema) specs.get(0).parameters().properties().get("arg0");
+        assertThat(paramSchema.properties()).containsKey("derivedField");
+        assertThat(paramSchema.properties()).containsKey("baseField");
     }
 }

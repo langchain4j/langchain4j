@@ -1,9 +1,12 @@
 package dev.langchain4j.agent.tool;
 
+import static dev.langchain4j.agent.tool.SearchBehavior.SEARCHABLE;
+import static dev.langchain4j.agent.tool.ToolSpecification.METADATA_SEARCH_BEHAVIOR;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.toList;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.internal.JsonSchemaElementUtils;
 import dev.langchain4j.internal.JsonSchemaElementUtils.VisitedClassMetadata;
@@ -23,12 +26,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-
-import static dev.langchain4j.agent.tool.SearchBehavior.SEARCHABLE;
-import static dev.langchain4j.agent.tool.ToolSpecification.METADATA_SEARCH_BEHAVIOR;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static java.util.Arrays.stream;
-import static java.util.stream.Collectors.toList;
 
 /**
  * Utility methods for {@link ToolSpecification}s.
@@ -82,6 +79,43 @@ public class ToolSpecifications {
     }
 
     /**
+     * Returns {@link ToolSpecification}s for all methods annotated with @{@link Tool}
+     * within the class of the specified object, optionally including inherited fields
+     * in the JSON schema for parameter types.
+     *
+     * @param objectWithTools        the object.
+     * @param includeInheritedFields whether to include inherited fields from superclasses.
+     * @return the {@link ToolSpecification}s.
+     * @since 1.13.0
+     */
+    @Internal
+    public static List<ToolSpecification> toolSpecificationsFrom(
+            Object objectWithTools, boolean includeInheritedFields) {
+        return toolSpecificationsFrom(objectWithTools.getClass(), includeInheritedFields);
+    }
+
+    /**
+     * Returns {@link ToolSpecification}s for all methods annotated with @{@link Tool}
+     * within the specified class, optionally including inherited fields
+     * in the JSON schema for parameter types.
+     *
+     * @param classWithTools         the class.
+     * @param includeInheritedFields whether to include inherited fields from superclasses.
+     * @return the {@link ToolSpecification}s.
+     * @since 1.13.0
+     */
+    @Internal
+    public static List<ToolSpecification> toolSpecificationsFrom(
+            Class<?> classWithTools, boolean includeInheritedFields) {
+        List<ToolSpecification> toolSpecifications = stream(classWithTools.getDeclaredMethods())
+                .filter(method -> method.isAnnotationPresent(Tool.class))
+                .map(method -> toolSpecificationFrom(method, includeInheritedFields))
+                .collect(toList());
+        validateSpecifications(toolSpecifications);
+        return toolSpecifications;
+    }
+
+    /**
      * Validates all the {@link ToolSpecification}s. The validation checks for duplicate method names.
      * Throws {@link IllegalArgumentException} if validation fails
      *
@@ -107,11 +141,25 @@ public class ToolSpecifications {
      * @return the {@link ToolSpecification}.
      */
     public static ToolSpecification toolSpecificationFrom(Method method) {
+        return toolSpecificationFrom(method, false);
+    }
+
+    /**
+     * Returns the {@link ToolSpecification} for the given method annotated with @{@link Tool},
+     * optionally including inherited fields in the JSON schema for parameter types.
+     *
+     * @param method                 the method.
+     * @param includeInheritedFields whether to include inherited fields from superclasses.
+     * @return the {@link ToolSpecification}.
+     * @since 1.13.0
+     */
+    @Internal
+    public static ToolSpecification toolSpecificationFrom(Method method, boolean includeInheritedFields) {
         Tool tool = method.getAnnotation(Tool.class);
         return ToolSpecification.builder()
                 .name(getName(tool, method))
                 .description(getDescription(tool))
-                .parameters(parametersFrom(method.getParameters()))
+                .parameters(parametersFrom(method.getParameters(), includeInheritedFields))
                 .metadata(getMetadata(tool))
                 .build();
     }
@@ -133,7 +181,7 @@ public class ToolSpecifications {
         return metadata;
     }
 
-    private static JsonObjectSchema parametersFrom(Parameter[] parameters) {
+    private static JsonObjectSchema parametersFrom(Parameter[] parameters, boolean includeInheritedFields) {
 
         Map<String, JsonSchemaElement> properties = new LinkedHashMap<>();
         List<String> required = new ArrayList<>();
@@ -154,7 +202,7 @@ public class ToolSpecifications {
                             .map(P::required)
                             .orElse(true);
 
-            properties.put(parameter.getName(), jsonSchemaElementFrom(parameter, visited));
+            properties.put(parameter.getName(), jsonSchemaElementFrom(parameter, visited, includeInheritedFields));
             if (isRequired) {
                 required.add(parameter.getName());
             }
@@ -179,7 +227,8 @@ public class ToolSpecifications {
     }
 
     private static JsonSchemaElement jsonSchemaElementFrom(
-            Parameter parameter, Map<Class<?>, VisitedClassMetadata> visited) {
+            Parameter parameter, Map<Class<?>, VisitedClassMetadata> visited,
+            boolean includeInheritedFields) {
         P annotation = parameter.getAnnotation(P.class);
         String description = annotation == null ? null : annotation.value();
 
@@ -197,6 +246,7 @@ public class ToolSpecifications {
             }
         }
 
-        return JsonSchemaElementUtils.jsonSchemaElementFrom(clazz, type, description, true, visited);
+        return JsonSchemaElementUtils.jsonSchemaElementFrom(clazz, type, description, true, visited,
+                includeInheritedFields);
     }
 }

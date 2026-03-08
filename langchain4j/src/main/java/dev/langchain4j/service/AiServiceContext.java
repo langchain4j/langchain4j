@@ -39,6 +39,8 @@ public class AiServiceContext {
 
     public ToolService toolService = new ToolService();
 
+    public boolean includeInheritedFields = false;
+
     public final GuardrailService.Builder guardrailServiceBuilder;
     private final AtomicReference<GuardrailService> guardrailService = new AtomicReference<>();
 
