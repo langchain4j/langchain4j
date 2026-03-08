@@ -60,7 +60,7 @@ Use `FileSystemSkillLoader` from the `langchain4j-skills` module to load skills 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-skills</artifactId>
-    <version>1.12.0-beta20</version>
+    <version>1.12.1-beta21</version>
 </dependency>
 ```
 
@@ -265,7 +265,7 @@ Shell execution lives in a separate experimental artifact — add it to your bui
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-experimental-skills-shell</artifactId>
-    <version>1.12.0-beta20</version>
+    <version>1.12.1-beta21</version>
 </dependency>
 ```
 
