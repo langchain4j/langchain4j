@@ -19,7 +19,7 @@ class OpenAiAudioSpeechModelIT {
     @ParameterizedTest
     @EnumSource(OpenAiAudioSpeechModelName.class)
     void should_support_all_model_names(OpenAiAudioSpeechModelName modelName) {
-        var model = OpenAiAudioSpeechModel.builder()
+        OpenAiAudioSpeechModel model = OpenAiAudioSpeechModel.builder()
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(modelName)
