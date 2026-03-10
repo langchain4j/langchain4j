@@ -25,9 +25,9 @@ public class GlobalTestRetryExtension implements InvocationInterceptor {
 
     static {
         if (ENABLED) {
-            LOG.info("GlobalTestRetryExtension is ACTIVE (max attempts: {})", MAX_ATTEMPTS);
+            LOG.info("{} is ACTIVE (max attempts: {})", GlobalTestRetryExtension.class.getName(), MAX_ATTEMPTS);
         } else {
-            LOG.info("GlobalTestRetryExtension is REGISTERED but DISABLED (set LC4J_GLOBAL_TEST_RETRY_ENABLED=true to enable)");
+            LOG.info("{} is REGISTERED but DISABLED (set LC4J_GLOBAL_TEST_RETRY_ENABLED=true to enable)", GlobalTestRetryExtension.class.getName());
         }
     }
 
