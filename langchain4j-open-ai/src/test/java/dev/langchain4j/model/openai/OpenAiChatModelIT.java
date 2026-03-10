@@ -38,7 +38,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
-import org.junitpioneer.jupiter.RetryingTest;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiChatModelIT {
@@ -52,8 +51,6 @@ class OpenAiChatModelIT {
                 "GPT_4_32K_0613", // don't have access
                 "O3", // don't have access
                 "O3_2025_04_16", // don't have access
-                "O1_MINI", // does not support 'system' role with this model
-                "O1_MINI_2024_09_12", // does not support 'system' role with this model
             })
     void should_support_all_model_names(OpenAiChatModelName modelName) {
 
@@ -216,7 +213,6 @@ class OpenAiChatModelIT {
         assertThat(person.surname).isEqualTo("Heisler");
     }
 
-    @RetryingTest(3)
     void should_accept_audio_content() throws Exception {
 
         // given

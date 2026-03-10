@@ -17,9 +17,11 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.http.client.MockHttpClient;
+import dev.langchain4j.http.client.MockHttpClientBuilder;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateFileRequest;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateRequest;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateResponse;
@@ -62,6 +64,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class GoogleAiGeminiBatchChatModelTest {
+
     private static final String MODEL_NAME = "gemini-2.5-flash-lite";
 
     @Mock
@@ -79,7 +82,6 @@ class GoogleAiGeminiBatchChatModelTest {
 
     @Nested
     class CreateBatchInline {
-
         @Test
         void should_create_batch_with_valid_requests() {
             // given
@@ -87,6 +89,7 @@ class GoogleAiGeminiBatchChatModelTest {
             var priority = 1L;
             var requests = List.of(
                     createChatRequest(MODEL_NAME, "What is the capital of France?"),
+                    createChatRequest(MODEL_NAME, "What is the capital of Finland?"),
                     createChatRequest(MODEL_NAME, "What is the capital of Germany?"));
             var expectedOperation = createPendingOperation("batches/test-123", BATCH_STATE_PENDING);
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
@@ -110,14 +113,16 @@ class GoogleAiGeminiBatchChatModelTest {
             assertThat(capturedRequest.batch().displayName()).isEqualTo(displayName);
             assertThat(capturedRequest.batch().priority()).isEqualTo(priority);
             assertThat(capturedRequest.batch().inputConfig().requests().requests())
-                    .hasSize(2);
+                    .hasSize(3);
         }
 
         @Test
         void should_create_batch_with_null_priority_defaulting_to_zero() {
             // given
             var displayName = "Test Batch";
-            var requests = List.of(createChatRequest(MODEL_NAME, "What is the capital of Italy?"));
+            var requests = List.of(ChatRequest.builder()
+                    .messages(UserMessage.from("What is the capital of Italy?"))
+                    .build());
             var expectedOperation = createPendingOperation("batches/test-456", BATCH_STATE_PENDING);
             when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
                             any(),
@@ -589,6 +594,35 @@ class GoogleAiGeminiBatchChatModelTest {
         }
 
         @Test
+        void should_return_success_with_errors_when_batch_processing_has_individual_failures() {
+            // given
+            var batchName = new BatchName("batches/test-partial-success");
+            var chatResponses = List.of(createChatResponse("Response 1"), createChatResponse("Response 2"));
+            var error = new BatchRequestResponse.Operation.Status(
+                    4, "Deadline expired before operation could complete.", null);
+            var successOperation =
+                    createSuccessOperationWithError("batches/test-partial-success", chatResponses, error);
+            when(mockGeminiService.<GeminiGenerateContentResponse>batchRetrieveBatch(batchName.value()))
+                    .thenReturn(successOperation);
+
+            // when
+            var result = subject.retrieveBatchResults(batchName);
+
+            // then
+            assertThat(result).isInstanceOf(BatchSuccess.class);
+            var successResult = (BatchSuccess<ChatResponse>) result;
+            assertThat(successResult.batchName()).isEqualTo(batchName);
+            assertThat(successResult.responses()).hasSize(2);
+            assertThat(successResult.responses().get(0).aiMessage().text()).isEqualTo("Response 1");
+            assertThat(successResult.responses().get(1).aiMessage().text()).isEqualTo("Response 2");
+
+            assertThat(successResult.errors()).hasSize(1);
+            assertThat(successResult.errors().get(0).code()).isEqualTo(4);
+            assertThat(successResult.errors().get(0).message())
+                    .isEqualTo("Deadline expired before operation could complete.");
+        }
+
+        @Test
         void should_return_success_with_empty_responses_when_response_is_null() {
             // given
             var batchName = new BatchName("batches/test-empty");
@@ -825,6 +859,18 @@ class GoogleAiGeminiBatchChatModelTest {
 
     @Nested
     class ListBatchJobs {
+        @Test
+        void should_return_empty_list_when_none_available() {
+            // given
+            when(mockGeminiService.<GeminiGenerateContentResponse>batchListBatches(null, null))
+                    .thenReturn(new ListOperationsResponse<>(null, null));
+
+            // when
+            var result = subject.listBatchJobs(null, null);
+
+            // then
+            assertThat(result.responses()).isEmpty();
+        }
 
         @Test
         void should_list_batch_jobs_with_default_parameters() {
@@ -977,12 +1023,347 @@ class GoogleAiGeminiBatchChatModelTest {
         }
     }
 
+    @Nested
+    class BatchChatSerialization {
+
+        private static final String PENDING_RESPONSE =
+                """
+                        {
+                          "name": "batches/tti3ik8qob66dxcvynlg5swnutyntbi926ac",
+                          "metadata": {
+                            "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.GenerateContentBatch",
+                            "model": "models/gemini-2.5-flash-lite",
+                            "displayName": "capitals-batch",
+                            "createTime": "2025-12-03T17:23:06.004734302Z",
+                            "updateTime": "2025-12-03T17:23:06.004734302Z",
+                            "batchStats": {
+                              "requestCount": "3",
+                              "pendingRequestCount": "3"
+                            },
+                            "state": "BATCH_STATE_PENDING",
+                            "name": "batches/tti3ik8qob66dxcvynlg5swnutyntbi926ac"
+                          }
+                        }
+                        """;
+
+        private static final String SUCCEEDED_RESPONSE =
+                """
+                        {
+                          "name": "batches/tti3ik8qob66dxcvynlg5swnutyntbi926ac",
+                          "metadata": {
+                            "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.GenerateContentBatch",
+                            "model": "models/gemini-2.5-flash-lite",
+                            "displayName": "capitals-batch",
+                            "createTime": "2025-12-03T17:23:06.004734302Z",
+                            "endTime": "2025-12-03T17:24:41.850709659Z",
+                            "updateTime": "2025-12-03T17:24:41.850709619Z",
+                            "batchStats": {
+                              "requestCount": "3",
+                              "successfulRequestCount": "3"
+                            },
+                            "state": "BATCH_STATE_SUCCEEDED",
+                            "name": "batches/tti3ik8qob66dxcvynlg5swnutyntbi926ac"
+                          },
+                          "done": true,
+                          "response": {
+                            "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.GenerateContentBatchOutput",
+                            "inlinedResponses": {
+                              "inlinedResponses": [
+                                {
+                                  "response": {
+                                    "candidates": [
+                                      {
+                                        "content": {
+                                          "parts": [
+                                            {
+                                              "text": "The capital of France is **Paris**."
+                                            }
+                                          ],
+                                          "role": "model"
+                                        },
+                                        "finishReason": "STOP",
+                                        "index": 0
+                                      }
+                                    ],
+                                    "usageMetadata": {
+                                      "promptTokenCount": 8,
+                                      "candidatesTokenCount": 8,
+                                      "totalTokenCount": 16
+                                    },
+                                    "modelVersion": "gemini-2.5-flash-lite"
+                                  }
+                                },
+                                {
+                                  "response": {
+                                    "candidates": [
+                                      {
+                                        "content": {
+                                          "parts": [
+                                            {
+                                              "text": "The capital of Japan is **Tokyo**."
+                                            }
+                                          ],
+                                          "role": "model"
+                                        },
+                                        "finishReason": "STOP",
+                                        "index": 0
+                                      }
+                                    ],
+                                    "usageMetadata": {
+                                      "promptTokenCount": 8,
+                                      "candidatesTokenCount": 8,
+                                      "totalTokenCount": 16
+                                    },
+                                    "modelVersion": "gemini-2.5-flash-lite"
+                                  }
+                                },
+                                {
+                                  "response": {
+                                    "candidates": [
+                                      {
+                                        "content": {
+                                          "parts": [
+                                            {
+                                              "text": "The capital of Brazil is **Brasília**."
+                                            }
+                                          ],
+                                          "role": "model"
+                                        },
+                                        "finishReason": "STOP",
+                                        "index": 0
+                                      }
+                                    ],
+                                    "usageMetadata": {
+                                      "promptTokenCount": 8,
+                                      "candidatesTokenCount": 9,
+                                      "totalTokenCount": 17
+                                    },
+                                    "modelVersion": "gemini-2.5-flash-lite"
+                                  }
+                                }
+                              ]
+                            }
+                          }
+                        }
+                        """;
+
+        private String ERROR_RESPONSE =
+                """
+                {
+                  "name": "batches/tti3ik8qob66dxcvynlg5swnutyntbi926ac",
+                  "metadata": {
+                    "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.GenerateContentBatch",
+                    "model": "models/gemini-3-flash-preview",
+                    "displayName": "error-batch",
+                    "createTime": "2025-12-03T17:23:06.004734302Z",
+                    "endTime": "2025-12-03T17:24:41.850709659Z",
+                    "updateTime": "2025-12-03T17:24:41.850709619Z",
+                    "batchStats": {
+                      "requestCount": "3",
+                      "successfulRequestCount": "2",
+                      "failedRequestCount": "1"
+                    },
+                    "state": "BATCH_STATE_SUCCEEDED",
+                    "name": "batches/tti3ik8qob66dxcvynlg5swnutyntbi926ac"
+                  },
+                  "done": true,
+                  "response": {
+                    "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.GenerateContentBatchOutput",
+                    "inlinedResponses": {
+                      "inlinedResponses": [
+                        {
+                          "response": {
+                            "candidates": [
+                              {
+                                "content": {
+                                  "parts": [
+                                    {
+                                      "text": "{some json}"
+                                    }
+                                  ],
+                                  "role": "model"
+                                },
+                                "finishReason": "STOP",
+                                "index": 0
+                              }
+                            ],
+                            "usageMetadata": {
+                              "promptTokenCount": 13469,
+                              "candidatesTokenCount": 281,
+                              "totalTokenCount": 16109
+                            },
+                            "modelVersion": "gemini-3-flash-preview"
+                          }
+                        },
+                        {
+                          "error": {
+                            "code": 4,
+                            "message": "Deadline expired before operation could complete."
+                          }
+                        },
+                        {
+                          "response": {
+                            "candidates": [
+                              {
+                                "content": {
+                                  "parts": [
+                                    {
+                                      "text": "{...}"
+                                    }
+                                  ],
+                                  "role": "model"
+                                },
+                                "finishReason": "STOP",
+                                "index": 0
+                              }
+                            ],
+                            "usageMetadata": {
+                              "promptTokenCount": 6021,
+                              "candidatesTokenCount": 449,
+                              "totalTokenCount": 9070
+                            },
+                            "modelVersion": "gemini-3-flash-preview"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+                """;
+
+        @Test
+        void should_deserialize_batch_response_with_error() {
+            // given
+            var mockHttpClient = MockHttpClient.thatAlwaysResponds(SuccessfulHttpResponse.builder()
+                    .body(ERROR_RESPONSE)
+                    .statusCode(200)
+                    .build());
+            var subject = GoogleAiGeminiBatchChatModel.builder()
+                    .apiKey("does not matter")
+                    .modelName("does not matter")
+                    .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                    .build();
+            var batchName = new BatchName("batches/tti3ik8qob66dxcvynlg5swnutyntbi926ac");
+
+            // when
+            var result = subject.retrieveBatchResults(batchName);
+
+            // then
+            assertThat(result).isInstanceOf(BatchSuccess.class);
+            var success = (BatchSuccess<ChatResponse>) result;
+            assertThat(success.batchName().value()).isEqualTo("batches/tti3ik8qob66dxcvynlg5swnutyntbi926ac");
+
+            var results = success.responses();
+            assertThat(results).hasSize(2);
+
+            // First response - successful
+            assertThat(results.get(0).aiMessage().text()).isEqualTo("{some json}");
+
+            // Second response - error (check how your model represents this)
+            assertThat(success.errors()).hasSize(1);
+            assertThat(success.errors().get(0).code()).isEqualTo(4);
+            assertThat(success.errors().get(0).message())
+                    .isEqualTo("Deadline expired before operation could complete.");
+        }
+
+        @Test
+        void should_deserialize_pending_batch_response() {
+            // given
+            var mockHttpClient = MockHttpClient.thatAlwaysResponds(SuccessfulHttpResponse.builder()
+                    .body(PENDING_RESPONSE)
+                    .statusCode(200)
+                    .build());
+            var subject = GoogleAiGeminiBatchChatModel.builder()
+                    .apiKey("does not matter")
+                    .modelName("does not matter")
+                    .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                    .build();
+
+            var requests = List.of(
+                    ChatRequest.builder()
+                            .messages(UserMessage.from("What is the capital of France?"))
+                            .build(),
+                    ChatRequest.builder()
+                            .messages(UserMessage.from("What is the capital of Japan?"))
+                            .build(),
+                    ChatRequest.builder()
+                            .messages(UserMessage.from("What is the capital of Brazil?"))
+                            .build());
+
+            // when
+            var result = subject.createBatchInline("capitals-batch", 0L, requests);
+
+            // then
+            assertThat(result).isInstanceOf(BatchIncomplete.class);
+            var incomplete = (BatchIncomplete<?>) result;
+            assertThat(incomplete.batchName().value()).isEqualTo("batches/tti3ik8qob66dxcvynlg5swnutyntbi926ac");
+            assertThat(incomplete.state()).isEqualTo(BATCH_STATE_PENDING);
+        }
+
+        @Test
+        void should_deserialize_succeeded_batch_response_with_chat_results() {
+            // given
+            var mockHttpClient = MockHttpClient.thatAlwaysResponds(SuccessfulHttpResponse.builder()
+                    .body(SUCCEEDED_RESPONSE)
+                    .statusCode(200)
+                    .build());
+            var subject = GoogleAiGeminiBatchChatModel.builder()
+                    .apiKey("does not matter")
+                    .modelName("does not matter")
+                    .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                    .build();
+            var batchName = new BatchName("batches/tti3ik8qob66dxcvynlg5swnutyntbi926ac");
+
+            // when
+            var result = subject.retrieveBatchResults(batchName);
+
+            // then
+            assertThat(result).isInstanceOf(BatchSuccess.class);
+            var success = (BatchSuccess<ChatResponse>) result;
+            assertThat(success.batchName().value()).isEqualTo("batches/tti3ik8qob66dxcvynlg5swnutyntbi926ac");
+
+            var results = success.responses();
+            assertThat(results).hasSize(3);
+
+            assertThat(results.get(0).aiMessage().text()).isEqualTo("The capital of France is **Paris**.");
+            assertThat(results.get(1).aiMessage().text()).isEqualTo("The capital of Japan is **Tokyo**.");
+            assertThat(results.get(2).aiMessage().text()).isEqualTo("The capital of Brazil is **Brasília**.");
+        }
+    }
+
     private static Operation<GeminiGenerateContentResponse> createSuccessOperation(
             String operationName, List<ChatResponse> chatResponses) {
         var inlinedResponses = chatResponses.stream()
                 .map(GoogleAiGeminiBatchChatModelTest::toGeminiResponse)
-                .map(BatchCreateResponse.InlinedResponseWrapper::new)
+                .map(response -> new BatchCreateResponse.InlinedResponseWrapper<>(response, null))
                 .toList();
+
+        var response = new BatchCreateResponse<>(
+                "type.googleapis.com/google.ai.generativelanguage.v1main.GenerateContentBatchOutput",
+                new BatchCreateResponse.InlinedResponses<>(inlinedResponses));
+
+        return new Operation<>(operationName, Map.of("state", BATCH_STATE_SUCCEEDED.name()), true, null, response);
+    }
+
+    private static Operation<GeminiGenerateContentResponse> createSuccessOperationWithError(
+            String operationName, List<ChatResponse> chatResponses, BatchRequestResponse.Operation.Status error) {
+        List<BatchCreateResponse.InlinedResponseWrapper<GeminiGenerateContentResponse>> inlinedResponses =
+                new ArrayList<>();
+
+        // Add first successful response
+        if (!chatResponses.isEmpty()) {
+            inlinedResponses.add(
+                    new BatchCreateResponse.InlinedResponseWrapper<>(toGeminiResponse(chatResponses.get(0)), null));
+        }
+
+        // Add error
+        inlinedResponses.add(new BatchCreateResponse.InlinedResponseWrapper<>(null, error));
+
+        // Add remaining successful responses
+        for (int i = 1; i < chatResponses.size(); i++) {
+            inlinedResponses.add(
+                    new BatchCreateResponse.InlinedResponseWrapper<>(toGeminiResponse(chatResponses.get(i)), null));
+        }
 
         var response = new BatchCreateResponse<>(
                 "type.googleapis.com/google.ai.generativelanguage.v1main.GenerateContentBatchOutput",
@@ -1011,7 +1392,7 @@ class GoogleAiGeminiBatchChatModelTest {
     private static ChatResponse createChatResponse(String content) {
         return ChatResponse.builder()
                 .aiMessage(AiMessage.from(content))
-                .metadata(ChatResponseMetadata.builder()
+                .metadata(GoogleAiGeminiChatResponseMetadata.builder()
                         .id("response-id-" + content.hashCode())
                         .modelName(MODEL_NAME)
                         .tokenUsage(new TokenUsage(10, 5, 15))
@@ -1023,7 +1404,7 @@ class GoogleAiGeminiBatchChatModelTest {
     private static GeminiGenerateContentResponse toGeminiResponse(ChatResponse chatResponse) {
         var part = GeminiPart.builder().text(chatResponse.aiMessage().text()).build();
         var content = new GeminiContent(List.of(part), "model");
-        var candidate = new GeminiCandidate(content, GeminiFinishReason.STOP);
+        var candidate = new GeminiCandidate(content, GeminiFinishReason.STOP, null, null);
         var usageMetadata = GeminiUsageMetadata.builder()
                 .promptTokenCount(chatResponse.metadata().tokenUsage().inputTokenCount())
                 .candidatesTokenCount(chatResponse.metadata().tokenUsage().outputTokenCount())
@@ -1031,12 +1412,13 @@ class GoogleAiGeminiBatchChatModelTest {
                 .build();
 
         return new GeminiGenerateContentResponse(
-                chatResponse.id(), chatResponse.metadata().modelName(), List.of(candidate), usageMetadata);
+                chatResponse.id(), chatResponse.metadata().modelName(), List.of(candidate), usageMetadata, null);
     }
 
     private GoogleAiGeminiBatchChatModel createSubject() {
         return new GoogleAiGeminiBatchChatModel(
-                GoogleAiGeminiBatchChatModel.builder().apiKey("apiKey").modelName(MODEL_NAME), mockGeminiService);
+                GoogleAiGeminiBatchChatModel.builder().apiKey("does not matter").modelName(MODEL_NAME),
+                mockGeminiService);
     }
 
     private static ChatRequest createChatRequest(String modelName, String message) {

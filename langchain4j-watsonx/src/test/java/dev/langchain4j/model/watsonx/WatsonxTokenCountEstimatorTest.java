@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -11,7 +12,7 @@ import static org.mockito.Mockito.when;
 
 import com.ibm.watsonx.ai.CloudRegion;
 import com.ibm.watsonx.ai.core.Json;
-import com.ibm.watsonx.ai.core.auth.iam.IAMAuthenticator;
+import com.ibm.watsonx.ai.core.auth.ibmcloud.IBMCloudAuthenticator;
 import com.ibm.watsonx.ai.core.provider.HttpClientProvider;
 import com.ibm.watsonx.ai.tokenization.TokenizationParameters;
 import com.ibm.watsonx.ai.tokenization.TokenizationRequest;
@@ -69,6 +70,10 @@ public class WatsonxTokenCountEstimatorTest {
         when(mockTokenizationServiceBuilder.version(any())).thenReturn(mockTokenizationServiceBuilder);
         when(mockTokenizationServiceBuilder.logRequests(any())).thenReturn(mockTokenizationServiceBuilder);
         when(mockTokenizationServiceBuilder.logResponses(any())).thenReturn(mockTokenizationServiceBuilder);
+        when(mockTokenizationServiceBuilder.authenticator(any())).thenReturn(mockTokenizationServiceBuilder);
+        when(mockTokenizationServiceBuilder.apiKey(any())).thenReturn(mockTokenizationServiceBuilder);
+        when(mockTokenizationServiceBuilder.httpClient(any())).thenReturn(mockTokenizationServiceBuilder);
+        when(mockTokenizationServiceBuilder.verifySsl(anyBoolean())).thenReturn(mockTokenizationServiceBuilder);
         when(mockTokenizationServiceBuilder.build()).thenReturn(mockTokenizationService);
     }
 
@@ -78,7 +83,7 @@ public class WatsonxTokenCountEstimatorTest {
 
         var mockHttpClient = mock(HttpClient.class);
         var mockHttpResponse = mock(HttpResponse.class);
-        var mockAuthenticatorProvider = mock(IAMAuthenticator.class);
+        var mockAuthenticatorProvider = mock(IBMCloudAuthenticator.class);
         var requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
 
         when(mockAuthenticatorProvider.token()).thenReturn("my-token");
@@ -91,7 +96,7 @@ public class WatsonxTokenCountEstimatorTest {
                 .thenReturn(mockHttpResponse);
 
         try (MockedStatic<HttpClientProvider> httpClientProvider = mockStatic(HttpClientProvider.class)) {
-            httpClientProvider.when(HttpClientProvider::httpClient).thenReturn(mockHttpClient);
+            httpClientProvider.when(() -> HttpClientProvider.httpClient(true)).thenReturn(mockHttpClient);
             var tokenCountEstimator = WatsonxTokenCountEstimator.builder()
                     .baseUrl(CloudRegion.FRANKFURT)
                     .modelName("model-name")
@@ -101,7 +106,7 @@ public class WatsonxTokenCountEstimatorTest {
                     .version("my-version")
                     .logRequests(true)
                     .logResponses(true)
-                    .authenticationProvider(mockAuthenticatorProvider)
+                    .authenticator(mockAuthenticatorProvider)
                     .timeout(Duration.ofSeconds(10))
                     .build();
 
@@ -116,8 +121,7 @@ public class WatsonxTokenCountEstimatorTest {
             assertDoesNotThrow(() -> WatsonxScoringModel.builder()
                     .baseUrl("https://test.com")
                     .modelName("model-name")
-                    .authenticationProvider(
-                            IAMAuthenticator.builder().apiKey("api-key").build())
+                    .apiKey("api-key")
                     .projectId("project-id")
                     .spaceId("space-id")
                     .build());

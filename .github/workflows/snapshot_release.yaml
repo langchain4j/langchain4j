@@ -1,7 +1,5 @@
 name: snapshot_release
 
-# Only run on pushes to main:
-# Replace with 'on: [push]' if you need to run tests on your PR
 on:
   repository_dispatch:
     types: [ trigger-snapshot-release ]
@@ -32,13 +30,8 @@ jobs:
         env:
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
-        # Notes:
-        #  - tests already run in a separate action (main)
         run: |
-          mvn -B -U --fail-at-end \
-            -DskipTests -DskipITs \
-            -pl !langchain4j-core,!langchain4j-parent \
-            clean deploy
+          mvn -B -U --fail-at-end -DskipTests -DskipITs clean deploy
 
       - name: Trigger SNAPSHOT release for langchain4j-spring repo
         if: ${{ github.event_name == 'repository_dispatch' }}

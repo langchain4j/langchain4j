@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 
 import java.util.Objects;
 
@@ -42,12 +43,14 @@ public final class SystemMessage implements Message {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
         return another instanceof SystemMessage
                 && equalTo((SystemMessage) another);
     }
 
+    @JacocoIgnoreCoverageGenerated
     private boolean equalTo(SystemMessage another) {
         return Objects.equals(role, another.role)
                 && Objects.equals(content, another.content)
@@ -55,6 +58,7 @@ public final class SystemMessage implements Message {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         int h = 5381;
         h += (h << 5) + Objects.hashCode(role);
@@ -64,6 +68,7 @@ public final class SystemMessage implements Message {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public String toString() {
         return "SystemMessage{"
                 + "role=" + role

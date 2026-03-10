@@ -11,6 +11,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.service.AiServicesUserMessageConfigTest.VALIDATION_ERROR_MESSAGE_SUFFIX;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -135,6 +136,9 @@ class AiServicesSystemAndUserMessageConfigsTest {
         // with systemMessageProvider
         @SystemMessage("This message should take precedence over the one provided by systemMessageProvider")
         String chat21(String userMessage);
+
+        // with system and user message
+        String chat22();
 
         // illegal
 
@@ -347,6 +351,25 @@ class AiServicesSystemAndUserMessageConfigsTest {
     }
 
     @Test
+    void fixed_system_message_configuration_11() {
+
+        // given
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatModel(model)
+                .systemMessage("Given a name of a country, answer with a name of it's capital")
+                .build();
+
+        // when-then
+        assertThat(aiService.chat11("Country: Germany")).containsIgnoringCase("Berlin");
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage("Given a name of a country, answer with a name of it's capital"),
+                                userMessage("Country: Germany"))
+                        .build());
+    }
+
+    @Test
     void system_message_configuration_12() {
 
         // given
@@ -540,6 +563,26 @@ class AiServicesSystemAndUserMessageConfigsTest {
     }
 
     @Test
+    void fixed_system_and_user_message_configuration_22() {
+
+        // given
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatModel(model)
+                .systemMessage("Given a name of a country, answer with a name of it's capital")
+                .userMessage("Country: Germany")
+                .build();
+
+        // when-then
+        assertThat(aiService.chat22()).containsIgnoringCase("Berlin");
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage("Given a name of a country, answer with a name of it's capital"),
+                                userMessage("Country: Germany"))
+                        .build());
+    }
+
+    @Test
     void illegal_system_message_configuration_1() {
 
         // given
@@ -550,7 +593,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
         // when-then
         assertThatThrownBy(() -> aiService.illegalChat1("a name of it's capital", "Country: Germany"))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage("The parameter 'arg1' in the method 'illegalChat1' of the class dev.langchain4j.service.AiServicesSystemAndUserMessageConfigsTest$AiService must be annotated with either dev.langchain4j.service.UserMessage, dev.langchain4j.service.V, dev.langchain4j.service.MemoryId, or dev.langchain4j.service.UserName, or it should be of type dev.langchain4j.invocation.InvocationParameters");
+                .hasMessage("The parameter 'arg1' in the method 'illegalChat1' of the class dev.langchain4j.service.AiServicesSystemAndUserMessageConfigsTest$AiService" + VALIDATION_ERROR_MESSAGE_SUFFIX);
     }
 
     @Test
@@ -565,6 +608,6 @@ class AiServicesSystemAndUserMessageConfigsTest {
         // when-then
         assertThatThrownBy(() -> aiService.illegalChat2("a name of it's capital", "Country: Germany"))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage("The parameter 'arg1' in the method 'illegalChat2' of the class dev.langchain4j.service.AiServicesSystemAndUserMessageConfigsTest$AiService must be annotated with either dev.langchain4j.service.UserMessage, dev.langchain4j.service.V, dev.langchain4j.service.MemoryId, or dev.langchain4j.service.UserName, or it should be of type dev.langchain4j.invocation.InvocationParameters");
+                .hasMessage("The parameter 'arg1' in the method 'illegalChat2' of the class dev.langchain4j.service.AiServicesSystemAndUserMessageConfigsTest$AiService" + VALIDATION_ERROR_MESSAGE_SUFFIX);
     }
 }

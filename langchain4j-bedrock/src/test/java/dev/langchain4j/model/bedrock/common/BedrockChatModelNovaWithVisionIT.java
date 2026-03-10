@@ -1,23 +1,25 @@
 package dev.langchain4j.model.bedrock.common;
 
-import static dev.langchain4j.model.bedrock.common.BedrockAiServicesIT.sleepIfNeeded;
 import static dev.langchain4j.model.bedrock.TestedModels.*;
+import static dev.langchain4j.model.bedrock.common.BedrockAiServicesIT.sleepIfNeeded;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.bedrock.BedrockChatModel;
+import dev.langchain4j.model.bedrock.BedrockChatResponseMetadata;
 import dev.langchain4j.model.bedrock.BedrockTokenUsage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import java.util.List;
-
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.TokenUsage;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -38,9 +40,7 @@ class BedrockChatModelNovaWithVisionIT extends AbstractChatModelIT {
 
     @Override
     protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
-        return ChatRequestParameters.builder()
-                .maxOutputTokens(maxOutputTokens)
-                .build();
+        return ChatRequestParameters.builder().maxOutputTokens(maxOutputTokens).build();
     }
 
     @Override
@@ -59,17 +59,28 @@ class BedrockChatModelNovaWithVisionIT extends AbstractChatModelIT {
 
     @Override
     protected boolean supportsJsonResponseFormat() {
-        return false; // output format not supported
+        return false; // JSON response format without schema is not supported
     }
 
     @Override
     protected boolean supportsJsonResponseFormatWithSchema() {
-        return false; // output format not supported
+        return false; // not supported for models used in this class
     }
 
     @Override
     protected boolean supportsJsonResponseFormatWithRawSchema() {
-        return false; // output format not supported
+        return false; // not supported for models used in this class
+    }
+
+    @Override
+    protected boolean assertExceptionType() {
+        // Bedrock throws InvalidRequestException, while test expects UnsupportedFeatureException
+        return false;
+    }
+
+    @Override
+    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(ChatModel model) {
+        return BedrockChatResponseMetadata.class;
     }
 
     // OVERRIDE BECAUSE OF INCOHERENCY IN STOPSEQUENCE MANAGEMENT (Nova models include stopSequence)
@@ -101,6 +112,11 @@ class BedrockChatModelNovaWithVisionIT extends AbstractChatModelIT {
         if (assertFinishReason()) {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
         }
+    }
+
+    @Disabled("Sorry but I can't tell you that information because is not appropriate to share someone's personal information")
+    @Override
+    protected void should_respect_multiple_messages(ChatModel model) {
     }
 
     @AfterEach

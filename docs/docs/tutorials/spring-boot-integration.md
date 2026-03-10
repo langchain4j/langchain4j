@@ -27,7 +27,7 @@ For example, for OpenAI (`langchain4j-open-ai`), the dependency name would be `l
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>1.9.1-beta17</version>
+    <version>1.12.1-beta21</version>
 </dependency>
 ```
 
@@ -78,7 +78,7 @@ import `langchain4j-spring-boot-starter`:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-spring-boot-starter</artifactId>
-    <version>1.9.1-beta17</version>
+    <version>1.12.1-beta21</version>
 </dependency>
 ```
 
@@ -121,6 +121,7 @@ The following components will be automatically wired into the AI Service if avai
 - `ChatMemoryProvider`
 - `ContentRetriever`
 - `RetrievalAugmentor`
+- `ToolProvider`
 - All methods of any `@Component` or `@Service` class that are annotated with `@Tool`
 An example:
 ```java
@@ -264,13 +265,146 @@ Every `ChatModelListener` bean in the application context will be automatically
 injected into all `ChatModel` and `StreamingChatModel` beans
 created by one of our Spring Boot starters.
 
+### Micrometer Metrics
+Add the `langchain4j-micrometer-metrics` dependency to your project:
+
+For Maven:
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-micrometer-metrics</artifactId>
+    <version>1.12.1-beta21</version>
+</dependency>
+```
+For Gradle:
+```gradle
+implementation 'dev.langchain4j:langchain4j-micrometer-metrics:1.12.1-beta21'
+```
+
+#### Micrometer (Actuator) Configuration
+You should also have the necessary Actuator dependency in your project.
+For example, if you are using Spring Boot, you can add the following dependencies to your `pom.xml`:
+
+For Maven:
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-actuator</artifactId>
+</dependency>
+```
+For Gradle:
+```gradle
+implementation 'org.springframework.boot:spring-boot-starter-actuator'
+```
+
+Enable the `/metrics` Actuator endpoint in your properties.
+
+application.properties:
+```properties
+management.endpoints.web.exposure.include=metrics
+```
+application.yaml:
+```yaml
+management:
+  endpoints:
+    web:
+      exposure:
+        include: metrics
+```
+
+#### Configure `MicrometerMetricsChatModelListener` bean
+
+In a Spring Boot application, you can define the listener as a bean and inject the `MeterRegistry`:
+
+```java
+import dev.langchain4j.micrometer.metrics.listeners.MicrometerMetricsChatModelListener;
+import io.micrometer.core.instrument.MeterRegistry;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class MetricsConfig {
+
+    @Bean
+    public MicrometerMetricsChatModelListener listener(MeterRegistry meterRegistry) {
+        return new MicrometerMetricsChatModelListener(meterRegistry);
+    }
+}
+```
+
+#### View the Metrics
+
+You can view the metrics by visiting the `/actuator/metrics` endpoint of your application.
+
+For example, if you are running your application on `localhost:8080`,
+you can visit http://localhost:8080/actuator/metrics to view the metrics.
+
+##### Token Usage Metric
+
+View the token usage metric at:
+```
+http://localhost:8080/actuator/metrics/gen_ai.client.token.usage
+```
+
+##### Filtering by Token Type
+
+The `gen_ai.token.type` tag indicates whether the tokens were used for input or output:
+
+| Token Type | Endpoint |
+|------------|----------|
+| Input tokens | `/actuator/metrics/gen_ai.client.token.usage?tag=gen_ai.token.type:input` |
+| Output tokens | `/actuator/metrics/gen_ai.client.token.usage?tag=gen_ai.token.type:output` |
+
+> **Note**: The `gen_ai.client.token.usage` metric is a histogram (DistributionSummary). The endpoint without any tags shows aggregated statistics (count, total, max) across all token types, models, and providers.
+
+### Micrometer Observation API
+
+This implements the `ChatModelListener` using the [Micrometer Observation API](https://docs.micrometer.io/micrometer/reference/observation.html) allowing transparent generation of Metrics and Traces by adding the following dependency:
+
+For Maven:
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-observation</artifactId>
+</dependency>
+```
+For Gradle:
+```gradle
+implementation 'dev.langchain4j:langchain4j-observation'
+```
+
+You need to instantiate the Observation listener as follows...
+
+#### Configure the ObservationChatModelListener bean
+
+```java
+@Configuration
+public class ObservationConfig {
+
+    @Bean
+    public ObservationChatModelListener listener(ObservationRegistry observationRegistry, MeterRegistry meterRegistry) {
+        return new ObservationChatModelListener(observationRegistry, meterRegistry);
+    }
+}
+```
+
+This dependency requires the configuration of the [SpringBoot Actuator](spring-boot-integration.md#micrometer-actuator-configuration), as described above.
+
+For additional observability requirements on a SpringBoot application please follow:
+[Building Your First Observed Application](https://spring.io/blog/2022/10/12/observability-with-spring-boot-3#building-your-first-observed-application)
+
+For more details about the `langchain4j-observation` library, please check the [Observability documentation](observability.md#micrometer-observation-api). 
+
+
 ## Testing
 
 - [An example of integration testing for a Customer Support Agent](https://github.com/langchain4j/langchain4j-examples/blob/main/customer-support-agent-example/src/test/java/dev/langchain4j/example/CustomerSupportAgentIT.java)
 
 ## Supported versions
 
-LangChain4j Spring Boot integration requires Java 17 and Spring Boot 3.2.
+LangChain4j Spring Boot integration requires Java 17 and Spring Boot 3.5, in line with the [Spring Boot OSS support policy](https://spring.io/projects/spring-boot#support).
+
+Support for Spring Boot 4.x is not available yet in LangChain4j, but it's planned for a future release.
 
 ## Examples
 - [Low-level Spring Boot example](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/main/java/dev/langchain4j/example/lowlevel/ChatModelController.java) using [ChatModel API](/tutorials/chat-and-language-models)

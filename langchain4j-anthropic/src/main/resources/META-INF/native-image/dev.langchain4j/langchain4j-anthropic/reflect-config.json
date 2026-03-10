@@ -54,6 +54,15 @@
         "allPublicFields": true
     },
     {
+        "name": "dev.langchain4j.model.anthropic.internal.api.AnthropicError",
+        "allDeclaredConstructors": true,
+        "allPublicConstructors": true,
+        "allDeclaredMethods": true,
+        "allPublicMethods": true,
+        "allDeclaredFields": true,
+        "allPublicFields": true
+    },
+    {
         "name": "dev.langchain4j.model.anthropic.internal.api.AnthropicImageContent",
         "allDeclaredConstructors": true,
         "allPublicConstructors": true,
@@ -70,6 +79,33 @@
         "allPublicMethods": true,
         "allDeclaredFields": true,
         "allPublicFields": true
+    },
+    {
+        "name": "dev.langchain4j.model.anthropic.internal.api.AnthropicFormat",
+        "allDeclaredConstructors": true,
+        "allPublicConstructors": true,
+        "allDeclaredMethods": true,
+        "allPublicMethods": true,
+        "allDeclaredFields": true,
+        "allPublicFields": true
+    },
+    {
+      "name": "dev.langchain4j.model.anthropic.internal.api.AnthropicOutputConfig",
+      "allDeclaredConstructors": true,
+      "allPublicConstructors": true,
+      "allDeclaredMethods": true,
+      "allPublicMethods": true,
+      "allDeclaredFields": true,
+      "allPublicFields": true
+    },
+    {
+      "name": "dev.langchain4j.model.anthropic.internal.api.AnthropicOutputFormatType",
+      "allDeclaredConstructors": true,
+      "allPublicConstructors": true,
+      "allDeclaredMethods": true,
+      "allPublicMethods": true,
+      "allDeclaredFields": true,
+      "allPublicFields": true
     },
     {
       "name": "dev.langchain4j.model.anthropic.internal.api.AnthropicPdfContent",
@@ -253,6 +289,24 @@
     },
     {
       "name": "dev.langchain4j.model.anthropic.internal.api.MessageTokenCountResponse",
+      "allDeclaredConstructors": true,
+      "allPublicConstructors": true,
+      "allDeclaredMethods": true,
+      "allPublicMethods": true,
+      "allDeclaredFields": true,
+      "allPublicFields": true
+    },
+    {
+      "name": "dev.langchain4j.model.anthropic.internal.api.AnthropicModelInfo",
+      "allDeclaredConstructors": true,
+      "allPublicConstructors": true,
+      "allDeclaredMethods": true,
+      "allPublicMethods": true,
+      "allDeclaredFields": true,
+      "allPublicFields": true
+    },
+    {
+      "name": "dev.langchain4j.model.anthropic.internal.api.AnthropicModelsListResponse",
       "allDeclaredConstructors": true,
       "allPublicConstructors": true,
       "allDeclaredMethods": true,

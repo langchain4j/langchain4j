@@ -84,6 +84,14 @@ public class OpenAiOfficialChatRequestParameters extends DefaultChatRequestParam
     }
 
     @Override
+    public OpenAiOfficialChatRequestParameters defaultedBy(ChatRequestParameters that) {
+        return OpenAiOfficialChatRequestParameters.builder()
+                .overrideWith(that)
+                .overrideWith(this)
+                .build();
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;

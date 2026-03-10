@@ -4,9 +4,11 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.vertexai.gemini.VertexAiGeminiChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceIT;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.List;
 
+@EnabledIfEnvironmentVariable(named = "GCP_PROJECT_ID", matches = ".+")
 class VertexAiGeminiAiServiceIT extends AbstractAiServiceIT {
 
     @Override

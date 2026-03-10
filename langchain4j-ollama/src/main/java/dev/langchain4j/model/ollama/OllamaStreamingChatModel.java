@@ -63,7 +63,6 @@ public class OllamaStreamingChatModel extends OllamaBaseChatModel implements Str
 
         public OllamaStreamingChatModelBuilder() {
             // This is public so it can be extended
-            // By default with Lombok it becomes package private
         }
 
         @Override

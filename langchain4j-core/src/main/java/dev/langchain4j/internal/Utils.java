@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static java.net.HttpURLConnection.HTTP_OK;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.Collections.unmodifiableCollection;
 import static java.util.Collections.unmodifiableList;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
@@ -21,6 +22,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HexFormat;
@@ -181,6 +184,16 @@ public class Utils {
      */
     public static boolean isNullOrEmpty(Collection<?> collection) {
         return collection == null || collection.isEmpty();
+    }
+
+    /**
+     * Is the collection not {@code null} and not empty?
+     *
+     * @param collection The collection to check.
+     * @return {@code true} if the collection is not {@code null} and not {@link Collection#isEmpty()}, otherwise {@code false}.
+     */
+    public static boolean isNotNullOrEmpty(Collection<?> collection) {
+        return !isNullOrEmpty(collection);
     }
 
     /**
@@ -410,12 +423,44 @@ public class Utils {
      * @param <T>  Generic type of the list.
      * @return The copy of the provided list or an empty list.
      */
-    public static <T> List<T> copy(List<T> list) {
+    public static <T> List<T> copy(List<? extends T> list) {
         if (list == null) {
             return List.of();
         }
 
         return unmodifiableList(list);
+    }
+
+    /**
+     * Returns a mutable copy of the provided list.
+     * Returns an empty list if the provided list is <code>null</code>.
+     *
+     * @param list The list to copy.
+     * @param <T>  Generic type of the list.
+     * @return The copy of the provided list or an empty list.
+     */
+    public static <T> List<T> mutableCopy(List<T> list) {
+        if (list == null) {
+            return new ArrayList<>();
+        }
+
+        return new ArrayList<>(list);
+    }
+
+    /**
+     * Returns an (unmodifiable) copy of the provided collection.
+     * Returns an empty list if the provided collection is <code>null</code>.
+     *
+     * @param collection The collection to copy.
+     * @param <T>  Generic type of the collection.
+     * @return The list which is a copy of the provided collection or an empty list.
+     */
+    public static <T> List<T> copy(Collection<? extends T> collection) {
+        if (collection == null) {
+            return List.of();
+        }
+
+        return List.copyOf(collection);
     }
 
     /**
@@ -531,9 +576,60 @@ public class Utils {
      * @return the original value (may be {@code null} or blank)
      */
     public static String warnIfNullOrBlank(String value, String fieldName, Class<?> clazz) {
-        if (isNullOrBlank(fieldName)) {
+        if (isNullOrBlank(value)) {
             log.warn("{}: '{}' is null or blank", clazz.getSimpleName(), fieldName);
         }
         return value;
+    }
+
+    public static String toBase64(String s) {
+        if (s == null) {
+            return null;
+        }
+        return Base64.getEncoder().encodeToString(s.getBytes(UTF_8));
+    }
+
+    public static <T> List<T> merge(List<T>... lists) {
+        if (lists.length < 2) {
+            throw new IllegalArgumentException("lists must have at least 2 elements");
+        }
+
+        if (lists.length == 2) {
+            if (lists[0] == null || lists[0].isEmpty()) {
+                return lists[1];
+            } else if (lists[1] == null || lists[1].isEmpty()) {
+                return lists[0];
+            }
+        }
+
+        List<T> result = new ArrayList<>();
+        for (List<T> list : lists) {
+            result.addAll(list);
+        }
+        return result;
+    }
+
+    public static <K, V> Map<K, V> merge(Map<K, V>... maps) {
+        if (maps.length < 2) {
+            throw new IllegalArgumentException("maps must have at least 2 elements");
+        }
+
+        if (maps.length == 2) {
+            if (maps[0] == null || maps[0].isEmpty()) {
+                return maps[1];
+            } else if (maps[1] == null || maps[1].isEmpty()) {
+                return maps[0];
+            }
+        }
+
+        Map<K, V> result = new HashMap<>();
+        for (Map<K, V> map : maps) {
+            for (Map.Entry<K, V> e : map.entrySet()) {
+                if (result.putIfAbsent(e.getKey(), e.getValue()) != null) {
+                    throw new IllegalArgumentException("Duplicate key: " + e.getKey());
+                }
+            }
+        }
+        return result;
     }
 }

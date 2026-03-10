@@ -67,7 +67,10 @@ import static java.util.Collections.singletonList;
  * You can also provide your own ChatCompletionsClient and ChatCompletionsAsyncClient instance, if you need more flexibility.
  * <p>
  * The list of models, as well as the documentation and a playground to test them, can be found at https://github.com/marketplace/models
+ *
+ * @deprecated This module is deprecated and will be removed in a future release. Please use the langchain4j-openai-official module instead.
  */
+@Deprecated(since = "1.10.0", forRemoval = true)
 public class GitHubModelsStreamingChatModel implements StreamingChatModel {
 
     private static final Logger logger = LoggerFactory.getLogger(GitHubModelsStreamingChatModel.class);

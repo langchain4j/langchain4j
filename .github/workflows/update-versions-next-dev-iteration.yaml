@@ -92,11 +92,11 @@ jobs:
           git commit -m "Update versions to ${{ env.NEXT_STABLE_VERSION }} and ${{ env.NEXT_BETA_VERSION }}"
           git push origin "$branchName"
 
-      - name: Trigger the same job in the langchain4j-embeddings repo
+      - name: Trigger the same job in the langchain4j-spring repo
         uses: peter-evans/repository-dispatch@v4
         with:
           token: ${{ secrets.GH_RELEASE_AUTOMATION_PAT }}
-          repository: langchain4j/langchain4j-embeddings
+          repository: langchain4j/langchain4j-spring
           event-type: trigger-update-versions-next-dev-iteration
           client-payload: |
             {

@@ -1,6 +1,6 @@
 package dev.langchain4j.model.openaiofficial.openai;
 
-import static dev.langchain4j.model.openaiofficial.azureopenai.InternalAzureOpenAiOfficialTestHelper.EMBEDDING_MODEL_NAME;
+import static dev.langchain4j.model.openaiofficial.microsoftfoundry.InternalMicrosoftFoundryTestHelper.EMBEDDING_MODEL_NAME;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 

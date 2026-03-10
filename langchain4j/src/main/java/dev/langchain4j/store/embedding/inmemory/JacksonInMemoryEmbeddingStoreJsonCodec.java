@@ -1,5 +1,8 @@
 package dev.langchain4j.store.embedding.inmemory;
 
+import static com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY;
+import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -10,9 +13,9 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-
-import static com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY;
-import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 
 @Internal
 class JacksonInMemoryEmbeddingStoreJsonCodec implements InMemoryEmbeddingStoreJsonCodec {
@@ -24,8 +27,7 @@ class JacksonInMemoryEmbeddingStoreJsonCodec implements InMemoryEmbeddingStoreJs
             .addMixIn(TextSegment.class, TextSegmentMixin.class)
             .build();
 
-    private static final TypeReference<InMemoryEmbeddingStore<TextSegment>> TYPE_REFERENCE = new TypeReference<>() {
-    };
+    private static final TypeReference<InMemoryEmbeddingStore<TextSegment>> TYPE_REFERENCE = new TypeReference<>() {};
 
     @Override
     public InMemoryEmbeddingStore<TextSegment> fromJson(String json) {
@@ -45,19 +47,35 @@ class JacksonInMemoryEmbeddingStoreJsonCodec implements InMemoryEmbeddingStoreJs
         }
     }
 
+    @Override
+    public void toJson(OutputStream outputStream, InMemoryEmbeddingStore<?> store) {
+        try {
+            OBJECT_MAPPER.writeValue(outputStream, store);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public InMemoryEmbeddingStore<TextSegment> fromJson(InputStream inputStream) {
+        try {
+            return OBJECT_MAPPER.readValue(inputStream, TYPE_REFERENCE);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private abstract static class EntryMixIn<T> {
         @JsonCreator
         EntryMixIn(
                 @JsonProperty("id") String id,
                 @JsonProperty("embedding") Embedding embedding,
-                @JsonProperty("embedded") T embedded) {
-        }
+                @JsonProperty("embedded") T embedded) {}
     }
 
     private abstract static class EmbeddingMixIn {
         @JsonCreator
-        EmbeddingMixIn(@JsonProperty("vector") float[] vector) {
-        }
+        EmbeddingMixIn(@JsonProperty("vector") float[] vector) {}
 
         @JsonProperty("vector")
         abstract float[] vector();
@@ -66,8 +84,6 @@ class JacksonInMemoryEmbeddingStoreJsonCodec implements InMemoryEmbeddingStoreJs
     private abstract static class TextSegmentMixin {
 
         @JsonCreator
-        public TextSegmentMixin(@JsonProperty("text") String text, @JsonProperty("metadata") Metadata metadata) {
-
-        }
+        public TextSegmentMixin(@JsonProperty("text") String text, @JsonProperty("metadata") Metadata metadata) {}
     }
 }

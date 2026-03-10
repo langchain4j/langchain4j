@@ -3,20 +3,24 @@ package dev.langchain4j.model.googleai;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.googleai.GeminiService.BatchOperationType.ASYNC_BATCH_EMBED_CONTENT;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateResponse;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchFileRequest;
+import dev.langchain4j.model.googleai.BatchRequestResponse.BatchIncomplete;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchList;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchName;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchResponse;
+import dev.langchain4j.model.googleai.GeminiBatchProcessor.ExtractedBatchResults;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingRequest;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingResponse;
 import dev.langchain4j.model.googleai.GeminiFiles.GeminiFile;
 import dev.langchain4j.model.googleai.GoogleAiEmbeddingModel.BaseGoogleAiEmbeddingModelBuilder;
 import dev.langchain4j.model.googleai.jsonl.JsonLinesWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
@@ -73,7 +77,7 @@ public final class GoogleAiGeminiBatchEmbeddingModel {
      *                    defaults to 0 if null
      * @param segments    the list of {@link TextSegment}s to generate embeddings for
      * @return a {@link BatchResponse} representing the initial state of the batch operation,
-     *         typically {@link BatchRequestResponse.BatchIncomplete}
+     * typically {@link BatchIncomplete}
      */
     public BatchResponse<Embedding> createBatchInline(
             String displayName, @Nullable Long priority, List<TextSegment> segments) {
@@ -170,6 +174,8 @@ public final class GoogleAiGeminiBatchEmbeddingModel {
     private class EmbeddingRequestPreparer
             implements GeminiBatchProcessor.RequestPreparer<
                     TextSegment, GeminiEmbeddingRequest, GeminiEmbeddingResponse, Embedding> {
+        private static final TypeReference<BatchCreateResponse.InlinedResponseWrapper<GeminiEmbeddingResponse>>
+                responseWrapperType = new TypeReference<>() {};
 
         @Override
         public TextSegment prepareRequest(TextSegment textSegment) {
@@ -195,16 +201,26 @@ public final class GoogleAiGeminiBatchEmbeddingModel {
         }
 
         @Override
-        public List<Embedding> extractResponses(BatchCreateResponse<GeminiEmbeddingResponse> response) {
+        public ExtractedBatchResults<Embedding> extractResults(BatchCreateResponse<GeminiEmbeddingResponse> response) {
             if (response == null || response.inlinedResponses() == null) {
-                return List.of();
+                return new ExtractedBatchResults<>(List.of(), List.of());
             }
 
-            return response.inlinedResponses().inlinedResponses().stream()
-                    .map(BatchCreateResponse.InlinedResponseWrapper::response)
-                    .map(GeminiEmbeddingResponse::embedding)
-                    .map(contentEmbedding -> Embedding.from(contentEmbedding.values()))
-                    .toList();
+            List<Embedding> responses = new ArrayList<>();
+            List<BatchRequestResponse.Operation.Status> errors = new ArrayList<>();
+
+            for (Object wrapper : response.inlinedResponses().inlinedResponses()) {
+                var typed = Json.convertValue(wrapper, responseWrapperType);
+                if (typed.response() != null) {
+                    var embedding = Embedding.from(typed.response().embedding().values());
+                    responses.add(embedding);
+                }
+                if (typed.error() != null) {
+                    errors.add(typed.error());
+                }
+            }
+
+            return new ExtractedBatchResults<>(responses, errors);
         }
     }
 }

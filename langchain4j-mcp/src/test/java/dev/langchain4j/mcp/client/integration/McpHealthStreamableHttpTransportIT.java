@@ -1,5 +1,6 @@
 package dev.langchain4j.mcp.client.integration;
 
+import static dev.langchain4j.mcp.client.integration.McpServerHelper.destroyProcessTree;
 import static dev.langchain4j.mcp.client.integration.McpServerHelper.skipTestsIfJbangNotAvailable;
 import static dev.langchain4j.mcp.client.integration.McpServerHelper.startServerHttp;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -43,14 +44,14 @@ class McpHealthStreamableHttpTransportIT {
             mcpClient.close();
         }
         if (process != null && process.isAlive()) {
-            process.destroyForcibly();
+            destroyProcessTree(process);
         }
     }
 
     @Test
     void health() throws ExecutionException, InterruptedException {
         mcpClient.checkHealth();
-        process.destroy();
+        destroyProcessTree(process);
         process.onExit().get();
         assertThatThrownBy(() -> mcpClient.checkHealth()).rootCause().isInstanceOf(ClosedChannelException.class);
     }

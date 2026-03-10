@@ -1,5 +1,6 @@
 package dev.langchain4j.mcp.client.integration;
 
+import static dev.langchain4j.mcp.client.integration.McpServerHelper.destroyProcessTree;
 import static dev.langchain4j.mcp.client.integration.McpServerHelper.skipTestsIfJbangNotAvailable;
 import static dev.langchain4j.mcp.client.integration.McpServerHelper.startServerHttp;
 
@@ -42,7 +43,7 @@ class McpLoggingStreamableHttpTransportIT extends McpLoggingTestBase {
             mcpClient.close();
         }
         if (process != null && process.isAlive()) {
-            process.destroyForcibly();
+            destroyProcessTree(process);
         }
     }
 }

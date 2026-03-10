@@ -80,7 +80,7 @@ class Converter {
     public static PartialToolCall toPartialToolCall(com.ibm.watsonx.ai.chat.model.PartialToolCall partialToolCall) {
         return PartialToolCall.builder()
                 .id(partialToolCall.id())
-                .index(partialToolCall.index())
+                .index(partialToolCall.toolIndex())
                 .name(partialToolCall.name())
                 .partialArguments(partialToolCall.arguments())
                 .build();
@@ -128,14 +128,8 @@ class Converter {
             builder.guidedChoice(watsonxParameters.guidedChoice());
             builder.guidedGrammar(watsonxParameters.guidedGrammar());
             builder.guidedRegex(watsonxParameters.guidedRegex());
-            builder.repetitionPenalty(
-                    nonNull(watsonxParameters.repetitionPenalty())
-                            ? watsonxParameters.repetitionPenalty().floatValue()
-                            : null);
-            builder.lengthPenalty(
-                    nonNull(watsonxParameters.lengthPenalty())
-                            ? watsonxParameters.lengthPenalty().floatValue()
-                            : null);
+            builder.repetitionPenalty(watsonxParameters.repetitionPenalty());
+            builder.lengthPenalty(watsonxParameters.lengthPenalty());
 
             List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
             ToolChoice toolChoice = parameters.toolChoice();
@@ -215,6 +209,7 @@ class Converter {
                             case AUTO -> Detail.AUTO;
                             case HIGH -> Detail.HIGH;
                             case LOW -> Detail.LOW;
+                            default -> throw new UnsupportedFeatureException("Unsupported detail level: " + imageContent.detailLevel());
                         };
                 yield ImageContent.of(mimeType, base64Data, detailLevel);
             }

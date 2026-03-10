@@ -10,7 +10,15 @@ public interface Planner {
         return nextAction(planningContext);
     }
 
+    default AgenticSystemTopology topology() {
+        return AgenticSystemTopology.SEQUENCE;
+    }
+
     Action nextAction(PlanningContext planningContext);
+
+    default boolean terminated() {
+        return false;
+    }
 
     default Action noOp() {
         return Action.NoOpAction.INSTANCE;
@@ -32,4 +40,7 @@ public interface Planner {
         return new Action.DoneWithResultAction(result);
     }
 
+    default <T extends AgentInstance> T as(Class<T> agentInstanceClass, AgentInstance agentInstance) {
+        throw new ClassCastException("Cannot cast to " + agentInstanceClass.getName() + ": incompatible type");
+    }
 }

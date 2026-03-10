@@ -111,14 +111,42 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
             return doneAction(agenticScope, lastResponse, agentInvocation);
         }
 
-        String agentName = agentInvocation.getAgentName();
+        AgentInstance agent = findAgentByName(agentInvocation.getAgentName());
+
+        agentInvocation.getArguments().entrySet().stream()
+                .filter(entry -> writeArgumentToScope(agenticScope, agent, entry.getKey(), entry.getValue()))
+                .forEach(entry -> agenticScope.writeState(entry.getKey(), entry.getValue()));
+        return call(agent);
+    }
+
+    private AgentInstance findAgentByName(String agentName) {
         AgentInstance agent = agents.get(agentName);
+        if (agent == null) {
+            List<AgentInstance> candidateAgents = agents.values().stream()
+                    .filter(a -> a.name().equals(agentName))
+                    .toList();
+            if (candidateAgents.size() == 1) {
+                agent = candidateAgents.get(0);
+            }
+        }
         if (agent == null) {
             throw new IllegalStateException("No agent found with name: " + agentName);
         }
+        return agent;
+    }
 
-        agentInvocation.getArguments().forEach(agenticScope::writeState);
-        return call(agent);
+    private boolean writeArgumentToScope(AgenticScope agenticScope, AgentInstance agent, String key, Object value) {
+        if (agenticScope.hasState(key)) {
+            Class<?> argType = agent.arguments().stream()
+                    .filter(arg -> arg.name().equals(key))
+                    .findFirst().map(AgentArgument::rawType).orElse(null);
+            if (argType != null) {
+                Object existingValue = agenticScope.readState(key);
+                // avoid overwriting a structured state with an unstructured argument generated from supervisor's LLM response
+                return !argType.isAssignableFrom(existingValue.getClass()) || value.getClass().isAssignableFrom(argType);
+            }
+        }
+        return true;
     }
 
     private Action doneAction(AgenticScope agenticScope, String lastResponse, AgentInvocation done) {
@@ -137,10 +165,11 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         if (output != null) {
             return output.apply(agenticScope);
         }
-        String doneResponse = done != null ? done.getArguments().get("response").toString() : null;
-        if (doneResponse == null) {
+        if (done == null || done.getArguments() == null || done.getArguments().get("response") == null) {
             return lastResponse;
         }
+        String doneResponse = done.getArguments().get("response").toString();
+
         return switch (responseStrategy) {
             case LAST -> lastResponse;
             case SUMMARY -> doneResponse;

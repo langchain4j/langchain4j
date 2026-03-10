@@ -4,11 +4,7 @@ import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
@@ -85,47 +81,70 @@ class ChatResponseTest {
     }
 
     @Test
-    void should_fail_when_no_messages_provided() {
-        // when/then
-        assertThatThrownBy(() -> ChatRequest.builder().build())
-                .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("messages cannot be null or empty");
-    }
-
-    @Test
-    void should_fail_when_empty_messages_array_provided() {
-        // when/then
-        assertThatThrownBy(() -> ChatRequest.builder().messages().build())
-                .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("messages cannot be null or empty");
-    }
-
-    @Test
-    void should_fail_when_parameters_contains_conflicting_tool_specifications() {
-        // given
-        ToolSpecification paramTool =
-                ToolSpecification.builder().name("paramTool").build();
-        ToolSpecification builderTool =
-                ToolSpecification.builder().name("builderTool").build();
-
-        ChatRequestParameters parameters =
-                ChatRequestParameters.builder().toolSpecifications(paramTool).build();
-
-        // when/then
-        assertThatThrownBy(() -> ChatRequest.builder()
-                        .messages(UserMessage.from("hi"))
-                        .parameters(parameters)
-                        .toolSpecifications(builderTool)
-                        .build())
-                .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Cannot set both 'parameters' and 'toolSpecifications' on ChatRequest");
-    }
-
-    @Test
     void should_handle_null_ai_message() {
         // when/then
         assertThatThrownBy(() -> ChatResponse.builder().aiMessage(null).build())
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("aiMessage cannot be null");
+    }
+
+    @Test
+    void should_fail_when_metadata_and_id_are_both_set() {
+        assertThatThrownBy(() ->
+                ChatResponse.builder()
+                        .aiMessage(AiMessage.from("hi"))
+                        .metadata(ChatResponseMetadata.builder().id("id-1").build())
+                        .id("id-2")
+                        .build()
+        )
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("metadata")
+                .hasMessageContaining("id");
+    }
+
+    @Test
+    void should_fail_when_metadata_and_modelName_are_both_set() {
+        assertThatThrownBy(() ->
+                ChatResponse.builder()
+                        .aiMessage(AiMessage.from("hi"))
+                        .metadata(ChatResponseMetadata.builder().modelName("gpt-4").build())
+                        .modelName("gpt-3.5")
+                        .build()
+        )
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("metadata")
+                .hasMessageContaining("modelName");
+    }
+
+    @Test
+    void should_fail_when_metadata_and_tokenUsage_are_both_set() {
+        assertThatThrownBy(() ->
+                ChatResponse.builder()
+                        .aiMessage(AiMessage.from("hi"))
+                        .metadata(ChatResponseMetadata.builder()
+                                .tokenUsage(new TokenUsage(1, 2, 3))
+                                .build())
+                        .tokenUsage(new TokenUsage(4, 5, 6))
+                        .build()
+        )
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("metadata")
+                .hasMessageContaining("tokenUsage");
+    }
+
+    @Test
+    void should_fail_when_metadata_and_finishReason_are_both_set() {
+        assertThatThrownBy(() ->
+                ChatResponse.builder()
+                        .aiMessage(AiMessage.from("hi"))
+                        .metadata(ChatResponseMetadata.builder()
+                                .finishReason(FinishReason.STOP)
+                                .build())
+                        .finishReason(FinishReason.LENGTH)
+                        .build()
+        )
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("metadata")
+                .hasMessageContaining("finishReason");
     }
 }

@@ -1,15 +1,15 @@
 package dev.langchain4j.mcp.client.integration;
 
+import static dev.langchain4j.mcp.client.integration.McpServerHelper.destroyProcessTree;
+import static dev.langchain4j.mcp.client.integration.McpServerHelper.skipTestsIfJbangNotAvailable;
+
 import dev.langchain4j.mcp.client.DefaultMcpClient;
 import dev.langchain4j.mcp.client.transport.http.StreamableHttpMcpTransport;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-
 import java.io.IOException;
 import java.time.Duration;
 import java.util.concurrent.TimeoutException;
-
-import static dev.langchain4j.mcp.client.integration.McpServerHelper.skipTestsIfJbangNotAvailable;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 
 class McpHeadersStreamableHttpTransportIT extends McpHeadersTestBase {
 
@@ -19,7 +19,7 @@ class McpHeadersStreamableHttpTransportIT extends McpHeadersTestBase {
         process = startProcess();
         StreamableHttpMcpTransport transport = new StreamableHttpMcpTransport.Builder()
                 .url("http://localhost:8080/mcp")
-                .customHeaders(() -> customHeaders)
+                .customHeaders(customHeaders)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -36,7 +36,7 @@ class McpHeadersStreamableHttpTransportIT extends McpHeadersTestBase {
             mcpClient.close();
         }
         if (process != null) {
-            process.destroyForcibly();
+            destroyProcessTree(process);
         }
     }
 }

@@ -4,7 +4,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-aggregator</artifactId>
-    <version>1.10.0-beta18-SNAPSHOT</version>
+    <version>1.13.0-beta22-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>LangChain4j :: Aggregator</name>
 
@@ -25,6 +25,7 @@
         <!-- http clients -->
         <module>langchain4j-http-client</module>
         <module>http-clients/langchain4j-http-client-jdk</module>
+        <module>http-clients/langchain4j-http-client-apache</module>
 
         <!-- model providers -->
         <module>langchain4j-anthropic</module>
@@ -50,6 +51,19 @@
         <module>langchain4j-voyage-ai</module>
         <module>langchain4j-watsonx</module>
 
+        <!-- in-process embeddings -->
+        <module>embeddings/langchain4j-embeddings</module>
+        <module>embeddings/langchain4j-embeddings-all-minilm-l6-v2</module>
+        <module>embeddings/langchain4j-embeddings-all-minilm-l6-v2-q</module>
+        <module>embeddings/langchain4j-embeddings-bge-small-en</module>
+        <module>embeddings/langchain4j-embeddings-bge-small-en-q</module>
+        <module>embeddings/langchain4j-embeddings-bge-small-en-v15</module>
+        <module>embeddings/langchain4j-embeddings-bge-small-en-v15-q</module>
+        <module>embeddings/langchain4j-embeddings-bge-small-zh-v15</module>
+        <module>embeddings/langchain4j-embeddings-bge-small-zh-v15-q</module>
+        <module>embeddings/langchain4j-embeddings-e5-small-v2</module>
+        <module>embeddings/langchain4j-embeddings-e5-small-v2-q</module>
+
         <!-- embedding / chat memory stores -->
         <module>langchain4j-azure-ai-search</module>
         <module>langchain4j-azure-cosmos-mongo-vcore</module>
@@ -59,6 +73,7 @@
         <module>langchain4j-coherence</module>
         <module>langchain4j-couchbase</module>
         <module>langchain4j-elasticsearch</module>
+        <module>langchain4j-hibernate</module>
         <module>langchain4j-infinispan</module>
         <module>langchain4j-mariadb</module>
         <module>langchain4j-milvus</module>
@@ -109,20 +124,28 @@
 
         <!-- experimental -->
         <module>experimental/langchain4j-experimental-sql</module>
+        <module>experimental/langchain4j-experimental-skills-shell</module>
         <module>langchain4j-agentic</module>
         <module>langchain4j-agentic-a2a</module>
+        <module>langchain4j-agentic-mcp</module>
         <module>langchain4j-agentic-patterns</module>
+        <module>langchain4j-skills</module>
+
+        <!-- observability -->
+        <module>langchain4j-micrometer-metrics</module>
+        <module>langchain4j-observation</module>
 
         <!-- integration tests -->
         <module>integration-tests</module>
 
         <!-- internal -->
+        <module>internal/langchain4j-test-retry</module>
         <module>internal/langchain4j-docu-chatbot-updater</module>
     </modules>
 
     <properties>
-        <langchain4j.stable.version>1.10.0-SNAPSHOT</langchain4j.stable.version>
-        <langchain4j.beta.version>1.10.0-beta18-SNAPSHOT</langchain4j.beta.version>
+        <langchain4j.stable.version>1.13.0-SNAPSHOT</langchain4j.stable.version>
+        <langchain4j.beta.version>1.13.0-beta22-SNAPSHOT</langchain4j.beta.version>
         <gib.disable>true</gib.disable>
     </properties>
 
@@ -219,6 +242,15 @@
             </activation>
             <modules>
                 <module>langchain4j-jlama</module>
+            </modules>
+        </profile>
+
+        <profile>
+            <id>jdk25</id>
+            <activation>
+                <jdk>25</jdk>
+            </activation>
+            <modules>
                 <module>langchain4j-gpu-llama3</module>
             </modules>
         </profile>

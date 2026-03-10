@@ -118,6 +118,14 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
                 .build();
     }
 
+    @Override
+    public WatsonxChatRequestParameters defaultedBy(ChatRequestParameters that) {
+        return WatsonxChatRequestParameters.builder()
+                .overrideWith(that)
+                .overrideWith(this)
+                .build();
+    }
+
     public static class Builder extends DefaultChatRequestParameters.Builder<Builder> {
         private String projectId;
         private String spaceId;
@@ -248,6 +256,7 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
             return this;
         }
 
+        @Override
         public WatsonxChatRequestParameters build() {
             return new WatsonxChatRequestParameters(this);
         }

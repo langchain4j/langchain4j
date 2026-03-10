@@ -279,10 +279,11 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
         streamingHandle.set(new AzureOpenAiStreamingHandle(disposable));
     }
 
-    private static void handle(ChatCompletions chatCompletions,
-                               ToolCallBuilder toolCallBuilder,
-                               StreamingChatResponseHandler handler,
-                               StreamingHandle streamingHandle) {
+    private static void handle(
+            ChatCompletions chatCompletions,
+            ToolCallBuilder toolCallBuilder,
+            StreamingChatResponseHandler handler,
+            StreamingHandle streamingHandle) {
         List<ChatChoice> choices = chatCompletions.getChoices();
         if (isNullOrEmpty(choices)) {
             return;
@@ -609,7 +610,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
         public Builder reasoningEffort(ReasoningEffortValue reasoningEffort) {
             this.reasoningEffort = reasoningEffort;
             return this;
-        }      
+        }
 
         public AzureOpenAiStreamingChatModel build() {
             return new AzureOpenAiStreamingChatModel(this);

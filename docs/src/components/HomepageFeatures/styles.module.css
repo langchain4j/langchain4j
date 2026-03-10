@@ -16,6 +16,7 @@
 .featureCard {
   display: flex;
   align-items: stretch;
+  margin-bottom: 15px;
 }
 
 .featureSvg:hover {

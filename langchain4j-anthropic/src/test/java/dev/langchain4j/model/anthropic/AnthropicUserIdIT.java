@@ -1,17 +1,19 @@
 package dev.langchain4j.model.anthropic;
 
-import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_HAIKU_4_5_20251001;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicUsage;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicCreateMessageOptions;
+import dev.langchain4j.model.anthropic.internal.client.ParsedAndRawResponse;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -36,7 +38,7 @@ class AnthropicUserIdIT {
         // then
         ArgumentCaptor<AnthropicCreateMessageRequest> requestCaptor =
                 ArgumentCaptor.forClass(AnthropicCreateMessageRequest.class);
-        verify(mockClient).createMessage(requestCaptor.capture());
+        verify(mockClient).createMessageWithRawResponse(requestCaptor.capture());
 
         AnthropicCreateMessageRequest capturedRequest = requestCaptor.getValue();
         assertThat(capturedRequest.getMetadata()).isNotNull();
@@ -78,7 +80,7 @@ class AnthropicUserIdIT {
         // then
         ArgumentCaptor<AnthropicCreateMessageRequest> requestCaptor =
                 ArgumentCaptor.forClass(AnthropicCreateMessageRequest.class);
-        verify(mockClient).createMessage(requestCaptor.capture());
+        verify(mockClient).createMessageWithRawResponse(requestCaptor.capture());
 
         AnthropicCreateMessageRequest capturedRequest = requestCaptor.getValue();
         assertThat(capturedRequest.getMetadata()).isNull();
@@ -96,7 +98,7 @@ class AnthropicUserIdIT {
         // then
         ArgumentCaptor<AnthropicCreateMessageRequest> requestCaptor =
                 ArgumentCaptor.forClass(AnthropicCreateMessageRequest.class);
-        verify(mockClient).createMessage(requestCaptor.capture());
+        verify(mockClient).createMessageWithRawResponse(requestCaptor.capture());
 
         AnthropicCreateMessageRequest capturedRequest = requestCaptor.getValue();
         assertThat(capturedRequest.getMetadata()).isNull();
@@ -105,23 +107,30 @@ class AnthropicUserIdIT {
     // Helper methods to reduce duplication
     private static AnthropicClient createMockClientWithResponse() {
         AnthropicClient mockClient = mock(AnthropicClient.class);
-        AnthropicCreateMessageResponse mockResponse = new AnthropicCreateMessageResponse();
-        mockResponse.id = "test-id";
-        mockResponse.type = "message";
-        mockResponse.role = "assistant";
-        mockResponse.content = Collections.singletonList(createTextContent("Hello response"));
-        mockResponse.model = CLAUDE_3_5_HAIKU_20241022.toString();
-        mockResponse.stopReason = "end_turn";
-        mockResponse.usage = createUsage();
+        AnthropicCreateMessageResponse mockResponse = AnthropicCreateMessageResponse.builder()
+                .id("test-id")
+                .type("message")
+                .role("assistant")
+                .content(Collections.singletonList(createTextContent("Hello response")))
+                .model(CLAUDE_HAIKU_4_5_20251001.toString())
+                .stopReason("end_turn")
+                .stopSequence(null)
+                .usage(createUsage())
+                .build();
 
-        when(mockClient.createMessage(any(AnthropicCreateMessageRequest.class))).thenReturn(mockResponse);
+        SuccessfulHttpResponse rawResponse =
+                SuccessfulHttpResponse.builder().statusCode(200).build();
+        ParsedAndRawResponse parsedAndRawResponse = new ParsedAndRawResponse(mockResponse, rawResponse);
+
+        when(mockClient.createMessageWithRawResponse(any(AnthropicCreateMessageRequest.class)))
+                .thenReturn(parsedAndRawResponse);
         return mockClient;
     }
 
     private static ChatModel createChatModelWithMock(AnthropicClient mockClient, String userId) {
         ChatModel model = AnthropicChatModel.builder()
                 .apiKey("dummy-api-key")
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .userId(userId)
                 .maxTokens(10)
                 .build();
@@ -133,7 +142,7 @@ class AnthropicUserIdIT {
     private static StreamingChatModel createStreamingChatModelWithMock(AnthropicClient mockClient, String userId) {
         StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .apiKey("dummy-api-key")
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .userId(userId)
                 .maxTokens(10)
                 .build();
@@ -153,16 +162,15 @@ class AnthropicUserIdIT {
     }
 
     private static AnthropicContent createTextContent(String text) {
-        AnthropicContent content = new AnthropicContent();
-        content.type = "text";
-        content.text = text;
-        return content;
+        return AnthropicContent.builder().type("text").text(text).build();
     }
 
     private static AnthropicUsage createUsage() {
         AnthropicUsage usage = new AnthropicUsage();
         usage.inputTokens = 10;
         usage.outputTokens = 5;
+        usage.cacheCreationInputTokens = null;
+        usage.cacheReadInputTokens = null;
         return usage;
     }
 }

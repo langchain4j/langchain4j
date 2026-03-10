@@ -1,9 +1,16 @@
 package dev.langchain4j.model.vertexai.gemini;
 
+import static com.google.cloud.vertexai.generativeai.PartMaker.fromMimeTypeAndData;
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.readBytes;
+import static java.util.Collections.singletonList;
+
 import com.google.cloud.vertexai.api.FunctionResponse;
 import com.google.cloud.vertexai.api.Part;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Struct;
+import com.google.protobuf.Value;
 import com.google.protobuf.util.JsonFormat;
 import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.image.Image;
@@ -20,22 +27,12 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.data.video.Video;
-import dev.langchain4j.internal.CustomMimeTypesFileTypeDetector;
-
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
-import static com.google.cloud.vertexai.generativeai.PartMaker.fromMimeTypeAndData;
-import static dev.langchain4j.internal.Exceptions.illegalArgument;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.quoted;
-import static dev.langchain4j.internal.Utils.readBytes;
-import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.toList;
 
 class PartsMapper {
 
@@ -86,91 +83,62 @@ class PartsMapper {
     }
 
     static List<Part> map(ChatMessage message) {
-        if (message instanceof AiMessage) {
-            AiMessage aiMessage = (AiMessage) message;
+        if (message instanceof AiMessage aiMessage) {
 
             List<Part> parts = new ArrayList<>();
 
             if (aiMessage.text() != null && !aiMessage.text().isEmpty()) {
-                parts.add(Part.newBuilder()
-                    .setText(aiMessage.text())
-                    .build());
+                parts.add(Part.newBuilder().setText(aiMessage.text()).build());
             }
 
             if (aiMessage.hasToolExecutionRequests()) {
                 List<Part> fnCallReqParts = aiMessage.toolExecutionRequests().stream()
-                    .map(FunctionCallHelper::fromToolExecutionRequest)
-                    .map(fnCall -> Part.newBuilder()
-                        .setFunctionCall(fnCall)
-                        .build())
-                    .collect(toList());
+                        .map(FunctionCallHelper::fromToolExecutionRequest)
+                        .map(fnCall -> Part.newBuilder().setFunctionCall(fnCall).build())
+                        .toList();
 
                 parts.addAll(fnCallReqParts);
             }
 
             return parts;
-        } else if (message instanceof UserMessage) {
-            return ((UserMessage) message).contents().stream()
-                .map(PartsMapper::map)
-                .collect(toList());
-        } else if (message instanceof SystemMessage) {
-            return singletonList(Part.newBuilder()
-                .setText(((SystemMessage) message).text())
-                .build());
-        } else if (message instanceof ToolExecutionResultMessage) {
-            ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) message;
+        } else if (message instanceof UserMessage userMessage) {
+            return userMessage.contents().stream().map(PartsMapper::map).toList();
+        } else if (message instanceof SystemMessage systemMessage) {
+            return singletonList(
+                    Part.newBuilder().setText((systemMessage).text()).build());
+        } else if (message instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
             String functionResponseText = toolExecutionResultMessage.text();
-
-            Struct.Builder structBuilder = Struct.newBuilder();
-            try {
-                JsonFormat.parser().merge(functionResponseText, structBuilder);
-            } catch (InvalidProtocolBufferException e) {
-                // TODO do a proper fix
-                String functionResponseTextAsMap = "{\"result\":" + functionResponseText + "}";
-                try {
-                    JsonFormat.parser().merge(functionResponseTextAsMap, structBuilder);
-                } catch (InvalidProtocolBufferException e2) {
-                    String functionResponseTextWithQuotesAsMap = "{\"result\":" + quoted(functionResponseText) + "}";
-                    try {
-                        JsonFormat.parser().merge(functionResponseTextWithQuotesAsMap, structBuilder);
-                    } catch (InvalidProtocolBufferException e3) {
-                        throw new RuntimeException(e3);
-                    }
-                }
-            }
-            Struct responseStruct = structBuilder.build();
+            Struct responseStruct = parseFunctionResponseToStruct(functionResponseText);
 
             return singletonList(Part.newBuilder()
-                .setFunctionResponse(FunctionResponse.newBuilder()
-                    .setName(toolExecutionResultMessage.toolName())
-                    .setResponse(responseStruct)
-                    .build())
-                .build());
+                    .setFunctionResponse(FunctionResponse.newBuilder()
+                            .setName(toolExecutionResultMessage.toolName())
+                            .setResponse(responseStruct)
+                            .build())
+                    .build());
         } else {
             throw illegalArgument(message.type() + " message is not supported by Gemini");
         }
     }
 
     private static Part map(Content content) {
-        if (content instanceof TextContent) {
-            return map((TextContent) content);
-        } else if (content instanceof ImageContent) {
-            return map((ImageContent) content);
-        } else if (content instanceof AudioContent) {
-            return map((AudioContent) content);
-        } else if (content instanceof VideoContent) {
-            return map((VideoContent) content);
-        } else if (content instanceof PdfFileContent) {
-            return map((PdfFileContent) content);
+        if (content instanceof TextContent text) {
+            return map(text);
+        } else if (content instanceof ImageContent image) {
+            return map(image);
+        } else if (content instanceof AudioContent audio) {
+            return map(audio);
+        } else if (content instanceof VideoContent video) {
+            return map(video);
+        } else if (content instanceof PdfFileContent pdf) {
+            return map(pdf);
         } else {
             throw illegalArgument("Unknown content type: " + content);
         }
     }
 
     private static Part map(TextContent content) {
-        return Part.newBuilder()
-                .setText(content.text())
-                .build();
+        return Part.newBuilder().setText(content.text()).build();
     }
 
     static Part map(ImageContent content) {
@@ -215,5 +183,30 @@ class PartsMapper {
             }
         }
         throw illegalArgument("Unable to detect the MIME type of '%s'. Please provide it explicitly.", url);
+    }
+
+    private static Struct parseFunctionResponseToStruct(String functionResponseText) {
+        try {
+            Struct.Builder structBuilder = Struct.newBuilder();
+            JsonFormat.parser().merge(functionResponseText, structBuilder);
+            return structBuilder.build();
+        } catch (InvalidProtocolBufferException e) {
+            // Not a JSON object
+        }
+
+        try {
+            String wrappedJson = "{\"result\":" + functionResponseText + "}";
+            Struct.Builder structBuilder = Struct.newBuilder();
+            JsonFormat.parser().merge(wrappedJson, structBuilder);
+            return structBuilder.build();
+        } catch (InvalidProtocolBufferException e) {
+            // Not a valid JSON
+        }
+
+        return Struct.newBuilder()
+                .putFields(
+                        "result",
+                        Value.newBuilder().setStringValue(functionResponseText).build())
+                .build();
     }
 }

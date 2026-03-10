@@ -15,6 +15,7 @@ import java.math.BigInteger;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
@@ -366,5 +367,69 @@ class ToolSpecificationsTest implements WithAssertions {
         assertThat(p1Schema.properties().keySet())
                 .containsExactlyInAnyOrder(
                         "name", "aliases", "active", "parent", "currentAddress", "previousAddresses");
+    }
+
+    @Test
+    void parses_tool_metadata_correctly() throws NoSuchMethodException {
+
+        // given
+        class Tools {
+
+            @Tool(metadata = "{\"one\": \"one\", \"two\": 2}")
+            public void tool() {}
+        }
+
+        Method method = Tools.class.getMethod("tool");
+
+        // when
+        ToolSpecification toolSpecification = ToolSpecifications.toolSpecificationFrom(method);
+
+        // then
+        assertThat(toolSpecification.metadata()).containsExactly(Map.entry("one", "one"), Map.entry("two", 2));
+    }
+
+    @Test
+    void optional_parameter_is_not_required() throws NoSuchMethodException {
+        class Tools {
+            @Tool
+            public void tool(@P("foo") String foo, @P("bar") Optional<String> bar) {}
+        }
+        Method method = Tools.class.getMethod("tool", String.class, Optional.class);
+        ToolSpecification ts = ToolSpecifications.toolSpecificationFrom(method);
+
+        assertThat(ts.parameters()).isInstanceOf(JsonObjectSchema.class);
+        JsonObjectSchema schema = ts.parameters();
+        assertThat(schema.required()).containsExactly("arg0"); // only 'foo' is required
+        assertThat(schema.properties().keySet()).containsExactly("arg0", "arg1");
+    }
+
+    @Test
+    void non_optional_parameter_is_required_by_default() throws NoSuchMethodException {
+        class Tools {
+            @Tool
+            public void tool(@P("foo") String foo, @P("bar") String bar) {}
+        }
+        Method method = Tools.class.getMethod("tool", String.class, String.class);
+        ToolSpecification ts = ToolSpecifications.toolSpecificationFrom(method);
+
+        assertThat(ts.parameters()).isInstanceOf(JsonObjectSchema.class);
+        JsonObjectSchema schema = ts.parameters();
+        assertThat(schema.required()).containsExactly("arg0", "arg1"); // both required
+        assertThat(schema.properties().keySet()).containsExactly("arg0", "arg1");
+    }
+
+    @Test
+    void parameter_explicitly_required_true_is_required() throws NoSuchMethodException {
+        class Tools {
+            @Tool
+            public void tool(@P(value = "foo", required = true) String foo, @P("bar") String bar) {}
+        }
+        Method method = Tools.class.getMethod("tool", String.class, String.class);
+        ToolSpecification ts = ToolSpecifications.toolSpecificationFrom(method);
+
+        assertThat(ts.parameters()).isInstanceOf(JsonObjectSchema.class);
+        JsonObjectSchema schema = ts.parameters();
+        assertThat(schema.required()).containsExactly("arg0", "arg1"); // both required
+        assertThat(schema.properties().keySet()).containsExactly("arg0", "arg1");
     }
 }

@@ -1,5 +1,6 @@
 package dev.langchain4j.mcp.client.integration;
 
+import static dev.langchain4j.mcp.client.integration.McpServerHelper.destroyProcessTree;
 import static dev.langchain4j.mcp.client.integration.McpServerHelper.skipTestsIfJbangNotAvailable;
 import static dev.langchain4j.mcp.client.integration.McpServerHelper.startServerHttp;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -48,7 +49,7 @@ class McpAutoHealthCheckIT {
             mcpClient.close();
         }
         if (process != null) {
-            process.destroyForcibly();
+            destroyProcessTree(process);
         }
     }
 
@@ -64,7 +65,7 @@ class McpAutoHealthCheckIT {
     @Test
     void shouldDetectDeadServerByDefault() throws Exception {
         executeAToolAndAssertSuccess();
-        process.destroy();
+        destroyProcessTree(process);
         process.onExit().get();
         TimeUnit.MILLISECONDS.sleep(500);
         // Reconnect heartbeat detection

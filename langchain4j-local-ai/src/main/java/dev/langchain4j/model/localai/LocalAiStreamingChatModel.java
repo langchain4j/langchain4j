@@ -220,7 +220,6 @@ public class LocalAiStreamingChatModel implements StreamingChatModel {
 
         public LocalAiStreamingChatModelBuilder() {
             // This is public so it can be extended
-            // By default with Lombok it becomes package private
         }
 
         public LocalAiStreamingChatModelBuilder baseUrl(String baseUrl) {

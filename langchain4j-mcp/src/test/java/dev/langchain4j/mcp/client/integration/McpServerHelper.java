@@ -80,4 +80,14 @@ public class McpServerHelper {
     private static boolean isWindows() {
         return System.getProperty("os.name").toLowerCase().contains("windows");
     }
+
+    static void destroyProcessTree(Process process) {
+        if (isWindows()) {
+            ProcessHandle handle = process.toHandle();
+            handle.descendants().forEach(ProcessHandle::destroyForcibly);
+            process.destroyForcibly();
+        } else {
+            process.destroyForcibly();
+        }
+    }
 }

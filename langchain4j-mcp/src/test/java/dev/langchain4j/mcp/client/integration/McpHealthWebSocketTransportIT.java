@@ -1,23 +1,22 @@
 package dev.langchain4j.mcp.client.integration;
 
+import static dev.langchain4j.mcp.client.integration.McpServerHelper.destroyProcessTree;
+import static dev.langchain4j.mcp.client.integration.McpServerHelper.skipTestsIfJbangNotAvailable;
+import static dev.langchain4j.mcp.client.integration.McpServerHelper.startServerHttp;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import dev.langchain4j.mcp.client.DefaultMcpClient;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.mcp.client.transport.McpTransport;
-import dev.langchain4j.mcp.client.transport.http.StreamableHttpMcpTransport;
 import dev.langchain4j.mcp.client.transport.websocket.WebSocketMcpTransport;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
-
 import java.io.IOException;
 import java.nio.channels.ClosedChannelException;
 import java.time.Duration;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
-
-import static dev.langchain4j.mcp.client.integration.McpServerHelper.skipTestsIfJbangNotAvailable;
-import static dev.langchain4j.mcp.client.integration.McpServerHelper.startServerHttp;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 class McpHealthWebSocketTransportIT {
 
@@ -45,15 +44,17 @@ class McpHealthWebSocketTransportIT {
             mcpClient.close();
         }
         if (process != null && process.isAlive()) {
-            process.destroyForcibly();
+            destroyProcessTree(process);
         }
     }
 
     @Test
     void health() throws ExecutionException, InterruptedException {
         mcpClient.checkHealth();
-        process.destroy();
+        destroyProcessTree(process);
         process.onExit().get();
-        assertThatThrownBy(() -> mcpClient.checkHealth()).rootCause().isInstanceOf(ClosedChannelException.class);
+        assertThatThrownBy(() -> mcpClient.checkHealth())
+                .rootCause()
+                .isInstanceOfAny(ClosedChannelException.class, IllegalStateException.class);
     }
 }

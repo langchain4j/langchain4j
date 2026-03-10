@@ -148,6 +148,9 @@ class AwsDocumentConverterTest {
                 .parameters(JsonObjectSchema.builder()
                         .addStringProperty("param1")
                         .addIntegerProperty("param2")
+                        .addIntegerProperty("param3")
+                        .addStringProperty("param4")
+                        .required("param2", "param4")
                         .build())
                 .build();
 
@@ -157,14 +160,208 @@ class AwsDocumentConverterTest {
         // Then
         Map<String, Document> docMap = document.asMap();
         assertThat(docMap.get("type").asString()).isEqualTo("object");
-        assertThat(docMap.get("description").asString()).isEqualTo("Test tool description");
+        assertThat(docMap.containsKey("description")).isFalse();
 
         Document properties = docMap.get("properties");
-        assertThat(properties.asMap()).containsKey("param1");
-        assertThat(properties.asMap()).containsKey("param2");
+        assertThat(properties.asMap().keySet()).containsExactlyInAnyOrder("param1", "param2", "param3", "param4");
 
         List<Document> required = docMap.get("required").asList();
-        assertThat(required).containsAll(List.of(Document.fromString("param1"), Document.fromString("param2")));
+        assertThat(required).containsExactlyInAnyOrder(Document.fromString("param2"), Document.fromString("param4"));
+    }
+
+    @Test
+    void convert_json_objec_schema_to_document_withNoExplicitRequiredFields() {
+        // Given - properties defined but none marked as required
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("test-tool")
+                .description("Tool with no required fields")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("param1")
+                        .addIntegerProperty("param2")
+                        .addStringProperty("param3")
+                        .build())
+                .build();
+
+        // When
+        Document document = AwsDocumentConverter.convertJsonObjectSchemaToDocument(toolSpec);
+
+        // Then - required list should be empty
+        Map<String, Document> docMap = document.asMap();
+        Document properties = docMap.get("properties");
+        assertThat(properties.asMap().keySet()).containsExactlyInAnyOrder("param1", "param2", "param3");
+
+        List<Document> required = docMap.get("required").asList();
+        assertThat(required).isEmpty();
+    }
+
+    @Test
+    void convert_json_objec_schema_to_document_withAllPropertiesRequired() {
+        // Given - all properties explicitly marked as required
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("all-required-tool")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("param1")
+                        .addIntegerProperty("param2")
+                        .addStringProperty("param3")
+                        .required("param1", "param2", "param3")
+                        .build())
+                .build();
+
+        // When
+        Document document = AwsDocumentConverter.convertJsonObjectSchemaToDocument(toolSpec);
+
+        // Then - all should be in required list
+        Map<String, Document> docMap = document.asMap();
+        List<Document> required = docMap.get("required").asList();
+        assertThat(required)
+                .hasSize(3)
+                .containsExactlyInAnyOrder(
+                        Document.fromString("param1"), Document.fromString("param2"), Document.fromString("param3"));
+    }
+
+    @Test
+    void convert_json_objec_schema_to_document_withSingleRequiredParameter() {
+        // Given - only one parameter marked as required
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("single-required-tool")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("optional1")
+                        .addIntegerProperty("required1")
+                        .addStringProperty("optional2")
+                        .required("required1")
+                        .build())
+                .build();
+
+        // When
+        Document document = AwsDocumentConverter.convertJsonObjectSchemaToDocument(toolSpec);
+
+        // Then - only required1 should be in required list
+        Map<String, Document> docMap = document.asMap();
+        Document properties = docMap.get("properties");
+        assertThat(properties.asMap().keySet()).hasSize(3);
+
+        List<Document> required = docMap.get("required").asList();
+        assertThat(required).hasSize(1).containsExactly(Document.fromString("required1"));
+    }
+
+    @Test
+    void convert_json_objec_schema_to_document_withNullParameters() {
+        // Given - null parameters (negative case)
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("no-params-tool")
+                .description("Tool with no parameters")
+                .parameters(null)
+                .build();
+
+        // When
+        Document document = AwsDocumentConverter.convertJsonObjectSchemaToDocument(toolSpec);
+
+        // Then - should not have properties or required fields
+        Map<String, Document> docMap = document.asMap();
+        assertThat(docMap.get("type").asString()).isEqualTo("object");
+        assertThat(docMap.containsKey("description")).isFalse();
+        assertThat(docMap.containsKey("properties")).isFalse();
+        assertThat(docMap.containsKey("required")).isFalse();
+    }
+
+    @Test
+    void convert_json_objec_schema_to_document_withEmptyProperties() {
+        // Given - empty properties (edge case)
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("empty-props-tool")
+                .description("Tool with empty properties")
+                .parameters(JsonObjectSchema.builder().build())
+                .build();
+
+        // When
+        Document document = AwsDocumentConverter.convertJsonObjectSchemaToDocument(toolSpec);
+
+        // Then - both properties and required should be empty
+        Map<String, Document> docMap = document.asMap();
+        Document properties = docMap.get("properties");
+        assertThat(properties.asMap()).isEmpty();
+
+        List<Document> required = docMap.get("required").asList();
+        assertThat(required).isEmpty();
+    }
+
+    @Test
+    void convert_json_objec_schema_to_document_withComplexPropertyTypes() {
+        // Given - various property types with only some required
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("complex-tool")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("stringProp")
+                        .addIntegerProperty("intProp")
+                        .addBooleanProperty("boolProp")
+                        .addNumberProperty("numberProp")
+                        .addEnumProperty("arrayProp", List.of("enumA", "enumB"))
+                        .required("intProp", "arrayProp") // Only 2 of 5 required
+                        .build())
+                .build();
+
+        // When
+        Document document = AwsDocumentConverter.convertJsonObjectSchemaToDocument(toolSpec);
+
+        // Then - only intProp and arrayProp should be required
+        Map<String, Document> docMap = document.asMap();
+        Document properties = docMap.get("properties");
+        assertThat(properties.asMap().keySet())
+                .containsExactlyInAnyOrder("stringProp", "intProp", "boolProp", "numberProp", "arrayProp");
+
+        List<Document> required = docMap.get("required").asList();
+        assertThat(required)
+                .hasSize(2)
+                .containsExactlyInAnyOrder(Document.fromString("intProp"), Document.fromString("arrayProp"));
+    }
+
+    @Test
+    void convert_json_objec_schema_to_document_withNullDescription() {
+        // Given - null description
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("no-desc-tool")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("param1")
+                        .required("param1")
+                        .build())
+                .build();
+
+        // When
+        Document document = AwsDocumentConverter.convertJsonObjectSchemaToDocument(toolSpec);
+
+        // Then - should work without description
+        Map<String, Document> docMap = document.asMap();
+        assertThat(docMap.containsKey("description")).isFalse();
+        assertThat(docMap.get("type").asString()).isEqualTo("object");
+
+        List<Document> required = docMap.get("required").asList();
+        assertThat(required).containsExactly(Document.fromString("param1"));
+    }
+
+    @Test
+    void convert_json_objec_schema_to_document_requiredFieldNotInProperties() {
+        // Given - This shouldn't happen in practice, but tests defensive coding
+        // if schema mistakenly marks a non-existent property as required
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("invalid-tool")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("param1")
+                        .addIntegerProperty("param2")
+                        .required("param1", "param2", "nonexistent") // nonexistent not in properties
+                        .build())
+                .build();
+
+        // When
+        Document document = AwsDocumentConverter.convertJsonObjectSchemaToDocument(toolSpec);
+
+        // Then - should include all items from required() call
+        Map<String, Document> docMap = document.asMap();
+        List<Document> required = docMap.get("required").asList();
+        assertThat(required)
+                .containsExactlyInAnyOrder(
+                        Document.fromString("param1"),
+                        Document.fromString("param2"),
+                        Document.fromString("nonexistent"));
     }
 
     @Test
@@ -250,7 +447,7 @@ class AwsDocumentConverterTest {
         // Then
         Map<String, Document> docMap = document.asMap();
         assertThat(docMap.get("type").asString()).isEqualTo("object");
-        assertThat(docMap.get("description").asString()).isEqualTo("Simple tool with no parameters");
+        assertThat(docMap.containsKey("description")).isFalse();
 
         // Should handle null/empty parameters gracefully
         if (docMap.containsKey("properties")) {

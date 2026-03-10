@@ -1,25 +1,27 @@
 package dev.langchain4j.model.bedrock.common;
 
+import static dev.langchain4j.model.bedrock.TestedModels.AWS_NOVA_MICRO;
+import static dev.langchain4j.model.bedrock.TestedModels.COHERE_COMMAND_R_PLUS;
+import static dev.langchain4j.model.bedrock.TestedModels.MISTRAL_LARGE;
+import static dev.langchain4j.model.bedrock.common.BedrockAiServicesIT.sleepIfNeeded;
+
 import dev.langchain4j.model.bedrock.BedrockChatModel;
 import dev.langchain4j.model.bedrock.BedrockChatRequestParameters;
+import dev.langchain4j.model.bedrock.BedrockChatResponseMetadata;
 import dev.langchain4j.model.bedrock.BedrockTokenUsage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.TokenUsage;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.DisabledIf;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-
-import java.util.List;
-
-import static dev.langchain4j.model.bedrock.common.BedrockAiServicesIT.sleepIfNeeded;
-import static dev.langchain4j.model.bedrock.TestedModels.AWS_NOVA_MICRO;
-import static dev.langchain4j.model.bedrock.TestedModels.COHERE_COMMAND_R_PLUS;
-import static dev.langchain4j.model.bedrock.TestedModels.MISTRAL_LARGE;
 
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
 class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
@@ -69,17 +71,17 @@ class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
 
     @Override
     protected boolean supportsJsonResponseFormat() {
-        return false; // output format not supported
+        return false; // JSON response format without schema is not supported
     }
 
     @Override
     protected boolean supportsJsonResponseFormatWithSchema() {
-        return false; // output format not supported
+        return false; // not supported for models used in this class
     }
 
     @Override
     protected boolean supportsJsonResponseFormatWithRawSchema() {
-        return false; // output format not supported
+        return false; // not supported for models used in this class
     }
 
     @Override
@@ -100,6 +102,11 @@ class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
         // These models doesn't support image as input parameters
         // https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html
         return false;
+    }
+
+    @Override
+    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(final ChatModel model) {
+        return BedrockChatResponseMetadata.class;
     }
 
     // OVERRIDED TESTS
@@ -129,6 +136,11 @@ class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
         } else {
             super.should_fail_if_tool_choice_REQUIRED_is_not_supported(model);
         }
+    }
+
+    @Disabled("Sorry but I can't tell you that information because is not appropriate to share someone's personal information")
+    @Override
+    protected void should_respect_multiple_messages(ChatModel model) {
     }
 
     @AfterEach

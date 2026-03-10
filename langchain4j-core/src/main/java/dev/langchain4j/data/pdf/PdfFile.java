@@ -8,6 +8,8 @@ import static dev.langchain4j.internal.Utils.quoted;
 
 public class PdfFile {
 
+    public static String DEFAULT_MIME_TYPE = "application/pdf";
+
     private final URI url;
     private final String base64Data;
     private final String mimeType;
@@ -20,7 +22,7 @@ public class PdfFile {
     private PdfFile(Builder builder) {
         this.url = builder.url;
         this.base64Data = builder.base64Data;
-        this.mimeType = getOrDefault(builder.mimeType, "application/pdf");
+        this.mimeType = getOrDefault(builder.mimeType, DEFAULT_MIME_TYPE);
     }
 
     /**

@@ -2,22 +2,29 @@ package dev.langchain4j.agentic;
 
 import static dev.langchain4j.agentic.Models.baseModel;
 import static dev.langchain4j.agentic.Models.plannerModel;
+import static dev.langchain4j.agentic.observability.HtmlReportGenerator.generateTopology;
 import static dev.langchain4j.agentic.supervisor.SupervisorPlanner.SUPERVISOR_CONTEXT_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.agentic.Agents.CreativeWriter;
 import dev.langchain4j.agentic.Agents.StyleEditor;
 import dev.langchain4j.agentic.Agents.StyleReviewLoop;
+import dev.langchain4j.agentic.Agents.StyleReviewLoopWithExitCondition;
 import dev.langchain4j.agentic.Agents.StyleScorer;
+import dev.langchain4j.agentic.declarative.SupervisorRequest;
 import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;
 import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
 import dev.langchain4j.service.V;
+import java.nio.file.Path;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
+@EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 public class SupervisorAndWorkflowAgentsIT {
 
     public interface SupervisorStyledWriter {
@@ -25,6 +32,14 @@ public class SupervisorAndWorkflowAgentsIT {
         @Agent
         ResultWithAgenticScope<String> write(
                 @V("topic") String topic, @V("style") String style, @V(SUPERVISOR_CONTEXT_KEY) String businessContext);
+    }
+
+    public interface SupervisorStyledWriterWithRequest extends SupervisorStyledWriter {
+
+        @SupervisorRequest
+        static String request(@V("topic") String topic, @V("style") String style) {
+            return "Write a story about " + topic + " in the style of a " + style;
+        }
     }
 
     @Test
@@ -54,17 +69,14 @@ public class SupervisorAndWorkflowAgentsIT {
                 .outputKey("score")
                 .build();
 
-        StyleReviewLoop styleReviewLoop = AgenticServices.loopBuilder(StyleReviewLoop.class)
+        StyleReviewLoopWithExitCondition styleReviewLoop = AgenticServices.loopBuilder(StyleReviewLoopWithExitCondition.class)
                 .subAgents(styleScorer, styleEditor)
                 .outputKey("story")
                 .maxIterations(5)
-                .exitCondition(agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
                 .build();
 
-        SupervisorStyledWriter styledWriter = AgenticServices.supervisorBuilder(SupervisorStyledWriter.class)
+        SupervisorStyledWriter styledWriter = AgenticServices.supervisorBuilder(SupervisorStyledWriterWithRequest.class)
                 .chatModel(plannerModel())
-                .requestGenerator(agenticScope -> "Write a story about " + agenticScope.readState("topic")
-                        + " in the style of a " + agenticScope.readState("style"))
                 .responseStrategy(SupervisorResponseStrategy.LAST)
                 .subAgents(creativeWriter, styleReviewLoop)
                 .maxAgentsInvocations(5)
@@ -109,6 +121,8 @@ public class SupervisorAndWorkflowAgentsIT {
                 .maxAgentsInvocations(5)
                 .outputKey("story")
                 .build();
+
+//        generateTopology(styledWriter, Path.of("src", "test", "resources", "supervisor-topology.html"));
 
         ResultWithAgenticScope<String> result =
                 styledWriter.invokeWithAgenticScope("Write a story about dragons and wizards in the style of a comedy");

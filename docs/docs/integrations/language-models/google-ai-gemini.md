@@ -38,7 +38,7 @@ https://ai.google.dev/gemini-api/docs
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-google-ai-gemini</artifactId>
-    <version>1.9.1</version>
+    <version>1.12.1</version>
 </dependency>
 ```
 
@@ -119,6 +119,8 @@ ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .responseLogprobs(...)
     .logprobs(...)
     .enableEnhancedCivicAnswers(...)
+    .mediaResolution(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_HIGH)
+    .mediaResolutionPerPartEnabled(true)
     .listeners(...)
     .supportedCapabilities(...)
     .build();
@@ -277,7 +279,11 @@ WeatherForecast forecast = forecastAssistant.extract("""
 
 ### Response Format / Response Schema
 You can specify a `ResponseFormat` either when creating a `GoogleAiGeminiChatModel` or when calling it.
-Let's have a look at an example to define a JSON schema for a recipe when creating the `GoogleAiGeminiChatModel`:
+
+Especially, in cases of Json format, you can choose to define schema programmatically by creating the respective java objects or by providing raw json schema. 
+#### Response Schema
+Let's have a look at an example to define a JSON schema for a recipe when creating the `GoogleAiGeminiChatModel`.
+In this example we declare the json schema using `JsonObjectSchema` class.
 ```java
 ResponseFormat responseFormat = ResponseFormat.builder()
         .type(ResponseFormatType.JSON)
@@ -330,6 +336,87 @@ ChatResponse chatResponse = gemini.chat(chatRequest);
 System.out.println(chatResponse.aiMessage().text());
 ```
 
+#### Raw Response Schema
+Another example shows how we can use the `responseJsonSchema` of the Gemini API to provide a raw JSON schema using `JsonRawSchema` class.  
+Please be cautious to use only the [supported types](https://ai.google.dev/gemini-api/docs/structured-output?example=recipe#json_schema_support) of the Gemini API.
+```
+String rawSchema = """
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "birthDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "preferredContactTime": {
+      "type": "string",
+      "format": "time"
+      },
+    "height": {
+      "type": "number",
+      "minimum": 1.83,
+      "maximum": 1.88
+    },
+    "role": {
+      "type": "string",
+      "enum": ["developer", "maintainer", "researcher"]
+    },
+    "isAvailable": { "type": "boolean" },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "maxItems": 5
+    },
+    "address": {
+      "type": "object",
+      "properties": {
+        "city": { "type": "string" },
+        "streetName": { "type": "string" },
+        "streetNumber": { "type": "string" }
+      },
+      "required": ["city", "streetName", "streetNumber"],
+      "additionalProperties": true
+    }
+  },
+  "required": ["name", "birthDate", "height", "role", "tags", "address"]
+}
+""";
+
+JsonRawSchema jsonRawSchema = JsonRawSchema.builder().schema(rawSchema).build();
+JsonSchema jsonSchema = JsonSchema.builder().rootElement(jsonRawSchema).build();
+        
+ResponseFormat responseFormat = ResponseFormat.builder()
+        .type(ResponseFormatType.JSON)
+        .jsonSchema(jsonSchema)
+        .build();
+
+GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
+        .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+        .modelName("gemini-2.5-flash-lite")
+        .logRequests(true)
+        .logResponses(true)
+        .responseFormat(responseFormat)
+        .build();
+        
+UserMessage userMessage = UserMessage.from(
+        """
+           Tell me about a detective named Sherlock Holmes,
+           who was born on November 28 1852 and sees the world over six feet from the ground.
+           He is a trouble-seeker, an active volunteer and lives in London at 221B Baker Street.
+           He plays the violin and he likes to conduct various physics and chemistry experiments.
+           He accepts clients or prefers to be contacted at 09:00am.
+           """);
+
+ChatResponse response = gemini.chat(ChatRequest.builder()
+        .messages(userMessage)
+        .build());
+```
 ### JSON Mode
 
 You can force Gemini to reply in JSON:
@@ -463,12 +550,12 @@ ChatResponse response = gemini.chat(
 
 ### Image Generation Output
 
-Some Gemini models (such as `gemini-2.5-flash-image-preview`) can generate images as part of their response. When images are generated, they are stored in the `AiMessage` attributes and can be accessed using the `GeneratedImageHelper` utility class.
+Some Gemini models (such as `gemini-2.5-flash-image`) can generate images as part of their response. When images are generated, they are stored in the `AiMessage` attributes and can be accessed using the `GeneratedImageHelper` utility class.
 
 ```java
 ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey("Your API Key")
-    .modelName("gemini-2.5-flash-image-preview")
+    .modelName("gemini-2.5-flash-image")
     .build();
 
 ChatResponse response = gemini.chat(UserMessage.from("A high-resolution, studio-lit product photograph of a minimalist ceramic coffee mug in matte black"));
@@ -494,6 +581,50 @@ if (GeneratedImageHelper.hasGeneratedImages(aiMessage)) {
     System.out.println("Text response: " + aiMessage.text());
 }
 ```
+
+### Media Resolution
+
+You can control the resolution of media (images, videos, PDFs) sent to the model. This can be done globally or per-part (per image).
+
+#### Global Media Resolution
+
+To set the media resolution for all media parts in a request, use the `.mediaResolution()` builder method:
+
+```java
+ChatModel gemini = GoogleAiGeminiChatModel.builder()
+    .apiKey(System.getenv("GEMINI_AI_KEY"))
+    .modelName("gemini-2.5-flash")
+    .mediaResolution(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_LOW) // or MEDIUM, HIGH, ULTRA_HIGH, UNSPECIFIED
+    .build();
+```
+
+#### Per-Part Media Resolution (Gemini 3)
+
+With Gemini 3, you can specify the resolution for individual images using the `DetailLevel` in `ImageContent`.
+First, enable this feature in the builder, then set the detail level on `ImageContent`:
+
+```java
+ChatModel gemini = GoogleAiGeminiChatModel.builder()
+    .apiKey(System.getenv("GEMINI_AI_KEY"))
+    .modelName("gemini-3-pro-preview")
+    .mediaResolutionPerPartEnabled(true)
+    .build();
+
+ChatResponse response = gemini.chat(
+    UserMessage.from(
+        ImageContent.from(url1, ImageContent.DetailLevel.LOW),
+        ImageContent.from(url2, ImageContent.DetailLevel.HIGH),
+        TextContent.from("Compare these two images")
+    )
+);
+```
+
+Supported `DetailLevel` values and their mapping to Gemini's resolution levels:
+- `LOW` -> `MEDIA_RESOLUTION_LOW`
+- `MEDIUM` -> `MEDIA_RESOLUTION_MEDIUM`
+- `HIGH` -> `MEDIA_RESOLUTION_HIGH`
+- `ULTRA_HIGH` -> `MEDIA_RESOLUTION_ULTRA_HIGH` (Highest token count, required for specific use cases such as computer use)
+- `AUTO` -> `MEDIA_RESOLUTION_UNSPECIFIED`
 
 ## Thinking
 
@@ -718,8 +849,18 @@ switch (response) {
     }
     case BatchSuccess success -> {
         System.out.println("Batch completed successfully!");
+        
+        // Process successful responses
         for (ChatResponse chatResponse : success.responses()) {
             System.out.println(chatResponse.aiMessage().text());
+        }
+        
+        // Check for individual request errors within the batch
+        if (!success.errors().isEmpty()) {
+            System.out.println("Some requests failed:");
+            for (var error : success.errors()) {
+                System.err.println("Error code: " + error.code() + ", message: " + error.message());
+            }
         }
     }
     case BatchError error -> {
@@ -729,6 +870,12 @@ switch (response) {
     }
 }
 ```
+
+**Note:** A `BatchSuccess` response indicates the batch job completed, but individual requests within the batch may have 
+failed. The `success.errors()` list contains any individual request failures (e.g., timeouts, rate limits), 
+while `success.responses()` contains the successful responses. Always check both lists to handle partial failures 
+gracefully.
+
 
 ### Polling for Results
 
@@ -757,8 +904,17 @@ do {
 
 // Process final result
 if (result instanceof BatchSuccess success) {
+    System.out.println("Successful responses: " + success.responses().size());
     for (ChatResponse chatResponse : success.responses()) {
         System.out.println(chatResponse.aiMessage().text());
+    }
+    
+    // Handle any individual request failures
+    if (!success.errors().isEmpty()) {
+        System.out.println("Failed requests: " + success.errors().size());
+        for (var error : success.errors()) {
+            System.err.println("Error: " + error.code() + " - " + error.message());
+        }
     }
 } else if (result instanceof BatchError error) {
     System.err.println("Batch failed: " + error.message());
@@ -896,6 +1052,7 @@ GoogleAiBatchChatModel batchModel = GoogleAiBatchChatModel.builder()
 - **Turnaround**: 24-hour SLO, though completion is often much quicker
 - **Use Cases**: Best for large-scale, non-urgent tasks like data pre-processing or evaluations
 
+
 ### Example: Complete Workflow
 
 ```java
@@ -950,10 +1107,18 @@ if (finalResult instanceof BatchSuccess success) {
         ChatResponse chatResponse = success.responses().get(i);
         System.out.println("Story #" + i + ": " + chatResponse.aiMessage().text());
     }
+    
+    // Report any failures
+    if (!success.errors().isEmpty()) {
+        System.err.println(success.errors().size() + " requests failed:");
+        for (var error : success.errors()) {
+            System.err.println("  - Code " + error.code() + ": " + error.message());
+        }
+    }
 } else if (finalResult instanceof BatchError error) {
     System.err.println("Batch failed: " + error.message());
 }
-``` 
+```
 
 ## Learn more
 

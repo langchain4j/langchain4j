@@ -28,26 +28,8 @@ import org.junit.jupiter.api.Test;
  * <dependency>
  *     <groupId>dev.langchain4j</groupId>
  *     <artifactId>langchain4j-core</artifactId>
- *     <scope>test</scope>
- * </dependency>
- *
- * <dependency>
- *     <groupId>dev.langchain4j</groupId>
- *     <artifactId>langchain4j-core</artifactId>
  *     <classifier>tests</classifier>
  *     <type>test-jar</type>
- *     <scope>test</scope>
- * </dependency>
- *
- * <dependency>
- *     <groupId>org.mockito</groupId>
- *     <artifactId>mockito-core</artifactId>
- *     <scope>test</scope>
- * </dependency>
- *
- * <dependency>
- *     <groupId>org.mockito</groupId>
- *     <artifactId>mockito-junit-jupiter</artifactId>
  *     <scope>test</scope>
  * </dependency>
  *
