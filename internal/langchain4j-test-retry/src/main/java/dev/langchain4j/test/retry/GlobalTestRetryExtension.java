@@ -23,6 +23,14 @@ public class GlobalTestRetryExtension implements InvocationInterceptor {
     private static final boolean ENABLED = "true".equals(System.getenv("LC4J_GLOBAL_TEST_RETRY_ENABLED"));
     private static final int MAX_ATTEMPTS = Integer.parseInt(getOrDefault(System.getenv("LC4J_GLOBAL_TEST_RETRY_MAX_ATTEMPTS"), "3"));
 
+    static {
+        if (ENABLED) {
+            LOG.info("GlobalTestRetryExtension is ACTIVE (max attempts: {})", MAX_ATTEMPTS);
+        } else {
+            LOG.info("GlobalTestRetryExtension is REGISTERED but DISABLED (set LC4J_GLOBAL_TEST_RETRY_ENABLED=true to enable)");
+        }
+    }
+
     @Override
     public <T> T interceptTestClassConstructor(Invocation<T> invocation, ReflectiveInvocationContext<Constructor<T>> invocationContext, ExtensionContext extensionContext) throws Throwable {
         if (!ENABLED) {
