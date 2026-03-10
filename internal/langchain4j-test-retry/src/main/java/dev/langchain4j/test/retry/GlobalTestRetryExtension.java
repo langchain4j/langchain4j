@@ -1,4 +1,4 @@
-package dev.langchain4j;
+package dev.langchain4j.test.retry;
 
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.InvocationInterceptor;
@@ -10,11 +10,11 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
-import static dev.langchain4j.internal.Utils.getOrDefault;
-
 /**
  * JUnit extension that retries tests multiple times (3 by default) in case of exceptions.
- * Disabled by default. To enable, set the "LC4J_GLOBAL_TEST_RETRY_ENABLED" environment variable to "true".
+ * Disabled by default to not mess with other interceptors that might be declared in projects that import LC4j (e.g., Quarkus).
+ * To enable, set the "LC4J_GLOBAL_TEST_RETRY_ENABLED" environment variable to "true"
+ * and "-Djunit.jupiter.extensions.autodetection.enabled=true".
  */
 public class GlobalTestRetryExtension implements InvocationInterceptor {
 
@@ -22,6 +22,14 @@ public class GlobalTestRetryExtension implements InvocationInterceptor {
 
     private static final boolean ENABLED = "true".equals(System.getenv("LC4J_GLOBAL_TEST_RETRY_ENABLED"));
     private static final int MAX_ATTEMPTS = Integer.parseInt(getOrDefault(System.getenv("LC4J_GLOBAL_TEST_RETRY_MAX_ATTEMPTS"), "3"));
+
+    static {
+        if (ENABLED) {
+            LOG.info("{} is ACTIVE (max attempts: {})", GlobalTestRetryExtension.class.getName(), MAX_ATTEMPTS);
+        } else {
+            LOG.info("{} is REGISTERED but DISABLED (set LC4J_GLOBAL_TEST_RETRY_ENABLED=true to enable)", GlobalTestRetryExtension.class.getName());
+        }
+    }
 
     @Override
     public <T> T interceptTestClassConstructor(Invocation<T> invocation, ReflectiveInvocationContext<Constructor<T>> invocationContext, ExtensionContext extensionContext) throws Throwable {
@@ -126,5 +134,9 @@ public class GlobalTestRetryExtension implements InvocationInterceptor {
         } else {
             return t;
         }
+    }
+
+    private static String getOrDefault(String value, String defaultValue) {
+        return value != null ? value : defaultValue;
     }
 }
