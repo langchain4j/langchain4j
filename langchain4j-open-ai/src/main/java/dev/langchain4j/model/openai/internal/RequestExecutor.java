@@ -45,6 +45,12 @@ class RequestExecutor<Response> implements SyncOrAsyncOrStreaming<Response> {
     }
 
     @Override
+    public byte[] executeInputStream() {
+        SyncRequestExecutor<Response> executor = new SyncRequestExecutor<>(httpClient, httpRequest, responseClass);
+        return executor.executeAsInputStream();
+    }
+
+    @Override
     public AsyncResponseHandling onResponse(Consumer<Response> responseHandler) {
         throw new UnsupportedOperationException();
     }

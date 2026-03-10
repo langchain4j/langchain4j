@@ -48,10 +48,10 @@ public class JdkHttpClient implements HttpClient {
         try {
             java.net.http.HttpRequest jdkRequest = toJdkRequest(request);
 
-            java.net.http.HttpResponse<String> jdkResponse = delegate.send(jdkRequest, BodyHandlers.ofString());
+            java.net.http.HttpResponse<byte[]> jdkResponse = delegate.send(jdkRequest, BodyHandlers.ofByteArray());
 
             if (!isSuccessful(jdkResponse)) {
-                throw new HttpException(jdkResponse.statusCode(), jdkResponse.body());
+                throw new HttpException(jdkResponse.statusCode(), new String(jdkResponse.body()));
             }
 
             return fromJdkResponse(jdkResponse, jdkResponse.body());
@@ -137,7 +137,7 @@ public class JdkHttpClient implements HttpClient {
         return publisher.build();
     }
 
-    private static SuccessfulHttpResponse fromJdkResponse(java.net.http.HttpResponse<?> response, String body) {
+    private static SuccessfulHttpResponse fromJdkResponse(java.net.http.HttpResponse<?> response, byte[] body) {
         return SuccessfulHttpResponse.builder()
                 .statusCode(response.statusCode())
                 .headers(response.headers().map())
