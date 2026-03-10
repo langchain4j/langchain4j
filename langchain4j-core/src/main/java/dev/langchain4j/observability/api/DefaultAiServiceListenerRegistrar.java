@@ -52,6 +52,13 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
                 .ifPresent(eventListeners -> eventListeners.remove(listener));
     }
 
+
+     /**
+     Test Array to store events 
+     */
+    arraylist<InvocationContext> AiServiceInteractionEvent = new arraylist<InvocationContext>();
+
+
     /**
      * Fires the given event to all registered {@link AiServiceListener}s.
      *
@@ -64,12 +71,14 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
         Optional.ofNullable(this.listeners.get(event.eventClass()))
                 .map(l -> (EventListeners<T>) l)
                 .ifPresent(l -> l.fireEvent(event));
+
+        // Test features
+        AiServiceInteractionEvent.add(event.invocationContext());
+
     }
 
 
-    arraylist<InvocationContext> AiServiceInteractionEvent = new arraylist<InvocationContext>();
-    
-
+   
     @Override
     public void shouldThrowExceptionOnEventError(boolean shouldThrowExceptionOnEventError) {
         this.shouldThrowExceptionOnEventError.compareAndSet(!shouldThrowExceptionOnEventError, shouldThrowExceptionOnEventError);
