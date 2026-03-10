@@ -205,6 +205,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                             userMessageForAugmentation = (UserMessage) augmentationResult.chatMessage();
                         }
 
+                        UserMessage userMessage = addContentsToUserMessage(method, args, userMessageForAugmentation);
+
                         var commonGuardrailParam = GuardrailRequestParams.builder()
                                 .chatMemory(chatMemory)
                                 .augmentationResult(augmentationResult)
@@ -214,7 +216,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .variables(variables)
                                 .build();
 
-                        UserMessage userMessage = addContentsToUserMessage(method, args, userMessageForAugmentation);
                         userMessage = invokeInputGuardrails(
                                 context.guardrailService(), method, userMessage, commonGuardrailParam);
 

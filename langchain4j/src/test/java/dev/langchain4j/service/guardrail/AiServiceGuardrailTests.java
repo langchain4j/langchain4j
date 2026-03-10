@@ -1,8 +1,5 @@
 package dev.langchain4j.service.guardrail;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessageType;
@@ -16,18 +13,23 @@ import dev.langchain4j.guardrail.InputGuardrailResult;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.service.AiServices;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Stream;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 class AiServiceGuardrailTests {
     private static final ImageContent IMAGE_CONTENT = ImageContent.from(
@@ -110,11 +112,10 @@ class AiServiceGuardrailTests {
 
     @Test
     void input_guardrail_should_receive_materialized_multimodal_user_message() {
+        ChatModelMock chatModelMock = ChatModelMock.thatAlwaysResponds("does not matter");
         RecordingInputGuardrail inputGuardrail = new RecordingInputGuardrail();
-        AtomicReference<UserMessage> userMessageSeenByChatModel = new AtomicReference<>();
-
         VisionAssistant assistant = AiServices.builder(VisionAssistant.class)
-                .chatModel(new RecordingChatModel(userMessageSeenByChatModel))
+                .chatModel(chatModelMock)
                 .inputGuardrails(inputGuardrail)
                 .build();
 
@@ -124,22 +125,21 @@ class AiServiceGuardrailTests {
         assertThat(inputGuardrail.observedUserMessage().contents())
                 .containsExactly(TextContent.from("Describe this image"), IMAGE_CONTENT);
         assertThat(inputGuardrail.observedUserMessage().hasSingleText()).isFalse();
-        assertThat(userMessageSeenByChatModel.get()).isEqualTo(inputGuardrail.observedUserMessage());
+        assertThat(chatModelMock.request().messages().get(0)).isEqualTo(inputGuardrail.observedUserMessage());
     }
 
     @Test
     void input_guardrail_should_observe_augmented_user_message_after_rag_and_before_chat_request() {
+        ChatModelMock chatModelMock = ChatModelMock.thatAlwaysResponds("does not matter");
         RecordingInputGuardrail inputGuardrail = new RecordingInputGuardrail();
         AtomicReference<UserMessage> userMessageSeenByAugmentor = new AtomicReference<>();
-        AtomicReference<UserMessage> userMessageSeenByChatModel = new AtomicReference<>();
-
         RetrievalAugmentor retrievalAugmentor = (AugmentationRequest request) -> {
             userMessageSeenByAugmentor.set((UserMessage) request.chatMessage());
             return new AugmentationResult(UserMessage.from("Augmented prompt"), null);
         };
 
         VisionAssistant assistant = AiServices.builder(VisionAssistant.class)
-                .chatModel(new RecordingChatModel(userMessageSeenByChatModel))
+                .chatModel(chatModelMock)
                 .inputGuardrails(inputGuardrail)
                 .retrievalAugmentor(retrievalAugmentor)
                 .build();
@@ -150,22 +150,22 @@ class AiServiceGuardrailTests {
                 .containsExactly(TextContent.from("Describe this image"));
         assertThat(inputGuardrail.observedUserMessage().contents())
                 .containsExactly(TextContent.from("Augmented prompt"), IMAGE_CONTENT);
-        assertThat(userMessageSeenByChatModel.get()).isEqualTo(inputGuardrail.observedUserMessage());
+        assertThat(chatModelMock.request().messages().get(0)).isEqualTo(inputGuardrail.observedUserMessage());
     }
 
     @Test
     void input_guardrail_rewrite_should_still_work_for_plain_text_requests() {
-        AtomicReference<UserMessage> userMessageSeenByChatModel = new AtomicReference<>();
-
+        ChatModelMock chatModelMock = ChatModelMock.thatAlwaysResponds("does not matter");
         PlainTextAssistant assistant = AiServices.builder(PlainTextAssistant.class)
-                .chatModel(new RecordingChatModel(userMessageSeenByChatModel))
+                .chatModel(chatModelMock)
                 .inputGuardrails(new RewritingInputGuardrail())
                 .build();
 
         assistant.chat("Original prompt");
 
-        assertThat(userMessageSeenByChatModel.get().contents()).containsExactly(TextContent.from("Rewritten prompt"));
-        assertThat(userMessageSeenByChatModel.get().hasSingleText()).isTrue();
+        UserMessage userMessage = (UserMessage) chatModelMock.request().messages().get(0);
+        assertThat(userMessage.contents()).containsExactly(TextContent.from("Rewritten prompt"));
+        assertThat(userMessage.hasSingleText()).isTrue();
     }
 
     static Stream<Arguments> classLevelAssistants() {
@@ -377,25 +377,6 @@ class AiServiceGuardrailTests {
             return ChatResponse.builder()
                     .aiMessage(AiMessage.from("Request: %s; Response: Hi!".formatted(getUserMessage(chatRequest))))
                     .build();
-        }
-    }
-
-    static class RecordingChatModel implements ChatModel {
-
-        private final AtomicReference<UserMessage> observedUserMessage;
-
-        RecordingChatModel(AtomicReference<UserMessage> observedUserMessage) {
-            this.observedUserMessage = observedUserMessage;
-        }
-
-        @Override
-        public ChatResponse doChat(ChatRequest chatRequest) {
-            observedUserMessage.set(chatRequest.messages().stream()
-                    .filter(message -> message.type() == ChatMessageType.USER)
-                    .map(UserMessage.class::cast)
-                    .findFirst()
-                    .orElseThrow(() -> new IllegalStateException("No user message found")));
-            return ChatResponse.builder().aiMessage(AiMessage.from("ok")).build();
         }
     }
 }
