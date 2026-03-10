@@ -11,6 +11,8 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.List;
+
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -41,6 +43,7 @@ class VertexAiAnthropicCustomCredentialsIT {
         assertThat(model.provider()).isEqualTo(GOOGLE_VERTEX_AI_ANTHROPIC);
     }
 
+    @Test
     void should_work_with_application_default_credentials() throws Exception {
         // given - use Application Default Credentials
         GoogleCredentials credentials = GoogleCredentials.getApplicationDefault();
@@ -101,5 +104,13 @@ class VertexAiAnthropicCustomCredentialsIT {
         // then - should build successfully without throwing exceptions
         assertNotNull(model);
         assertThat(model.provider()).isEqualTo(GOOGLE_VERTEX_AI_ANTHROPIC);
+    }
+
+    @AfterEach
+    void afterEach() throws InterruptedException {
+        String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_VERTEX_AI_ANTHROPIC");
+        if (ciDelaySeconds != null) {
+            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
+        }
     }
 }
