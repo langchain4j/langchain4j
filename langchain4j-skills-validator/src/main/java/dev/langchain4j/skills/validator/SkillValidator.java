@@ -90,9 +90,54 @@ public class SkillValidator {
         if (metadata.containsKey("compatibility")) {
             errors.addAll(validateCompatibility(metadata.get("compatibility")));
         }
+        
+        if (metadata.containsKey("allowed-tools")) {
+            errors.addAll(validateAllowedTools(metadata.get("allowed-tools")));
+        }
 
         return errors;
     }
+    
+    /**
+     * Validate the {@code allowed-tools} field from SKILL.md frontmatter.
+     *
+     * <p>The {@code allowed-tools} field specifies which external tools a skill
+     * requires to function correctly. The value must be a whitespace-separated
+     * list of tool identifiers.
+     *
+     * <p>Each entry may optionally include a constraint in parentheses.
+     *
+     * <p>Examples of valid values:
+     * <pre>
+     * allowed-tools: Bash(git:*) Bash(jq:*) Read
+     * allowed-tools: Bash(python3:*) Read
+     * allowed-tools: Read
+     * </pre>
+     *
+     *
+     * <p>If any token does not match the expected format, a validation error
+     * is returned for that entry.
+     *
+     * @param allowedToolsObj the raw {@code allowed-tools} value parsed from the YAML frontmatter
+     * @return a list of validation error messages. An empty list indicates the value is valid.
+     */
+    private List<String> validateAllowedTools(Object allowedToolsObj) {
+        List<String> errors = new ArrayList<>();
+
+        if (!(allowedToolsObj instanceof String)) {
+            errors.add("Field 'allowed-tools' must be a string");
+            return errors;
+        }
+
+        String allowedTools = ((String) allowedToolsObj).trim();
+
+        if (allowedTools.isEmpty()) {
+            errors.add("Field 'allowed-tools' cannot be empty");
+        }
+
+        return errors;
+    }
+
 
     /**
      * Validate that only allowed fields are present.
