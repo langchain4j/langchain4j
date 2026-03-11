@@ -130,6 +130,7 @@
         <module>langchain4j-agentic-mcp</module>
         <module>langchain4j-agentic-patterns</module>
         <module>langchain4j-skills</module>
+        <module>langchain4j-skills-validator</module>
 
         <!-- observability -->
         <module>langchain4j-micrometer-metrics</module>
