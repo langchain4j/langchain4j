@@ -23,6 +23,7 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
     private final Double frequencyPenalty;
     private final Double presencePenalty;
     private final Integer maxOutputTokens;
+    private final Integer maxCompletionTokens;
     private final List<String> stopSequences;
     private final List<ToolSpecification> toolSpecifications;
     private final ToolChoice toolChoice;
@@ -36,6 +37,7 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
         this.frequencyPenalty = builder.frequencyPenalty;
         this.presencePenalty = builder.presencePenalty;
         this.maxOutputTokens = builder.maxOutputTokens;
+        this.maxCompletionTokens = builder.maxCompletionTokens;
         this.stopSequences = copy(builder.stopSequences);
         this.toolSpecifications = copy(builder.toolSpecifications);
         this.toolChoice = builder.toolChoice;
@@ -75,6 +77,11 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
     @Override
     public Integer maxOutputTokens() {
         return maxOutputTokens;
+    }
+
+    @Override
+    public Integer maxCompletionTokens() {
+        return maxCompletionTokens;
     }
 
     @Override
@@ -126,6 +133,7 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
                 && Objects.equals(frequencyPenalty, that.frequencyPenalty)
                 && Objects.equals(presencePenalty, that.presencePenalty)
                 && Objects.equals(maxOutputTokens, that.maxOutputTokens)
+                && Objects.equals(maxCompletionTokens, that.maxCompletionTokens)
                 && Objects.equals(stopSequences, that.stopSequences)
                 && Objects.equals(toolSpecifications, that.toolSpecifications)
                 && Objects.equals(toolChoice, that.toolChoice)
@@ -143,6 +151,7 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
                 frequencyPenalty,
                 presencePenalty,
                 maxOutputTokens,
+                maxCompletionTokens,
                 stopSequences,
                 toolSpecifications,
                 toolChoice,
@@ -159,7 +168,8 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
                 + topK + ", frequencyPenalty="
                 + frequencyPenalty + ", presencePenalty="
                 + presencePenalty + ", maxOutputTokens="
-                + maxOutputTokens + ", stopSequences="
+                + maxOutputTokens + ", maxCompletionTokens="
+                + maxCompletionTokens + ", stopSequences="
                 + stopSequences + ", toolSpecifications="
                 + toolSpecifications + ", toolChoice="
                 + toolChoice + ", responseFormat="
@@ -179,6 +189,7 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
         private Double frequencyPenalty;
         private Double presencePenalty;
         private Integer maxOutputTokens;
+        private Integer maxCompletionTokens;
         private List<String> stopSequences;
         private List<ToolSpecification> toolSpecifications;
         private ToolChoice toolChoice;
@@ -192,6 +203,7 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
             frequencyPenalty(getOrDefault(parameters.frequencyPenalty(), frequencyPenalty));
             presencePenalty(getOrDefault(parameters.presencePenalty(), presencePenalty));
             maxOutputTokens(getOrDefault(parameters.maxOutputTokens(), maxOutputTokens));
+            maxCompletionTokens(getOrDefault(parameters.maxCompletionTokens(), maxCompletionTokens));
             stopSequences(getOrDefault(parameters.stopSequences(), stopSequences));
             toolSpecifications(getOrDefault(parameters.toolSpecifications(), toolSpecifications));
             toolChoice(getOrDefault(parameters.toolChoice(), toolChoice));
@@ -231,6 +243,11 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
 
         public T maxOutputTokens(Integer maxOutputTokens) {
             this.maxOutputTokens = maxOutputTokens;
+            return (T) this;
+        }
+
+        public T maxCompletionTokens(Integer maxCompletionTokens) {
+            this.maxCompletionTokens = maxCompletionTokens;
             return (T) this;
         }
 
