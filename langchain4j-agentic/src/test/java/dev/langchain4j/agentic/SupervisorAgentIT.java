@@ -200,6 +200,10 @@ public class SupervisorAgentIT {
 
         private final Map<String, Double> accounts = new HashMap<>();
 
+        void clearAccounts() {
+            accounts.clear();
+        }
+
         void createAccount(String user, Double initialBalance) {
             if (accounts.containsKey(user)) {
                 throw new RuntimeException("Account for user " + user + " already exists");
