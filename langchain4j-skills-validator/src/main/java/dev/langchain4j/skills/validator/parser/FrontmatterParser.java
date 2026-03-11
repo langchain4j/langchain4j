@@ -91,7 +91,7 @@ public class FrontmatterParser {
      * Read skill properties from SKILL.md frontmatter.
      *
      * <p>This function parses the frontmatter and returns properties. It does NOT perform full
-     * validation. Use {@link com.agentskills.skillsref.validator.SkillValidator#validate(Path)} for that.
+     * validation. Use {@link dev.langchain4j.skills.validator.SkillValidator#validate(Path)} for that.
      *
      * @param skillDir Path to the skill directory
      * @return SkillProperties with parsed metadata

@@ -16,7 +16,7 @@ A Java implementation of the Agent Skills reference library. This utility provid
 
 ```bash
 cd langchain4j-skills-validator
-mvn -Dmaven.javadoc.skip=true clean package
+mvn clean package
 ```
 
 This creates an executable JAR at `target/langchain4j-skills-validator-{version}.jar`.
