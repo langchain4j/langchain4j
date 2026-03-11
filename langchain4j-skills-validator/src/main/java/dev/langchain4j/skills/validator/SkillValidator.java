@@ -90,14 +90,14 @@ public class SkillValidator {
         if (metadata.containsKey("compatibility")) {
             errors.addAll(validateCompatibility(metadata.get("compatibility")));
         }
-        
+
         if (metadata.containsKey("allowed-tools")) {
             errors.addAll(validateAllowedTools(metadata.get("allowed-tools")));
         }
 
         return errors;
     }
-    
+
     /**
      * Validate the {@code allowed-tools} field from SKILL.md frontmatter.
      *
@@ -137,7 +137,6 @@ public class SkillValidator {
 
         return errors;
     }
-
 
     /**
      * Validate that only allowed fields are present.
