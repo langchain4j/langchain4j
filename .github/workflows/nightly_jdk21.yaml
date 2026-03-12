@@ -76,6 +76,10 @@ jobs:
       - name: Build with JDK 21
         run: |
           modules="${{ join(matrix.modules, ',') }}"
+          exclude_modules="langchain4j-gpu-llama3"
+          for ex in ${exclude_modules//,/ }; do
+            modules=$(echo "$modules" | sed "s/\b${ex}\b//g" | sed 's/,,/,/g' | sed 's/^,//' | sed 's/,$//')
+          done
           echo "Building modules: $modules"
           
           ## compile and install ALL modules to avoid running integration tests on dependent modules in the step below
@@ -134,6 +138,7 @@ jobs:
           CI_DELAY_SECONDS_BEDROCK: 3
           CI_DELAY_SECONDS_GITHUB_MODELS: 7
           CI_DELAY_SECONDS_GOOGLE_AI_GEMINI_BATCH: 20
+          CI_DELAY_SECONDS_VERTEX_AI_ANTHROPIC: 12
           CI_DELAY_SECONDS_VERTEX_AI_GEMINI: 12
           CI_DELAY_SECONDS_VOYAGE_AI: 22
 
