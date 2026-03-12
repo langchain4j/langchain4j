@@ -13,6 +13,8 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.info.ModelInfo;
+import dev.langchain4j.model.info.util.ModelRegistry;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -24,6 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * @see StreamingChatModel
  */
 public interface ChatModel {
+    static final ModelRegistry MODEL_REGISTRY = ModelRegistry.fromApi();
 
     /**
      * This is the main API to interact with the chat model.
@@ -94,5 +97,17 @@ public interface ChatModel {
 
     default Set<Capability> supportedCapabilities() {
         return Set.of();
+    }
+
+    default ModelInfo modelInfo() {
+        return MODEL_REGISTRY.getModelInfo(providerId(), modelId());
+    }
+
+    default String providerId() {
+        throw new RuntimeException("providerId is not set");
+    }
+
+    default String modelId() {
+        throw new RuntimeException("modelId is not set");
     }
 }
