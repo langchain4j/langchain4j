@@ -8,7 +8,6 @@ import static java.util.stream.Collectors.toList;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ReturnBehavior;
-import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -21,6 +20,7 @@ import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
 import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
@@ -790,6 +790,22 @@ public abstract class AiServices<T> {
         }
         retrievalAugmentorSet = true;
         context.retrievalAugmentor = ensureNotNull(retrievalAugmentor, "retrievalAugmentor");
+        return this;
+    }
+
+    /**
+     * Configures a reasoning augmentor to augment user messages with relevant reasoning strategies
+     * retrieved from a {@link dev.langchain4j.reasoning.ReasoningBank}.
+     * <p>
+     * ReasoningAugmentor enables agents to learn from past experiences by retrieving and applying
+     * reasoning strategies that have proven successful for similar tasks.
+     *
+     * @param reasoningAugmentor The reasoning augmentor to be used by the AI Service.
+     * @return builder
+     * @since 1.11.0
+     */
+    public AiServices<T> reasoningAugmentor(dev.langchain4j.reasoning.ReasoningAugmentor reasoningAugmentor) {
+        context.reasoningAugmentor = ensureNotNull(reasoningAugmentor, "reasoningAugmentor");
         return this;
     }
 
