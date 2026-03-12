@@ -31,8 +31,7 @@ class JacksonAgenticScopeJsonCodec implements AgenticScopeJsonCodec {
 
         // Configure the ObjectMapper to add type information for users types
         mapper.activateDefaultTyping(
-                mapper.getPolymorphicTypeValidator(),
-                ObjectMapper.DefaultTyping.NON_FINAL
+                mapper.getPolymorphicTypeValidator()
         );
 
         return mapper;

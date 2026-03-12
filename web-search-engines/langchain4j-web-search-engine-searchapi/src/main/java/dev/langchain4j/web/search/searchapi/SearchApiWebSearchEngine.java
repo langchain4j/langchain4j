@@ -1,22 +1,21 @@
 package dev.langchain4j.web.search.searchapi;
 
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static java.time.Duration.ofSeconds;
+
+import dev.langchain4j.internal.UriUtils;
 import dev.langchain4j.web.search.WebSearchEngine;
 import dev.langchain4j.web.search.WebSearchInformationResult;
 import dev.langchain4j.web.search.WebSearchOrganicResult;
 import dev.langchain4j.web.search.WebSearchRequest;
 import dev.langchain4j.web.search.WebSearchResults;
-
-import java.net.URI;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static java.time.Duration.ofSeconds;
 
 /**
  * An implementation of a {@link WebSearchEngine} that uses
@@ -46,11 +45,8 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
      *                           <p>
      *                           Check <a href="https://www.searchapi.io">Search API</a> for more information on available parameters for each engine
      */
-    public SearchApiWebSearchEngine(String apiKey,
-                                    String baseUrl,
-                                    Duration timeout,
-                                    String engine,
-                                    Map<String, Object> optionalParameters) {
+    public SearchApiWebSearchEngine(
+            String apiKey, String baseUrl, Duration timeout, String engine, Map<String, Object> optionalParameters) {
         this.apiKey = ensureNotBlank(apiKey, "apiKey");
         this.engine = getOrDefault(engine, DEFAULT_ENGINE);
         this.optionalParameters = getOrDefault(copyIfNotNull(optionalParameters), new HashMap<>());
@@ -84,17 +80,11 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
     private WebSearchResults toWebSearchResults(SearchApiWebSearchResponse response) {
         List<OrganicResult> organicResults = response.getOrganicResults();
         Long totalResults = getTotalResults(response.getSearchInformation());
-        WebSearchInformationResult searchInformation = WebSearchInformationResult.from(
-                totalResults,
-                getCurrentPage(response.getPagination()),
-                null
-        );
+        WebSearchInformationResult searchInformation =
+                WebSearchInformationResult.from(totalResults, getCurrentPage(response.getPagination()), null);
         Map<String, Object> searchMetadata = getOrDefault(response.getSearchParameters(), new HashMap<>());
         addToMetadata(searchMetadata, response.getSearchMetadata());
-        return WebSearchResults.from(
-                searchMetadata,
-                searchInformation,
-                toWebSearchOrganicResults(organicResults));
+        return WebSearchResults.from(searchMetadata, searchInformation, toWebSearchOrganicResults(organicResults));
     }
 
     private static long getTotalResults(Map<String, Object> searchInformation) {
@@ -127,9 +117,9 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
                     metadata.put("position", result.getPosition());
                     return WebSearchOrganicResult.from(
                             result.getTitle(),
-                            URI.create(result.getLink()),
+                            UriUtils.createUriSafely(result.getLink()),
                             getOrDefault(result.getSnippet(), ""),
-                            null,  // by default google custom search api does not return content
+                            null, // by default google custom search api does not return content
                             metadata);
                 })
                 .collect(Collectors.toList());
@@ -146,8 +136,7 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
         private String engine;
         private Map<String, Object> optionalParameters;
 
-        SearchApiWebSearchEngineBuilder() {
-        }
+        SearchApiWebSearchEngineBuilder() {}
 
         public SearchApiWebSearchEngineBuilder apiKey(String apiKey) {
             this.apiKey = apiKey;
@@ -175,11 +164,14 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
         }
 
         public SearchApiWebSearchEngine build() {
-            return new SearchApiWebSearchEngine(this.apiKey, this.baseUrl, this.timeout, this.engine, this.optionalParameters);
+            return new SearchApiWebSearchEngine(
+                    this.apiKey, this.baseUrl, this.timeout, this.engine, this.optionalParameters);
         }
 
         public String toString() {
-            return "SearchApiWebSearchEngine.SearchApiWebSearchEngineBuilder(apiKey=" + this.apiKey + ", baseUrl=" + this.baseUrl + ", timeout=" + this.timeout + ", engine=" + this.engine + ", optionalParameters=" + this.optionalParameters + ")";
+            return "SearchApiWebSearchEngine.SearchApiWebSearchEngineBuilder(apiKey=" + this.apiKey + ", baseUrl="
+                    + this.baseUrl + ", timeout=" + this.timeout + ", engine=" + this.engine + ", optionalParameters="
+                    + this.optionalParameters + ")";
         }
     }
 }

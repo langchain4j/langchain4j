@@ -7,7 +7,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
 /**
- * Marks a method as an exit condition for a loop in a loop-based agent.
+ * Marks a method as an exit predicate for a loop in a loop-based agent.
  * The method must be static and return a boolean indicating whether the loop should exit.
  * <p>
  * Example:
@@ -25,7 +25,7 @@ import java.lang.annotation.Target;
  *         )
  *         String write(@V("story") String story);
  *
- *         @ExitCondition(testExitAtLoopEnd = true)
+ *         @ExitCondition(testExitAtLoopEnd = true, description = "score greater than 0.8")
  *         static boolean exit(@V("score") double score) {
  *             return score >= 0.8;
  *         }
@@ -38,11 +38,19 @@ import java.lang.annotation.Target;
 public @interface ExitCondition {
 
     /**
-     * If true, the exit condition will be tested only at the end of each loop iteration.
-     * If false, the exit condition will be tested after each sub-agent invocation.
+     * If true, the exit predicate will be tested only at the end of each loop iteration.
+     * If false, the exit predicate will be tested after each sub-agent invocation.
      * Default is false.
      *
-     * @return whether to test the exit condition at the end of the loop iteration.
+     * @return whether to test the exit predicate at the end of the loop iteration.
      */
     boolean testExitAtLoopEnd() default false;
+
+    /**
+     * Description of the exit condition.
+     * It should be clear and descriptive to allow understanding the purpose of the condition.
+     *
+     * @return description of the exit condition.
+     */
+    String description() default "<unknown>";
 }

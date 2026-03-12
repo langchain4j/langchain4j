@@ -30,6 +30,10 @@ record GeminiContent(List<GeminiPart> parts, String role) {
             String thoughtSignature,
             GeminiMediaResolution mediaResolution) {
 
+        static GeminiPart ofText(String text) {
+            return GeminiPart.builder().text(text).build();
+        }
+
         static Builder builder() {
             return new Builder();
         }
@@ -128,12 +132,6 @@ record GeminiContent(List<GeminiPart> parts, String role) {
 
         @JsonIgnoreProperties(ignoreUnknown = true)
         record GeminiFileData(String mimeType, String fileUri) {}
-
-        /**
-         * Wrapper for per-part media resolution setting (Currently Gemini 3 only).
-         */
-        @JsonIgnoreProperties(ignoreUnknown = true)
-        record GeminiMediaResolution(GeminiMediaResolutionLevel level) {}
 
         @JsonIgnoreProperties(ignoreUnknown = true)
         record GeminiExecutableCode(GeminiLanguage programmingLanguage, String code) {

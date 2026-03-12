@@ -3,11 +3,11 @@ package dev.langchain4j.agentic.a2a;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.observability.AgentListener;
-import dev.langchain4j.agentic.observability.AgentListenerProvider;
 import dev.langchain4j.agentic.internal.A2AClientBuilder;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
+import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.service.output.ServiceOutputParser;
 import io.a2a.A2A;
 import io.a2a.client.Client;
@@ -39,6 +39,8 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
+
 public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, InternalAgent, InvocationHandler {
 
     private final ServiceOutputParser serviceOutputParser = new ServiceOutputParser();
@@ -51,7 +53,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
 
     private final String name;
     private String agentId;
-    private AgentInstance parent;
+    private InternalAgent parent;
 
     private String[] inputKeys;
     private String outputKey;
@@ -92,7 +94,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
 
         Object agent = Proxy.newProxyInstance(
                 agentServiceClass.getClassLoader(),
-                new Class<?>[] {agentServiceClass, A2AClientInstance.class, AgentListenerProvider.class}, this);
+                new Class<?>[] {agentServiceClass, A2AClientInstance.class}, this);
 
         return (T) agent;
     }
@@ -101,10 +103,6 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     public Object invoke(Object proxy, Method method, Object[] args) throws Exception {
         if (method.getDeclaringClass() == AgentInstance.class || method.getDeclaringClass() == InternalAgent.class) {
             return method.invoke(Proxy.getInvocationHandler(proxy), args);
-        }
-
-        if (method.getDeclaringClass() == AgentListenerProvider.class) {
-            return agentListener;
         }
 
         if (method.getDeclaringClass() == A2AClientInstance.class) {
@@ -216,8 +214,15 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     }
 
     @Override
-    public void setParent(AgentInstance parent) {
+    public void setParent(InternalAgent parent) {
         this.parent = parent;
+    }
+
+    @Override
+    public void registerInheritedParentListener(AgentListener parentListener) {
+        if (parentListener != null && parentListener.inheritedBySubagents()) {
+            agentListener = composeWithInherited(listener(), parentListener);
+        }
     }
 
     @Override
@@ -226,7 +231,17 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     }
 
     @Override
+    public AgentListener listener() {
+        return agentListener;
+    }
+
+    @Override
     public Class<?> type() {
+        return null;
+    }
+
+    @Override
+    public Class<? extends Planner> plannerType() {
         return null;
     }
 
@@ -277,6 +292,6 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
 
     @Override
     public AgenticSystemTopology topology() {
-        return AgenticSystemTopology.SINGLE_AGENT;
+        return AgenticSystemTopology.AI_AGENT;
     }
 }

@@ -280,6 +280,7 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         @Tool
         void process(Person person) {
+            System.out.println(person);
         }
 
         static final String REFERENCE = generateUUIDFrom(Person.class.getName());

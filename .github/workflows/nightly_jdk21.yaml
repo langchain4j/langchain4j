@@ -76,6 +76,10 @@ jobs:
       - name: Build with JDK 21
         run: |
           modules="${{ join(matrix.modules, ',') }}"
+          exclude_modules="langchain4j-gpu-llama3"
+          for ex in ${exclude_modules//,/ }; do
+            modules=$(echo "$modules" | sed "s/\b${ex}\b//g" | sed 's/,,/,/g' | sed 's/^,//' | sed 's/,$//')
+          done
           echo "Building modules: $modules"
           
           ## compile and install ALL modules to avoid running integration tests on dependent modules in the step below
@@ -97,6 +101,7 @@ jobs:
           AZURE_OPENAI_AUDIO_DEPLOYMENT_NAME: ${{ secrets.AZURE_OPENAI_AUDIO_DEPLOYMENT_NAME }}
           AZURE_OPENAI_AUDIO_ENDPOINT: ${{ secrets.AZURE_OPENAI_AUDIO_ENDPOINT }}
           AZURE_OPENAI_AUDIO_KEY: ${{ secrets.AZURE_OPENAI_AUDIO_KEY }}
+          AZURE_OPENAI_DEPLOYMENT_NAME: ${{ secrets.AZURE_OPENAI_DEPLOYMENT_NAME }}
           AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           AZURE_OPENAI_KEY: ${{ secrets.AZURE_OPENAI_KEY }}
           AZURE_SEARCH_ENDPOINT: ${{ secrets.AZURE_SEARCH_ENDPOINT }}
@@ -113,6 +118,8 @@ jobs:
           GOOGLE_AI_GEMINI_API_KEY: ${{ secrets.GOOGLE_AI_GEMINI_API_KEY }}
           HF_API_KEY: ${{ secrets.HF_API_KEY }}
           JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
+          MICROSOFT_FOUNDRY_API_KEY: ${{ secrets.MICROSOFT_FOUNDRY_API_KEY }}
+          MICROSOFT_FOUNDRY_ENDPOINT: ${{ secrets.MICROSOFT_FOUNDRY_ENDPOINT }}
           MILVUS_API_KEY: ${{ secrets.MILVUS_API_KEY }}
           MILVUS_URI: ${{ secrets.MILVUS_URI }}
           MISTRAL_AI_API_KEY: ${{ secrets.MISTRAL_AI_API_KEY }}
@@ -130,7 +137,8 @@ jobs:
           CI_DELAY_SECONDS_AZURE_OPENAI: 3
           CI_DELAY_SECONDS_BEDROCK: 3
           CI_DELAY_SECONDS_GITHUB_MODELS: 7
-          CI_DELAY_SECONDS_GOOGLE_AI_GEMINI_BATCH: 5
+          CI_DELAY_SECONDS_GOOGLE_AI_GEMINI_BATCH: 20
+          CI_DELAY_SECONDS_VERTEX_AI_ANTHROPIC: 12
           CI_DELAY_SECONDS_VERTEX_AI_GEMINI: 12
           CI_DELAY_SECONDS_VOYAGE_AI: 22
 
@@ -150,3 +158,17 @@ jobs:
         with:
           report_paths: '**/target/*-reports/TEST-*.xml'
           annotate_only: true
+
+      - name: Upload JaCoCo Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-${{ strategy.job-index }}
+          path: '**/target/site/jacoco/**'
+
+      - name: Upload JaCoCo Execution Data
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-exec-${{ strategy.job-index }}
+          path: '**/target/jacoco.exec'

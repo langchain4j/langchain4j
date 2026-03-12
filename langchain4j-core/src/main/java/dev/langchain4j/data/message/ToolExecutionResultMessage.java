@@ -1,10 +1,12 @@
 package dev.langchain4j.data.message;
 
 import static dev.langchain4j.data.message.ChatMessageType.TOOL_EXECUTION_RESULT;
-import static dev.langchain4j.internal.Utils.quoted;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -16,6 +18,21 @@ public class ToolExecutionResultMessage implements ChatMessage {
     private final String id;
     private final String toolName;
     private final String text;
+    private final Boolean isError;
+    private final Map<String, Object> attributes;
+
+    /**
+     * Creates a {@link ToolExecutionResultMessage} from a builder.
+     *
+     * @since 1.11.0
+     */
+    public ToolExecutionResultMessage(Builder builder) {
+        this.id = builder.id;
+        this.toolName = builder.toolName;
+        this.text = ensureNotNull(builder.text, "text");
+        this.isError = builder.isError;
+        this.attributes = copy(builder.attributes);
+    }
 
     /**
      * Creates a {@link ToolExecutionResultMessage}.
@@ -27,6 +44,8 @@ public class ToolExecutionResultMessage implements ChatMessage {
         this.id = id;
         this.toolName = toolName;
         this.text = ensureNotNull(text, "text");
+        this.isError = null;
+        this.attributes = Map.of();
     }
 
     /**
@@ -53,6 +72,24 @@ public class ToolExecutionResultMessage implements ChatMessage {
         return text;
     }
 
+    /**
+     * Returns whether the tool execution resulted in an error.
+     * @return true if the tool execution resulted in an error, false if it did not, null if unknown.
+     */
+    public Boolean isError() {
+        return isError;
+    }
+
+    /**
+     * Returns attributes of a message.
+     * These attributes are not sent to the LLM, but can be persisted in a {@link dev.langchain4j.memory.ChatMemory}.
+     *
+     * @since 1.12.0
+     */
+    public Map<String, Object> attributes() {
+        return attributes;
+    }
+
     @Override
     public ChatMessageType type() {
         return TOOL_EXECUTION_RESULT;
@@ -65,20 +102,95 @@ public class ToolExecutionResultMessage implements ChatMessage {
         ToolExecutionResultMessage that = (ToolExecutionResultMessage) o;
         return Objects.equals(this.id, that.id)
                 && Objects.equals(this.toolName, that.toolName)
-                && Objects.equals(this.text, that.text);
+                && Objects.equals(this.text, that.text)
+                && Objects.equals(this.isError, that.isError)
+                && Objects.equals(this.attributes, that.attributes);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, toolName, text);
+        return Objects.hash(id, toolName, text, isError, attributes);
     }
 
     @Override
     public String toString() {
-        return "ToolExecutionResultMessage {" + " id = "
-                + quoted(id) + " toolName = "
-                + quoted(toolName) + " text = "
-                + quoted(text) + " }";
+        return "ToolExecutionResultMessage{" +
+                "id='" + id + '\'' +
+                ", toolName='" + toolName + '\'' +
+                ", text='" + text + '\'' +
+                ", isError=" + isError +
+                ", attributes=" + attributes +
+                '}';
+    }
+
+    /**
+     * Creates a builder for {@link ToolExecutionResultMessage}.
+     * @return the builder.
+     */
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+
+        private String id;
+        private String toolName;
+        private String text;
+        private Boolean isError;
+        private Map<String, Object> attributes;
+
+        /**
+         * Sets the id of the tool.
+         * @param id the id of the tool.
+         * @return the builder.
+         */
+        public Builder id(String id) {
+            this.id = id;
+            return this;
+        }
+
+        /**
+         * Sets the name of the tool.
+         * @param toolName the name of the tool.
+         * @return the builder.
+         */
+        public Builder toolName(String toolName) {
+            this.toolName = toolName;
+            return this;
+        }
+
+        /**
+         * Sets the result text of the tool execution.
+         * @param text the result of the tool execution.
+         * @return the builder.
+         */
+        public Builder text(String text) {
+            this.text = text;
+            return this;
+        }
+
+        /**
+         * Sets whether the tool execution resulted in an error.
+         * @param isError whether the tool execution resulted in an error.
+         * @return the builder.
+         */
+        public Builder isError(Boolean isError) {
+            this.isError = isError;
+            return this;
+        }
+
+        public Builder attributes(Map<String, Object> attributes) {
+            this.attributes = attributes;
+            return this;
+        }
+
+        /**
+         * Builds the {@link ToolExecutionResultMessage}.
+         * @return the {@link ToolExecutionResultMessage}.
+         */
+        public ToolExecutionResultMessage build() {
+            return new ToolExecutionResultMessage(this);
+        }
     }
 
     /**

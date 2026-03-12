@@ -160,7 +160,7 @@ class AwsDocumentConverterTest {
         // Then
         Map<String, Document> docMap = document.asMap();
         assertThat(docMap.get("type").asString()).isEqualTo("object");
-        assertThat(docMap.get("description").asString()).isEqualTo("Test tool description");
+        assertThat(docMap.containsKey("description")).isFalse();
 
         Document properties = docMap.get("properties");
         assertThat(properties.asMap().keySet()).containsExactlyInAnyOrder("param1", "param2", "param3", "param4");
@@ -259,7 +259,7 @@ class AwsDocumentConverterTest {
         // Then - should not have properties or required fields
         Map<String, Document> docMap = document.asMap();
         assertThat(docMap.get("type").asString()).isEqualTo("object");
-        assertThat(docMap.get("description").asString()).isEqualTo("Tool with no parameters");
+        assertThat(docMap.containsKey("description")).isFalse();
         assertThat(docMap.containsKey("properties")).isFalse();
         assertThat(docMap.containsKey("required")).isFalse();
     }
@@ -447,7 +447,7 @@ class AwsDocumentConverterTest {
         // Then
         Map<String, Document> docMap = document.asMap();
         assertThat(docMap.get("type").asString()).isEqualTo("object");
-        assertThat(docMap.get("description").asString()).isEqualTo("Simple tool with no parameters");
+        assertThat(docMap.containsKey("description")).isFalse();
 
         // Should handle null/empty parameters gracefully
         if (docMap.containsKey("properties")) {

@@ -5,16 +5,38 @@ import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
 class ToolExecutionResultMessageTest implements WithAssertions {
+
     @Test
     void methods() {
         ToolExecutionResultMessage tm = new ToolExecutionResultMessage("id", "toolName", "text");
         assertThat(tm.id()).isEqualTo("id");
         assertThat(tm.toolName()).isEqualTo("toolName");
         assertThat(tm.text()).isEqualTo("text");
+        assertThat(tm.isError()).isNull();
         assertThat(tm.type()).isEqualTo(ChatMessageType.TOOL_EXECUTION_RESULT);
 
         assertThat(tm)
-                .hasToString("ToolExecutionResultMessage " + "{ id = \"id\" toolName = \"toolName\" text = \"text\" }");
+                .hasToString(
+                        "ToolExecutionResultMessage{id='id', toolName='toolName', text='text', isError=null, attributes={}}");
+    }
+
+    @Test
+    void methods_with_isError() {
+        ToolExecutionResultMessage tm = ToolExecutionResultMessage.builder()
+                .id("id")
+                .toolName("toolName")
+                .text("error message")
+                .isError(true)
+                .build();
+        assertThat(tm.id()).isEqualTo("id");
+        assertThat(tm.toolName()).isEqualTo("toolName");
+        assertThat(tm.text()).isEqualTo("error message");
+        assertThat(tm.isError()).isTrue();
+        assertThat(tm.type()).isEqualTo(ChatMessageType.TOOL_EXECUTION_RESULT);
+
+        assertThat(tm)
+                .hasToString(
+                        "ToolExecutionResultMessage{id='id', toolName='toolName', text='error message', isError=true, attributes={}}");
     }
 
     @Test
@@ -34,6 +56,12 @@ class ToolExecutionResultMessageTest implements WithAssertions {
                 .isNotEqualTo(ToolExecutionResultMessage.from("changed", "toolName", "text"))
                 .isNotEqualTo(ToolExecutionResultMessage.from("id", "changed", "text"))
                 .isNotEqualTo(ToolExecutionResultMessage.from("id", "toolName", "changed"))
+                .isNotEqualTo(ToolExecutionResultMessage.builder()
+                        .id("id")
+                        .toolName("toolName")
+                        .text("text")
+                        .isError(true)
+                        .build())
                 .isNotEqualTo(t3)
                 .doesNotHaveSameHashCodeAs(t3);
 
@@ -52,7 +80,12 @@ class ToolExecutionResultMessageTest implements WithAssertions {
                 .isEqualTo(ToolExecutionResultMessage.from("id", "toolName", "text"))
                 .isEqualTo(ToolExecutionResultMessage.from(request, "text"))
                 .isEqualTo(ToolExecutionResultMessage.toolExecutionResultMessage("id", "toolName", "text"))
-                .isEqualTo(ToolExecutionResultMessage.toolExecutionResultMessage(request, "text"));
+                .isEqualTo(ToolExecutionResultMessage.toolExecutionResultMessage(request, "text"))
+                .isEqualTo(ToolExecutionResultMessage.builder()
+                        .id("id")
+                        .toolName("toolName")
+                        .text("text")
+                        .build());
     }
 
     @Test

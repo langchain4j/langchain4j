@@ -7,6 +7,8 @@ import static java.util.Arrays.asList;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
+
 import java.util.List;
 import java.util.Objects;
 
@@ -125,6 +127,7 @@ public class ChatRequest {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
@@ -133,11 +136,13 @@ public class ChatRequest {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         return Objects.hash(messages, parameters);
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public String toString() {
         return "ChatRequest {" + " messages = " + messages + ", parameters = " + parameters + " }";
     }

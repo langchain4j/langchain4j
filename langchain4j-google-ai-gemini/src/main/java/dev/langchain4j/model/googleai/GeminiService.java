@@ -11,7 +11,6 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.firstNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.googleai.Json.fromJson;
 import static java.time.Duration.ofSeconds;
 
@@ -80,7 +79,7 @@ class GeminiService {
             final boolean logResponses,
             final Logger logger,
             final Duration timeout) {
-        this.apiKey = ensureNotBlank(apiKey, "apiKey");
+        this.apiKey = apiKey;
         this.baseUrl = getOrDefault(baseUrl, GeminiService.GEMINI_AI_ENDPOINT);
         final var builder = getOrDefault(httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder);
         HttpClient httpClient = builder.connectTimeout(
@@ -263,8 +262,10 @@ class GeminiService {
                 .method(method)
                 .url(url)
                 .addHeader("Content-Type", "application/json")
-                .addHeader("User-Agent", "LangChain4j")
-                .addHeader(API_KEY_HEADER_NAME, apiKey);
+                .addHeader("User-Agent", "LangChain4j");
+        if (apiKey != null) {
+            builder.addHeader(API_KEY_HEADER_NAME, apiKey);
+        }
         if (body != null) {
             builder.body(Json.toJson(body));
         }

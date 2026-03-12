@@ -10,7 +10,7 @@ Thank you for investing your time and effort in contributing to our project, we 
 - Avoid adding new dependencies as much as possible (new dependencies with test scope are OK). If absolutely necessary, try to use the same libraries which are already used in the project. Make sure you run `mvn dependency:analyze` to identify unnecessary dependencies.
 - Write unit and/or integration tests for your code. This is critical: no tests, no review!
 - The tests should cover both positive and negative cases.
-- Make sure you run all unit tests on all modules with `mvn clean test`
+- Make sure you run all unit tests on all modules with `mvn clean test`. Some integration tests need the API token (key) to be set up as an environment variable in order to communicate with the configured model provider (look for "EnabledIfEnvironmentVariable" annotation to find out the name of this token).
 - Avoid making breaking changes. Always keep backward compatibility in mind. For example, instead of removing fields/methods/etc, mark them `@Deprecated` and make sure they still work as before.
 - Follow existing naming conventions.
 - Add Javadoc where necessary. There's no need to duplicate Javadoc from the implemented interfaces.

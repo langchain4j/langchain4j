@@ -3,15 +3,21 @@ package dev.langchain4j.model.bedrock;
 import static dev.langchain4j.model.bedrock.BedrockCachePointPlacement.AFTER_SYSTEM;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import software.amazon.awssdk.regions.Region;
@@ -23,7 +29,7 @@ import software.amazon.awssdk.regions.Region;
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
 class BedrockPromptCachingIT {
 
-    private static final String NOVA_MODEL = "us.amazon.nova-micro-v1:0";
+    private static final String NOVA_MODEL = "amazon.nova-micro-v1:0";
 
     interface Assistant {
         Result<String> chat(String userMessage);
@@ -89,6 +95,29 @@ class BedrockPromptCachingIT {
         assertThat(responseAfterUser.aiMessage().text()).isNotBlank();
         assertThat(responseAfterUser.metadata().tokenUsage()).isNotNull();
         assertThat(responseAfterUser.metadata().tokenUsage()).isInstanceOf(BedrockTokenUsage.class);
+
+        // Test AFTER_LAST_USER_MESSAGE placement
+        BedrockChatRequestParameters afterLastUserParams = BedrockChatRequestParameters.builder()
+                .promptCaching(BedrockCachePointPlacement.AFTER_LAST_USER_MESSAGE)
+                .build();
+
+        ChatModel modelAfterLastUser = BedrockChatModel.builder()
+                .modelId(NOVA_MODEL)
+                .defaultRequestParameters(afterLastUserParams)
+                .build();
+
+        ChatRequest requestAfterLastUser = ChatRequest.builder()
+                .messages(Arrays.asList(
+                        SystemMessage.from("You are a helpful assistant."),
+                        UserMessage.from("What is prompt caching?")))
+                .build();
+
+        ChatResponse responseAfterLastUser = modelAfterLastUser.chat(requestAfterLastUser);
+
+        assertThat(responseAfterLastUser).isNotNull();
+        assertThat(responseAfterLastUser.aiMessage().text()).isNotBlank();
+        assertThat(responseAfterLastUser.metadata().tokenUsage()).isNotNull();
+        assertThat(responseAfterLastUser.metadata().tokenUsage()).isInstanceOf(BedrockTokenUsage.class);
 
         // Test AFTER_TOOLS placement (when tools are available)
         BedrockChatRequestParameters afterToolsParams = BedrockChatRequestParameters.builder()
@@ -283,5 +312,439 @@ class BedrockPromptCachingIT {
         assertThat(response2.aiMessage().text()).isNotBlank();
         assertThat(((BedrockTokenUsage) response2.tokenUsage()).cacheReadInputTokens())
                 .isGreaterThan(0);
+    }
+
+    // === BedrockSystemMessage Integration Tests ===
+
+    @Test
+    void should_chat_with_bedrock_system_message_granular_cache_points() {
+        // Given - BedrockSystemMessage with granular cache points
+        String largeStaticContent = "You are an experienced coding assistant. ".repeat(100);
+
+        BedrockSystemMessage systemMessage = BedrockSystemMessage.builder()
+                .addText("You are a helpful assistant.")
+                .addTextWithCachePoint(largeStaticContent) // Cache this large content
+                .addText("Current time: " + Instant.now()) // Dynamic content, not cached
+                .build();
+
+        ChatModel model = BedrockChatModel.builder()
+                .modelId(NOVA_MODEL)
+                .region(Region.US_EAST_1)
+                .build();
+
+        // When - first request (cache write)
+        ChatRequest request1 = ChatRequest.builder()
+                .messages(Arrays.asList(systemMessage, UserMessage.from("What is Java?")))
+                .build();
+
+        ChatResponse response1 = model.chat(request1);
+
+        // Then
+        assertThat(response1).isNotNull();
+        assertThat(response1.aiMessage().text()).isNotBlank();
+        assertThat(response1.metadata().tokenUsage()).isInstanceOf(BedrockTokenUsage.class);
+        BedrockTokenUsage usage1 = (BedrockTokenUsage) response1.tokenUsage();
+        assertThat(usage1.cacheWriteInputTokens()).isGreaterThan(0);
+    }
+
+    @Test
+    void should_benefit_from_cache_with_bedrock_system_message() {
+        // Given - Same BedrockSystemMessage used in two requests
+        String largeStaticContent =
+                "You are an experienced coding assistant with expertise in Java, Python, JavaScript, and more. "
+                        .repeat(100);
+
+        BedrockSystemMessage systemMessage = BedrockSystemMessage.builder()
+                .addTextWithCachePoint(largeStaticContent)
+                .build();
+
+        ChatModel model = BedrockChatModel.builder()
+                .modelId(NOVA_MODEL)
+                .region(Region.US_EAST_1)
+                .build();
+
+        // First request - should write to cache
+        ChatRequest request1 = ChatRequest.builder()
+                .messages(Arrays.asList(systemMessage, UserMessage.from("Explain Java in one sentence.")))
+                .build();
+
+        ChatResponse response1 = model.chat(request1);
+        assertThat(response1.aiMessage().text()).isNotBlank();
+        assertThat(((BedrockTokenUsage) response1.tokenUsage()).cacheWriteInputTokens())
+                .isGreaterThan(0);
+
+        // Second request with same system message - should read from cache
+        ChatRequest request2 = ChatRequest.builder()
+                .messages(Arrays.asList(systemMessage, UserMessage.from("Explain Python in one sentence.")))
+                .build();
+
+        ChatResponse response2 = model.chat(request2);
+        assertThat(response2.aiMessage().text()).isNotBlank();
+        assertThat(((BedrockTokenUsage) response2.tokenUsage()).cacheReadInputTokens())
+                .isGreaterThan(0);
+    }
+
+    @Test
+    void should_handle_mixed_system_message_types() {
+        // Given - Mix of core SystemMessage and BedrockSystemMessage
+        String largeContent = "You have expertise in software development. ".repeat(100);
+
+        ChatModel model = BedrockChatModel.builder()
+                .modelId(NOVA_MODEL)
+                .region(Region.US_EAST_1)
+                .build();
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(Arrays.asList(
+                        SystemMessage.from("You are a helpful assistant."),
+                        BedrockSystemMessage.builder()
+                                .addTextWithCachePoint(largeContent)
+                                .build(),
+                        UserMessage.from("What is caching?")))
+                .build();
+
+        // When
+        ChatResponse response = model.chat(request);
+
+        // Then
+        assertThat(response).isNotNull();
+        assertThat(response.aiMessage().text()).isNotBlank();
+        assertThat(response.metadata().tokenUsage()).isInstanceOf(BedrockTokenUsage.class);
+    }
+
+    @Test
+    void should_handle_bedrock_system_message_without_cache_points() {
+        // Given - BedrockSystemMessage without any cache points
+        BedrockSystemMessage systemMessage = BedrockSystemMessage.builder()
+                .addText("You are a helpful assistant.")
+                .addText("Provide concise answers.")
+                .build();
+
+        ChatModel model = BedrockChatModel.builder()
+                .modelId(NOVA_MODEL)
+                .region(Region.US_EAST_1)
+                .build();
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(Arrays.asList(systemMessage, UserMessage.from("Hello!")))
+                .build();
+
+        // When
+        ChatResponse response = model.chat(request);
+
+        // Then
+        assertThat(response).isNotNull();
+        assertThat(response.aiMessage().text()).isNotBlank();
+    }
+
+    @Test
+    void should_combine_granular_cache_points_with_tools() {
+        // Given - BedrockSystemMessage with granular cache points + tools
+        String largeToolInstructions = "You have access to the following tools: ".repeat(50);
+
+        BedrockSystemMessage systemMessage = BedrockSystemMessage.builder()
+                .addText("You are a helpful assistant.")
+                .addTextWithCachePoint(largeToolInstructions) // Cache tool instructions
+                .build();
+
+        ChatModel model = BedrockChatModel.builder()
+                .modelId(NOVA_MODEL)
+                .region(Region.US_EAST_1)
+                .build();
+
+        // When - chat with granular cache points and tools
+        ChatRequest request = ChatRequest.builder()
+                .messages(Arrays.asList(systemMessage, UserMessage.from("Hello with tools!")))
+                .toolSpecifications(Arrays.asList()) // Empty tools list for simplicity
+                .build();
+
+        ChatResponse response = model.chat(request);
+
+        // Then
+        assertThat(response).isNotNull();
+        assertThat(response.aiMessage().text()).isNotBlank();
+        assertThat(response.metadata().tokenUsage()).isInstanceOf(BedrockTokenUsage.class);
+    }
+
+    // === ChatMemory Integration Tests ===
+
+    @Test
+    void should_document_message_window_chat_memory_behavior_with_bedrock_system_message() {
+        // This test documents the known limitation:
+        // MessageWindowChatMemory uses instanceof SystemMessage checks,
+        // which do NOT match BedrockSystemMessage instances.
+        // This means BedrockSystemMessage may be evicted like regular messages.
+
+        MessageWindowChatMemory memory =
+                MessageWindowChatMemory.builder().maxMessages(3).build();
+
+        BedrockSystemMessage bedrockSystemMsg = BedrockSystemMessage.builder()
+                .addTextWithCachePoint("System instructions with cache point")
+                .build();
+
+        // Add messages to memory
+        memory.add(bedrockSystemMsg);
+        memory.add(UserMessage.from("First user message"));
+        memory.add(AiMessage.from("First AI response"));
+        memory.add(UserMessage.from("Second user message")); // This exceeds window, should evict
+
+        List<ChatMessage> messages = memory.messages();
+
+        // Document the behavior: BedrockSystemMessage may be evicted when window fills,
+        // unlike core SystemMessage which is retained.
+        // This is a limitation users should be aware of.
+        assertThat(messages).isNotEmpty();
+        // Note: The exact behavior depends on MessageWindowChatMemory implementation,
+        // but the key point is that BedrockSystemMessage is NOT treated specially
+        // like SystemMessage would be.
+    }
+
+    @Test
+    void should_handle_bedrock_system_message_without_chat_memory() {
+        // Without ChatMemory, BedrockSystemMessage works perfectly for caching
+        String largeSystemContent = "You are an AI assistant with extensive knowledge. ".repeat(100);
+
+        BedrockSystemMessage systemMessage = BedrockSystemMessage.builder()
+                .addTextWithCachePoint(largeSystemContent)
+                .build();
+
+        ChatModel model = BedrockChatModel.builder()
+                .modelId(NOVA_MODEL)
+                .region(Region.US_EAST_1)
+                .build();
+
+        // Direct API calls (without ChatMemory) work well with granular cache points
+        ChatRequest request = ChatRequest.builder()
+                .messages(Arrays.asList(systemMessage, UserMessage.from("What is AI?")))
+                .build();
+
+        ChatResponse response = model.chat(request);
+
+        assertThat(response).isNotNull();
+        assertThat(response.aiMessage().text()).isNotBlank();
+    }
+
+    // === CRITICAL: Streaming with BedrockSystemMessage ===
+
+    @Test
+    void should_stream_chat_with_bedrock_system_message_granular_cache_points() {
+        // CRITICAL: Test that streaming works correctly with BedrockSystemMessage granular cache points
+        BedrockSystemMessage systemMessage = BedrockSystemMessage.builder()
+                .addText("You are a helpful AI assistant.")
+                .addTextWithCachePoint("Standard responses:\n"
+                        + "Q: What is AI?\nA: AI is artificial intelligence.\n".repeat(10)) // Large cached content
+                .addText("Always be concise and helpful.")
+                .build();
+
+        StreamingChatModel streamingModel = BedrockStreamingChatModel.builder()
+                .modelId(NOVA_MODEL)
+                .region(Region.US_EAST_1)
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(Arrays.asList(systemMessage, UserMessage.from("What is AI in one sentence?")))
+                .build();
+
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        streamingModel.chat(chatRequest, handler);
+
+        String fullResponse = handler.get().aiMessage().text();
+        assertThat(fullResponse).isNotBlank();
+    }
+
+    @Test
+    void should_stream_with_multiple_bedrock_system_messages() {
+        // Test streaming with multiple BedrockSystemMessage instances
+        BedrockSystemMessage systemMsg1 = BedrockSystemMessage.builder()
+                .addTextWithCachePoint("Context block 1: Historical facts")
+                .build();
+
+        BedrockSystemMessage systemMsg2 = BedrockSystemMessage.builder()
+                .addTextWithCachePoint("Context block 2: Domain knowledge")
+                .build();
+
+        StreamingChatModel streamingModel = BedrockStreamingChatModel.builder()
+                .modelId(NOVA_MODEL)
+                .region(Region.US_EAST_1)
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(systemMsg1, systemMsg2, UserMessage.from("Tell me something interesting."))
+                .build();
+
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        streamingModel.chat(chatRequest, handler);
+
+        String fullResponse = handler.get().aiMessage().text();
+        assertThat(fullResponse).isNotBlank();
+    }
+
+    // === HIGH: Complex Cache Point Scenarios ===
+
+    @Test
+    void should_validate_complex_scenario_with_all_cache_point_sources() {
+        // HIGH: Test a realistic complex scenario combining multiple cache point sources
+        SystemMessage coreSystemMsg = SystemMessage.from("You are an expert assistant.");
+
+        BedrockSystemMessage bedrockSystemMsg = BedrockSystemMessage.builder()
+                .addTextWithCachePoint("Large context to cache")
+                .addText("Dynamic context that changes per request")
+                .build();
+
+        BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
+                .promptCaching(BedrockCachePointPlacement.AFTER_SYSTEM)
+                .build();
+
+        ChatModel model = BedrockChatModel.builder()
+                .modelId(NOVA_MODEL)
+                .region(Region.US_EAST_1)
+                .defaultRequestParameters(params)
+                .build();
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(coreSystemMsg, bedrockSystemMsg, UserMessage.from("What is AI?"))
+                .build();
+
+        ChatResponse response = model.chat(request);
+
+        // Verify the request succeeded with complex cache point configuration
+        assertThat(response).isNotNull();
+        assertThat(response.aiMessage()).isNotNull();
+        assertThat(response.aiMessage().text()).isNotBlank();
+    }
+
+    @Test
+    void should_chat_with_cache_point_after_user_message_placement() {
+        // Test AFTER_USER_MESSAGE placement which adds cache point after first user message
+        BedrockSystemMessage systemMessage = BedrockSystemMessage.builder()
+                .addTextWithCachePoint("System context to cache")
+                .build();
+
+        BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
+                .promptCaching(BedrockCachePointPlacement.AFTER_USER_MESSAGE)
+                .build();
+
+        BedrockChatModel model = BedrockChatModel.builder()
+                .modelId(NOVA_MODEL)
+                .region(Region.US_EAST_1)
+                .defaultRequestParameters(params)
+                .build();
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(Arrays.asList(
+                        systemMessage,
+                        UserMessage.from("First question?"),
+                        AiMessage.from("First response."),
+                        UserMessage.from("Follow-up question?")))
+                .build();
+
+        ChatResponse response = model.chat(request);
+
+        assertThat(response).isNotNull();
+        assertThat(response.aiMessage()).isNotNull();
+    }
+
+    @Test
+    void should_chat_with_cache_point_after_last_user_message_placement() {
+        // Test AFTER_LAST_USER_MESSAGE placement which adds cache point after the last user message
+        BedrockSystemMessage systemMessage = BedrockSystemMessage.builder()
+                .addTextWithCachePoint("System context to cache")
+                .build();
+
+        BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
+                .promptCaching(BedrockCachePointPlacement.AFTER_LAST_USER_MESSAGE)
+                .build();
+
+        BedrockChatModel model = BedrockChatModel.builder()
+                .modelId(NOVA_MODEL)
+                .region(Region.US_EAST_1)
+                .defaultRequestParameters(params)
+                .build();
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(Arrays.asList(
+                        systemMessage,
+                        UserMessage.from("First question?"),
+                        AiMessage.from("First response."),
+                        UserMessage.from("Follow-up question?")))
+                .build();
+
+        ChatResponse response = model.chat(request);
+
+        assertThat(response).isNotNull();
+        assertThat(response.aiMessage()).isNotNull();
+    }
+
+    @Test
+    void should_add_cache_point_to_last_user_message_in_multi_turn_conversation() {
+        // Test that AFTER_LAST_USER_MESSAGE correctly caches after the last user message
+        // in a multi-turn conversation, which is useful for caching conversation history
+        String largeSystemContent = "You are an AI assistant with extensive knowledge. ".repeat(100);
+
+        BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
+                .promptCaching(BedrockCachePointPlacement.AFTER_LAST_USER_MESSAGE)
+                .build();
+
+        BedrockChatModel model = BedrockChatModel.builder()
+                .modelId(NOVA_MODEL)
+                .region(Region.US_EAST_1)
+                .defaultRequestParameters(params)
+                .build();
+
+        // First request - multi-turn conversation ending with user message
+        ChatRequest request1 = ChatRequest.builder()
+                .messages(Arrays.asList(
+                        SystemMessage.from(largeSystemContent),
+                        UserMessage.from("What is Java?"),
+                        AiMessage.from("Java is a programming language."),
+                        UserMessage.from("What about Python?")))
+                .build();
+
+        ChatResponse response1 = model.chat(request1);
+        assertThat(response1.aiMessage().text()).isNotBlank();
+        assertThat(((BedrockTokenUsage) response1.tokenUsage()).cacheWriteInputTokens())
+                .isGreaterThan(0);
+
+        // Second request - same conversation history, cache point should be on the last user message
+        ChatRequest request2 = ChatRequest.builder()
+                .messages(Arrays.asList(
+                        SystemMessage.from(largeSystemContent),
+                        UserMessage.from("What is Java?"),
+                        AiMessage.from("Java is a programming language."),
+                        UserMessage.from("What about Python?")))
+                .build();
+
+        ChatResponse response2 = model.chat(request2);
+        assertThat(response2.aiMessage().text()).isNotBlank();
+        assertThat(((BedrockTokenUsage) response2.tokenUsage()).cacheReadInputTokens())
+                .isGreaterThan(0);
+    }
+
+    @Test
+    void should_chat_with_cache_point_after_tools_placement() {
+        // Test AFTER_TOOLS placement which adds cache point after tool definitions
+        BedrockSystemMessage systemMessage = BedrockSystemMessage.builder()
+                .addTextWithCachePoint("You are a helpful assistant with access to tools.")
+                .build();
+
+        BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
+                .promptCaching(BedrockCachePointPlacement.AFTER_TOOLS)
+                .build();
+
+        BedrockChatModel model = BedrockChatModel.builder()
+                .modelId(NOVA_MODEL)
+                .region(Region.US_EAST_1)
+                .defaultRequestParameters(params)
+                .build();
+
+        // Even without actual tools, AFTER_TOOLS placement should work
+        ChatRequest request = ChatRequest.builder()
+                .messages(Arrays.asList(systemMessage, UserMessage.from("Hello, help me with something.")))
+                .build();
+
+        ChatResponse response = model.chat(request);
+
+        assertThat(response).isNotNull();
+        assertThat(response.aiMessage()).isNotNull();
     }
 }

@@ -3,47 +3,37 @@ package dev.langchain4j.agentic.workflow;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.internal.AgentSpecsProvider;
 import dev.langchain4j.agentic.observability.AgentListener;
-import java.util.function.Consumer;
+import dev.langchain4j.agentic.scope.AgenticScope;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 public record HumanInTheLoop(
-        String inputKey,
         String outputKey,
         String description,
-        Consumer<?> requestWriter,
         boolean async,
-        Supplier<?> responseReader,
+        Function<AgenticScope, ?> responseProvider,
         AgentListener listener)
         implements AgentSpecsProvider {
 
     @Agent("An agent that asks the user for missing information")
-    public Object askUser(Object request) {
-        ((Consumer<Object>) requestWriter).accept(request);
-        return responseReader.get();
+    public Object askUser(AgenticScope scope) {
+        return responseProvider.apply(scope);
     }
 
     public static class HumanInTheLoopBuilder {
 
-        private String inputKey = "request";
         private String outputKey = "response";
         private String description = "An agent that asks the user for missing information";
         private boolean async = false;
-        private Consumer<?> requestWriter;
-        private Supplier<?> responseReader;
+        private Function<AgenticScope, ?> responseProvider;
         private AgentListener agentListener;
 
-        public HumanInTheLoopBuilder requestWriter(Consumer<?> requestWriter) {
-            this.requestWriter = requestWriter;
-            return this;
+        public HumanInTheLoopBuilder responseProvider(Supplier<?> responseProvider) {
+            return responseProvider(scope -> responseProvider.get());
         }
 
-        public HumanInTheLoopBuilder responseReader(Supplier<?> responseReader) {
-            this.responseReader = responseReader;
-            return this;
-        }
-
-        public HumanInTheLoopBuilder inputKey(String inputKey) {
-            this.inputKey = inputKey;
+        public HumanInTheLoopBuilder responseProvider(Function<AgenticScope, ?> responseProvider) {
+            this.responseProvider = responseProvider;
             return this;
         }
 
@@ -68,7 +58,7 @@ public record HumanInTheLoop(
         }
 
         public HumanInTheLoop build() {
-            return new HumanInTheLoop(inputKey, outputKey, description, requestWriter, async, responseReader, agentListener);
+            return new HumanInTheLoop(outputKey, description, async, responseProvider, agentListener);
         }
     }
 }

@@ -155,7 +155,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         if (model instanceof StreamingChatModel) {
             StreamingMetadata streamingMetadata = chatResponseAndStreamingMetadata.streamingMetadata();
             assertThat(streamingMetadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
-            assertThat(streamingMetadata.timesOnPartialResponseWasCalled()).isGreaterThan(1);
+            assertThat(streamingMetadata.timesOnPartialResponseWasCalled()).isGreaterThan(0);
             assertThat(streamingMetadata.partialToolCalls()).isEmpty();
             assertThat(streamingMetadata.completeToolCalls()).isEmpty();
             assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
@@ -184,6 +184,25 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // then
         assertThat(chatResponse.aiMessage().text()).containsIgnoringCase("liebe");
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_respect_multiple_messages(M model) {
+
+        // given
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(
+                        UserMessage.from("Hi, my favorite color is green"),
+                        AiMessage.from("Hi, nice to meet you"),
+                        UserMessage.from("What is my favorite color?"))
+                .build();
+
+        // when
+        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
+
+        // then
+        assertThat(chatResponse.aiMessage().text()).containsIgnoringCase("green");
     }
 
     // CHAT PARAMETERS

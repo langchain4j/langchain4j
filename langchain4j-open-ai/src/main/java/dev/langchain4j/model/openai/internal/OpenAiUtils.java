@@ -273,7 +273,13 @@ public class OpenAiUtils {
         if (detailLevel == null) {
             return null;
         }
-        return ImageDetail.valueOf(detailLevel.name());
+
+        return switch (detailLevel) {
+            case LOW -> ImageDetail.LOW;
+            case HIGH -> ImageDetail.HIGH;
+            case AUTO -> ImageDetail.AUTO;
+            default -> throw new UnsupportedFeatureException("Unsupported detail level: " + detailLevel);
+        };
     }
 
     public static List<Tool> toTools(Collection<ToolSpecification> toolSpecifications, boolean strict) {

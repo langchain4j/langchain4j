@@ -3,6 +3,7 @@ package dev.langchain4j.model.watsonx;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -60,6 +61,7 @@ public class WatsonxScoringModelTest {
         when(mockRerankServiceBuilder.authenticator(any())).thenReturn(mockRerankServiceBuilder);
         when(mockRerankServiceBuilder.apiKey(any())).thenReturn(mockRerankServiceBuilder);
         when(mockRerankServiceBuilder.httpClient(any())).thenReturn(mockRerankServiceBuilder);
+        when(mockRerankServiceBuilder.verifySsl(anyBoolean())).thenReturn(mockRerankServiceBuilder);
         when(mockRerankServiceBuilder.build()).thenReturn(mockRerankService);
     }
 
@@ -86,7 +88,7 @@ public class WatsonxScoringModelTest {
                 .thenReturn(mockHttpResponse);
 
         try (MockedStatic<HttpClientProvider> httpClientProvider = mockStatic(HttpClientProvider.class)) {
-            httpClientProvider.when(HttpClientProvider::httpClient).thenReturn(mockHttpClient);
+            httpClientProvider.when(() -> HttpClientProvider.httpClient(true)).thenReturn(mockHttpClient);
 
             var scoringModel = WatsonxScoringModel.builder()
                     .baseUrl(CloudRegion.FRANKFURT)

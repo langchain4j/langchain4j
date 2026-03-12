@@ -5,20 +5,18 @@ import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.PlanningContext;
 import dev.langchain4j.agentic.planner.Planner;
-import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.workflow.ConditionalAgent;
+import dev.langchain4j.agentic.workflow.ConditionalAgentInstance;
 
 import java.util.List;
-import java.util.function.Predicate;
 
-public record ConditionalPlanner(List<ConditionalAgent> conditionalAgents) implements Planner {
-
-    record ConditionalAgent(Predicate<AgenticScope> condition, List<AgentInstance> agentInstances) { }
+public record ConditionalPlanner(List<ConditionalAgent> conditionalSubagents) implements Planner {
 
     @Override
     public Action firstAction(PlanningContext planningContext) {
-        List<AgentInstance> agentsToCall = conditionalAgents.stream()
-                .filter(conditionalAgent -> conditionalAgent.condition.test(planningContext.agenticScope()))
-                .flatMap(conditionalAgent -> conditionalAgent.agentInstances.stream())
+        List<AgentInstance> agentsToCall = conditionalSubagents.stream()
+                .filter(conditionalAgent -> conditionalAgent.predicate().test(planningContext.agenticScope()))
+                .flatMap(conditionalAgent -> conditionalAgent.agentInstances().stream())
                 .toList();
         return agentsToCall.isEmpty() ? done() : call(agentsToCall);
     }
@@ -32,4 +30,18 @@ public record ConditionalPlanner(List<ConditionalAgent> conditionalAgents) imple
     public AgenticSystemTopology topology() {
         return AgenticSystemTopology.ROUTER;
     }
+
+    @Override
+    public boolean terminated() {
+        return true;
+    }
+
+    @Override
+    public <T extends AgentInstance> T as(Class<T> agentInstanceClass, AgentInstance agentInstance) {
+        if (agentInstanceClass != ConditionalAgentInstance.class) {
+            throw new ClassCastException("Cannot cast to " + agentInstanceClass.getName() + ": incompatible type");
+        }
+        return (T) new DefaultConditionalAgentInstance(agentInstance, this);
+    }
+
 }

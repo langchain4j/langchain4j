@@ -9,7 +9,6 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
-import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
@@ -28,6 +27,7 @@ import dev.langchain4j.http.client.HttpClientBuilderLoader;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
+import dev.langchain4j.http.client.sse.CancellationUnsupportedHandle;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
@@ -35,22 +35,22 @@ import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.http.client.sse.CancellationUnsupportedHandle;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import org.slf4j.Logger;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
+import org.slf4j.Logger;
 
 class OllamaClient {
 
     private final HttpClient httpClient;
     private final String baseUrl;
-    private final Map<String, String> defaultHeaders;
+    private final Supplier<Map<String, String>> customHeadersSupplier;
 
     OllamaClient(Builder builder) {
 
@@ -65,13 +65,22 @@ class OllamaClient {
                 .build();
 
         if (builder.logRequests || builder.logResponses) {
-            this.httpClient = new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses, builder.logger);
+            this.httpClient =
+                    new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses, builder.logger);
         } else {
             this.httpClient = httpClient;
         }
 
         this.baseUrl = ensureNotBlank(builder.baseUrl, "baseUrl");
-        this.defaultHeaders = copy(builder.customHeaders);
+        this.customHeadersSupplier = getOrDefault(builder.customHeadersSupplier, () -> Map::of);
+    }
+
+    private Map<String, String> buildRequestHeaders() {
+        Map<String, String> dynamicHeaders = customHeadersSupplier.get();
+        if (isNullOrEmpty(dynamicHeaders)) {
+            return Map.of();
+        }
+        return dynamicHeaders;
     }
 
     static Builder builder() {
@@ -84,7 +93,7 @@ class OllamaClient {
                 .method(POST)
                 .url(baseUrl, "api/generate")
                 .addHeader("Content-Type", "application/json")
-                .addHeaders(defaultHeaders)
+                .addHeaders(buildRequestHeaders())
                 .body(toJson(request))
                 .build();
 
@@ -99,7 +108,7 @@ class OllamaClient {
                 .method(POST)
                 .url(baseUrl, "api/chat")
                 .addHeader("Content-Type", "application/json")
-                .addHeaders(defaultHeaders)
+                .addHeaders(buildRequestHeaders())
                 .body(toJson(request))
                 .build();
 
@@ -113,7 +122,7 @@ class OllamaClient {
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl, "api/generate")
-                .addHeaders(defaultHeaders)
+                .addHeaders(buildRequestHeaders())
                 .body(toJson(request))
                 .build();
 
@@ -151,14 +160,15 @@ class OllamaClient {
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl, "api/chat")
-                .addHeaders(defaultHeaders)
+                .addHeaders(buildRequestHeaders())
                 .body(toJson(ollamaChatRequest))
                 .build();
 
         httpClient.execute(httpRequest, new OllamaServerSentEventParser(), new ServerSentEventListener() {
 
             final ToolCallBuilder toolCallBuilder = new ToolCallBuilder();
-            final OllamaStreamingResponseBuilder responseBuilder = new OllamaStreamingResponseBuilder(toolCallBuilder, returnThinking);
+            final OllamaStreamingResponseBuilder responseBuilder =
+                    new OllamaStreamingResponseBuilder(toolCallBuilder, returnThinking);
             volatile StreamingHandle streamingHandle;
 
             @Override
@@ -202,7 +212,8 @@ class OllamaClient {
 
                         toolCallBuilder.updateName(toolCall.getFunction().getName());
 
-                        String partialArguments = toJsonWithoutIdent(toolCall.getFunction().getArguments());
+                        String partialArguments =
+                                toJsonWithoutIdent(toolCall.getFunction().getArguments());
                         if (isNotNullOrEmpty(partialArguments)) {
                             toolCallBuilder.appendArguments(partialArguments);
                         }
@@ -233,7 +244,7 @@ class OllamaClient {
                 .method(POST)
                 .url(baseUrl, "api/embed")
                 .addHeader("Content-Type", "application/json")
-                .addHeaders(defaultHeaders)
+                .addHeaders(buildRequestHeaders())
                 .body(toJson(request))
                 .build();
 
@@ -248,7 +259,7 @@ class OllamaClient {
                 .method(GET)
                 .url(baseUrl, "api/tags")
                 .addHeader("Content-Type", "application/json")
-                .addHeaders(defaultHeaders)
+                .addHeaders(buildRequestHeaders())
                 .build();
 
         SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
@@ -262,7 +273,7 @@ class OllamaClient {
                 .method(POST)
                 .url(baseUrl, "api/show")
                 .addHeader("Content-Type", "application/json")
-                .addHeaders(defaultHeaders)
+                .addHeaders(buildRequestHeaders())
                 .body(toJson(showInformationRequest))
                 .build();
 
@@ -277,7 +288,7 @@ class OllamaClient {
                 .method(GET)
                 .url(baseUrl, "api/ps")
                 .addHeader("Content-Type", "application/json")
-                .addHeaders(defaultHeaders)
+                .addHeaders(buildRequestHeaders())
                 .build();
 
         SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
@@ -291,7 +302,7 @@ class OllamaClient {
                 .method(DELETE)
                 .url(baseUrl, "api/delete")
                 .addHeader("Content-Type", "application/json")
-                .addHeaders(defaultHeaders)
+                .addHeaders(buildRequestHeaders())
                 .body(toJson(deleteModelRequest))
                 .build();
 
@@ -308,7 +319,7 @@ class OllamaClient {
         private boolean logRequests;
         private boolean logResponses;
         private Logger logger;
-        private Map<String, String> customHeaders;
+        private Supplier<Map<String, String>> customHeadersSupplier;
 
         /**
          * Sets the {@link HttpClientBuilder} that will be used to create the {@link HttpClient}
@@ -357,7 +368,12 @@ class OllamaClient {
         }
 
         Builder customHeaders(Map<String, String> customHeaders) {
-            this.customHeaders = customHeaders;
+            this.customHeadersSupplier = () -> customHeaders;
+            return this;
+        }
+
+        Builder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
             return this;
         }
 

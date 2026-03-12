@@ -7,6 +7,8 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
+
 import java.util.Objects;
 
 @JsonDeserialize(builder = Content.Builder.class)
@@ -66,11 +68,13 @@ public final class Content {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
         return another instanceof Content && equalTo((Content) another);
     }
 
+    @JacocoIgnoreCoverageGenerated
     private boolean equalTo(Content another) {
         return Objects.equals(type, another.type)
                 && Objects.equals(text, another.text)
@@ -81,6 +85,7 @@ public final class Content {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         int h = 5381;
         h += (h << 5) + Objects.hashCode(type);
@@ -93,6 +98,7 @@ public final class Content {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public String toString() {
         return "Content{" + "type="
                 + type + ", text="

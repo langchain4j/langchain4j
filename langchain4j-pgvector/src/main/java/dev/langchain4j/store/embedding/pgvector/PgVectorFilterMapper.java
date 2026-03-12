@@ -144,7 +144,16 @@ abstract class PgVectorFilterMapper {
         }
     }
 
+    String formatCollectionValue(Object value) {
+        if (value instanceof String stringValue) {
+            final String escapedValue = stringValue.replace("'", "''");
+            return '\'' + escapedValue + '\'';
+        } else {
+            return '\'' + value.toString() + '\'';
+        }
+    }
+
     String formatValuesAsString(Collection<?> values) {
-        return "(" + values.stream().map(v -> format("'%s'", v)).collect(Collectors.joining(",")) + ")";
+        return "(" + values.stream().map(this::formatCollectionValue).collect(Collectors.joining(",")) + ")";
     }
 }

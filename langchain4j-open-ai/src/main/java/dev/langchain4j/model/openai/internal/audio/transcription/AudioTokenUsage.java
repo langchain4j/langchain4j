@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 
 import java.util.Objects;
 
@@ -61,11 +62,13 @@ public class AudioTokenUsage {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
         return another instanceof AudioTokenUsage audioTokenUsage && equalTo(audioTokenUsage);
     }
 
+    @JacocoIgnoreCoverageGenerated
     private boolean equalTo(AudioTokenUsage another) {
         return Objects.equals(type, another.type)
                 && Objects.equals(totalTokens, another.totalTokens)
@@ -75,6 +78,7 @@ public class AudioTokenUsage {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         int h = 5381;
         h += (h << 5) + Objects.hashCode(type);
@@ -86,6 +90,7 @@ public class AudioTokenUsage {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public String toString() {
         return "AudioTokenUsage{"
                 + " type = " + quoted(type)

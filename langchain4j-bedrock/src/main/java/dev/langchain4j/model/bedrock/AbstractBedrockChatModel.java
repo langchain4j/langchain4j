@@ -1,5 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
@@ -9,17 +10,23 @@ import static dev.langchain4j.model.bedrock.AwsDocumentConverter.convertAddition
 import static dev.langchain4j.model.bedrock.AwsDocumentConverter.convertJsonObjectSchemaToDocument;
 import static dev.langchain4j.model.bedrock.AwsDocumentConverter.documentFromJson;
 import static dev.langchain4j.model.bedrock.AwsDocumentConverter.documentToJson;
+import static dev.langchain4j.model.bedrock.GuardrailAssessment.Policy.CONTENT;
+import static dev.langchain4j.model.bedrock.GuardrailAssessment.Policy.CONTEXT;
+import static dev.langchain4j.model.bedrock.GuardrailAssessment.Policy.SENSITIVE;
+import static dev.langchain4j.model.bedrock.GuardrailAssessment.Policy.TOPIC;
+import static dev.langchain4j.model.bedrock.GuardrailAssessment.Policy.WORD;
 import static dev.langchain4j.model.bedrock.Utils.extractAndValidateFormat;
+import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Objects.nonNull;
 import static software.amazon.awssdk.core.SdkBytes.fromByteArray;
+import static software.amazon.awssdk.services.bedrockruntime.model.OutputFormatType.JSON_SCHEMA;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.PdfFileContent;
@@ -28,27 +35,35 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.internal.Json;
+import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
+import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import java.net.URI;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.core.document.Document;
 import software.amazon.awssdk.regions.Region;
@@ -56,15 +71,27 @@ import software.amazon.awssdk.services.bedrockruntime.model.AnyToolChoice;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ConversationRole;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseResponse;
+import software.amazon.awssdk.services.bedrockruntime.model.ConverseTrace;
 import software.amazon.awssdk.services.bedrockruntime.model.DocumentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.DocumentFormat;
 import software.amazon.awssdk.services.bedrockruntime.model.DocumentSource;
+import software.amazon.awssdk.services.bedrockruntime.model.GuardrailConfiguration;
+import software.amazon.awssdk.services.bedrockruntime.model.GuardrailStreamConfiguration;
+import software.amazon.awssdk.services.bedrockruntime.model.GuardrailStreamProcessingMode;
+import software.amazon.awssdk.services.bedrockruntime.model.GuardrailTrace;
 import software.amazon.awssdk.services.bedrockruntime.model.ImageBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ImageSource;
 import software.amazon.awssdk.services.bedrockruntime.model.InferenceConfiguration;
+import software.amazon.awssdk.services.bedrockruntime.model.JsonSchemaDefinition;
 import software.amazon.awssdk.services.bedrockruntime.model.Message;
+import software.amazon.awssdk.services.bedrockruntime.model.OutputConfig;
+import software.amazon.awssdk.services.bedrockruntime.model.OutputFormat;
+import software.amazon.awssdk.services.bedrockruntime.model.OutputFormatStructure;
+import software.amazon.awssdk.services.bedrockruntime.model.OutputFormatType;
 import software.amazon.awssdk.services.bedrockruntime.model.ReasoningContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ReasoningTextBlock;
+import software.amazon.awssdk.services.bedrockruntime.model.ServiceTier;
+import software.amazon.awssdk.services.bedrockruntime.model.ServiceTierType;
 import software.amazon.awssdk.services.bedrockruntime.model.StopReason;
 import software.amazon.awssdk.services.bedrockruntime.model.SystemContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.Tool;
@@ -77,8 +104,24 @@ import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlock;
 @Internal
 abstract class AbstractBedrockChatModel {
 
+    private static final Logger log = LoggerFactory.getLogger(AbstractBedrockChatModel.class);
+
     private static final String THINKING_SIGNATURE_KEY =
             "thinking_signature"; // do not change, will break backward compatibility!
+
+    /**
+     * Maximum cache points allowed by AWS Bedrock per request.
+     */
+    private static final int MAX_CACHE_POINTS_PER_REQUEST = 4;
+
+    /**
+     * Reusable cache point block - AWS SDK model objects are immutable.
+     */
+    private static final SystemContentBlock CACHE_POINT_BLOCK = SystemContentBlock.builder()
+            .cachePoint(software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock.builder()
+                    .type(software.amazon.awssdk.services.bedrockruntime.model.CachePointType.DEFAULT)
+                    .build())
+            .build();
 
     protected final Region region;
     protected final Duration timeout;
@@ -86,6 +129,7 @@ abstract class AbstractBedrockChatModel {
     protected final boolean sendThinking;
     protected final BedrockChatRequestParameters defaultRequestParameters;
     protected final List<ChatModelListener> listeners;
+    protected final Set<Capability> supportedCapabilities;
 
     protected AbstractBedrockChatModel(AbstractBuilder<?> builder) {
         this.region = getOrDefault(builder.region, Region.US_EAST_1);
@@ -93,6 +137,7 @@ abstract class AbstractBedrockChatModel {
         this.returnThinking = getOrDefault(builder.returnThinking, false);
         this.sendThinking = getOrDefault(builder.sendThinking, true);
         this.listeners = copy(builder.listeners);
+        this.supportedCapabilities = copy(builder.supportedCapabilities);
 
         ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
@@ -119,6 +164,7 @@ abstract class AbstractBedrockChatModel {
                 // Bedrock-specific parameters
                 .additionalModelRequestFields(bedrockParameters.additionalModelRequestFields())
                 .promptCaching(bedrockParameters.cachePointPlacement())
+                .guardrailConfiguration(bedrockParameters.bedrockGuardrailConfiguration())
                 .build();
     }
 
@@ -128,22 +174,60 @@ abstract class AbstractBedrockChatModel {
 
     protected List<SystemContentBlock> extractSystemMessages(
             List<ChatMessage> messages, BedrockCachePointPlacement cachePointPlacement) {
+        if (messages == null) {
+            return new ArrayList<>();
+        }
+
         List<SystemContentBlock> systemBlocks = new ArrayList<>();
+        boolean lastWasCoreSystemMessage = false;
 
         for (ChatMessage message : messages) {
-            if (message.type() == ChatMessageType.SYSTEM) {
-                systemBlocks.add(SystemContentBlock.builder()
-                        .text(((SystemMessage) message).text())
-                        .build());
+            if (message == null) {
+                continue; // Skip null messages gracefully
+            }
+
+            // CRITICAL: Use instanceof, NOT type() check to avoid ClassCastException
+            if (message instanceof BedrockSystemMessage bedrockMsg) {
+                // Handle BedrockSystemMessage with granular cache points
+                for (BedrockSystemContent content : bedrockMsg.contents()) {
+                    if (content instanceof BedrockSystemTextContent textContent) {
+                        systemBlocks.add(SystemContentBlock.builder()
+                                .text(textContent.text())
+                                .build());
+
+                        // Add cache point AFTER this content block if marked
+                        if (textContent.hasCachePoint()) {
+                            systemBlocks.add(CACHE_POINT_BLOCK);
+                        }
+                    } else {
+                        // Fail fast for unknown content types to prevent silent data loss
+                        throw new UnsupportedFeatureException("Unsupported BedrockSystemContent type: " + content.type()
+                                + ". Only TEXT content is currently supported.");
+                    }
+                }
+                lastWasCoreSystemMessage = false;
+
+            } else if (message instanceof SystemMessage systemMsg) {
+                // Handle core SystemMessage (legacy)
+                systemBlocks.add(
+                        SystemContentBlock.builder().text(systemMsg.text()).build());
+                lastWasCoreSystemMessage = true;
             }
         }
 
+        // Apply legacy AFTER_SYSTEM placement ONLY if:
+        // 1. It's enabled
+        // 2. There are system blocks
+        // 3. The LAST system message was a core SystemMessage (not BedrockSystemMessage)
         if (cachePointPlacement == BedrockCachePointPlacement.AFTER_SYSTEM && !systemBlocks.isEmpty()) {
-            systemBlocks.add(SystemContentBlock.builder()
-                    .cachePoint(software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock.builder()
-                            .type("default")
-                            .build())
-                    .build());
+            if (lastWasCoreSystemMessage) {
+                systemBlocks.add(CACHE_POINT_BLOCK);
+            } else {
+                log.warn("BedrockCachePointPlacement.AFTER_SYSTEM is configured but ignored because "
+                        + "the last system message is a BedrockSystemMessage with granular cache points. "
+                        + "Use granular cache points within BedrockSystemMessage or ensure the last "
+                        + "system message is a core SystemMessage.");
+            }
         }
 
         return systemBlocks;
@@ -155,25 +239,53 @@ abstract class AbstractBedrockChatModel {
 
     protected List<Message> extractRegularMessages(
             List<ChatMessage> messages, BedrockCachePointPlacement cachePointPlacement) {
+        if (messages == null) {
+            return new ArrayList<>();
+        }
+
         List<Message> bedrockMessages = new ArrayList<>();
         List<ContentBlock> currentBlocks = new ArrayList<>();
         boolean firstUserMessageProcessed = false;
 
+        // Find the index of the last user message for AFTER_LAST_USER_MESSAGE placement
+        int lastUserMessageIndex = -1;
+        if (cachePointPlacement == BedrockCachePointPlacement.AFTER_LAST_USER_MESSAGE) {
+            for (int i = messages.size() - 1; i >= 0; i--) {
+                if (messages.get(i) instanceof UserMessage) {
+                    lastUserMessageIndex = i;
+                    break;
+                }
+            }
+        }
+
         for (int i = 0; i < messages.size(); i++) {
             ChatMessage msg = messages.get(i);
+            if (msg == null) {
+                continue; // Skip null messages gracefully
+            }
             if (msg instanceof ToolExecutionResultMessage toolResult) {
                 handleToolResult(toolResult, currentBlocks, bedrockMessages, i, messages);
-            } else if (!(msg instanceof SystemMessage)) {
+            } else if ((msg instanceof UserMessage) || (msg instanceof AiMessage)) {
                 Message bedrockMessage = convertToBedRockMessage(msg);
 
-                if (cachePointPlacement == BedrockCachePointPlacement.AFTER_USER_MESSAGE
-                        && msg instanceof UserMessage
-                        && !firstUserMessageProcessed) {
+                boolean shouldAddCachePoint = false;
 
+                if (msg instanceof UserMessage) {
+                    if (cachePointPlacement == BedrockCachePointPlacement.AFTER_USER_MESSAGE
+                            && !firstUserMessageProcessed) {
+                        shouldAddCachePoint = true;
+                        firstUserMessageProcessed = true;
+                    } else if (cachePointPlacement == BedrockCachePointPlacement.AFTER_LAST_USER_MESSAGE
+                            && i == lastUserMessageIndex) {
+                        shouldAddCachePoint = true;
+                    }
+                }
+
+                if (shouldAddCachePoint) {
                     List<ContentBlock> contentWithCachePoint = new ArrayList<>(bedrockMessage.content());
                     contentWithCachePoint.add(ContentBlock.builder()
                             .cachePoint(software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock.builder()
-                                    .type("default")
+                                    .type(software.amazon.awssdk.services.bedrockruntime.model.CachePointType.DEFAULT)
                                     .build())
                             .build());
 
@@ -181,8 +293,6 @@ abstract class AbstractBedrockChatModel {
                             .role(bedrockMessage.role())
                             .content(contentWithCachePoint)
                             .build();
-
-                    firstUserMessageProcessed = true;
                 }
 
                 bedrockMessages.add(bedrockMessage);
@@ -358,7 +468,7 @@ abstract class AbstractBedrockChatModel {
             if (cachePointPlacement == BedrockCachePointPlacement.AFTER_TOOLS) {
                 allTools.add(Tool.builder()
                         .cachePoint(software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock.builder()
-                                .type("default")
+                                .type(software.amazon.awssdk.services.bedrockruntime.model.CachePointType.DEFAULT)
                                 .build())
                         .build());
             }
@@ -374,6 +484,113 @@ abstract class AbstractBedrockChatModel {
         }
 
         return toolConfigurationBuilder.build();
+    }
+
+    /**
+     * Validates that the total number of cache points across all sources does not exceed
+     * the AWS Bedrock limit of 4 per request.
+     *
+     * @param messages the chat messages
+     * @param cachePointPlacement the cache point placement strategy (may be null)
+     * @param hasTools whether tools are configured
+     * @throws IllegalArgumentException if total cache points exceed 4
+     */
+    protected void validateTotalCachePoints(
+            List<ChatMessage> messages, BedrockCachePointPlacement cachePointPlacement, boolean hasTools) {
+        int totalCachePoints = countTotalCachePoints(messages, cachePointPlacement, hasTools);
+
+        if (totalCachePoints > MAX_CACHE_POINTS_PER_REQUEST) {
+            throw new IllegalArgumentException(
+                    "Total cache points (" + totalCachePoints + ") exceeds AWS Bedrock limit of "
+                            + MAX_CACHE_POINTS_PER_REQUEST + " per request. "
+                            + "Reduce cache points in BedrockSystemMessage or adjust BedrockCachePointPlacement settings.");
+        }
+    }
+
+    /**
+     * Counts total cache points from all sources in a request.
+     * <p>
+     * AWS Bedrock limits cache points to {@link #MAX_CACHE_POINTS_PER_REQUEST} (4) per request.
+     * This method counts cache points from all possible sources to ensure the limit is not exceeded.
+     * <p>
+     * <b>Cache point sources counted:</b>
+     * <ol>
+     *   <li><b>Granular cache points:</b> Each {@link BedrockSystemMessage} can contain multiple
+     *       content blocks with individual cache points via {@link BedrockSystemTextContent#withCachePoint(String)}</li>
+     *   <li><b>AFTER_SYSTEM placement:</b> Adds 1 cache point if:
+     *       <ul>
+     *         <li>{@link BedrockCachePointPlacement#AFTER_SYSTEM} is configured, AND</li>
+     *         <li>There are system messages, AND</li>
+     *         <li>The LAST system message is a core {@link SystemMessage} (not {@link BedrockSystemMessage})</li>
+     *       </ul>
+     *       Note: AFTER_SYSTEM is ignored if the last system message is a BedrockSystemMessage,
+     *       as granular cache points take precedence.</li>
+     *   <li><b>AFTER_USER_MESSAGE placement:</b> Adds 1 cache point if configured and user messages exist</li>
+     *   <li><b>AFTER_LAST_USER_MESSAGE placement:</b> Adds 1 cache point if configured and user messages exist</li>
+     *   <li><b>AFTER_TOOLS placement:</b> Adds 1 cache point if configured and tools are present</li>
+     * </ol>
+     *
+     * @param messages the chat messages (may contain SystemMessage, BedrockSystemMessage, UserMessage, etc.)
+     * @param cachePointPlacement the legacy cache point placement strategy (may be null)
+     * @param hasTools whether tool specifications are present in the request
+     * @return the total count of cache points that will be created in the AWS Bedrock request
+     */
+    private int countTotalCachePoints(
+            List<ChatMessage> messages, BedrockCachePointPlacement cachePointPlacement, boolean hasTools) {
+        if (messages == null) {
+            return 0;
+        }
+
+        int count = 0;
+        boolean hasUserMessage = false;
+        boolean lastSystemIsCoreMessage = false;
+        boolean hasAnySystemMessage = false;
+
+        // First pass: count granular cache points and track message types
+        for (ChatMessage message : messages) {
+            if (message == null) {
+                continue;
+            }
+
+            if (message instanceof BedrockSystemMessage bedrockMsg) {
+                // Count granular cache points within BedrockSystemMessage
+                count += bedrockMsg.cachePointCount();
+                lastSystemIsCoreMessage = false;
+                hasAnySystemMessage = true;
+            } else if (message instanceof SystemMessage) {
+                // Core SystemMessage - may have AFTER_SYSTEM cache point added
+                lastSystemIsCoreMessage = true;
+                hasAnySystemMessage = true;
+            } else if (message instanceof UserMessage) {
+                hasUserMessage = true;
+            }
+        }
+
+        // Second pass: add placement-based cache points
+        // These are mutually exclusive with granular cache points for system messages
+        if (cachePointPlacement != null) {
+            // AFTER_SYSTEM only applies if the last system message is a core SystemMessage
+            // (BedrockSystemMessage handles its own cache points internally)
+            if (cachePointPlacement == BedrockCachePointPlacement.AFTER_SYSTEM
+                    && hasAnySystemMessage
+                    && lastSystemIsCoreMessage) {
+                count++;
+            }
+            // AFTER_USER_MESSAGE adds cache point after the first user message
+            if (cachePointPlacement == BedrockCachePointPlacement.AFTER_USER_MESSAGE && hasUserMessage) {
+                count++;
+            }
+            // AFTER_LAST_USER_MESSAGE adds cache point after the last user message
+            if (cachePointPlacement == BedrockCachePointPlacement.AFTER_LAST_USER_MESSAGE && hasUserMessage) {
+                count++;
+            }
+            // AFTER_TOOLS adds cache point after tool definitions (only if tools exist)
+            if (cachePointPlacement == BedrockCachePointPlacement.AFTER_TOOLS && hasTools) {
+                count++;
+            }
+        }
+
+        return count;
     }
 
     protected AiMessage aiMessageFrom(ConverseResponse converseResponse) {
@@ -450,7 +667,7 @@ abstract class AbstractBedrockChatModel {
             return FinishReason.TOOL_EXECUTION;
         }
 
-        if (stopReason == StopReason.CONTENT_FILTERED) {
+        if (stopReason == StopReason.CONTENT_FILTERED || stopReason == StopReason.GUARDRAIL_INTERVENED) {
             return FinishReason.CONTENT_FILTER;
         }
 
@@ -464,6 +681,61 @@ abstract class AbstractBedrockChatModel {
                 .topP(dblToFloat(parameters.topP()))
                 .stopSequences(isNullOrEmpty(parameters.stopSequences()) ? null : parameters.stopSequences())
                 .build();
+    }
+
+    protected GuardrailConfiguration guardrailConfigFrom(BedrockGuardrailConfiguration bedrockGuardrailConfiguration) {
+
+        if (bedrockGuardrailConfiguration == null) {
+            return null;
+        }
+
+        return GuardrailConfiguration.builder()
+                .guardrailVersion(bedrockGuardrailConfiguration.guardrailVersion())
+                .guardrailIdentifier(bedrockGuardrailConfiguration.guardrailIdentifier())
+                .trace(GuardrailTrace.ENABLED)
+                .build();
+    }
+
+    protected GuardrailStreamConfiguration guardrailStreamConfigFrom(
+            BedrockGuardrailConfiguration bedrockGuardrailConfiguration) {
+
+        if (bedrockGuardrailConfiguration == null) {
+            return null;
+        }
+
+        GuardrailStreamProcessingMode mode = null;
+
+        if (bedrockGuardrailConfiguration.streamProcessingMode() != null) {
+            switch (bedrockGuardrailConfiguration.streamProcessingMode()) {
+                case SYNC -> mode = GuardrailStreamProcessingMode.SYNC;
+                case ASYNC -> mode = GuardrailStreamProcessingMode.ASYNC;
+            }
+        }
+
+        return GuardrailStreamConfiguration.builder()
+                .guardrailVersion(bedrockGuardrailConfiguration.guardrailVersion())
+                .guardrailIdentifier(bedrockGuardrailConfiguration.guardrailIdentifier())
+                .trace(GuardrailTrace.ENABLED)
+                .streamProcessingMode(mode)
+                .build();
+    }
+
+    protected ServiceTier serviceTierFor(BedrockServiceTier bedrockServiceTier) {
+        if (bedrockServiceTier == null) {
+            return null;
+        }
+
+        ServiceTierType serviceTierType;
+
+        switch (bedrockServiceTier) {
+            case PRIORITY -> serviceTierType = ServiceTierType.PRIORITY;
+            case DEFAULT -> serviceTierType = ServiceTierType.DEFAULT;
+            case FLEX -> serviceTierType = ServiceTierType.FLEX;
+            case RESERVED -> serviceTierType = ServiceTierType.RESERVED;
+            default -> throw new IllegalArgumentException("Unknown service tier type: " + bedrockServiceTier);
+        }
+
+        return ServiceTier.builder().type(serviceTierType).build();
     }
 
     protected Document additionalRequestModelFieldsFrom(ChatRequestParameters chatRequestParameters) {
@@ -482,6 +754,208 @@ abstract class AbstractBedrockChatModel {
         }
     }
 
+    protected GuardrailAssessmentSummary guardrailAssessmentSummaryFrom(ConverseTrace trace) {
+
+        if (trace == null) {
+            return null;
+        }
+
+        GuardrailAssessmentSummary.Builder builder = GuardrailAssessmentSummary.builder();
+
+        if (trace.guardrail().hasInputAssessment()) {
+            List<GuardrailAssessment> inputAssessments = new ArrayList<>();
+
+            for (var assessment : trace.guardrail().inputAssessment().values()) {
+
+                // --- Topic Policy ---
+                var topicPolicy = assessment.topicPolicy();
+                if (topicPolicy != null && topicPolicy.topics() != null) {
+                    for (var policy : topicPolicy.topics()) {
+                        inputAssessments.add(InputGuardrailAssessment.builder()
+                                .policy(TOPIC)
+                                .name(policy.name())
+                                .action(policy.actionAsString())
+                                .build());
+                    }
+                }
+
+                // --- Content Policy ---
+                var contentPolicy = assessment.contentPolicy();
+                if (contentPolicy != null && contentPolicy.filters() != null) {
+                    for (var policy : contentPolicy.filters()) {
+                        inputAssessments.add(InputGuardrailAssessment.builder()
+                                .policy(CONTENT)
+                                .name(policy.typeAsString())
+                                .action(policy.actionAsString())
+                                .build());
+                    }
+                }
+
+                // --- Word Policy ---
+                var wordPolicy = assessment.wordPolicy();
+                if (wordPolicy != null) {
+                    if (wordPolicy.customWords() != null) {
+                        for (var policy : wordPolicy.customWords()) {
+                            inputAssessments.add(InputGuardrailAssessment.builder()
+                                    .policy(WORD)
+                                    .name(policy.match())
+                                    .action(policy.actionAsString())
+                                    .build());
+                        }
+                    }
+                    if (wordPolicy.managedWordLists() != null) {
+                        for (var policy : wordPolicy.managedWordLists()) {
+                            inputAssessments.add(InputGuardrailAssessment.builder()
+                                    .policy(WORD)
+                                    .name(policy.typeAsString())
+                                    .action(policy.actionAsString())
+                                    .build());
+                        }
+                    }
+                }
+
+                // --- Sensitive Information Policy ---
+                var sensitivePolicy = assessment.sensitiveInformationPolicy();
+                if (sensitivePolicy != null) {
+                    if (sensitivePolicy.piiEntities() != null) {
+                        for (var policy : sensitivePolicy.piiEntities()) {
+                            inputAssessments.add(InputGuardrailAssessment.builder()
+                                    .policy(SENSITIVE)
+                                    .name(policy.typeAsString())
+                                    .action(policy.actionAsString())
+                                    .build());
+                        }
+                    }
+                    if (sensitivePolicy.regexes() != null) {
+                        for (var policy : sensitivePolicy.regexes()) {
+                            inputAssessments.add(InputGuardrailAssessment.builder()
+                                    .policy(SENSITIVE)
+                                    .name(policy.name())
+                                    .action(policy.actionAsString())
+                                    .build());
+                        }
+                    }
+                }
+
+                // --- Contextual Grounding Policy ---
+                var contextualPolicy = assessment.contextualGroundingPolicy();
+                if (contextualPolicy != null && contextualPolicy.filters() != null) {
+                    for (var policy : contextualPolicy.filters()) {
+                        inputAssessments.add(InputGuardrailAssessment.builder()
+                                .policy(CONTEXT)
+                                .name(policy.typeAsString())
+                                .action(policy.actionAsString())
+                                .build());
+                    }
+                }
+            }
+
+            builder.inputAssessments(inputAssessments);
+        }
+
+        if (trace.guardrail().hasOutputAssessments()) {
+
+            List<GuardrailAssessment> outputAssessments = new ArrayList<>();
+            var outputAssessmentValues = trace.guardrail().outputAssessments();
+
+            if (outputAssessmentValues != null) {
+                for (var assessments : outputAssessmentValues.values()) {
+                    if (assessments == null) continue;
+
+                    for (var assessment : assessments) {
+                        if (assessment == null) continue;
+
+                        // --- Topic Policy ---
+                        var topicPolicy = assessment.topicPolicy();
+                        if (topicPolicy != null && topicPolicy.topics() != null) {
+                            for (var policy : topicPolicy.topics()) {
+                                outputAssessments.add(OutputGuardrailAssessment.builder()
+                                        .policy(TOPIC)
+                                        .name(policy.name())
+                                        .action(policy.actionAsString())
+                                        .build());
+                            }
+                        }
+
+                        // --- Content Policy ---
+                        var contentPolicy = assessment.contentPolicy();
+                        if (contentPolicy != null && contentPolicy.filters() != null) {
+                            for (var policy : contentPolicy.filters()) {
+                                outputAssessments.add(OutputGuardrailAssessment.builder()
+                                        .policy(CONTENT)
+                                        .name(policy.typeAsString())
+                                        .action(policy.actionAsString())
+                                        .build());
+                            }
+                        }
+
+                        // --- Word Policy ---
+                        var wordPolicy = assessment.wordPolicy();
+                        if (wordPolicy != null) {
+                            if (wordPolicy.customWords() != null) {
+                                for (var policy : wordPolicy.customWords()) {
+                                    outputAssessments.add(OutputGuardrailAssessment.builder()
+                                            .policy(WORD)
+                                            .name(policy.match())
+                                            .action(policy.actionAsString())
+                                            .build());
+                                }
+                            }
+                            if (wordPolicy.managedWordLists() != null) {
+                                for (var policy : wordPolicy.managedWordLists()) {
+                                    outputAssessments.add(OutputGuardrailAssessment.builder()
+                                            .policy(WORD)
+                                            .name(policy.typeAsString())
+                                            .action(policy.actionAsString())
+                                            .build());
+                                }
+                            }
+                        }
+
+                        // --- Sensitive Information Policy ---
+                        var sensitivePolicy = assessment.sensitiveInformationPolicy();
+                        if (sensitivePolicy != null) {
+                            if (sensitivePolicy.piiEntities() != null) {
+                                for (var policy : sensitivePolicy.piiEntities()) {
+                                    outputAssessments.add(OutputGuardrailAssessment.builder()
+                                            .policy(SENSITIVE)
+                                            .name(policy.typeAsString())
+                                            .action(policy.actionAsString())
+                                            .build());
+                                }
+                            }
+                            if (sensitivePolicy.regexes() != null) {
+                                for (var policy : sensitivePolicy.regexes()) {
+                                    outputAssessments.add(OutputGuardrailAssessment.builder()
+                                            .policy(SENSITIVE)
+                                            .name(policy.name())
+                                            .action(policy.actionAsString())
+                                            .build());
+                                }
+                            }
+                        }
+
+                        // --- Contextual Grounding Policy ---
+                        var contextualPolicy = assessment.contextualGroundingPolicy();
+                        if (contextualPolicy != null && contextualPolicy.filters() != null) {
+                            for (var policy : contextualPolicy.filters()) {
+                                outputAssessments.add(OutputGuardrailAssessment.builder()
+                                        .policy(CONTEXT)
+                                        .name(policy.typeAsString())
+                                        .action(policy.actionAsString())
+                                        .build());
+                            }
+                        }
+                    }
+                }
+            }
+
+            builder.ouputAssessments(outputAssessments);
+        }
+
+        return builder.build();
+    }
+
     protected static void validate(ChatRequestParameters parameters) {
         String errorTemplate = "%s is not supported yet by this model provider";
 
@@ -494,10 +968,45 @@ abstract class AbstractBedrockChatModel {
         if (parameters.presencePenalty() != null) {
             throw new UnsupportedFeatureException(String.format(errorTemplate, "'presencePenalty' parameter"));
         }
-        if (nonNull(parameters.responseFormat())
-                && parameters.responseFormat().type().equals(ResponseFormatType.JSON)) {
-            throw new UnsupportedFeatureException(String.format(errorTemplate, "JSON response format"));
+    }
+
+    /**
+     * Builds OutputConfig for structured output support based on the ResponseFormat.
+     * When a JSON schema is provided, it creates the appropriate TextFormat configuration.
+     *
+     * @param responseFormat the response format specification
+     * @return OutputConfig if JSON format with schema is requested, null otherwise
+     */
+    protected static OutputConfig outputConfigFrom(ResponseFormat responseFormat) {
+        if (responseFormat == null || responseFormat.type() != ResponseFormatType.JSON) {
+            return null;
         }
+
+        JsonSchema jsonSchema = responseFormat.jsonSchema();
+        if (jsonSchema == null) {
+            throw new UnsupportedFeatureException("JSON response format is not supported without a schema");
+        }
+
+        String jsonSchemaString;
+        if (jsonSchema.rootElement() instanceof JsonRawSchema rawSchema) {
+            jsonSchemaString = rawSchema.schema();
+        } else {
+            Map<String, Object> jsonSchemaMap =
+                    toMap(jsonSchema.rootElement(), true, true, "string");
+            jsonSchemaString = Json.toJson(jsonSchemaMap);
+        }
+
+        return OutputConfig.builder()
+                .textFormat(OutputFormat.builder()
+                        .type(JSON_SCHEMA)
+                        .structure(OutputFormatStructure.builder()
+                                .jsonSchema(JsonSchemaDefinition.builder()
+                                        .schema(jsonSchemaString)
+                                        .name(jsonSchema.name())
+                                        .build())
+                                .build())
+                        .build())
+                .build();
     }
 
     protected static Float dblToFloat(Double d) {
@@ -527,6 +1036,7 @@ abstract class AbstractBedrockChatModel {
         protected Boolean logResponses;
         protected Logger logger;
         protected List<ChatModelListener> listeners;
+        protected Set<Capability> supportedCapabilities;
 
         @SuppressWarnings("unchecked")
         public T self() {
@@ -587,6 +1097,24 @@ abstract class AbstractBedrockChatModel {
             return self();
         }
 
+        /**
+         * Enables logging of HTTP requests to AWS Bedrock.
+         * <p>
+         * <b>WARNING:</b> When enabled, the ENTIRE request body is logged at DEBUG level,
+         * including all message content (system prompts, user messages, etc.). This may
+         * expose sensitive information such as:
+         * <ul>
+         *   <li>Confidential instructions in system prompts</li>
+         *   <li>PII or personal data in user messages</li>
+         *   <li>API keys or secrets accidentally included in prompts</li>
+         * </ul>
+         * <p>
+         * Use with caution in production environments. Consider using a custom logger
+         * with appropriate filtering/redaction if needed.
+         *
+         * @param logRequests true to enable request logging
+         * @return this builder
+         */
         public T logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return self();
@@ -608,6 +1136,20 @@ abstract class AbstractBedrockChatModel {
 
         public T listeners(List<ChatModelListener> listeners) {
             this.listeners = listeners;
+            return self();
+        }
+
+        public T listeners(ChatModelListener... listeners) {
+            return listeners(asList(listeners));
+        }
+
+        public T supportedCapabilities(Set<Capability> supportedCapabilities) {
+            this.supportedCapabilities = supportedCapabilities;
+            return self();
+        }
+
+        public T supportedCapabilities(Capability... supportedCapabilities) {
+            this.supportedCapabilities = Arrays.stream(supportedCapabilities).collect(Collectors.toSet());
             return self();
         }
     }

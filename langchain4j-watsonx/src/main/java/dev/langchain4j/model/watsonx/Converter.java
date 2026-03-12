@@ -80,7 +80,7 @@ class Converter {
     public static PartialToolCall toPartialToolCall(com.ibm.watsonx.ai.chat.model.PartialToolCall partialToolCall) {
         return PartialToolCall.builder()
                 .id(partialToolCall.id())
-                .index(partialToolCall.index())
+                .index(partialToolCall.toolIndex())
                 .name(partialToolCall.name())
                 .partialArguments(partialToolCall.arguments())
                 .build();
@@ -209,6 +209,7 @@ class Converter {
                             case AUTO -> Detail.AUTO;
                             case HIGH -> Detail.HIGH;
                             case LOW -> Detail.LOW;
+                            default -> throw new UnsupportedFeatureException("Unsupported detail level: " + imageContent.detailLevel());
                         };
                 yield ImageContent.of(mimeType, base64Data, detailLevel);
             }

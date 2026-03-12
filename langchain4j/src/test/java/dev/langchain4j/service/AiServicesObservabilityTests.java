@@ -20,6 +20,7 @@ import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
 import dev.langchain4j.observability.api.event.AiServiceEvent;
+import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
 import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
 import dev.langchain4j.observability.api.event.GuardrailExecutedEvent;
@@ -29,6 +30,7 @@ import dev.langchain4j.observability.api.event.ToolExecutedEvent;
 import dev.langchain4j.observability.api.listener.AiServiceCompletedListener;
 import dev.langchain4j.observability.api.listener.AiServiceErrorListener;
 import dev.langchain4j.observability.api.listener.AiServiceListener;
+import dev.langchain4j.observability.api.listener.AiServiceRequestIssuedListener;
 import dev.langchain4j.observability.api.listener.AiServiceResponseReceivedListener;
 import dev.langchain4j.observability.api.listener.AiServiceStartedListener;
 import dev.langchain4j.observability.api.listener.InputGuardrailExecutedListener;
@@ -96,7 +98,7 @@ class AiServicesObservabilityTests {
         // Invoke the operation without registered listeners
         // No listeners should be fired
         chatAssertion.accept(assistantCreatorWithoutListeners.get());
-        assertNoEventsReceived(7, listeners.values());
+        assertNoEventsReceived(8, listeners.values());
 
         // Let's invoke the operation a few times with the registered listeners
         IntStream.range(0, 5).forEach(i -> chatAssertion.accept(assistantCreatorWithListeners.get()));
@@ -191,7 +193,7 @@ class AiServicesObservabilityTests {
                         AiServiceResponseReceivedEvent.class,
                         ToolExecutedEvent.class),
                 "Hello!",
-                List.of(AiServiceStartedEvent.class, AiServiceErrorEvent.class));
+                List.of(AiServiceStartedEvent.class, AiServiceRequestIssuedEvent.class, AiServiceErrorEvent.class));
     }
 
     @Test
@@ -243,6 +245,7 @@ class AiServicesObservabilityTests {
                 "Hello!",
                 List.of(
                         AiServiceStartedEvent.class,
+                        AiServiceRequestIssuedEvent.class,
                         AiServiceCompletedEvent.class,
                         AiServiceResponseReceivedEvent.class));
     }
@@ -263,6 +266,7 @@ class AiServicesObservabilityTests {
                 "Hello!",
                 List.of(
                         AiServiceStartedEvent.class,
+                        AiServiceRequestIssuedEvent.class,
                         AiServiceCompletedEvent.class,
                         AiServiceResponseReceivedEvent.class));
     }
@@ -282,6 +286,7 @@ class AiServicesObservabilityTests {
                 TOOL_USER_MESSAGE,
                 List.of(
                         AiServiceStartedEvent.class,
+                        AiServiceRequestIssuedEvent.class,
                         AiServiceCompletedEvent.class,
                         AiServiceResponseReceivedEvent.class,
                         ToolExecutedEvent.class),
@@ -289,6 +294,8 @@ class AiServicesObservabilityTests {
                     if (aiServiceEvent instanceof AiServiceResponseReceivedEvent aiServiceResponseReceivedEvent) {
                         assertThat(aiServiceResponseReceivedEvent.response()).isNotNull();
                         assertThat(aiServiceResponseReceivedEvent.request()).isNotNull();
+                    } else if (aiServiceEvent instanceof AiServiceRequestIssuedEvent aiServiceRequestIssuedEvent) {
+                        assertThat(aiServiceRequestIssuedEvent.request()).isNotNull();
                     }
                 });
     }
@@ -344,6 +351,7 @@ class AiServicesObservabilityTests {
                 TOOL_USER_MESSAGE,
                 List.of(
                         AiServiceStartedEvent.class,
+                        AiServiceRequestIssuedEvent.class,
                         AiServiceCompletedEvent.class,
                         AiServiceResponseReceivedEvent.class,
                         ToolExecutedEvent.class));
@@ -365,6 +373,7 @@ class AiServicesObservabilityTests {
                 false,
                 List.of(
                         AiServiceCompletedEvent.class,
+                        AiServiceRequestIssuedEvent.class,
                         OutputGuardrailExecutedEvent.class,
                         ToolExecutedEvent.class,
                         AiServiceResponseReceivedEvent.class),
@@ -388,6 +397,7 @@ class AiServicesObservabilityTests {
                         AiServiceCompletedEvent.class,
                         OutputGuardrailExecutedEvent.class,
                         ToolExecutedEvent.class,
+                        AiServiceRequestIssuedEvent.class,
                         AiServiceResponseReceivedEvent.class),
                 "Hello!",
                 List.of(AiServiceStartedEvent.class, AiServiceErrorEvent.class, InputGuardrailExecutedEvent.class));
@@ -440,6 +450,7 @@ class AiServicesObservabilityTests {
                 "Hello!",
                 List.of(
                         AiServiceStartedEvent.class,
+                        AiServiceRequestIssuedEvent.class,
                         AiServiceErrorEvent.class,
                         OutputGuardrailExecutedEvent.class,
                         AiServiceResponseReceivedEvent.class));
@@ -461,6 +472,7 @@ class AiServicesObservabilityTests {
                 "Hello!",
                 List.of(
                         AiServiceStartedEvent.class,
+                        AiServiceRequestIssuedEvent.class,
                         AiServiceErrorEvent.class,
                         OutputGuardrailExecutedEvent.class,
                         AiServiceResponseReceivedEvent.class));
@@ -491,6 +503,9 @@ class AiServicesObservabilityTests {
                             (GuardrailExecutedEvent.class.isAssignableFrom(l.getEventClass())
                                             || (hasTools
                                                     && AiServiceResponseReceivedEvent.class.isAssignableFrom(
+                                                            l.getEventClass()))
+                                            || (hasTools
+                                                    && AiServiceRequestIssuedEvent.class.isAssignableFrom(
                                                             l.getEventClass())))
                                     ? 10
                                     : 5);
@@ -539,6 +554,7 @@ class AiServicesObservabilityTests {
                         new MyAiServiceCompletedListener(),
                         new MyAiServiceErrorListener(),
                         new MyAiServiceStartedListener(),
+                        new MyAiServiceRequestIssuedListener(),
                         new MyAiServiceResponseReceivedListener(),
                         new MyOutputGuardrailExecutedListener(),
                         new MyToolExecutedListener())
@@ -685,6 +701,9 @@ class AiServicesObservabilityTests {
 
     public static class MyAiServiceResponseReceivedListener extends MyListener<AiServiceResponseReceivedEvent>
             implements AiServiceResponseReceivedListener {}
+
+    public static class MyAiServiceRequestIssuedListener extends MyListener<AiServiceRequestIssuedEvent>
+            implements AiServiceRequestIssuedListener {}
 
     public static class MyAiServiceStartedListener extends MyListener<AiServiceStartedEvent>
             implements AiServiceStartedListener {}
