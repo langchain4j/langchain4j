@@ -2,7 +2,6 @@ package dev.langchain4j.agentic;
 
 import static dev.langchain4j.agentic.Models.baseModel;
 import static dev.langchain4j.agentic.Models.plannerModel;
-import static dev.langchain4j.agentic.observability.HtmlReportGenerator.generateReport;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -82,6 +81,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -771,6 +771,7 @@ public class DeclarativeAgentIT {
     }
 
     private void declarative_tools_tests(boolean usePlannerModel) {
+        bankTool.clearAccounts();
         bankTool.createAccount("Mario", 1000.0);
         bankTool.createAccount("Georgios", 1000.0);
 
