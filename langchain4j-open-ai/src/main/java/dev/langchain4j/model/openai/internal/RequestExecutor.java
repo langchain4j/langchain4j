@@ -2,7 +2,6 @@ package dev.langchain4j.model.openai.internal;
 
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
-
 import java.util.function.Consumer;
 
 class RequestExecutor<Response> implements SyncOrAsyncOrStreaming<Response> {
@@ -12,21 +11,18 @@ class RequestExecutor<Response> implements SyncOrAsyncOrStreaming<Response> {
     private final HttpRequest streamingHttpRequest;
     private final Class<Response> responseClass;
 
-    RequestExecutor(HttpClient httpClient,
-                    HttpRequest httpRequest,
-                    Class<Response> responseClass
-    ) {
+    RequestExecutor(HttpClient httpClient, HttpRequest httpRequest, Class<Response> responseClass) {
         this.httpClient = httpClient;
         this.httpRequest = httpRequest;
         this.streamingHttpRequest = null;
         this.responseClass = responseClass;
     }
 
-    RequestExecutor(HttpClient httpClient,
-                    HttpRequest httpRequest,
-                    HttpRequest streamingHttpRequest,
-                    Class<Response> responseClass
-    ) {
+    RequestExecutor(
+            HttpClient httpClient,
+            HttpRequest httpRequest,
+            HttpRequest streamingHttpRequest,
+            Class<Response> responseClass) {
         this.httpClient = httpClient;
         this.httpRequest = httpRequest;
         this.streamingHttpRequest = streamingHttpRequest;
