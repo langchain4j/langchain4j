@@ -2,9 +2,6 @@ package dev.langchain4j.model.audio.speech;
 
 import dev.langchain4j.Experimental;
 
-/**
- * Request to generate text.
- */
 @Experimental
 public class AudioSpeechRequest {
 
@@ -49,6 +46,9 @@ public class AudioSpeechRequest {
         public AudioSpeechRequest build() {
             if (text == null) {
                 throw new IllegalStateException("Input text must be provided");
+            }
+            if (text.length() >= 4096) {
+                throw new IllegalStateException("Input text too long");
             }
             return new AudioSpeechRequest(this);
         }

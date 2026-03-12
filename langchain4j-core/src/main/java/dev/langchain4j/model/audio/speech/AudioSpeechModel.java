@@ -15,7 +15,7 @@ public interface AudioSpeechModel {
      * Given an input text, generates an audio speech.
      *
      * @param inputText The input text.
-     * @return The generated speech response.
+     * @return The generated speech response as byte array.
      */
     default byte[] generate(String inputText) {
         return generate(AudioSpeechRequest.builder().text(inputText).build());
@@ -24,7 +24,7 @@ public interface AudioSpeechModel {
     /**
      * Given an audio speech request, generates an audio speech.
      *
-     * @param request The transcription request containing the input text and optional parameters.
+     * @param request The speech request containing the input text and optional parameters.
      * @return The generated speech response.
      */
     byte[] generate(AudioSpeechRequest request);

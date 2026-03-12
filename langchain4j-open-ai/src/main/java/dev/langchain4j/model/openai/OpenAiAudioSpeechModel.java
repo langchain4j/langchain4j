@@ -8,7 +8,6 @@ import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_USER_AGE
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 
-import java.time.Duration;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
@@ -17,8 +16,8 @@ import dev.langchain4j.model.audio.speech.AudioSpeechRequest;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
 import dev.langchain4j.model.openai.internal.audio.speech.OpenAiAudioSpeechRequest;
 import dev.langchain4j.model.openai.spi.OpenAiAudioSpeechModelBuilderFactory;
+import java.time.Duration;
 import org.slf4j.Logger;
-
 
 @Experimental
 public class OpenAiAudioSpeechModel implements AudioSpeechModel {
@@ -53,10 +52,8 @@ public class OpenAiAudioSpeechModel implements AudioSpeechModel {
 
         OpenAiAudioSpeechRequest openAiRequest = requestBuilder(audioRequest).build();
 
-        byte[] parsedAndRawResponse = withRetryMappingExceptions(
+        return withRetryMappingExceptions(
                 () -> client.audioSpeech(openAiRequest).executeInputStream(), maxRetries);
-
-        return parsedAndRawResponse;
     }
 
     private OpenAiAudioSpeechRequest.Builder requestBuilder(AudioSpeechRequest request) {
@@ -152,10 +149,6 @@ public class OpenAiAudioSpeechModel implements AudioSpeechModel {
             return this;
         }
 
-        /**
-         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
-         * @return {@code this}.
-         */
         public Builder logger(Logger logger) {
             this.logger = logger;
             return this;
