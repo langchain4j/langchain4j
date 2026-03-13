@@ -103,6 +103,23 @@ StreamingChatModel model = BedrockStreamingChatModel.builder()
 - [BedrockStreamingChatModelExample](https://github.com/langchain4j/langchain4j-examples/blob/main/bedrock-examples/src/main/java/converse/BedrockStreamingChatModelExample.java)
 
 
+## BedrockTokenCountEstimator
+
+```java
+TokenCountEstimator tokenCountEstimator = BedrockTokenCountEstimator.builder()
+        .client(BedrockRuntimeClient)
+        .modelId("us.anthropic.claude-sonnet-4-5-20250929-v1:0")
+        .region(...)
+        .timeout(...)
+        .logRequests(...)
+        .logResponses(...)
+        .build();
+
+List<ChatMessage> messages = List.of(...);
+
+int tokenCount = tokenCountEstimator.estimateTokenCountInMessages(messages);
+```
+
 ## Additional Model Request Fields
 
 The field `additionalModelRequestFields` in the `BedrockChatRequestParameters` is a `Map<String, Object>`.

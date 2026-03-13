@@ -5,21 +5,16 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.bedrock.AwsDocumentConverter.convertAdditionalModelRequestFields;
 import static dev.langchain4j.model.bedrock.AwsDocumentConverter.convertJsonObjectSchemaToDocument;
-import static dev.langchain4j.model.bedrock.AwsDocumentConverter.documentFromJson;
 import static dev.langchain4j.model.bedrock.AwsDocumentConverter.documentToJson;
 import static dev.langchain4j.model.bedrock.GuardrailAssessment.Policy.CONTENT;
 import static dev.langchain4j.model.bedrock.GuardrailAssessment.Policy.CONTEXT;
 import static dev.langchain4j.model.bedrock.GuardrailAssessment.Policy.SENSITIVE;
 import static dev.langchain4j.model.bedrock.GuardrailAssessment.Policy.TOPIC;
 import static dev.langchain4j.model.bedrock.GuardrailAssessment.Policy.WORD;
-import static dev.langchain4j.model.bedrock.Utils.extractAndValidateFormat;
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
 import static java.util.Objects.nonNull;
-import static software.amazon.awssdk.core.SdkBytes.fromByteArray;
 import static software.amazon.awssdk.services.bedrockruntime.model.OutputFormatType.JSON_SCHEMA;
 
 import dev.langchain4j.Internal;
@@ -29,9 +24,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
-import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
@@ -53,18 +46,15 @@ import java.net.URI;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.core.document.Document;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.bedrockruntime.model.AnyToolChoice;
@@ -72,22 +62,16 @@ import software.amazon.awssdk.services.bedrockruntime.model.ContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ConversationRole;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseResponse;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseTrace;
-import software.amazon.awssdk.services.bedrockruntime.model.DocumentBlock;
-import software.amazon.awssdk.services.bedrockruntime.model.DocumentFormat;
-import software.amazon.awssdk.services.bedrockruntime.model.DocumentSource;
 import software.amazon.awssdk.services.bedrockruntime.model.GuardrailConfiguration;
 import software.amazon.awssdk.services.bedrockruntime.model.GuardrailStreamConfiguration;
 import software.amazon.awssdk.services.bedrockruntime.model.GuardrailStreamProcessingMode;
 import software.amazon.awssdk.services.bedrockruntime.model.GuardrailTrace;
-import software.amazon.awssdk.services.bedrockruntime.model.ImageBlock;
-import software.amazon.awssdk.services.bedrockruntime.model.ImageSource;
 import software.amazon.awssdk.services.bedrockruntime.model.InferenceConfiguration;
 import software.amazon.awssdk.services.bedrockruntime.model.JsonSchemaDefinition;
 import software.amazon.awssdk.services.bedrockruntime.model.Message;
 import software.amazon.awssdk.services.bedrockruntime.model.OutputConfig;
 import software.amazon.awssdk.services.bedrockruntime.model.OutputFormat;
 import software.amazon.awssdk.services.bedrockruntime.model.OutputFormatStructure;
-import software.amazon.awssdk.services.bedrockruntime.model.OutputFormatType;
 import software.amazon.awssdk.services.bedrockruntime.model.ReasoningContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ReasoningTextBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ServiceTier;
@@ -97,9 +81,6 @@ import software.amazon.awssdk.services.bedrockruntime.model.SystemContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.Tool;
 import software.amazon.awssdk.services.bedrockruntime.model.ToolConfiguration;
 import software.amazon.awssdk.services.bedrockruntime.model.ToolInputSchema;
-import software.amazon.awssdk.services.bedrockruntime.model.ToolResultBlock;
-import software.amazon.awssdk.services.bedrockruntime.model.ToolResultContentBlock;
-import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlock;
 
 @Internal
 abstract class AbstractBedrockChatModel {
@@ -323,14 +304,7 @@ abstract class AbstractBedrockChatModel {
     }
 
     protected ContentBlock createToolResultBlock(ToolExecutionResultMessage toolResult) {
-        return ContentBlock.builder()
-                .toolResult(ToolResultBlock.builder()
-                        .toolUseId(toolResult.id())
-                        .content(ToolResultContentBlock.builder()
-                                .text(toolResult.text())
-                                .build())
-                        .build())
-                .build();
+        return BedrockMessageConverter.createToolResultBlock(toolResult);
     }
 
     protected Message convertToBedRockMessage(ChatMessage message) {
@@ -379,60 +353,19 @@ abstract class AbstractBedrockChatModel {
     }
 
     protected List<ContentBlock> convertToolRequests(List<ToolExecutionRequest> requests) {
-        return requests.stream()
-                .map(req -> ContentBlock.builder()
-                        .toolUse(ToolUseBlock.builder()
-                                .name(req.name())
-                                .toolUseId(req.id())
-                                .input(documentFromJson(req.arguments()))
-                                .build())
-                        .build())
-                .toList();
+        return BedrockMessageConverter.convertToolRequests(requests);
     }
 
     protected List<ContentBlock> convertContents(List<Content> contents) {
-        if (isNullOrEmpty(contents)) {
-            return emptyList();
-        }
-
-        return contents.stream().map(this::convertContent).toList();
+        return BedrockMessageConverter.convertContents(contents);
     }
 
     protected ContentBlock convertContent(Content content) {
-        if (content instanceof TextContent text) {
-            return ContentBlock.builder().text(text.text()).build();
-        } else if (content instanceof PdfFileContent pdfFileContent) {
-            final SdkBytes bytes = fromByteArray(
-                    nonNull(pdfFileContent.pdfFile().base64Data())
-                            ? Base64.getDecoder()
-                                    .decode(pdfFileContent.pdfFile().base64Data())
-                            : readBytes(String.valueOf(pdfFileContent.pdfFile().url())));
-            return ContentBlock.builder()
-                    .document(DocumentBlock.builder()
-                            .format(DocumentFormat.PDF)
-                            .source(DocumentSource.builder().bytes(bytes).build())
-                            .name(extractFilenameWithoutExtensionFromUri(
-                                    pdfFileContent.pdfFile().url()))
-                            .build())
-                    .build();
-        } else if (content instanceof ImageContent image) {
-            return createImageBlock(image);
-        }
-        throw new IllegalArgumentException("Unsupported content type: " + content.getClass());
+        return BedrockMessageConverter.convertContent(content);
     }
 
     protected ContentBlock createImageBlock(ImageContent imageContent) {
-        final SdkBytes bytes = fromByteArray(
-                nonNull(imageContent.image().base64Data())
-                        ? Base64.getDecoder().decode(imageContent.image().base64Data())
-                        : readBytes(String.valueOf(imageContent.image().url())));
-        final String imgFormat = extractAndValidateFormat(imageContent.image());
-        return ContentBlock.builder()
-                .image(ImageBlock.builder()
-                        .format(imgFormat)
-                        .source(ImageSource.builder().bytes(bytes).build())
-                        .build())
-                .build();
+        return BedrockMessageConverter.createImageBlock(imageContent);
     }
 
     protected ToolConfiguration extractToolConfigurationFrom(ChatRequest chatRequest) {
@@ -1016,11 +949,7 @@ abstract class AbstractBedrockChatModel {
     }
 
     protected static String extractFilenameWithoutExtensionFromUri(URI uri) {
-        String extractedCleanFileName = Utils.extractCleanFileName(uri);
-        if (isNullOrEmpty(extractedCleanFileName)) {
-            extractedCleanFileName = UUID.randomUUID().toString();
-        }
-        return extractedCleanFileName;
+        return BedrockMessageConverter.extractFilenameWithoutExtensionFromUri(uri);
     }
 
     // Abstract builder class
