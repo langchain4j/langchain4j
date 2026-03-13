@@ -15,6 +15,8 @@ import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -234,11 +236,10 @@ class JsonSchemaElementJsonUtilsTest {
     }
 
     @Test
-    void should_reject_non_string_enum_element() {
-        Map<String, Object> badEnumElement = Map.of("enum", List.of("ok", 42));
-        assertThatThrownBy(() -> JsonSchemaElementJsonUtils.fromMap(badEnumElement))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("enum");
+    void should_fallback_to_raw_for_mixed_enum() {
+        Map<String, Object> mixedEnum = Map.of("enum", List.of("ok", 42));
+        JsonSchemaElement element = JsonSchemaElementJsonUtils.fromMap(mixedEnum);
+        assertThat(element).isInstanceOf(JsonRawSchema.class);
     }
 
     @Test
@@ -263,6 +264,198 @@ class JsonSchemaElementJsonUtilsTest {
         assertThatThrownBy(() -> JsonSchemaElementJsonUtils.fromMap(badDefs))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("$defs");
+    }
+
+    // ---- raw fallback for extra keywords ----
+
+    @Test
+    void should_fallback_to_raw_for_string_with_format() {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("type", "string");
+        map.put("format", "date-time");
+        assertRawFallback(map);
+    }
+
+    @Test
+    void should_fallback_to_raw_for_string_with_pattern() {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("type", "string");
+        map.put("pattern", "^[A-Z]+$");
+        assertRawFallback(map);
+    }
+
+    @Test
+    void should_fallback_to_raw_for_integer_with_minimum() {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("type", "integer");
+        map.put("minimum", 0);
+        assertRawFallback(map);
+    }
+
+    @Test
+    void should_fallback_to_raw_for_numeric_enum() {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("enum", List.of(1, 2, 3));
+        assertRawFallback(map);
+    }
+
+    @Test
+    void should_fallback_to_raw_for_schema_valued_additionalProperties() {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("type", "object");
+        map.put("additionalProperties", Map.of("type", "string"));
+        assertRawFallback(map);
+    }
+
+    @Test
+    void should_round_trip_nested_with_raw_fallback_child() {
+        // outer object is typed, child with format falls back to raw
+        Map<String, Object> childMap = new LinkedHashMap<>();
+        childMap.put("type", "string");
+        childMap.put("format", "date-time");
+
+        Map<String, Object> propsMap = new LinkedHashMap<>();
+        propsMap.put("name", Map.of("type", "string"));
+        propsMap.put("timestamp", childMap);
+
+        Map<String, Object> objectMap = new LinkedHashMap<>();
+        objectMap.put("type", "object");
+        objectMap.put("properties", propsMap);
+        objectMap.put("required", List.of("name"));
+
+        JsonSchemaElement element = JsonSchemaElementJsonUtils.fromMap(objectMap);
+        assertThat(element).isInstanceOf(JsonObjectSchema.class);
+        JsonObjectSchema obj = (JsonObjectSchema) element;
+        assertThat(obj.properties().get("name")).isInstanceOf(JsonStringSchema.class);
+        assertThat(obj.properties().get("timestamp")).isInstanceOf(JsonRawSchema.class);
+
+        // round-trip should preserve structure
+        Map<String, Object> restored = JsonSchemaElementJsonUtils.toMap(element);
+        assertThat(restored).isEqualTo(objectMap);
+    }
+
+    @Test
+    void should_round_trip_array_with_null_items() {
+        JsonArraySchema schema = JsonArraySchema.builder()
+                .description("tags")
+                .build();
+        assertRoundTrip(schema);
+    }
+
+    // ---- description type safety ----
+
+    @Test
+    void should_reject_non_string_description_in_object() {
+        Map<String, Object> map = Map.of("type", "object", "description", 123);
+        assertThatThrownBy(() -> JsonSchemaElementJsonUtils.fromMap(map))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("description");
+    }
+
+    @Test
+    void should_reject_non_string_description_in_array() {
+        Map<String, Object> map = Map.of("type", "array", "description", true);
+        assertThatThrownBy(() -> JsonSchemaElementJsonUtils.fromMap(map))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("description");
+    }
+
+    @Test
+    void should_reject_non_string_description_in_anyof() {
+        Map<String, Object> map = Map.of(
+                "anyOf", List.of(Map.of("type", "string")),
+                "description", 42);
+        assertThatThrownBy(() -> JsonSchemaElementJsonUtils.fromMap(map))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("description");
+    }
+
+    @Test
+    void should_reject_non_string_description_in_string() {
+        Map<String, Object> map = Map.of("type", "string", "description", 99);
+        assertThatThrownBy(() -> JsonSchemaElementJsonUtils.fromMap(map))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("description");
+    }
+
+    @Test
+    void should_reject_non_string_description_in_enum() {
+        Map<String, Object> map = Map.of("enum", List.of("A", "B"), "description", List.of("bad"));
+        assertThatThrownBy(() -> JsonSchemaElementJsonUtils.fromMap(map))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("description");
+    }
+
+    // ---- enum type validation ----
+
+    @Test
+    void should_fallback_to_raw_for_enum_with_non_string_type() {
+        // {"type":"integer","enum":["A"]} — type is not "string", must fall back to raw
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("type", "integer");
+        map.put("enum", List.of("A", "B"));
+        assertRawFallback(map);
+    }
+
+    @Test
+    void should_fallback_to_raw_for_enum_with_null_type() {
+        // {"type":null,"enum":["A"]} — type key present but null, must fall back to raw
+        Map<String, Object> map = new HashMap<>();
+        map.put("type", null);
+        map.put("enum", List.of("A"));
+        JsonSchemaElement element = JsonSchemaElementJsonUtils.fromMap(map);
+        assertThat(element).isInstanceOf(JsonRawSchema.class);
+    }
+
+    // ---- explicit null values (typed models can't preserve them) ----
+
+    @Test
+    void should_fallback_to_raw_for_string_with_null_description() {
+        Map<String, Object> map = new HashMap<>();
+        map.put("type", "string");
+        map.put("description", null);
+        JsonSchemaElement element = JsonSchemaElementJsonUtils.fromMap(map);
+        assertThat(element).isInstanceOf(JsonRawSchema.class);
+    }
+
+    @Test
+    void should_fallback_to_raw_for_object_with_null_properties() {
+        Map<String, Object> map = new HashMap<>();
+        map.put("type", "object");
+        map.put("properties", null);
+        JsonSchemaElement element = JsonSchemaElementJsonUtils.fromMap(map);
+        assertThat(element).isInstanceOf(JsonRawSchema.class);
+    }
+
+    @Test
+    void should_fallback_to_raw_for_array_with_null_items() {
+        // Note: this tests {"type":"array","items":null} from JSON (explicit null key),
+        // NOT JsonArraySchema with items=null (which is a valid typed model)
+        Map<String, Object> map = new HashMap<>();
+        map.put("type", "array");
+        map.put("items", null);
+        JsonSchemaElement element = JsonSchemaElementJsonUtils.fromMap(map);
+        assertThat(element).isInstanceOf(JsonRawSchema.class);
+    }
+
+    @Test
+    void should_round_trip_enum_with_string_type() {
+        // {"type":"string","enum":["A","B"]} — explicit type:"string" is fine
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("type", "string");
+        map.put("enum", List.of("A", "B"));
+        JsonSchemaElement element = JsonSchemaElementJsonUtils.fromMap(map);
+        assertThat(element).isInstanceOf(JsonEnumSchema.class);
+        Map<String, Object> restored = JsonSchemaElementJsonUtils.toMap(element);
+        assertThat(restored).isEqualTo(map);
+    }
+
+    private void assertRawFallback(Map<String, Object> map) {
+        JsonSchemaElement element = JsonSchemaElementJsonUtils.fromMap(map);
+        assertThat(element).isInstanceOf(JsonRawSchema.class);
+        // verify round-trip: toMap on the raw schema should produce the same map
+        Map<String, Object> restored = JsonSchemaElementJsonUtils.toMap(element);
+        assertThat(restored).isEqualTo(map);
     }
 
     private void assertRoundTrip(JsonSchemaElement original) {

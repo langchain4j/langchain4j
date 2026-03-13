@@ -50,7 +50,9 @@ public class ToolSpecificationJsonUtils {
         Map<String, Object> map = Json.fromJson(json, Map.class);
 
         ToolSpecification.Builder builder =
-                ToolSpecification.builder().name((String) map.get("name")).description((String) map.get("description"));
+                ToolSpecification.builder()
+                        .name(optionalString(map, "name"))
+                        .description(optionalString(map, "description"));
 
         Object parametersObj = map.get("parameters");
         if (parametersObj instanceof Map) {
@@ -76,5 +78,17 @@ public class ToolSpecificationJsonUtils {
         }
 
         return builder.build();
+    }
+
+    private static String optionalString(Map<String, Object> map, String field) {
+        Object value = map.get(field);
+        if (value == null) {
+            return null;
+        }
+        if (!(value instanceof String)) {
+            throw new IllegalArgumentException(
+                    "\"" + field + "\" must be a string, but was: " + value.getClass().getSimpleName());
+        }
+        return (String) value;
     }
 }

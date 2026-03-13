@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 class ToolSpecificationJsonTest {
 
     @Test
-    void toJson_should_reject_null() {
+    void fromJson_should_reject_null() {
         assertThatThrownBy(() -> ToolSpecification.fromJson(null)).isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -69,5 +69,25 @@ class ToolSpecificationJsonTest {
         assertThatThrownBy(() -> ToolSpecification.fromJson(json))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("metadata");
+    }
+
+    @Test
+    void should_reject_non_string_fields() {
+        assertThatThrownBy(() -> ToolSpecification.fromJson("{\"name\":123}"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("name");
+        assertThatThrownBy(() -> ToolSpecification.fromJson("{\"name\":\"test\",\"description\":123}"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("description");
+    }
+
+    @Test
+    void should_reject_parameters_with_extra_schema_keywords() {
+        // Standard JSON Schema root keywords like $schema/title make the object
+        // fall back to JsonRawSchema, which is not a valid ToolSpecification parameters type.
+        String json = "{\"name\":\"test\",\"parameters\":{\"type\":\"object\",\"$schema\":\"http://json-schema.org/draft-07/schema#\"}}";
+        assertThatThrownBy(() -> ToolSpecification.fromJson(json))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("parameters");
     }
 }
