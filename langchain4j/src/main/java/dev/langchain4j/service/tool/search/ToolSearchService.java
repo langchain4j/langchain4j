@@ -3,6 +3,7 @@ package dev.langchain4j.service.tool.search;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
@@ -17,11 +18,13 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import static dev.langchain4j.agent.tool.SearchBehavior.ALWAYS_VISIBLE;
 import static dev.langchain4j.agent.tool.ToolSpecification.METADATA_SEARCH_BEHAVIOR;
 import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.merge;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.stream.Collectors.toCollection;
@@ -42,11 +45,11 @@ public class ToolSearchService {
     }
 
     public ToolServiceContext adjust(ToolServiceContext toolServiceContext,
-                                     ChatMemory chatMemory,
+                                     List<ChatMessage> messages,
                                      InvocationContext invocationContext) {
         List<ToolSpecification> toolSearchTools = strategy.getToolSearchTools(invocationContext);
         List<ToolSpecification> availableTools = toolServiceContext.availableTools();
-        List<ToolSpecification> effectiveTools = calculateEffectiveTools(toolSearchTools, availableTools, chatMemory);
+        List<ToolSpecification> effectiveTools = calculateEffectiveTools(toolSearchTools, availableTools, messages);
         List<ToolSpecification> searchableTools = calculateSearchableTools(availableTools, effectiveTools);
         Map<String, ToolExecutor> toolSearchToolExecutors = createExecutors(toolSearchTools, searchableTools);
         return toolServiceContext.toBuilder()
@@ -55,9 +58,19 @@ public class ToolSearchService {
                 .build();
     }
 
+    /**
+     * @deprecated use {@link #adjust(ToolServiceContext, List, InvocationContext)} instead
+     */
+    @Deprecated(since = "1.13.0")
+    public ToolServiceContext adjust(ToolServiceContext toolServiceContext,
+                                     ChatMemory chatMemory,
+                                     InvocationContext invocationContext) {
+        return adjust(toolServiceContext, chatMemory.messages(), invocationContext);
+    }
+
     private List<ToolSpecification> calculateEffectiveTools(List<ToolSpecification> toolSearchTools,
                                                             List<ToolSpecification> availableTools,
-                                                            ChatMemory chatMemory) {
+                                                            List<ChatMessage> messages) {
         List<ToolSpecification> effectiveTools = new ArrayList<>();
 
         availableTools.forEach(tool -> {
@@ -68,18 +81,18 @@ public class ToolSearchService {
 
         effectiveTools.addAll(toolSearchTools);
 
-        if (chatMemory == null) {
+        if (isNullOrEmpty(messages)) {
             return effectiveTools;
         }
 
-        Set<String> toolNamesFoundEarlier = chatMemory.messages().stream()
+        Set<String> toolNamesFoundEarlier = messages.stream()
                 .filter(it -> it instanceof ToolExecutionResultMessage)
                 .map(it -> (ToolExecutionResultMessage) it)
                 .map(it -> it.attributes().get(FOUND_TOOLS_ATTRIBUTE))
-                .filter(it -> it != null)
+                .filter(Objects::nonNull)
                 .map(it -> (List<String>) it)
                 .flatMap(List::stream)
-                .collect(toCollection(() -> new LinkedHashSet<>()));
+                .collect(toCollection(LinkedHashSet::new));
 
         if (toolNamesFoundEarlier.isEmpty()) {
             return effectiveTools;

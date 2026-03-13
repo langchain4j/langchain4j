@@ -9,10 +9,13 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static java.util.Arrays.asList;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+
 import dev.langchain4j.Experimental;
 import dev.langchain4j.memory.ChatMemory;
 
@@ -382,5 +385,12 @@ public class UserMessage implements ChatMessage {
      */
     public static UserMessage userMessage(String name, List<Content> contents) {
         return from(name, contents);
+    }
+
+    public static Optional<UserMessage> findLast(Collection<ChatMessage> messages) {
+        return messages.stream()
+                .filter(message -> message instanceof UserMessage)
+                .map(message -> (UserMessage) message)
+                .reduce((first, second) -> second);
     }
 }

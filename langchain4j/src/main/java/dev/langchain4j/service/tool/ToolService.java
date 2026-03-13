@@ -246,13 +246,23 @@ public class ToolService {
 
     public ToolServiceContext createContext(InvocationContext invocationContext,
                                             UserMessage userMessage,
-                                            ChatMemory chatMemory) {
-        ToolServiceContext toolServiceContext = createContext(invocationContext, userMessage);
+                                            List<ChatMessage> messages) {
+        ToolServiceContext toolServiceContext = doCreateContext(invocationContext, userMessage, messages);
         if (toolSearchService == null) {
             return toolServiceContext;
         } else {
-            return toolSearchService.adjust(toolServiceContext, chatMemory, invocationContext);
+            return toolSearchService.adjust(toolServiceContext, messages, invocationContext);
         }
+    }
+
+    /**
+     * @deprecated use {@link #createContext(InvocationContext, UserMessage, List)} instead
+     */
+    @Deprecated(since = "1.13.0")
+    public ToolServiceContext createContext(InvocationContext invocationContext,
+                                            UserMessage userMessage,
+                                            ChatMemory chatMemory) {
+        return createContext(invocationContext, userMessage, chatMemory.messages());
     }
 
     /**
@@ -260,7 +270,12 @@ public class ToolService {
      */
     @Deprecated(since = "1.12.0")
     public ToolServiceContext createContext(InvocationContext invocationContext, UserMessage userMessage) {
-        // TODO make private
+        return doCreateContext(invocationContext, userMessage, List.of());
+    }
+
+    private ToolServiceContext doCreateContext(InvocationContext invocationContext,
+                                               UserMessage userMessage,
+                                               List<ChatMessage> messages) {
         if (this.toolProviders.isEmpty()) {
             return this.toolSpecifications.isEmpty()
                     ? ToolServiceContext.Empty.INSTANCE
@@ -275,22 +290,30 @@ public class ToolService {
         List<ToolSpecification> toolSpecifications = new ArrayList<>(this.toolSpecifications);
         Map<String, ToolExecutor> toolExecutors = new HashMap<>(this.toolExecutors);
         Set<String> immediateReturnTools = new HashSet<>(this.immediateReturnTools);
+        List<ToolProvider> dynamicToolProviders = new ArrayList<>();
+
         ToolProviderRequest toolProviderRequest = ToolProviderRequest.builder()
                 .invocationContext(invocationContext)
                 .userMessage(userMessage)
+                .messages(messages)
                 .build();
         toolProviders.forEach(toolProvider -> {
+            if (toolProvider.isDynamic()) {
+                // Dynamic providers are not called here; they will be evaluated
+                // before each LLM call via refreshDynamicProviders()
+                dynamicToolProviders.add(toolProvider);
+                return;
+            }
             ToolProviderResult toolProviderResult = toolProvider.provideTools(toolProviderRequest);
             if (toolProviderResult != null) {
                 for (Map.Entry<ToolSpecification, ToolExecutor> entry :
                         toolProviderResult.tools().entrySet()) {
                     String toolName = entry.getKey().name();
-                    if (toolExecutors.putIfAbsent(toolName, entry.getValue()) == null) {
-                        toolSpecifications.add(entry.getKey());
-                    } else {
+                    if (toolExecutors.putIfAbsent(toolName, entry.getValue()) != null) {
                         throw new IllegalConfigurationException(
-                                "Duplicated definition for tool: " + entry.getKey().name());
+                                "Duplicated definition for tool: " + toolName);
                     }
+                    toolSpecifications.add(entry.getKey());
                 }
                 if (toolProviderResult.immediateReturnToolNames() != null) {
                     immediateReturnTools.addAll(toolProviderResult.immediateReturnToolNames());
@@ -302,6 +325,7 @@ public class ToolService {
                 .availableTools(toolSpecifications)
                 .toolExecutors(toolExecutors)
                 .immediateReturnTools(immediateReturnTools)
+                .dynamicToolProviders(dynamicToolProviders)
                 .build();
     }
 
@@ -397,6 +421,13 @@ public class ToolService {
                 messages = chatMemory.messages();
             }
 
+            ToolServiceContext refreshedContext = refreshDynamicProviders(toolServiceContext, messages, invocationContext);
+            if (refreshedContext != toolServiceContext) {
+                toolServiceContext = refreshedContext;
+                parameters = parameters.overrideWith(ChatRequestParameters.builder()
+                        .toolSpecifications(toolServiceContext.effectiveTools())
+                        .build());
+            } // TODO test how it works together with tool search
             if (toolSearchService != null) {
                 parameters = addFoundTools(parameters, toolResults.values(), toolServiceContext.availableTools());
             }
@@ -420,6 +451,68 @@ public class ToolService {
                 .finalResponse(chatResponse)
                 .toolExecutions(toolExecutions)
                 .aggregateTokenUsage(aggregateTokenUsage)
+                .build();
+    }
+
+    /**
+     * Re-evaluates {@linkplain ToolProvider#isDynamic() dynamic} tool providers and returns
+     * an updated {@link ToolServiceContext} with any newly provided tool specifications and executors.
+     * <p>
+     * Non-dynamic providers are not re-called — their tools remain unchanged.
+     * Tools returned by dynamic providers are only added, never removed: once a tool
+     * is present in the context, it stays for the remainder of the AI service invocation.
+     *
+     * @since 1.13.0
+     */
+    public static ToolServiceContext refreshDynamicProviders(
+            ToolServiceContext toolServiceContext,
+            List<ChatMessage> messages,
+            InvocationContext invocationContext) {
+        if (toolServiceContext == null) {
+            return null;
+        }
+
+        List<ToolProvider> dynamicProviders = toolServiceContext.dynamicToolProviders();
+        if (dynamicProviders.isEmpty()) {
+            return toolServiceContext;
+        }
+
+        UserMessage userMessage = UserMessage.findLast(messages).orElseThrow();
+        ToolProviderRequest request = ToolProviderRequest.builder()
+                .invocationContext(invocationContext)
+                .userMessage(userMessage)
+                .messages(messages)
+                .build();
+
+        List<ToolSpecification> newToolSpecs = new ArrayList<>(toolServiceContext.effectiveTools());
+        Map<String, ToolExecutor> newToolExecutors = new HashMap<>(toolServiceContext.toolExecutors());
+        Set<String> immediateReturnTools = new HashSet<>(toolServiceContext.immediateReturnTools());
+        boolean changed = false;
+
+        for (ToolProvider dynamicProvider : dynamicProviders) {
+            ToolProviderResult result = dynamicProvider.provideTools(request);
+            if (result != null) {
+                for (Map.Entry<ToolSpecification, ToolExecutor> toolEntry : result.tools().entrySet()) {
+                    String toolName = toolEntry.getKey().name();
+                    if (!newToolExecutors.containsKey(toolName)) {
+                        newToolSpecs.add(toolEntry.getKey());
+                        newToolExecutors.put(toolName, toolEntry.getValue());
+                        changed = true;
+                    }
+                }
+                immediateReturnTools.addAll(result.immediateReturnToolNames());
+            }
+        }
+
+        if (!changed) {
+            return toolServiceContext;
+        }
+
+        return toolServiceContext.toBuilder()
+                .effectiveTools(newToolSpecs)
+                .availableTools(newToolSpecs)
+                .toolExecutors(newToolExecutors)
+                .immediateReturnTools(immediateReturnTools)
                 .build();
     }
 

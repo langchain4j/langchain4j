@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
@@ -108,5 +109,42 @@ class UserMessageTest implements WithAssertions {
                 .isEqualTo(UserMessage.from(new TextContent("abc"), new TextContent("def")))
                 .isEqualTo(UserMessage.userMessage(listOf(new TextContent("abc"), new TextContent("def"))))
                 .isEqualTo(UserMessage.userMessage(new TextContent("abc"), new TextContent("def")));
+    }
+
+    @Test
+    void findLast_should_return_last_user_message() {
+        UserMessage first = UserMessage.from("first");
+        UserMessage second = UserMessage.from("second");
+        List<ChatMessage> messages = List.of(first, AiMessage.from("ai"), second);
+
+        Optional<UserMessage> result = UserMessage.findLast(messages);
+
+        assertThat(result).contains(second);
+    }
+
+    @Test
+    void findLast_should_return_empty_when_no_user_messages() {
+        List<ChatMessage> messages = List.of(AiMessage.from("ai"), SystemMessage.from("system"));
+
+        Optional<UserMessage> result = UserMessage.findLast(messages);
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void findLast_should_return_empty_for_empty_list() {
+        Optional<UserMessage> result = UserMessage.findLast(List.of());
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void findLast_should_return_single_user_message() {
+        UserMessage only = UserMessage.from("only");
+        List<ChatMessage> messages = List.of(SystemMessage.from("system"), only, AiMessage.from("ai"));
+
+        Optional<UserMessage> result = UserMessage.findLast(messages);
+
+        assertThat(result).contains(only);
     }
 }
