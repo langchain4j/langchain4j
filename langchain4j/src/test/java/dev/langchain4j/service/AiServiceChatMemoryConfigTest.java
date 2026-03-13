@@ -4,11 +4,17 @@ import static dev.langchain4j.service.AiServicesIT.chatRequest;
 import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 
+import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
+import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,6 +33,8 @@ class AiServiceChatMemoryConfigTest {
 
     interface AiService {
         String chat(@MemoryId String memoryId, @UserMessage String message);
+
+        String chat(Map<String, Object> args);
     }
 
     @Test
@@ -113,6 +121,30 @@ class AiServiceChatMemoryConfigTest {
         // then
         assertThat(response1).isEqualTo("response");
         assertThat(response2).isEqualTo("response");
+    }
+
+    @Test
+    void should_support_memory_id_from_a_single_map_argument() {
+        // given
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("response");
+
+        ChatMemoryProvider mockMemoryProvider = mock(ChatMemoryProvider.class);
+        when(mockMemoryProvider.get(any())).thenReturn(MessageWindowChatMemory.withMaxMessages(10));
+
+        AiService aiService = AiServices.builder(AiService.class)
+                .userMessage("request {{var}}")
+                .chatModel(chatModel)
+                .chatMemoryProvider(mockMemoryProvider)
+                .build();
+
+        // when
+        aiService.chat(Map.of("var", "val1", MemoryId.MEMORY_ID_ARG_NAME, "id1"));
+        aiService.chat(Map.of("var", "val2", "not_a_memory_id_arg", "id2"));
+        aiService.chat(Map.of("var", "val3"));
+
+        // then
+        verify(mockMemoryProvider).get("id1");
+        verifyNoMoreInteractions(mockMemoryProvider);
     }
 
     @Test

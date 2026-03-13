@@ -9,6 +9,7 @@ import static dev.langchain4j.service.AiServiceParamsUtil.chatRequestParameters;
 import static dev.langchain4j.service.AiServiceParamsUtil.findArgumentOfType;
 import static dev.langchain4j.service.AiServiceValidation.validateParameters;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
+import static dev.langchain4j.service.MemoryId.MEMORY_ID_ARG_NAME;
 import static dev.langchain4j.service.TypeUtils.getRawClass;
 import static dev.langchain4j.service.TypeUtils.isImageType;
 import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterClass;
@@ -788,6 +789,10 @@ class DefaultAiServices<T> extends AiServices<T> {
     }
 
     private static Optional<Object> findMemoryId(Method method, Object[] args) {
+        if (args != null && args.length == 1 && args[0] instanceof Map<?, ?> map) {
+            return Optional.ofNullable(map.get(MEMORY_ID_ARG_NAME));
+        }
+
         Parameter[] parameters = method.getParameters();
         for (int i = 0; i < parameters.length; i++) {
             if (parameters[i].isAnnotationPresent(MemoryId.class)) {

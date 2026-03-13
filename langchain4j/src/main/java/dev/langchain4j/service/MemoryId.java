@@ -16,4 +16,6 @@ import java.lang.annotation.Target;
  */
 @Retention(RUNTIME)
 @Target(PARAMETER)
-public @interface MemoryId {}
+public @interface MemoryId {
+    String MEMORY_ID_ARG_NAME = "@MemoryId";
+}

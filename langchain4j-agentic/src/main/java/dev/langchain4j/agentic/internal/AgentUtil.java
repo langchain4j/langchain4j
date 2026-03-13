@@ -3,6 +3,7 @@ package dev.langchain4j.agentic.internal;
 import static dev.langchain4j.agentic.AgenticServices.createBuiltInAgentExecutor;
 import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.service.MemoryId.MEMORY_ID_ARG_NAME;
 import static dev.langchain4j.service.TypeUtils.isImageType;
 
 import dev.langchain4j.agentic.Agent;
@@ -39,7 +40,6 @@ import java.util.stream.Stream;
 
 public class AgentUtil {
 
-    public static final String MEMORY_ID_ARG_NAME = "@MemoryId";
     public static final String AGENTIC_SCOPE_ARG_NAME = "@AgenticScope";
     public static final String LOOP_COUNTER_ARG_NAME = "@LoopCounter";
 
