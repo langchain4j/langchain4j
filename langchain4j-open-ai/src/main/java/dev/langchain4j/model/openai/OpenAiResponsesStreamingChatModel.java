@@ -63,6 +63,8 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
                 .baseUrl(builder.baseUrl)
                 .apiKey(builder.apiKey)
                 .organizationId(builder.organizationId)
+                .logRequests(builder.logRequests)
+                .logResponses(builder.logResponses)
                 .build();
 
         ChatRequestParameters commonParameters;
@@ -246,6 +248,8 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
         private Boolean streamIncludeObfuscation;
         private Boolean store;
         private Boolean strict;
+        private Boolean logRequests;
+        private Boolean logResponses;
         private List<ChatModelListener> listeners;
         private ChatRequestParameters defaultRequestParameters;
         private ResponseFormat responseFormat;
@@ -362,6 +366,16 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
 
         public Builder strict(Boolean strict) {
             this.strict = strict;
+            return this;
+        }
+
+        public Builder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public Builder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
             return this;
         }
 

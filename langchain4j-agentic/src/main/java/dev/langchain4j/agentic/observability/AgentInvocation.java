@@ -18,6 +18,7 @@ public class AgentInvocation {
 
     private AgentResponse agentResponse;
     private LocalDateTime finishTime;
+    private int iterationIndex = -1;
 
     AgentInvocation(AgentRequest agentRequest) {
         this.agentRequest = agentRequest;
@@ -71,6 +72,17 @@ public class AgentInvocation {
         return agentResponse.output();
     }
 
+    /**
+     * Returns the zero-based iteration index when this invocation is part of a loop, or -1 otherwise.
+     */
+    public int iterationIndex() {
+        return iterationIndex;
+    }
+
+    void setIterationIndex(int iterationIndex) {
+        this.iterationIndex = iterationIndex;
+    }
+
     public List<AgentInvocation> nestedInvocations() {
         return nestedInvocations;
     }
@@ -83,6 +95,7 @@ public class AgentInvocation {
     private String toString(String prefix) {
         StringBuilder sb = new StringBuilder(prefix + "AgentInvocation{" +
                 "agent=" + agent().name() +
+                (iterationIndex >= 0 ? ", iteration=" + iterationIndex : "") +
                 ", startTime=" + startTime +
                 ", finishTime=" + finishTime +
                 ", duration=" + (done() ? duration().toMillis() + " ms" : "in progress") +

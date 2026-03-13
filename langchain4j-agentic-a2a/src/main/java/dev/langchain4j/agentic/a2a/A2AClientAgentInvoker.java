@@ -18,6 +18,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
+import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
+
 public class A2AClientAgentInvoker implements AgentInvoker {
 
     private String agentId;
@@ -143,6 +145,10 @@ public class A2AClientAgentInvoker implements AgentInvoker {
     @Override
     public void setParent(InternalAgent parent) {
         this.parent = parent;
+    }
+    @Override
+    public void registerInheritedParentListener(AgentListener parentListener) {
+        a2AClientInstance.registerInheritedParentListener(parentListener);
     }
 
     @Override

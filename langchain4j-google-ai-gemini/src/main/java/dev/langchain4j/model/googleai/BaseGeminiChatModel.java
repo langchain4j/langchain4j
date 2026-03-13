@@ -237,7 +237,14 @@ class BaseGeminiChatModel {
                         .modelName(geminiResponse.modelVersion())
                         .tokenUsage(createTokenUsage(geminiResponse.usageMetadata()))
                         .finishReason(finishReason)
-                        .groundingMetadata(geminiResponse.groundingMetadata())
+                        .groundingMetadata(
+                                geminiResponse.groundingMetadata() != null
+                                        ? geminiResponse.groundingMetadata()
+                                        : firstCandidate.groundingMetadata())
+                        .urlContextMetadata(
+                                firstCandidate.urlContextMetadata() != null
+                                        ? toUrlContextMetadata(firstCandidate.urlContextMetadata())
+                                        : null)
                         .build())
                 .build();
     }
@@ -253,6 +260,28 @@ class BaseGeminiChatModel {
     protected TokenUsage createTokenUsage(GeminiUsageMetadata tokenCounts) {
         return new TokenUsage(
                 tokenCounts.promptTokenCount(), tokenCounts.candidatesTokenCount(), tokenCounts.totalTokenCount());
+    }
+
+    private UrlContextMetadata toUrlContextMetadata(
+            GeminiGenerateContentResponse.GeminiUrlContextMetadata geminiUrlContextMetadata) {
+        if (geminiUrlContextMetadata == null || geminiUrlContextMetadata.urlMetadata() == null) {
+            return null;
+        }
+        return new UrlContextMetadata(geminiUrlContextMetadata.urlMetadata().stream()
+                .map(this::toUrlMetadata)
+                .toList());
+    }
+
+    private UrlContextMetadata.UrlMetadata toUrlMetadata(
+            GeminiGenerateContentResponse.GeminiUrlMetadata geminiUrlMetadata) {
+        if (geminiUrlMetadata == null) {
+            return null;
+        }
+        return new UrlContextMetadata.UrlMetadata(
+                geminiUrlMetadata.retrievedUrl(),
+                geminiUrlMetadata.urlRetrievalStatus() != null
+                        ? geminiUrlMetadata.urlRetrievalStatus().toString()
+                        : null);
     }
 
     /**

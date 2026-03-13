@@ -202,6 +202,17 @@ public class AiMessage implements ChatMessage {
                 + attributes + " }";
     }
 
+    /**
+     * @since 1.12.0
+     */
+    public Builder toBuilder() {
+        return builder()
+                .text(text)
+                .thinking(thinking)
+                .toolExecutionRequests(toolExecutionRequests)
+                .attributes(attributes);
+    }
+
     public static Builder builder() {
         return new Builder();
     }

@@ -236,6 +236,10 @@ public class JsonSchemaElementUtils {
     }
 
     public static Map<String, Object> toMap(JsonSchemaElement jsonSchemaElement, boolean strict, boolean required) {
+        return toMap(jsonSchemaElement, strict, required, null);
+    }
+
+    public static Map<String, Object> toMap(JsonSchemaElement jsonSchemaElement, boolean strict, boolean required, String enumType) {
         if (jsonSchemaElement instanceof JsonObjectSchema jsonObjectSchema) {
             Map<String, Object> map = new LinkedHashMap<>();
             map.put("type", type("object", strict, required));
@@ -249,7 +253,7 @@ public class JsonSchemaElementUtils {
                     .properties()
                     .forEach((property, value) -> properties.put(
                             property,
-                            toMap(value, strict, jsonObjectSchema.required().contains(property))));
+                            toMap(value, strict, jsonObjectSchema.required().contains(property), enumType)));
             map.put("properties", properties);
 
             if (strict) {
@@ -288,7 +292,11 @@ public class JsonSchemaElementUtils {
             return map;
         } else if (jsonSchemaElement instanceof JsonEnumSchema jsonEnumSchema) {
             Map<String, Object> map = new LinkedHashMap<>();
-            map.put("type", type("string", strict, required));
+            if (enumType != null) {
+                map.put("type", enumType);
+            } else {
+                map.put("type", type("string", strict, required));
+            }
             if (jsonEnumSchema.description() != null) {
                 map.put("description", jsonEnumSchema.description());
             }

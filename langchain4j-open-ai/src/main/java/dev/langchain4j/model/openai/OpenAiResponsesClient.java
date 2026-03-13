@@ -26,6 +26,7 @@ import dev.langchain4j.http.client.HttpClientBuilderLoader;
 import dev.langchain4j.http.client.HttpMethod;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.log.LoggingHttpClient;
 import dev.langchain4j.http.client.sse.CancellationUnsupportedHandle;
 import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
@@ -156,7 +157,12 @@ class OpenAiResponsesClient {
     OpenAiResponsesClient(Builder builder) {
         HttpClientBuilder httpClientBuilder =
                 getOrDefault(builder.httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder);
-        this.httpClient = httpClientBuilder.build();
+        HttpClient httpClient = httpClientBuilder.build();
+        if (builder.logRequests || builder.logResponses) {
+            this.httpClient = new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses);
+        } else {
+            this.httpClient = httpClient;
+        }
         this.baseUrl = getOrDefault(builder.baseUrl, DEFAULT_BASE_URL);
         this.apiKey = builder.apiKey;
         this.organizationId = builder.organizationId;
@@ -357,7 +363,7 @@ class OpenAiResponsesClient {
 
             var text = aiMessage.text();
             if (text != null && !text.isEmpty()) {
-                items.add(createMessageEntry(ROLE_ASSISTANT, List.of(createInputTextContent(text))));
+                items.add(createMessageEntry(ROLE_ASSISTANT, List.of(createOutputTextContent(text))));
             }
 
             if (aiMessage.hasToolExecutionRequests()) {
@@ -399,6 +405,13 @@ class OpenAiResponsesClient {
     private static Map<String, Object> createInputTextContent(String text) {
         var content = new HashMap<String, Object>();
         content.put(FIELD_TYPE, TYPE_INPUT_TEXT);
+        content.put(FIELD_TEXT, text);
+        return content;
+    }
+
+    private static Map<String, Object> createOutputTextContent(String text) {
+        var content = new HashMap<String, Object>();
+        content.put(FIELD_TYPE, TYPE_OUTPUT_TEXT);
         content.put(FIELD_TEXT, text);
         return content;
     }
@@ -486,6 +499,8 @@ class OpenAiResponsesClient {
         private String baseUrl;
         private String apiKey;
         private String organizationId;
+        private boolean logRequests;
+        private boolean logResponses;
 
         Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
@@ -504,6 +519,20 @@ class OpenAiResponsesClient {
 
         Builder organizationId(String organizationId) {
             this.organizationId = organizationId;
+            return this;
+        }
+
+        Builder logRequests(Boolean logRequests) {
+            if (logRequests != null) {
+                this.logRequests = logRequests;
+            }
+            return this;
+        }
+
+        Builder logResponses(Boolean logResponses) {
+            if (logResponses != null) {
+                this.logResponses = logResponses;
+            }
             return this;
         }
 

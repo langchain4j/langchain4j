@@ -8,6 +8,7 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import java.util.Map;
@@ -90,6 +91,7 @@ public class DynamicAgentsIT {
     }
 
     @Test
+    @Disabled("the test is flaky, usual error message: expected: 885.0 but was: 1000.0")
     void supervisor_with_untyped_agents_tests() {
         SupervisorAgentIT.BankTool bankTool = new SupervisorAgentIT.BankTool();
         bankTool.createAccount("Mario", 1000.0);

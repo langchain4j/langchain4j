@@ -13,7 +13,7 @@ sidebar_position: 2
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic</artifactId>
-    <version>1.11.0</version>
+    <version>1.12.2</version>
 </dependency>
 ```
 
@@ -408,8 +408,6 @@ It can be enabled by setting the `cacheSystemMessages` and `cacheTools` paramete
 
 When enabled,`cache_control` blocks will be added to the last system message and tool, respectively.
 
-To use caching, please set `beta("prompt-caching-2024-07-31")`.
-
 `AnthropicChatModel` and `AnthropicStreamingChatModel` return `AnthropicTokenUsage` in response which
 contains `cacheCreationInputTokens` and `cacheReadInputTokens`.
 
@@ -527,6 +525,23 @@ Map<String, Object> customParameters = Map.of(
 );
 ```
 
+## Accessing raw HTTP responses and Server-Sent Events (SSE)
+
+When using `AnthropicChatModel`, you can access the raw HTTP response:
+```java
+SuccessfulHttpResponse rawHttpResponse = ((AnthropicChatResponseMetadata) chatResponse.metadata()).rawHttpResponse();
+System.out.println(rawHttpResponse.body());
+System.out.println(rawHttpResponse.headers());
+System.out.println(rawHttpResponse.statusCode());
+```
+
+When using `AnthropicStreamingChatModel`, you can access the raw HTTP response (see above) and raw Server-Sent Events:
+```java
+List<ServerSentEvent> rawServerSentEvents = ((AnthropicChatResponseMetadata) chatResponse.metadata()).rawServerSentEvents();
+System.out.println(rawServerSentEvents.get(0).data());
+System.out.println(rawServerSentEvents.get(0).event());
+```
+
 ## AnthropicTokenCountEstimator
 
 ```java
@@ -553,7 +568,7 @@ Import Spring Boot starter for Anthropic:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic-spring-boot-starter</artifactId>
-    <version>1.11.0-beta19</version>
+    <version>1.12.2-beta22</version>
 </dependency>
 ```
 

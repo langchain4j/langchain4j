@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.qdrant;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
@@ -285,8 +286,7 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .filter(entry -> !entry.getKey().equals(payloadTextKey))
                 .collect(toMap(Map.Entry::getKey, entry -> ObjectFactory.object(entry.getValue())));
 
-        Embedding embedding =
-                Embedding.from(scoredPoint.getVectors().getVector().getDataList());
+        Embedding embedding = toEmbedding(scoredPoint.getVectors().getVector());
         double cosineSimilarity = CosineSimilarity.between(embedding, referenceEmbedding);
 
         return new EmbeddingMatch<>(
@@ -296,6 +296,10 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
                 textSegmentValue == null
                         ? null
                         : TextSegment.from(textSegmentValue.getStringValue(), new Metadata(metadata)));
+    }
+
+    private static Embedding toEmbedding(Points.VectorOutput vectorOutput) {
+        return Embedding.from(getOrDefault(vectorOutput.getDense().getDataList(), vectorOutput.getDataList()));
     }
 
     public static Builder builder() {

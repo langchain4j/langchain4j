@@ -16,21 +16,21 @@ For Maven project `pom.xml`
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>1.11.0</version>
+    <version>1.12.2</version>
 </dependency>
 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-mistral-ai</artifactId>
-    <version>1.11.0</version>
+    <version>1.12.2</version>
 </dependency>
 ```
 
 For Gradle project `build.gradle`
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j:1.11.0'
-implementation 'dev.langchain4j:langchain4j-mistral-ai:1.11.0'
+implementation 'dev.langchain4j:langchain4j:1.12.2'
+implementation 'dev.langchain4j:langchain4j-mistral-ai:1.12.2'
 ```
 ### API Key setup
 Add your MistralAI API key to your project, you can create a class ```ApiKeys.java``` with the following code
@@ -183,7 +183,7 @@ public class PaymentTransactionTool {
             "transaction_id", List.of("T1001", "T1002", "T1003", "T1004", "T1005"),
             "customer_id", List.of("C001", "C002", "C003", "C002", "C001"),
             "payment_amount", List.of("125.50", "89.99", "120.00", "54.30", "210.20"),
-            "payment_date", List.of("2021.11.05", "2021.11.06", "2021.11.07", "2021.11.05", "2021.11.08"),
+            "payment_date", List.of("2021.12.25", "2021.12.26", "2021.12.27", "2021.12.25", "2021.12.28"),
             "payment_status", List.of("Paid", "Unpaid", "Paid", "Paid", "Pending"));
    
     ...
@@ -357,6 +357,7 @@ ChatModel model = MistralAiChatModel.builder()
                                 .build())
                         .build())
                 .build())
+        .strictJsonSchema(true)
         .build();
 ```
 
@@ -411,6 +412,30 @@ Toggling the safe prompt will prepend your messages with the following `@SystemM
 
 ```plaintext
 Always assist with care, respect, and truth. Respond with utmost utility yet securely. Avoid harmful, unethical, prejudiced, or negative content. Ensure replies promote fairness and positivity.
+```
+
+## Thinking / Reasoning
+
+Both `MistralAiChatModel` and `MistralAiStreamingChatModel` support
+reasoning with [Magistral reasoning models](https://docs.mistral.ai/capabilities/reasoning/).
+
+Configured with the following parameters:
+- `returnThinking`: when enabled, reasoning text produced by the model will be parsed from the API response
+  and stored in `AiMessage.thinking()`. For streaming, `StreamingChatResponseHandler.onPartialThinking()`
+  and `TokenStream.onPartialThinking()` callbacks will also be invoked.
+  Disabled by default.
+- `sendThinking`: when enabled, reasoning text from previous responses (stored in `AiMessage.thinking()`)
+  will be included in follow-up requests to the LLM.
+  Disabled by default.
+
+Here is an example of how to configure reasoning:
+```java
+ChatModel model = MistralAiChatModel.builder()
+        .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+        .modelName(MistralAiChatModelName.MAGISTRAL_MEDIUM_LATEST)
+        .returnThinking(true)
+        .sendThinking(true)
+        .build();
 ```
 
 ## Moderation
@@ -543,6 +568,22 @@ public static void main(String[] args) {
 }
 ``` 
 
+## Accessing raw HTTP responses and Server-Sent Events (SSE)
+
+When using `MistralAiChatModel`, you can access the raw HTTP response:
+```java
+SuccessfulHttpResponse rawHttpResponse = ((MistralAiChatResponseMetadata) chatResponse.metadata()).rawHttpResponse();
+System.out.println(rawHttpResponse.body());
+System.out.println(rawHttpResponse.headers());
+System.out.println(rawHttpResponse.statusCode());
+```
+
+When using `MistralAiStreamingChatModel`, you can access the raw HTTP response (see above) and raw Server-Sent Events:
+```java
+List<ServerSentEvent> rawServerSentEvents = ((MistralAiChatResponseMetadata) chatResponse.metadata()).rawServerSentEvents();
+System.out.println(rawServerSentEvents.get(0).data());
+System.out.println(rawServerSentEvents.get(0).event());
+```
 
 ## Examples
 - [Mistral AI Examples](https://github.com/langchain4j/langchain4j-examples/tree/main/mistral-ai-examples/src/main/java)

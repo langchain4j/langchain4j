@@ -4,6 +4,7 @@ import static dev.langchain4j.model.ModelProvider.GOOGLE_VERTEX_AI_ANTHROPIC;
 import static dev.langchain4j.model.vertexai.anthropic.VertexAiAnthropicFixtures.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.condition.JRE.JAVA_17;
 
 import com.google.auth.oauth2.GoogleCredentials;
 import dev.langchain4j.data.message.UserMessage;
@@ -11,8 +12,12 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.List;
+
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.api.condition.EnabledOnJre;
 
 /**
  * Integration tests for VertexAiClaudeChatModel with custom credentials
@@ -23,6 +28,8 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
  * - Ensure you have access to Claude models in Vertex AI Model Garden
  * - Authenticate with Google Cloud (gcloud auth application-default login)
  */
+@EnabledIf(value = "dev.langchain4j.model.vertexai.anthropic.VertexAiAnthropicChatModelIT#isMonday", disabledReason = "Not enough quota to run it more often")
+@EnabledOnJre(value = JAVA_17, disabledReason = "Not enough quota to run it more often")
 @EnabledIfEnvironmentVariable(named = "GCP_PROJECT_ID", matches = ".+")
 class VertexAiAnthropicCustomCredentialsIT {
 
@@ -41,6 +48,7 @@ class VertexAiAnthropicCustomCredentialsIT {
         assertThat(model.provider()).isEqualTo(GOOGLE_VERTEX_AI_ANTHROPIC);
     }
 
+    @Test
     void should_work_with_application_default_credentials() throws Exception {
         // given - use Application Default Credentials
         GoogleCredentials credentials = GoogleCredentials.getApplicationDefault();
@@ -101,5 +109,13 @@ class VertexAiAnthropicCustomCredentialsIT {
         // then - should build successfully without throwing exceptions
         assertNotNull(model);
         assertThat(model.provider()).isEqualTo(GOOGLE_VERTEX_AI_ANTHROPIC);
+    }
+
+    @AfterEach
+    void afterEach() throws InterruptedException {
+        String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_VERTEX_AI_ANTHROPIC");
+        if (ciDelaySeconds != null) {
+            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
+        }
     }
 }
