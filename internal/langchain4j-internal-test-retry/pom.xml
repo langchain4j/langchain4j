@@ -5,7 +5,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-internal-test-retry</artifactId>
-    <version>1.13.0-beta22-SNAPSHOT</version>
+    <version>1.13.0-beta23-SNAPSHOT</version>
     <name>LangChain4j :: Test Retry</name>
     <description>Internal LangChain4j JUnit extension for retrying flaky tests</description>
 
