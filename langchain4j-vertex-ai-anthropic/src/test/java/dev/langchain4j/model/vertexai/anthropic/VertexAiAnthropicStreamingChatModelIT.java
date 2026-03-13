@@ -2,6 +2,7 @@ package dev.langchain4j.model.vertexai.anthropic;
 
 import static dev.langchain4j.model.vertexai.anthropic.VertexAiAnthropicFixtures.DEFAULT_LOCATION;
 import static dev.langchain4j.model.vertexai.anthropic.VertexAiAnthropicFixtures.DEFAULT_MODEL_NAME;
+import static org.junit.jupiter.api.condition.JRE.JAVA_17;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.atLeast;
@@ -16,9 +17,13 @@ import dev.langchain4j.model.output.TokenUsage;
 import java.util.List;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.api.condition.EnabledOnJre;
 import org.mockito.InOrder;
 
+@EnabledIf(value = "dev.langchain4j.model.vertexai.anthropic.VertexAiAnthropicChatModelIT#isMonday", disabledReason = "Not enough quota to run it more often")
+@EnabledOnJre(value = JAVA_17, disabledReason = "Not enough quota to run it more often")
 @EnabledIfEnvironmentVariable(named = "GCP_PROJECT_ID", matches = ".+")
 class VertexAiAnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
