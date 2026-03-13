@@ -1,7 +1,6 @@
 package dev.langchain4j.service;
 
 import dev.langchain4j.Internal;
-import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.invocation.InvocationContext;
@@ -9,10 +8,8 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
-import dev.langchain4j.service.tool.ToolExecutor;
-import dev.langchain4j.service.tool.search.ToolSearchStrategy;
+import dev.langchain4j.service.tool.ToolServiceContext;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.Executor;
 
 /**
@@ -22,9 +19,7 @@ import java.util.concurrent.Executor;
 public class AiServiceTokenStreamParameters {
 
     private final List<ChatMessage> messages;
-    private final List<ToolSpecification> effectiveTools;
-    private final List<ToolSpecification> availableTools;
-    private final Map<String, ToolExecutor> toolExecutors;
+    private final ToolServiceContext toolServiceContext;
     private final ToolArgumentsErrorHandler toolArgumentsErrorHandler;
     private final ToolExecutionErrorHandler toolExecutionErrorHandler;
     private final Executor toolExecutor;
@@ -36,9 +31,7 @@ public class AiServiceTokenStreamParameters {
 
     protected AiServiceTokenStreamParameters(Builder builder) {
         this.messages = builder.messages;
-        this.effectiveTools = builder.effectiveTools;
-        this.availableTools = builder.availableTools;
-        this.toolExecutors = builder.toolExecutors;
+        this.toolServiceContext = builder.toolServiceContext;
         this.toolArgumentsErrorHandler = builder.toolArgumentsErrorHandler;
         this.toolExecutionErrorHandler = builder.toolExecutionErrorHandler;
         this.toolExecutor = builder.toolExecutor;
@@ -57,42 +50,12 @@ public class AiServiceTokenStreamParameters {
     }
 
     /**
-     * Returns <b>effective</b> tool specifications that should be included in the next {@link ChatRequest}.
+     * Returns the tool service context containing all tools and their activation conditions.
      *
-     * @see #availableTools()
+     * @since 1.13.0
      */
-    public List<ToolSpecification> effectiveTools() {
-        return effectiveTools;
-    }
-
-    /**
-     * Returns <b>effective</b> tool specifications that should be included in the next {@link ChatRequest}.
-     *
-     * @see #effectiveTools()
-     * @deprecated use {@link #effectiveTools()} instead
-     */
-    @Deprecated(since = "1.12.0")
-    public List<ToolSpecification> toolSpecifications() {
-        return effectiveTools;
-    }
-
-    /**
-     * Returns <b>all available</b> tool specifications configured for AI service.
-     * These tool specifications can be discovered/found by the LLM (see {@link ToolSearchStrategy})
-     * and included in the next {@link ChatRequest}.
-     *
-     * @see #effectiveTools()
-     * @since 1.12.0
-     */
-    public List<ToolSpecification> availableTools() {
-        return availableTools;
-    }
-
-    /**
-     * @return the tool executors
-     */
-    public Map<String, ToolExecutor> toolExecutors() {
-        return toolExecutors;
+    public ToolServiceContext toolServiceContext() {
+        return toolServiceContext;
     }
 
     /**
@@ -172,9 +135,7 @@ public class AiServiceTokenStreamParameters {
     public static class Builder {
 
         private List<ChatMessage> messages;
-        private List<ToolSpecification> effectiveTools;
-        private List<ToolSpecification> availableTools;
-        private Map<String, ToolExecutor> toolExecutors;
+        private ToolServiceContext toolServiceContext;
         private ToolArgumentsErrorHandler toolArgumentsErrorHandler;
         private ToolExecutionErrorHandler toolExecutionErrorHandler;
         private Executor toolExecutor;
@@ -198,48 +159,12 @@ public class AiServiceTokenStreamParameters {
         }
 
         /**
-         * Sets <b>effective</b> tool specifications that should be included in the next {@link ChatRequest}.
+         * Sets the tool service context.
          *
-         * @see #availableTools(List)
+         * @since 1.13.0
          */
-        public Builder effectiveTools(List<ToolSpecification> effectiveTools) {
-            this.effectiveTools = effectiveTools;
-            return this;
-        }
-
-        /**
-         * Sets <b>effective</b> tool specifications that should be included in the next {@link ChatRequest}.
-         *
-         * @see #availableTools(List)
-         * @deprecated use {@link #effectiveTools(List)} instead
-         */
-        @Deprecated(since = "1.12.0")
-        public Builder toolSpecifications(List<ToolSpecification> effectiveTools) {
-            this.effectiveTools = effectiveTools;
-            return this;
-        }
-
-        /**
-         * Sets <b>all available</b> tool specifications configured for AI service.
-         * These tool specifications can be discovered/found by the LLM (see {@link ToolSearchStrategy})
-         * and included in the next {@link ChatRequest}.
-         *
-         * @see #effectiveTools(List)
-         * @since 1.12.0
-         */
-        public Builder availableTools(List<ToolSpecification> availableTools) {
-            this.availableTools = availableTools;
-            return this;
-        }
-
-        /**
-         * Sets the tool executors.
-         *
-         * @param toolExecutors the tool executors
-         * @return this builder
-         */
-        public Builder toolExecutors(Map<String, ToolExecutor> toolExecutors) {
-            this.toolExecutors = toolExecutors;
+        public Builder toolServiceContext(ToolServiceContext toolServiceContext) {
+            this.toolServiceContext = toolServiceContext;
             return this;
         }
 
