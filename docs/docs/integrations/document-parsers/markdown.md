@@ -11,7 +11,7 @@ sidebar_position: 4
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-document-parser-markdown</artifactId>
-    <version>1.12.1-beta21</version>
+    <version>1.12.2-beta22</version>
 </dependency>
 ```
 
