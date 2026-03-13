@@ -286,7 +286,7 @@
     <dependencies>
         <dependency>
             <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-test-retry</artifactId>
+            <artifactId>langchain4j-internal-test-retry</artifactId>
             <version>${langchain4j.beta.version}</version>
             <scope>test</scope>
         </dependency>

@@ -139,7 +139,7 @@
         <module>integration-tests</module>
 
         <!-- internal -->
-        <module>internal/langchain4j-test-retry</module>
+        <module>internal/langchain4j-internal-test-retry</module>
         <module>internal/langchain4j-docu-chatbot-updater</module>
     </modules>
 
