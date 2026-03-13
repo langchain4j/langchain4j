@@ -1,8 +1,12 @@
 package dev.langchain4j.model.anthropic.common;
 
+import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_HAIKU_4_5_20251001;
 
+import java.util.Base64;
 import java.util.List;
+
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.model.anthropic.AnthropicChatModel;
 import dev.langchain4j.model.anthropic.AnthropicChatResponseMetadata;
 import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
@@ -115,7 +119,19 @@ class AnthropicChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
+    protected ImageContent catImageContentBase64() {
+        String base64Data = Base64.getEncoder().encodeToString(readBytes(catImageUrl()));
+        return ImageContent.from(base64Data, "image/webp");
+    }
+
+    @Override
     protected String diceImageUrl() {
         return "https://images.all-free-download.com/images/graphicwebp/double_six_dice_196084.webp";
+    }
+
+    @Override
+    protected ImageContent diceImageContentBase64() {
+        String base64Data = Base64.getEncoder().encodeToString(readBytes(diceImageUrl()));
+        return ImageContent.from(base64Data, "image/webp");
     }
 }
