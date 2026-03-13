@@ -259,4 +259,23 @@ class ValidationUtilsTest implements WithAssertions {
                     .withMessageContaining("test must be between 0 and 1, but is: -1");
         }
     }
+
+    @Test
+    void ensure_non_negative() {
+        {
+            ValidationUtils.ensureNonNegative(0, "test"); // boundary case
+            ValidationUtils.ensureNonNegative(1, "test"); // positive case
+            ValidationUtils.ensureNonNegative(Integer.MAX_VALUE, "test"); // upper bound
+        }
+        {
+            assertThatExceptionOfType(IllegalArgumentException.class)
+                    .isThrownBy(() -> ValidationUtils.ensureNonNegative(-1, "test"))
+                    .withMessageContaining("test must be non-null and non-negative, but is: -1");
+        }
+        {
+            assertThatExceptionOfType(IllegalArgumentException.class)
+                    .isThrownBy(() -> ValidationUtils.ensureNonNegative(null, "test"))
+                    .withMessageContaining("test must be non-null and non-negative, but is: null");
+        }
+    }
 }
