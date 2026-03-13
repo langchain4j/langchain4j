@@ -7,6 +7,8 @@ public interface SyncOrAsync<ResponseContent> {
 
     ResponseContent execute();
 
+    byte[] executeInputStream();
+
     default ParsedAndRawResponse<ResponseContent> executeRaw() {
         ResponseContent parsedResponse = execute();
         SuccessfulHttpResponse rawHttpResponse = null;
