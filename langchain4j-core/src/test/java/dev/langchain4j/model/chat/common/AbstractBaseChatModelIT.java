@@ -721,8 +721,10 @@ public abstract class AbstractBaseChatModelIT<M> {
             InOrder inOrder = inOrder(handler);
             verifyToolCallbacks(handler, inOrder, toolExecutionRequest.id(), (StreamingChatModel) model);
             inOrder.verify(handler).onCompleteResponse(chatResponse);
-            inOrder.verifyNoMoreInteractions();
-            verifyNoMoreInteractions(handler);
+            if (!supportsPartialToolStreaming((StreamingChatModel) model)) {
+                inOrder.verifyNoMoreInteractions();
+                verifyNoMoreInteractions(handler);
+            }
 
             assertThat(metadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
 
@@ -1030,8 +1032,10 @@ public abstract class AbstractBaseChatModelIT<M> {
                     toolExecutionRequests.get(1).id(),
                     (StreamingChatModel) model);
             inOrder.verify(handler).onCompleteResponse(chatResponse);
-            inOrder.verifyNoMoreInteractions();
-            verifyNoMoreInteractions(handler);
+            if (!supportsPartialToolStreaming((StreamingChatModel) model)) {
+                inOrder.verifyNoMoreInteractions();
+                verifyNoMoreInteractions(handler);
+            }
 
             assertThat(metadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
 

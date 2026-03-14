@@ -6,6 +6,7 @@ import static java.util.Arrays.stream;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.langchain4j.Internal;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
@@ -229,7 +230,11 @@ public class JsonSchemaElementUtils {
      * This helper builds a strict schema (to produce nullable types for optional fields),
      * keeps existing {@code additionalProperties} values if present, and only adds the field when it is missing.
      */
-    public static Map<String, Object> toMapForOpenAiResponses(JsonSchemaElement jsonSchemaElement, boolean strict) {
+    public static Map<String, Object> toMapForOpenAiResponses(JsonSchemaElement jsonSchemaElement) {
+        if (jsonSchemaElement instanceof JsonRawSchema) {
+            throw new UnsupportedFeatureException(
+                    "JsonRawSchema is not supported with OpenAI Responses API; use typed JsonSchema elements instead");
+        }
         Map<String, Object> schemaMap = toMap(jsonSchemaElement, true);
         ensureAdditionalPropertiesFalse(schemaMap);
         return schemaMap;
@@ -239,7 +244,8 @@ public class JsonSchemaElementUtils {
         return toMap(jsonSchemaElement, strict, required, null);
     }
 
-    public static Map<String, Object> toMap(JsonSchemaElement jsonSchemaElement, boolean strict, boolean required, String enumType) {
+    public static Map<String, Object> toMap(
+            JsonSchemaElement jsonSchemaElement, boolean strict, boolean required, String enumType) {
         if (jsonSchemaElement instanceof JsonObjectSchema jsonObjectSchema) {
             Map<String, Object> map = new LinkedHashMap<>();
             map.put("type", type("object", strict, required));

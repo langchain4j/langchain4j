@@ -14,6 +14,7 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.http.client.MockHttpClient;
 import dev.langchain4j.http.client.MockHttpClientBuilder;
+import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
@@ -26,6 +27,7 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.openai.OpenAiChatRequestParameters;
 import dev.langchain4j.model.openai.OpenAiChatResponseMetadata;
+import dev.langchain4j.model.openai.OpenAiResponsesChatRequestParameters;
 import dev.langchain4j.model.openai.OpenAiResponsesStreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
@@ -101,6 +103,11 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
+    protected boolean supportsJsonResponseFormatWithRawSchema() {
+        return false;
+    }
+
+    @Override
     public StreamingChatModel createModelWith(ChatModelListener listener) {
         return OpenAiResponsesStreamingChatModel.builder()
                 .apiKey(System.getenv("OPENAI_API_KEY"))
@@ -120,11 +127,6 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
                     && request.name().equals("getWeather")
                     && request.arguments().replace(" ", "").equals("{\"city\":\"Munich\"}");
         }));
-    }
-
-    @Override
-    protected boolean supportsPartialToolStreaming(StreamingChatModel model) {
-        return false;
     }
 
     @Override
@@ -405,6 +407,190 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
         assertThat(toolNode.has("strict")).isFalse();
         assertThat(toolNode.get("parameters").has("additionalProperties")).isFalse();
+    }
+
+    @Test
+    void should_send_previous_response_id_from_request_parameters() throws Exception {
+        MockHttpClient mockHttpClient = new MockHttpClient();
+
+        StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
+                .apiKey("test-key")
+                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                .modelName(GPT_4_1_NANO.toString())
+                .previousResponseId("builder-response-id")
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("Hello"))
+                .parameters(OpenAiResponsesChatRequestParameters.builder()
+                        .previousResponseId("request-response-id")
+                        .build())
+                .build();
+
+        try {
+            model.chat(chatRequest, new TestStreamingChatResponseHandler());
+        } catch (Exception ignored) {
+        }
+
+        JsonNode payload = OBJECT_MAPPER.readTree(mockHttpClient.request().body());
+        assertThat(payload.get("previous_response_id").asText()).isEqualTo("request-response-id");
+    }
+
+    @Test
+    void should_send_previous_response_id_from_default_request_parameters() throws Exception {
+        MockHttpClient mockHttpClient = new MockHttpClient();
+
+        StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
+                .apiKey("test-key")
+                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                .defaultRequestParameters(OpenAiResponsesChatRequestParameters.builder()
+                        .modelName(GPT_4_1_NANO.toString())
+                        .previousResponseId("default-response-id")
+                        .build())
+                .build();
+
+        try {
+            model.chat("Hello", new TestStreamingChatResponseHandler());
+        } catch (Exception ignored) {
+        }
+
+        JsonNode payload = OBJECT_MAPPER.readTree(mockHttpClient.request().body());
+        assertThat(payload.get("previous_response_id").asText()).isEqualTo("default-response-id");
+    }
+
+    @Test
+    void should_use_builder_defaults_when_do_chat_bypasses_parameter_merging() throws Exception {
+        MockHttpClient mockHttpClient = new MockHttpClient();
+
+        OpenAiResponsesStreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
+                .apiKey("test-key")
+                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                .modelName(GPT_4_1_NANO.toString())
+                .temperature(0.25)
+                .topP(0.75)
+                .maxOutputTokens(123)
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("Hello"))
+                .parameters(OpenAiResponsesChatRequestParameters.builder().build())
+                .build();
+
+        try {
+            model.doChat(chatRequest, new TestStreamingChatResponseHandler());
+        } catch (Exception ignored) {
+        }
+
+        JsonNode payload = OBJECT_MAPPER.readTree(mockHttpClient.request().body());
+        assertThat(payload.get("model").asText()).isEqualTo(GPT_4_1_NANO.toString());
+        assertThat(payload.get("temperature").asDouble()).isEqualTo(0.25);
+        assertThat(payload.get("top_p").asDouble()).isEqualTo(0.75);
+        assertThat(payload.get("max_output_tokens").asInt()).isEqualTo(123);
+    }
+
+    @Test
+    void should_emit_partial_thinking_for_reasoning_deltas() {
+        MockHttpClient mockHttpClient = new MockHttpClient(List.of(
+                new ServerSentEvent(null, "{\"type\":\"response.reasoning_text.delta\",\"delta\":\"let me\"}"),
+                new ServerSentEvent(null, "{\"type\":\"response.reasoning_summary_text.delta\",\"delta\":\" think\"}"),
+                new ServerSentEvent(
+                        null,
+                        "{\"type\":\"response.completed\",\"response\":{\"id\":\"resp_123\",\"model\":\"gpt-4.1-nano\",\"status\":\"completed\",\"output\":[],\"usage\":{\"input_tokens\":1,\"output_tokens\":0,\"total_tokens\":1}}}"),
+                new ServerSentEvent(null, "[DONE]")));
+
+        StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
+                .apiKey("test-key")
+                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                .modelName(GPT_4_1_NANO.toString())
+                .build();
+
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat("Hello", handler);
+
+        handler.get();
+        assertThat(handler.getThinking()).isEqualTo("let me think");
+    }
+
+    @Test
+    void should_complete_response_when_completed_event_has_no_text_or_tool_calls() {
+        MockHttpClient mockHttpClient = new MockHttpClient(List.of(
+                new ServerSentEvent(
+                        null,
+                        "{\"type\":\"response.completed\",\"response\":{\"id\":\"resp_123\",\"model\":\"gpt-4.1-nano\",\"status\":\"completed\",\"output\":[],\"usage\":{\"input_tokens\":1,\"output_tokens\":0,\"total_tokens\":1}}}"),
+                new ServerSentEvent(null, "[DONE]")));
+
+        StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
+                .apiKey("test-key")
+                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                .modelName(GPT_4_1_NANO.toString())
+                .build();
+
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat("Hello", handler);
+
+        ChatResponse response = handler.get();
+        assertThat(response.aiMessage().text()).isEmpty();
+        assertThat(response.metadata().finishReason()).isEqualTo(dev.langchain4j.model.output.FinishReason.STOP);
+    }
+
+    @Test
+    void should_surface_response_failed_message_from_error_node() {
+        MockHttpClient mockHttpClient = new MockHttpClient(List.of(
+                new ServerSentEvent(
+                        null,
+                        "{\"type\":\"response.failed\",\"response\":{\"error\":{\"message\":\"tokens exceeded\"}}}"),
+                new ServerSentEvent(null, "[DONE]")));
+
+        StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
+                .apiKey("test-key")
+                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                .modelName(GPT_4_1_NANO.toString())
+                .build();
+
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat("Hello", handler);
+
+        assertThatThrownBy(handler::get).rootCause().hasMessage("Response failed: tokens exceeded");
+    }
+
+    @Test
+    void should_surface_response_error_message_from_error_node() {
+        MockHttpClient mockHttpClient = new MockHttpClient(List.of(
+                new ServerSentEvent(null, "{\"type\":\"response.error\",\"error\":{\"message\":\"request rejected\"}}"),
+                new ServerSentEvent(null, "[DONE]")));
+
+        StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
+                .apiKey("test-key")
+                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                .modelName(GPT_4_1_NANO.toString())
+                .build();
+
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat("Hello", handler);
+
+        assertThatThrownBy(handler::get).rootCause().hasMessage("Response failed: request rejected");
+    }
+
+    @Test
+    void should_map_incomplete_status_to_length_for_completed_callback() {
+        MockHttpClient mockHttpClient = new MockHttpClient(List.of(
+                new ServerSentEvent(
+                        null,
+                        "{\"type\":\"response.incomplete\",\"response\":{\"id\":\"resp_123\",\"model\":\"gpt-4.1-nano\",\"status\":\"incomplete\",\"output\":[],\"usage\":{\"input_tokens\":1,\"output_tokens\":0,\"total_tokens\":1}}}"),
+                new ServerSentEvent(null, "[DONE]")));
+
+        StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
+                .apiKey("test-key")
+                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                .modelName(GPT_4_1_NANO.toString())
+                .build();
+
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat("Hello", handler);
+
+        ChatResponse response = handler.get();
+        assertThat(response.aiMessage().text()).isEmpty();
+        assertThat(response.metadata().finishReason()).isEqualTo(dev.langchain4j.model.output.FinishReason.LENGTH);
     }
 
     @Test

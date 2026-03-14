@@ -67,6 +67,8 @@ class OpenAiResponsesClient {
     private static final String EVENT_FUNCTION_CALL_ARGUMENTS_DELTA = "response.function_call_arguments.delta";
     private static final String EVENT_FUNCTION_CALL_ARGUMENTS_DONE = "response.function_call_arguments.done";
     private static final String EVENT_OUTPUT_ITEM_DONE = "response.output_item.done";
+    private static final String EVENT_REASONING_TEXT_DELTA = "response.reasoning_text.delta";
+    private static final String EVENT_REASONING_SUMMARY_TEXT_DELTA = "response.reasoning_summary_text.delta";
     private static final String EVENT_RESPONSE_COMPLETED = "response.completed";
     private static final String EVENT_RESPONSE_INCOMPLETE = "response.incomplete";
     private static final String EVENT_RESPONSE_FAILED = "response.failed";
@@ -177,10 +179,7 @@ class OpenAiResponsesClient {
             Map<String, Object> payload = buildRequestPayload(chatRequest, config);
             HttpRequest request = buildHttpRequest(payload);
 
-            httpClient.execute(
-                    request,
-                    new DefaultServerSentEventParser(),
-                    new ResponsesApiEventListener(handler, config.maxToolCalls()));
+            httpClient.execute(request, new DefaultServerSentEventParser(), new ResponsesApiEventListener(handler));
 
         } catch (Exception e) {
             withLoggingExceptions(() -> handler.onError(ExceptionMapper.DEFAULT.mapException(e)));
@@ -189,9 +188,6 @@ class OpenAiResponsesClient {
 
     private Map<String, Object> buildRequestPayload(ChatRequest chatRequest, OpenAiResponsesConfig config) {
         ChatRequestParameters parameters = chatRequest.parameters();
-        if (parameters == null) {
-            throw new IllegalArgumentException("chatRequest.parameters() must be provided");
-        }
 
         var input = new ArrayList<Map<String, Object>>();
         for (var msg : chatRequest.messages()) {
@@ -199,21 +195,24 @@ class OpenAiResponsesClient {
         }
 
         var payload = new HashMap<String, Object>();
-        payload.put(FIELD_MODEL, parameters.modelName());
+        payload.put(FIELD_MODEL, getOrDefault(parameters.modelName(), config.modelName()));
         payload.put(FIELD_INPUT, input);
         payload.put(FIELD_STREAM, true);
         payload.put(FIELD_STORE, config.store());
 
-        if (parameters.temperature() != null) {
-            payload.put(FIELD_TEMPERATURE, parameters.temperature());
+        Double temperature = getOrDefault(parameters.temperature(), config.temperature());
+        if (temperature != null) {
+            payload.put(FIELD_TEMPERATURE, temperature);
         }
 
-        if (parameters.topP() != null) {
-            payload.put(FIELD_TOP_P, parameters.topP());
+        Double topP = getOrDefault(parameters.topP(), config.topP());
+        if (topP != null) {
+            payload.put(FIELD_TOP_P, topP);
         }
 
-        if (parameters.maxOutputTokens() != null) {
-            payload.put(FIELD_MAX_OUTPUT_TOKENS, parameters.maxOutputTokens());
+        Integer maxOutputTokens = getOrDefault(parameters.maxOutputTokens(), config.maxOutputTokens());
+        if (maxOutputTokens != null) {
+            payload.put(FIELD_MAX_OUTPUT_TOKENS, maxOutputTokens);
         }
 
         if (config.maxToolCalls() != null) {
@@ -473,7 +472,7 @@ class OpenAiResponsesClient {
                                 + jsonSchema.rootElement().getClass());
             }
 
-            Map<String, Object> schemaMap = toMapForOpenAiResponses(jsonSchema.rootElement(), strict);
+            Map<String, Object> schemaMap = toMapForOpenAiResponses(jsonSchema.rootElement());
             var format = new HashMap<String, Object>();
             format.put(FIELD_TYPE, TYPE_JSON_SCHEMA);
             if (jsonSchema.name() != null) {
@@ -544,7 +543,6 @@ class OpenAiResponsesClient {
     private static class ResponsesApiEventListener implements ServerSentEventListener {
 
         private final StreamingChatResponseHandler handler;
-        private final Integer maxToolCalls;
         private volatile StreamingHandle streamingHandle;
         private final Map<String, ToolExecutionRequest.Builder> toolCallBuilders = new HashMap<>();
         private final Map<String, Integer> toolCallIndices = new HashMap<>();
@@ -553,9 +551,8 @@ class OpenAiResponsesClient {
         private final List<ServerSentEvent> rawServerSentEvents = new ArrayList<>();
         private SuccessfulHttpResponse rawHttpResponse;
 
-        ResponsesApiEventListener(StreamingChatResponseHandler handler, Integer maxToolCalls) {
+        ResponsesApiEventListener(StreamingChatResponseHandler handler) {
             this.handler = handler;
-            this.maxToolCalls = maxToolCalls;
         }
 
         private boolean isCancelled() {
@@ -617,6 +614,11 @@ class OpenAiResponsesClient {
                     var text = node.path(FIELD_DELTA).asText();
                     if (!text.isEmpty()) {
                         InternalStreamingChatResponseHandlerUtils.onPartialResponse(handler, text, streamingHandle);
+                    }
+                } else if (EVENT_REASONING_TEXT_DELTA.equals(type) || EVENT_REASONING_SUMMARY_TEXT_DELTA.equals(type)) {
+                    var thinking = node.path(FIELD_DELTA).asText();
+                    if (!thinking.isEmpty()) {
+                        InternalStreamingChatResponseHandlerUtils.onPartialThinking(handler, thinking, streamingHandle);
                     }
                 } else if (EVENT_OUTPUT_ITEM_ADDED.equals(type)) {
                     var item = node.path(FIELD_ITEM);
@@ -735,53 +737,49 @@ class OpenAiResponsesClient {
                 tokenUsage = usageBuilder.build();
             }
 
-            if (!sb.isEmpty() || !completedToolCalls.isEmpty()) {
-                var text = sb.isEmpty() ? null : sb.toString();
-                var aiMessage = !completedToolCalls.isEmpty() && text != null
-                        ? new AiMessage(text, completedToolCalls)
-                        : !completedToolCalls.isEmpty()
-                                ? AiMessage.from(completedToolCalls)
-                                : new AiMessage(sb.toString());
+            var text = sb.isEmpty() ? null : sb.toString();
+            var aiMessage = !completedToolCalls.isEmpty() && text != null
+                    ? new AiMessage(text, completedToolCalls)
+                    : !completedToolCalls.isEmpty() ? AiMessage.from(completedToolCalls) : new AiMessage(sb.toString());
 
-                var responseBuilder = ChatResponse.builder().aiMessage(aiMessage);
-                var metadataBuilder = OpenAiChatResponseMetadata.builder()
-                        .id(responseNode.path(FIELD_ID).asText(null))
-                        .modelName(responseNode.path(FIELD_MODEL).asText(null));
+            var responseBuilder = ChatResponse.builder().aiMessage(aiMessage);
+            var metadataBuilder = OpenAiChatResponseMetadata.builder()
+                    .id(responseNode.path(FIELD_ID).asText(null))
+                    .modelName(responseNode.path(FIELD_MODEL).asText(null));
 
-                if (responseNode.hasNonNull(FIELD_CREATED)) {
-                    metadataBuilder.created(responseNode.path(FIELD_CREATED).asLong());
-                }
-                if (responseNode.hasNonNull(FIELD_SERVICE_TIER)) {
-                    metadataBuilder.serviceTier(
-                            responseNode.path(FIELD_SERVICE_TIER).asText());
-                }
-                if (responseNode.hasNonNull(FIELD_SYSTEM_FINGERPRINT)) {
-                    metadataBuilder.systemFingerprint(
-                            responseNode.path(FIELD_SYSTEM_FINGERPRINT).asText());
-                }
-                if (tokenUsage != null) {
-                    metadataBuilder.tokenUsage(tokenUsage);
-                }
+            if (responseNode.hasNonNull(FIELD_CREATED)) {
+                metadataBuilder.created(responseNode.path(FIELD_CREATED).asLong());
+            }
+            if (responseNode.hasNonNull(FIELD_SERVICE_TIER)) {
+                metadataBuilder.serviceTier(
+                        responseNode.path(FIELD_SERVICE_TIER).asText());
+            }
+            if (responseNode.hasNonNull(FIELD_SYSTEM_FINGERPRINT)) {
+                metadataBuilder.systemFingerprint(
+                        responseNode.path(FIELD_SYSTEM_FINGERPRINT).asText());
+            }
+            if (tokenUsage != null) {
+                metadataBuilder.tokenUsage(tokenUsage);
+            }
 
-                var finishReason =
-                        determineFinishReason(responseNode.path(FIELD_STATUS).asText(null));
-                if (finishReason != null) {
-                    metadataBuilder.finishReason(finishReason);
-                }
-                if (rawHttpResponse != null) {
-                    metadataBuilder.rawHttpResponse(rawHttpResponse);
-                }
-                if (!rawServerSentEvents.isEmpty()) {
-                    metadataBuilder.rawServerSentEvents(new ArrayList<>(rawServerSentEvents));
-                }
+            var finishReason =
+                    determineFinishReason(responseNode.path(FIELD_STATUS).asText(null));
+            if (finishReason != null) {
+                metadataBuilder.finishReason(finishReason);
+            }
+            if (rawHttpResponse != null) {
+                metadataBuilder.rawHttpResponse(rawHttpResponse);
+            }
+            if (!rawServerSentEvents.isEmpty()) {
+                metadataBuilder.rawServerSentEvents(new ArrayList<>(rawServerSentEvents));
+            }
 
-                responseBuilder.metadata(metadataBuilder.build());
-                if (!isCancelled()) {
-                    try {
-                        handler.onCompleteResponse(responseBuilder.build());
-                    } catch (Exception e) {
-                        withLoggingExceptions(() -> handler.onError(e));
-                    }
+            responseBuilder.metadata(metadataBuilder.build());
+            if (!isCancelled()) {
+                try {
+                    handler.onCompleteResponse(responseBuilder.build());
+                } catch (Exception e) {
+                    withLoggingExceptions(() -> handler.onError(e));
                 }
             }
         }
@@ -820,12 +818,6 @@ class OpenAiResponsesClient {
 
         private void completeToolCall(String itemId, ToolExecutionRequest.Builder builder) {
             if (builder == null || completedToolCallItemIds.contains(itemId)) {
-                return;
-            }
-            if (maxToolCalls != null && completedToolCalls.size() >= maxToolCalls) {
-                completedToolCallItemIds.add(itemId);
-                toolCallBuilders.remove(itemId);
-                toolCallIndices.remove(itemId);
                 return;
             }
             ToolExecutionRequest toolExecutionRequest = builder.build();

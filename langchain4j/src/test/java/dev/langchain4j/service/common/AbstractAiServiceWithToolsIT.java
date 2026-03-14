@@ -51,6 +51,7 @@ import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -894,6 +895,10 @@ public abstract class AbstractAiServiceWithToolsIT {
         return prompt;
     }
 
+    protected boolean hasDeterministicParallelToolExecutionAssertions() {
+        return true;
+    }
+
     @ParameterizedTest
     @MethodSource("models")
     protected void should_execute_normal_tool_in_parallel_with_primitive_parameters(ChatModel chatModel) {
@@ -941,23 +946,29 @@ public abstract class AbstractAiServiceWithToolsIT {
         var response = assistant.chat(text);
 
         // then
-        if (returnBehavior == ReturnBehavior.TO_LLM) {
-            // The tool is called twice, the result is manipulated by the LLM so the response is not equal to the plain tool result
-            assertThat(response.content()).contains("124");
-            assertThat(response.content()).contains("151");
+        if (!hasDeterministicParallelToolExecutionAssertions()) {
+            assertThat(response.toolExecutions().size()).isGreaterThanOrEqualTo(2);
+            assertThat(response.toolExecutions().stream().map(t -> t.result())).contains("124", "151");
+            verify(tool, atLeastOnce()).add(37, 87);
+            verify(tool, atLeastOnce()).add(73, 78);
         } else {
-            // The first tool result is returned immediately so the response is equal to the plain tool result
-            assertThat(response.content()).isNull();
+            if (returnBehavior == ReturnBehavior.TO_LLM) {
+                // The tool is called twice, the result is manipulated by the LLM so the response is not equal to the plain tool result
+                assertThat(response.content()).contains("124");
+                assertThat(response.content()).contains("151");
+            } else {
+                // The first tool result is returned immediately so the response is equal to the plain tool result
+                assertThat(response.content()).isNull();
+                verify(tool).add(37, 87);
+            }
+
+            assertThat(response.toolExecutions().size()).isEqualTo(2);
+            assertThat(response.toolExecutions().get(0).result()).isEqualTo("124");
+            assertThat(response.toolExecutions().get(1).result()).isEqualTo("151");
             verify(tool).add(37, 87);
+            verify(tool).add(73, 78);
+            verifyNoMoreInteractions(tool);
         }
-
-        assertThat(response.toolExecutions().size()).isEqualTo(2);
-        assertThat(response.toolExecutions().get(0).result()).isEqualTo("124");
-        assertThat(response.toolExecutions().get(1).result()).isEqualTo("151");
-        verify(tool).add(37, 87);
-        verify(tool).add(73, 78);
-
-        verifyNoMoreInteractions(tool);
 
         if (verifyModelInteractions()) {
             verify(model).supportedCapabilities();

@@ -27,6 +27,7 @@ import com.openai.models.responses.FunctionTool;
 import com.openai.models.responses.ResponseCompletedEvent;
 import com.openai.models.responses.ResponseCreateParams;
 import com.openai.models.responses.ResponseCreatedEvent;
+import com.openai.models.responses.ResponseError;
 import com.openai.models.responses.ResponseErrorEvent;
 import com.openai.models.responses.ResponseFailedEvent;
 import com.openai.models.responses.ResponseFormatTextConfig;
@@ -77,12 +78,7 @@ import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
-import dev.langchain4j.model.chat.response.PartialResponse;
-import dev.langchain4j.model.chat.response.PartialResponseContext;
-import dev.langchain4j.model.chat.response.PartialThinking;
-import dev.langchain4j.model.chat.response.PartialThinkingContext;
 import dev.langchain4j.model.chat.response.PartialToolCall;
-import dev.langchain4j.model.chat.response.PartialToolCallContext;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.output.FinishReason;
@@ -134,7 +130,6 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
     private final List<ChatModelListener> listeners;
     private final ChatRequestParameters defaultRequestParameters;
     private final Boolean strict;
-    private final AtomicReference<String> lastResponseId = new AtomicReference<>();
 
     private OpenAiOfficialResponsesStreamingChatModel(Builder builder) {
         this.client = builder.client != null
@@ -174,12 +169,12 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         this.streamIncludeObfuscation = builder.streamIncludeObfuscation;
         this.store = getOrDefault(builder.store, false);
         this.listeners = copy(builder.listeners);
-        this.defaultRequestParameters = OpenAiOfficialChatRequestParameters.builder()
+        this.defaultRequestParameters = OpenAiOfficialResponsesChatRequestParameters.builder()
                 .modelName(modelName)
                 .temperature(temperature)
                 .topP(topP)
                 .maxOutputTokens(maxOutputTokens)
-                .maxCompletionTokens(maxOutputTokens)
+                .previousResponseId(previousResponseId)
                 .build();
         this.strict = getOrDefault(builder.strict, false);
     }
@@ -233,12 +228,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             if (parallelToolCalls != null) {
                 paramsBuilder.parallelToolCalls(parallelToolCalls);
             }
-            String effectivePreviousResponseId = previousResponseId;
-            if (effectivePreviousResponseId == null
-                    && Boolean.TRUE.equals(store)
-                    && containsToolExecutionResult(chatRequest)) {
-                effectivePreviousResponseId = lastResponseId.get();
-            }
+            String effectivePreviousResponseId = getPreviousResponseId(chatRequest);
             if (effectivePreviousResponseId != null) {
                 paramsBuilder.previousResponseId(effectivePreviousResponseId);
             }
@@ -308,8 +298,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 }
             });
 
-            var eventHandler = new ResponsesEventHandler(
-                    wrapHandler(handler), responseIdRef, effectiveModelName, streamingHandle, maxToolCalls);
+            var eventHandler = new ResponsesEventHandler(handler, responseIdRef, effectiveModelName, streamingHandle);
 
             // The forEach call blocks, so it is submitted to the executor service to run asynchronously.
             // We keep this on our executor (instead of OpenAIClientAsync callbacks) to ensure that user
@@ -356,63 +345,12 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         return Set.of(Capability.RESPONSE_FORMAT_JSON_SCHEMA);
     }
 
-    private StreamingChatResponseHandler wrapHandler(StreamingChatResponseHandler handler) {
-        return new StreamingChatResponseHandler() {
-            @Override
-            public void onPartialResponse(String partialResponse) {
-                handler.onPartialResponse(partialResponse);
-            }
-
-            @Override
-            public void onPartialResponse(PartialResponse partialResponse, PartialResponseContext context) {
-                handler.onPartialResponse(partialResponse, context);
-            }
-
-            @Override
-            public void onPartialThinking(PartialThinking partialThinking) {
-                handler.onPartialThinking(partialThinking);
-            }
-
-            @Override
-            public void onPartialThinking(PartialThinking partialThinking, PartialThinkingContext context) {
-                handler.onPartialThinking(partialThinking, context);
-            }
-
-            @Override
-            public void onPartialToolCall(PartialToolCall partialToolCall) {
-                handler.onPartialToolCall(partialToolCall);
-            }
-
-            @Override
-            public void onPartialToolCall(PartialToolCall partialToolCall, PartialToolCallContext context) {
-                handler.onPartialToolCall(partialToolCall, context);
-            }
-
-            @Override
-            public void onCompleteToolCall(CompleteToolCall completeToolCall) {
-                handler.onCompleteToolCall(completeToolCall);
-            }
-
-            @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {
-                if (completeResponse != null && completeResponse.metadata() != null) {
-                    String responseId = completeResponse.metadata().id();
-                    if (responseId != null && !responseId.isBlank()) {
-                        lastResponseId.set(responseId);
-                    }
-                }
-                handler.onCompleteResponse(completeResponse);
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                handler.onError(error);
-            }
-        };
-    }
-
-    private static boolean containsToolExecutionResult(ChatRequest chatRequest) {
-        return chatRequest.messages().stream().anyMatch(ToolExecutionResultMessage.class::isInstance);
+    private String getPreviousResponseId(ChatRequest chatRequest) {
+        if (chatRequest.parameters() instanceof OpenAiOfficialResponsesChatRequestParameters parameters
+                && parameters.previousResponseId() != null) {
+            return parameters.previousResponseId();
+        }
+        return previousResponseId;
     }
 
     private static List<ResponseInputItem> toResponseInputItems(ChatMessage msg) {
@@ -551,7 +489,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                                     + jsonSchema.rootElement().getClass());
                 }
 
-                Map<String, Object> schemaMap = toMapForOpenAiResponses(jsonSchema.rootElement(), strict);
+                Map<String, Object> schemaMap = toMapForOpenAiResponses(jsonSchema.rootElement());
                 ResponseFormatTextJsonSchemaConfig.Schema.Builder schemaBuilder =
                         ResponseFormatTextJsonSchemaConfig.Schema.builder();
 
@@ -831,7 +769,6 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         private final AtomicReference<String> responseIdRef;
         private final String modelName;
         private final StreamingHandle streamingHandle;
-        private final Integer maxToolCalls;
         private final Map<String, ToolExecutionRequest.Builder> toolCallBuilders = new HashMap<>();
         private final Map<String, Integer> toolCallIndices = new HashMap<>();
         private final List<ToolExecutionRequest> completedToolCalls = new ArrayList<>();
@@ -845,13 +782,11 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 StreamingChatResponseHandler handler,
                 AtomicReference<String> responseIdRef,
                 String modelName,
-                StreamingHandle streamingHandle,
-                Integer maxToolCalls) {
+                StreamingHandle streamingHandle) {
             this.handler = handler;
             this.responseIdRef = responseIdRef;
             this.modelName = modelName;
             this.streamingHandle = streamingHandle;
-            this.maxToolCalls = maxToolCalls;
         }
 
         void handleEvent(ResponseStreamEvent event) {
@@ -997,17 +932,16 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             var builder = toolCallBuilders.remove(itemId);
             var index = toolCallIndices.remove(itemId);
             if (builder != null && index != null) {
-                if (maxToolCalls != null && completedToolCalls.size() >= maxToolCalls) {
-                    return;
-                }
                 builder.arguments(event.arguments());
                 ToolExecutionRequest toolExecutionRequest = builder.build();
                 completedToolCalls.add(toolExecutionRequest);
 
-                try {
-                    handler.onCompleteToolCall(new CompleteToolCall(index, toolExecutionRequest));
-                } catch (Exception e) {
-                    withLoggingExceptions(() -> handler.onError(e));
+                if (!streamingHandle.isCancelled()) {
+                    try {
+                        handler.onCompleteToolCall(new CompleteToolCall(index, toolExecutionRequest));
+                    } catch (Exception e) {
+                        withLoggingExceptions(() -> handler.onError(e));
+                    }
                 }
             } else {
                 logger.warn("No builder for itemId in argumentsDone: {}", itemId);
@@ -1023,7 +957,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
             // Extract status and map to finish reason
             response.status().ifPresent(status -> {
-                this.finishReason = mapStatusToFinishReason(status.toString());
+                this.finishReason = mapStatusToFinishReason(status.asString());
             });
 
             // Extract token usage and complete
@@ -1049,8 +983,16 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
         private void handleFailed(ResponseFailedEvent event) {
             var response = event.response();
-            var error = response.error();
-            withLoggingExceptions(() -> handler.onError(new RuntimeException("Response failed: " + error)));
+            var message = response.error().map(this::extractErrorMessage).orElse("Response failed");
+            withLoggingExceptions(() -> handler.onError(new RuntimeException("Response failed: " + message)));
+        }
+
+        private String extractErrorMessage(ResponseError error) {
+            var message = error.message();
+            if (message == null || message.isBlank()) {
+                return error.toString();
+            }
+            return message;
         }
 
         private void handleIncomplete(ResponseIncompleteEvent event) {
@@ -1106,10 +1048,12 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                     .metadata(metadataBuilder.build())
                     .build();
 
-            try {
-                handler.onCompleteResponse(chatResponse);
-            } catch (Exception e) {
-                withLoggingExceptions(() -> handler.onError(e));
+            if (!streamingHandle.isCancelled()) {
+                try {
+                    handler.onCompleteResponse(chatResponse);
+                } catch (Exception e) {
+                    withLoggingExceptions(() -> handler.onError(e));
+                }
             }
         }
     }
