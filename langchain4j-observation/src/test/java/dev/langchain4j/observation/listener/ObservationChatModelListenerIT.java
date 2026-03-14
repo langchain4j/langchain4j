@@ -1,12 +1,12 @@
 package dev.langchain4j.observation.listener;
 
-import static convention.ChatModelDocumentation.HighCardinalityValues.INPUT_TOKENS;
-import static convention.ChatModelDocumentation.HighCardinalityValues.OUTPUT_TOKENS;
-import static convention.ChatModelDocumentation.LowCardinalityValues.OPERATION_NAME;
-import static convention.ChatModelDocumentation.LowCardinalityValues.OUTCOME;
-import static convention.ChatModelDocumentation.LowCardinalityValues.REQUEST_MODEL;
-import static convention.ChatModelDocumentation.LowCardinalityValues.RESPONSE_MODEL;
-import static convention.ChatModelDocumentation.LowCardinalityValues.TOKEN_TYPE;
+import static dev.langchain4j.observation.convention.ChatModelDocumentation.HighCardinalityValues.INPUT_TOKENS;
+import static dev.langchain4j.observation.convention.ChatModelDocumentation.HighCardinalityValues.OUTPUT_TOKENS;
+import static dev.langchain4j.observation.convention.ChatModelDocumentation.LowCardinalityValues.OPERATION_NAME;
+import static dev.langchain4j.observation.convention.ChatModelDocumentation.LowCardinalityValues.OUTCOME;
+import static dev.langchain4j.observation.convention.ChatModelDocumentation.LowCardinalityValues.REQUEST_MODEL;
+import static dev.langchain4j.observation.convention.ChatModelDocumentation.LowCardinalityValues.RESPONSE_MODEL;
+import static dev.langchain4j.observation.convention.ChatModelDocumentation.LowCardinalityValues.TOKEN_TYPE;
 import static dev.langchain4j.observation.listener.ObservationChatModelListener.TOKEN_USAGE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
