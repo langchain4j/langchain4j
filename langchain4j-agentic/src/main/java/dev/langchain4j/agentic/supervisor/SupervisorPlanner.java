@@ -155,6 +155,9 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
                     .orElse(null);
             if (argType != null) {
                 Object existingValue = agenticScope.readState(key);
+                if (existingValue == null) {
+                    return true;
+                }
                 // avoid overwriting a structured state with an unstructured argument generated from supervisor's LLM
                 // response
                 return !argType.isAssignableFrom(existingValue.getClass())

@@ -2,6 +2,7 @@ package dev.langchain4j.agentic;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.agentic.internal.DelayedResponse;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -148,6 +149,30 @@ class WriteArgumentToScopeTest {
         scope.writeState("loan", new LoanApplication("John", 30, 80000));
 
         assertThat(shouldWrite(agent, "loan", null)).isFalse();
+    }
+
+    // -- edge: existing value resolved to null (async agent) → allow overwrite --
+
+    @Test
+    void should_allow_overwrite_when_existing_value_resolves_to_null() throws Exception {
+        AgentInstance agent = stubAgent("agent", List.of(new AgentArgument(Map.class, "data")));
+
+        // Write a DelayedResponse that resolves to null — simulates an async agent whose output is null.
+        // hasState() sees a non-null object → true, but readState() resolves it to null.
+        scope.writeState("data", new DelayedResponse<Object>() {
+            @Override
+            public boolean isDone() {
+                return true;
+            }
+
+            @Override
+            public Object blockingGet() {
+                return null;
+            }
+        });
+
+        assertThat(shouldWrite(agent, "data", new LinkedHashMap<>(Map.of("id", 1))))
+                .isTrue();
     }
 
     // -- edge: no existing state → always allow first write --
