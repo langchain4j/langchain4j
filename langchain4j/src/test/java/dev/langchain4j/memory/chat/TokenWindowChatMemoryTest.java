@@ -19,6 +19,7 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.model.openai.OpenAiChatModelName;
 import dev.langchain4j.model.openai.OpenAiTokenCountEstimator;
+import java.util.List;
 import java.util.function.Function;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
@@ -839,5 +840,101 @@ class TokenWindowChatMemoryTest implements WithAssertions {
             chatMemory.set(userMessage("world"), aiMessage("hi"));
         });
         assertThat(counts).isEqualTo(new HitCountChatMemoryStore.HitCounts(0, 1, 0));
+    }
+
+    @Test
+    void should_not_modify_messages_when_auto_recover_is_disabled() {
+
+        var store = new HitCountChatMemoryStore();
+
+        ToolExecutionRequest toolRequest = ToolExecutionRequest.builder()
+                .id("1")
+                .name("tool")
+                .arguments("{}")
+                .build();
+        AiMessage aiMessageWithTools = AiMessage.from(toolRequest);
+
+        store.updateMessages("default", List.of(userMessage("hello"), aiMessageWithTools));
+
+        ChatMemory chatMemory = TokenWindowChatMemory.builder()
+                .maxTokens(1000, TOKEN_COUNT_ESTIMATOR)
+                .chatMemoryStore(store)
+                .build();
+
+        assertThat(chatMemory.messages()).containsExactly(userMessage("hello"), aiMessageWithTools);
+    }
+
+    @Test
+    void should_remove_orphaned_tool_messages_when_auto_recover_is_enabled() {
+
+        var store = new HitCountChatMemoryStore();
+
+        ToolExecutionRequest toolRequest = ToolExecutionRequest.builder()
+                .id("1")
+                .name("tool")
+                .arguments("{}")
+                .build();
+        AiMessage aiMessageWithTools = AiMessage.from(toolRequest);
+
+        store.updateMessages("default", List.of(userMessage("hello"), aiMessageWithTools));
+
+        ChatMemory chatMemory = TokenWindowChatMemory.builder()
+                .maxTokens(1000, TOKEN_COUNT_ESTIMATOR)
+                .chatMemoryStore(store)
+                .autoRecoverOrphanedToolMessages(true)
+                .build();
+
+        assertThat(chatMemory.messages()).containsExactly(userMessage("hello"));
+    }
+
+    @Test
+    void messages_should_not_write_back_to_store_when_auto_recover_cleans_up() {
+
+        var store = new HitCountChatMemoryStore();
+
+        ToolExecutionRequest toolRequest = ToolExecutionRequest.builder()
+                .id("1")
+                .name("tool")
+                .arguments("{}")
+                .build();
+        AiMessage aiMessageWithTools = AiMessage.from(toolRequest);
+
+        store.updateMessages("default", List.of(userMessage("hello"), aiMessageWithTools));
+
+        ChatMemory chatMemory = TokenWindowChatMemory.builder()
+                .maxTokens(1000, TOKEN_COUNT_ESTIMATOR)
+                .chatMemoryStore(store)
+                .autoRecoverOrphanedToolMessages(true)
+                .build();
+
+        var counts = store.measureHitCounts(chatMemory::messages);
+        assertThat(counts).isEqualTo(new HitCountChatMemoryStore.HitCounts(1, 0, 0));
+
+        assertThat(store.getMessages("default")).containsExactly(userMessage("hello"), aiMessageWithTools);
+    }
+
+    @Test
+    void add_after_auto_recover_should_persist_cleaned_messages() {
+
+        var store = new HitCountChatMemoryStore();
+
+        ToolExecutionRequest toolRequest = ToolExecutionRequest.builder()
+                .id("1")
+                .name("tool")
+                .arguments("{}")
+                .build();
+        AiMessage aiMessageWithTools = AiMessage.from(toolRequest);
+
+        store.updateMessages("default", List.of(userMessage("hello"), aiMessageWithTools));
+
+        ChatMemory chatMemory = TokenWindowChatMemory.builder()
+                .maxTokens(1000, TOKEN_COUNT_ESTIMATOR)
+                .chatMemoryStore(store)
+                .autoRecoverOrphanedToolMessages(true)
+                .build();
+
+        chatMemory.add(userMessage("world"));
+
+        assertThat(store.getMessages("default")).containsExactly(userMessage("hello"), userMessage("world"));
     }
 }
