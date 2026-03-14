@@ -32,6 +32,22 @@ public interface ChatModel {
      * @return a {@link ChatResponse}, containing all the outputs from the LLM
      */
     default ChatResponse chat(ChatRequest chatRequest) {
+        return chat(chatRequest, ChatRequestOptions.EMPTY);
+    }
+
+    /**
+     * Interacts with the chat model, passing the provided options to control
+     * the invocation behavior. Options are not sent to the LLM provider;
+     * they are only used within the LangChain4j invocation chain and
+     * {@link ChatModelListener}s.
+     *
+     * @param chatRequest a {@link ChatRequest}, containing all the inputs to the LLM
+     * @param options     a {@link ChatRequestOptions} containing invocation options
+     *                    (e.g., listener attributes)
+     * @return a {@link ChatResponse}, containing all the outputs from the LLM
+     * @since 1.13.0
+     */
+    default ChatResponse chat(ChatRequest chatRequest, ChatRequestOptions options) {
 
         ChatRequest finalChatRequest = ChatRequest.builder()
                 .messages(chatRequest.messages())
@@ -39,7 +55,8 @@ public interface ChatModel {
                 .build();
 
         List<ChatModelListener> listeners = listeners();
-        Map<Object, Object> attributes = new ConcurrentHashMap<>();
+        ChatRequestOptions effectiveOptions = options != null ? options : ChatRequestOptions.EMPTY;
+        Map<Object, Object> attributes = new ConcurrentHashMap<>(effectiveOptions.listenerAttributes());
 
         onRequest(finalChatRequest, provider(), attributes, listeners);
         try {
