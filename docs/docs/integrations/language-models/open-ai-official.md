@@ -272,3 +272,5 @@ StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
 - **Streaming-only in LangChain4j**: Only the streaming model is implemented for Responses today. Non-streaming support can be added later.
 - **Cancellation**: Both `OpenAiOfficialStreamingChatModel` and the Responses streaming model return a `StreamingHandle` that supports `cancel()`. Responses API aligns better with server-side cancellation semantics and emits explicit status events.
 - **Same features**: Tools, listeners, and common request parameters are supported. Responses has a slightly different payload shape, but LangChain4j maps the features consistently.
+- **JSON schema response format**: Structured output with `RESPONSE_FORMAT_JSON_SCHEMA` is supported for typed schemas rooted at `JsonObjectSchema`. `JsonRawSchema` is not supported in Responses mode.
+- **Response chaining**: `previousResponseId` can be supplied explicitly through Responses request parameters for multi-turn chaining when the provider account supports it.
