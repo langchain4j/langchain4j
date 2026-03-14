@@ -24,7 +24,15 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Internal
@@ -36,12 +44,26 @@ public class JsonSchemaElementUtils {
         return jsonSchemaElementFrom(clazz, clazz, null, false, new LinkedHashMap<>());
     }
 
+    public static JsonSchemaElement jsonSchemaElementFrom(Class<?> clazz, boolean includeInheritedFields) {
+        return jsonSchemaElementFrom(clazz, clazz, null, false, new LinkedHashMap<>(), includeInheritedFields);
+    }
+
     public static JsonSchemaElement jsonSchemaElementFrom(
             Class<?> clazz,
             Type type,
             String fieldDescription,
             boolean areSubFieldsRequiredByDefault,
             Map<Class<?>, VisitedClassMetadata> visited) {
+        return jsonSchemaElementFrom(clazz, type, fieldDescription, areSubFieldsRequiredByDefault, visited, false);
+    }
+
+    public static JsonSchemaElement jsonSchemaElementFrom(
+            Class<?> clazz,
+            Type type,
+            String fieldDescription,
+            boolean areSubFieldsRequiredByDefault,
+            Map<Class<?>, VisitedClassMetadata> visited,
+            boolean includeInheritedFields) {
         if (isJsonString(clazz)) {
             return JsonStringSchema.builder()
                     .description(Optional.ofNullable(fieldDescription).orElse(descriptionFrom(clazz)))
@@ -72,7 +94,12 @@ public class JsonSchemaElementUtils {
         if (clazz.isArray()) {
             return JsonArraySchema.builder()
                     .items(jsonSchemaElementFrom(
-                            clazz.getComponentType(), null, null, areSubFieldsRequiredByDefault, visited))
+                            clazz.getComponentType(),
+                            null,
+                            null,
+                            areSubFieldsRequiredByDefault,
+                            visited,
+                            includeInheritedFields))
                     .description(fieldDescription)
                     .build();
         }
@@ -80,12 +107,18 @@ public class JsonSchemaElementUtils {
         if (Collection.class.isAssignableFrom(clazz)) {
             return JsonArraySchema.builder()
                     .items(jsonSchemaElementFrom(
-                            getActualType(type), null, null, areSubFieldsRequiredByDefault, visited))
+                            getActualType(type),
+                            null,
+                            null,
+                            areSubFieldsRequiredByDefault,
+                            visited,
+                            includeInheritedFields))
                     .description(fieldDescription)
                     .build();
         }
 
-        return jsonObjectOrReferenceSchemaFrom(clazz, fieldDescription, areSubFieldsRequiredByDefault, visited, false);
+        return jsonObjectOrReferenceSchemaFrom(
+                clazz, fieldDescription, areSubFieldsRequiredByDefault, visited, false, includeInheritedFields);
     }
 
     public static JsonSchemaElement jsonObjectOrReferenceSchemaFrom(
@@ -94,6 +127,17 @@ public class JsonSchemaElementUtils {
             boolean areSubFieldsRequiredByDefault,
             Map<Class<?>, VisitedClassMetadata> visited,
             boolean setDefinitions) {
+        return jsonObjectOrReferenceSchemaFrom(
+                type, description, areSubFieldsRequiredByDefault, visited, setDefinitions, false);
+    }
+
+    public static JsonSchemaElement jsonObjectOrReferenceSchemaFrom(
+            Class<?> type,
+            String description,
+            boolean areSubFieldsRequiredByDefault,
+            Map<Class<?>, VisitedClassMetadata> visited,
+            boolean setDefinitions,
+            boolean includeInheritedFields) {
         if (visited.containsKey(type) && isCustomClass(type)) {
             VisitedClassMetadata visitedClassMetadata = visited.get(type);
             JsonSchemaElement jsonSchemaElement = visitedClassMetadata.jsonSchemaElement;
@@ -117,7 +161,7 @@ public class JsonSchemaElementUtils {
 
         Map<String, JsonSchemaElement> properties = new LinkedHashMap<>();
         List<String> required = new ArrayList<>();
-        for (Field field : type.getDeclaredFields()) {
+        for (Field field : collectFields(type, includeInheritedFields)) {
             String fieldName = field.getName();
             if (isStatic(field.getModifiers()) || fieldName.equals("__$hits$__") || fieldName.startsWith("this$")) {
                 continue;
@@ -127,7 +171,12 @@ public class JsonSchemaElementUtils {
             }
             String fieldDescription = descriptionFrom(field);
             JsonSchemaElement jsonSchemaElement = jsonSchemaElementFrom(
-                    field.getType(), field.getGenericType(), fieldDescription, areSubFieldsRequiredByDefault, visited);
+                    field.getType(),
+                    field.getGenericType(),
+                    fieldDescription,
+                    areSubFieldsRequiredByDefault,
+                    visited,
+                    includeInheritedFields);
             properties.put(fieldName, jsonSchemaElement);
         }
 
@@ -151,6 +200,31 @@ public class JsonSchemaElementUtils {
         }
 
         return builder.build();
+    }
+
+    public static List<Field> collectFields(Class<?> type, boolean includeInheritedFields) {
+        if (!includeInheritedFields) {
+            return List.of(type.getDeclaredFields());
+        }
+
+        // Collect the class hierarchy from root to leaf
+        List<Class<?>> hierarchy = new ArrayList<>();
+        Class<?> current = type;
+        while (current != null && current != Object.class) {
+            hierarchy.add(current);
+            current = current.getSuperclass();
+        }
+        Collections.reverse(hierarchy);
+
+        // Parent fields first, child fields override same-name parent fields
+        LinkedHashMap<String, Field> fieldsByName = new LinkedHashMap<>();
+        for (Class<?> clazz : hierarchy) {
+            for (Field field : clazz.getDeclaredFields()) {
+                fieldsByName.put(field.getName(), field);
+            }
+        }
+
+        return new ArrayList<>(fieldsByName.values());
     }
 
     private static boolean isRequired(Field field, boolean defaultValue) {
@@ -227,7 +301,8 @@ public class JsonSchemaElementUtils {
         return toMap(jsonSchemaElement, strict, required, null);
     }
 
-    public static Map<String, Object> toMap(JsonSchemaElement jsonSchemaElement, boolean strict, boolean required, String enumType) {
+    public static Map<String, Object> toMap(
+            JsonSchemaElement jsonSchemaElement, boolean strict, boolean required, String enumType) {
         if (jsonSchemaElement instanceof JsonObjectSchema jsonObjectSchema) {
             Map<String, Object> map = new LinkedHashMap<>();
             map.put("type", type("object", strict, required));

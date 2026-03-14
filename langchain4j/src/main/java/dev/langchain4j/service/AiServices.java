@@ -8,7 +8,6 @@ import static java.util.stream.Collectors.toList;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ReturnBehavior;
-import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -21,6 +20,7 @@ import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
 import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
@@ -447,6 +447,25 @@ public abstract class AiServices<T> {
      */
     public AiServices<T> moderationModel(ModerationModel moderationModel) {
         context.moderationModel = moderationModel;
+        return this;
+    }
+
+    /**
+     * When enabled, inherited fields from superclasses will be included in the JSON schema
+     * generated for tool parameter types.
+     * <p>
+     * By default, only fields declared directly on the class are included.
+     * <p>
+     * <b>Note:</b> Enabling this may expose fields from parent classes that were not intended
+     * to be part of the tool schema (e.g., internal or sensitive fields). Review your class
+     * hierarchies before enabling.
+     *
+     * @param includeInheritedFields whether to include inherited fields
+     * @return builder
+     * @since 1.13.0
+     */
+    public AiServices<T> includeInheritedFields(boolean includeInheritedFields) {
+        context.includeInheritedFields = includeInheritedFields;
         return this;
     }
 

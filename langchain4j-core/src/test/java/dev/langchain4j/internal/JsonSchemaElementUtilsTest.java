@@ -19,6 +19,7 @@ import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.output.structured.Description;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Deque;
@@ -297,16 +298,17 @@ class JsonSchemaElementUtilsTest {
 
         // given
         enum MyEnum {
-            A, B, C;
+            A,
+            B,
+            C;
         }
 
         // when
         JsonSchemaElement schema = jsonSchemaElementFrom(MyEnum.class);
 
         // then
-        assertThat(schema).isEqualTo(JsonEnumSchema.builder()
-                .enumValues("A", "B", "C")
-                .build());
+        assertThat(schema)
+                .isEqualTo(JsonEnumSchema.builder().enumValues("A", "B", "C").build());
     }
 
     @Test
@@ -314,7 +316,9 @@ class JsonSchemaElementUtilsTest {
 
         // given
         enum MyEnumWithToString {
-            A, B, C;
+            A,
+            B,
+            C;
 
             @Override
             public String toString() {
@@ -328,61 +332,48 @@ class JsonSchemaElementUtilsTest {
         JsonSchemaElement schema = jsonSchemaElementFrom(MyEnumWithToString.class);
 
         // then
-        assertThat(schema).isEqualTo(JsonEnumSchema.builder()
-                .enumValues("A", "B", "C")
-                .build());
+        assertThat(schema)
+                .isEqualTo(JsonEnumSchema.builder().enumValues("A", "B", "C").build());
     }
 
     @Test
     void shouldConvertJsonStringSchemaToMap() {
-        JsonStringSchema schema = JsonStringSchema.builder()
-                .description("string description")
-                .build();
+        JsonStringSchema schema =
+                JsonStringSchema.builder().description("string description").build();
 
         Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
 
-        assertThat(map)
-                .containsEntry("type", "string")
-                .containsEntry("description", "string description");
+        assertThat(map).containsEntry("type", "string").containsEntry("description", "string description");
     }
 
     @Test
     void shouldConvertJsonIntegerSchemaToMap() {
-        JsonIntegerSchema schema = JsonIntegerSchema.builder()
-                .description("integer description")
-                .build();
+        JsonIntegerSchema schema =
+                JsonIntegerSchema.builder().description("integer description").build();
 
         Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
 
-        assertThat(map)
-                .containsEntry("type", "integer")
-                .containsEntry("description", "integer description");
+        assertThat(map).containsEntry("type", "integer").containsEntry("description", "integer description");
     }
 
     @Test
     void shouldConvertJsonNumberSchemaToMap() {
-        JsonNumberSchema schema = JsonNumberSchema.builder()
-                .description("number description")
-                .build();
+        JsonNumberSchema schema =
+                JsonNumberSchema.builder().description("number description").build();
 
         Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
 
-        assertThat(map)
-                .containsEntry("type", "number")
-                .containsEntry("description", "number description");
+        assertThat(map).containsEntry("type", "number").containsEntry("description", "number description");
     }
 
     @Test
     void shouldConvertJsonBooleanSchemaToMap() {
-        JsonBooleanSchema schema = JsonBooleanSchema.builder()
-                .description("boolean description")
-                .build();
+        JsonBooleanSchema schema =
+                JsonBooleanSchema.builder().description("boolean description").build();
 
         Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
 
-        assertThat(map)
-                .containsEntry("type", "boolean")
-                .containsEntry("description", "boolean description");
+        assertThat(map).containsEntry("type", "boolean").containsEntry("description", "boolean description");
     }
 
     @Test
@@ -439,9 +430,8 @@ class JsonSchemaElementUtilsTest {
 
     @Test
     void shouldConvertJsonReferenceSchemaToMap() {
-        JsonReferenceSchema schema = JsonReferenceSchema.builder()
-                .reference("my-ref")
-                .build();
+        JsonReferenceSchema schema =
+                JsonReferenceSchema.builder().reference("my-ref").build();
 
         Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
 
@@ -453,8 +443,7 @@ class JsonSchemaElementUtilsTest {
         JsonAnyOfSchema schema = JsonAnyOfSchema.builder()
                 .anyOf(Arrays.asList(
                         JsonSchemaElementUtils.jsonSchemaElementFrom(String.class),
-                        JsonSchemaElementUtils.jsonSchemaElementFrom(Integer.class)
-                ))
+                        JsonSchemaElementUtils.jsonSchemaElementFrom(Integer.class)))
                 .description("anyOf description")
                 .build();
 
@@ -481,10 +470,107 @@ class JsonSchemaElementUtilsTest {
     @Test
     void shouldConvertJsonRawSchemaToMap() {
         Map<String, Object> rawMap = Map.of("foo", "bar");
-        JsonRawSchema schema = JsonRawSchema.builder().schema(Json.toJson(rawMap)).build();
+        JsonRawSchema schema =
+                JsonRawSchema.builder().schema(Json.toJson(rawMap)).build();
 
         Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
 
         assertThat(map).containsEntry("foo", "bar");
+    }
+
+    // --- Inherited fields tests ---
+
+    static class ParentClass {
+        String parentField;
+        int parentAge;
+    }
+
+    static class ChildClass extends ParentClass {
+        String childField;
+    }
+
+    @Test
+    void should_not_include_inherited_fields_by_default() {
+        // when
+        JsonSchemaElement schema = jsonSchemaElementFrom(ChildClass.class);
+
+        // then
+        assertThat(schema).isInstanceOf(JsonObjectSchema.class);
+        JsonObjectSchema objectSchema = (JsonObjectSchema) schema;
+        assertThat(objectSchema.properties()).containsKey("childField");
+        assertThat(objectSchema.properties()).doesNotContainKey("parentField");
+        assertThat(objectSchema.properties()).doesNotContainKey("parentAge");
+    }
+
+    @Test
+    void should_include_inherited_fields_when_enabled() {
+        // when
+        JsonSchemaElement schema = jsonSchemaElementFrom(ChildClass.class, true);
+
+        // then
+        assertThat(schema).isInstanceOf(JsonObjectSchema.class);
+        JsonObjectSchema objectSchema = (JsonObjectSchema) schema;
+        assertThat(objectSchema.properties()).containsKey("childField");
+        assertThat(objectSchema.properties()).containsKey("parentField");
+        assertThat(objectSchema.properties()).containsKey("parentAge");
+    }
+
+    static class GrandparentClass {
+        String grandparentField;
+    }
+
+    static class MiddleClass extends GrandparentClass {
+        String middleField;
+    }
+
+    static class GrandchildClass extends MiddleClass {
+        String grandchildField;
+    }
+
+    @Test
+    void should_include_fields_from_entire_hierarchy() {
+        // when
+        JsonSchemaElement schema = jsonSchemaElementFrom(GrandchildClass.class, true);
+
+        // then
+        assertThat(schema).isInstanceOf(JsonObjectSchema.class);
+        JsonObjectSchema objectSchema = (JsonObjectSchema) schema;
+        assertThat(objectSchema.properties()).containsKey("grandchildField");
+        assertThat(objectSchema.properties()).containsKey("middleField");
+        assertThat(objectSchema.properties()).containsKey("grandparentField");
+    }
+
+    static class ParentWithShadowed {
+        String name;
+    }
+
+    static class ChildWithShadowed extends ParentWithShadowed {
+        String name; // shadows parent field
+        String extra;
+    }
+
+    @Test
+    void child_field_should_take_precedence_over_parent_shadowed_field() {
+        // when
+        List<java.lang.reflect.Field> fields = collectFields(ChildWithShadowed.class, true);
+
+        // then - child's "name" should be present, not parent's
+        assertThat(fields).hasSize(2);
+        assertThat(fields.stream().map(java.lang.reflect.Field::getName)).containsExactly("name", "extra");
+        assertThat(fields.get(0).getDeclaringClass()).isEqualTo(ChildWithShadowed.class);
+    }
+
+    // --- Parent-first ordering test ---
+
+    @Test
+    void should_order_inherited_fields_parent_first() {
+        // when
+        JsonSchemaElement schema = jsonSchemaElementFrom(GrandchildClass.class, true);
+
+        // then - parent fields should appear before child fields
+        assertThat(schema).isInstanceOf(JsonObjectSchema.class);
+        JsonObjectSchema objectSchema = (JsonObjectSchema) schema;
+        List<String> fieldNames = new ArrayList<>(objectSchema.properties().keySet());
+        assertThat(fieldNames).containsExactly("grandparentField", "middleField", "grandchildField");
     }
 }
