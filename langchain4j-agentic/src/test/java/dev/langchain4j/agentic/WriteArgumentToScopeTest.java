@@ -6,9 +6,9 @@ import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
+import dev.langchain4j.agentic.supervisor.SupervisorContextStrategy;
 import dev.langchain4j.agentic.supervisor.SupervisorPlanner;
 import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
-import dev.langchain4j.agentic.supervisor.SupervisorContextStrategy;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -36,17 +36,21 @@ class WriteArgumentToScopeTest {
     @BeforeEach
     void setUp() throws Exception {
         planner = new SupervisorPlanner(
-                null, null, 10,
+                null,
+                null,
+                10,
                 SupervisorContextStrategy.CHAT_MEMORY,
                 SupervisorResponseStrategy.LAST,
-                null, null, null);
+                null,
+                null,
+                null);
 
         writeArgumentToScope = SupervisorPlanner.class.getDeclaredMethod(
                 "writeArgumentToScope", AgenticScope.class, AgentInstance.class, String.class, Object.class);
         writeArgumentToScope.setAccessible(true);
 
-        Constructor<DefaultAgenticScope> ctor = DefaultAgenticScope.class.getDeclaredConstructor(
-                DefaultAgenticScope.Kind.class);
+        Constructor<DefaultAgenticScope> ctor =
+                DefaultAgenticScope.class.getDeclaredConstructor(DefaultAgenticScope.Kind.class);
         ctor.setAccessible(true);
         scope = ctor.newInstance(DefaultAgenticScope.Kind.EPHEMERAL);
     }
@@ -69,7 +73,8 @@ class WriteArgumentToScopeTest {
         scope.writeState("data", new LinkedHashMap<>(Map.of("id", 1)));
 
         // Second call should be allowed
-        assertThat(shouldWrite(agent, "data", new LinkedHashMap<>(Map.of("id", 2)))).isTrue();
+        assertThat(shouldWrite(agent, "data", new LinkedHashMap<>(Map.of("id", 2))))
+                .isTrue();
     }
 
     @Test
@@ -87,7 +92,8 @@ class WriteArgumentToScopeTest {
 
         scope.writeState("payload", new LinkedHashMap<>(Map.of("old", 1)));
 
-        assertThat(shouldWrite(agent, "payload", new LinkedHashMap<>(Map.of("new", 2)))).isTrue();
+        assertThat(shouldWrite(agent, "payload", new LinkedHashMap<>(Map.of("new", 2))))
+                .isTrue();
     }
 
     @Test
@@ -107,7 +113,8 @@ class WriteArgumentToScopeTest {
 
         scope.writeState("loan", new LoanApplication("John", 30, 80000));
 
-        assertThat(shouldWrite(agent, "loan", new LinkedHashMap<>(Map.of("applicantName", "John")))).isFalse();
+        assertThat(shouldWrite(agent, "loan", new LinkedHashMap<>(Map.of("applicantName", "John"))))
+                .isFalse();
     }
 
     @Test
@@ -128,7 +135,8 @@ class WriteArgumentToScopeTest {
         // Scope has a LinkedHashMap but argType expects LoanApplication — incompatible existing value
         scope.writeState("loan", new LinkedHashMap<>(Map.of("stale", true)));
 
-        assertThat(shouldWrite(agent, "loan", new LinkedHashMap<>(Map.of("also_stale", true)))).isTrue();
+        assertThat(shouldWrite(agent, "loan", new LinkedHashMap<>(Map.of("also_stale", true))))
+                .isTrue();
     }
 
     // -- edge: null value should not overwrite structured state --
@@ -148,7 +156,8 @@ class WriteArgumentToScopeTest {
     void should_allow_first_write_when_scope_has_no_existing_state() throws Exception {
         AgentInstance agent = stubAgent("agent", List.of(new AgentArgument(Map.class, "data")));
 
-        assertThat(shouldWrite(agent, "data", new LinkedHashMap<>(Map.of("id", 1)))).isTrue();
+        assertThat(shouldWrite(agent, "data", new LinkedHashMap<>(Map.of("id", 1))))
+                .isTrue();
     }
 
     // -- edge: key not declared on agent → allow write --

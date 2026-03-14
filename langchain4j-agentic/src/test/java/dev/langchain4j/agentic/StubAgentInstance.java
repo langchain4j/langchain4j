@@ -21,16 +21,63 @@ class StubAgentInstance implements AgentInstance {
         this.arguments = arguments;
     }
 
-    @Override public String name() { return name; }
-    @Override public List<AgentArgument> arguments() { return arguments; }
-    @Override public String agentId() { return name; }
-    @Override public String description() { return ""; }
-    @Override public Class<?> type() { return Object.class; }
-    @Override public Class<? extends Planner> plannerType() { return null; }
-    @Override public Type outputType() { return String.class; }
-    @Override public String outputKey() { return null; }
-    @Override public boolean async() { return false; }
-    @Override public AgentInstance parent() { return null; }
-    @Override public List<AgentInstance> subagents() { return List.of(); }
-    @Override public AgenticSystemTopology topology() { return AgenticSystemTopology.AI_AGENT; }
+    @Override
+    public String name() {
+        return name;
+    }
+
+    @Override
+    public List<AgentArgument> arguments() {
+        return arguments;
+    }
+
+    @Override
+    public String agentId() {
+        return name;
+    }
+
+    @Override
+    public String description() {
+        return "";
+    }
+
+    @Override
+    public Class<?> type() {
+        return Object.class;
+    }
+
+    @Override
+    public Class<? extends Planner> plannerType() {
+        return null;
+    }
+
+    @Override
+    public Type outputType() {
+        return String.class;
+    }
+
+    @Override
+    public String outputKey() {
+        return null;
+    }
+
+    @Override
+    public boolean async() {
+        return false;
+    }
+
+    @Override
+    public AgentInstance parent() {
+        return null;
+    }
+
+    @Override
+    public List<AgentInstance> subagents() {
+        return List.of();
+    }
+
+    @Override
+    public AgenticSystemTopology topology() {
+        return AgenticSystemTopology.AI_AGENT;
+    }
 }
