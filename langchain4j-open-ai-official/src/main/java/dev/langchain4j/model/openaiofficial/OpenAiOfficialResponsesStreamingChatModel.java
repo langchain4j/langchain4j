@@ -74,7 +74,6 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
@@ -482,10 +481,9 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 builder.format(ResponseFormatTextConfig.ofJsonObject(
                         ResponseFormatJsonObject.builder().build()));
             } else {
-                if (!(jsonSchema.rootElement() instanceof JsonObjectSchema
-                        || jsonSchema.rootElement() instanceof JsonRawSchema)) {
+                if (!(jsonSchema.rootElement() instanceof JsonObjectSchema)) {
                     throw new IllegalArgumentException(
-                            "For OpenAI Responses API, the root element of the JSON Schema must be either a JsonObjectSchema or a JsonRawSchema, but it was: "
+                            "For OpenAI Responses API, the root element of the JSON Schema must be a JsonObjectSchema, but it was: "
                                     + jsonSchema.rootElement().getClass());
                 }
 

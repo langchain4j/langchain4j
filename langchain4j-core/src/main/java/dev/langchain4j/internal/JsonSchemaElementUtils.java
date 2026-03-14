@@ -227,8 +227,9 @@ public class JsonSchemaElementUtils {
     /**
      * OpenAI Responses API validates schemas using the Structured Outputs subset:
      * all object properties must be required and {@code additionalProperties} must be {@code false}.
-     * This helper builds a strict schema (to produce nullable types for optional fields),
-     * keeps existing {@code additionalProperties} values if present, and only adds the field when it is missing.
+     * This helper only supports typed schema elements, builds a strict schema (to produce nullable types
+     * for optional fields), keeps existing {@code additionalProperties} values if present, and only adds
+     * the field when it is missing.
      */
     public static Map<String, Object> toMapForOpenAiResponses(JsonSchemaElement jsonSchemaElement) {
         if (jsonSchemaElement instanceof JsonRawSchema) {
