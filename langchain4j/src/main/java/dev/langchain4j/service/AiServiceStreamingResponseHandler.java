@@ -12,6 +12,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
@@ -40,6 +41,7 @@ import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
+import dev.langchain4j.service.tool.ToolService;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -69,6 +71,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private final InvocationContext invocationContext;
     private final GuardrailRequestParams commonGuardrailParams;
     private final Object methodKey;
+    private final UserMessage userMessageForToolReplay;
 
     private final Consumer<String> partialResponseHandler;
     private final BiConsumer<PartialResponse, PartialResponseContext> partialResponseWithContextHandler;
@@ -125,7 +128,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             ToolExecutionErrorHandler toolExecutionErrorHandler,
             Executor toolExecutor,
             GuardrailRequestParams commonGuardrailParams,
-            Object methodKey) {
+            Object methodKey,
+            UserMessage userMessageForToolReplay) {
         this.chatRequest = ensureNotNull(chatRequest, "chatRequest");
         this.chatExecutor = ensureNotNull(chatExecutor, "chatExecutor");
         this.context = ensureNotNull(context, "context");
@@ -147,6 +151,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         this.temporaryMemory = temporaryMemory;
         this.tokenUsage = ensureNotNull(tokenUsage, "tokenUsage");
         this.commonGuardrailParams = commonGuardrailParams;
+        this.userMessageForToolReplay = userMessageForToolReplay;
 
         this.availableTools = copy(availableTools);
         this.toolExecutors = copy(toolExecutors);
@@ -353,7 +358,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 return;
             }
 
-            ChatRequestParameters parameters = chatRequestParameters(invocationContext.methodArguments(), chatRequest.toolSpecifications());
+            ChatRequestParameters parameters =
+                    chatRequestParameters(invocationContext.methodArguments(), chatRequest.toolSpecifications());
             parameters = addFoundTools(parameters, toolResults, availableTools);
 
             ChatRequest nextChatRequest = context.chatRequestTransformer.apply(
@@ -388,7 +394,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     toolExecutionErrorHandler,
                     toolExecutor,
                     commonGuardrailParams,
-                    methodKey);
+                    methodKey,
+                    userMessageForToolReplay);
 
             fireRequestIssuedEvent(nextChatRequest);
             context.streamingChatModel.chat(nextChatRequest, handler);
@@ -458,7 +465,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     private List<ChatMessage> messagesToSend(Object memoryId) {
-        return getMemory(memoryId).messages();
+        return ToolService.replaceLastUserMessageForToolReplay(
+                getMemory(memoryId).messages(), userMessageForToolReplay);
     }
 
     @Override
