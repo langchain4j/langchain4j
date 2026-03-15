@@ -336,9 +336,7 @@ class JsonSchemaElementJsonUtilsTest {
 
     @Test
     void should_round_trip_array_with_null_items() {
-        JsonArraySchema schema = JsonArraySchema.builder()
-                .description("tags")
-                .build();
+        JsonArraySchema schema = JsonArraySchema.builder().description("tags").build();
         assertRoundTrip(schema);
     }
 
@@ -362,9 +360,7 @@ class JsonSchemaElementJsonUtilsTest {
 
     @Test
     void should_reject_non_string_description_in_anyof() {
-        Map<String, Object> map = Map.of(
-                "anyOf", List.of(Map.of("type", "string")),
-                "description", 42);
+        Map<String, Object> map = Map.of("anyOf", List.of(Map.of("type", "string")), "description", 42);
         assertThatThrownBy(() -> JsonSchemaElementJsonUtils.fromMap(map))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("description");

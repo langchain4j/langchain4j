@@ -85,7 +85,8 @@ class ToolSpecificationJsonTest {
     void should_reject_parameters_with_extra_schema_keywords() {
         // Standard JSON Schema root keywords like $schema/title make the object
         // fall back to JsonRawSchema, which is not a valid ToolSpecification parameters type.
-        String json = "{\"name\":\"test\",\"parameters\":{\"type\":\"object\",\"$schema\":\"http://json-schema.org/draft-07/schema#\"}}";
+        String json =
+                "{\"name\":\"test\",\"parameters\":{\"type\":\"object\",\"$schema\":\"http://json-schema.org/draft-07/schema#\"}}";
         assertThatThrownBy(() -> ToolSpecification.fromJson(json))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("parameters");

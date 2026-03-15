@@ -44,7 +44,8 @@ public class JsonSchemaElementJsonUtils {
     private static final Set<String> NUMBER_KEYS = Set.of("type", "description");
     private static final Set<String> BOOLEAN_KEYS = Set.of("type", "description");
     private static final Set<String> NULL_KEYS = Set.of("type");
-    private static final Set<String> OBJECT_KEYS = Set.of("type", "description", "properties", "required", "additionalProperties", "$defs");
+    private static final Set<String> OBJECT_KEYS =
+            Set.of("type", "description", "properties", "required", "additionalProperties", "$defs");
     private static final Set<String> ARRAY_KEYS = Set.of("type", "description", "items");
     private static final Set<String> ENUM_KEYS = Set.of("type", "description", "enum");
     private static final Set<String> ANYOF_KEYS = Set.of("anyOf", "description");
@@ -222,7 +223,8 @@ public class JsonSchemaElementJsonUtils {
             // type is absent or explicitly "string" to avoid silent schema rewriting.
             // Note: isRepresentable() already rejects null values (e.g., type:null).
             Object enumTypeObj = map.get("type");
-            if (!isRepresentable(map, ENUM_KEYS) || !allStrings(enumList)
+            if (!isRepresentable(map, ENUM_KEYS)
+                    || !allStrings(enumList)
                     || (enumTypeObj != null && !"string".equals(enumTypeObj))) {
                 return rawFallback(map);
             }
@@ -240,21 +242,31 @@ public class JsonSchemaElementJsonUtils {
         }
 
         return switch (type) {
-            case "string" -> isRepresentable(map, STRING_KEYS)
-                    ? JsonStringSchema.builder().description(optionalString(map, "description")).build()
-                    : rawFallback(map);
-            case "integer" -> isRepresentable(map, INTEGER_KEYS)
-                    ? JsonIntegerSchema.builder().description(optionalString(map, "description")).build()
-                    : rawFallback(map);
-            case "number" -> isRepresentable(map, NUMBER_KEYS)
-                    ? JsonNumberSchema.builder().description(optionalString(map, "description")).build()
-                    : rawFallback(map);
-            case "boolean" -> isRepresentable(map, BOOLEAN_KEYS)
-                    ? JsonBooleanSchema.builder().description(optionalString(map, "description")).build()
-                    : rawFallback(map);
-            case "null" -> isRepresentable(map, NULL_KEYS)
-                    ? new JsonNullSchema()
-                    : rawFallback(map);
+            case "string" ->
+                isRepresentable(map, STRING_KEYS)
+                        ? JsonStringSchema.builder()
+                                .description(optionalString(map, "description"))
+                                .build()
+                        : rawFallback(map);
+            case "integer" ->
+                isRepresentable(map, INTEGER_KEYS)
+                        ? JsonIntegerSchema.builder()
+                                .description(optionalString(map, "description"))
+                                .build()
+                        : rawFallback(map);
+            case "number" ->
+                isRepresentable(map, NUMBER_KEYS)
+                        ? JsonNumberSchema.builder()
+                                .description(optionalString(map, "description"))
+                                .build()
+                        : rawFallback(map);
+            case "boolean" ->
+                isRepresentable(map, BOOLEAN_KEYS)
+                        ? JsonBooleanSchema.builder()
+                                .description(optionalString(map, "description"))
+                                .build()
+                        : rawFallback(map);
+            case "null" -> isRepresentable(map, NULL_KEYS) ? new JsonNullSchema() : rawFallback(map);
             case "object" -> {
                 if (!isRepresentable(map, OBJECT_KEYS)) {
                     yield rawFallback(map);
@@ -368,8 +380,7 @@ public class JsonSchemaElementJsonUtils {
             return null;
         }
         if (!(value instanceof String)) {
-            throw new IllegalArgumentException(
-                    "\"" + field + "\" must be a string, but was: " + className(value));
+            throw new IllegalArgumentException("\"" + field + "\" must be a string, but was: " + className(value));
         }
         return (String) value;
     }
