@@ -52,7 +52,7 @@ class SkillsWithToolSearchTest {
         );
 
         // when
-        ToolProviderResult result = skills.toolProviders().get(0).provideTools(dummyRequest());
+        ToolProviderResult result = skills.toolProvider().provideTools(dummyRequest());
 
         // then
         ToolSpecification activateSkill = result.toolSpecificationByName("activate_skill");
@@ -89,7 +89,7 @@ class SkillsWithToolSearchTest {
                 .chatModel(spyChatModel)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
                 .tools(Map.of(getWeather, (ToolExecutor) (req, memoryId) -> "sunny"))
-                .toolProviders(skills.toolProviders())
+                .toolProviders(skills.toolProvider())
                 .toolSearchStrategy(new SimpleToolSearchStrategy())
                 .systemMessage("You have skills: " + skills.formatAvailableSkills())
                 .build();
@@ -143,7 +143,7 @@ class SkillsWithToolSearchTest {
                 .chatModel(spyChatModel)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
                 .tools(Map.of(getWeather, (ToolExecutor) (req, memoryId) -> "sunny"))
-                .toolProviders(skills.toolProviders())
+                .toolProviders(skills.toolProvider())
                 .toolSearchStrategy(spyStrategy)
                 .systemMessage("You have skills: " + skills.formatAvailableSkills())
                 .build();
@@ -211,7 +211,7 @@ class SkillsWithToolSearchTest {
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(spyChatModel)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
-                .toolProviders(skills.toolProviders())
+                .toolProviders(skills.toolProvider())
                 .toolSearchStrategy(new SimpleToolSearchStrategy())
                 .systemMessage("You have skills: " + skills.formatAvailableSkills())
                 .build();
@@ -291,7 +291,7 @@ class SkillsWithToolSearchTest {
                 .chatModel(spyChatModel)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
                 .tools(Map.of(getWeather, (ToolExecutor) (req, memoryId) -> "sunny"))
-                .toolProviders(skills.toolProviders())
+                .toolProviders(skills.toolProvider())
                 .toolSearchStrategy(spyStrategy)
                 .systemMessage("You have skills: " + skills.formatAvailableSkills())
                 .build();
@@ -378,7 +378,7 @@ class SkillsWithToolSearchTest {
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(spyChatModel)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
-                .toolProviders(skills.toolProviders())
+                .toolProviders(skills.toolProvider())
                 .toolSearchStrategy(new SimpleToolSearchStrategy())
                 .systemMessage("You have skills: " + skills.formatAvailableSkills())
                 .build();

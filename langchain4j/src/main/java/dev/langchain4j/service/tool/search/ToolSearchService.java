@@ -3,7 +3,6 @@ package dev.langchain4j.service.tool.search;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
@@ -22,9 +21,9 @@ import java.util.Objects;
 import java.util.Set;
 
 import static dev.langchain4j.agent.tool.SearchBehavior.ALWAYS_VISIBLE;
+import static dev.langchain4j.agent.tool.SearchBehavior.NOT_SEARCHABLE;
 import static dev.langchain4j.agent.tool.ToolSpecification.METADATA_SEARCH_BEHAVIOR;
 import static dev.langchain4j.internal.Utils.copy;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.merge;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.stream.Collectors.toCollection;
@@ -36,7 +35,7 @@ import static java.util.stream.Collectors.toSet;
 @Internal
 public class ToolSearchService {
 
-    private static final String FOUND_TOOLS_ATTRIBUTE = "found_tools"; // do not change, will break backward compatibility!
+    public static final String FOUND_TOOLS_ATTRIBUTE = "found_tools"; // do not change, will break backward compatibility!
 
     private final ToolSearchStrategy strategy;
 
@@ -45,11 +44,11 @@ public class ToolSearchService {
     }
 
     public ToolServiceContext adjust(ToolServiceContext toolServiceContext,
-                                     List<ChatMessage> messages,
+                                     ChatMemory chatMemory,
                                      InvocationContext invocationContext) {
         List<ToolSpecification> toolSearchTools = strategy.getToolSearchTools(invocationContext);
         List<ToolSpecification> availableTools = toolServiceContext.availableTools();
-        List<ToolSpecification> effectiveTools = calculateEffectiveTools(toolSearchTools, availableTools, messages);
+        List<ToolSpecification> effectiveTools = calculateEffectiveTools(toolSearchTools, availableTools, chatMemory);
         List<ToolSpecification> searchableTools = calculateSearchableTools(availableTools, effectiveTools);
         Map<String, ToolExecutor> toolSearchToolExecutors = createExecutors(toolSearchTools, searchableTools);
         return toolServiceContext.toBuilder()
@@ -58,19 +57,9 @@ public class ToolSearchService {
                 .build();
     }
 
-    /**
-     * @deprecated use {@link #adjust(ToolServiceContext, List, InvocationContext)} instead
-     */
-    @Deprecated(since = "1.13.0")
-    public ToolServiceContext adjust(ToolServiceContext toolServiceContext,
-                                     ChatMemory chatMemory,
-                                     InvocationContext invocationContext) {
-        return adjust(toolServiceContext, chatMemory.messages(), invocationContext);
-    }
-
     private List<ToolSpecification> calculateEffectiveTools(List<ToolSpecification> toolSearchTools,
                                                             List<ToolSpecification> availableTools,
-                                                            List<ChatMessage> messages) {
+                                                            ChatMemory chatMemory) {
         List<ToolSpecification> effectiveTools = new ArrayList<>();
 
         availableTools.forEach(tool -> {
@@ -81,11 +70,11 @@ public class ToolSearchService {
 
         effectiveTools.addAll(toolSearchTools);
 
-        if (isNullOrEmpty(messages)) {
+        if (chatMemory == null) {
             return effectiveTools;
         }
 
-        Set<String> toolNamesFoundEarlier = messages.stream()
+        Set<String> toolNamesFoundEarlier = chatMemory.messages().stream()
                 .filter(it -> it instanceof ToolExecutionResultMessage)
                 .map(it -> (ToolExecutionResultMessage) it)
                 .map(it -> it.attributes().get(FOUND_TOOLS_ATTRIBUTE))
@@ -109,6 +98,7 @@ public class ToolSearchService {
                                                              List<ToolSpecification> effectiveTools) {
         Set<ToolSpecification> searchableTools = new LinkedHashSet<>(availableTools);
         searchableTools.removeAll(effectiveTools);
+        searchableTools.removeIf(tool -> tool.metadata().get(METADATA_SEARCH_BEHAVIOR) == NOT_SEARCHABLE);
         return new ArrayList<>(searchableTools);
     }
 

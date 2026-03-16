@@ -2,10 +2,9 @@ package dev.langchain4j.skills;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderRequest;
@@ -16,8 +15,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
-import static dev.langchain4j.skills.ActivateSkillToolExecutor.ACTIVATED_SKILL_ATTRIBUTE;
-
+import static dev.langchain4j.agent.tool.SearchBehavior.ALWAYS_VISIBLE;
+import static dev.langchain4j.agent.tool.SearchBehavior.NOT_SEARCHABLE;
+import static dev.langchain4j.agent.tool.ToolSpecification.METADATA_SEARCH_BEHAVIOR;
+import static dev.langchain4j.service.tool.search.ToolSearchService.FOUND_TOOLS_ATTRIBUTE;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class SkillsTest {
@@ -94,10 +95,10 @@ class SkillsTest {
         );
     }
 
-    // --- Dynamic skill tool providers ---
+    // --- Single static provider with NOT_SEARCHABLE metadata ---
 
     @Test
-    void skill_tools_should_be_in_separate_dynamic_provider() {
+    void skill_with_tools_should_have_single_static_provider() {
 
         // given
         Skill skill = Skill.builder()
@@ -112,146 +113,22 @@ class SkillsTest {
 
         Skills skills = Skills.from(skill);
 
-        // then - should have 2 providers: base (static) + skill (dynamic)
-        assertThat(skills.toolProviders()).hasSize(2);
-        assertThat(skills.toolProviders().get(0).isDynamic()).isFalse();
-        assertThat(skills.toolProviders().get(1).isDynamic()).isTrue();
+        // then - single provider, not dynamic
+        assertThat(skills.toolProvider()).isNotNull();
 
-        // base provider tools
-        ToolProviderResult baseResult = skills.toolProviders().get(0).provideTools(dummyRequest());
-        assertThat(getToolNames(baseResult)).containsExactly("activate_skill");
+        // provider returns all tools: activate_skill (ALWAYS_VISIBLE) + my_tool (NOT_SEARCHABLE)
+        ToolProviderResult result = skills.toolProvider().provideTools(dummyRequest());
+        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "my_tool");
+
+        ToolSpecification activateSkill = result.toolSpecificationByName("activate_skill");
+        assertThat(activateSkill.metadata().get(METADATA_SEARCH_BEHAVIOR)).isEqualTo(ALWAYS_VISIBLE);
+
+        ToolSpecification myTool = result.toolSpecificationByName("my_tool");
+        assertThat(myTool.metadata().get(METADATA_SEARCH_BEHAVIOR)).isEqualTo(NOT_SEARCHABLE);
     }
 
     @Test
-    void skill_provider_should_return_empty_before_skill_activation() {
-
-        // given
-        Skill skill = Skill.builder()
-                .name("my-skill")
-                .description("A skill with tools")
-                .content("Use my_tool")
-                .tools(Map.of(
-                        ToolSpecification.builder().name("my_tool").description("Does something").build(),
-                        (ToolExecutor) (request, memoryId) -> "result"
-                ))
-                .build();
-
-        Skills skills = Skills.from(skill);
-
-        // when - no activation in messages
-        ToolProviderRequest request = requestWithMessages(List.of(UserMessage.from("hello")));
-
-        // then - skill provider returns empty
-        ToolProviderResult result = skills.toolProviders().get(1).provideTools(request);
-        assertThat(result.tools()).isEmpty();
-    }
-
-    @Test
-    void skill_provider_should_return_tools_after_skill_activation() {
-
-        // given
-        Skill skill = Skill.builder()
-                .name("my-skill")
-                .description("A skill with tools")
-                .content("Use my_tool")
-                .tools(Map.of(
-                        ToolSpecification.builder().name("my_tool").description("Does something").build(),
-                        (ToolExecutor) (request, memoryId) -> "result"
-                ))
-                .build();
-
-        Skills skills = Skills.from(skill);
-
-        // when - activation in messages
-        ToolProviderRequest request = requestWithMessages(List.of(
-                UserMessage.from("Do something"),
-                skillActivatedMessage("my-skill")
-        ));
-
-        // then - skill provider returns tools
-        ToolProviderResult result = skills.toolProviders().get(1).provideTools(request);
-        assertThat(getToolNames(result)).containsExactly("my_tool");
-    }
-
-    @Test
-    void only_activated_skill_provider_should_return_tools() {
-
-        // given
-        Skill skill1 = Skill.builder()
-                .name("skill-1")
-                .description("First skill")
-                .content("Use tool_a")
-                .tools(Map.of(
-                        ToolSpecification.builder().name("tool_a").description("Tool A").build(),
-                        (ToolExecutor) (request, memoryId) -> "a"
-                ))
-                .build();
-
-        Skill skill2 = Skill.builder()
-                .name("skill-2")
-                .description("Second skill")
-                .content("Use tool_b")
-                .tools(Map.of(
-                        ToolSpecification.builder().name("tool_b").description("Tool B").build(),
-                        (ToolExecutor) (request, memoryId) -> "b"
-                ))
-                .build();
-
-        Skills skills = Skills.from(skill1, skill2);
-
-        // when - only skill-1 activated
-        ToolProviderRequest request = requestWithMessages(List.of(
-                UserMessage.from("Do something"),
-                skillActivatedMessage("skill-1")
-        ));
-
-        // then - 3 providers: base + skill-1 + skill-2
-        assertThat(skills.toolProviders()).hasSize(3);
-
-        assertThat(getToolNames(skills.toolProviders().get(1).provideTools(request))).containsExactly("tool_a");
-        assertThat(skills.toolProviders().get(2).provideTools(request).tools()).isEmpty();
-    }
-
-    @Test
-    void multiple_activated_skills_should_return_tools() {
-
-        // given
-        Skill skill1 = Skill.builder()
-                .name("skill-1")
-                .description("First skill")
-                .content("Use tool_a")
-                .tools(Map.of(
-                        ToolSpecification.builder().name("tool_a").description("Tool A").build(),
-                        (ToolExecutor) (request, memoryId) -> "a"
-                ))
-                .build();
-
-        Skill skill2 = Skill.builder()
-                .name("skill-2")
-                .description("Second skill")
-                .content("Use tool_b")
-                .tools(Map.of(
-                        ToolSpecification.builder().name("tool_b").description("Tool B").build(),
-                        (ToolExecutor) (request, memoryId) -> "b"
-                ))
-                .build();
-
-        Skills skills = Skills.from(skill1, skill2);
-
-        // when - both skills activated
-        ToolProviderRequest request = requestWithMessages(List.of(
-                UserMessage.from("Do something"),
-                skillActivatedMessage("skill-1"),
-                skillActivatedMessage("skill-2")
-        ));
-
-        // then
-        assertThat(getToolNames(skills.toolProviders().get(1).provideTools(request))).containsExactly("tool_a");
-        assertThat(getToolNames(skills.toolProviders().get(2).provideTools(request))).containsExactly("tool_b");
-    }
-
-    @Test
-    void skill_without_tools_should_have_only_base_provider() {
+    void skill_without_tools_should_have_single_provider() {
 
         // given
         Skill skill = Skill.builder()
@@ -262,16 +139,159 @@ class SkillsTest {
 
         Skills skills = Skills.from(skill);
 
-        // then - only base provider
-        assertThat(skills.toolProviders()).hasSize(1);
-        assertThat(skills.toolProviders().get(0).isDynamic()).isFalse();
+        // then - single provider
+        assertThat(skills.toolProvider()).isNotNull();
 
-        ToolProviderResult result = skills.toolProviders().get(0).provideTools(dummyRequest());
+        ToolProviderResult result = skills.toolProvider().provideTools(dummyRequest());
         assertThat(getToolNames(result)).containsExactly("activate_skill");
     }
 
     @Test
-    void conditional_tool_executor_should_be_functional() {
+    void multiple_skills_with_tools_should_have_single_provider() {
+
+        // given
+        Skill skill1 = Skill.builder()
+                .name("skill-1")
+                .description("First skill")
+                .content("Use tool_a")
+                .tools(Map.of(
+                        ToolSpecification.builder().name("tool_a").description("Tool A").build(),
+                        (ToolExecutor) (request, memoryId) -> "a"
+                ))
+                .build();
+
+        Skill skill2 = Skill.builder()
+                .name("skill-2")
+                .description("Second skill")
+                .content("Use tool_b")
+                .tools(Map.of(
+                        ToolSpecification.builder().name("tool_b").description("Tool B").build(),
+                        (ToolExecutor) (request, memoryId) -> "b"
+                ))
+                .build();
+
+        Skills skills = Skills.from(skill1, skill2);
+
+        // then - single provider with all tools
+        assertThat(skills.toolProvider()).isNotNull();
+
+        ToolProviderResult result = skills.toolProvider().provideTools(dummyRequest());
+        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "tool_a", "tool_b");
+
+        // skill-scoped tools are NOT_SEARCHABLE
+        assertThat(result.toolSpecificationByName("tool_a").metadata().get(METADATA_SEARCH_BEHAVIOR))
+                .isEqualTo(NOT_SEARCHABLE);
+        assertThat(result.toolSpecificationByName("tool_b").metadata().get(METADATA_SEARCH_BEHAVIOR))
+                .isEqualTo(NOT_SEARCHABLE);
+    }
+
+    // --- activate_skill emits FOUND_TOOLS_ATTRIBUTE ---
+
+    @Test
+    void activate_skill_should_emit_found_tools_attribute() {
+
+        // given
+        Skill skill = Skill.builder()
+                .name("my-skill")
+                .description("A skill with tools")
+                .content("Use my_tool")
+                .tools(Map.of(
+                        ToolSpecification.builder().name("my_tool").description("Does something").build(),
+                        (ToolExecutor) (request, memoryId) -> "result"
+                ))
+                .build();
+
+        Skills skills = Skills.from(skill);
+        ToolProviderResult result = skills.toolProvider().provideTools(dummyRequest());
+        ToolExecutor activateExecutor = result.toolExecutorByName("activate_skill");
+
+        // when
+        ToolExecutionResult executionResult = activateExecutor.executeWithContext(
+                ToolExecutionRequest.builder()
+                        .name("activate_skill")
+                        .arguments("{\"skill_name\": \"my-skill\"}")
+                        .build(),
+                InvocationContext.builder().build()
+        );
+
+        // then
+        assertThat(executionResult.attributes().get(FOUND_TOOLS_ATTRIBUTE))
+                .isEqualTo(List.of("my_tool"));
+    }
+
+    @Test
+    void activate_skill_without_tools_should_not_emit_found_tools() {
+
+        // given
+        Skill skill = Skill.builder()
+                .name("my-skill")
+                .description("A skill without tools")
+                .content("Just instructions")
+                .build();
+
+        Skills skills = Skills.from(skill);
+        ToolProviderResult result = skills.toolProvider().provideTools(dummyRequest());
+        ToolExecutor activateExecutor = result.toolExecutorByName("activate_skill");
+
+        // when
+        ToolExecutionResult executionResult = activateExecutor.executeWithContext(
+                ToolExecutionRequest.builder()
+                        .name("activate_skill")
+                        .arguments("{\"skill_name\": \"my-skill\"}")
+                        .build(),
+                InvocationContext.builder().build()
+        );
+
+        // then
+        assertThat(executionResult.attributes()).doesNotContainKey(FOUND_TOOLS_ATTRIBUTE);
+    }
+
+    @Test
+    void activate_skill_should_emit_only_activated_skills_tools() {
+
+        // given
+        Skill skill1 = Skill.builder()
+                .name("skill-1")
+                .description("First skill")
+                .content("Use tool_a")
+                .tools(Map.of(
+                        ToolSpecification.builder().name("tool_a").description("Tool A").build(),
+                        (ToolExecutor) (request, memoryId) -> "a"
+                ))
+                .build();
+
+        Skill skill2 = Skill.builder()
+                .name("skill-2")
+                .description("Second skill")
+                .content("Use tool_b")
+                .tools(Map.of(
+                        ToolSpecification.builder().name("tool_b").description("Tool B").build(),
+                        (ToolExecutor) (request, memoryId) -> "b"
+                ))
+                .build();
+
+        Skills skills = Skills.from(skill1, skill2);
+        ToolProviderResult result = skills.toolProvider().provideTools(dummyRequest());
+        ToolExecutor activateExecutor = result.toolExecutorByName("activate_skill");
+
+        // when - activate only skill-1
+        ToolExecutionResult executionResult = activateExecutor.executeWithContext(
+                ToolExecutionRequest.builder()
+                        .name("activate_skill")
+                        .arguments("{\"skill_name\": \"skill-1\"}")
+                        .build(),
+                InvocationContext.builder().build()
+        );
+
+        // then - only skill-1's tools
+        assertThat(executionResult.attributes().get(FOUND_TOOLS_ATTRIBUTE))
+                .isEqualTo(List.of("tool_a"));
+    }
+
+    // --- Tool executor should be functional ---
+
+    @Test
+    void skill_scoped_tool_executor_should_be_functional() {
 
         // given
         ToolSpecification toolSpec = ToolSpecification.builder()
@@ -289,13 +309,9 @@ class SkillsTest {
 
         Skills skills = Skills.from(skill);
 
-        // when - call with activation
-        ToolProviderRequest request = requestWithMessages(List.of(
-                UserMessage.from("greet"),
-                skillActivatedMessage("greeting-skill")
-        ));
-        ToolProviderResult skillResult = skills.toolProviders().get(1).provideTools(request);
-        ToolExecutor resolvedExecutor = skillResult.toolExecutorByName("greet");
+        // when
+        ToolProviderResult result = skills.toolProvider().provideTools(dummyRequest());
+        ToolExecutor resolvedExecutor = result.toolExecutorByName("greet");
 
         // then
         assertThat(resolvedExecutor).isNotNull();
@@ -342,20 +358,13 @@ class SkillsTest {
 
         Skills skills = Skills.from(skill);
 
-        // then - 2 providers: base + skill (dynamic)
-        assertThat(skills.toolProviders()).hasSize(2);
-        assertThat(skills.toolProviders().get(1).isDynamic()).isTrue();
+        // then - single provider with all tools
+        assertThat(skills.toolProvider()).isNotNull();
 
-        // before activation: empty
-        assertThat(skills.toolProviders().get(1).provideTools(dummyRequest()).tools()).isEmpty();
-
-        // after activation: tools returned
-        ToolProviderRequest activatedRequest = requestWithMessages(List.of(
-                UserMessage.from("greet"),
-                skillActivatedMessage("greeting-skill")
-        ));
-        assertThat(getToolNames(skills.toolProviders().get(1).provideTools(activatedRequest)))
-                .containsExactly("sayHello");
+        ToolProviderResult result = skills.toolProvider().provideTools(dummyRequest());
+        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "sayHello");
+        assertThat(result.toolSpecificationByName("sayHello").metadata().get(METADATA_SEARCH_BEHAVIOR))
+                .isEqualTo(NOT_SEARCHABLE);
     }
 
     // --- ToolProvider on Skill ---
@@ -398,12 +407,13 @@ class SkillsTest {
 
         Skills skills = Skills.from(skill);
 
-        // then - 2 providers: base + skill (dynamic)
-        assertThat(skills.toolProviders()).hasSize(2);
-        assertThat(skills.toolProviders().get(1).isDynamic()).isTrue();
+        // then - single provider
+        assertThat(skills.toolProvider()).isNotNull();
 
-        // before activation: empty
-        assertThat(skills.toolProviders().get(1).provideTools(dummyRequest()).tools()).isEmpty();
+        ToolProviderResult result = skills.toolProvider().provideTools(dummyRequest());
+        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "dynamic_tool");
+        assertThat(result.toolSpecificationByName("dynamic_tool").metadata().get(METADATA_SEARCH_BEHAVIOR))
+                .isEqualTo(NOT_SEARCHABLE);
     }
 
     @Test
@@ -426,17 +436,12 @@ class SkillsTest {
         // then - both static and dynamic providers on Skill
         assertThat(skill.toolProviders()).hasSize(2);
 
-        // Skills wraps them in a single SkillToolProvider (dynamic)
+        // Skills wraps them in a single provider
         Skills skills = Skills.from(skill);
-        assertThat(skills.toolProviders()).hasSize(2); // base + skill
+        assertThat(skills.toolProvider()).isNotNull();
 
-        // after activation: both tools returned
-        ToolProviderRequest activatedRequest = requestWithMessages(List.of(
-                UserMessage.from("do stuff"),
-                skillActivatedMessage("combo-skill")
-        ));
-        ToolProviderResult skillResult = skills.toolProviders().get(1).provideTools(activatedRequest);
-        assertThat(getToolNames(skillResult)).containsExactlyInAnyOrder("sayHello", "mcp_tool");
+        ToolProviderResult result = skills.toolProvider().provideTools(dummyRequest());
+        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "sayHello", "mcp_tool");
     }
 
     static class AnotherTools {
@@ -446,6 +451,8 @@ class SkillsTest {
             return "Goodbye, " + name + "!";
         }
     }
+
+    // --- Accumulation tests ---
 
     @Test
     void tools_map_should_not_override_tool_annotated_methods() {
@@ -467,15 +474,9 @@ class SkillsTest {
 
         Skills skills = Skills.from(skill);
 
-        // when - activate the skill
-        ToolProviderRequest request = requestWithMessages(List.of(
-                UserMessage.from("do stuff"),
-                skillActivatedMessage("my-skill")
-        ));
-        ToolProviderResult result = skills.toolProviders().get(1).provideTools(request);
-
         // then - both @Tool method and Map tool are present
-        assertThat(getToolNames(result)).containsExactlyInAnyOrder("sayHello", "manual_tool");
+        ToolProviderResult result = skills.toolProvider().provideTools(dummyRequest());
+        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "sayHello", "manual_tool");
     }
 
     @Test
@@ -498,15 +499,9 @@ class SkillsTest {
 
         Skills skills = Skills.from(skill);
 
-        // when
-        ToolProviderRequest request = requestWithMessages(List.of(
-                UserMessage.from("do stuff"),
-                skillActivatedMessage("my-skill")
-        ));
-        ToolProviderResult result = skills.toolProviders().get(1).provideTools(request);
-
         // then
-        assertThat(getToolNames(result)).containsExactlyInAnyOrder("manual_tool", "sayHello");
+        ToolProviderResult result = skills.toolProvider().provideTools(dummyRequest());
+        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "manual_tool", "sayHello");
     }
 
     @Test
@@ -523,15 +518,9 @@ class SkillsTest {
 
         Skills skills = Skills.from(skill);
 
-        // when
-        ToolProviderRequest request = requestWithMessages(List.of(
-                UserMessage.from("do stuff"),
-                skillActivatedMessage("my-skill")
-        ));
-        ToolProviderResult result = skills.toolProviders().get(1).provideTools(request);
-
         // then
-        assertThat(getToolNames(result)).containsExactlyInAnyOrder("sayHello", "sayGoodbye");
+        ToolProviderResult result = skills.toolProvider().provideTools(dummyRequest());
+        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "sayHello", "sayGoodbye");
     }
 
     @Test
@@ -551,15 +540,9 @@ class SkillsTest {
 
         Skills skills = Skills.from(skill);
 
-        // when
-        ToolProviderRequest request = requestWithMessages(List.of(
-                UserMessage.from("do stuff"),
-                skillActivatedMessage("my-skill")
-        ));
-        ToolProviderResult result = skills.toolProviders().get(1).provideTools(request);
-
         // then
-        assertThat(getToolNames(result)).containsExactlyInAnyOrder("tool_1", "tool_2");
+        ToolProviderResult result = skills.toolProvider().provideTools(dummyRequest());
+        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "tool_1", "tool_2");
     }
 
     @Test
@@ -588,15 +571,9 @@ class SkillsTest {
 
         Skills skills = Skills.from(skill);
 
-        // when - activate the skill
-        ToolProviderRequest request = requestWithMessages(List.of(
-                UserMessage.from("do stuff"),
-                skillActivatedMessage("my-skill")
-        ));
-        ToolProviderResult result = skills.toolProviders().get(1).provideTools(request);
-
         // then - tools from both providers
-        assertThat(getToolNames(result)).containsExactlyInAnyOrder("provider1_tool", "provider2_tool");
+        ToolProviderResult result = skills.toolProvider().provideTools(dummyRequest());
+        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "provider1_tool", "provider2_tool");
     }
 
     @Test
@@ -628,15 +605,9 @@ class SkillsTest {
 
         Skills skills = Skills.from(skill);
 
-        // when - activate the skill
-        ToolProviderRequest request = requestWithMessages(List.of(
-                UserMessage.from("do stuff"),
-                skillActivatedMessage("my-skill")
-        ));
-        ToolProviderResult result = skills.toolProviders().get(1).provideTools(request);
-
         // then - all three tools present
-        assertThat(getToolNames(result)).containsExactlyInAnyOrder("sayHello", "manual_tool", "dynamic_tool");
+        ToolProviderResult result = skills.toolProvider().provideTools(dummyRequest());
+        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "sayHello", "manual_tool", "dynamic_tool");
     }
 
     @Test
@@ -731,37 +702,17 @@ class SkillsTest {
         assertThat(withProvider.toolProviders()).hasSize(1);
 
         Skills skills = Skills.from(withProvider);
-        assertThat(skills.toolProviders()).hasSize(2); // base + skill
+        assertThat(skills.toolProvider()).isNotNull();
 
-        // after activation
-        ToolProviderRequest activatedRequest = requestWithMessages(List.of(
-                UserMessage.from("do stuff"),
-                skillActivatedMessage("my-skill")
-        ));
-        ToolProviderResult skillResult = skills.toolProviders().get(1).provideTools(activatedRequest);
-        assertThat(getToolNames(skillResult)).containsExactly("dynamic_tool");
+        // tools present including skill-scoped
+        ToolProviderResult result = skills.toolProvider().provideTools(dummyRequest());
+        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "dynamic_tool");
     }
 
     private static ToolProviderRequest dummyRequest() {
         return ToolProviderRequest.builder()
                 .invocationContext(InvocationContext.builder().build())
                 .userMessage(UserMessage.from("test"))
-                .build();
-    }
-
-    private static ToolProviderRequest requestWithMessages(List<ChatMessage> messages) {
-        return ToolProviderRequest.builder()
-                .invocationContext(InvocationContext.builder().build())
-                .userMessage(UserMessage.from("test"))
-                .messages(messages)
-                .build();
-    }
-
-    private static ToolExecutionResultMessage skillActivatedMessage(String skillName) {
-        return ToolExecutionResultMessage.builder()
-                .toolName("activate_skill")
-                .text("skill activated")
-                .attributes(Map.of(ACTIVATED_SKILL_ATTRIBUTE, skillName))
                 .build();
     }
 

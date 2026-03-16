@@ -21,5 +21,16 @@ public enum SearchBehavior {
     /**
      * If you want a tool to always be visible to the LLM, use this setting.
      */
-    ALWAYS_VISIBLE;
+    ALWAYS_VISIBLE,
+
+    /**
+     * The tool is present in the available tools pool but is neither searchable nor visible
+     * to the LLM until explicitly surfaced (e.g., via {@code addFoundTools}). TODO
+     * <p>
+     * This is used for skill-scoped tools that should only become visible
+     * after a skill is activated.
+     *
+     * @since 1.13.0
+     */
+    NOT_SEARCHABLE; // TODO name TODO use internal attribute instead?
 }

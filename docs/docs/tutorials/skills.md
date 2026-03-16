@@ -217,7 +217,7 @@ Skills skills = Skills.from(skill);
 MyAiService service = AiServices.builder(MyAiService.class)
         .chatModel(chatModel)
         .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
-        .toolProviders(skills.toolProviders())
+        .toolProviders(skills.toolProvider())
         .systemMessage("You have access to the following skills:\n" + skills.formatAvailableSkills()
                 + "\nWhen the user's request relates to one of these skills, activate it first.")
         .build();
@@ -228,11 +228,10 @@ MyAiService service = AiServices.builder(MyAiService.class)
 1. Before skill activation, the LLM only sees the `activate_skill` (and `read_skill_resource`) tools.
    Skill-scoped tools are not included in the tool list.
 2. When the LLM calls `activate_skill("process-order")`, the activation is recorded in the conversation messages.
-3. Before the next LLM call (within the same AI Service invocation), the AI Service re-evaluates dynamic tool providers
-   against the current messages. The skill-scoped tools (e.g. `validateOrder`) become
-   visible and the LLM can call them immediately, in the same AI Service invocation.
-   The skill-scoped tools stay visible to the LLM in the next AI Service invocations, they become invisible when
-   the skill is deactivated. TODO
+3. Before the next LLM call (within the same AI Service invocation), the skill-scoped tools
+   (e.g. `validateOrder`) become visible and the LLM can call them immediately, in the same
+   AI Service invocation. The skill-scoped tools stay visible to the LLM in subsequent
+   AI Service invocations as long as the activation is present in the conversation messages.
 
 ## Modes
 
@@ -301,7 +300,7 @@ Skills skills = Skills.from(FileSystemSkillLoader.loadSkills(Path.of("skills/"))
 MyAiService service = AiServices.builder(MyAiService.class)
         .chatModel(chatModel)
         .tools(new OrderTools()) // your tools
-        .toolProviders(skills.toolProviders())
+        .toolProvider(skills.toolProvider()) // or .toolProviders(mcpToolProvider, skills.toolProvider())
         .systemMessage("You have access to the following skills:\n" + skills.formatAvailableSkills()
                 + "\nWhen the user's request relates to one of these skills, activate it first using the `activate_skill` tool before proceeding.")
         .build();
@@ -407,7 +406,7 @@ ShellSkills skills = ShellSkills.from(FileSystemSkillLoader.loadSkills(Path.of("
 
 MyAiService service = AiServices.builder(MyAiService.class)
         .chatModel(chatModel)
-        .toolProviders(skills.toolProviders())
+        .toolProvider(skills.toolProvider()) // or .toolProviders(mcpToolProvider, skills.toolProvider())
         .systemMessage("You have access to the following skills:\n" + skills.formatAvailableSkills()
                 + "\nWhen the user's request relates to one of these skills, read its SKILL.md before proceeding.")
         .build();

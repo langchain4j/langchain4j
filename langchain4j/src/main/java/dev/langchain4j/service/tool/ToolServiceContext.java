@@ -20,14 +20,12 @@ public class ToolServiceContext {
     private final List<ToolSpecification> availableTools;
     private final Map<String, ToolExecutor> toolExecutors;
     private final Set<String> immediateReturnTools;
-    private final List<ToolProvider> dynamicToolProviders;
 
     public ToolServiceContext(Builder builder) {
         this.effectiveTools = copy(builder.effectiveTools);
         this.availableTools = copy(builder.availableTools);
         this.toolExecutors = copy(builder.toolExecutors);
         this.immediateReturnTools = copy(builder.immediateReturnTools);
-        this.dynamicToolProviders = copy(builder.dynamicToolProviders);
     }
 
     /**
@@ -39,7 +37,6 @@ public class ToolServiceContext {
         this.availableTools = copy(toolSpecifications);
         this.toolExecutors = copy(toolExecutors);
         this.immediateReturnTools = Set.of();
-        this.dynamicToolProviders = List.of();
     }
 
     /**
@@ -82,22 +79,12 @@ public class ToolServiceContext {
         return immediateReturnTools;
     }
 
-    /**
-     * Returns dynamic tool providers that are re-evaluated before each LLM call.
-     *
-     * @since 1.13.0
-     */
-    public List<ToolProvider> dynamicToolProviders() {
-        return dynamicToolProviders;
-    }
-
     public Builder toBuilder() {
         return builder()
                 .effectiveTools(effectiveTools)
                 .availableTools(availableTools)
                 .toolExecutors(toolExecutors)
-                .immediateReturnTools(immediateReturnTools)
-                .dynamicToolProviders(dynamicToolProviders);
+                .immediateReturnTools(immediateReturnTools);
     }
 
     @Override
@@ -107,13 +94,12 @@ public class ToolServiceContext {
         return Objects.equals(effectiveTools, that.effectiveTools)
                 && Objects.equals(availableTools, that.availableTools)
                 && Objects.equals(toolExecutors, that.toolExecutors)
-                && Objects.equals(immediateReturnTools, that.immediateReturnTools)
-                && Objects.equals(dynamicToolProviders, that.dynamicToolProviders);
+                && Objects.equals(immediateReturnTools, that.immediateReturnTools);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(effectiveTools, availableTools, toolExecutors, immediateReturnTools, dynamicToolProviders);
+        return Objects.hash(effectiveTools, availableTools, toolExecutors, immediateReturnTools);
     }
 
     @Override
@@ -123,7 +109,6 @@ public class ToolServiceContext {
                 ", availableTools=" + availableTools +
                 ", toolExecutors=" + toolExecutors +
                 ", immediateReturnTools=" + immediateReturnTools +
-                ", dynamicToolProviders=" + dynamicToolProviders +
                 '}';
     }
 
@@ -137,7 +122,6 @@ public class ToolServiceContext {
         private List<ToolSpecification> availableTools;
         private Map<String, ToolExecutor> toolExecutors;
         private Set<String> immediateReturnTools;
-        private List<ToolProvider> dynamicToolProviders;
 
         /**
          * Sets <b>effective</b> tool specifications that should be included in the next {@link ChatRequest}.
@@ -181,14 +165,6 @@ public class ToolServiceContext {
 
         public Builder immediateReturnTools(Set<String> immediateReturnTools) {
             this.immediateReturnTools = immediateReturnTools;
-            return this;
-        }
-
-        /**
-         * @since 1.13.0
-         */
-        public Builder dynamicToolProviders(List<ToolProvider> dynamicToolProviders) {
-            this.dynamicToolProviders = dynamicToolProviders;
             return this;
         }
 

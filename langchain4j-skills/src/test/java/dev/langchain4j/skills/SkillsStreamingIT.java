@@ -90,7 +90,7 @@ class SkillsStreamingIT {
 
         // then
         assertThat(skills.formatAvailableSkills()).contains("using-process-tool");
-        assertThat(getToolNames(skills.toolProviders()))
+        assertThat(getToolNames(skills.toolProvider()))
                 .containsExactlyInAnyOrder("activate_skill", "read_skill_resource");
 
         // given
@@ -100,7 +100,7 @@ class SkillsStreamingIT {
                 .streamingChatModel(model)
                 .systemMessage("You have access to the following skills: " + skills.formatAvailableSkills())
                 .tools(spyTools)
-                .toolProviders(skills.toolProviders())
+                .toolProvider(skills.toolProvider())
                 .build();
 
         // when
@@ -149,7 +149,7 @@ class SkillsStreamingIT {
 
         // then
         assertThat(skills.formatAvailableSkills()).contains("using-process-tool");
-        assertThat(getToolNames(skills.toolProviders()))
+        assertThat(getToolNames(skills.toolProvider()))
                 .containsExactlyInAnyOrder("activate_skill", "read_skill_resource");
 
         // given
@@ -159,7 +159,7 @@ class SkillsStreamingIT {
                 .streamingChatModel(model)
                 .systemMessage("You have access to the following skills: " + skills.formatAvailableSkills())
                 .tools(spyTools)
-                .toolProviders(skills.toolProviders())
+                .toolProvider(skills.toolProvider())
                 .build();
 
         // when
@@ -192,7 +192,7 @@ class SkillsStreamingIT {
 
         // then
         assertThat(skills.formatAvailableSkills()).contains("using-poll-tool", "using-process-tool");
-        assertThat(getToolNames(skills.toolProviders()))
+        assertThat(getToolNames(skills.toolProvider()))
                 .containsExactlyInAnyOrder("activate_skill", "read_skill_resource");
 
         // given
@@ -207,7 +207,7 @@ class SkillsStreamingIT {
                         activate it first using the 'activate_skill' tool before proceeding.
                         """.formatted(skills.formatAvailableSkills()))
                 .tools(spyTools)
-                .toolProviders(skills.toolProviders())
+                .toolProvider(skills.toolProvider())
                 .build();
 
         // when
@@ -222,7 +222,7 @@ class SkillsStreamingIT {
     }
 
     @Test
-    void should_not_include_skill_tools_before_activation_and_include_after() throws Exception {
+    void should_not_include_skill_scoped_tools_before_activation_and_include_after() throws Exception {
 
         // given
         ToolSpecification skillTool = ToolSpecification.builder()
@@ -254,7 +254,7 @@ class SkillsStreamingIT {
                         When the user's request relates to one of these skills,
                         activate it first using the 'activate_skill' tool before proceeding.
                         """.formatted(skills.formatAvailableSkills()))
-                .toolProviders(skills.toolProviders())
+                .toolProvider(skills.toolProvider())
                 .build();
 
         // when — first invocation: skill is not yet activated
@@ -337,7 +337,7 @@ class SkillsStreamingIT {
                         activate it first using the 'activate_skill' tool before proceeding.
                         Activate only the relevant skill. Do NOT activate unrelated skills.
                         """.formatted(skills.formatAvailableSkills()))
-                .toolProviders(skills.toolProviders())
+                .toolProvider(skills.toolProvider())
                 .build();
 
         // when
@@ -386,9 +386,8 @@ class SkillsStreamingIT {
         }
     }
 
-    private static Stream<String> getToolNames(List<ToolProvider> toolProviders) {
-        return toolProviders.stream()
-                .flatMap(tp -> tp.provideTools(null).tools().keySet().stream())
+    private static Stream<String> getToolNames(ToolProvider toolProvider) {
+        return toolProvider.provideTools(null).tools().keySet().stream()
                 .map(ToolSpecification::name);
     }
 }

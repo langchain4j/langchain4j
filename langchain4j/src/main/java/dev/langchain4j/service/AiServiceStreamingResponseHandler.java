@@ -40,7 +40,6 @@ import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
-import dev.langchain4j.service.tool.ToolService;
 import dev.langchain4j.service.tool.ToolServiceContext;
 import java.util.ArrayList;
 import java.util.List;
@@ -354,14 +353,9 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             }
 
             List<ChatMessage> messages = messagesToSend(invocationContext.chatMemoryId());
-            ToolServiceContext refreshedToolServiceContext = ToolService.refreshDynamicProviders(
-                    toolServiceContext, messages, invocationContext);
-            List<ToolSpecification> baseTools = (refreshedToolServiceContext != toolServiceContext) // TODO
-                    ? refreshedToolServiceContext.effectiveTools()
-                    : chatRequest.toolSpecifications();
             ChatRequestParameters parameters = chatRequestParameters(
-                    invocationContext.methodArguments(), baseTools);
-            parameters = addFoundTools(parameters, toolResults, refreshedToolServiceContext.availableTools());
+                    invocationContext.methodArguments(), chatRequest.toolSpecifications());
+            parameters = addFoundTools(parameters, toolResults, toolServiceContext.availableTools());
 
             ChatRequest nextChatRequest = context.chatRequestTransformer.apply(
                     ChatRequest.builder()
@@ -388,7 +382,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     errorHandler,
                     temporaryMemory,
                     TokenUsage.sum(tokenUsage, chatResponse.metadata().tokenUsage()),
-                    refreshedToolServiceContext,
+                    toolServiceContext,
                     sequentialToolsInvocationsLeft,
                     toolArgumentsErrorHandler,
                     toolExecutionErrorHandler,

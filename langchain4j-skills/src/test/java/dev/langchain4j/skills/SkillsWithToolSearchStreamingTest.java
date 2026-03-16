@@ -56,7 +56,7 @@ class SkillsWithToolSearchStreamingTest {
                 .streamingChatModel(spyChatModel)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
                 .tools(Map.of(getWeather, (ToolExecutor) (req, memoryId) -> "sunny"))
-                .toolProviders(skills.toolProviders())
+                .toolProviders(skills.toolProvider())
                 .toolSearchStrategy(new SimpleToolSearchStrategy())
                 .systemMessage("You have skills: " + skills.formatAvailableSkills())
                 .build();
@@ -110,7 +110,7 @@ class SkillsWithToolSearchStreamingTest {
                 .streamingChatModel(spyChatModel)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
                 .tools(Map.of(getWeather, (ToolExecutor) (req, memoryId) -> "sunny"))
-                .toolProviders(skills.toolProviders())
+                .toolProviders(skills.toolProvider())
                 .toolSearchStrategy(spyStrategy)
                 .systemMessage("You have skills: " + skills.formatAvailableSkills())
                 .build();
@@ -178,7 +178,7 @@ class SkillsWithToolSearchStreamingTest {
         Assistant assistant = AiServices.builder(Assistant.class)
                 .streamingChatModel(spyChatModel)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
-                .toolProviders(skills.toolProviders())
+                .toolProviders(skills.toolProvider())
                 .toolSearchStrategy(new SimpleToolSearchStrategy())
                 .systemMessage("You have skills: " + skills.formatAvailableSkills())
                 .build();
@@ -258,7 +258,7 @@ class SkillsWithToolSearchStreamingTest {
                 .streamingChatModel(spyChatModel)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
                 .tools(Map.of(getWeather, (ToolExecutor) (req, memoryId) -> "sunny"))
-                .toolProviders(skills.toolProviders())
+                .toolProviders(skills.toolProvider())
                 .toolSearchStrategy(spyStrategy)
                 .systemMessage("You have skills: " + skills.formatAvailableSkills())
                 .build();
@@ -345,7 +345,7 @@ class SkillsWithToolSearchStreamingTest {
         Assistant assistant = AiServices.builder(Assistant.class)
                 .streamingChatModel(spyChatModel)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
-                .toolProviders(skills.toolProviders())
+                .toolProviders(skills.toolProvider())
                 .toolSearchStrategy(new SimpleToolSearchStrategy())
                 .systemMessage("You have skills: " + skills.formatAvailableSkills())
                 .build();
