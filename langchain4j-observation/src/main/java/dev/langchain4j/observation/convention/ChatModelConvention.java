@@ -1,6 +1,6 @@
-package convention;
+package dev.langchain4j.observation.convention;
 
-import context.ChatModelObservationContext;
+import dev.langchain4j.observation.context.ChatModelObservationContext;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationConvention;
 

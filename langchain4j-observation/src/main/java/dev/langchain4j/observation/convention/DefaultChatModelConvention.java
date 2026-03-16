@@ -1,15 +1,14 @@
-package convention;
+package dev.langchain4j.observation.convention;
 
-import static convention.ChatModelDocumentation.HighCardinalityValues.INPUT_TOKENS;
-import static convention.ChatModelDocumentation.HighCardinalityValues.OUTPUT_TOKENS;
-import static convention.ChatModelDocumentation.LowCardinalityValues.OPERATION_NAME;
-import static convention.ChatModelDocumentation.LowCardinalityValues.OUTCOME;
-import static convention.ChatModelDocumentation.LowCardinalityValues.PROVIDER_NAME;
-import static convention.ChatModelDocumentation.LowCardinalityValues.REQUEST_MODEL;
-import static convention.ChatModelDocumentation.LowCardinalityValues.RESPONSE_MODEL;
+import static dev.langchain4j.observation.convention.ChatModelDocumentation.HighCardinalityValues.INPUT_TOKENS;
+import static dev.langchain4j.observation.convention.ChatModelDocumentation.HighCardinalityValues.OUTPUT_TOKENS;
+import static dev.langchain4j.observation.convention.ChatModelDocumentation.LowCardinalityValues.OPERATION_NAME;
+import static dev.langchain4j.observation.convention.ChatModelDocumentation.LowCardinalityValues.OUTCOME;
+import static dev.langchain4j.observation.convention.ChatModelDocumentation.LowCardinalityValues.PROVIDER_NAME;
+import static dev.langchain4j.observation.convention.ChatModelDocumentation.LowCardinalityValues.REQUEST_MODEL;
+import static dev.langchain4j.observation.convention.ChatModelDocumentation.LowCardinalityValues.RESPONSE_MODEL;
 import static java.util.Optional.ofNullable;
 
-import context.ChatModelObservationContext;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
@@ -18,6 +17,7 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.observation.context.ChatModelObservationContext;
 import io.micrometer.common.KeyValue;
 import io.micrometer.common.KeyValues;
 import org.jspecify.annotations.Nullable;
