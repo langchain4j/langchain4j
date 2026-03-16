@@ -5,7 +5,7 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.model.ModelProvider.MICROSOFT_FOUNDRY;
+import static dev.langchain4j.model.ModelProvider.AZURE_OPEN_AI;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.aiMessageFrom;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.finishReasonFrom;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupSyncClient;
@@ -244,7 +244,7 @@ public class AzureOpenAiChatModel implements ChatModel {
 
     @Override
     public ModelProvider provider() {
-        return MICROSOFT_FOUNDRY;
+        return AZURE_OPEN_AI;
     }
 
     public static Builder builder() {
