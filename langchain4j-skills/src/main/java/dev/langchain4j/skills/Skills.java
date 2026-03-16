@@ -64,7 +64,7 @@ public class Skills {
     }
 
     /**
-     * Returns the list of {@link ToolProvider}s that expose skill-related tools to the LLM.
+     * Returns the list of {@link ToolProvider}s that expose skill-related tools to the LLM. TODO
      * <p>
      * The list contains:
      * <ul>
@@ -115,7 +115,7 @@ public class Skills {
         Map<String, Skill> skillsByName = new LinkedHashMap<>();
         skills.forEach(skill -> skillsByName.put(skill.name(), skill));
 
-        Map<ToolSpecification, ToolExecutor> baseTools = new HashMap<>();
+        Map<ToolSpecification, ToolExecutor> skillManagementTools = new HashMap<>();
 
         ActivateSkillToolConfig asc = getOrDefault(builder.activateSkillToolConfig, ActivateSkillToolConfig.builder().build());
 
@@ -129,7 +129,7 @@ public class Skills {
                 .addMetadata(METADATA_SEARCH_BEHAVIOR, ALWAYS_VISIBLE)
                 .build();
 
-        baseTools.put(activateSkillTool, new ActivateSkillToolExecutor(asc, skillsByName));
+        skillManagementTools.put(activateSkillTool, new ActivateSkillToolExecutor(asc, skillsByName));
 
         boolean hasResources = skills.stream().anyMatch(skill -> !skill.resources().isEmpty());
         if (hasResources) {
@@ -146,15 +146,14 @@ public class Skills {
                     .addMetadata(METADATA_SEARCH_BEHAVIOR, ALWAYS_VISIBLE)
                     .build();
 
-            baseTools.put(readResourceTool, new ReadResourceToolExecutor(rrc, skillsByName));
+            skillManagementTools.put(readResourceTool, new ReadResourceToolExecutor(rrc, skillsByName));
         }
 
+        ToolProviderResult skillManagementResult = ToolProviderResult.builder().addAll(skillManagementTools).build();
+
         List<ToolProvider> providers = new ArrayList<>();
+        providers.add(request -> skillManagementResult);
 
-        // Base provider: always active, provides activate_skill and read_skill_resource
-        providers.add(request -> ToolProviderResult.builder().addAll(baseTools).build());
-
-        // Per-skill providers: each overrides isActive() to check skill activation
         for (Map.Entry<String, Skill> entry : skillsByName.entrySet()) {
             Skill skill = entry.getValue();
             List<ToolProvider> skillToolProviders = skill.toolProviders();
@@ -164,7 +163,7 @@ public class Skills {
             }
         }
 
-        return List.copyOf(providers);
+        return providers;
     }
 
     private String resolveRelativePathParameterDescription(ReadResourceToolConfig rrc) {

@@ -11,6 +11,7 @@ import static org.assertj.core.data.MapEntry.entry;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -71,6 +72,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullSource;
+import org.mockito.InOrder;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
@@ -1610,6 +1612,140 @@ class AiServicesWithToolsIT {
         verify(spyStaticProvider, times(1)).provideTools(any());
         verify(spyDynamicProvider, times(2)).provideTools(any());
 
+        verify(spyChatModel, times(2)).chat(argThat((ChatRequest request) ->
+                request.toolSpecifications().stream().anyMatch(t -> t.name().equals("getWeather"))
+                        && request.toolSpecifications().stream().anyMatch(t -> t.name().equals("getTime"))
+        ));
+    }
+
+    @Test
+    void dynamic_provider_new_tools_in_second_call_should_be_added() {
+
+        // given
+        AtomicInteger callCount = new AtomicInteger(0);
+
+        ToolProvider spyDynamicProvider = spy(new ToolProvider() {
+            @Override
+            public ToolProviderResult provideTools(ToolProviderRequest request) {
+                int call = callCount.incrementAndGet();
+                ToolProviderResult.Builder builder = ToolProviderResult.builder();
+                builder.add(
+                        ToolSpecification.builder().name("getWeather").description("Gets the weather").build(),
+                        (req, memoryId) -> "sunny"
+                );
+                if (call >= 2) {
+                    builder.add(
+                            ToolSpecification.builder().name("getTime").description("Gets the time").build(),
+                            (req, memoryId) -> "12:00"
+                    );
+                }
+                return builder.build();
+            }
+
+            @Override
+            public boolean isDynamic() {
+                return true;
+            }
+        });
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("getWeather")
+                        .arguments("{}")
+                        .build()),
+                AiMessage.from("It is sunny and the time is 12:00")
+        );
+        ChatModel spyChatModel = spy(chatModel);
+
+        interface SimpleAssistant {
+            String chat(String userMessage);
+        }
+
+        SimpleAssistant assistant = AiServices.builder(SimpleAssistant.class)
+                .chatModel(spyChatModel)
+                .toolProviders(spyDynamicProvider)
+                .build();
+
+        // when
+        String answer = assistant.chat("What is the weather?");
+
+        // then
+        assertThat(answer).contains("sunny");
+
+        InOrder inOrder = inOrder(spyChatModel);
+
+        // First LLM call: only getWeather
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                request.toolSpecifications().stream().anyMatch(t -> t.name().equals("getWeather"))
+                        && request.toolSpecifications().stream().noneMatch(t -> t.name().equals("getTime"))
+        ));
+
+        // Second LLM call: getWeather + getTime (newly added by dynamic provider)
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                request.toolSpecifications().stream().anyMatch(t -> t.name().equals("getWeather"))
+                        && request.toolSpecifications().stream().anyMatch(t -> t.name().equals("getTime"))
+        ));
+    }
+
+    @Test
+    void dynamic_provider_not_returning_tool_in_second_call_should_still_have_it() {
+
+        // given
+        AtomicInteger callCount = new AtomicInteger(0);
+
+        ToolProvider spyDynamicProvider = spy(new ToolProvider() {
+            @Override
+            public ToolProviderResult provideTools(ToolProviderRequest request) {
+                int call = callCount.incrementAndGet();
+                ToolProviderResult.Builder builder = ToolProviderResult.builder();
+                builder.add(
+                        ToolSpecification.builder().name("getWeather").description("Gets the weather").build(),
+                        (req, memoryId) -> "sunny"
+                );
+                if (call == 1) {
+                    // Only returned on first call
+                    builder.add(
+                            ToolSpecification.builder().name("getTime").description("Gets the time").build(),
+                            (req, memoryId) -> "12:00"
+                    );
+                }
+                return builder.build();
+            }
+
+            @Override
+            public boolean isDynamic() {
+                return true;
+            }
+        });
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("getWeather")
+                        .arguments("{}")
+                        .build()),
+                AiMessage.from("It is sunny and the time is 12:00")
+        );
+        ChatModel spyChatModel = spy(chatModel);
+
+        interface SimpleAssistant {
+            String chat(String userMessage);
+        }
+
+        SimpleAssistant assistant = AiServices.builder(SimpleAssistant.class)
+                .chatModel(spyChatModel)
+                .toolProviders(spyDynamicProvider)
+                .build();
+
+        // when
+        String answer = assistant.chat("What is the weather?");
+
+        // then
+        assertThat(answer).contains("sunny");
+
+        // Both LLM calls should have both tools — getTime was returned in first call
+        // and should persist even though the provider stopped returning it
         verify(spyChatModel, times(2)).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().stream().anyMatch(t -> t.name().equals("getWeather"))
                         && request.toolSpecifications().stream().anyMatch(t -> t.name().equals("getTime"))

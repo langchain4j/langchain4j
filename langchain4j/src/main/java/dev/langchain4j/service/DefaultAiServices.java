@@ -254,8 +254,6 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         ToolServiceContext toolServiceContext =
                                 context.toolService.createContext(invocationContext, userMessage, messages);
-                        toolServiceContext = ToolService.refreshDynamicProviders(
-                                toolServiceContext, messages, invocationContext); // TODO merge with createContext
 
                         if (streaming) {
                             var tokenStreamParameters = AiServiceTokenStreamParameters.builder()

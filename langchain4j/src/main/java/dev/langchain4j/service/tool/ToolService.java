@@ -266,6 +266,7 @@ public class ToolService {
                                             UserMessage userMessage,
                                             List<ChatMessage> messages) {
         ToolServiceContext toolServiceContext = doCreateContext(invocationContext, userMessage, messages);
+        toolServiceContext = refreshDynamicProviders(toolServiceContext, messages, invocationContext);
         if (toolSearchService == null) {
             return toolServiceContext;
         } else {
@@ -502,9 +503,9 @@ public class ToolService {
                 .messages(messages)
                 .build();
 
-        List<ToolSpecification> newToolSpecs = new ArrayList<>(toolServiceContext.effectiveTools());
+        List<ToolSpecification> newEffectiveTools = new ArrayList<>(toolServiceContext.effectiveTools());
         Map<String, ToolExecutor> newToolExecutors = new HashMap<>(toolServiceContext.toolExecutors());
-        Set<String> immediateReturnTools = new HashSet<>(toolServiceContext.immediateReturnTools());
+        Set<String> newImmediateReturnTools = new HashSet<>(toolServiceContext.immediateReturnTools());
         boolean changed = false;
 
         for (ToolProvider dynamicProvider : dynamicProviders) {
@@ -513,12 +514,12 @@ public class ToolService {
                 for (Map.Entry<ToolSpecification, ToolExecutor> toolEntry : result.tools().entrySet()) {
                     String toolName = toolEntry.getKey().name();
                     if (!newToolExecutors.containsKey(toolName)) {
-                        newToolSpecs.add(toolEntry.getKey());
+                        newEffectiveTools.add(toolEntry.getKey());
                         newToolExecutors.put(toolName, toolEntry.getValue());
                         changed = true;
                     }
                 }
-                immediateReturnTools.addAll(result.immediateReturnToolNames());
+                newImmediateReturnTools.addAll(result.immediateReturnToolNames());
             }
         }
 
@@ -527,10 +528,9 @@ public class ToolService {
         }
 
         return toolServiceContext.toBuilder()
-                .effectiveTools(newToolSpecs)
-                .availableTools(newToolSpecs)
+                .effectiveTools(newEffectiveTools)
                 .toolExecutors(newToolExecutors)
-                .immediateReturnTools(immediateReturnTools)
+                .immediateReturnTools(newImmediateReturnTools)
                 .build();
     }
 

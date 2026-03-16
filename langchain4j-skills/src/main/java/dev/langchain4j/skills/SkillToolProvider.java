@@ -31,7 +31,7 @@ class SkillToolProvider implements ToolProvider {
 
     @Override
     public ToolProviderResult provideTools(ToolProviderRequest request) {
-        if (!isSkillActivated(request.messages(), skillName)) {
+        if (!isSkillActivated(skillName, request.messages())) {
             return ToolProviderResult.builder().build();
         }
 
@@ -51,7 +51,7 @@ class SkillToolProvider implements ToolProvider {
                 .build();
     }
 
-    private static boolean isSkillActivated(List<ChatMessage> messages, String skillName) {
+    private static boolean isSkillActivated(String skillName, List<ChatMessage> messages) {
         for (ChatMessage message : messages) {
             if (message instanceof ToolExecutionResultMessage toolResult) {
                 if (skillName.equals(toolResult.attributes().get(ACTIVATED_SKILL_ATTRIBUTE))) {
