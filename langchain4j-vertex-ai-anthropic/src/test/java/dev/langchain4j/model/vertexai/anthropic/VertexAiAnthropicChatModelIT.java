@@ -23,7 +23,7 @@ import org.junit.jupiter.api.condition.EnabledOnJre;
 @EnabledIfEnvironmentVariable(named = "GCP_PROJECT_ID", matches = ".+")
 class VertexAiAnthropicChatModelIT extends AbstractChatModelIT {
 
-    static final ChatModel VERTEX_AI_ANTHROPIC_CHAT_MODEL = VertexAiAnthropicChatModel.builder()
+    private final ChatModel model = VertexAiAnthropicChatModel.builder()
             .project(System.getenv("GCP_PROJECT_ID"))
             .location(DEFAULT_LOCATION)
             .modelName(DEFAULT_MODEL_NAME)
@@ -34,7 +34,7 @@ class VertexAiAnthropicChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected List<ChatModel> models() {
-        return List.of(VERTEX_AI_ANTHROPIC_CHAT_MODEL);
+        return List.of(model);
     }
 
     @Override
