@@ -65,8 +65,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     public enum VectorType {
         VECTOR,
-        HALFVEC,
-        SPARSEVEC
+        HALFVEC
+//        SPARSEVEC TODO: add sparsevec after adding HNSW index
     }
 
     private static final Logger log = LoggerFactory.getLogger(PgVectorEmbeddingStore.class);
@@ -291,7 +291,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.vectorType = getOrDefault(builder.vectorType, VectorType.VECTOR);
 
         if (useIndex || createTable || dropTableFirst) {
-            initTable(dropTableFirst, createTable, useIndex, builder.dimension, builder.indexListSize, builder.vectorType);
+            initTable(dropTableFirst, createTable, useIndex, builder.dimension, builder.indexListSize, this.vectorType);
         }
     }
 
@@ -360,7 +360,6 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                                 ensureGreaterThanZero(dimension, "dimension"),
                                 metadataHandler.columnDefinitionsString());
                         break;
-                    case SPARSEVEC: // TODO: add sparsevec after adding the HNSW index
                     case VECTOR:
                     default:
                         query = String.format(
@@ -538,17 +537,17 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                         double score = resultSet.getDouble("score");
                         String embeddingId = resultSet.getString("embedding_id");
                         Embedding embedding = null;
-                        if (this.vectorType.equals(VectorType.VECTOR)) {
-                            PGvector vector = (PGvector) resultSet.getObject("embedding");
-                            embedding = new Embedding(vector.toArray());
-                        } else if (this.vectorType.equals(VectorType.HALFVEC)) {
-                            PGhalfvec vector = (PGhalfvec) resultSet.getObject("embedding");
-                            embedding = new Embedding(vector.toArray());
-                        } else if (this.vectorType.equals(VectorType.SPARSEVEC)) {
-                            PGsparsevec vector = (PGsparsevec) resultSet.getObject("embedding");
-                            embedding = new Embedding(vector.toArray());
+                        switch (this.vectorType) {
+                            case VECTOR:
+                                PGvector vector = (PGvector) resultSet.getObject("embedding");
+                                embedding = new Embedding(vector.toArray());
+                                break;
+                            case HALFVEC:
+                                PGhalfvec halfVec = (PGhalfvec) resultSet.getObject("embedding");
+                                embedding = new Embedding(halfVec.toArray());
+                                break;
+                            default:
                         }
-
                         String text = resultSet.getString("text");
                         TextSegment textSegment = null;
                         if (isNotNullOrBlank(text)) {
