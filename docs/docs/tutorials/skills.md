@@ -112,19 +112,74 @@ Skill skill = Skill.builder()
 You can attach tools directly to a skill. These tools are **only exposed to the LLM
 after the skill has been activated** via the `activate_skill` tool.
 This keeps the LLM's tool list small and focused, and ensures skill-specific tools only
-appear when they are relevant:
+appear when they are relevant.
+
+#### Using `@Tool`-Annotated Methods
+
+The simplest way to attach tools is to pass objects with `@Tool`-annotated methods:
+
+```java
+class OrderTools {
+
+    @Tool("Validates a customer order by ID")
+    String validateOrder(String orderId) {
+        // validation logic
+        return "valid";
+    }
+
+    @Tool("Charges payment for a customer order")
+    String chargePayment(String orderId) {
+        // payment logic
+        return "charged";
+    }
+}
+
+Skill skill = Skill.builder()
+        .name("process-order")
+        .description("Processes a customer order end-to-end")
+        .content("""
+                To process an order:
+                1. Call `validateOrder(orderId)` to check the order is valid.
+                2. Call `chargePayment(orderId)`.
+                """)
+        .tools(new OrderTools())
+        .build();
+```
+
+#### Using Tool Providers
+
+You can also attach `ToolProvider`s to a skill — for example, to expose tools from an
+MCP server only after the skill is activated:
+
+```java
+ToolProvider mcpToolProvider = McpToolProvider.builder()
+        .mcpClients(mcpClient)
+        .toolFilter((tool, mcpClient) -> tool.name().startsWith("inventory_"))
+        .build();
+
+Skill skill = Skill.builder()
+        .name("inventory-management")
+        .description("Manages warehouse inventory")
+        .content("""
+                Use inventory tools to check stock levels and update quantities.
+                """)
+        .toolProviders(mcpToolProvider)
+        .build();
+```
+
+#### Using a `Map<ToolSpecification, ToolExecutor>`
+
+For full control over tool specifications and execution logic, you can pass a map directly:
 
 ```java
 ToolSpecification validateOrder = ToolSpecification.builder()
         .name("validateOrder")
-        .description("Validates a customer order")
-        .parameters(JsonObjectSchema.builder()
-                .addStringProperty("orderId", "The order ID")
-                .required("orderId")
-                .build())
+        .description("Validates a customer order by ID")
+        .addParameter("orderId", JsonSchemaProperty.STRING, JsonSchemaProperty.description("The order ID"))
         .build();
 
 ToolExecutor validateOrderExecutor = (request, memoryId) -> {
+    String orderId = request.arguments(); // parse as needed
     // validation logic
     return "valid";
 };
@@ -135,11 +190,28 @@ Skill skill = Skill.builder()
         .content("""
                 To process an order:
                 1. Call `validateOrder(orderId)` to check the order is valid.
-                2. Call `chargePayment(orderId)`.
                 """)
         .tools(Map.of(validateOrder, validateOrderExecutor))
         .build();
+```
 
+All three approaches can be combined — `@Tool` methods, `ToolProvider`s, and `Map` entries
+are merged into a single set of skill-scoped tools:
+
+```java
+Skill skill = Skill.builder()
+        .name("process-order")
+        .description("Processes a customer order end-to-end")
+        .content("...")
+        .tools(new OrderTools())
+        .tools(Map.of(validateOrder, validateOrderExecutor))
+        .toolProviders(mcpToolProvider)
+        .build();
+```
+
+#### Wiring It Up
+
+```java
 Skills skills = Skills.from(skill);
 
 MyAiService service = AiServices.builder(MyAiService.class)
