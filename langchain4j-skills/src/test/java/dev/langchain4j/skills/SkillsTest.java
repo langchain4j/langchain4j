@@ -439,6 +439,231 @@ class SkillsTest {
         assertThat(getToolNames(skillResult)).containsExactlyInAnyOrder("sayHello", "mcp_tool");
     }
 
+    static class AnotherTools {
+
+        @dev.langchain4j.agent.tool.Tool("Says goodbye")
+        String sayGoodbye(String name) {
+            return "Goodbye, " + name + "!";
+        }
+    }
+
+    @Test
+    void tools_map_should_not_override_tool_annotated_methods() {
+
+        // given
+        ToolSpecification manualTool = ToolSpecification.builder()
+                .name("manual_tool")
+                .description("A manual tool")
+                .build();
+        ToolExecutor manualExecutor = (request, memoryId) -> "manual";
+
+        Skill skill = Skill.builder()
+                .name("my-skill")
+                .description("A skill")
+                .content("Use all tools")
+                .tools(new MyTools())
+                .tools(Map.of(manualTool, manualExecutor))
+                .build();
+
+        Skills skills = Skills.from(skill);
+
+        // when - activate the skill
+        ToolProviderRequest request = requestWithMessages(List.of(
+                UserMessage.from("do stuff"),
+                skillActivatedMessage("my-skill")
+        ));
+        ToolProviderResult result = skills.toolProviders().get(1).provideTools(request);
+
+        // then - both @Tool method and Map tool are present
+        assertThat(getToolNames(result)).containsExactlyInAnyOrder("sayHello", "manual_tool");
+    }
+
+    @Test
+    void tool_annotated_methods_should_not_override_tools_map() {
+
+        // given - reversed order: Map first, then @Tool
+        ToolSpecification manualTool = ToolSpecification.builder()
+                .name("manual_tool")
+                .description("A manual tool")
+                .build();
+        ToolExecutor manualExecutor = (request, memoryId) -> "manual";
+
+        Skill skill = Skill.builder()
+                .name("my-skill")
+                .description("A skill")
+                .content("Use all tools")
+                .tools(Map.of(manualTool, manualExecutor))
+                .tools(new MyTools())
+                .build();
+
+        Skills skills = Skills.from(skill);
+
+        // when
+        ToolProviderRequest request = requestWithMessages(List.of(
+                UserMessage.from("do stuff"),
+                skillActivatedMessage("my-skill")
+        ));
+        ToolProviderResult result = skills.toolProviders().get(1).provideTools(request);
+
+        // then
+        assertThat(getToolNames(result)).containsExactlyInAnyOrder("manual_tool", "sayHello");
+    }
+
+    @Test
+    void multiple_tool_annotated_objects_should_accumulate() {
+
+        // given
+        Skill skill = Skill.builder()
+                .name("my-skill")
+                .description("A skill")
+                .content("Use all tools")
+                .tools(new MyTools())
+                .tools(new AnotherTools())
+                .build();
+
+        Skills skills = Skills.from(skill);
+
+        // when
+        ToolProviderRequest request = requestWithMessages(List.of(
+                UserMessage.from("do stuff"),
+                skillActivatedMessage("my-skill")
+        ));
+        ToolProviderResult result = skills.toolProviders().get(1).provideTools(request);
+
+        // then
+        assertThat(getToolNames(result)).containsExactlyInAnyOrder("sayHello", "sayGoodbye");
+    }
+
+    @Test
+    void multiple_tool_maps_should_accumulate() {
+
+        // given
+        ToolSpecification tool1 = ToolSpecification.builder().name("tool_1").description("Tool 1").build();
+        ToolSpecification tool2 = ToolSpecification.builder().name("tool_2").description("Tool 2").build();
+
+        Skill skill = Skill.builder()
+                .name("my-skill")
+                .description("A skill")
+                .content("Use all tools")
+                .tools(Map.of(tool1, (ToolExecutor) (request, memoryId) -> "1"))
+                .tools(Map.of(tool2, (ToolExecutor) (request, memoryId) -> "2"))
+                .build();
+
+        Skills skills = Skills.from(skill);
+
+        // when
+        ToolProviderRequest request = requestWithMessages(List.of(
+                UserMessage.from("do stuff"),
+                skillActivatedMessage("my-skill")
+        ));
+        ToolProviderResult result = skills.toolProviders().get(1).provideTools(request);
+
+        // then
+        assertThat(getToolNames(result)).containsExactlyInAnyOrder("tool_1", "tool_2");
+    }
+
+    @Test
+    void tool_providers_should_not_override_each_other() {
+
+        // given
+        ToolProvider provider1 = request -> ToolProviderResult.builder()
+                .add(ToolSpecification.builder().name("provider1_tool").description("P1").build(),
+                        (req, memoryId) -> "p1")
+                .build();
+        ToolProvider provider2 = request -> ToolProviderResult.builder()
+                .add(ToolSpecification.builder().name("provider2_tool").description("P2").build(),
+                        (req, memoryId) -> "p2")
+                .build();
+
+        Skill skill = Skill.builder()
+                .name("my-skill")
+                .description("A skill")
+                .content("Use all tools")
+                .toolProviders(provider1)
+                .toolProviders(provider2)
+                .build();
+
+        // then - both providers are present on the skill
+        assertThat(skill.toolProviders()).hasSize(2);
+
+        Skills skills = Skills.from(skill);
+
+        // when - activate the skill
+        ToolProviderRequest request = requestWithMessages(List.of(
+                UserMessage.from("do stuff"),
+                skillActivatedMessage("my-skill")
+        ));
+        ToolProviderResult result = skills.toolProviders().get(1).provideTools(request);
+
+        // then - tools from both providers
+        assertThat(getToolNames(result)).containsExactlyInAnyOrder("provider1_tool", "provider2_tool");
+    }
+
+    @Test
+    void all_three_tool_types_should_accumulate() {
+
+        // given
+        ToolSpecification manualTool = ToolSpecification.builder()
+                .name("manual_tool")
+                .description("A manual tool")
+                .build();
+        ToolExecutor manualExecutor = (request, memoryId) -> "manual";
+
+        ToolProvider dynamicProvider = request -> ToolProviderResult.builder()
+                .add(ToolSpecification.builder().name("dynamic_tool").description("Dynamic").build(),
+                        (req, memoryId) -> "dynamic")
+                .build();
+
+        Skill skill = Skill.builder()
+                .name("my-skill")
+                .description("A skill")
+                .content("Use all tools")
+                .tools(new MyTools())
+                .tools(Map.of(manualTool, manualExecutor))
+                .toolProviders(dynamicProvider)
+                .build();
+
+        // then - 2 tool providers on skill: 1 static (wrapping @Tool + Map), 1 dynamic
+        assertThat(skill.toolProviders()).hasSize(2);
+
+        Skills skills = Skills.from(skill);
+
+        // when - activate the skill
+        ToolProviderRequest request = requestWithMessages(List.of(
+                UserMessage.from("do stuff"),
+                skillActivatedMessage("my-skill")
+        ));
+        ToolProviderResult result = skills.toolProviders().get(1).provideTools(request);
+
+        // then - all three tools present
+        assertThat(getToolNames(result)).containsExactlyInAnyOrder("sayHello", "manual_tool", "dynamic_tool");
+    }
+
+    @Test
+    void tool_providers_collection_should_not_override_varargs() {
+
+        // given
+        ToolProvider provider1 = request -> ToolProviderResult.builder()
+                .add(ToolSpecification.builder().name("vararg_tool").description("Vararg").build(),
+                        (req, memoryId) -> "vararg")
+                .build();
+        ToolProvider provider2 = request -> ToolProviderResult.builder()
+                .add(ToolSpecification.builder().name("collection_tool").description("Collection").build(),
+                        (req, memoryId) -> "collection")
+                .build();
+
+        Skill skill = Skill.builder()
+                .name("my-skill")
+                .description("A skill")
+                .content("Use all tools")
+                .toolProviders(provider1)
+                .toolProviders(List.of(provider2))
+                .build();
+
+        // then - both providers present
+        assertThat(skill.toolProviders()).hasSize(2);
+    }
+
     // --- toBuilder ---
 
     @Test

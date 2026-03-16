@@ -478,7 +478,7 @@ class StreamingAiServicesWithToolSearchToolIT {
             @Override
             public ToolSearchResult search(ToolSearchRequest request) {
                 // find all available tools
-                List<String> foundToolNames = request.searchableTools().stream().map(it -> it.name()).toList();
+                List<String> foundToolNames = request.searchableTools().stream().map(ToolSpecification::name).sorted().toList();
                 return new ToolSearchResult(foundToolNames, "Tools found: " + String.join(", ", foundToolNames));
             }
         });

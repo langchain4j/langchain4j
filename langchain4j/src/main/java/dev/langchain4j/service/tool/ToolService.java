@@ -44,11 +44,12 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
-import java.util.concurrent.atomic.AtomicBoolean;
+
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -127,36 +128,18 @@ public class ToolService {
                                 + "Please pass tool objects directly, not wrapped in collections.",
                         objectWithTool.getClass().getName());
             }
+        }
 
-            AtomicBoolean hasToolMethods = new AtomicBoolean(false);
-            for (Method method : objectWithTool.getClass().getDeclaredMethods()) {
-                getAnnotatedMethod(method, Tool.class).ifPresent(toolMethod -> {
-                    hasToolMethods.set(true);
-                    processToolMethod(objectWithTool, toolMethod);
-                });
+        ToolProviderResult result = toToolProviderResult(objectsWithTools.toArray());
+        for (Map.Entry<ToolSpecification, ToolExecutor> entry : result.tools().entrySet()) {
+            ToolSpecification spec = entry.getKey();
+            if (toolExecutors.containsKey(spec.name())) {
+                throw new IllegalConfigurationException("Duplicated definition for tool: " + spec.name());
             }
-
-            if (!hasToolMethods.get()) {
-                throw illegalConfiguration(
-                        "Object '%s' does not have any methods annotated with @Tool",
-                        objectWithTool.getClass().getName());
-            }
+            toolSpecifications.add(spec);
+            toolExecutors.put(spec.name(), entry.getValue());
         }
-    }
-
-    private void processToolMethod(Object object, Method method) {
-        ToolSpecification toolSpecification = toolSpecificationFrom(method);
-        if (toolExecutors.containsKey(toolSpecification.name())) {
-            throw new IllegalConfigurationException("Duplicated definition for tool: " + toolSpecification.name());
-        }
-        toolSpecifications.add(toolSpecification);
-
-        ToolExecutor toolExecutor = createToolExecutor(object, method);
-        toolExecutors.put(toolSpecification.name(), toolExecutor);
-
-        if (method.getAnnotation(Tool.class).returnBehavior() == ReturnBehavior.IMMEDIATE) {
-            immediateReturnTools.add(toolSpecification.name());
-        }
+        immediateReturnTools.addAll(result.immediateReturnToolNames());
     }
 
     private static ToolExecutor createToolExecutor(Object object, Method method) {
@@ -167,6 +150,41 @@ public class ToolService {
                 .wrapToolArgumentsExceptions(true)
                 .propagateToolExecutionExceptions(true)
                 .build();
+    }
+
+    /**
+     * Scans the given objects for {@link Tool @Tool}-annotated methods and returns a
+     * {@link ToolProviderResult} containing tool specifications, executors, and immediate
+     * return tool names.
+     *
+     * @param objectsWithTools objects containing {@link Tool @Tool}-annotated methods
+     * @return a {@link ToolProviderResult} with all discovered tools
+     * @since 1.13.0
+     */
+    public static ToolProviderResult toToolProviderResult(Object... objectsWithTools) {
+        ToolProviderResult.Builder builder = ToolProviderResult.builder();
+        for (Object object : objectsWithTools) {
+            boolean hasToolMethods = false;
+            for (Method method : object.getClass().getDeclaredMethods()) {
+                Optional<Method> annotatedMethod = getAnnotatedMethod(method, Tool.class);
+                if (annotatedMethod.isPresent()) {
+                    hasToolMethods = true;
+                    Method toolMethod = annotatedMethod.get();
+                    ToolSpecification spec = toolSpecificationFrom(toolMethod);
+                    ToolExecutor executor = createToolExecutor(object, toolMethod);
+                    builder.add(spec, executor);
+                    if (toolMethod.getAnnotation(Tool.class).returnBehavior() == ReturnBehavior.IMMEDIATE) {
+                        builder.immediateReturnToolNames(Set.of(spec.name()));
+                    }
+                }
+            }
+            if (!hasToolMethods) {
+                throw illegalConfiguration(
+                        "Object '%s' does not have any methods annotated with @Tool",
+                        object.getClass().getName());
+            }
+        }
+        return builder.build();
     }
 
     /**
