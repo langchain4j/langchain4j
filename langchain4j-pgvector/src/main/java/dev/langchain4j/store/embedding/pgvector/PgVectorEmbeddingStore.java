@@ -383,10 +383,22 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             }
             if (useIndex) {
                 final String indexName = cleanTableName + "_ivfflat_index";
-                query = String.format(
-                        "CREATE INDEX IF NOT EXISTS %s ON %s " + "USING ivfflat (embedding vector_cosine_ops) "
-                                + "WITH (lists = %s)",
-                        indexName, table, ensureGreaterThanZero(indexListSize, "indexListSize"));
+                switch (vectorType) {
+                    case HALFVEC:
+                        query = String.format(
+                                "CREATE INDEX IF NOT EXISTS %s ON %s " + "USING ivfflat (embedding halfvec_cosine_ops) "
+                                        + "WITH (lists = %s)",
+                                indexName, table, ensureGreaterThanZero(indexListSize, "indexListSize"));
+                        break;
+                    case VECTOR:
+                    default:
+                        query = String.format(
+                                "CREATE INDEX IF NOT EXISTS %s ON %s " + "USING ivfflat (embedding vector_cosine_ops) "
+                                        + "WITH (lists = %s)",
+                                indexName, table, ensureGreaterThanZero(indexListSize, "indexListSize"));
+
+                }
+
                 statement.executeUpdate(query);
             }
         } catch (SQLException e) {
@@ -652,9 +664,17 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                     while (rs.next()) {
                         double score = rs.getDouble("score");
                         String embeddingId = rs.getString("embedding_id");
-
-                        PGvector vector = (PGvector) rs.getObject("embedding");
-                        Embedding embedding = new Embedding(vector.toArray());
+                        Embedding embedding = null;
+                        switch (this.vectorType) {
+                            case HALFVEC -> {
+                                PGhalfvec halfVec = (PGhalfvec) rs.getObject("embedding");
+                                embedding = new Embedding(halfVec.toArray());
+                            }
+                            case VECTOR -> {
+                                PGvector vector = (PGvector) rs.getObject("embedding");
+                                embedding = new Embedding(vector.toArray());
+                            }
+                        }
 
                         String text = rs.getString("text");
                         TextSegment textSegment = null;
