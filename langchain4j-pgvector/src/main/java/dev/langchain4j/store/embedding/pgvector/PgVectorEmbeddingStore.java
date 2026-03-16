@@ -15,6 +15,8 @@ import static java.util.Collections.nCopies;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
+import com.pgvector.PGhalfvec;
+import com.pgvector.PGsparsevec;
 import com.pgvector.PGvector;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
@@ -56,6 +58,15 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     public enum SearchMode {
         VECTOR,
         HYBRID
+    }
+
+    /**
+     * Vector types for the embedding.
+     */
+    public enum VectorType {
+        VECTOR,
+        HALFVEC,
+        SPARSEVEC
     }
 
     private static final Logger log = LoggerFactory.getLogger(PgVectorEmbeddingStore.class);
@@ -103,6 +114,14 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     private final int rrfK;
 
     /**
+     * Vector Type (supported types include: vector, halfvec, sparsevec)
+     * vector - up to 2,000 dimensions
+     * halfvec - up to 4,000 dimensions
+     * sparsevec - up to 1,000 non-zero elements
+     */
+    private final VectorType vectorType;
+
+    /**
      * Constructor for PgVectorEmbeddingStore Class
      *
      * @param datasource            The datasource to use
@@ -116,6 +135,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param searchMode            The search mode to use (null for default)
      * @param textSearchConfig      PostgreSQL text search configuration (null for default)
      * @param rrfK                  RRF k parameter (null for default)
+     * @param vectorType            The type of values to store in the embedding column (vector for default)
      */
     protected PgVectorEmbeddingStore(
             DataSource datasource,
@@ -128,7 +148,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             MetadataStorageConfig metadataStorageConfig,
             SearchMode searchMode,
             String textSearchConfig,
-            Integer rrfK) {
+            Integer rrfK,
+            VectorType vectorType) {
 
         this(new DatasourceBuilder()
                 .datasource(datasource)
@@ -142,7 +163,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .metadataStorageConfig(metadataStorageConfig)
                 .searchMode(searchMode)
                 .textSearchConfig(textSearchConfig)
-                .rrfK(rrfK));
+                .rrfK(rrfK)
+                .vectorType(vectorType));
     }
 
     /**
@@ -175,6 +197,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                 createTable,
                 dropTableFirst,
                 metadataStorageConfig,
+                null,
                 null,
                 null,
                 null);
@@ -240,7 +263,9 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                 builder.metadataStorageConfig,
                 builder.searchMode,
                 builder.textSearchConfig,
-                builder.rrfK);
+                builder.rrfK,
+                builder.vectorType
+        );
     }
 
     /**
@@ -263,9 +288,10 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.searchMode = getOrDefault(builder.searchMode, SearchMode.VECTOR);
         this.textSearchConfig = getOrDefault(builder.textSearchConfig, DEFAULT_TEXT_SEARCH_CONFIG);
         this.rrfK = ensureGreaterThanZero(getOrDefault(builder.rrfK, DEFAULT_RRF_K), "rrfK");
+        this.vectorType = getOrDefault(builder.vectorType, VectorType.VECTOR);
 
         if (useIndex || createTable || dropTableFirst) {
-            initTable(dropTableFirst, createTable, useIndex, builder.dimension, builder.indexListSize);
+            initTable(dropTableFirst, createTable, useIndex, builder.dimension, builder.indexListSize, builder.vectorType);
         }
     }
 
@@ -277,6 +303,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.searchMode = SearchMode.VECTOR;
         this.textSearchConfig = DEFAULT_TEXT_SEARCH_CONFIG;
         this.rrfK = DEFAULT_RRF_K;
+        this.vectorType = VectorType.VECTOR;
     }
 
     private static DataSource createDataSource(
@@ -313,9 +340,10 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param useIndex       Should use <a href="https://github.com/pgvector/pgvector#ivfflat">IVFFlat</a> index
      * @param dimension      The vector dimension
      * @param indexListSize  The IVFFlat number of lists
+     * @param vectorType     The field type of embeddings
      */
     protected void initTable(
-            Boolean dropTableFirst, Boolean createTable, Boolean useIndex, Integer dimension, Integer indexListSize) {
+            Boolean dropTableFirst, Boolean createTable, Boolean useIndex, Integer dimension, Integer indexListSize, VectorType vectorType) {
         String query = "init";
         try (Connection connection = getConnection();
                 Statement statement = connection.createStatement()) {
@@ -323,12 +351,26 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                 statement.executeUpdate(String.format("DROP TABLE IF EXISTS %s", table));
             }
             if (createTable) {
-                query = String.format(
-                        "CREATE TABLE IF NOT EXISTS %s (embedding_id UUID PRIMARY KEY, "
-                                + "embedding vector(%s), text TEXT NULL, %s )",
-                        table,
-                        ensureGreaterThanZero(dimension, "dimension"),
-                        metadataHandler.columnDefinitionsString());
+                switch (vectorType) {
+                    case HALFVEC:
+                        query = String.format(
+                                "CREATE TABLE IF NOT EXISTS %s (embedding_id UUID PRIMARY KEY, "
+                                        + "embedding halfvec(%s), text TEXT NULL, %s )",
+                                table,
+                                ensureGreaterThanZero(dimension, "dimension"),
+                                metadataHandler.columnDefinitionsString());
+                        break;
+                    case SPARSEVEC: // TODO: add sparsevec after adding the HNSW index
+                    case VECTOR:
+                    default:
+                        query = String.format(
+                                "CREATE TABLE IF NOT EXISTS %s (embedding_id UUID PRIMARY KEY, "
+                                        + "embedding vector(%s), text TEXT NULL, %s )",
+                                table,
+                                ensureGreaterThanZero(dimension, "dimension"),
+                                metadataHandler.columnDefinitionsString());
+
+                }
                 statement.executeUpdate(query);
                 metadataHandler.createMetadataIndexes(statement, table);
             }
@@ -495,9 +537,17 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                     while (resultSet.next()) {
                         double score = resultSet.getDouble("score");
                         String embeddingId = resultSet.getString("embedding_id");
-
-                        PGvector vector = (PGvector) resultSet.getObject("embedding");
-                        Embedding embedding = new Embedding(vector.toArray());
+                        Embedding embedding = null;
+                        if (this.vectorType.equals(VectorType.VECTOR)) {
+                            PGvector vector = (PGvector) resultSet.getObject("embedding");
+                            embedding = new Embedding(vector.toArray());
+                        } else if (this.vectorType.equals(VectorType.HALFVEC)) {
+                            PGhalfvec vector = (PGhalfvec) resultSet.getObject("embedding");
+                            embedding = new Embedding(vector.toArray());
+                        } else if (this.vectorType.equals(VectorType.SPARSEVEC)) {
+                            PGsparsevec vector = (PGsparsevec) resultSet.getObject("embedding");
+                            embedding = new Embedding(vector.toArray());
+                        }
 
                         String text = resultSet.getString("text");
                         TextSegment textSegment = null;
@@ -697,7 +747,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                 statement.executeUpdate("CREATE EXTENSION IF NOT EXISTS vector");
             }
         }
-        PGvector.addVectorType(connection);
+//        PGvector.addVectorType(connection);
+        PGvector.registerTypes(connection);
         return connection;
     }
 
@@ -714,6 +765,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         private SearchMode searchMode;
         private String textSearchConfig;
         private Integer rrfK;
+        private VectorType vectorType;
 
         DatasourceBuilder() {}
 
@@ -777,6 +829,11 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        public DatasourceBuilder vectorType(VectorType vectorType) {
+            this.vectorType = vectorType;
+            return this;
+        }
+
         public PgVectorEmbeddingStore build() {
             return new PgVectorEmbeddingStore(this);
         }
@@ -787,7 +844,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                     + this.indexListSize + ", createTable=" + this.createTable + ", dropTableFirst="
                     + this.dropTableFirst + ", skipCreateVectorExtension=" + this.skipCreateVectorExtension
                     + ", metadataStorageConfig=" + this.metadataStorageConfig + ", searchMode=" + this.searchMode
-                    + ", textSearchConfig=" + this.textSearchConfig + ", rrfK=" + this.rrfK + ")";
+                    + ", textSearchConfig=" + this.textSearchConfig + ", rrfK=" + this.rrfK
+                    + ", vectorType=" + this.vectorType + ")";
         }
     }
 
@@ -808,6 +866,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         private SearchMode searchMode;
         private String textSearchConfig;
         private Integer rrfK;
+        private VectorType vectorType;
 
         PgVectorEmbeddingStoreBuilder() {}
 
@@ -891,6 +950,11 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        public PgVectorEmbeddingStoreBuilder vectorType(VectorType vectorType) {
+            this.vectorType = vectorType;
+            return this;
+        }
+
         public PgVectorEmbeddingStore build() {
             return new PgVectorEmbeddingStore(this);
         }
@@ -902,7 +966,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                     + this.indexListSize + ", createTable=" + this.createTable + ", dropTableFirst="
                     + this.dropTableFirst + ", skipCreateVectorExtension=" + this.skipCreateVectorExtension
                     + ", metadataStorageConfig=" + this.metadataStorageConfig + ", searchMode=" + this.searchMode
-                    + ", textSearchConfig=" + this.textSearchConfig + ", rrfK=" + this.rrfK + ")";
+                    + ", textSearchConfig=" + this.textSearchConfig + ", rrfK=" + this.rrfK
+                    + ", vectorType=" + this.vectorType + ")";
         }
     }
 }
