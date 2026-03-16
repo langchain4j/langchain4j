@@ -64,7 +64,10 @@ public class OpenAiOfficialSetup {
         builder.baseUrl(calculateBaseUrl(baseUrl, modelProvider, modelName, microsoftFoundryDeploymentName));
 
         String calculatedApiKey = apiKey != null ? apiKey : detectApiKey(modelProvider);
-        if (calculatedApiKey != null) {
+        if ((modelProvider == ModelProvider.MICROSOFT_FOUNDRY || modelProvider == ModelProvider.AZURE_OPEN_AI)
+                && credential != null) {
+            builder.credential(credential);
+        } else if (calculatedApiKey != null) {
             builder.apiKey(calculatedApiKey);
         } else {
             if (credential != null) {
@@ -130,7 +133,10 @@ public class OpenAiOfficialSetup {
         builder.baseUrl(calculateBaseUrl(baseUrl, modelProvider, modelName, microsoftFoundryDeploymentName));
 
         String calculatedApiKey = apiKey != null ? apiKey : detectApiKey(modelProvider);
-        if (calculatedApiKey != null) {
+        if ((modelProvider == ModelProvider.MICROSOFT_FOUNDRY || modelProvider == ModelProvider.AZURE_OPEN_AI)
+                && credential != null) {
+            builder.credential(credential);
+        } else if (calculatedApiKey != null) {
             builder.apiKey(calculatedApiKey);
         } else {
             if (credential != null) {
@@ -197,7 +203,9 @@ public class OpenAiOfficialSetup {
             if (baseUrl.endsWith("openai.azure.com")
                     || baseUrl.endsWith("openai.azure.com/")
                     || baseUrl.endsWith("cognitiveservices.azure.com")
-                    || baseUrl.endsWith("cognitiveservices.azure.com/")) {
+                    || baseUrl.endsWith("cognitiveservices.azure.com/")
+                    || baseUrl.endsWith("ai.azure.com")
+                    || baseUrl.endsWith("ai.azure.com/")) {
                 return ModelProvider.MICROSOFT_FOUNDRY;
             } else if (baseUrl.startsWith(GITHUB_MODELS_URL)) {
                 return ModelProvider.GITHUB_MODELS;
