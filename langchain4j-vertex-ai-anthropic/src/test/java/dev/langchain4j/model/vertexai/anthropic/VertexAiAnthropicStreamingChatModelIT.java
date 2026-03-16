@@ -27,7 +27,7 @@ import org.mockito.InOrder;
 @EnabledIfEnvironmentVariable(named = "GCP_PROJECT_ID", matches = ".+")
 class VertexAiAnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
-    static final StreamingChatModel VERTEX_AI_ANTHROPIC_STREAMING_CHAT_MODEL =
+    private final StreamingChatModel model =
             VertexAiAnthropicStreamingChatModel.builder()
                     .project(System.getenv("GCP_PROJECT_ID"))
                     .location(DEFAULT_LOCATION)
@@ -39,7 +39,7 @@ class VertexAiAnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT
 
     @Override
     protected List<StreamingChatModel> models() {
-        return List.of(VERTEX_AI_ANTHROPIC_STREAMING_CHAT_MODEL);
+        return List.of(model);
     }
 
     @Override
