@@ -19,7 +19,7 @@ The langchain4j integration supports two operation modes:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-community-arcadedb</artifactId>
-    <version>1.13.0-beta22-SNAPSHOT</version>
+    <version>${latest version here}</version>
 </dependency>
 ```
 
