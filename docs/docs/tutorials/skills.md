@@ -107,7 +107,7 @@ Skill skill = Skill.builder()
         .build();
 ```
 
-### Attaching Tools TODO
+### Skill-Scoped Tools
 
 You can attach tools directly to a skill. These tools are **only exposed to the LLM
 after the skill has been activated** via the `activate_skill` tool.
@@ -139,12 +139,7 @@ Skill skill = Skill.builder()
                 """)
         .tools(Map.of(validateOrder, validateOrderExecutor))
         .build();
-```
 
-Skill tools are returned as **conditional tools** via the `ToolProviderResult`.
-They are automatically activated when the LLM calls `activate_skill` — no extra wiring is needed:
-
-```java
 Skills skills = Skills.from(skill);
 
 MyAiService service = AiServices.builder(MyAiService.class)
@@ -156,14 +151,16 @@ MyAiService service = AiServices.builder(MyAiService.class)
         .build();
 ```
 
-#### How skill-attached tools work
+#### How Skill-Scoped Tools Work
 
-1. Before activation, the LLM only sees the `activate_skill` (and `read_skill_resource`) tools.
-   Skill-attached tools are not included in the tool list.
+1. Before skill activation, the LLM only sees the `activate_skill` (and `read_skill_resource`) tools.
+   Skill-scoped tools are not included in the tool list.
 2. When the LLM calls `activate_skill("process-order")`, the activation is recorded in the conversation messages.
-3. Before the next LLM call (within the same invocation), the AI Service evaluates the conditional
-   tool predicates against the current messages. The skill's tools (e.g. `validateOrder`) become
-   visible and the LLM can call them immediately — in the same turn.
+3. Before the next LLM call (within the same AI Service invocation), the AI Service re-evaluates dynamic tool providers
+   against the current messages. The skill-scoped tools (e.g. `validateOrder`) become
+   visible and the LLM can call them immediately, in the same AI Service invocation.
+   The skill-scoped tools stay visible to the LLM in the next AI Service invocations, they become invisible when
+   the skill is deactivated. TODO
 
 ## Modes
 
@@ -190,7 +187,7 @@ Because only your pre-defined tools can be invoked, **there is no risk of arbitr
 |-----------------------|-----------------------------------------------------------------------------------------------|
 | `activate_skill`      | Always. The LLM calls this to load a skill's full instructions into the context.              |
 | `read_skill_resource` | When at least one skill has resources. The LLM calls this to read individual reference files. |
-| Skill-attached tools  | After the skill is activated (conditional tools, available in the same turn).                          |
+| Skill-scoped tools    | After the skill is activated.                                                                 |
 
 #### How It Works
 
@@ -232,7 +229,8 @@ Skills skills = Skills.from(FileSystemSkillLoader.loadSkills(Path.of("skills/"))
 MyAiService service = AiServices.builder(MyAiService.class)
         .chatModel(chatModel)
         .tools(new OrderTools()) // your tools
-        .toolProviders(skills.toolProviders())        .systemMessage("You have access to the following skills:\n" + skills.formatAvailableSkills()
+        .toolProviders(skills.toolProviders())
+        .systemMessage("You have access to the following skills:\n" + skills.formatAvailableSkills()
                 + "\nWhen the user's request relates to one of these skills, activate it first using the `activate_skill` tool before proceeding.")
         .build();
 ```
@@ -337,7 +335,8 @@ ShellSkills skills = ShellSkills.from(FileSystemSkillLoader.loadSkills(Path.of("
 
 MyAiService service = AiServices.builder(MyAiService.class)
         .chatModel(chatModel)
-        .toolProviders(skills.toolProviders())        .systemMessage("You have access to the following skills:\n" + skills.formatAvailableSkills()
+        .toolProviders(skills.toolProviders())
+        .systemMessage("You have access to the following skills:\n" + skills.formatAvailableSkills()
                 + "\nWhen the user's request relates to one of these skills, read its SKILL.md before proceeding.")
         .build();
 ```
