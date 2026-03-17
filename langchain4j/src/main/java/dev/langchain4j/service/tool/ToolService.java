@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.merge;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.agent.tool.SearchBehavior.NOT_SEARCHABLE;
@@ -264,19 +265,39 @@ public class ToolService {
         this.toolSearchService = new ToolSearchService(toolSearchStrategy);
     }
 
+    /**
+     * @since 1.13.0
+     */
     public ToolServiceContext createContext(InvocationContext invocationContext,
                                             UserMessage userMessage,
-                                            ChatMemory chatMemory) {
+                                            List<ChatMessage> messages) {
         ToolServiceContext toolServiceContext = createContext(invocationContext, userMessage);
-        if (toolSearchService == null) {
-            return toolServiceContext;
-        } else {
-            return toolSearchService.adjust(toolServiceContext, chatMemory, invocationContext);
+        if (toolSearchService != null) {
+            toolServiceContext = toolSearchService.adjust(toolServiceContext, messages, invocationContext);
+        } else if (messages != null && !toolServiceContext.availableTools().isEmpty()) {
+            List<ToolSpecification> previouslyFoundTools = ToolSearchService.findPreviouslyFoundTools(
+                    toolServiceContext.effectiveTools(), toolServiceContext.availableTools(), messages);
+            if (!previouslyFoundTools.isEmpty()) {
+                toolServiceContext = toolServiceContext.toBuilder()
+                        .effectiveTools(merge(toolServiceContext.effectiveTools(), previouslyFoundTools))
+                        .build();
+            }
         }
+        return toolServiceContext;
     }
 
     /**
-     * @deprecated use {@link #createContext(InvocationContext, UserMessage, ChatMemory)} instead
+     * @deprecated use {@link #createContext(InvocationContext, UserMessage, List)} instead
+     */
+    @Deprecated(since = "1.13.0")
+    public ToolServiceContext createContext(InvocationContext invocationContext,
+                                            UserMessage userMessage,
+                                            ChatMemory chatMemory) {
+        return createContext(invocationContext, userMessage, chatMemory.messages());
+    }
+
+    /**
+     * @deprecated use {@link #createContext(InvocationContext, UserMessage, List)} instead
      */
     @Deprecated(since = "1.12.0")
     public ToolServiceContext createContext(InvocationContext invocationContext, UserMessage userMessage) {
@@ -444,7 +465,6 @@ public class ToolService {
                 .aggregateTokenUsage(aggregateTokenUsage)
                 .build();
     }
-
 
     private void fireToolExecutedEvent(
             InvocationContext invocationContext,

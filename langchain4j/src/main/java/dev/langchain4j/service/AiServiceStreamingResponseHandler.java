@@ -1,14 +1,12 @@
 package dev.langchain4j.service;
 
 import static dev.langchain4j.internal.Exceptions.runtime;
-import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.AiServiceParamsUtil.chatRequestParameters;
 import static dev.langchain4j.service.tool.search.ToolSearchService.addFoundTools;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -149,7 +147,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         this.commonGuardrailParams = commonGuardrailParams;
 
         this.toolServiceContext = toolServiceContext;
-        this.toolExecutors = toolServiceContext != null ? copy(toolServiceContext.toolExecutors()) : Map.of();
+        this.toolExecutors = toolServiceContext != null ? toolServiceContext.toolExecutors() : Map.of();
         this.toolArgumentsErrorHandler = ensureNotNull(toolArgumentsErrorHandler, "toolArgumentsErrorHandler");
         this.toolExecutionErrorHandler = ensureNotNull(toolExecutionErrorHandler, "toolExecutionErrorHandler");
         this.toolExecutor = toolExecutor;
@@ -352,14 +350,12 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 return;
             }
 
-            List<ChatMessage> messages = messagesToSend(invocationContext.chatMemoryId());
-            ChatRequestParameters parameters = chatRequestParameters(
-                    invocationContext.methodArguments(), chatRequest.toolSpecifications());
+            ChatRequestParameters parameters = chatRequestParameters(invocationContext.methodArguments(), chatRequest.toolSpecifications());
             parameters = addFoundTools(parameters, toolResults, toolServiceContext.availableTools());
 
             ChatRequest nextChatRequest = context.chatRequestTransformer.apply(
                     ChatRequest.builder()
-                            .messages(messages)
+                            .messages(messagesToSend(invocationContext.chatMemoryId()))
                             .parameters(parameters)
                             .build(),
                     invocationContext.chatMemoryId());

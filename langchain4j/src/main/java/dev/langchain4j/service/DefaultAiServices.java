@@ -253,12 +253,14 @@ class DefaultAiServices<T> extends AiServices<T> {
                         Future<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
 
                         ToolServiceContext toolServiceContext =
-                                context.toolService.createContext(invocationContext, userMessage, chatMemory);
+                                context.toolService.createContext(invocationContext, userMessage, messages);
 
                         if (streaming) {
                             var tokenStreamParameters = AiServiceTokenStreamParameters.builder()
                                     .messages(messages)
-                                    .toolServiceContext(toolServiceContext)
+                                    .effectiveTools(toolServiceContext.effectiveTools())
+                                    .availableTools(toolServiceContext.availableTools())
+                                    .toolExecutors(toolServiceContext.toolExecutors())
                                     .toolArgumentsErrorHandler(context.toolService.argumentsErrorHandler())
                                     .toolExecutionErrorHandler(context.toolService.executionErrorHandler())
                                     .toolExecutor(context.toolService.executor())

@@ -45,7 +45,7 @@ import static java.util.Arrays.asList;
  *         // or, if you already have a system message configured:
  *         .systemMessageTransformer(systemMessage -> systemMessage + "\n\nYou have access to the following skills:\n" + skills.formatAvailableSkills() + "\nWhen the user's request relates to one of these skills, activate it first using the `activate_skill` tool before proceeding.")
  *
- *         .toolProviders(skills.toolProvider())
+ *         .toolProvider(skills.toolProvider())
  *         // or, if you already have an MCP tool provider configured:
  *         .toolProviders(mcpToolProvider, skills.toolProvider())
  *
@@ -66,7 +66,7 @@ public class Skills {
     }
 
     /**
-     * Returns the {@link ToolProvider} that exposes skill-related tools to the LLM.
+     * Returns the {@link ToolProvider} that exposes skill-related tools to the LLM. TODO
      * <p>
      * The provider supplies:
      * <ul>

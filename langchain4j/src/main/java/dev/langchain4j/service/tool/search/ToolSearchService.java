@@ -3,6 +3,7 @@ package dev.langchain4j.service.tool.search;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
@@ -44,11 +45,11 @@ public class ToolSearchService {
     }
 
     public ToolServiceContext adjust(ToolServiceContext toolServiceContext,
-                                     ChatMemory chatMemory,
+                                     List<ChatMessage> messages,
                                      InvocationContext invocationContext) {
         List<ToolSpecification> toolSearchTools = strategy.getToolSearchTools(invocationContext);
         List<ToolSpecification> availableTools = toolServiceContext.availableTools();
-        List<ToolSpecification> effectiveTools = calculateEffectiveTools(toolSearchTools, availableTools, chatMemory);
+        List<ToolSpecification> effectiveTools = calculateEffectiveTools(toolSearchTools, availableTools, messages);
         List<ToolSpecification> searchableTools = calculateSearchableTools(availableTools, effectiveTools);
         Map<String, ToolExecutor> toolSearchToolExecutors = createExecutors(toolSearchTools, searchableTools);
         return toolServiceContext.toBuilder()
@@ -57,9 +58,19 @@ public class ToolSearchService {
                 .build();
     }
 
+    /**
+     * @deprecated use {@link #adjust(ToolServiceContext, List, InvocationContext)} instead
+     */
+    @Deprecated(since = "1.13.0")
+    public ToolServiceContext adjust(ToolServiceContext toolServiceContext,
+                                     ChatMemory chatMemory,
+                                     InvocationContext invocationContext) {
+        return adjust(toolServiceContext, chatMemory.messages(), invocationContext);
+    }
+
     private List<ToolSpecification> calculateEffectiveTools(List<ToolSpecification> toolSearchTools,
                                                             List<ToolSpecification> availableTools,
-                                                            ChatMemory chatMemory) {
+                                                            List<ChatMessage> messages) {
         List<ToolSpecification> effectiveTools = new ArrayList<>();
 
         availableTools.forEach(tool -> {
@@ -69,12 +80,26 @@ public class ToolSearchService {
         });
 
         effectiveTools.addAll(toolSearchTools);
+        effectiveTools.addAll(findPreviouslyFoundTools(effectiveTools, availableTools, messages));
 
-        if (chatMemory == null) {
-            return effectiveTools;
+        return effectiveTools;
+    }
+
+    /**
+     * Scans messages for tool execution results carrying {@link #FOUND_TOOLS_ATTRIBUTE}
+     * and returns the tools from {@code availableTools} that were previously found/activated
+     * but are not yet in {@code effectiveTools}.
+     *
+     * @return tools to add to effective tools, or an empty list if none
+     */
+    public static List<ToolSpecification> findPreviouslyFoundTools(List<ToolSpecification> effectiveTools,
+                                                                   List<ToolSpecification> availableTools,
+                                                                   List<ChatMessage> messages) {
+        if (messages == null || messages.isEmpty()) {
+            return List.of();
         }
 
-        Set<String> toolNamesFoundEarlier = chatMemory.messages().stream()
+        Set<String> toolNamesFoundEarlier = messages.stream()
                 .filter(it -> it instanceof ToolExecutionResultMessage)
                 .map(it -> (ToolExecutionResultMessage) it)
                 .map(it -> it.attributes().get(FOUND_TOOLS_ATTRIBUTE))
@@ -84,14 +109,26 @@ public class ToolSearchService {
                 .collect(toCollection(LinkedHashSet::new));
 
         if (toolNamesFoundEarlier.isEmpty()) {
-            return effectiveTools;
+            return List.of();
         }
+
+        Set<String> effectiveToolNames = effectiveTools.stream()
+                .map(ToolSpecification::name)
+                .collect(toSet());
 
         Map<String, ToolSpecification> toolsByName = new HashMap<>(availableTools.size());
         availableTools.forEach(tool -> toolsByName.put(tool.name(), tool));
-        toolNamesFoundEarlier.forEach(toolName -> effectiveTools.add(toolsByName.get(toolName)));
 
-        return effectiveTools;
+        List<ToolSpecification> result = new ArrayList<>();
+        for (String toolName : toolNamesFoundEarlier) {
+            if (!effectiveToolNames.contains(toolName)) {
+                ToolSpecification tool = toolsByName.get(toolName);
+                if (tool != null) {
+                    result.add(tool);
+                }
+            }
+        }
+        return result;
     }
 
     private List<ToolSpecification> calculateSearchableTools(List<ToolSpecification> availableTools,
@@ -117,7 +154,7 @@ public class ToolSearchService {
         Set<String> foundToolNames = new LinkedHashSet<>();
         for (ToolExecutionResult toolResult : toolResults) {
             Object attribute = toolResult.attributes().get(FOUND_TOOLS_ATTRIBUTE);
-            if (attribute != null && attribute instanceof List<?> foundToolNamesList) {
+            if (attribute instanceof List<?> foundToolNamesList) {
                 foundToolNames.addAll((List<String>) foundToolNamesList);
             }
         }
@@ -126,7 +163,7 @@ public class ToolSearchService {
         }
 
         Set<String> effectiveToolNames = parameters.toolSpecifications().stream()
-                .map(tool -> tool.name())
+                .map(ToolSpecification::name)
                 .collect(toSet());
 
         Map<String, ToolSpecification> availableToolsByName = new HashMap<>(availableTools.size());
