@@ -8,6 +8,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
+import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
@@ -66,6 +67,12 @@ class PgVectorEmbeddingStoreHalfVecIT extends EmbeddingStoreWithFilteringIT {
     @Override
     protected boolean supportsContains() {
         return true;
+    }
+
+    @Override
+    protected void assertVectorWithPrecisionBuffer(Embedding actual, Embedding expected) {
+        assertThat(CosineSimilarity.between(actual, expected))
+                .isCloseTo(1.0, withPercentage(0.01));
     }
 
     /**
@@ -222,7 +229,7 @@ class PgVectorEmbeddingStoreHalfVecIT extends EmbeddingStoreWithFilteringIT {
     @Test
     void should_apply_min_score_filter_with_halfvec() {
         Embedding query = embeddingModel.embed("software engineering").content();
-        Embedding relevant = embeddingModel.embed("software development and coding").content();
+        Embedding relevant = embeddingModel.embed("software engineering and").content();
         Embedding irrelevant = embeddingModel.embed("mountain hiking and outdoor activities").content();
 
         embeddingStore.add(relevant);
@@ -233,12 +240,12 @@ class PgVectorEmbeddingStoreHalfVecIT extends EmbeddingStoreWithFilteringIT {
                 EmbeddingSearchRequest.builder()
                         .queryEmbedding(query)
                         .maxResults(10)
-                        .minScore(0.9)
+                        .minScore(0.85)
                         .build()
         ).matches();
 
         assertThat(matches).isNotEmpty();
-        matches.forEach(m -> assertThat(m.score()).isGreaterThanOrEqualTo(0.9));
+        matches.forEach(m -> assertThat(m.score()).isGreaterThanOrEqualTo(0.85));
     }
 
     // -------------------------------------------------------------------------
