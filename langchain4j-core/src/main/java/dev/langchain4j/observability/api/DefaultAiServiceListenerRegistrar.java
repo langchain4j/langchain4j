@@ -53,11 +53,20 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
     }
 
 
-     /**
-     Test Array to store events 
-     */
-    //arraylist<InvocationContext> AiServiceInteractionEvent = new arraylist<InvocationContext>();
+   
+    // Test InvocationState 
+    private static final class InvocationState{
+        private final List<AiServiceEvent> events = new arraylist<>();
 
+        synchronized void add(AiServiceEvent event){
+            events.add(event);
+        }
+
+        synchronized List<AiserviceEvent> snapshot(){
+            return copyof(events);
+        }
+
+    }
     /**
      * Test Map to instead be thread safe and store IDs with the events
      */
