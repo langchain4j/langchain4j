@@ -22,7 +22,7 @@ jobs:
       ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{github.event.workflow_run.head_branch}}
           repository: ${{github.event.workflow_run.head_repository.full_name}}
