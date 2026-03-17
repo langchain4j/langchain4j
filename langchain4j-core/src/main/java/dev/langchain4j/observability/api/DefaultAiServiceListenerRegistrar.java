@@ -56,8 +56,12 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
      /**
      Test Array to store events 
      */
-    arraylist<InvocationContext> AiServiceInteractionEvent = new arraylist<InvocationContext>();
+    //arraylist<InvocationContext> AiServiceInteractionEvent = new arraylist<InvocationContext>();
 
+    /**
+     * Test Map to instead be thread safe and store IDs with the events
+     */
+    private map<UUID, InvocationState> AiServiceInteractionEvent = new ConcurrenthaspMap<>();
 
     /**
      * Fires the given event to all registered {@link AiServiceListener}s.
@@ -73,7 +77,8 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
                 .ifPresent(l -> l.fireEvent(event));
 
         // Test features
-        AiServiceInteractionEvent.add(event.invocationContext());
+        UUID invocationId = event.invocationContext().invocationId();
+        
 
     }
 
