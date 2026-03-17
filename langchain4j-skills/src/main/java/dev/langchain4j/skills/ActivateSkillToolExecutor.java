@@ -4,13 +4,12 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.service.tool.search.ToolSearchService.FOUND_TOOLS_ATTRIBUTE;
+import static dev.langchain4j.service.tool.ToolService.EFFECTIVE_TOOLS_ATTRIBUTE;
 import static java.util.stream.Collectors.joining;
 
 class ActivateSkillToolExecutor extends AbstractSkillToolExecutor {
@@ -45,7 +44,7 @@ class ActivateSkillToolExecutor extends AbstractSkillToolExecutor {
         Map<String, Object> attributes = Map.of();
         List<String> toolNames = skillToolNames.get(skillName);
         if (toolNames != null && !toolNames.isEmpty()) {
-            attributes = Map.of(FOUND_TOOLS_ATTRIBUTE, toolNames); // TODO use another attribute?
+            attributes = Map.of(EFFECTIVE_TOOLS_ATTRIBUTE, toolNames);
         }
 
         return ToolExecutionResult.builder()

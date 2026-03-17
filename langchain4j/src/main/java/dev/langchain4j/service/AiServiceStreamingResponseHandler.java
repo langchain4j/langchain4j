@@ -3,7 +3,9 @@ package dev.langchain4j.service;
 import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.AiServiceParamsUtil.chatRequestParameters;
-import static dev.langchain4j.service.tool.search.ToolSearchService.addFoundTools;
+import static dev.langchain4j.service.tool.ToolService.EFFECTIVE_TOOLS_ATTRIBUTE;
+import static dev.langchain4j.service.tool.ToolService.addTools;
+import static dev.langchain4j.service.tool.search.ToolSearchService.FOUND_TOOLS_ATTRIBUTE;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -43,6 +45,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
@@ -351,7 +354,9 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             }
 
             ChatRequestParameters parameters = chatRequestParameters(invocationContext.methodArguments(), chatRequest.toolSpecifications());
-            parameters = addFoundTools(parameters, toolResults, toolServiceContext.availableTools());
+
+            parameters = addTools(parameters, toolResults, toolServiceContext.availableTools(),
+                    Set.of(FOUND_TOOLS_ATTRIBUTE, EFFECTIVE_TOOLS_ATTRIBUTE));
 
             ChatRequest nextChatRequest = context.chatRequestTransformer.apply(
                     ChatRequest.builder()

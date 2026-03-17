@@ -4,12 +4,12 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
+import dev.langchain4j.service.tool.ToolService;
 import dev.langchain4j.service.tool.ToolServiceContext;
 
 import java.util.ArrayList;
@@ -18,7 +18,6 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 import static dev.langchain4j.agent.tool.SearchBehavior.ALWAYS_VISIBLE;
@@ -27,8 +26,8 @@ import static dev.langchain4j.agent.tool.ToolSpecification.METADATA_SEARCH_BEHAV
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.merge;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static java.util.stream.Collectors.toCollection;
-import static java.util.stream.Collectors.toSet;
+import static dev.langchain4j.service.tool.ToolService.addTools;
+import static dev.langchain4j.service.tool.ToolService.findTools;
 
 /**
  * @since 1.12.0
@@ -80,55 +79,9 @@ public class ToolSearchService {
         });
 
         effectiveTools.addAll(toolSearchTools);
-        effectiveTools.addAll(findPreviouslyFoundTools(effectiveTools, availableTools, messages));
+        effectiveTools.addAll(findTools(messages, Set.of(FOUND_TOOLS_ATTRIBUTE), availableTools, effectiveTools));
 
         return effectiveTools;
-    }
-
-    /**
-     * Scans messages for tool execution results carrying {@link #FOUND_TOOLS_ATTRIBUTE}
-     * and returns the tools from {@code availableTools} that were previously found/activated
-     * but are not yet in {@code effectiveTools}.
-     *
-     * @return tools to add to effective tools, or an empty list if none
-     */
-    public static List<ToolSpecification> findPreviouslyFoundTools(List<ToolSpecification> effectiveTools,
-                                                                   List<ToolSpecification> availableTools,
-                                                                   List<ChatMessage> messages) {
-        if (messages == null || messages.isEmpty()) {
-            return List.of();
-        }
-
-        Set<String> toolNamesFoundEarlier = messages.stream()
-                .filter(it -> it instanceof ToolExecutionResultMessage)
-                .map(it -> (ToolExecutionResultMessage) it)
-                .map(it -> it.attributes().get(FOUND_TOOLS_ATTRIBUTE))
-                .filter(Objects::nonNull)
-                .map(it -> (List<String>) it)
-                .flatMap(List::stream)
-                .collect(toCollection(LinkedHashSet::new));
-
-        if (toolNamesFoundEarlier.isEmpty()) {
-            return List.of();
-        }
-
-        Set<String> effectiveToolNames = effectiveTools.stream()
-                .map(ToolSpecification::name)
-                .collect(toSet());
-
-        Map<String, ToolSpecification> toolsByName = new HashMap<>(availableTools.size());
-        availableTools.forEach(tool -> toolsByName.put(tool.name(), tool));
-
-        List<ToolSpecification> result = new ArrayList<>();
-        for (String toolName : toolNamesFoundEarlier) {
-            if (!effectiveToolNames.contains(toolName)) {
-                ToolSpecification tool = toolsByName.get(toolName);
-                if (tool != null) {
-                    result.add(tool);
-                }
-            }
-        }
-        return result;
     }
 
     private List<ToolSpecification> calculateSearchableTools(List<ToolSpecification> availableTools,
@@ -148,42 +101,14 @@ public class ToolSearchService {
         return executors;
     }
 
+    /**
+     * @deprecated use {@link ToolService#addTools} instead
+     */
+    @Deprecated(since = "1.13.0")
     public static ChatRequestParameters addFoundTools(ChatRequestParameters parameters,
                                                       Collection<ToolExecutionResult> toolResults,
                                                       List<ToolSpecification> availableTools) {
-        Set<String> foundToolNames = new LinkedHashSet<>();
-        for (ToolExecutionResult toolResult : toolResults) {
-            Object attribute = toolResult.attributes().get(FOUND_TOOLS_ATTRIBUTE);
-            if (attribute instanceof List<?> foundToolNamesList) {
-                foundToolNames.addAll((List<String>) foundToolNamesList);
-            }
-        }
-        if (foundToolNames.isEmpty()) {
-            return parameters;
-        }
-
-        Set<String> effectiveToolNames = parameters.toolSpecifications().stream()
-                .map(ToolSpecification::name)
-                .collect(toSet());
-
-        Map<String, ToolSpecification> availableToolsByName = new HashMap<>(availableTools.size());
-        availableTools.forEach(tool -> availableToolsByName.put(tool.name(), tool));
-
-        List<ToolSpecification> foundTools = new ArrayList<>();
-        for (String foundToolName : foundToolNames) {
-            if (effectiveToolNames.contains(foundToolName)) {
-                continue;
-            }
-            ToolSpecification foundTool = availableToolsByName.get(foundToolName);
-            if (foundTool == null) {
-                throw new IllegalArgumentException("No tool with name '%s' exists".formatted(foundToolName));
-            }
-            foundTools.add(foundTool);
-        }
-
-        return parameters.overrideWith(ChatRequestParameters.builder()
-                .toolSpecifications(merge(parameters.toolSpecifications(), foundTools))
-                .build());
+        return addTools(parameters, toolResults, availableTools, Set.of(FOUND_TOOLS_ATTRIBUTE));
     }
 
     private class ToolSearchExecutor implements ToolExecutor {

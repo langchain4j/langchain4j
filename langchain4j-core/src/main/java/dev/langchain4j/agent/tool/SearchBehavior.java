@@ -32,5 +32,5 @@ public enum SearchBehavior {
      *
      * @since 1.13.0
      */
-    NOT_SEARCHABLE; // TODO name TODO use internal attribute instead?
+    NOT_SEARCHABLE
 }

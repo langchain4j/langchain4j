@@ -8,9 +8,9 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.merge;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
-import static dev.langchain4j.agent.tool.SearchBehavior.NOT_SEARCHABLE;
-import static dev.langchain4j.agent.tool.ToolSpecification.METADATA_SEARCH_BEHAVIOR;
-import static dev.langchain4j.service.tool.search.ToolSearchService.addFoundTools;
+import static dev.langchain4j.agent.tool.ToolSpecification.METADATA_NOT_EFFECTIVE_BY_DEFAULT;
+import static dev.langchain4j.service.tool.search.ToolSearchService.FOUND_TOOLS_ATTRIBUTE;
+import static java.util.stream.Collectors.toSet;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ReturnBehavior;
@@ -58,6 +58,8 @@ import java.util.function.Function;
 
 @Internal
 public class ToolService {
+
+    public static final String EFFECTIVE_TOOLS_ATTRIBUTE = "effective_tools";
 
     private static final ToolArgumentsErrorHandler DEFAULT_TOOL_ARGUMENTS_ERROR_HANDLER = (error, context) -> {
         if (error instanceof RuntimeException re) {
@@ -272,17 +274,23 @@ public class ToolService {
                                             UserMessage userMessage,
                                             List<ChatMessage> messages) {
         ToolServiceContext toolServiceContext = createContext(invocationContext, userMessage);
+
+        List<ToolSpecification> effectiveTools = findTools(
+                messages,
+                Set.of(EFFECTIVE_TOOLS_ATTRIBUTE),
+                toolServiceContext.availableTools(),
+                toolServiceContext.effectiveTools()
+        );
+        if (!effectiveTools.isEmpty()) {
+            toolServiceContext = toolServiceContext.toBuilder()
+                    .effectiveTools(merge(toolServiceContext.effectiveTools(), effectiveTools))
+                    .build();
+        }
+
         if (toolSearchService != null) {
             toolServiceContext = toolSearchService.adjust(toolServiceContext, messages, invocationContext);
-        } else if (messages != null && !toolServiceContext.availableTools().isEmpty()) {
-            List<ToolSpecification> previouslyFoundTools = ToolSearchService.findPreviouslyFoundTools(
-                    toolServiceContext.effectiveTools(), toolServiceContext.availableTools(), messages);
-            if (!previouslyFoundTools.isEmpty()) {
-                toolServiceContext = toolServiceContext.toBuilder()
-                        .effectiveTools(merge(toolServiceContext.effectiveTools(), previouslyFoundTools))
-                        .build();
-            }
         }
+
         return toolServiceContext;
     }
 
@@ -303,17 +311,22 @@ public class ToolService {
     public ToolServiceContext createContext(InvocationContext invocationContext, UserMessage userMessage) {
         // TODO make private
         if (this.toolProviders.isEmpty()) {
-            return this.toolSpecifications.isEmpty()
-                    ? ToolServiceContext.Empty.INSTANCE
-                    : ToolServiceContext.builder()
-                    .effectiveTools(this.toolSpecifications)
-                    .availableTools(this.toolSpecifications)
+            if (this.toolSpecifications.isEmpty()) {
+                return ToolServiceContext.Empty.INSTANCE;
+            }
+            List<ToolSpecification> availableTools = this.toolSpecifications;
+            List<ToolSpecification> effectiveTools = availableTools.stream()
+                    .filter(tool -> !Boolean.TRUE.equals(tool.metadata().get(METADATA_NOT_EFFECTIVE_BY_DEFAULT)))
+                    .toList();
+            return ToolServiceContext.builder()
+                    .effectiveTools(effectiveTools)
+                    .availableTools(availableTools)
                     .toolExecutors(this.toolExecutors)
                     .immediateReturnTools(this.immediateReturnTools)
                     .build();
         }
 
-        List<ToolSpecification> toolSpecifications = new ArrayList<>(this.toolSpecifications);
+        List<ToolSpecification> availableTools = new ArrayList<>(this.toolSpecifications);
         Map<String, ToolExecutor> toolExecutors = new HashMap<>(this.toolExecutors);
         Set<String> immediateReturnTools = new HashSet<>(this.immediateReturnTools);
 
@@ -331,20 +344,21 @@ public class ToolService {
                         throw new IllegalConfigurationException(
                                 "Duplicated definition for tool: " + toolName);
                     }
-                    toolSpecifications.add(entry.getKey());
+                    availableTools.add(entry.getKey());
                 }
                 if (toolProviderResult.immediateReturnToolNames() != null) {
                     immediateReturnTools.addAll(toolProviderResult.immediateReturnToolNames());
                 }
             }
         });
-        List<ToolSpecification> effectiveTools = toolSpecifications.stream()
-                .filter(spec -> spec.metadata().get(METADATA_SEARCH_BEHAVIOR) != NOT_SEARCHABLE) // TODO
+
+        List<ToolSpecification> effectiveTools = availableTools.stream()
+                .filter(tool -> !Boolean.TRUE.equals(tool.metadata().get(METADATA_NOT_EFFECTIVE_BY_DEFAULT)))
                 .toList();
 
         return ToolServiceContext.builder()
                 .effectiveTools(effectiveTools)
-                .availableTools(toolSpecifications)
+                .availableTools(availableTools)
                 .toolExecutors(toolExecutors)
                 .immediateReturnTools(immediateReturnTools)
                 .build();
@@ -442,7 +456,8 @@ public class ToolService {
                 messages = chatMemory.messages();
             }
 
-            parameters = addFoundTools(parameters, toolResults.values(), toolServiceContext.availableTools());
+            parameters = addTools(parameters, toolResults.values(), toolServiceContext.availableTools(),
+                    Set.of(FOUND_TOOLS_ATTRIBUTE, EFFECTIVE_TOOLS_ATTRIBUTE));
 
             ChatRequest chatRequest = context.chatRequestTransformer.apply(
                     ChatRequest.builder()
@@ -701,5 +716,101 @@ public class ToolService {
 
     public boolean isImmediateTool(String toolName) {
         return immediateReturnTools.contains(toolName);
+    }
+
+    /**
+     * Scans tool execution results for the given {@code attributeKeys}
+     * and adds the corresponding tools from {@code availableTools}
+     * to the effective tools in {@code parameters}.
+     *
+     * @param attributeKeys the attribute keys to scan for (e.g.,
+     *        {@link ToolSearchService#FOUND_TOOLS_ATTRIBUTE}, {@link #EFFECTIVE_TOOLS_ATTRIBUTE})
+     * @since 1.13.0
+     */
+    public static ChatRequestParameters addTools(ChatRequestParameters parameters,
+                                                 Collection<ToolExecutionResult> toolResults,
+                                                 List<ToolSpecification> availableTools,
+                                                 Set<String> attributeKeys) { // TODO reduce duplication
+        Set<String> activatedToolNames = new LinkedHashSet<>();
+        for (ToolExecutionResult toolResult : toolResults) {
+            for (String attributeKey : attributeKeys) {
+                Object attribute = toolResult.attributes().get(attributeKey);
+                if (attribute instanceof List<?> toolNamesList) {
+                    activatedToolNames.addAll((List<String>) toolNamesList);
+                }
+            }
+        }
+        if (activatedToolNames.isEmpty()) {
+            return parameters;
+        }
+
+        Set<String> effectiveToolNames = parameters.toolSpecifications().stream()
+                .map(ToolSpecification::name)
+                .collect(toSet());
+
+        Map<String, ToolSpecification> availableToolsByName = new HashMap<>(availableTools.size());
+        availableTools.forEach(tool -> availableToolsByName.put(tool.name(), tool));
+
+        List<ToolSpecification> newTools = new ArrayList<>();
+        for (String toolName : activatedToolNames) {
+            if (!effectiveToolNames.contains(toolName)) {
+                ToolSpecification tool = availableToolsByName.get(toolName);
+                if (tool == null) {
+                    throw new IllegalArgumentException("No tool with name '%s' exists".formatted(toolName));
+                }
+                newTools.add(tool);
+            }
+        }
+
+        if (newTools.isEmpty()) {
+            return parameters;
+        }
+
+        return parameters.overrideWith(ChatRequestParameters.builder()
+                .toolSpecifications(merge(parameters.toolSpecifications(), newTools))
+                .build());
+    }
+
+    public static List<ToolSpecification> findTools(List<ChatMessage> messages, // TODO name
+                                                    Set<String> attributeKeys,
+                                                    List<ToolSpecification> availableTools,
+                                                    List<ToolSpecification> effectiveTools) {
+        if (messages == null || messages.isEmpty()) {
+            return List.of();
+        }
+
+        Set<String> activatedToolNames = new LinkedHashSet<>();
+        for (ChatMessage message : messages) {
+            if (message instanceof ToolExecutionResultMessage toolResult) {
+                for (String attributeKey : attributeKeys) {
+                    Object attribute = toolResult.attributes().get(attributeKey);
+                    if (attribute instanceof List<?> toolNamesList) {
+                        activatedToolNames.addAll((List<String>) toolNamesList);
+                    }
+                }
+            }
+        }
+
+        if (activatedToolNames.isEmpty()) {
+            return List.of();
+        }
+
+        Set<String> effectiveToolNames = effectiveTools.stream()
+                .map(ToolSpecification::name)
+                .collect(toSet());
+
+        Map<String, ToolSpecification> toolsByName = new HashMap<>(availableTools.size());
+        availableTools.forEach(tool -> toolsByName.put(tool.name(), tool));
+
+        List<ToolSpecification> result = new ArrayList<>();
+        for (String toolName : activatedToolNames) {
+            if (!effectiveToolNames.contains(toolName)) {
+                ToolSpecification tool = toolsByName.get(toolName);
+                if (tool != null) { // TODO fail?
+                    result.add(tool);
+                }
+            }
+        }
+        return result;
     }
 }

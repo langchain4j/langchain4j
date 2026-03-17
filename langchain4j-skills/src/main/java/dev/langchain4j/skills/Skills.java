@@ -17,6 +17,7 @@ import java.util.Map;
 
 import static dev.langchain4j.agent.tool.SearchBehavior.ALWAYS_VISIBLE;
 import static dev.langchain4j.agent.tool.SearchBehavior.NOT_SEARCHABLE;
+import static dev.langchain4j.agent.tool.ToolSpecification.METADATA_NOT_EFFECTIVE_BY_DEFAULT;
 import static dev.langchain4j.agent.tool.ToolSpecification.METADATA_SEARCH_BEHAVIOR;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -163,6 +164,7 @@ public class Skills {
                         for (Map.Entry<ToolSpecification, ToolExecutor> toolEntry : delegateResult.tools().entrySet()) { // TODO propagate delegateResult.immediateReturnToolNames
                             ToolSpecification taggedSpec = toolEntry.getKey().toBuilder()
                                     .addMetadata(METADATA_SEARCH_BEHAVIOR, NOT_SEARCHABLE)
+                                    .addMetadata(METADATA_NOT_EFFECTIVE_BY_DEFAULT, true)
                                     .build();
                             allTools.put(taggedSpec, toolEntry.getValue());
                             toolNames.add(taggedSpec.name());

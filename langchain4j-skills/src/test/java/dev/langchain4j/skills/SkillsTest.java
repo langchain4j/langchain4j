@@ -18,7 +18,7 @@ import java.util.stream.Stream;
 import static dev.langchain4j.agent.tool.SearchBehavior.ALWAYS_VISIBLE;
 import static dev.langchain4j.agent.tool.SearchBehavior.NOT_SEARCHABLE;
 import static dev.langchain4j.agent.tool.ToolSpecification.METADATA_SEARCH_BEHAVIOR;
-import static dev.langchain4j.service.tool.search.ToolSearchService.FOUND_TOOLS_ATTRIBUTE;
+import static dev.langchain4j.service.tool.ToolService.EFFECTIVE_TOOLS_ATTRIBUTE;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class SkillsTest {
@@ -94,8 +94,6 @@ class SkillsTest {
                         </available_skills>"""
         );
     }
-
-    // --- Single static provider with NOT_SEARCHABLE metadata ---
 
     @Test
     void skill_with_tools_should_have_single_static_provider() {
@@ -185,8 +183,6 @@ class SkillsTest {
                 .isEqualTo(NOT_SEARCHABLE);
     }
 
-    // --- activate_skill emits FOUND_TOOLS_ATTRIBUTE ---
-
     @Test
     void activate_skill_should_emit_found_tools_attribute() {
 
@@ -215,7 +211,7 @@ class SkillsTest {
         );
 
         // then
-        assertThat(executionResult.attributes().get(FOUND_TOOLS_ATTRIBUTE))
+        assertThat(executionResult.attributes().get(EFFECTIVE_TOOLS_ATTRIBUTE))
                 .isEqualTo(List.of("my_tool"));
     }
 
@@ -243,7 +239,7 @@ class SkillsTest {
         );
 
         // then
-        assertThat(executionResult.attributes()).doesNotContainKey(FOUND_TOOLS_ATTRIBUTE);
+        assertThat(executionResult.attributes()).doesNotContainKey(EFFECTIVE_TOOLS_ATTRIBUTE);
     }
 
     @Test
@@ -284,11 +280,9 @@ class SkillsTest {
         );
 
         // then - only skill-1's tools
-        assertThat(executionResult.attributes().get(FOUND_TOOLS_ATTRIBUTE))
+        assertThat(executionResult.attributes().get(EFFECTIVE_TOOLS_ATTRIBUTE))
                 .isEqualTo(List.of("tool_a"));
     }
-
-    // --- Tool executor should be functional ---
 
     @Test
     void skill_scoped_tool_executor_should_be_functional() {
@@ -320,7 +314,6 @@ class SkillsTest {
                 .isEqualTo("Hello, World!");
     }
 
-    // --- @Tool-annotated objects ---
 
     static class MyTools {
 
@@ -366,8 +359,6 @@ class SkillsTest {
         assertThat(result.toolSpecificationByName("sayHello").metadata().get(METADATA_SEARCH_BEHAVIOR))
                 .isEqualTo(NOT_SEARCHABLE);
     }
-
-    // --- ToolProvider on Skill ---
 
     @Test
     void skill_should_support_tool_providers() {
@@ -451,8 +442,6 @@ class SkillsTest {
             return "Goodbye, " + name + "!";
         }
     }
-
-    // --- Accumulation tests ---
 
     @Test
     void tools_map_should_not_override_tool_annotated_methods() {
@@ -634,8 +623,6 @@ class SkillsTest {
         // then - both providers present
         assertThat(skill.toolProviders()).hasSize(2);
     }
-
-    // --- toBuilder ---
 
     @Test
     void toBuilder_should_copy_all_fields() {
