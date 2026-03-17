@@ -46,7 +46,7 @@ public abstract class EmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
         assertScore(match, 1);
         assertThat(match.embeddingId()).isEqualTo(id);
         if (assertEmbedding()) {
-            assertThat(match.embedding()).isEqualTo(embedding);
+            assertVectorWithPrecisionBuffer(match.embedding(), embedding);
         }
 
         assertThat(match.embedded().text()).isEqualTo(segment.text());

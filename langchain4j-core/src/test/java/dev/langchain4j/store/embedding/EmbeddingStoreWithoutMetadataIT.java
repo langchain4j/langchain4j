@@ -35,6 +35,10 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(getAllEmbeddings()).isEmpty();
     }
 
+    protected void assertVectorWithPrecisionBuffer(Embedding actual, Embedding expected) {
+        assertThat(actual).isEqualTo(expected);
+    }
+
     @Test
     protected void should_add_embedding() {
 
@@ -60,7 +64,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertScore(match, 1);
         assertThat(match.embeddingId()).isEqualTo(id);
         if (assertEmbedding()) {
-            assertThat(match.embedding()).isEqualTo(embedding);
+            assertVectorWithPrecisionBuffer(match.embedding(), embedding);
         }
         assertThat(match.embedded()).isNull();
     }
@@ -89,7 +93,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertScore(match, 1);
         assertThat(match.embeddingId()).isEqualTo(id);
         if (assertEmbedding()) {
-            assertThat(match.embedding()).isEqualTo(embedding);
+            assertVectorWithPrecisionBuffer(match.embedding(), embedding);
         }
         assertThat(match.embedded()).isNull();
     }
@@ -118,7 +122,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertScore(match, 1);
         assertThat(match.embeddingId()).isEqualTo(id);
         if (assertEmbedding()) {
-            assertThat(match.embedding()).isEqualTo(embedding);
+            assertVectorWithPrecisionBuffer(match.embedding(), embedding);
         }
         assertThat(match.embedded()).isEqualTo(segment);
     }
@@ -151,7 +155,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertScore(firstMatch, 1);
         assertThat(firstMatch.embeddingId()).isEqualTo(ids.get(0));
         if (assertEmbedding()) {
-            assertThat(firstMatch.embedding()).isEqualTo(firstEmbedding);
+            assertVectorWithPrecisionBuffer(firstMatch.embedding(), firstEmbedding);
         }
         assertThat(firstMatch.embedded()).isNull();
 
@@ -200,7 +204,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertScore(firstMatch, 1);
         assertThat(firstMatch.embeddingId()).isEqualTo(ids.get(0));
         if (assertEmbedding()) {
-            assertThat(firstMatch.embedding()).isEqualTo(firstEmbedding);
+            assertVectorWithPrecisionBuffer(firstMatch.embedding(), firstEmbedding);
         }
         assertThat(firstMatch.embedded()).isEqualTo(firstSegment);
 
@@ -253,7 +257,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertScore(firstMatch, 1);
         assertThat(firstMatch.embeddingId()).isEqualTo(id1);
         if (assertEmbedding()) {
-            assertThat(firstMatch.embedding()).isEqualTo(firstEmbedding);
+            assertVectorWithPrecisionBuffer(firstMatch.embedding(), firstEmbedding);
         }
         assertThat(firstMatch.embedded()).isEqualTo(firstSegment);
 
