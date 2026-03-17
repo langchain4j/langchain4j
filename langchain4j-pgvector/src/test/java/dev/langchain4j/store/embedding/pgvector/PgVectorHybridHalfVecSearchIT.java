@@ -3,12 +3,15 @@ package dev.langchain4j.store.embedding.pgvector;
 import static dev.langchain4j.store.embedding.pgvector.PgVectorEmbeddingStore.SearchMode.HYBRID;
 import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.data.Percentage.withPercentage;
 import static org.testcontainers.shaded.org.apache.commons.lang3.RandomUtils.nextInt;
 
 import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
+import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
@@ -64,6 +67,12 @@ class PgVectorHybridHalfVecSearchIT extends EmbeddingStoreWithFilteringIT {
     @Override
     protected boolean supportsContains() {
         return true;
+    }
+
+    @Override
+    protected void assertVectorWithPrecisionBuffer(Embedding actual, Embedding expected) {
+        assertThat(CosineSimilarity.between(actual, expected))
+                .isCloseTo(1.0, withPercentage(0.01));
     }
 
     /**
