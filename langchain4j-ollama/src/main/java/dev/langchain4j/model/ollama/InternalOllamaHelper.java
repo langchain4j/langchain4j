@@ -90,6 +90,7 @@ class InternalOllamaHelper {
     static List<ToolExecutionRequest> toToolExecutionRequests(List<ToolCall> toolCalls) {
         return toolCalls.stream()
                 .map(toolCall -> ToolExecutionRequest.builder()
+                        .id(toolCall.getId())
                         .name(toolCall.getFunction().getName())
                         .arguments(toJsonWithoutIdent(toolCall.getFunction().getArguments()))
                         .build())
@@ -235,7 +236,10 @@ class InternalOllamaHelper {
                                         .name(toolExecutionRequest.name())
                                         .arguments(fromJson(toolExecutionRequest.arguments(), typeReference))
                                         .build();
-                                return ToolCall.builder().function(functionCall).build();
+                                return ToolCall.builder()
+                                        .id(toolExecutionRequest.id())
+                                        .function(functionCall)
+                                        .build();
                             })
                             .collect(Collectors.toList()))
                     .orElse(null);
