@@ -6,10 +6,14 @@ import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
+import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolServiceContext;
+import dev.langchain4j.service.tool.search.ToolSearchStrategy;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Executor;
 
 /**
@@ -56,6 +60,50 @@ public class AiServiceTokenStreamParameters {
      */
     public ToolServiceContext toolServiceContext() {
         return toolServiceContext;
+    }
+
+    /**
+     * Returns <b>effective</b> tool specifications that should be included in the next {@link ChatRequest}.
+     *
+     * @see #availableTools()
+     * @deprecated use {@link #toolServiceContext()} instead
+     */
+    @Deprecated(since = "1.13.0")
+    public List<ToolSpecification> effectiveTools() {
+        return toolServiceContext != null ? toolServiceContext.effectiveTools() : null;
+    }
+
+    /**
+     * Returns <b>effective</b> tool specifications that should be included in the next {@link ChatRequest}.
+     *
+     * @see #effectiveTools()
+     * @deprecated use {@link #toolServiceContext()} instead
+     */
+    @Deprecated(since = "1.12.0")
+    public List<ToolSpecification> toolSpecifications() {
+        return effectiveTools();
+    }
+
+    /**
+     * Returns <b>all available</b> tool specifications configured for AI service.
+     * These tool specifications can be discovered/found by the LLM (see {@link ToolSearchStrategy})
+     * and included in the next {@link ChatRequest}.
+     *
+     * @see #effectiveTools()
+     * @deprecated use {@link #toolServiceContext()} instead
+     */
+    @Deprecated(since = "1.13.0")
+    public List<ToolSpecification> availableTools() {
+        return toolServiceContext != null ? toolServiceContext.availableTools() : null;
+    }
+
+    /**
+     * @return the tool executors
+     * @deprecated use {@link #toolServiceContext()} instead
+     */
+    @Deprecated(since = "1.13.0")
+    public Map<String, ToolExecutor> toolExecutors() {
+        return toolServiceContext != null ? toolServiceContext.toolExecutors() : null;
     }
 
     /**
@@ -166,6 +214,67 @@ public class AiServiceTokenStreamParameters {
         public Builder toolServiceContext(ToolServiceContext toolServiceContext) {
             this.toolServiceContext = toolServiceContext;
             return this;
+        }
+
+        /**
+         * Sets <b>effective</b> tool specifications that should be included in the next {@link ChatRequest}.
+         *
+         * @see #availableTools(List)
+         * @deprecated use {@link #toolServiceContext(ToolServiceContext)} instead
+         */
+        @Deprecated(since = "1.13.0")
+        public Builder effectiveTools(List<ToolSpecification> effectiveTools) {
+            ensureToolServiceContext();
+            this.toolServiceContext = this.toolServiceContext.toBuilder()
+                    .effectiveTools(effectiveTools)
+                    .build();
+            return this;
+        }
+
+        /**
+         * Sets <b>effective</b> tool specifications that should be included in the next {@link ChatRequest}.
+         *
+         * @see #availableTools(List)
+         * @deprecated use {@link #toolServiceContext(ToolServiceContext)} instead
+         */
+        @Deprecated(since = "1.12.0")
+        public Builder toolSpecifications(List<ToolSpecification> effectiveTools) {
+            return effectiveTools(effectiveTools);
+        }
+
+        /**
+         * Sets <b>all available</b> tool specifications configured for AI service.
+         *
+         * @see #effectiveTools(List)
+         * @deprecated use {@link #toolServiceContext(ToolServiceContext)} instead
+         */
+        @Deprecated(since = "1.13.0")
+        public Builder availableTools(List<ToolSpecification> availableTools) {
+            ensureToolServiceContext();
+            this.toolServiceContext = this.toolServiceContext.toBuilder()
+                    .availableTools(availableTools)
+                    .build();
+            return this;
+        }
+
+        /**
+         * Sets the tool executors.
+         *
+         * @deprecated use {@link #toolServiceContext(ToolServiceContext)} instead
+         */
+        @Deprecated(since = "1.13.0")
+        public Builder toolExecutors(Map<String, ToolExecutor> toolExecutors) {
+            ensureToolServiceContext();
+            this.toolServiceContext = this.toolServiceContext.toBuilder()
+                    .toolExecutors(toolExecutors)
+                    .build();
+            return this;
+        }
+
+        private void ensureToolServiceContext() {
+            if (this.toolServiceContext == null) {
+                this.toolServiceContext = ToolServiceContext.builder().build();
+            }
         }
 
         /**
