@@ -71,8 +71,7 @@ class PgVectorEmbeddingStoreHalfVecIT extends EmbeddingStoreWithFilteringIT {
 
     @Override
     protected void assertVectorWithPrecisionBuffer(Embedding actual, Embedding expected) {
-        assertThat(CosineSimilarity.between(actual, expected))
-                .isCloseTo(1.0, withPercentage(0.01));
+        assertThat(CosineSimilarity.between(actual, expected)).isCloseTo(1.0, withPercentage(0.01));
     }
 
     /**
@@ -82,9 +81,9 @@ class PgVectorEmbeddingStoreHalfVecIT extends EmbeddingStoreWithFilteringIT {
     @Test
     void should_create_halfvec_column_type_in_schema() throws Exception {
         try (Connection conn = openConnection()) {
-            ResultSet rs = conn.createStatement().executeQuery(
-                    "SELECT udt_name FROM information_schema.columns "
-                            + "WHERE table_name = '" + tableName + "' AND column_name = 'embedding'");
+            ResultSet rs = conn.createStatement()
+                    .executeQuery("SELECT udt_name FROM information_schema.columns " + "WHERE table_name = '"
+                            + tableName + "' AND column_name = 'embedding'");
             assertThat(rs.next()).isTrue();
             assertThat(rs.getString("udt_name")).isEqualTo("halfvec");
         }
@@ -100,13 +99,13 @@ class PgVectorEmbeddingStoreHalfVecIT extends EmbeddingStoreWithFilteringIT {
         Embedding embedding = embeddingModel.embed("halfvec precision test").content();
         embeddingStore.add(embedding);
 
-        List<EmbeddingMatch<TextSegment>> matches = embeddingStore.search(
-                EmbeddingSearchRequest.builder()
+        List<EmbeddingMatch<TextSegment>> matches = embeddingStore
+                .search(EmbeddingSearchRequest.builder()
                         .queryEmbedding(embedding)
                         .maxResults(1)
                         .minScore(0.99)
-                        .build()
-        ).matches();
+                        .build())
+                .matches();
 
         assertThat(matches).hasSize(1);
         assertThat(matches.get(0).score()).isCloseTo(1.0, withPercentage(1));
@@ -125,12 +124,12 @@ class PgVectorEmbeddingStoreHalfVecIT extends EmbeddingStoreWithFilteringIT {
         embeddingStore.add(id, first);
         embeddingStore.add(id, updated);
 
-        List<EmbeddingMatch<TextSegment>> matches = embeddingStore.search(
-                EmbeddingSearchRequest.builder()
+        List<EmbeddingMatch<TextSegment>> matches = embeddingStore
+                .search(EmbeddingSearchRequest.builder()
                         .queryEmbedding(updated)
                         .maxResults(1)
-                        .build()
-        ).matches();
+                        .build())
+                .matches();
 
         assertThat(matches).hasSize(1);
         assertThat(matches.get(0).embeddingId()).isEqualTo(id);
@@ -154,12 +153,12 @@ class PgVectorEmbeddingStoreHalfVecIT extends EmbeddingStoreWithFilteringIT {
         List<String> ids = embeddingStore.addAll(List.of(e1, e2, e3), List.of(s1, s2, s3));
         assertThat(ids).hasSize(3);
 
-        List<EmbeddingMatch<TextSegment>> matches = embeddingStore.search(
-                EmbeddingSearchRequest.builder()
+        List<EmbeddingMatch<TextSegment>> matches = embeddingStore
+                .search(EmbeddingSearchRequest.builder()
                         .queryEmbedding(e1)
                         .maxResults(1)
-                        .build()
-        ).matches();
+                        .build())
+                .matches();
 
         assertThat(matches).hasSize(1);
         assertThat(matches.get(0).embedded().text()).isEqualTo("batch item one");
@@ -178,17 +177,18 @@ class PgVectorEmbeddingStoreHalfVecIT extends EmbeddingStoreWithFilteringIT {
     void should_rank_embeddings_by_cosine_similarity_with_halfvec() {
         Embedding query = embeddingModel.embed("database systems").content();
         Embedding similar = embeddingModel.embed("relational database and SQL").content();
-        Embedding dissimilar = embeddingModel.embed("cooking recipes and kitchen tips").content();
+        Embedding dissimilar =
+                embeddingModel.embed("cooking recipes and kitchen tips").content();
 
         embeddingStore.add(similar, TextSegment.from("similar"));
         embeddingStore.add(dissimilar, TextSegment.from("dissimilar"));
 
-        List<EmbeddingMatch<TextSegment>> matches = embeddingStore.search(
-                EmbeddingSearchRequest.builder()
+        List<EmbeddingMatch<TextSegment>> matches = embeddingStore
+                .search(EmbeddingSearchRequest.builder()
                         .queryEmbedding(query)
                         .maxResults(2)
-                        .build()
-        ).matches();
+                        .build())
+                .matches();
 
         assertThat(matches).hasSize(2);
         assertThat(matches.get(0).embedded().text()).isEqualTo("similar");
@@ -210,12 +210,12 @@ class PgVectorEmbeddingStoreHalfVecIT extends EmbeddingStoreWithFilteringIT {
         Embedding embedding = new Embedding(original);
         embeddingStore.add(embedding);
 
-        List<EmbeddingMatch<TextSegment>> matches = embeddingStore.search(
-                EmbeddingSearchRequest.builder()
+        List<EmbeddingMatch<TextSegment>> matches = embeddingStore
+                .search(EmbeddingSearchRequest.builder()
                         .queryEmbedding(embedding)
                         .maxResults(1)
-                        .build()
-        ).matches();
+                        .build())
+                .matches();
 
         assertThat(matches).hasSize(1);
         // Even with 16-bit precision loss, cosine similarity of a vector against itself remains ≈ 1.0
@@ -230,19 +230,20 @@ class PgVectorEmbeddingStoreHalfVecIT extends EmbeddingStoreWithFilteringIT {
     void should_apply_min_score_filter_with_halfvec() {
         Embedding query = embeddingModel.embed("software engineering").content();
         Embedding relevant = embeddingModel.embed("software engineering and").content();
-        Embedding irrelevant = embeddingModel.embed("mountain hiking and outdoor activities").content();
+        Embedding irrelevant =
+                embeddingModel.embed("mountain hiking and outdoor activities").content();
 
         embeddingStore.add(relevant);
         embeddingStore.add(irrelevant);
 
         // Use a high minScore — only the similar embedding should pass
-        List<EmbeddingMatch<TextSegment>> matches = embeddingStore.search(
-                EmbeddingSearchRequest.builder()
+        List<EmbeddingMatch<TextSegment>> matches = embeddingStore
+                .search(EmbeddingSearchRequest.builder()
                         .queryEmbedding(query)
                         .maxResults(10)
                         .minScore(0.85)
-                        .build()
-        ).matches();
+                        .build())
+                .matches();
 
         assertThat(matches).isNotEmpty();
         matches.forEach(m -> assertThat(m.score()).isGreaterThanOrEqualTo(0.85));
@@ -270,9 +271,9 @@ class PgVectorEmbeddingStoreHalfVecIT extends EmbeddingStoreWithFilteringIT {
                 .build();
 
         try (Connection conn = openConnection()) {
-            ResultSet rs = conn.createStatement().executeQuery(
-                    "SELECT udt_name FROM information_schema.columns "
-                            + "WHERE table_name = '" + defaultTable + "' AND column_name = 'embedding'");
+            ResultSet rs = conn.createStatement()
+                    .executeQuery("SELECT udt_name FROM information_schema.columns " + "WHERE table_name = '"
+                            + defaultTable + "' AND column_name = 'embedding'");
             assertThat(rs.next()).isTrue();
             assertThat(rs.getString("udt_name")).isEqualTo("vector");
         }
