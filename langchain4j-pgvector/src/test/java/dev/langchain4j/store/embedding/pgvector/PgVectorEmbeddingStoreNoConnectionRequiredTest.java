@@ -1,10 +1,10 @@
 package dev.langchain4j.store.embedding.pgvector;
 
+import static org.mockito.Mockito.verifyNoInteractions;
+
 import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-
-import static org.mockito.Mockito.verifyNoInteractions;
 
 class PgVectorEmbeddingStoreNoConnectionRequiredTest {
 

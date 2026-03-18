@@ -16,7 +16,6 @@ import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
 import com.pgvector.PGhalfvec;
-import com.pgvector.PGsparsevec;
 import com.pgvector.PGvector;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
@@ -66,7 +65,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     public enum VectorType {
         VECTOR,
         HALFVEC
-//        SPARSEVEC TODO: add sparsevec after adding HNSW index
+        //        SPARSEVEC TODO: add sparsevec after adding HNSW index
     }
 
     private static final Logger log = LoggerFactory.getLogger(PgVectorEmbeddingStore.class);
@@ -264,8 +263,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                 builder.searchMode,
                 builder.textSearchConfig,
                 builder.rrfK,
-                builder.vectorType
-        );
+                builder.vectorType);
     }
 
     /**
@@ -343,7 +341,12 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param vectorType     The field type of embeddings
      */
     protected void initTable(
-            Boolean dropTableFirst, Boolean createTable, Boolean useIndex, Integer dimension, Integer indexListSize, VectorType vectorType) {
+            Boolean dropTableFirst,
+            Boolean createTable,
+            Boolean useIndex,
+            Integer dimension,
+            Integer indexListSize,
+            VectorType vectorType) {
         String query = "init";
         try (Connection connection = getConnection();
                 Statement statement = connection.createStatement()) {
@@ -368,7 +371,6 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                                 table,
                                 ensureGreaterThanZero(dimension, "dimension"),
                                 metadataHandler.columnDefinitionsString());
-
                 }
                 statement.executeUpdate(query);
                 metadataHandler.createMetadataIndexes(statement, table);
@@ -396,7 +398,6 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                                 "CREATE INDEX IF NOT EXISTS %s ON %s " + "USING ivfflat (embedding vector_cosine_ops) "
                                         + "WITH (lists = %s)",
                                 indexName, table, ensureGreaterThanZero(indexListSize, "indexListSize"));
-
                 }
 
                 statement.executeUpdate(query);
@@ -766,7 +767,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                 statement.executeUpdate("CREATE EXTENSION IF NOT EXISTS vector");
             }
         }
-//        PGvector.addVectorType(connection);
+        //        PGvector.addVectorType(connection);
         PGvector.registerTypes(connection);
         return connection;
     }

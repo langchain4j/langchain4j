@@ -77,9 +77,9 @@ class PgVectorEmbeddingIndexedStoreIT extends EmbeddingStoreWithFilteringIT {
                 .build();
 
         try (Connection conn = openConnection()) {
-            ResultSet rs = conn.createStatement().executeQuery(
-                    "SELECT indexdef FROM pg_indexes "
-                            + "WHERE tablename = '" + tableName + "' AND indexname LIKE '%ivfflat%'");
+            ResultSet rs = conn.createStatement()
+                    .executeQuery("SELECT indexdef FROM pg_indexes " + "WHERE tablename = '" + tableName
+                            + "' AND indexname LIKE '%ivfflat%'");
             assertThat(rs.next()).isTrue();
             assertThat(rs.getString("indexdef")).contains("vector_cosine_ops");
         }
@@ -110,9 +110,9 @@ class PgVectorEmbeddingIndexedStoreIT extends EmbeddingStoreWithFilteringIT {
                 .build();
 
         try (Connection conn = openConnection()) {
-            ResultSet rs = conn.createStatement().executeQuery(
-                    "SELECT indexdef FROM pg_indexes "
-                            + "WHERE tablename = '" + tableName + "' AND indexname LIKE '%ivfflat%'");
+            ResultSet rs = conn.createStatement()
+                    .executeQuery("SELECT indexdef FROM pg_indexes " + "WHERE tablename = '" + tableName
+                            + "' AND indexname LIKE '%ivfflat%'");
             assertThat(rs.next()).isTrue();
             assertThat(rs.getString("indexdef"))
                     .as("IVFFlat index on halfvec column must use vector_cosine_ops")
