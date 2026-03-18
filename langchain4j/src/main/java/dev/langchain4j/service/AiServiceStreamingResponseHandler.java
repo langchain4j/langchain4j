@@ -150,7 +150,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         this.commonGuardrailParams = commonGuardrailParams;
 
         this.toolServiceContext = toolServiceContext;
-        this.toolExecutors = toolServiceContext != null ? copy(toolServiceContext.toolExecutors()) : Map.of();
+        this.toolExecutors = toolServiceContext != null ? toolServiceContext.toolExecutors() : Map.of();
         this.toolArgumentsErrorHandler = ensureNotNull(toolArgumentsErrorHandler, "toolArgumentsErrorHandler");
         this.toolExecutionErrorHandler = ensureNotNull(toolExecutionErrorHandler, "toolExecutionErrorHandler");
         this.toolExecutor = toolExecutor;
@@ -355,11 +355,11 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
             List<ChatMessage> messages = messagesToSend(invocationContext.chatMemoryId());
 
-            ToolServiceContext updatedContext = refreshDynamicProviders(toolServiceContext, messages, invocationContext);
-            updatedContext = ToolSearchService.addFoundTools(updatedContext, toolResults);
+            ToolServiceContext updatedToolContext = refreshDynamicProviders(toolServiceContext, messages, invocationContext);
+            updatedToolContext = ToolSearchService.addFoundTools(updatedToolContext, toolResults);
 
             ChatRequestParameters parameters = chatRequestParameters(invocationContext.methodArguments(),
-                    updatedContext.effectiveTools());
+                    updatedToolContext.effectiveTools());
 
             ChatRequest nextChatRequest = context.chatRequestTransformer.apply(
                     ChatRequest.builder()
@@ -386,7 +386,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     errorHandler,
                     temporaryMemory,
                     TokenUsage.sum(tokenUsage, chatResponse.metadata().tokenUsage()),
-                    updatedContext,
+                    updatedToolContext,
                     sequentialToolsInvocationsLeft,
                     toolArgumentsErrorHandler,
                     toolExecutionErrorHandler,

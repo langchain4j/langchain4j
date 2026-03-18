@@ -160,7 +160,7 @@ public class ToolService {
      * @return a {@link ToolProviderResult} with all discovered tools
      * @since 1.13.0
      */
-    public static ToolProviderResult toToolProviderResult(Object... objectsWithTools) {
+    public static ToolProviderResult toToolProviderResult(Object... objectsWithTools) { // TODO refactor
         ToolProviderResult.Builder builder = ToolProviderResult.builder();
         for (Object object : objectsWithTools) {
             boolean hasToolMethods = false;
@@ -512,7 +512,6 @@ public class ToolService {
                 .immediateReturnTools(newImmediateReturnTools)
                 .build();
     }
-
 
     private void fireToolExecutedEvent(
             InvocationContext invocationContext,

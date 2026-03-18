@@ -14,7 +14,7 @@ public class ToolProviderRequest {
 
     private final InvocationContext invocationContext;
     private final UserMessage userMessage;
-    private final List<ChatMessage> messages; // TODO names: chatMemory?
+    private final List<ChatMessage> messages;
 
     /**
      * @since 1.6.0
@@ -59,10 +59,7 @@ public class ToolProviderRequest {
     }
 
     /**
-     * Returns the current conversation messages.
-     * <p>
-     * This is primarily useful for {@linkplain ToolProvider#isDynamic() dynamic} tool providers
-     * that need to inspect conversation state to decide which tools to provide.
+     * Returns the current messages in the chat memory.
      *
      * @since 1.13.0
      */

@@ -6,7 +6,7 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.service.MemoryId;
 
 /**
- * A tool provider. It is called once when the AI service is invoked and supplies tools for that call.
+ * A tool provider. It is called when the AI service is invoked and supplies tools for that invocation.
  * <p>
  * Tools returned in {@link ToolProviderResult} will be included in the request to the LLM.
  * <p>
@@ -28,9 +28,8 @@ public interface ToolProvider {
     ToolProviderResult provideTools(ToolProviderRequest request);
 
     /**
-     * TODO
-     * Whether this tool provider is dynamic — i.e., should be re-evaluated before each LLM call
-     * in the tool execution loop.
+     * Whether this tool provider is dynamic (i.e., should be re-evaluated before each LLM call
+     * in the tool execution loop).
      * <p>
      * A static provider (default, returns {@code false}) is called once per AI service invocation.
      * A dynamic provider (returns {@code true}) has its {@link #provideTools(ToolProviderRequest)}
