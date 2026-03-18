@@ -7,7 +7,6 @@ import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
-import static dev.langchain4j.service.tool.search.ToolSearchService.addFoundTools;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ReturnBehavior;
@@ -265,45 +264,27 @@ public class ToolService {
     public ToolServiceContext createContext(InvocationContext invocationContext,
                                             UserMessage userMessage,
                                             List<ChatMessage> messages) {
-        ToolServiceContext toolServiceContext = doCreateContext(invocationContext, userMessage, messages);
-        toolServiceContext = refreshDynamicProviders(toolServiceContext, messages, invocationContext);
-        if (toolSearchService == null) {
-            return toolServiceContext;
+        ToolServiceContext context = contextFromStaticToolsAndProviders(invocationContext, userMessage, messages);
+        context = refreshDynamicProviders(context, messages, invocationContext);
+        if (toolSearchService != null) {
+            return toolSearchService.adjust(context, messages, invocationContext);
         } else {
-            return toolSearchService.adjust(toolServiceContext, messages, invocationContext);
+            return context;
         }
     }
 
-    /**
-     * @deprecated use {@link #createContext(InvocationContext, UserMessage, List)} instead
-     */
-    @Deprecated(since = "1.13.0")
-    public ToolServiceContext createContext(InvocationContext invocationContext,
-                                            UserMessage userMessage,
-                                            ChatMemory chatMemory) {
-        return createContext(invocationContext, userMessage, chatMemory.messages());
-    }
-
-    /**
-     * @deprecated use {@link #createContext(InvocationContext, UserMessage, ChatMemory)} instead
-     */
-    @Deprecated(since = "1.12.0")
-    public ToolServiceContext createContext(InvocationContext invocationContext, UserMessage userMessage) {
-        return doCreateContext(invocationContext, userMessage, List.of());
-    }
-
-    private ToolServiceContext doCreateContext(InvocationContext invocationContext,
-                                               UserMessage userMessage,
-                                               List<ChatMessage> messages) {
+    private ToolServiceContext contextFromStaticToolsAndProviders(InvocationContext invocationContext,
+                                                                  UserMessage userMessage,
+                                                                  List<ChatMessage> messages) {
         if (this.toolProviders.isEmpty()) {
             return this.toolSpecifications.isEmpty()
                     ? ToolServiceContext.Empty.INSTANCE
                     : ToolServiceContext.builder()
-                            .effectiveTools(this.toolSpecifications)
-                            .availableTools(this.toolSpecifications)
-                            .toolExecutors(this.toolExecutors)
-                            .immediateReturnTools(this.immediateReturnTools)
-                            .build();
+                    .effectiveTools(this.toolSpecifications)
+                    .availableTools(this.toolSpecifications)
+                    .toolExecutors(this.toolExecutors)
+                    .immediateReturnTools(this.immediateReturnTools)
+                    .build();
         }
 
         List<ToolSpecification> toolSpecifications = new ArrayList<>(this.toolSpecifications);
@@ -318,8 +299,6 @@ public class ToolService {
                 .build();
         toolProviders.forEach(toolProvider -> {
             if (toolProvider.isDynamic()) {
-                // Dynamic providers are not called here; they will be evaluated
-                // before each LLM call via refreshDynamicProviders()
                 dynamicToolProviders.add(toolProvider);
                 return;
             }
@@ -440,16 +419,13 @@ public class ToolService {
                 messages = chatMemory.messages();
             }
 
-            ToolServiceContext refreshedContext = refreshDynamicProviders(toolServiceContext, messages, invocationContext);
-            if (refreshedContext != toolServiceContext) {
-                toolServiceContext = refreshedContext;
-                parameters = parameters.overrideWith(ChatRequestParameters.builder()
-                        .toolSpecifications(toolServiceContext.effectiveTools())
-                        .build());
-            } // TODO test how it works together with tool search
+            toolServiceContext = refreshDynamicProviders(toolServiceContext, messages, invocationContext);
             if (toolSearchService != null) {
-                parameters = addFoundTools(parameters, toolResults.values(), toolServiceContext.availableTools());
+                toolServiceContext = ToolSearchService.addFoundTools(toolServiceContext, toolResults.values());
             }
+            parameters = parameters.overrideWith(ChatRequestParameters.builder()
+                    .toolSpecifications(toolServiceContext.effectiveTools())
+                    .build());
 
             ChatRequest chatRequest = context.chatRequestTransformer.apply(
                     ChatRequest.builder()
@@ -536,6 +512,7 @@ public class ToolService {
                 .immediateReturnTools(newImmediateReturnTools)
                 .build();
     }
+
 
     private void fireToolExecutedEvent(
             InvocationContext invocationContext,

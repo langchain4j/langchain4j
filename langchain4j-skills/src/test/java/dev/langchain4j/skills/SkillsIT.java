@@ -223,27 +223,121 @@ class SkillsIT {
     }
 
     @Test
-    void should_not_include_skill_scoped_tools_before_activation_and_include_after() {
+    void should_not_include_skill_scoped_tools_before_activation_and_include_after__tool_provider() {
 
         // given
-        ToolSpecification skillTool = ToolSpecification.builder()
-                .name("query_inventory")
-                .description("Queries the internal inventory system for stock levels")
-                .build();
-
-        ToolProvider skillToolProvider = request -> ToolProviderResult.builder()
-                .add(skillTool, (req, memoryId) -> "47 units in stock")
-                .build();
-
         Skill skill = Skill.builder()
                 .name("inventory-management")
                 .description("Describes how to query and manage the internal inventory system")
                 .content("When asked about inventory or stock levels, use the 'query_inventory' tool.")
-                .toolProviders(skillToolProvider)
+                .toolProviders(request -> ToolProviderResult.builder()
+                        .add(ToolSpecification.builder()
+                                        .name("query_inventory")
+                                        .description("Queries the internal inventory system for stock levels")
+                                        .build(),
+                                (req, memoryId) -> "47 units in stock")
+                        .build())
+                .build();
+
+        verifyToolsHiddenBeforeActivationAndVisibleAfter(skill);
+    }
+
+    @Test
+    void should_not_include_skill_scoped_tools_before_activation_and_include_after__tools_map() {
+
+        // given
+        Skill skill = Skill.builder()
+                .name("inventory-management")
+                .description("Describes how to query and manage the internal inventory system")
+                .content("When asked about inventory or stock levels, use the 'query_inventory' tool.")
+                .tools(java.util.Map.of(
+                        ToolSpecification.builder()
+                                .name("query_inventory")
+                                .description("Queries the internal inventory system for stock levels")
+                                .build(),
+                        (dev.langchain4j.service.tool.ToolExecutor) (req, memoryId) -> "47 units in stock"
+                ))
+                .build();
+
+        verifyToolsHiddenBeforeActivationAndVisibleAfter(skill);
+    }
+
+    @Test
+    void should_not_include_skill_scoped_tools_before_activation_and_include_after__tool_annotated_object() {
+
+        // given
+        Skill skill = Skill.builder()
+                .name("inventory-management")
+                .description("Describes how to query and manage the internal inventory system")
+                .content("When asked about inventory or stock levels, use the 'query_inventory' tool.")
+                .tools(new InventoryTools())
+                .build();
+
+        verifyToolsHiddenBeforeActivationAndVisibleAfter(skill);
+    }
+
+    @Test
+    void should_not_include_skill_scoped_tools_before_activation_and_include_after__combined() {
+
+        // given
+        Skill skill = Skill.builder()
+                .name("inventory-management")
+                .description("Describes how to query and manage the internal inventory system")
+                .content("When asked about inventory or stock levels, use the 'query_inventory' tool.")
+                .tools(new InventoryTools())
+                .toolProviders(request -> ToolProviderResult.builder()
+                        .add(ToolSpecification.builder()
+                                        .name("update_inventory")
+                                        .description("Updates inventory stock level")
+                                        .build(),
+                                (req, memoryId) -> "updated")
+                        .build())
                 .build();
 
         Skills skills = Skills.from(skill);
+        ChatModel spyChatModel = spy(model);
 
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(spyChatModel)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
+                .systemMessage("""
+                        You have access to the following skills:
+                        %s
+                        When the user's request relates to one of these skills,
+                        activate it first using the 'activate_skill' tool before proceeding.
+                        """.formatted(skills.formatAvailableSkills()))
+                .toolProvider(skills.toolProvider())
+                .build();
+
+        // when
+        assistant.chat("Check the inventory for widgets");
+
+        // then
+        InOrder inOrder = inOrder(spyChatModel);
+
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                containsTool(request, "activate_skill")
+                        && !containsTool(request, "query_inventory")
+                        && !containsTool(request, "update_inventory")
+        ));
+
+        inOrder.verify(spyChatModel, atLeast(1)).chat(argThat((ChatRequest request) ->
+                containsTool(request, "activate_skill")
+                        && containsTool(request, "query_inventory")
+                        && containsTool(request, "update_inventory")
+        ));
+    }
+
+    static class InventoryTools {
+
+        @Tool("Queries the internal inventory system for stock levels")
+        String query_inventory() {
+            return "47 units in stock";
+        }
+    }
+
+    private void verifyToolsHiddenBeforeActivationAndVisibleAfter(Skill skill) {
+        Skills skills = Skills.from(skill);
         ChatModel spyChatModel = spy(model);
 
         Assistant assistant = AiServices.builder(Assistant.class)
@@ -355,6 +449,68 @@ class SkillsIT {
         inOrder.verify(spyChatModel, atLeast(1)).chat(argThat((ChatRequest request) ->
                 containsTool(request, "get_weather")
                         && !containsTool(request, "get_time")
+        ));
+    }
+
+    @Test
+    void normal_tools_should_always_be_present_regardless_of_skill_activation() {
+
+        // given
+        ToolSpecification skillTool = ToolSpecification.builder()
+                .name("query_inventory")
+                .description("Queries the internal inventory system for stock levels")
+                .build();
+
+        Skill skill = Skill.builder()
+                .name("inventory-management")
+                .description("Describes how to query and manage the internal inventory system")
+                .content("When asked about inventory or stock levels, use the 'query_inventory' tool.")
+                .toolProviders(request -> ToolProviderResult.builder()
+                        .add(skillTool, (req, memoryId) -> "47 units in stock")
+                        .build())
+                .build();
+
+        Skills skills = Skills.from(skill);
+
+        Tools spyTools = spy(new Tools());
+        ChatModel spyChatModel = spy(model);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(spyChatModel)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
+                .systemMessage("""
+                        You have access to the following skills:
+                        %s
+                        When the user's request relates to one of these skills,
+                        activate it first using the 'activate_skill' tool before proceeding.
+                        """.formatted(skills.formatAvailableSkills()))
+                .tools(spyTools)
+                .toolProvider(skills.toolProvider())
+                .build();
+
+        // when
+        assistant.chat("Check the inventory for widgets");
+
+        // then - normal tools (process, generate, finish, reset, poll) should be present in every LLM call
+        InOrder inOrder = inOrder(spyChatModel);
+
+        // first call: normal tools + activate_skill, but NOT query_inventory (skill not yet activated)
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                containsTool(request, "activate_skill")
+                        && containsTool(request, "process")
+                        && containsTool(request, "generate")
+                        && containsTool(request, "finish")
+                        && containsTool(request, "reset")
+                        && containsTool(request, "poll")
+                        && !containsTool(request, "query_inventory")
+        ));
+
+        // after activation: normal tools still present alongside skill-scoped tool
+        inOrder.verify(spyChatModel, atLeast(1)).chat(argThat((ChatRequest request) ->
+                containsTool(request, "activate_skill")
+                        && containsTool(request, "process")
+                        && containsTool(request, "generate")
+                        && containsTool(request, "query_inventory")
         ));
     }
 
