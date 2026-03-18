@@ -79,7 +79,8 @@ public class MistralAiModerationModel implements ModerationModel {
 
     private int findFirstFlaggedIndex(List<MistralAiModerationResult> results) {
         for (int i = 0; i < results.size(); i++) {
-            if (isAnyCategoryFlagged(results.get(i).getCategories())) {
+            MistralAiCategories categories = results.get(i).getCategories();
+            if (categories != null && isAnyCategoryFlagged(categories)) {
                 return i;
             }
         }
