@@ -82,17 +82,23 @@ public class OpenAiModerationModel implements ModerationModel {
         dev.langchain4j.model.openai.internal.moderation.ModerationResponse response =
                 withRetryMappingExceptions(() -> client.moderation(request).execute(), maxRetries);
 
-        int i = 0;
-        for (ModerationResult moderationResult : response.results()) {
-            if (Boolean.TRUE.equals(moderationResult.isFlagged())) {
-                return ModerationResponse.builder()
-                        .moderation(Moderation.flagged(moderationRequest.texts().get(i)))
-                        .build();
-            }
-            i++;
-        }
+        List<String> texts = moderationRequest.texts();
+        List<ModerationResult> results = response.results();
+        int flaggedIndex = findFirstFlaggedIndex(results);
 
-        return ModerationResponse.builder().moderation(Moderation.notFlagged()).build();
+        Moderation moderation =
+                flaggedIndex >= 0 ? Moderation.flagged(texts.get(flaggedIndex)) : Moderation.notFlagged();
+
+        return ModerationResponse.builder().moderation(moderation).build();
+    }
+
+    private static int findFirstFlaggedIndex(List<ModerationResult> results) {
+        for (int i = 0; i < results.size(); i++) {
+            if (Boolean.TRUE.equals(results.get(i).isFlagged())) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     public static OpenAiModerationModelBuilder builder() {
