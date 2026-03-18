@@ -792,7 +792,7 @@ public class SupervisorAgentIT {
         assertThat(toolNames).contains("withdraw", "credit");
 
         System.out.println(execution);
-        generateReport(monitor, Path.of("src", "test", "resources", "agents-exection-with-tools.html"));
+//        generateReport(monitor, Path.of("src", "test", "resources", "agents-exection-with-tools.html"));
     }
 
     private List<MonitoredToolExecution> collectToolExecutions(AgentInvocation invocation) {
