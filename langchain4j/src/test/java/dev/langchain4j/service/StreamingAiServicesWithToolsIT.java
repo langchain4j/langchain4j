@@ -2,6 +2,7 @@ package dev.langchain4j.service;
 
 import static dev.langchain4j.MockitoUtils.ignoreInteractions;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+import static dev.langchain4j.service.AiServicesWithToolSearchToolIT.containsTool;
 import static dev.langchain4j.service.StreamingAiServicesWithToolsIT.TemperatureUnit.CELSIUS;
 import static dev.langchain4j.service.StreamingAiServicesWithToolsIT.TransactionService.EXPECTED_SPECIFICATION;
 import static dev.langchain4j.service.StreamingAiServicesWithToolsIT.WeatherService.TEMPERATURE;
@@ -1496,12 +1497,12 @@ class StreamingAiServicesWithToolsIT {
         verify(spyStaticProvider, times(1)).provideTools(any());
         verify(spyDynamicProvider, times(2)).provideTools(any());
 
-        verify(spyModel, times(2)).chat(
-                argThat((ChatRequest request) ->
-                        request.toolSpecifications().stream().anyMatch(t -> t.name().equals("getWeather"))
-                                && request.toolSpecifications().stream().anyMatch(t -> t.name().equals("getTime"))
-                ),
-                any());
+        verify(spyModel, times(2)).chat(argThat((ChatRequest request) ->
+                containsTool(request, "getWeather")
+                        && containsTool(request, "getTime")
+        ), any());
+
+        verifyNoMoreInteractionsFor(spyModel);
     }
 
     @Test
@@ -1564,17 +1565,17 @@ class StreamingAiServicesWithToolsIT {
 
         InOrder inOrder = inOrder(spyModel);
 
-        // First LLM call: only getWeather
-        inOrder.verify(spyModel).chat(argThat((ChatRequest request) ->
-                request.toolSpecifications().stream().anyMatch(t -> t.name().equals("getWeather"))
-                        && request.toolSpecifications().stream().noneMatch(t -> t.name().equals("getTime"))
+        verify(spyModel).chat(argThat((ChatRequest request) ->
+                containsTool(request, "getWeather")
+                        && !containsTool(request, "getTime")
         ), any());
 
-        // Second LLM call: getWeather + getTime (newly added by dynamic provider)
-        inOrder.verify(spyModel).chat(argThat((ChatRequest request) ->
-                request.toolSpecifications().stream().anyMatch(t -> t.name().equals("getWeather"))
-                        && request.toolSpecifications().stream().anyMatch(t -> t.name().equals("getTime"))
+        verify(spyModel).chat(argThat((ChatRequest request) ->
+                containsTool(request, "getWeather")
+                        && containsTool(request, "getTime")
         ), any());
+
+        verifyNoMoreInteractionsFor(spyModel);
     }
 
     @Test
@@ -1636,12 +1637,12 @@ class StreamingAiServicesWithToolsIT {
         // then
         assertThat(response.aiMessage().text()).contains("sunny");
 
-        // Both LLM calls should have both tools — getTime was returned in first call
-        // and should persist even though the provider stopped returning it
         verify(spyModel, times(2)).chat(argThat((ChatRequest request) ->
-                request.toolSpecifications().stream().anyMatch(t -> t.name().equals("getWeather"))
-                        && request.toolSpecifications().stream().anyMatch(t -> t.name().equals("getTime"))
+                containsTool(request, "getWeather")
+                        && containsTool(request, "getTime")
         ), any());
+
+        verifyNoMoreInteractionsFor(spyModel);
     }
 
     // TODO all other tests from sync version

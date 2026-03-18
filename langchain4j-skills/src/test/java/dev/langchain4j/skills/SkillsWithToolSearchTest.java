@@ -9,7 +9,6 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.service.AiServices;
-import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProviderRequest;
 import dev.langchain4j.service.tool.ToolProviderResult;
 import dev.langchain4j.service.tool.search.ToolSearchRequest;
@@ -21,18 +20,18 @@ import java.util.Map;
 
 import static dev.langchain4j.agent.tool.SearchBehavior.ALWAYS_VISIBLE;
 import static dev.langchain4j.agent.tool.ToolSpecification.METADATA_SEARCH_BEHAVIOR;
+import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 
 class SkillsWithToolSearchTest {
 
     interface Assistant {
         String chat(String userMessage);
     }
-
-    // --- Metadata ---
 
     @Test
     void skill_management_tools_should_have_always_visible_metadata() {
@@ -64,8 +63,6 @@ class SkillsWithToolSearchTest {
         assertThat(readResource.metadata().get(METADATA_SEARCH_BEHAVIOR)).isEqualTo(ALWAYS_VISIBLE);
     }
 
-    // --- Skills + tool search: AiServices integration ---
-
     @Test
     void activate_skill_should_be_visible_and_regular_tools_searchable() {
 
@@ -88,7 +85,7 @@ class SkillsWithToolSearchTest {
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(spyChatModel)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
-                .tools(Map.of(getWeather, (ToolExecutor) (req, memoryId) -> "sunny"))
+                .tools(Map.of(getWeather, (req, memoryId) -> "sunny"))
                 .toolProvider(skills.toolProvider())
                 .toolSearchStrategy(new SimpleToolSearchStrategy())
                 .systemMessage("You have skills: " + skills.formatAvailableSkills())
@@ -98,12 +95,13 @@ class SkillsWithToolSearchTest {
         assistant.chat("Hello");
 
         // then - first (and only) LLM call has activate_skill + tool_search_tool, NOT getWeather
-        var inOrder = inOrder(spyChatModel);
-        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+        verify(spyChatModel).chat(argThat((ChatRequest request) ->
                 containsTool(request, "activate_skill")
                         && containsTool(request, "tool_search_tool")
                         && !containsTool(request, "getWeather")
         ));
+
+        verifyNoMoreInteractionsFor(spyChatModel);
     }
 
     @Test
@@ -121,7 +119,7 @@ class SkillsWithToolSearchTest {
                         .tools(Map.of(
                                 ToolSpecification.builder().name("query_inventory")
                                         .description("Queries inventory").build(),
-                                (ToolExecutor) (req, memoryId) -> "47 units"
+                                (req, memoryId) -> "47 units"
                         ))
                         .build()
         );
@@ -142,7 +140,7 @@ class SkillsWithToolSearchTest {
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(spyChatModel)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
-                .tools(Map.of(getWeather, (ToolExecutor) (req, memoryId) -> "sunny"))
+                .tools(Map.of(getWeather, (req, memoryId) -> "sunny"))
                 .toolProvider(skills.toolProvider())
                 .toolSearchStrategy(spyStrategy)
                 .systemMessage("You have skills: " + skills.formatAvailableSkills())
@@ -173,6 +171,8 @@ class SkillsWithToolSearchTest {
                         && containsTool(request, "tool_search_tool")
                         && !containsTool(request, "query_inventory")
         ));
+
+        verifyNoMoreInteractionsFor(spyChatModel);
     }
 
     @Test
@@ -187,7 +187,7 @@ class SkillsWithToolSearchTest {
                         .tools(Map.of(
                                 ToolSpecification.builder().name("query_inventory")
                                         .description("Queries inventory").build(),
-                                (ToolExecutor) (req, memoryId) -> "47 units"
+                                (req, memoryId) -> "47 units"
                         ))
                         .build()
         );
@@ -242,6 +242,8 @@ class SkillsWithToolSearchTest {
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
                 containsTool(request, "query_inventory")
         ));
+
+        verifyNoMoreInteractionsFor(spyChatModel);
     }
 
     @Test
@@ -259,7 +261,7 @@ class SkillsWithToolSearchTest {
                         .tools(Map.of(
                                 ToolSpecification.builder().name("query_inventory")
                                         .description("Queries inventory").build(),
-                                (ToolExecutor) (req, memoryId) -> "47 units"
+                                (req, memoryId) -> "47 units"
                         ))
                         .build()
         );
@@ -290,7 +292,7 @@ class SkillsWithToolSearchTest {
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(spyChatModel)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
-                .tools(Map.of(getWeather, (ToolExecutor) (req, memoryId) -> "sunny"))
+                .tools(Map.of(getWeather, (req, memoryId) -> "sunny"))
                 .toolProvider(skills.toolProvider())
                 .toolSearchStrategy(spyStrategy)
                 .systemMessage("You have skills: " + skills.formatAvailableSkills())
@@ -330,6 +332,8 @@ class SkillsWithToolSearchTest {
                 containsTool(request, "query_inventory")
                         && containsTool(request, "getWeather")
         ));
+
+        verifyNoMoreInteractionsFor(spyChatModel);
     }
 
     @Test
@@ -344,7 +348,7 @@ class SkillsWithToolSearchTest {
                         .tools(Map.of(
                                 ToolSpecification.builder().name("get_weather")
                                         .description("Gets weather").build(),
-                                (ToolExecutor) (req, memoryId) -> "sunny"
+                                (req, memoryId) -> "sunny"
                         ))
                         .build(),
                 Skill.builder()
@@ -354,7 +358,7 @@ class SkillsWithToolSearchTest {
                         .tools(Map.of(
                                 ToolSpecification.builder().name("get_time")
                                         .description("Gets time").build(),
-                                (ToolExecutor) (req, memoryId) -> "12:00"
+                                (req, memoryId) -> "12:00"
                         ))
                         .build()
         );
@@ -403,9 +407,9 @@ class SkillsWithToolSearchTest {
                 containsTool(request, "get_weather")
                         && !containsTool(request, "get_time")
         ));
-    }
 
-    // --- Helpers ---
+        verifyNoMoreInteractionsFor(spyChatModel);
+    }
 
     private static ToolProviderRequest dummyRequest() {
         return ToolProviderRequest.builder()

@@ -2,6 +2,8 @@ package dev.langchain4j.service;
 
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
+import static dev.langchain4j.service.AiServicesWithToolSearchToolIT.containsTool;
 import static dev.langchain4j.service.AiServicesWithToolsIT.TransactionService.EXPECTED_SPECIFICATION;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonMap;
@@ -1675,17 +1677,17 @@ class AiServicesWithToolsIT {
 
         InOrder inOrder = inOrder(spyChatModel);
 
-        // First LLM call: only getWeather
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
-                request.toolSpecifications().stream().anyMatch(t -> t.name().equals("getWeather"))
-                        && request.toolSpecifications().stream().noneMatch(t -> t.name().equals("getTime"))
+                containsTool(request, "getWeather")
+                        && !containsTool(request, "getTime")
         ));
 
-        // Second LLM call: getWeather + getTime (newly added by dynamic provider)
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
-                request.toolSpecifications().stream().anyMatch(t -> t.name().equals("getWeather"))
-                        && request.toolSpecifications().stream().anyMatch(t -> t.name().equals("getTime"))
+                containsTool(request, "getWeather")
+                        && containsTool(request, "getTime")
         ));
+
+        verifyNoMoreInteractionsFor(spyChatModel);
     }
 
     @Test
@@ -1744,11 +1746,11 @@ class AiServicesWithToolsIT {
         // then
         assertThat(answer).contains("sunny");
 
-        // Both LLM calls should have both tools — getTime was returned in first call
-        // and should persist even though the provider stopped returning it
         verify(spyChatModel, times(2)).chat(argThat((ChatRequest request) ->
-                request.toolSpecifications().stream().anyMatch(t -> t.name().equals("getWeather"))
-                        && request.toolSpecifications().stream().anyMatch(t -> t.name().equals("getTime"))
+                containsTool(request, "getWeather")
+                        && containsTool(request, "getTime")
         ));
+
+        verifyNoMoreInteractionsFor(spyChatModel);
     }
 }

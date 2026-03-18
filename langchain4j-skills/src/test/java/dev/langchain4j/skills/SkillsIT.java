@@ -326,6 +326,8 @@ class SkillsIT {
                         && containsTool(request, "query_inventory")
                         && containsTool(request, "update_inventory")
         ));
+
+        verifyNoMoreInteractionsFor(spyChatModel);
     }
 
     static class InventoryTools {
@@ -450,6 +452,8 @@ class SkillsIT {
                 containsTool(request, "get_weather")
                         && !containsTool(request, "get_time")
         ));
+
+        verifyNoMoreInteractionsFor(spyChatModel);
     }
 
     @Test
@@ -512,6 +516,8 @@ class SkillsIT {
                         && containsTool(request, "generate")
                         && containsTool(request, "query_inventory")
         ));
+
+        verifyNoMoreInteractionsFor(spyChatModel);
     }
 
     private static boolean containsTool(ChatRequest chatRequest, String toolName) {

@@ -3,7 +3,6 @@ package dev.langchain4j.skills;
 import dev.langchain4j.LoggingChatModelListener;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.anthropic.AnthropicStreamingChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -224,7 +223,7 @@ class SkillsStreamingIT {
     }
 
     @Test
-    void should_not_include_skill_tools_before_activation_and_include_after() throws Exception {
+    void should_not_include_skill_scoped_tools_before_activation_and_include_after() throws Exception {
 
         // given
         ToolSpecification skillTool = ToolSpecification.builder()
@@ -240,7 +239,7 @@ class SkillsStreamingIT {
                 .name("inventory-management")
                 .description("Describes how to query and manage the internal inventory system")
                 .content("When asked about inventory or stock levels, use the 'query_inventory' tool.")
-                .toolProviders(skillToolProvider) // TODO test other ways
+                .toolProviders(skillToolProvider)
                 .build();
 
         Skills skills = Skills.from(skill);
@@ -357,6 +356,8 @@ class SkillsStreamingIT {
                 containsTool(request, "get_weather")
                         && !containsTool(request, "get_time")
         ), any());
+
+        verifyNoMoreImportantInteractions(spyChatModel);
     }
 
     private static ChatResponse chat(Assistant assistant, String userMessage) throws Exception {

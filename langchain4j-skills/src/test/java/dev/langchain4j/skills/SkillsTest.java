@@ -17,7 +17,6 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.skills.ActivateSkillToolExecutor.ACTIVATED_SKILL_ATTRIBUTE;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 class SkillsTest {
@@ -104,7 +103,7 @@ class SkillsTest {
                 .content("Use my_tool to do something")
                 .tools(Map.of(
                         ToolSpecification.builder().name("my_tool").description("Does something").build(),
-                        (ToolExecutor) (request, memoryId) -> "result"
+                        (request, memoryId) -> "result"
                 ))
                 .build();
 
@@ -129,7 +128,7 @@ class SkillsTest {
                 .content("Use my_tool")
                 .tools(Map.of(
                         ToolSpecification.builder().name("my_tool").description("Does something").build(),
-                        (ToolExecutor) (request, memoryId) -> "result"
+                        (request, memoryId) -> "result"
                 ))
                 .build();
 
@@ -153,7 +152,7 @@ class SkillsTest {
                 .content("Use my_tool")
                 .tools(Map.of(
                         ToolSpecification.builder().name("my_tool").description("Does something").build(),
-                        (ToolExecutor) (request, memoryId) -> "result"
+                        (request, memoryId) -> "result"
                 ))
                 .build();
 
@@ -180,7 +179,7 @@ class SkillsTest {
                 .content("Use tool_a")
                 .tools(Map.of(
                         ToolSpecification.builder().name("tool_a").description("Tool A").build(),
-                        (ToolExecutor) (request, memoryId) -> "a"
+                        (request, memoryId) -> "a"
                 ))
                 .build();
 
@@ -190,7 +189,7 @@ class SkillsTest {
                 .content("Use tool_b")
                 .tools(Map.of(
                         ToolSpecification.builder().name("tool_b").description("Tool B").build(),
-                        (ToolExecutor) (request, memoryId) -> "b"
+                        (request, memoryId) -> "b"
                 ))
                 .build();
 
@@ -217,7 +216,7 @@ class SkillsTest {
                 .content("Use tool_a")
                 .tools(Map.of(
                         ToolSpecification.builder().name("tool_a").description("Tool A").build(),
-                        (ToolExecutor) (request, memoryId) -> "a"
+                        (request, memoryId) -> "a"
                 ))
                 .build();
 
@@ -227,7 +226,7 @@ class SkillsTest {
                 .content("Use tool_b")
                 .tools(Map.of(
                         ToolSpecification.builder().name("tool_b").description("Tool B").build(),
-                        (ToolExecutor) (request, memoryId) -> "b"
+                        (request, memoryId) -> "b"
                 ))
                 .build();
 
@@ -533,8 +532,8 @@ class SkillsTest {
                 .name("my-skill")
                 .description("A skill")
                 .content("Use all tools")
-                .tools(Map.of(tool1, (ToolExecutor) (request, memoryId) -> "1"))
-                .tools(Map.of(tool2, (ToolExecutor) (request, memoryId) -> "2"))
+                .tools(Map.of(tool1, (request, memoryId) -> "1"))
+                .tools(Map.of(tool2, (request, memoryId) -> "2"))
                 .build();
 
         Skills skills = Skills.from(skill);
@@ -656,7 +655,7 @@ class SkillsTest {
     void toBuilder_should_copy_all_fields() {
 
         // given
-        DefaultSkill original = (DefaultSkill) Skill.builder()
+        DefaultSkill original = Skill.builder()
                 .name("my-skill")
                 .description("My skill")
                 .content("Some content")
@@ -675,7 +674,7 @@ class SkillsTest {
     void toBuilder_should_allow_adding_tools_to_filesystem_loaded_skill() {
 
         // given - simulate a filesystem-loaded skill (no tools)
-        DefaultSkill original = (DefaultSkill) Skill.builder()
+        DefaultSkill original = Skill.builder()
                 .name("my-skill")
                 .description("My skill")
                 .content("Use sayHello")

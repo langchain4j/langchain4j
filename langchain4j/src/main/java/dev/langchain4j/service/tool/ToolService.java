@@ -116,8 +116,8 @@ public class ToolService {
     }
 
     public void tools(Collection<Object> objectsWithTools) {
-        for (Object objectWithTool : objectsWithTools) {
-            for (AiServiceTool tool : findTools(objectWithTool)) {
+        for (Object objectWithTools : objectsWithTools) {
+            for (AiServiceTool tool : findTools(objectWithTools)) {
                 String toolName = tool.toolSpecification().name();
                 if (toolExecutors.containsKey(toolName)) {
                     throw new IllegalConfigurationException("Duplicated definition for tool: " + toolName);
@@ -454,10 +454,9 @@ public class ToolService {
      *
      * @since 1.13.0
      */
-    public static ToolServiceContext refreshDynamicProviders(
-            ToolServiceContext toolServiceContext,
-            List<ChatMessage> messages,
-            InvocationContext invocationContext) {
+    public static ToolServiceContext refreshDynamicProviders(ToolServiceContext toolServiceContext,
+                                                             List<ChatMessage> messages,
+                                                             InvocationContext invocationContext) {
         if (toolServiceContext == null) {
             return null;
         }

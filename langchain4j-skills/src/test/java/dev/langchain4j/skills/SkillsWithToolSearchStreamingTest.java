@@ -9,7 +9,6 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.TokenStream;
-import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.search.ToolSearchRequest;
 import dev.langchain4j.service.tool.search.simple.SimpleToolSearchStrategy;
 import org.junit.jupiter.api.Test;
@@ -17,20 +16,20 @@ import org.junit.jupiter.api.Test;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import static dev.langchain4j.service.StreamingAiServicesWithToolSearchToolIT.verifyNoMoreImportantInteractions;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 
 class SkillsWithToolSearchStreamingTest {
 
     interface Assistant {
         TokenStream chat(String userMessage);
     }
-
-    // --- Skills + tool search: AiServices streaming integration ---
 
     @Test
     void activate_skill_should_be_visible_and_regular_tools_searchable() throws Exception {
@@ -55,7 +54,7 @@ class SkillsWithToolSearchStreamingTest {
         Assistant assistant = AiServices.builder(Assistant.class)
                 .streamingChatModel(spyChatModel)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
-                .tools(Map.of(getWeather, (ToolExecutor) (req, memoryId) -> "sunny"))
+                .tools(Map.of(getWeather, (req, memoryId) -> "sunny"))
                 .toolProvider(skills.toolProvider())
                 .toolSearchStrategy(new SimpleToolSearchStrategy())
                 .systemMessage("You have skills: " + skills.formatAvailableSkills())
@@ -65,12 +64,13 @@ class SkillsWithToolSearchStreamingTest {
         chat(assistant, "Hello");
 
         // then - first (and only) LLM call has activate_skill + tool_search_tool, NOT getWeather
-        var inOrder = inOrder(spyChatModel);
-        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+        verify(spyChatModel).chat(argThat((ChatRequest request) ->
                 containsTool(request, "activate_skill")
                         && containsTool(request, "tool_search_tool")
                         && !containsTool(request, "getWeather")
         ), any());
+
+        verifyNoMoreImportantInteractions(spyChatModel);
     }
 
     @Test
@@ -88,7 +88,7 @@ class SkillsWithToolSearchStreamingTest {
                         .tools(Map.of(
                                 ToolSpecification.builder().name("query_inventory")
                                         .description("Queries inventory").build(),
-                                (ToolExecutor) (req, memoryId) -> "47 units"
+                                (req, memoryId) -> "47 units"
                         ))
                         .build()
         );
@@ -109,7 +109,7 @@ class SkillsWithToolSearchStreamingTest {
         Assistant assistant = AiServices.builder(Assistant.class)
                 .streamingChatModel(spyChatModel)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
-                .tools(Map.of(getWeather, (ToolExecutor) (req, memoryId) -> "sunny"))
+                .tools(Map.of(getWeather, (req, memoryId) -> "sunny"))
                 .toolProvider(skills.toolProvider())
                 .toolSearchStrategy(spyStrategy)
                 .systemMessage("You have skills: " + skills.formatAvailableSkills())
@@ -140,6 +140,8 @@ class SkillsWithToolSearchStreamingTest {
                         && containsTool(request, "tool_search_tool")
                         && !containsTool(request, "query_inventory")
         ), any());
+
+        verifyNoMoreImportantInteractions(spyChatModel);
     }
 
     @Test
@@ -154,7 +156,7 @@ class SkillsWithToolSearchStreamingTest {
                         .tools(Map.of(
                                 ToolSpecification.builder().name("query_inventory")
                                         .description("Queries inventory").build(),
-                                (ToolExecutor) (req, memoryId) -> "47 units"
+                                (req, memoryId) -> "47 units"
                         ))
                         .build()
         );
@@ -209,6 +211,8 @@ class SkillsWithToolSearchStreamingTest {
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
                 containsTool(request, "query_inventory")
         ), any());
+
+        verifyNoMoreImportantInteractions(spyChatModel);
     }
 
     @Test
@@ -226,7 +230,7 @@ class SkillsWithToolSearchStreamingTest {
                         .tools(Map.of(
                                 ToolSpecification.builder().name("query_inventory")
                                         .description("Queries inventory").build(),
-                                (ToolExecutor) (req, memoryId) -> "47 units"
+                                (req, memoryId) -> "47 units"
                         ))
                         .build()
         );
@@ -257,7 +261,7 @@ class SkillsWithToolSearchStreamingTest {
         Assistant assistant = AiServices.builder(Assistant.class)
                 .streamingChatModel(spyChatModel)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
-                .tools(Map.of(getWeather, (ToolExecutor) (req, memoryId) -> "sunny"))
+                .tools(Map.of(getWeather, (req, memoryId) -> "sunny"))
                 .toolProvider(skills.toolProvider())
                 .toolSearchStrategy(spyStrategy)
                 .systemMessage("You have skills: " + skills.formatAvailableSkills())
@@ -297,6 +301,8 @@ class SkillsWithToolSearchStreamingTest {
                 containsTool(request, "query_inventory")
                         && containsTool(request, "getWeather")
         ), any());
+
+        verifyNoMoreImportantInteractions(spyChatModel);
     }
 
     @Test
@@ -311,7 +317,7 @@ class SkillsWithToolSearchStreamingTest {
                         .tools(Map.of(
                                 ToolSpecification.builder().name("get_weather")
                                         .description("Gets weather").build(),
-                                (ToolExecutor) (req, memoryId) -> "sunny"
+                                (req, memoryId) -> "sunny"
                         ))
                         .build(),
                 Skill.builder()
@@ -321,7 +327,7 @@ class SkillsWithToolSearchStreamingTest {
                         .tools(Map.of(
                                 ToolSpecification.builder().name("get_time")
                                         .description("Gets time").build(),
-                                (ToolExecutor) (req, memoryId) -> "12:00"
+                                (req, memoryId) -> "12:00"
                         ))
                         .build()
         );
@@ -370,9 +376,9 @@ class SkillsWithToolSearchStreamingTest {
                 containsTool(request, "get_weather")
                         && !containsTool(request, "get_time")
         ), any());
-    }
 
-    // --- Helpers ---
+        verifyNoMoreImportantInteractions(spyChatModel);
+    }
 
     private static ChatResponse chat(Assistant assistant, String userMessage) throws Exception {
         CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
