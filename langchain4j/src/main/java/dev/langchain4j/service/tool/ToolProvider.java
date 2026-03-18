@@ -40,7 +40,7 @@ public interface ToolProvider {
      * @return {@code true} if this provider should be re-evaluated before each LLM call
      * @since 1.13.0
      */
-    default boolean isDynamic() { // TODO re-use tool search functionality instead?
+    default boolean isDynamic() {
         return false;
     }
 }

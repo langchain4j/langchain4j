@@ -504,6 +504,7 @@ public class ToolService {
                 .build();
 
         List<ToolSpecification> newEffectiveTools = new ArrayList<>(toolServiceContext.effectiveTools());
+        List<ToolSpecification> newAvailableTools = new ArrayList<>(toolServiceContext.availableTools());
         Map<String, ToolExecutor> newToolExecutors = new HashMap<>(toolServiceContext.toolExecutors());
         Set<String> newImmediateReturnTools = new HashSet<>(toolServiceContext.immediateReturnTools());
         boolean changed = false;
@@ -515,6 +516,7 @@ public class ToolService {
                     String toolName = toolEntry.getKey().name();
                     if (!newToolExecutors.containsKey(toolName)) {
                         newEffectiveTools.add(toolEntry.getKey());
+                        newAvailableTools.add(toolEntry.getKey());
                         newToolExecutors.put(toolName, toolEntry.getValue());
                         changed = true;
                     }
@@ -529,6 +531,7 @@ public class ToolService {
 
         return toolServiceContext.toBuilder()
                 .effectiveTools(newEffectiveTools)
+                .availableTools(newAvailableTools)
                 .toolExecutors(newToolExecutors)
                 .immediateReturnTools(newImmediateReturnTools)
                 .build();

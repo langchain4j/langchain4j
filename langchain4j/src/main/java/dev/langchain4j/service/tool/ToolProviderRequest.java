@@ -14,7 +14,7 @@ public class ToolProviderRequest {
 
     private final InvocationContext invocationContext;
     private final UserMessage userMessage;
-    private final List<ChatMessage> messages;
+    private final List<ChatMessage> messages; // TODO names: chatMemory?
 
     /**
      * @since 1.6.0

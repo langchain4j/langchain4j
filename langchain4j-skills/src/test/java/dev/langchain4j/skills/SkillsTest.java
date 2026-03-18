@@ -94,8 +94,6 @@ class SkillsTest {
         );
     }
 
-    // --- Dynamic skill tool providers ---
-
     @Test
     void skill_tools_should_be_in_separate_dynamic_provider() {
 
@@ -112,14 +110,13 @@ class SkillsTest {
 
         Skills skills = Skills.from(skill);
 
-        // then - should have 2 providers: base (static) + skill (dynamic)
-        assertThat(skills.toolProviders()).hasSize(2);
-        assertThat(skills.toolProviders().get(0).isDynamic()).isFalse();
-        assertThat(skills.toolProviders().get(1).isDynamic()).isTrue();
+        // then - single dynamic provider
+        assertThat(skills.toolProvider()).isNotNull();
+        assertThat(skills.toolProvider().isDynamic()).isTrue();
 
-        // base provider tools
-        ToolProviderResult baseResult = skills.toolProviders().get(0).provideTools(dummyRequest());
-        assertThat(getToolNames(baseResult)).containsExactly("activate_skill");
+        // before activation: only management tools
+        ToolProviderResult result = skills.toolProvider().provideTools(dummyRequest());
+        assertThat(getToolNames(result)).containsExactly("activate_skill");
     }
 
     @Test
@@ -141,9 +138,9 @@ class SkillsTest {
         // when - no activation in messages
         ToolProviderRequest request = requestWithMessages(List.of(UserMessage.from("hello")));
 
-        // then - skill provider returns empty
-        ToolProviderResult result = skills.toolProviders().get(1).provideTools(request);
-        assertThat(result.tools()).isEmpty();
+        // then - only management tools, no skill tools
+        ToolProviderResult result = skills.toolProvider().provideTools(request);
+        assertThat(getToolNames(result)).containsExactly("activate_skill");
     }
 
     @Test
@@ -168,9 +165,9 @@ class SkillsTest {
                 skillActivatedMessage("my-skill")
         ));
 
-        // then - skill provider returns tools
-        ToolProviderResult result = skills.toolProviders().get(1).provideTools(request);
-        assertThat(getToolNames(result)).containsExactly("my_tool");
+        // then - management tools + activated skill tools
+        ToolProviderResult result = skills.toolProvider().provideTools(request);
+        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "my_tool");
     }
 
     @Test
@@ -205,11 +202,9 @@ class SkillsTest {
                 skillActivatedMessage("skill-1")
         ));
 
-        // then - 3 providers: base + skill-1 + skill-2
-        assertThat(skills.toolProviders()).hasSize(3);
-
-        assertThat(getToolNames(skills.toolProviders().get(1).provideTools(request))).containsExactly("tool_a");
-        assertThat(skills.toolProviders().get(2).provideTools(request).tools()).isEmpty();
+        // then - only skill-1's tools appear (not skill-2's)
+        ToolProviderResult result = skills.toolProvider().provideTools(request);
+        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "tool_a");
     }
 
     @Test
@@ -245,9 +240,9 @@ class SkillsTest {
                 skillActivatedMessage("skill-2")
         ));
 
-        // then
-        assertThat(getToolNames(skills.toolProviders().get(1).provideTools(request))).containsExactly("tool_a");
-        assertThat(getToolNames(skills.toolProviders().get(2).provideTools(request))).containsExactly("tool_b");
+        // then - both skills' tools appear
+        ToolProviderResult result = skills.toolProvider().provideTools(request);
+        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "tool_a", "tool_b");
     }
 
     @Test
@@ -262,11 +257,10 @@ class SkillsTest {
 
         Skills skills = Skills.from(skill);
 
-        // then - only base provider
-        assertThat(skills.toolProviders()).hasSize(1);
-        assertThat(skills.toolProviders().get(0).isDynamic()).isFalse();
+        // then - not dynamic (no skill-scoped tools)
+        assertThat(skills.toolProvider().isDynamic()).isFalse();
 
-        ToolProviderResult result = skills.toolProviders().get(0).provideTools(dummyRequest());
+        ToolProviderResult result = skills.toolProvider().provideTools(dummyRequest());
         assertThat(getToolNames(result)).containsExactly("activate_skill");
     }
 
@@ -294,8 +288,8 @@ class SkillsTest {
                 UserMessage.from("greet"),
                 skillActivatedMessage("greeting-skill")
         ));
-        ToolProviderResult skillResult = skills.toolProviders().get(1).provideTools(request);
-        ToolExecutor resolvedExecutor = skillResult.toolExecutorByName("greet");
+        ToolProviderResult result = skills.toolProvider().provideTools(request);
+        ToolExecutor resolvedExecutor = result.toolExecutorByName("greet");
 
         // then
         assertThat(resolvedExecutor).isNotNull();
@@ -303,8 +297,6 @@ class SkillsTest {
                 ToolExecutionRequest.builder().name("greet").arguments("{}").build(), null))
                 .isEqualTo("Hello, World!");
     }
-
-    // --- @Tool-annotated objects ---
 
     static class MyTools {
 
@@ -342,23 +334,21 @@ class SkillsTest {
 
         Skills skills = Skills.from(skill);
 
-        // then - 2 providers: base + skill (dynamic)
-        assertThat(skills.toolProviders()).hasSize(2);
-        assertThat(skills.toolProviders().get(1).isDynamic()).isTrue();
+        // then - dynamic provider
+        assertThat(skills.toolProvider().isDynamic()).isTrue();
 
-        // before activation: empty
-        assertThat(skills.toolProviders().get(1).provideTools(dummyRequest()).tools()).isEmpty();
+        // before activation: only management tools
+        assertThat(getToolNames(skills.toolProvider().provideTools(dummyRequest())))
+                .containsExactly("activate_skill");
 
-        // after activation: tools returned
+        // after activation: management + skill tools
         ToolProviderRequest activatedRequest = requestWithMessages(List.of(
                 UserMessage.from("greet"),
                 skillActivatedMessage("greeting-skill")
         ));
-        assertThat(getToolNames(skills.toolProviders().get(1).provideTools(activatedRequest)))
-                .containsExactly("sayHello");
+        assertThat(getToolNames(skills.toolProvider().provideTools(activatedRequest)))
+                .containsExactlyInAnyOrder("activate_skill", "sayHello");
     }
-
-    // --- ToolProvider on Skill ---
 
     @Test
     void skill_should_support_tool_providers() {
@@ -398,12 +388,12 @@ class SkillsTest {
 
         Skills skills = Skills.from(skill);
 
-        // then - 2 providers: base + skill (dynamic)
-        assertThat(skills.toolProviders()).hasSize(2);
-        assertThat(skills.toolProviders().get(1).isDynamic()).isTrue();
+        // then - dynamic provider
+        assertThat(skills.toolProvider().isDynamic()).isTrue();
 
-        // before activation: empty
-        assertThat(skills.toolProviders().get(1).provideTools(dummyRequest()).tools()).isEmpty();
+        // before activation: only management tools
+        assertThat(getToolNames(skills.toolProvider().provideTools(dummyRequest())))
+                .containsExactly("activate_skill");
     }
 
     @Test
@@ -426,17 +416,15 @@ class SkillsTest {
         // then - both static and dynamic providers on Skill
         assertThat(skill.toolProviders()).hasSize(2);
 
-        // Skills wraps them in a single SkillToolProvider (dynamic)
         Skills skills = Skills.from(skill);
-        assertThat(skills.toolProviders()).hasSize(2); // base + skill
 
-        // after activation: both tools returned
+        // after activation: management + both skill tools
         ToolProviderRequest activatedRequest = requestWithMessages(List.of(
                 UserMessage.from("do stuff"),
                 skillActivatedMessage("combo-skill")
         ));
-        ToolProviderResult skillResult = skills.toolProviders().get(1).provideTools(activatedRequest);
-        assertThat(getToolNames(skillResult)).containsExactlyInAnyOrder("sayHello", "mcp_tool");
+        ToolProviderResult result = skills.toolProvider().provideTools(activatedRequest);
+        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "sayHello", "mcp_tool");
     }
 
     static class AnotherTools {
@@ -472,10 +460,10 @@ class SkillsTest {
                 UserMessage.from("do stuff"),
                 skillActivatedMessage("my-skill")
         ));
-        ToolProviderResult result = skills.toolProviders().get(1).provideTools(request);
+        ToolProviderResult result = skills.toolProvider().provideTools(request);
 
         // then - both @Tool method and Map tool are present
-        assertThat(getToolNames(result)).containsExactlyInAnyOrder("sayHello", "manual_tool");
+        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "sayHello", "manual_tool");
     }
 
     @Test
@@ -503,10 +491,10 @@ class SkillsTest {
                 UserMessage.from("do stuff"),
                 skillActivatedMessage("my-skill")
         ));
-        ToolProviderResult result = skills.toolProviders().get(1).provideTools(request);
+        ToolProviderResult result = skills.toolProvider().provideTools(request);
 
         // then
-        assertThat(getToolNames(result)).containsExactlyInAnyOrder("manual_tool", "sayHello");
+        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "manual_tool", "sayHello");
     }
 
     @Test
@@ -528,10 +516,10 @@ class SkillsTest {
                 UserMessage.from("do stuff"),
                 skillActivatedMessage("my-skill")
         ));
-        ToolProviderResult result = skills.toolProviders().get(1).provideTools(request);
+        ToolProviderResult result = skills.toolProvider().provideTools(request);
 
         // then
-        assertThat(getToolNames(result)).containsExactlyInAnyOrder("sayHello", "sayGoodbye");
+        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "sayHello", "sayGoodbye");
     }
 
     @Test
@@ -556,10 +544,10 @@ class SkillsTest {
                 UserMessage.from("do stuff"),
                 skillActivatedMessage("my-skill")
         ));
-        ToolProviderResult result = skills.toolProviders().get(1).provideTools(request);
+        ToolProviderResult result = skills.toolProvider().provideTools(request);
 
         // then
-        assertThat(getToolNames(result)).containsExactlyInAnyOrder("tool_1", "tool_2");
+        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "tool_1", "tool_2");
     }
 
     @Test
@@ -593,10 +581,10 @@ class SkillsTest {
                 UserMessage.from("do stuff"),
                 skillActivatedMessage("my-skill")
         ));
-        ToolProviderResult result = skills.toolProviders().get(1).provideTools(request);
+        ToolProviderResult result = skills.toolProvider().provideTools(request);
 
         // then - tools from both providers
-        assertThat(getToolNames(result)).containsExactlyInAnyOrder("provider1_tool", "provider2_tool");
+        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "provider1_tool", "provider2_tool");
     }
 
     @Test
@@ -633,10 +621,10 @@ class SkillsTest {
                 UserMessage.from("do stuff"),
                 skillActivatedMessage("my-skill")
         ));
-        ToolProviderResult result = skills.toolProviders().get(1).provideTools(request);
+        ToolProviderResult result = skills.toolProvider().provideTools(request);
 
         // then - all three tools present
-        assertThat(getToolNames(result)).containsExactlyInAnyOrder("sayHello", "manual_tool", "dynamic_tool");
+        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "sayHello", "manual_tool", "dynamic_tool");
     }
 
     @Test
@@ -663,8 +651,6 @@ class SkillsTest {
         // then - both providers present
         assertThat(skill.toolProviders()).hasSize(2);
     }
-
-    // --- toBuilder ---
 
     @Test
     void toBuilder_should_copy_all_fields() {
@@ -731,15 +717,15 @@ class SkillsTest {
         assertThat(withProvider.toolProviders()).hasSize(1);
 
         Skills skills = Skills.from(withProvider);
-        assertThat(skills.toolProviders()).hasSize(2); // base + skill
+        assertThat(skills.toolProvider().isDynamic()).isTrue();
 
         // after activation
         ToolProviderRequest activatedRequest = requestWithMessages(List.of(
                 UserMessage.from("do stuff"),
                 skillActivatedMessage("my-skill")
         ));
-        ToolProviderResult skillResult = skills.toolProviders().get(1).provideTools(activatedRequest);
-        assertThat(getToolNames(skillResult)).containsExactly("dynamic_tool");
+        ToolProviderResult result = skills.toolProvider().provideTools(activatedRequest);
+        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "dynamic_tool");
     }
 
     private static ToolProviderRequest dummyRequest() {

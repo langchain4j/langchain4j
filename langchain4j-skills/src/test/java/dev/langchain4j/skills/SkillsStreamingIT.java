@@ -25,6 +25,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_SONNET_4_6;
+import static dev.langchain4j.service.StreamingAiServicesWithToolSearchToolIT.verifyNoMoreImportantInteractions;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -32,6 +33,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
@@ -90,7 +92,7 @@ class SkillsStreamingIT {
 
         // then
         assertThat(skills.formatAvailableSkills()).contains("using-process-tool");
-        assertThat(getToolNames(skills.toolProviders()))
+        assertThat(getToolNames(skills.toolProvider()))
                 .containsExactlyInAnyOrder("activate_skill", "read_skill_resource");
 
         // given
@@ -100,7 +102,7 @@ class SkillsStreamingIT {
                 .streamingChatModel(model)
                 .systemMessage("You have access to the following skills: " + skills.formatAvailableSkills())
                 .tools(spyTools)
-                .toolProviders(skills.toolProviders())
+                .toolProvider(skills.toolProvider())
                 .build();
 
         // when
@@ -149,7 +151,7 @@ class SkillsStreamingIT {
 
         // then
         assertThat(skills.formatAvailableSkills()).contains("using-process-tool");
-        assertThat(getToolNames(skills.toolProviders()))
+        assertThat(getToolNames(skills.toolProvider()))
                 .containsExactlyInAnyOrder("activate_skill", "read_skill_resource");
 
         // given
@@ -159,7 +161,7 @@ class SkillsStreamingIT {
                 .streamingChatModel(model)
                 .systemMessage("You have access to the following skills: " + skills.formatAvailableSkills())
                 .tools(spyTools)
-                .toolProviders(skills.toolProviders())
+                .toolProvider(skills.toolProvider())
                 .build();
 
         // when
@@ -192,7 +194,7 @@ class SkillsStreamingIT {
 
         // then
         assertThat(skills.formatAvailableSkills()).contains("using-poll-tool", "using-process-tool");
-        assertThat(getToolNames(skills.toolProviders()))
+        assertThat(getToolNames(skills.toolProvider()))
                 .containsExactlyInAnyOrder("activate_skill", "read_skill_resource");
 
         // given
@@ -207,7 +209,7 @@ class SkillsStreamingIT {
                         activate it first using the 'activate_skill' tool before proceeding.
                         """.formatted(skills.formatAvailableSkills()))
                 .tools(spyTools)
-                .toolProviders(skills.toolProviders())
+                .toolProvider(skills.toolProvider())
                 .build();
 
         // when
@@ -238,7 +240,7 @@ class SkillsStreamingIT {
                 .name("inventory-management")
                 .description("Describes how to query and manage the internal inventory system")
                 .content("When asked about inventory or stock levels, use the 'query_inventory' tool.")
-                .toolProviders(skillToolProvider)
+                .toolProviders(skillToolProvider) // TODO test other ways
                 .build();
 
         Skills skills = Skills.from(skill);
@@ -254,46 +256,41 @@ class SkillsStreamingIT {
                         When the user's request relates to one of these skills,
                         activate it first using the 'activate_skill' tool before proceeding.
                         """.formatted(skills.formatAvailableSkills()))
-                .toolProviders(skills.toolProviders())
+                .toolProvider(skills.toolProvider())
                 .build();
 
-        // when — first invocation: skill is not yet activated
+        // when
         chat(assistant, "Check the inventory for widgets");
 
         // then
         InOrder inOrder = inOrder(spyChatModel);
 
-        // First LLM call: only activate_skill tool should be present, no query_inventory
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
                 containsTool(request, "activate_skill")
                         && !containsTool(request, "query_inventory")
         ), any());
 
-        // Second LLM call: skill was activated, so query_inventory should now appear
-        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+        inOrder.verify(spyChatModel, times(2)).chat(argThat((ChatRequest request) ->
                 containsTool(request, "activate_skill")
                         && containsTool(request, "query_inventory")
-                        && request.messages().stream().anyMatch(msg -> // TODO
-                                msg instanceof AiMessage ai
-                                        && ai.hasToolExecutionRequests()
-                                        && ai.toolExecutionRequests().stream().anyMatch(ter ->
-                                                ter.name().equals("activate_skill")
-                                                        && ter.arguments().contains("inventory-management")))
         ), any());
 
-        // when — second invocation: skill was already activated in chat memory,
-        // so query_inventory should be present from the very first LLM call
+        verifyNoMoreImportantInteractions(spyChatModel);
+
+        // when
         chat(assistant, "Now check the inventory for gadgets");
 
-        // then — query_inventory should be present on the first LLM call of the second invocation
-        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+        // then
+        inOrder.verify(spyChatModel, times(2)).chat(argThat((ChatRequest request) ->
                 containsTool(request, "activate_skill")
                         && containsTool(request, "query_inventory")
         ), any());
+
+        verifyNoMoreImportantInteractions(spyChatModel);
     }
 
     @Test
-    void should_not_include_skill_tools_for_unrelated_skill() throws Exception {
+    void should_not_include_skill_tools_for_unrelated_skill() throws Exception { // TODO
 
         // given
         ToolSpecification weatherTool = ToolSpecification.builder()
@@ -337,7 +334,7 @@ class SkillsStreamingIT {
                         activate it first using the 'activate_skill' tool before proceeding.
                         Activate only the relevant skill. Do NOT activate unrelated skills.
                         """.formatted(skills.formatAvailableSkills()))
-                .toolProviders(skills.toolProviders())
+                .toolProvider(skills.toolProvider())
                 .build();
 
         // when
@@ -362,8 +359,6 @@ class SkillsStreamingIT {
         ), any());
     }
 
-    // --- Helpers ---
-
     private static ChatResponse chat(Assistant assistant, String userMessage) throws Exception {
         CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
         assistant
@@ -386,9 +381,8 @@ class SkillsStreamingIT {
         }
     }
 
-    private static Stream<String> getToolNames(List<ToolProvider> toolProviders) {
-        return toolProviders.stream()
-                .flatMap(tp -> tp.provideTools(null).tools().keySet().stream())
+    private static Stream<String> getToolNames(ToolProvider toolProvider) {
+        return toolProvider.provideTools(null).tools().keySet().stream()
                 .map(ToolSpecification::name);
     }
 }

@@ -7,18 +7,24 @@ import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderResult;
 
-import java.util.ArrayList;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.service.tool.ToolProviderRequest;
+
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static dev.langchain4j.agent.tool.SearchBehavior.ALWAYS_VISIBLE;
 import static dev.langchain4j.agent.tool.ToolSpecification.METADATA_SEARCH_BEHAVIOR;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.skills.ActivateSkillToolExecutor.ACTIVATED_SKILL_ATTRIBUTE;
 import static java.util.Arrays.asList;
 
 /**
@@ -43,9 +49,9 @@ import static java.util.Arrays.asList;
  *         // or, if you already have a system message configured:
  *         .systemMessageTransformer(systemMessage -> systemMessage + "\n\nYou have access to the following skills:\n" + skills.formatAvailableSkills() + "\nWhen the user's request relates to one of these skills, activate it first using the `activate_skill` tool before proceeding.")
  *
- *         .toolProviders(skills.toolProviders())
+ *         .toolProvider(skills.toolProvider())
  *         // or, if you already have an MCP tool provider configured:
- *         .toolProviders(Stream.concat(Stream.of(mcpToolProvider), skills.toolProviders().stream()).toList())
+ *         .toolProviders(mcpToolProvider, skills.toolProvider())
  *
  *         .build();
  * }</pre>
@@ -54,35 +60,26 @@ import static java.util.Arrays.asList;
 public class Skills {
 
     private final List<Skill> skills;
-    private final List<ToolProvider> toolProviders;
+    private final ToolProvider toolProvider;
     private final String formattedAvailableSkills;
 
     public Skills(Builder builder) {
         this.skills = copy(ensureNotEmpty(builder.skills, "skills"));
-        this.toolProviders = createToolProviders(builder);
+        this.toolProvider = createToolProvider(builder);
         this.formattedAvailableSkills = formatAvailableSkills(builder.skills);
     }
 
     /**
-     * Returns the list of {@link ToolProvider}s that expose skill-related tools to the LLM. TODO
+     * Returns a single {@linkplain ToolProvider#isDynamic() dynamic} {@link ToolProvider}
+     * that exposes skill-related tools to the LLM.
      * <p>
-     * The list contains:
-     * <ul>
-     *     <li>A base provider (always active) with {@code activate_skill} and optionally {@code read_skill_resource}</li>
-     *     <li>One {@linkplain ToolProvider#isDynamic() dynamic} provider per skill that has tools —
-     *         each returns tools only after the LLM calls {@code activate_skill} for that skill</li>
-     * </ul>
-     * Pass these to {@code AiServices.builder(...).toolProviders(skills.toolProviders())}.
-     */
-    public List<ToolProvider> toolProviders() {
-        return toolProviders;
-    }
-
-    /**
-     * TODO
+     * The provider always returns {@code activate_skill} (and optionally {@code read_skill_resource}).
+     * Skill-scoped tools are included only after the LLM calls {@code activate_skill} for that skill.
+     * <p>
+     * Pass it to {@code AiServices.builder(...).toolProviders(skills.toolProvider())}.
      */
     public ToolProvider toolProvider() {
-        return null; // TODO
+        return toolProvider;
     }
 
     /**
@@ -111,7 +108,7 @@ public class Skills {
         return new Builder();
     }
 
-    private List<ToolProvider> createToolProviders(Builder builder) {
+    private ToolProvider createToolProvider(Builder builder) {
         Map<String, Skill> skillsByName = new LinkedHashMap<>();
         skills.forEach(skill -> skillsByName.put(skill.name(), skill));
 
@@ -151,19 +148,71 @@ public class Skills {
 
         ToolProviderResult skillManagementResult = ToolProviderResult.builder().addAll(skillManagementTools).build();
 
-        List<ToolProvider> providers = new ArrayList<>();
-        providers.add(request -> skillManagementResult);
-
+        Map<String, List<ToolProvider>> skillScopedProviders = new LinkedHashMap<>();
         for (Map.Entry<String, Skill> entry : skillsByName.entrySet()) {
             Skill skill = entry.getValue();
-            List<ToolProvider> skillToolProviders = skill.toolProviders();
-            if (skillToolProviders != null && !skillToolProviders.isEmpty()) {
-                String skillName = entry.getKey();
-                providers.add(new SkillToolProvider(skillName, skillToolProviders));
+            List<ToolProvider> delegates = skill.toolProviders();
+            if (delegates != null && !delegates.isEmpty()) {
+                skillScopedProviders.put(entry.getKey(), delegates);
             }
         }
 
-        return providers;
+        return new ToolProvider() {
+
+            @Override
+            public ToolProviderResult provideTools(ToolProviderRequest request) {
+                if (skillScopedProviders.isEmpty()) {
+                    return skillManagementResult;
+                }
+
+                Set<String> activatedSkillNames = getActivatedSkillNames(request.messages());
+                if (activatedSkillNames.isEmpty()) {
+                    return skillManagementResult;
+                }
+
+                Map<ToolSpecification, ToolExecutor> allTools = new HashMap<>(skillManagementResult.tools());
+                Set<String> immediateReturnToolNames = new HashSet<>(skillManagementResult.immediateReturnToolNames());
+
+                for (String skillName : activatedSkillNames) {
+                    List<ToolProvider> delegates = skillScopedProviders.get(skillName);
+                    if (delegates != null) {
+                        for (ToolProvider delegate : delegates) {
+                            ToolProviderResult delegateResult = delegate.provideTools(request);
+                            if (delegateResult != null) {
+                                allTools.putAll(delegateResult.tools());
+                                immediateReturnToolNames.addAll(delegateResult.immediateReturnToolNames());
+                            }
+                        }
+                    }
+                }
+
+                return ToolProviderResult.builder()
+                        .addAll(allTools)
+                        .immediateReturnToolNames(immediateReturnToolNames)
+                        .build();
+            }
+
+            @Override
+            public boolean isDynamic() {
+                return !skillScopedProviders.isEmpty();
+            }
+        };
+    }
+
+    private static Set<String> getActivatedSkillNames(List<ChatMessage> messages) {
+        if (messages == null || messages.isEmpty()) {
+            return Set.of();
+        }
+        Set<String> activated = new HashSet<>();
+        for (ChatMessage message : messages) {
+            if (message instanceof ToolExecutionResultMessage toolResult) {
+                Object skillName = toolResult.attributes().get(ACTIVATED_SKILL_ATTRIBUTE);
+                if (skillName instanceof String name) {
+                    activated.add(name);
+                }
+            }
+        }
+        return activated;
     }
 
     private String resolveRelativePathParameterDescription(ReadResourceToolConfig rrc) {
