@@ -477,7 +477,7 @@ class AnthropicChatModelIT {
 
         ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name("calculator")
-                .description("returns a sum of two numbers".repeat(430) + randomString(2))
+                .description("returns a sum of two numbers".repeat(450) + randomString(3))
                 .parameters(JsonObjectSchema.builder()
                         .addIntegerProperty("first")
                         .addIntegerProperty("second")
@@ -495,7 +495,8 @@ class AnthropicChatModelIT {
 
         // then
         AnthropicTokenUsage createCacheTokenUsage = (AnthropicTokenUsage) response.tokenUsage();
-        assertThat(createCacheTokenUsage.cacheCreationInputTokens()).isGreaterThan(0);
+        int minCacheableTokenThresholdForHaiku = 4096;
+        assertThat(createCacheTokenUsage.cacheCreationInputTokens()).isGreaterThan(minCacheableTokenThresholdForHaiku);
         assertThat(createCacheTokenUsage.cacheReadInputTokens()).isEqualTo(0);
 
         // when
