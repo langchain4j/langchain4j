@@ -33,7 +33,9 @@ public interface AgentInvoker extends AgentInstance, InternalAgent {
         beforeAgentInvocation(listener, agenticScope, this, args.namedArgs());
         Object result = internalInvoke(agenticScope, listener, agent, args);
         if (agent instanceof ChatMessagesAccess chatMessagesAccess) {
-            afterAgentInvocation(listener, agenticScope, this, args.namedArgs(), result, chatMessagesAccess.lastChatRequest(), chatMessagesAccess.lastChatResponse());
+            afterAgentInvocation(listener, agenticScope, this, args.namedArgs(), result,
+                    chatMessagesAccess.lastChatRequest(agenticScope.memoryId()),
+                    chatMessagesAccess.lastChatResponse(agenticScope.memoryId()));
         } else {
             afterAgentInvocation(listener, agenticScope, this, args.namedArgs(), result);
         }

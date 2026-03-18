@@ -29,7 +29,10 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.listenerOfType;
@@ -43,7 +46,8 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
     private String agentId;
     private InternalAgent parent;
     private AgentListener agentListener;
-    private AiServiceResponseReceivedEvent lastResponseEvent;
+
+    private final Map<Object, AiServiceResponseReceivedEvent> lastResponseEvents = new ConcurrentHashMap<>();
 
     AgentInvocationHandler(
             AiServiceContext context,
@@ -64,7 +68,8 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
             return switch (method.getName()) {
                 case "getEventClass" -> AiServiceResponseReceivedEvent.class;
                 case "onEvent" -> {
-                    lastResponseEvent = (AiServiceResponseReceivedEvent) args[0];
+                    Object agenticScopeId = ((AgenticScope) LangChain4jManaged.current().get(AgenticScope.class)).memoryId();
+                    lastResponseEvents.put(agenticScopeId, (AiServiceResponseReceivedEvent) args[0]);
                     yield null;
                 }
                 default ->
@@ -74,6 +79,14 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
         }
 
         if (method.getDeclaringClass() == ChatMessagesAccess.class) {
+            if ("removeLast".equals(method.getName())) {
+                lastResponseEvents.remove(args[0]);
+                return null;
+            }
+            AiServiceResponseReceivedEvent lastResponseEvent = lastResponseEvents.get(args[0]);
+            if (lastResponseEvent == null) {
+                return null;
+            }
             return switch (method.getName()) {
                 case "lastUserMessage" -> lastUserMessage(lastResponseEvent.request());
                 case "lastChatRequest" -> lastResponseEvent.request();

@@ -6,9 +6,11 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 
 public interface ChatMessagesAccess {
 
-    UserMessage lastUserMessage();
+    UserMessage lastUserMessage(Object agenticScopeId);
 
-    ChatRequest lastChatRequest();
+    ChatRequest lastChatRequest(Object agenticScopeId);
 
-    ChatResponse lastChatResponse();
+    ChatResponse lastChatResponse(Object agenticScopeId);
+
+    void removeLast(Object agenticScopeId);
 }
