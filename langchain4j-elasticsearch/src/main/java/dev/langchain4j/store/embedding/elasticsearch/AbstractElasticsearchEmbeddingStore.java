@@ -145,7 +145,7 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
             return new EmbeddingSearchResult<>(results);
         } catch (ElasticsearchException e) {
             if (e.getLocalizedMessage().contains("Unknown key for a VALUE_BOOLEAN in [exclude_vectors]")
-                    && this.configuration.includeVectorResponse) {
+                    && this.configuration.isIncludeVectorResponse()) {
                 log.warn(
                         "Property [includeVectorResponse] is not needed for elasticsearch server versions previous to 9.2, remove it to fix the exception.");
             }
@@ -172,7 +172,7 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
             return new EmbeddingSearchResult<>(results);
         } catch (ElasticsearchException e) {
             if (e.getLocalizedMessage().contains("Unknown key for a VALUE_BOOLEAN in [exclude_vectors]")
-                    && this.configuration.includeVectorResponse) {
+                    && this.configuration.isIncludeVectorResponse()) {
                 log.warn(
                         "Property [includeVectorResponse] is not needed for elasticsearch server versions previous to 9.2, remove it to fix the exception.");
             }

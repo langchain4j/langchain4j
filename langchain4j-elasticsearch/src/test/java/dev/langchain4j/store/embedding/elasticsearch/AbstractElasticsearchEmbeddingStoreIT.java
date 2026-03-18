@@ -36,6 +36,7 @@ public abstract class AbstractElasticsearchEmbeddingStoreIT extends EmbeddingSto
 
     @AfterAll
     static void stopServices() throws IOException {
+        // Comment this line if you want to use "reuse" feature from TestContainers
         elasticsearchClientHelper.stopServices();
     }
 

@@ -263,6 +263,12 @@ public class MyElasticsearchConfiguration implements ElasticsearchConfiguration 
 }
 ```
 
+Please note that you can implement only the methods relevant to your use case:
+
+* `vectorSearch` for vector similarity search (used by both `ElasticsearchEmbeddingStore` and `ElasticsearchContentRetriever`).
+* `fullTextSearch` for full text search (used by `ElasticsearchContentRetriever` only).
+* `hybridSearch` for hybrid search (used by `ElasticsearchContentRetriever` only).
+
 ## Examples
 
 - [ElasticsearchEmbeddingStoreExample](https://github.com/langchain4j/langchain4j-examples/blob/main/elasticsearch-example/src/main/java/ElasticsearchEmbeddingStoreExample.java)
