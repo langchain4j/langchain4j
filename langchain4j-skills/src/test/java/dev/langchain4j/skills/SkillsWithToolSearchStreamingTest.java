@@ -23,6 +23,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 class SkillsWithToolSearchStreamingTest {
@@ -297,7 +298,8 @@ class SkillsWithToolSearchStreamingTest {
         ));
 
         // LLM call 3: getWeather is now found and visible alongside query_inventory
-        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+        // LLM call 4: responds with text, same tools visible
+        inOrder.verify(spyChatModel, times(2)).chat(argThat((ChatRequest request) ->
                 containsTool(request, "query_inventory")
                         && containsTool(request, "getWeather")
         ), any());
@@ -372,7 +374,8 @@ class SkillsWithToolSearchStreamingTest {
         ), any());
 
         // LLM call 2: only weather's get_weather appears, NOT time's get_time
-        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+        // LLM call 3: responds with text, same tools visible
+        inOrder.verify(spyChatModel, times(2)).chat(argThat((ChatRequest request) ->
                 containsTool(request, "get_weather")
                         && !containsTool(request, "get_time")
         ), any());
