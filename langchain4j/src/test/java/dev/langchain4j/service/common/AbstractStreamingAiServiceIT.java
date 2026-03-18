@@ -108,7 +108,7 @@ public abstract class AbstractStreamingAiServiceIT {
 
             @Tool
             LocalDate currentDate() {
-                return LocalDate.of(2019, 1, 7);
+                return LocalDate.now();
             }
         }
 

@@ -10,6 +10,7 @@ import static dev.langchain4j.agentic.internal.AgentUtil.agentInvocationArgument
 import static dev.langchain4j.agentic.internal.AgentUtil.agentToExecutor;
 import static dev.langchain4j.agentic.internal.AgentUtil.getAnnotatedMethodOnClass;
 import static dev.langchain4j.agentic.internal.AgentUtil.nonAiAgentInvoker;
+import static dev.langchain4j.agentic.internal.AgentUtil.nonAiAgentToExecutor;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import java.lang.reflect.Method;
@@ -662,9 +663,9 @@ public class AgenticServices {
                 if (agenticMethod.getParameterCount() == 0) {
                     return agentToExecutor(new AgentAction(() -> invokeStatic(agenticMethod)));
                 }
-                return agentToExecutor(new AgenticScopeAction((scope -> invokeStatic(
+                return nonAiAgentToExecutor(new AgenticScopeFunction<>(scope -> invokeStatic(
                         agenticMethod,
-                        agentInvocationArguments(scope, agenticMethod).positionalArgs()))));
+                        agentInvocationArguments(scope, agenticMethod).positionalArgs())), agenticMethod);
             }
         }
 
@@ -810,6 +811,28 @@ public class AgenticServices {
         public void accept(AgenticScope agenticScope) {
             try {
                 consumer.accept(agenticScope);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    public static class AgenticScopeFunction<T> {
+        private final NonThrowingFunction<AgenticScope, T> function;
+
+        @FunctionalInterface
+        public interface NonThrowingFunction<A, B> {
+            B apply(A arg) throws Exception;
+        }
+
+        private AgenticScopeFunction(NonThrowingFunction<AgenticScope, T> function) {
+            this.function = function;
+        }
+
+        @Agent
+        public T accept(AgenticScope agenticScope) {
+            try {
+                return function.apply(agenticScope);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
