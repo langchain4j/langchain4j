@@ -1,14 +1,12 @@
 package dev.langchain4j.store.embedding.pgvector;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.data.Percentage.withPercentage;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import java.util.Random;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -129,7 +127,8 @@ class PgVectorHalfVecDimensionIT {
     // helpers
     // -------------------------------------------------------------------------
 
-    private PgVectorEmbeddingStore buildStore(String tableSuffix, int dimension, PgVectorEmbeddingStore.VectorType type) {
+    private PgVectorEmbeddingStore buildStore(
+            String tableSuffix, int dimension, PgVectorEmbeddingStore.VectorType type) {
         return PgVectorEmbeddingStore.builder()
                 .host(pgVector.getHost())
                 .port(pgVector.getFirstMappedPort())

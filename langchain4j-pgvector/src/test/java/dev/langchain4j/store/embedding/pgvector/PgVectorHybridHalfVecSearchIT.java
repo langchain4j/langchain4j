@@ -1,7 +1,7 @@
 package dev.langchain4j.store.embedding.pgvector;
 
-import static dev.langchain4j.store.embedding.pgvector.PgVectorEmbeddingStore.SearchMode.HYBRID;
 import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
+import static dev.langchain4j.store.embedding.pgvector.PgVectorEmbeddingStore.SearchMode.HYBRID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Percentage.withPercentage;
 import static org.testcontainers.shaded.org.apache.commons.lang3.RandomUtils.nextInt;
@@ -71,8 +71,7 @@ class PgVectorHybridHalfVecSearchIT extends EmbeddingStoreWithFilteringIT {
 
     @Override
     protected void assertVectorWithPrecisionBuffer(Embedding actual, Embedding expected) {
-        assertThat(CosineSimilarity.between(actual, expected))
-                .isCloseTo(1.0, withPercentage(0.01));
+        assertThat(CosineSimilarity.between(actual, expected)).isCloseTo(1.0, withPercentage(0.01));
     }
 
     /**
@@ -157,12 +156,12 @@ class PgVectorHybridHalfVecSearchIT extends EmbeddingStoreWithFilteringIT {
         embeddingStore.add(embeddingModel.embed(poorMatch).content(), poorMatch);
 
         String queryText = "PostgreSQL halfvec tutorial";
-        List<EmbeddingMatch<TextSegment>> matches = embeddingStore.search(
-                        EmbeddingSearchRequest.builder()
-                                .queryEmbedding(embeddingModel.embed(queryText).content())
-                                .query(queryText)
-                                .maxResults(3)
-                                .build())
+        List<EmbeddingMatch<TextSegment>> matches = embeddingStore
+                .search(EmbeddingSearchRequest.builder()
+                        .queryEmbedding(embeddingModel.embed(queryText).content())
+                        .query(queryText)
+                        .maxResults(3)
+                        .build())
                 .matches();
 
         assertThat(matches).hasSize(3);
@@ -182,12 +181,12 @@ class PgVectorHybridHalfVecSearchIT extends EmbeddingStoreWithFilteringIT {
         embeddingStore.add(embeddingModel.embed(segment).content(), segment);
 
         String queryText = "machine learning embeddings";
-        List<EmbeddingMatch<TextSegment>> matches = embeddingStore.search(
-                        EmbeddingSearchRequest.builder()
-                                .queryEmbedding(embeddingModel.embed(queryText).content())
-                                .query(queryText)
-                                .maxResults(1)
-                                .build())
+        List<EmbeddingMatch<TextSegment>> matches = embeddingStore
+                .search(EmbeddingSearchRequest.builder()
+                        .queryEmbedding(embeddingModel.embed(queryText).content())
+                        .query(queryText)
+                        .maxResults(1)
+                        .build())
                 .matches();
 
         assertThat(matches).hasSize(1);
@@ -201,28 +200,29 @@ class PgVectorHybridHalfVecSearchIT extends EmbeddingStoreWithFilteringIT {
      */
     @Test
     void should_apply_metadata_filter_in_hybrid_halfvec_search() {
-        TextSegment pythonDoc1 = TextSegment.from(
-                "Python halfvec tutorial for data science", Metadata.from("language", "python"));
-        TextSegment javaDoc = TextSegment.from(
-                "Java tutorial for enterprise applications", Metadata.from("language", "java"));
-        TextSegment pythonDoc2 = TextSegment.from(
-                "Python guide for machine learning embeddings", Metadata.from("language", "python"));
+        TextSegment pythonDoc1 =
+                TextSegment.from("Python halfvec tutorial for data science", Metadata.from("language", "python"));
+        TextSegment javaDoc =
+                TextSegment.from("Java tutorial for enterprise applications", Metadata.from("language", "java"));
+        TextSegment pythonDoc2 =
+                TextSegment.from("Python guide for machine learning embeddings", Metadata.from("language", "python"));
 
         embeddingStore.add(embeddingModel.embed(pythonDoc1).content(), pythonDoc1);
         embeddingStore.add(embeddingModel.embed(javaDoc).content(), javaDoc);
         embeddingStore.add(embeddingModel.embed(pythonDoc2).content(), pythonDoc2);
 
         String queryText = "Python tutorial";
-        List<EmbeddingMatch<TextSegment>> matches = embeddingStore.search(
-                        EmbeddingSearchRequest.builder()
-                                .queryEmbedding(embeddingModel.embed(queryText).content())
-                                .query(queryText)
-                                .maxResults(10)
-                                .filter(metadataKey("language").isEqualTo("python"))
-                                .build())
+        List<EmbeddingMatch<TextSegment>> matches = embeddingStore
+                .search(EmbeddingSearchRequest.builder()
+                        .queryEmbedding(embeddingModel.embed(queryText).content())
+                        .query(queryText)
+                        .maxResults(10)
+                        .filter(metadataKey("language").isEqualTo("python"))
+                        .build())
                 .matches();
 
         assertThat(matches).hasSize(2);
-        assertThat(matches).allMatch(m -> "python".equals(m.embedded().metadata().getString("language")));
+        assertThat(matches)
+                .allMatch(m -> "python".equals(m.embedded().metadata().getString("language")));
     }
 }
