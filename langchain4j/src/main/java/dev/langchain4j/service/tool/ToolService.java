@@ -117,28 +117,18 @@ public class ToolService {
 
     public void tools(Collection<Object> objectsWithTools) {
         for (Object objectWithTool : objectsWithTools) {
-            if (objectWithTool instanceof Class) {
-                throw illegalConfiguration("Tool '%s' must be an object, not a class", objectWithTool);
-            }
-
-            if (objectWithTool instanceof Iterable) {
-                throw illegalConfiguration(
-                        "Tool '%s' is an Iterable (likely a nested collection). "
-                                + "Please pass tool objects directly, not wrapped in collections.",
-                        objectWithTool.getClass().getName());
+            for (AiServiceTool tool : findTools(objectWithTool)) {
+                String toolName = tool.toolSpecification().name();
+                if (toolExecutors.containsKey(toolName)) {
+                    throw new IllegalConfigurationException("Duplicated definition for tool: " + toolName);
+                }
+                toolSpecifications.add(tool.toolSpecification());
+                toolExecutors.put(toolName, tool.toolExecutor());
+                if (tool.immediateReturn()) {
+                    immediateReturnTools.add(toolName);
+                }
             }
         }
-
-        ToolProviderResult result = toToolProviderResult(objectsWithTools.toArray());
-        for (Map.Entry<ToolSpecification, ToolExecutor> entry : result.tools().entrySet()) {
-            ToolSpecification spec = entry.getKey();
-            if (toolExecutors.containsKey(spec.name())) {
-                throw new IllegalConfigurationException("Duplicated definition for tool: " + spec.name());
-            }
-            toolSpecifications.add(spec);
-            toolExecutors.put(spec.name(), entry.getValue());
-        }
-        immediateReturnTools.addAll(result.immediateReturnToolNames());
     }
 
     private static ToolExecutor createToolExecutor(Object object, Method method) {
@@ -152,38 +142,43 @@ public class ToolService {
     }
 
     /**
-     * Scans the given objects for {@link Tool @Tool}-annotated methods and returns a
-     * {@link ToolProviderResult} containing tool specifications, executors, and immediate
-     * return tool names.
+     * Scans the given object for {@link Tool @Tool}-annotated methods and returns
+     * a list of {@link AiServiceTool}s.
      *
-     * @param objectsWithTools objects containing {@link Tool @Tool}-annotated methods
-     * @return a {@link ToolProviderResult} with all discovered tools
+     * @param objectWithTools an object containing {@link Tool @Tool}-annotated methods
+     * @return list of resolved tools
+     * @throws IllegalConfigurationException if the object has no {@link Tool @Tool}-annotated methods
      * @since 1.13.0
      */
-    public static ToolProviderResult toToolProviderResult(Object... objectsWithTools) { // TODO refactor
-        ToolProviderResult.Builder builder = ToolProviderResult.builder();
-        for (Object object : objectsWithTools) {
-            boolean hasToolMethods = false;
-            for (Method method : object.getClass().getDeclaredMethods()) {
-                Optional<Method> annotatedMethod = getAnnotatedMethod(method, Tool.class);
-                if (annotatedMethod.isPresent()) {
-                    hasToolMethods = true;
-                    Method toolMethod = annotatedMethod.get();
-                    ToolSpecification spec = toolSpecificationFrom(toolMethod);
-                    ToolExecutor executor = createToolExecutor(object, toolMethod);
-                    builder.add(spec, executor);
-                    if (toolMethod.getAnnotation(Tool.class).returnBehavior() == ReturnBehavior.IMMEDIATE) {
-                        builder.immediateReturnToolNames(Set.of(spec.name()));
-                    }
-                }
-            }
-            if (!hasToolMethods) {
-                throw illegalConfiguration(
-                        "Object '%s' does not have any methods annotated with @Tool",
-                        object.getClass().getName());
+    public static List<AiServiceTool> findTools(Object objectWithTools) {
+        if (objectWithTools instanceof Class) {
+            throw illegalConfiguration("Tool '%s' must be an object, not a class", objectWithTools);
+        }
+        if (objectWithTools instanceof Iterable) {
+            throw illegalConfiguration(
+                    "Tool '%s' is an Iterable (likely a nested collection). "
+                            + "Please pass tool objects directly, not wrapped in collections.",
+                    objectWithTools.getClass().getName());
+        }
+
+        List<AiServiceTool> result = new ArrayList<>();
+        for (Method method : objectWithTools.getClass().getDeclaredMethods()) {
+            Optional<Method> annotatedMethod = getAnnotatedMethod(method, Tool.class);
+            if (annotatedMethod.isPresent()) {
+                Method toolMethod = annotatedMethod.get();
+                result.add(AiServiceTool.builder()
+                        .toolSpecification(toolSpecificationFrom(toolMethod))
+                        .toolExecutor(createToolExecutor(objectWithTools, toolMethod))
+                        .immediateReturn(toolMethod.getAnnotation(Tool.class).returnBehavior() == ReturnBehavior.IMMEDIATE)
+                        .build());
             }
         }
-        return builder.build();
+        if (result.isEmpty()) {
+            throw illegalConfiguration(
+                    "Object '%s' does not have any methods annotated with @Tool",
+                    objectWithTools.getClass().getName());
+        }
+        return result;
     }
 
     /**

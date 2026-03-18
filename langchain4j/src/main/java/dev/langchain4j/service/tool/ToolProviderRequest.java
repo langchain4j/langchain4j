@@ -47,9 +47,6 @@ public class ToolProviderRequest {
         return invocationContext.invocationParameters();
     }
 
-    /**
-     * TODO explain how it is different from list of messages
-     */
     public UserMessage userMessage() {
         return userMessage;
     }
@@ -58,11 +55,6 @@ public class ToolProviderRequest {
         return invocationContext.chatMemoryId();
     }
 
-    /**
-     * Returns the current messages in the chat memory.
-     *
-     * @since 1.13.0
-     */
     public List<ChatMessage> messages() {
         return messages;
     }
@@ -87,9 +79,6 @@ public class ToolProviderRequest {
             return this;
         }
 
-        /**
-         * @since 1.13.0
-         */
         public Builder messages(List<ChatMessage> messages) {
             this.messages = messages;
             return this;

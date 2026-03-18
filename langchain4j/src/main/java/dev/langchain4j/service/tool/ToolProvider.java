@@ -6,15 +6,15 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.service.MemoryId;
 
 /**
- * A tool provider. It is called when the AI service is invoked and supplies tools for that invocation.
+ * A tool provider. It is called when an AI service is invoked and supplies tools for that invocation.
  * <p>
  * Tools returned in {@link ToolProviderResult} will be included in the request to the LLM.
  * <p>
- * By default, a tool provider is called once per AI service invocation. Override {@link #isDynamic()}
- * to return {@code true} if this provider should be re-evaluated before each LLM call in the tool
- * execution loop. A dynamic provider can return different tools based on the current conversation state
- * (available via {@link ToolProviderRequest#messages()}).
- **/
+ * By default, a tool provider is called once at the beginning of an AI service invocation.
+ * Override {@link #isDynamic()} to return {@code true} if this provider should be re-evaluated
+ * before each LLM call in the tool execution loop.
+ * A dynamic provider can return different tools based on the current conversation state.
+ */
 @FunctionalInterface
 public interface ToolProvider {
 

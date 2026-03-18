@@ -2,6 +2,7 @@ package dev.langchain4j.skills;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.service.tool.AiServiceTool;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderResult;
@@ -9,6 +10,7 @@ import dev.langchain4j.service.tool.ToolService;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -17,6 +19,7 @@ import java.util.Set;
 
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static java.util.Arrays.asList;
 
 @Experimental
 public abstract class AbstractSkill implements Skill {
@@ -32,19 +35,32 @@ public abstract class AbstractSkill implements Skill {
         this.description = ensureNotBlank(builder.description, "description");
         this.content = ensureNotBlank(builder.content, "content");
         this.resources = copy(builder.resources);
-        this.toolProviders = buildToolProviders(builder);
         validateUniquePaths(this.resources);
+        this.toolProviders = buildToolProviders(builder);
     }
 
     private static List<ToolProvider> buildToolProviders(BaseBuilder<?> builder) {
         List<ToolProvider> result = new ArrayList<>();
-        if (builder.staticToolsResult != null && !builder.staticToolsResult.tools().isEmpty()) {
-            result.add(request -> builder.staticToolsResult);
+
+        if (!builder.tools.isEmpty()) {
+            Map<ToolSpecification, ToolExecutor> tools = new HashMap<>();
+            Set<String> immediateReturnToolNames = new HashSet<>();
+            for (AiServiceTool tool : builder.tools) {
+                tools.put(tool.toolSpecification(), tool.toolExecutor());
+                if (tool.immediateReturn()) {
+                    immediateReturnToolNames.add(tool.toolSpecification().name());
+                }
+            }
+            ToolProviderResult staticResult = ToolProviderResult.builder()
+                    .addAll(tools)
+                    .immediateReturnToolNames(immediateReturnToolNames)
+                    .build();
+            result.add(request -> staticResult);
         }
-        if (builder.toolProviders != null) {
-            result.addAll(builder.toolProviders);
-        }
-        return List.copyOf(result);
+
+        result.addAll(builder.toolProviders);
+
+        return result;
     }
 
     @Override
@@ -117,8 +133,8 @@ public abstract class AbstractSkill implements Skill {
         private String description;
         private String content;
         private Collection<? extends SkillResource> resources;
-        ToolProviderResult staticToolsResult;
-        List<ToolProvider> toolProviders;
+        List<AiServiceTool> tools = new ArrayList<>();
+        List<ToolProvider> toolProviders = new ArrayList<>();
 
         public B name(String name) {
             this.name = name;
@@ -141,19 +157,6 @@ public abstract class AbstractSkill implements Skill {
         }
 
         /**
-         * Sets the static tools for this skill from a map of tool specifications to executors.
-         * These will be wrapped into a {@link ToolProvider} and combined with any TODO
-         * {@linkplain #toolProviders(ToolProvider...) external tool providers}.
-         */
-        public B tools(Map<ToolSpecification, ToolExecutor> tools) {
-            ToolProviderResult newResult = ToolProviderResult.builder()
-                    .addAll(tools)
-                    .build();
-            this.staticToolsResult = merge(this.staticToolsResult, newResult);
-            return (B) this;
-        }
-
-        /**
          * Sets the static tools for this skill from objects containing
          * {@link dev.langchain4j.agent.tool.Tool @Tool}-annotated methods.
          * These will be wrapped into a {@link ToolProvider} and combined with any TODO
@@ -162,33 +165,9 @@ public abstract class AbstractSkill implements Skill {
          * @param objectsWithTools objects with {@link dev.langchain4j.agent.tool.Tool @Tool}-annotated methods
          */
         public B tools(Object... objectsWithTools) {
-            ToolProviderResult newResult = ToolService.toToolProviderResult(objectsWithTools);
-            this.staticToolsResult = merge(this.staticToolsResult, newResult);
-            return (B) this;
-        }
-
-        private static ToolProviderResult merge(ToolProviderResult existing, ToolProviderResult addition) {
-            if (existing == null) {
-                return addition;
+            for (Object object : objectsWithTools) {
+                this.tools.addAll(ToolService.findTools(object));
             }
-            return existing.toBuilder()
-                    .addAll(addition.tools())
-                    .immediateReturnToolNames(addition.immediateReturnToolNames())
-                    .build();
-        }
-
-        /**
-         * Sets the tool providers for this skill (e.g. MCP tool providers).
-         * These will be called each time the AI service is invoked. TODO
-         * <p>
-         * Can be combined with {@link #tools(Map)} or {@link #tools(Object...)} —
-         * static tools and providers are merged into a single list.
-         */
-        public B toolProviders(ToolProvider... toolProviders) {
-            if (this.toolProviders == null) {
-                this.toolProviders = new ArrayList<>();
-            }
-            this.toolProviders.addAll(List.of(toolProviders));
             return (B) this;
         }
 
@@ -200,10 +179,33 @@ public abstract class AbstractSkill implements Skill {
          * static tools and providers are merged into a single list.
          */
         public B toolProviders(Collection<ToolProvider> toolProviders) {
-            if (this.toolProviders == null) {
-                this.toolProviders = new ArrayList<>();
-            }
             this.toolProviders.addAll(toolProviders);
+            return (B) this;
+        }
+
+        /**
+         * Sets the tool providers for this skill (e.g. MCP tool providers).
+         * These will be called each time the AI service is invoked. TODO
+         * <p>
+         * Can be combined with {@link #tools(Map)} or {@link #tools(Object...)} —
+         * static tools and providers are merged into a single list.
+         */
+        public B toolProviders(ToolProvider... toolProviders) {
+            return toolProviders(asList(toolProviders));
+        }
+
+        /**
+         * Sets the static tools for this skill from a map of tool specifications to executors.
+         * These will be wrapped into a {@link ToolProvider} and combined with any TODO
+         * {@linkplain #toolProviders(ToolProvider...) external tool providers}.
+         */
+        public B tools(Map<ToolSpecification, ToolExecutor> tools) {
+            for (Map.Entry<ToolSpecification, ToolExecutor> entry : tools.entrySet()) {
+                this.tools.add(AiServiceTool.builder()
+                        .toolSpecification(entry.getKey())
+                        .toolExecutor(entry.getValue())
+                        .build());
+            }
             return (B) this;
         }
     }
