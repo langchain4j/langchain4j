@@ -160,7 +160,7 @@ public interface ModerationModel {
     /**
      * Returns the model name for this moderation model.
      *
-     * @return the model name, or {@code null} if not available.
+     * @return the model name, or {@code "unknown"} if not available.
      */
     default String modelName() {
         return "unknown";

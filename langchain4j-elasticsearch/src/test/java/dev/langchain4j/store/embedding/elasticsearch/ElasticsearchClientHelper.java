@@ -83,7 +83,7 @@ public class ElasticsearchClientHelper {
         }
     }
 
-    void stopServices() throws IOException {
+    public void stopServices() throws IOException {
         if (restClient != null) {
             restClient.close();
         }
