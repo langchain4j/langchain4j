@@ -53,11 +53,6 @@ public class AiServiceTokenStreamParameters {
         return messages;
     }
 
-    /**
-     * Returns the tool service context containing all tools and their activation conditions.
-     *
-     * @since 1.13.0
-     */
     public ToolServiceContext toolServiceContext() {
         return toolServiceContext;
     }
@@ -232,14 +227,15 @@ public class AiServiceTokenStreamParameters {
         }
 
         /**
-         * Sets <b>effective</b> tool specifications that should be included in the next {@link ChatRequest}.
+         * Sets tool specifications that should be included in the next {@link ChatRequest}.
          *
-         * @see #availableTools(List)
          * @deprecated use {@link #toolServiceContext(ToolServiceContext)} instead
          */
         @Deprecated(since = "1.12.0")
-        public Builder toolSpecifications(List<ToolSpecification> effectiveTools) {
-            return effectiveTools(effectiveTools);
+        public Builder toolSpecifications(List<ToolSpecification> toolSpecifications) {
+            effectiveTools(toolSpecifications);
+            availableTools(toolSpecifications);
+            return this;
         }
 
         /**
