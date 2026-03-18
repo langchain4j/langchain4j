@@ -2,6 +2,8 @@ package dev.langchain4j.rag.content.retriever.elasticsearch;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
+import static dev.langchain4j.store.embedding.elasticsearch.ElasticsearchConfiguration.TEXT_FIELD;
+import static dev.langchain4j.store.embedding.elasticsearch.ElasticsearchConfiguration.VECTOR_FIELD;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.CoreMatchers.is;
@@ -111,9 +113,9 @@ public class ElasticsearchContentRetrieverIT extends EmbeddingStoreWithFiltering
         BooleanResponse response = elasticsearchClientHelper.client.indices().exists(c -> c.index(indexName));
         if (!response.value()) {
             elasticsearchClientHelper.client.indices().create(c -> c.index(indexName)
-                    .mappings(m -> m.properties("text", p -> p.text(t -> t))
+                    .mappings(m -> m.properties(TEXT_FIELD, p -> p.text(t -> t))
                             .properties(
-                                    "vector",
+                                    VECTOR_FIELD,
                                     p -> p.denseVector(dv -> dv.indexOptions(dvio -> dvio
                                             // We must use float instead of the int8_hnsw default
                                             // as the tests are failing otherwise due to the approximation
