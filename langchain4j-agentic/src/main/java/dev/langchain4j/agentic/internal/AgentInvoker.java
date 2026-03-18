@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.agentic.agent.AgentInvocationException;
+import dev.langchain4j.agentic.agent.ChatMessagesAccess;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
@@ -31,7 +32,11 @@ public interface AgentInvoker extends AgentInstance, InternalAgent {
         AgentListener listener = listener();
         beforeAgentInvocation(listener, agenticScope, this, args.namedArgs());
         Object result = internalInvoke(agenticScope, listener, agent, args);
-        afterAgentInvocation(listener, agenticScope, this, args.namedArgs(), result);
+        if (agent instanceof ChatMessagesAccess chatMessagesAccess) {
+            afterAgentInvocation(listener, agenticScope, this, args.namedArgs(), result, chatMessagesAccess.lastChatRequest(), chatMessagesAccess.lastChatResponse());
+        } else {
+            afterAgentInvocation(listener, agenticScope, this, args.namedArgs(), result);
+        }
         return result;
     }
 

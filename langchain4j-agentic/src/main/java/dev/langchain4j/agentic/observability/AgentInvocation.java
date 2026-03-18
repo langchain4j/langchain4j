@@ -1,7 +1,11 @@
 package dev.langchain4j.agentic.observability;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.service.tool.ToolExecution;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -12,6 +16,7 @@ import java.util.Map;
 public class AgentInvocation {
 
     private final List<AgentInvocation> nestedInvocations = Collections.synchronizedList(new ArrayList<>());
+    private final List<MonitoredToolExecution> toolExecutions = Collections.synchronizedList(new ArrayList<>());
 
     private final AgentRequest agentRequest;
     private final LocalDateTime startTime;
@@ -32,6 +37,30 @@ public class AgentInvocation {
 
     void addNestedInvocation(AgentInvocation agentInvocation) {
         this.nestedInvocations.add(agentInvocation);
+    }
+
+    MonitoredToolExecution beforeToolExecution(ToolExecutionRequest request) {
+        MonitoredToolExecution monitoredToolExecution = new MonitoredToolExecution(request);
+        toolExecutions.add(monitoredToolExecution);
+        return monitoredToolExecution;
+    }
+
+    void afterToolExecution(ToolExecution toolExecution) {
+        ToolExecutionRequest completedRequest = toolExecution.request();
+        for (int i = toolExecutions.size() - 1; i >= 0; i--) {
+            MonitoredToolExecution monitored = toolExecutions.get(i);
+            if (!monitored.done() && matchesRequest(monitored.request(), completedRequest)) {
+                monitored.finished(toolExecution);
+                return;
+            }
+        }
+    }
+
+    private static boolean matchesRequest(ToolExecutionRequest pending, ToolExecutionRequest completed) {
+        if (pending.id() != null && completed.id() != null) {
+            return pending.id().equals(completed.id());
+        }
+        return pending.name().equals(completed.name());
     }
 
     public boolean done() {
@@ -72,6 +101,15 @@ public class AgentInvocation {
         return agentResponse.output();
     }
 
+    public int tokenCount() {
+        if (!done()) {
+            throw new IllegalStateException("Agent call is not finished yet");
+        }
+        ChatResponse chatResponse = agentResponse.chatResponse();
+        Integer tokenCount = chatResponse == null ? null : chatResponse.metadata().tokenUsage().totalTokenCount();
+        return tokenCount == null ? 0 : tokenCount;
+    }
+
     /**
      * Returns the zero-based iteration index when this invocation is part of a loop, or -1 otherwise.
      */
@@ -87,6 +125,10 @@ public class AgentInvocation {
         return nestedInvocations;
     }
 
+    public List<MonitoredToolExecution> toolExecutions() {
+        return toolExecutions;
+    }
+
     @Override
     public String toString() {
         return toString("");
@@ -99,13 +141,20 @@ public class AgentInvocation {
                 ", startTime=" + startTime +
                 ", finishTime=" + finishTime +
                 ", duration=" + (done() ? duration().toMillis() + " ms" : "in progress") +
+                ", tokens=" + (done() ? tokenCount() : "in progress") +
                 ", inputs=" + shortToString(inputs()) +
                 ", output=" + (done() ? shortToString(output()) : "in progress") +
                 '}');
+        if (!toolExecutions.isEmpty()) {
+            String toolPrefix = prefix.isEmpty() ? "|-> " : "    " + prefix;
+            for (MonitoredToolExecution toolExec : toolExecutions) {
+                sb.append("\n").append(toolPrefix).append(toolExec);
+            }
+        }
         if (!nestedInvocations.isEmpty()) {
-            prefix = prefix.isEmpty() ? "|=> " : "    " + prefix;
+            String nestedPrefix = prefix.isEmpty() ? "|=> " : "    " + prefix;
             for (AgentInvocation nestedCall : nestedInvocations) {
-                sb.append("\n").append(nestedCall.toString(prefix));
+                sb.append("\n").append(nestedCall.toString(nestedPrefix));
             }
         }
         return sb.toString();

@@ -420,14 +420,14 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         }
 
         // Waterfall
-        if (top.done() || !top.nestedInvocations().isEmpty()) {
+        if (top.done() || !top.nestedInvocations().isEmpty() || !top.toolExecutions().isEmpty()) {
             LocalDateTime base = top.startTime();
             long totalMs = top.done()
                     ? Math.max(1, top.duration().toMillis())
                     : Math.max(1, Duration.between(base, LocalDateTime.now()).toMillis());
 
             html.append("<table class=\"wf-table\">\n");
-            html.append("<thead><tr><th>Agent</th><th>Duration</th><th class=\"wf-timeline-col\">Timeline</th><th>Input</th><th>Output</th></tr></thead>\n");
+            html.append("<thead><tr><th>Agent</th><th>Duration</th><th>Tokens</th><th class=\"wf-timeline-col\">Timeline</th><th>Input</th><th>Output</th></tr></thead>\n");
             html.append("<tbody>\n");
             appendWfRow(html, top, 0, base, totalMs);
             html.append("</tbody></table>\n");
@@ -466,6 +466,13 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         html.append(inv.done() ? fmtDur(inv.duration()) : "<em>...</em>");
         html.append("</td>");
 
+        // Tokens column
+        html.append("<td class=\"wf-dur\">");
+        if (inv.done() && inv.tokenCount() > 0) {
+            html.append(fmtTokens(inv.tokenCount()));
+        }
+        html.append("</td>");
+
         // Timeline bar column
         html.append("<td><div class=\"wf-bar-track\">");
         html.append("<div class=\"wf-bar bar-").append(css).append("\" style=\"left:")
@@ -477,22 +484,81 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         // Input column
         html.append("<td class=\"wf-io\">");
         if (inv.inputs() != null && !inv.inputs().isEmpty()) {
-            appendTruncatedWithTooltip(html, mapToString(inv.inputs()), 35);
+            appendTruncatedWithTooltip(html, mapToString(inv.inputs()), 80);
         }
         html.append("</td>");
 
         // Output column
         html.append("<td class=\"wf-io\">");
         if (inv.done() && inv.output() != null) {
-            appendTruncatedWithTooltip(html, String.valueOf(inv.output()), 35);
+            appendTruncatedWithTooltip(html, String.valueOf(inv.output()), 80);
         }
         html.append("</td>");
 
         html.append("</tr>\n");
 
+        for (MonitoredToolExecution toolExec : inv.toolExecutions()) {
+            appendToolWfRow(html, toolExec, depth + 1, base, totalMs);
+        }
+
         for (AgentInvocation nested : inv.nestedInvocations()) {
             appendWfRow(html, nested, depth + 1, base, totalMs);
         }
+    }
+
+    private void appendToolWfRow(StringBuilder html, MonitoredToolExecution toolExec, int depth,
+                                 LocalDateTime base, long totalMs) {
+        long offMs = Duration.between(base, toolExec.startTime()).toMillis();
+        long durMs = toolExec.done()
+                ? toolExec.duration().toMillis()
+                : Duration.between(toolExec.startTime(), LocalDateTime.now()).toMillis();
+        double leftPct = Math.max(0, (double) offMs / totalMs * 100.0);
+        double widthPct = Math.max(0.4, (double) durMs / totalMs * 100.0);
+
+        html.append("<tr>");
+
+        // Tool name column
+        html.append("<td><div class=\"wf-agent\">");
+        for (int i = 0; i < depth; i++) html.append("<span class=\"wf-indent\"></span>");
+        html.append("<span class=\"wf-connector\">&#x2514;</span>");
+        html.append("<span class=\"topology-badge sm tool\">Tool</span>");
+        html.append(" ").append(esc(toolExec.toolName()));
+        if (toolExec.hasFailed()) {
+            html.append(" <span class=\"iter-tag\" style=\"background:#fee2e2;color:#991b1b;border-color:#fca5a5\">failed</span>");
+        }
+        html.append("</div></td>");
+
+        // Duration column
+        html.append("<td class=\"wf-dur\">");
+        html.append(toolExec.done() ? fmtDur(toolExec.duration()) : "<em>...</em>");
+        html.append("</td>");
+
+        // Tokens column (empty for tools)
+        html.append("<td></td>");
+
+        // Timeline bar column
+        html.append("<td><div class=\"wf-bar-track\">");
+        html.append("<div class=\"wf-bar bar-tool\" style=\"left:")
+                .append(fmt(leftPct)).append("%;width:").append(fmt(widthPct)).append("%;\"");
+        html.append(" title=\"").append(esc(toolExec.toolName())).append(": ")
+                .append(toolExec.done() ? fmtDur(toolExec.duration()) : "running").append("\">");
+        html.append("</div></div></td>");
+
+        // Input column (tool arguments)
+        html.append("<td class=\"wf-io\">");
+        if (toolExec.request().arguments() != null && !toolExec.request().arguments().isEmpty()) {
+            appendTruncatedWithTooltip(html, toolExec.request().arguments(), 80);
+        }
+        html.append("</td>");
+
+        // Output column (tool result)
+        html.append("<td class=\"wf-io\">");
+        if (toolExec.done() && toolExec.toolExecution() != null) {
+            appendTruncatedWithTooltip(html, toolExec.toolExecution().result(), 80);
+        }
+        html.append("</td>");
+
+        html.append("</tr>\n");
     }
 
     private void appendTruncatedWithTooltip(StringBuilder html, String text, int max) {
@@ -652,6 +718,11 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         return String.format("%dm %ds", ms / 60_000, (ms % 60_000) / 1000);
     }
 
+    private static String fmtTokens(int tokens) {
+        if (tokens < 1000) return String.valueOf(tokens);
+        return String.format("%.1fk", tokens / 1000.0);
+    }
+
     private static String fmt(double v) {
         return String.format("%.1f", v);
     }
@@ -798,6 +869,7 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
                 --c-loop: #7c3aed;
                 --c-rtr: #dc2626;
                 --c-star: #ca8a04;
+                --c-tool: #e74694;
                 --bg: #f8faf9;
                 --bg2: #f0f4f2;
                 --fg: #1a1a2e;
@@ -820,7 +892,7 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
             .navbar-subtitle { font-size:13px; opacity:.75; margin-left:auto; }
 
             /* ---- Container ---- */
-            .container { max-width:1440px; margin:0 auto; padding:32px; }
+            .container { width:100%; margin:0 auto; padding:32px; }
 
             /* ---- Section ---- */
             .section { margin-bottom:40px; }
@@ -885,6 +957,7 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
             .topology-badge.loop  { background:var(--c-loop); }
             .topology-badge.rtr   { background:var(--c-rtr); }
             .topology-badge.star  { background:var(--c-star); }
+            .topology-badge.tool  { background:var(--c-tool); }
 
             .node-border-ai    { border-left:3px solid var(--c-ai); }
             .node-border-nonai { border-left:3px solid var(--c-nonai); }
@@ -997,9 +1070,9 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
             .bar-loop  { background:var(--c-loop); }
             .bar-rtr   { background:var(--c-rtr); }
             .bar-star  { background:var(--c-star); }
+            .bar-tool  { background:var(--c-tool); }
 
-            .wf-io { font-size:11px; color:var(--fg3); max-width:200px;
-                     overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+            .wf-io { font-size:11px; color:var(--fg3); white-space:nowrap; }
 
             .iter-tag { font-size:9px; background:#ede9fe; color:#5b21b6;
                         padding:0 5px; border-radius:3px; border:1px solid #c4b5fd;

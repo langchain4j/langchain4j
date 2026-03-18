@@ -2,6 +2,7 @@ package dev.langchain4j.agentic;
 
 import static dev.langchain4j.agentic.Models.baseModel;
 import static dev.langchain4j.agentic.Models.throwingModel;
+import static dev.langchain4j.agentic.observability.HtmlReportGenerator.generateReport;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -61,6 +62,7 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -554,11 +556,12 @@ public class WorkflowAgentsIT {
 
         assertThat(topLevelInvocation.nestedInvocations()).hasSize(2);
         assertThat(topLevelInvocation.nestedInvocations().get(0).agent().name()).isEqualTo("generateStory");
+        assertThat(topLevelInvocation.nestedInvocations().get(0).tokenCount()).isGreaterThan(0);
         assertThat(topLevelInvocation.nestedInvocations().get(1).agent().name()).isEqualTo("reviewLoop");
 
         System.out.println(execution);
 
-        //        generateReport(monitor, Path.of("src", "test", "resources", "review-loop.html"));
+//                generateReport(monitor, Path.of("src", "test", "resources", "review-loop.html"));
     }
 
     @Test
