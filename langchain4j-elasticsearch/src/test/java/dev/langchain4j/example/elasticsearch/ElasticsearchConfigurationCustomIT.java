@@ -1,5 +1,6 @@
 package dev.langchain4j.example.elasticsearch;
 
+import co.elastic.clients.elasticsearch._types.mapping.DenseVectorIndexOptionsType;
 import co.elastic.clients.transport.endpoints.BooleanResponse;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -26,7 +27,6 @@ class ElasticsearchConfigurationCustomIT {
     @BeforeAll
     static void startServices() throws IOException {
         elasticsearchClientHelper.startServices();
-        assertThat(elasticsearchClientHelper.restClient).isNotNull();
         assertThat(elasticsearchClientHelper.client).isNotNull();
     }
 
@@ -57,13 +57,13 @@ class ElasticsearchConfigurationCustomIT {
                     .mappings(m -> m.properties("text", p -> p.text(t -> t))
                             .properties(
                                     VECTOR_FIELD,
-                                    p -> p.denseVector(dv -> dv))));
+                                    p -> p.denseVector(dv -> dv.indexOptions(io -> io.type(DenseVectorIndexOptionsType.Hnsw))))));
         }
 
         final ElasticsearchConfigurationCustom configurationCustom = new ElasticsearchConfigurationCustom();
         final EmbeddingStore<TextSegment> embeddingStore = ElasticsearchEmbeddingStore.builder()
                 .configuration(configurationCustom)
-                .restClient(elasticsearchClientHelper.restClient)
+                .client(elasticsearchClientHelper.client)
                 .indexName(indexName)
                 .build();
         embeddingStore.add(new Embedding(new float[] {0.1f, 0.2f, 0.3f}));
@@ -71,11 +71,11 @@ class ElasticsearchConfigurationCustomIT {
         elasticsearchClientHelper.client.indices().refresh(r -> r.index(indexName));
         final EmbeddingSearchRequest searchRequest = new EmbeddingSearchRequest(EmbeddingSearchRequest
                 .builder()
-                // We normally should find the 2nd vector but we forced in the implementation to search for the first one
+                // We normally should find the 2nd vector but we forced in the implementation to return a fake one
                 .queryEmbedding(new Embedding(new float[] {0.2f, 0.3f, 0.4f}))
         );
         final EmbeddingSearchResult<TextSegment> result = embeddingStore.search(searchRequest);
-        assertThat(result.matches()).hasSize(2);
+        assertThat(result.matches()).hasSize(1);
         assertThat(result.matches().get(0).embedding().vector()).containsExactly(0.1f, 0.2f, 0.3f);
         assertThat(configurationCustom.customSearchCalled).isTrue();
     }

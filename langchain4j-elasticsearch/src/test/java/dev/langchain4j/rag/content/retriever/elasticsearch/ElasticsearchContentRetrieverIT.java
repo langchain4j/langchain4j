@@ -57,7 +57,7 @@ public class ElasticsearchContentRetrieverIT extends EmbeddingStoreWithFiltering
 
         contentRetrieverWithFullText = ElasticsearchContentRetriever.builder()
                 .configuration(ElasticsearchConfigurationFullText.builder().build())
-                .restClient(elasticsearchClientHelper.restClient)
+                .client(elasticsearchClientHelper.client)
                 .indexName(indexName)
                 .maxResults(3)
                 .minScore(0.0)
@@ -67,7 +67,7 @@ public class ElasticsearchContentRetrieverIT extends EmbeddingStoreWithFiltering
                 .configuration(ElasticsearchConfigurationKnn.builder()
                         .includeVectorResponse(includeVector)
                         .build())
-                .restClient(elasticsearchClientHelper.restClient)
+                .client(elasticsearchClientHelper.client)
                 .indexName(indexName)
                 .embeddingModel(embeddingModel)
                 .maxResults(3)
@@ -78,7 +78,7 @@ public class ElasticsearchContentRetrieverIT extends EmbeddingStoreWithFiltering
                 .configuration(ElasticsearchConfigurationHybrid.builder()
                         .includeVectorResponse(includeVector)
                         .build())
-                .restClient(elasticsearchClientHelper.restClient)
+                .client(elasticsearchClientHelper.client)
                 .indexName(indexName)
                 .embeddingModel(embeddingModel)
                 .maxResults(3)
@@ -92,7 +92,6 @@ public class ElasticsearchContentRetrieverIT extends EmbeddingStoreWithFiltering
         // (addEmbeddingsAndRetrieveRelevantWithHybrid)
         elasticsearchClientHelper.tcLicense = "trial";
         elasticsearchClientHelper.startServices();
-        assertThat(elasticsearchClientHelper.restClient).isNotNull();
         assertThat(elasticsearchClientHelper.client).isNotNull();
     }
 

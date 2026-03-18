@@ -22,7 +22,6 @@ class ElasticsearchEmbeddingStoreKnnWithConfigurationIT {
     @BeforeAll
     static void startServices() throws IOException {
         elasticsearchClientHelper.startServices();
-        assertThat(elasticsearchClientHelper.restClient).isNotNull();
         assertThat(elasticsearchClientHelper.client).isNotNull();
     }
 
@@ -53,6 +52,9 @@ class ElasticsearchEmbeddingStoreKnnWithConfigurationIT {
         Embedding embedding3 = embeddingModel.embed("buen día").content();
         List<Embedding> embeddings = Arrays.asList(embedding1, embedding2, embedding3);
 
+        // By default, Elasticsearch from 9.2 does not include the vector in the response
+        // But the inherited tests are looking for the exact vectors
+        // So we need to make sure that vectors are returned
         boolean includeVector = elasticsearchClientHelper.isGTENineTwo();
         // Test with a high numCandidates
         {
@@ -61,7 +63,7 @@ class ElasticsearchEmbeddingStoreKnnWithConfigurationIT {
                             .numCandidates(10)
                             .includeVectorResponse(includeVector)
                             .build())
-                    .restClient(elasticsearchClientHelper.restClient)
+                    .client(elasticsearchClientHelper.client)
                     .indexName(indexName)
                     .build();
 
@@ -90,7 +92,7 @@ class ElasticsearchEmbeddingStoreKnnWithConfigurationIT {
                             .numCandidates(1)
                             .includeVectorResponse(includeVector)
                             .build())
-                    .restClient(elasticsearchClientHelper.restClient)
+                    .client(elasticsearchClientHelper.client)
                     .indexName(indexName)
                     .build();
 

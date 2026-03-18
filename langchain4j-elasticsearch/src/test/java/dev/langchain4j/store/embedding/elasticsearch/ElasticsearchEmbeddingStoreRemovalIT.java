@@ -22,7 +22,7 @@ class ElasticsearchEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
     static ElasticsearchClientHelper elasticsearchClientHelper = new ElasticsearchClientHelper();
 
     EmbeddingStore<TextSegment> embeddingStore = ElasticsearchEmbeddingStore.builder()
-            .restClient(elasticsearchClientHelper.restClient)
+            .client(elasticsearchClientHelper.client)
             .indexName(randomUUID())
             .build();
 
@@ -33,7 +33,6 @@ class ElasticsearchEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
     @BeforeAll
     static void startServices() throws IOException {
         elasticsearchClientHelper.startServices();
-        assertThat(elasticsearchClientHelper.restClient).isNotNull();
         assertThat(elasticsearchClientHelper.client).isNotNull();
     }
 
@@ -47,7 +46,7 @@ class ElasticsearchEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
         indexName = randomUUID();
         elasticsearchClientHelper.removeDataStore(indexName);
         embeddingStore = ElasticsearchEmbeddingStore.builder()
-                .restClient(elasticsearchClientHelper.restClient)
+                .client(elasticsearchClientHelper.client)
                 .indexName(indexName)
                 .build();
     }
