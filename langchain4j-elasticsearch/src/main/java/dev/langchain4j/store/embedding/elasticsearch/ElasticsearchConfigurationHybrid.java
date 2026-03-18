@@ -23,9 +23,10 @@ import org.slf4j.LoggerFactory;
  *
  * @see <a href="https://www.elastic.co/subscriptions">subscriptions</a>
  */
-public class ElasticsearchConfigurationHybrid extends ElasticsearchConfiguration {
+public class ElasticsearchConfigurationHybrid implements ElasticsearchConfiguration {
     private static final Logger log = LoggerFactory.getLogger(ElasticsearchConfigurationHybrid.class);
     private final Integer numCandidates;
+    private final boolean includeVectorResponse;
 
     public static class Builder {
         private Integer numCandidates;
@@ -70,21 +71,12 @@ public class ElasticsearchConfigurationHybrid extends ElasticsearchConfiguration
     }
 
     @Override
-    SearchResponse<Document> vectorSearch(
-            ElasticsearchClient client, String indexName, EmbeddingSearchRequest embeddingSearchRequest)
-            throws ElasticsearchException {
-        throw new UnsupportedOperationException("Hybrid configuration does not support vector search");
+    public boolean isIncludeVectorResponse() {
+        return includeVectorResponse;
     }
 
     @Override
-    SearchResponse<Document> fullTextSearch(
-            final ElasticsearchClient client, final String indexName, final String textQuery)
-            throws ElasticsearchException {
-        throw new UnsupportedOperationException("Hybrid configuration does not support full text search");
-    }
-
-    @Override
-    SearchResponse<Document> hybridSearch(
+    public SearchResponse<Document> hybridSearch(
             final ElasticsearchClient client,
             final String indexName,
             final EmbeddingSearchRequest embeddingSearchRequest,
