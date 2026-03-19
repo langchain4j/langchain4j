@@ -289,7 +289,7 @@ class SkillsStreamingIT {
     }
 
     @Test
-    void should_not_include_skill_tools_for_unrelated_skill() throws Exception { // TODO
+    void should_not_include_skill_tools_for_unrelated_skill() throws Exception {
 
         // given
         ToolSpecification weatherTool = ToolSpecification.builder()

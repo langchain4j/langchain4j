@@ -497,7 +497,7 @@ class SkillsTest {
     }
 
     @Test
-    void multiple_tool_annotated_objects_should_accumulate() {
+    void second_tools_annotated_call_should_override_first() {
 
         // given
         Skill skill = Skill.builder()
@@ -517,12 +517,12 @@ class SkillsTest {
         ));
         ToolProviderResult result = skills.toolProvider().provideTools(request);
 
-        // then
-        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "sayHello", "sayGoodbye");
+        // then - second call overrides first
+        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "sayGoodbye");
     }
 
     @Test
-    void multiple_tool_maps_should_accumulate() {
+    void second_tools_map_call_should_override_first() {
 
         // given
         ToolSpecification tool1 = ToolSpecification.builder().name("tool_1").description("Tool 1").build();
@@ -545,12 +545,12 @@ class SkillsTest {
         ));
         ToolProviderResult result = skills.toolProvider().provideTools(request);
 
-        // then
-        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "tool_1", "tool_2");
+        // then - second call overrides first
+        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "tool_2");
     }
 
     @Test
-    void tool_providers_should_not_override_each_other() {
+    void second_tool_providers_call_should_override_first() {
 
         // given
         ToolProvider provider1 = request -> ToolProviderResult.builder()
@@ -570,20 +570,8 @@ class SkillsTest {
                 .toolProviders(provider2)
                 .build();
 
-        // then - both providers are present on the skill
-        assertThat(skill.toolProviders()).hasSize(2);
-
-        Skills skills = Skills.from(skill);
-
-        // when - activate the skill
-        ToolProviderRequest request = requestWithMessages(List.of(
-                UserMessage.from("do stuff"),
-                skillActivatedMessage("my-skill")
-        ));
-        ToolProviderResult result = skills.toolProvider().provideTools(request);
-
-        // then - tools from both providers
-        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "provider1_tool", "provider2_tool");
+        // then - second call overrides first
+        assertThat(skill.toolProviders()).hasSize(1);
     }
 
     @Test
@@ -647,8 +635,8 @@ class SkillsTest {
                 .toolProviders(List.of(provider2))
                 .build();
 
-        // then - both providers present
-        assertThat(skill.toolProviders()).hasSize(2);
+        // then - second call overrides first
+        assertThat(skill.toolProviders()).hasSize(1);
     }
 
     @Test

@@ -385,7 +385,7 @@ class SkillsIT {
     }
 
     @Test
-    void should_not_include_skill_tools_for_unrelated_skill() { // TODO
+    void should_not_include_skill_tools_for_unrelated_skill() {
 
         // given
         ToolSpecification weatherTool = ToolSpecification.builder()
