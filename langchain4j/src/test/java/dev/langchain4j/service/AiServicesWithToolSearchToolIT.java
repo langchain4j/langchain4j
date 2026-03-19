@@ -1197,7 +1197,7 @@ public class AiServicesWithToolSearchToolIT {
     }
 
     public static boolean hasSearchableTools(ToolSearchRequest request, String... toolNames) {
-        return request.searchableTools().stream().map(it -> it.name()).collect(toSet())
+        return request.searchableTools().stream().map(ToolSpecification::name).collect(toSet())
                 .equals(new HashSet<>(asList(toolNames)));
     }
 }
