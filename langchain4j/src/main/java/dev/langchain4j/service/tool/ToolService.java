@@ -34,7 +34,6 @@ import dev.langchain4j.service.AiServiceContext;
 import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.service.tool.search.ToolSearchService;
 import dev.langchain4j.service.tool.search.ToolSearchStrategy;
-
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -244,9 +243,8 @@ public class ToolService {
         this.toolSearchService = new ToolSearchService(toolSearchStrategy);
     }
 
-    public ToolServiceContext createContext(InvocationContext invocationContext,
-                                            UserMessage userMessage,
-                                            ChatMemory chatMemory) {
+    public ToolServiceContext createContext(
+            InvocationContext invocationContext, UserMessage userMessage, ChatMemory chatMemory) {
         ToolServiceContext toolServiceContext = createContext(invocationContext, userMessage);
         if (toolSearchService == null) {
             return toolServiceContext;
@@ -288,8 +286,8 @@ public class ToolService {
                     if (toolExecutors.putIfAbsent(toolName, entry.getValue()) == null) {
                         toolSpecifications.add(entry.getKey());
                     } else {
-                        throw new IllegalConfigurationException(
-                                "Duplicated definition for tool: " + entry.getKey().name());
+                        throw new IllegalConfigurationException("Duplicated definition for tool: "
+                                + entry.getKey().name());
                     }
                 }
                 if (toolProviderResult.immediateReturnToolNames() != null) {
@@ -305,6 +303,30 @@ public class ToolService {
                 .build();
     }
 
+    /**
+     * Replaces the last {@link UserMessage} in the message list with the given replay message.
+     * Used to restore augmented content after {@code chatMemory.messages()} reload
+     * when {@code storeRetrievedContentInChatMemory} is {@code false}.
+     *
+     * @param messages the message list from chat memory
+     * @param userMessageForToolReplay the augmented user message to replay, or {@code null} for no-op
+     * @return new list with replacement, or original list if replay is {@code null} or no {@link UserMessage} found
+     */
+    public static List<ChatMessage> replaceLastUserMessageForToolReplay(
+            List<ChatMessage> messages, UserMessage userMessageForToolReplay) {
+        if (userMessageForToolReplay == null) {
+            return messages;
+        }
+        for (int i = messages.size() - 1; i >= 0; i--) {
+            if (messages.get(i) instanceof UserMessage) {
+                List<ChatMessage> patched = new ArrayList<>(messages);
+                patched.set(i, userMessageForToolReplay);
+                return patched;
+            }
+        }
+        return messages;
+    }
+
     public ToolServiceResult executeInferenceAndToolsLoop(
             AiServiceContext context,
             Object memoryId,
@@ -314,6 +336,7 @@ public class ToolService {
             ChatMemory chatMemory,
             InvocationContext invocationContext,
             ToolServiceContext toolServiceContext,
+            UserMessage userMessageForToolReplay,
             boolean isReturnTypeResult) {
         TokenUsage aggregateTokenUsage = chatResponse.metadata().tokenUsage();
         List<ToolExecution> toolExecutions = new ArrayList<>();
@@ -394,7 +417,7 @@ public class ToolService {
             }
 
             if (chatMemory != null) {
-                messages = chatMemory.messages();
+                messages = replaceLastUserMessageForToolReplay(chatMemory.messages(), userMessageForToolReplay);
             }
 
             if (toolSearchService != null) {

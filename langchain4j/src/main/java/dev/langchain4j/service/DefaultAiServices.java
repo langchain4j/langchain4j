@@ -250,6 +250,11 @@ class DefaultAiServices<T> extends AiServices<T> {
                             messages.add(userMessage);
                         }
 
+                        UserMessage userMessageForToolReplay = null;
+                        if (context.hasChatMemory() && !context.storeRetrievedContentInChatMemory) {
+                            userMessageForToolReplay = userMessage;
+                        }
+
                         Future<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
 
                         ToolServiceContext toolServiceContext =
@@ -266,6 +271,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .toolExecutor(context.toolService.executor())
                                     .retrievedContents(
                                             augmentationResult != null ? augmentationResult.contents() : null)
+                                    .userMessageForToolReplay(userMessageForToolReplay)
                                     .context(context)
                                     .invocationContext(invocationContext)
                                     .commonGuardrailParams(commonGuardrailParam)
@@ -325,6 +331,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 chatMemory,
                                 invocationContext,
                                 toolServiceContext,
+                                userMessageForToolReplay,
                                 isReturnTypeResult);
 
                         if (toolServiceResult.immediateToolReturn() && isReturnTypeResult) {
