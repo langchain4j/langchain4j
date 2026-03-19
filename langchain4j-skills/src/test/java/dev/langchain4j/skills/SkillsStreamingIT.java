@@ -370,6 +370,107 @@ class SkillsStreamingIT {
         return futureResponse.get(60, SECONDS);
     }
 
+    @Test
+    void skills_with_overlapping_tools_should_not_produce_duplicates() throws Exception {
+
+        // given - two skills share 'query_inventory' tool
+        Skill inventorySkill = Skill.builder()
+                .name("inventory")
+                .description("Inventory management")
+                .content("Use query_inventory to check stock and reorder_item to reorder.")
+                .toolProviders(request -> ToolProviderResult.builder()
+                        .add(ToolSpecification.builder()
+                                        .name("query_inventory")
+                                        .description("Queries inventory levels")
+                                        .build(),
+                                (req, memoryId) -> "47 units")
+                        .add(ToolSpecification.builder()
+                                        .name("reorder_item")
+                                        .description("Reorders an item")
+                                        .build(),
+                                (req, memoryId) -> "reordered")
+                        .build())
+                .build();
+
+        Skill reportingSkill = Skill.builder()
+                .name("reporting")
+                .description("Reporting")
+                .content("Use query_inventory to get data and generate_report to produce a report.")
+                .toolProviders(request -> ToolProviderResult.builder()
+                        .add(ToolSpecification.builder()
+                                        .name("query_inventory")
+                                        .description("Queries inventory levels")
+                                        .build(),
+                                (req, memoryId) -> "47 units")
+                        .add(ToolSpecification.builder()
+                                        .name("generate_report")
+                                        .description("Generates a report")
+                                        .build(),
+                                (req, memoryId) -> "report generated")
+                        .build())
+                .build();
+
+        Skills skills = Skills.from(inventorySkill, reportingSkill);
+
+        StreamingChatModel spyChatModel = spy(model);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .streamingChatModel(spyChatModel)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
+                .systemMessage("""
+                        You have access to the following skills:
+                        %s
+                        When the user's request relates to one of these skills,
+                        activate it first using the 'activate_skill' tool before proceeding.
+                        You can activate multiple skills if needed.
+                        """.formatted(skills.formatAvailableSkills()))
+                .toolProvider(skills.toolProvider())
+                .build();
+
+        // when - activate both skills
+        chat(assistant, "Activate both inventory and reporting skills, then query the inventory");
+
+        // then
+        InOrder inOrder = inOrder(spyChatModel);
+
+        // first call: only activate_skill, no skill-scoped tools
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                containsTool(request, "activate_skill")
+                        && !containsTool(request, "query_inventory")
+                        && !containsTool(request, "reorder_item")
+                        && !containsTool(request, "generate_report")
+        ), any());
+
+        // after activation(s): all unique tools present, no duplicates
+        inOrder.verify(spyChatModel, atLeast(1)).chat(argThat((ChatRequest request) -> {
+            List<String> toolNames = request.toolSpecifications().stream()
+                    .map(ToolSpecification::name)
+                    .toList();
+            return toolNames.contains("query_inventory")
+                    && toolNames.contains("reorder_item")
+                    && toolNames.contains("generate_report")
+                    && toolNames.stream().filter("query_inventory"::equals).count() == 1;
+        }), any());
+
+        verifyNoMoreImportantInteractions(spyChatModel);
+
+        // when - second AI Service invocation
+        chat(assistant, "Now generate a report");
+
+        // then - all tools still active, no duplicates
+        inOrder.verify(spyChatModel, atLeast(1)).chat(argThat((ChatRequest request) -> {
+            List<String> toolNames = request.toolSpecifications().stream()
+                    .map(ToolSpecification::name)
+                    .toList();
+            return toolNames.contains("query_inventory")
+                    && toolNames.contains("reorder_item")
+                    && toolNames.contains("generate_report")
+                    && toolNames.stream().filter("query_inventory"::equals).count() == 1;
+        }), any());
+
+        verifyNoMoreImportantInteractions(spyChatModel);
+    }
+
     private static boolean containsTool(ChatRequest chatRequest, String toolName) {
         return chatRequest.toolSpecifications().stream().anyMatch(t -> t.name().equals(toolName));
     }
