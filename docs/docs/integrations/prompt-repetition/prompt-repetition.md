@@ -4,12 +4,14 @@ sidebar_position: 1
 
 # Prompt Repetition
 
-`langchain4j-community-prompt-repetition` is an optional community module that provides prompt repetition utilities for two LangChain4j integration points:
+`langchain4j-community-prompt-repetition` is an optional community module that provides ready-made prompt repetition integrations for two LangChain4j integration points:
 
 - AI Services input guardrails
 - RAG query transformation
 
-The module is experimental and is intended for workload-specific evaluation. It is inspired by recent prompt repetition research, but it should not be treated as a default optimization for all prompts or models.
+It is inspired by the paper [Prompt Repetition Improves Non-Reasoning LLMs](https://arxiv.org/html/2512.14982v1), which reports gains on a range of non-reasoning workloads. In LangChain4j, the module exposes the core repeated-input transformation through framework-native components and adds conservative defaults for real applications.
+
+The module is experimental, and its effectiveness is workload-dependent. Validate it on your own prompts, models, and tasks before broad rollout.
 
 ## What It Is
 
@@ -128,9 +130,10 @@ This keeps the transformation inside the retrieval stage and avoids duplicating 
 
 ## When to Use It
 
-Use this module as an optional optimization, not as a default prompt policy.
+Use this module when you want a ready-made way to apply prompt repetition in LangChain4j, not when you want a universal default prompt policy.
 
 - Start with `PromptRepetitionMode.AUTO`
+- Prefer it for non-reasoning or low-reasoning workloads first
 - Evaluate it with A/B tests on your own prompts, models, and tasks
 - Keep the default safety constraints unless you have a clear reason to relax them
 - Treat improvements as workload-dependent rather than guaranteed
