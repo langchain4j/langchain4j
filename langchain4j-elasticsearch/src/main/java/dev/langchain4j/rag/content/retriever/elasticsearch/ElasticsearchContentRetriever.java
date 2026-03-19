@@ -73,7 +73,7 @@ public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddin
     }
 
     /**
-     * Creates an instance of ElasticsearchContentRetriever using a RestClient.
+     * Creates an instance of ElasticsearchContentRetriever using an ElasticsearchClient.
      *
      * @param configuration  Elasticsearch retriever configuration to use (knn, script, full text, hybrid, hybrid with reranker)
      * @param client         Elasticsearch Client (mandatory)
