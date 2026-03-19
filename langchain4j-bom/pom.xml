@@ -148,6 +148,12 @@
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-minimax</artifactId>
+                <version>${langchain4j.stable.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-mistral-ai</artifactId>
                 <version>${langchain4j.stable.version}</version>
             </dependency>

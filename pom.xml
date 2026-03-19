@@ -35,6 +35,7 @@
         <module>langchain4j-hugging-face</module>
         <module>langchain4j-jina</module>
         <module>langchain4j-local-ai</module>
+        <module>langchain4j-minimax</module>
         <module>langchain4j-mistral-ai</module>
         <module>langchain4j-nomic</module>
         <module>langchain4j-ollama</module>
