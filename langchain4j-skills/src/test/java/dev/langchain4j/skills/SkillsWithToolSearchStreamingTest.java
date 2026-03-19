@@ -16,6 +16,8 @@ import org.junit.jupiter.api.Test;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import static dev.langchain4j.service.AiServicesWithToolSearchToolIT.containsTool;
+import static dev.langchain4j.service.AiServicesWithToolSearchToolIT.hasSearchableTools;
 import static dev.langchain4j.service.StreamingAiServicesWithToolSearchToolIT.verifyNoMoreImportantInteractions;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -391,16 +393,5 @@ class SkillsWithToolSearchStreamingTest {
                 .onError(futureResponse::completeExceptionally)
                 .start();
         return futureResponse.get(60, SECONDS);
-    }
-
-    private static boolean containsTool(ChatRequest chatRequest, String toolName) {
-        return chatRequest.toolSpecifications().stream().anyMatch(t -> t.name().equals(toolName));
-    }
-
-    private static boolean hasSearchableTools(ToolSearchRequest request, String... toolNames) {
-        var searchableNames = request.searchableTools().stream()
-                .map(ToolSpecification::name)
-                .collect(java.util.stream.Collectors.toSet());
-        return searchableNames.equals(java.util.Set.of(toolNames));
     }
 }

@@ -169,8 +169,8 @@ public abstract class AbstractSkill implements Skill {
 
         public B tools(Object... objectsWithTools) {
             this.annotatedTools = new ArrayList<>();
-            for (Object object : objectsWithTools) {
-                this.annotatedTools.addAll(ToolService.findTools(object));
+            for (Object objectWithTools : objectsWithTools) {
+                this.annotatedTools.addAll(ToolService.findTools(objectWithTools));
             }
             return (B) this;
         }

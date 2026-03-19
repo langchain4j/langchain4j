@@ -255,7 +255,7 @@ class SkillsIT {
                                 .name("query_inventory")
                                 .description("Queries the internal inventory system for stock levels")
                                 .build(),
-                        (dev.langchain4j.service.tool.ToolExecutor) (req, memoryId) -> "47 units in stock"
+                        (req, memoryId) -> "47 units in stock"
                 ))
                 .build();
 
@@ -533,7 +533,6 @@ class SkillsIT {
     }
 
     private static Stream<String> getToolNames(ToolProvider toolProvider) {
-        return toolProvider.provideTools(null).tools().keySet().stream()
-                .map(ToolSpecification::name);
+        return toolProvider.provideTools(null).tools().keySet().stream().map(ToolSpecification::name);
     }
 }

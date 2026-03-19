@@ -190,9 +190,8 @@ ToolSpecification validateOrder = ToolSpecification.builder()
         .build();
 
 ToolExecutor validateOrderExecutor = (request, memoryId) -> {
-    String orderId = request.arguments(); // parse as needed
-    // validation logic
-    return "valid";
+    String orderId = parseOrderId(request.arguments());
+    return validate(orderId);
 };
 
 Skill skill = Skill.builder()
@@ -312,7 +311,7 @@ Skills skills = Skills.from(FileSystemSkillLoader.loadSkills(Path.of("skills/"))
 MyAiService service = AiServices.builder(MyAiService.class)
         .chatModel(chatModel)
         .tools(new OrderTools()) // your tools
-        .toolProvider(skills.toolProvider())
+        .toolProvider(skills.toolProvider()) // or .toolProviders(myToolProvider, skills.toolProvider()) if you already have a tool provider configured
         .systemMessage("You have access to the following skills:\n" + skills.formatAvailableSkills()
                 + "\nWhen the user's request relates to one of these skills, activate it first using the `activate_skill` tool before proceeding.")
         .build();
@@ -418,7 +417,7 @@ ShellSkills skills = ShellSkills.from(FileSystemSkillLoader.loadSkills(Path.of("
 
 MyAiService service = AiServices.builder(MyAiService.class)
         .chatModel(chatModel)
-        .toolProvider(skills.toolProvider())
+        .toolProvider(skills.toolProvider()) // or .toolProviders(myToolProvider, skills.toolProvider()) if you already have a tool provider configured
         .systemMessage("You have access to the following skills:\n" + skills.formatAvailableSkills()
                 + "\nWhen the user's request relates to one of these skills, read its SKILL.md before proceeding.")
         .build();

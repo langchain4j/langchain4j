@@ -6,7 +6,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
- * Represents a tool as managed by an AI Service, combining:
+ * Represents a tool managed by an AI Service, combining:
  * <ul>
  *     <li>{@link ToolSpecification} — what is sent to the LLM</li>
  *     <li>{@link ToolExecutor} — what is called when the LLM invokes the tool</li>

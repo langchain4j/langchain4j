@@ -21,6 +21,8 @@ import java.util.Map;
 import static dev.langchain4j.agent.tool.SearchBehavior.ALWAYS_VISIBLE;
 import static dev.langchain4j.agent.tool.ToolSpecification.METADATA_SEARCH_BEHAVIOR;
 import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
+import static dev.langchain4j.service.AiServicesWithToolSearchToolIT.containsTool;
+import static dev.langchain4j.service.AiServicesWithToolSearchToolIT.hasSearchableTools;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.inOrder;
@@ -419,16 +421,5 @@ class SkillsWithToolSearchTest {
                 .invocationContext(InvocationContext.builder().build())
                 .userMessage(UserMessage.from("test"))
                 .build();
-    }
-
-    private static boolean containsTool(ChatRequest chatRequest, String toolName) {
-        return chatRequest.toolSpecifications().stream().anyMatch(t -> t.name().equals(toolName));
-    }
-
-    private static boolean hasSearchableTools(ToolSearchRequest request, String... toolNames) {
-        var searchableNames = request.searchableTools().stream()
-                .map(ToolSpecification::name)
-                .collect(java.util.stream.Collectors.toSet());
-        return searchableNames.equals(java.util.Set.of(toolNames));
     }
 }

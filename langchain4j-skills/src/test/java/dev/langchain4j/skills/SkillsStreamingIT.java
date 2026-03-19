@@ -383,7 +383,6 @@ class SkillsStreamingIT {
     }
 
     private static Stream<String> getToolNames(ToolProvider toolProvider) {
-        return toolProvider.provideTools(null).tools().keySet().stream()
-                .map(ToolSpecification::name);
+        return toolProvider.provideTools(null).tools().keySet().stream().map(ToolSpecification::name);
     }
 }
