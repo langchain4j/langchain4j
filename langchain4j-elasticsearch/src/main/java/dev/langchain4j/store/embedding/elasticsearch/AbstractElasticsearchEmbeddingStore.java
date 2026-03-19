@@ -90,7 +90,8 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
      */
     protected void initialize(ElasticsearchConfiguration configuration, ElasticsearchClient client, String indexName) {
         this.configuration = configuration;
-        this.client = client.withTransportOptions(t -> t.addHeader("user-agent", "langchain4j elastic-java/" + Version.VERSION));
+        String version = Version.VERSION == null ? "Unknown" : Version.VERSION.toString();
+        this.client = client.withTransportOptions(t -> t.addHeader("user-agent", "langchain4j elastic-java/" + version));
         this.indexName = ensureNotNull(indexName, "indexName");
     }
 
