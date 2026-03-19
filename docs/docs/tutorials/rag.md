@@ -787,6 +787,8 @@ Some known approaches to improve retrieval include:
 
 More details can be found [here](https://blog.langchain.dev/query-transformations/).
 
+LangChain4j also has an optional community [Prompt Repetition](/integrations/prompt-repetition/) module that provides `RepeatingQueryTransformer`. It repeats the retrieval query before content retrieval and should be used to transform the query itself, not the final augmented prompt sent to the model.
+
 #### Default Query Transformer
 `DefaultQueryTransformer` is the default implementation used in `DefaultRetrievalAugmentor`.
 It does not make any modifications to the `Query`, it just passes it through.

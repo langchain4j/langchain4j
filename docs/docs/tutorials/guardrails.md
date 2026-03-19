@@ -70,6 +70,7 @@ Some examples of things you could do:
 - Check that there are enough documents in the augmentation results
 - Ensure the user is not asking the same question multiple times
 - Mitigate potential prompt injection attack
+- Rewrite eligible single-text input with the community [Prompt Repetition](/integrations/prompt-repetition/) module
 
 Input guardrails can be used whether the operation is synchronous or asynchronous/streaming.
 
@@ -121,6 +122,10 @@ var assistant = AiServices.builder(Assistant.class)
     .inputGuardrails(new FirstInputGuardrail(), new SecondInputGuardrail())
     .build();
 ```
+
+:::info
+If you want a ready-made experimental input guardrail that rewrites eligible single-text input using prompt repetition, see the community [Prompt Repetition](/integrations/prompt-repetition/) module.
+:::
 
 In the first scenario, classes that implement `InputGuardrail` are passed. New instances of these classes are created dynamically using reflection.
 
