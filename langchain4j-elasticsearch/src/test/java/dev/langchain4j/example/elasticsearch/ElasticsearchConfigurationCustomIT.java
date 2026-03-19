@@ -21,7 +21,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class ElasticsearchConfigurationCustomIT {
-    static ElasticsearchClientHelper elasticsearchClientHelper = new ElasticsearchClientHelper();
+    static final ElasticsearchClientHelper elasticsearchClientHelper = new ElasticsearchClientHelper();
     private String indexName;
 
     @BeforeAll

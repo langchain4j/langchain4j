@@ -22,7 +22,7 @@ import org.junit.jupiter.api.BeforeEach;
  */
 public abstract class AbstractElasticsearchEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
-    static ElasticsearchClientHelper elasticsearchClientHelper = new ElasticsearchClientHelper();
+    static final ElasticsearchClientHelper elasticsearchClientHelper = new ElasticsearchClientHelper();
 
     private EmbeddingStore<TextSegment> embeddingStore;
     String indexName;

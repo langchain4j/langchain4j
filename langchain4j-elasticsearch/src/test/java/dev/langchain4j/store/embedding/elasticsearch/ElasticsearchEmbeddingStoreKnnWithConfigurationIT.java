@@ -16,7 +16,7 @@ import org.junit.jupiter.api.*;
 
 class ElasticsearchEmbeddingStoreKnnWithConfigurationIT {
 
-    static ElasticsearchClientHelper elasticsearchClientHelper = new ElasticsearchClientHelper();
+    static final ElasticsearchClientHelper elasticsearchClientHelper = new ElasticsearchClientHelper();
     String indexName;
 
     @BeforeAll

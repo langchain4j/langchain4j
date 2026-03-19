@@ -19,14 +19,14 @@ import org.junit.jupiter.api.Test;
 
 class ElasticsearchEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
 
-    static ElasticsearchClientHelper elasticsearchClientHelper = new ElasticsearchClientHelper();
+    static final ElasticsearchClientHelper elasticsearchClientHelper = new ElasticsearchClientHelper();
 
     EmbeddingStore<TextSegment> embeddingStore = ElasticsearchEmbeddingStore.builder()
             .client(elasticsearchClientHelper.client)
             .indexName(randomUUID())
             .build();
 
-    EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
+    final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
     String indexName;
 

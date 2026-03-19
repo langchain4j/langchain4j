@@ -206,8 +206,7 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
             SearchResponse<Document> response = this.configuration.fullTextSearch(client, indexName, textQuery);
             log.trace("found [{}] results", response);
 
-            List<TextSegment> results = toTextList(response);
-            return results;
+            return toTextList(response);
         } catch (ElasticsearchException | IOException e) {
             throw new ElasticsearchRequestFailedException(e);
         }
@@ -370,13 +369,12 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
     private List<TextSegment> toTextList(SearchResponse<Document> response) {
         return response.hits().hits().stream()
                 .map(hit -> Optional.ofNullable(hit.source())
-                        .map(document -> document.getText() == null
-                                ? null
-                                : TextSegment.from(
-                                        document.getText(),
-                                        new Metadata(document.getMetadata())
-                                                .put(ContentMetadata.SCORE.name(), hit.score())
-                                                .put(ContentMetadata.EMBEDDING_ID.name(), hit.id())))
+                        .filter(document -> document.getText() != null)
+                        .map(document -> TextSegment.from(
+                                document.getText(),
+                                new Metadata(document.getMetadata())
+                                        .put(ContentMetadata.SCORE.name(), hit.score())
+                                        .put(ContentMetadata.EMBEDDING_ID.name(), hit.id())))
                         .orElse(null))
                 .collect(toList());
     }
