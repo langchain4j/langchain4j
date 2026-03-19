@@ -168,6 +168,7 @@ class SkillsWithToolSearchStreamingTest {
         // LLM call 2: calls query_inventory (now visible after activation)
         // LLM call 3: responds with text
         StreamingChatModelMock chatModel = StreamingChatModelMock.thatAlwaysStreams(
+                // first invocation
                 AiMessage.from(ToolExecutionRequest.builder()
                         .name("activate_skill")
                         .arguments("{\"skill_name\": \"inventory\"}")
@@ -176,7 +177,9 @@ class SkillsWithToolSearchStreamingTest {
                         .name("query_inventory")
                         .arguments("{}")
                         .build()),
-                AiMessage.from("There are 47 units in stock.")
+                AiMessage.from("There are 47 units in stock."),
+                // second invocation
+                AiMessage.from("Still 47 units in stock.")
         );
         StreamingChatModelMock spyChatModel = spy(chatModel);
 
@@ -204,15 +207,23 @@ class SkillsWithToolSearchStreamingTest {
         ), any());
 
         // LLM call 2: after activation, query_inventory now visible
-        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+        // LLM call 3: query_inventory still visible
+        inOrder.verify(spyChatModel, times(2)).chat(argThat((ChatRequest request) ->
                 containsTool(request, "activate_skill")
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "query_inventory")
         ), any());
 
-        // LLM call 3: query_inventory still visible
+        verifyNoMoreImportantInteractions(spyChatModel);
+
+        // when - second AI Service invocation
+        chat(assistant, "Check inventory again");
+
+        // then - skill-scoped tools remain active from the first invocation
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
-                containsTool(request, "query_inventory")
+                containsTool(request, "activate_skill")
+                        && containsTool(request, "tool_search_tool")
+                        && containsTool(request, "query_inventory")
         ), any());
 
         verifyNoMoreImportantInteractions(spyChatModel);
@@ -245,6 +256,7 @@ class SkillsWithToolSearchStreamingTest {
         // LLM call 3: calls getWeather (now found via search)
         // LLM call 4: responds with text
         StreamingChatModelMock chatModel = StreamingChatModelMock.thatAlwaysStreams(
+                // first invocation
                 AiMessage.from(ToolExecutionRequest.builder()
                         .name("activate_skill")
                         .arguments("{\"skill_name\": \"inventory\"}")
@@ -257,7 +269,9 @@ class SkillsWithToolSearchStreamingTest {
                         .name("getWeather")
                         .arguments("{}")
                         .build()),
-                AiMessage.from("The weather is sunny and we have 47 units.")
+                AiMessage.from("The weather is sunny and we have 47 units."),
+                // second invocation: getWeather already effective from first invocation
+                AiMessage.from("Still sunny.")
         );
         StreamingChatModelMock spyChatModel = spy(chatModel);
 
@@ -307,6 +321,19 @@ class SkillsWithToolSearchStreamingTest {
         ), any());
 
         verifyNoMoreImportantInteractions(spyChatModel);
+
+        // when - second AI Service invocation
+        chat(assistant, "Check weather again");
+
+        // then - query_inventory still active, getWeather still effective (found in first invocation)
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                containsTool(request, "activate_skill")
+                        && containsTool(request, "tool_search_tool")
+                        && containsTool(request, "query_inventory")
+                        && containsTool(request, "getWeather")
+        ), any());
+
+        verifyNoMoreImportantInteractions(spyChatModel);
     }
 
     @Test
@@ -340,6 +367,7 @@ class SkillsWithToolSearchStreamingTest {
         // LLM call 2: calls get_weather
         // LLM call 3: responds with text
         StreamingChatModelMock chatModel = StreamingChatModelMock.thatAlwaysStreams(
+                // first invocation
                 AiMessage.from(ToolExecutionRequest.builder()
                         .name("activate_skill")
                         .arguments("{\"skill_name\": \"weather\"}")
@@ -348,7 +376,9 @@ class SkillsWithToolSearchStreamingTest {
                         .name("get_weather")
                         .arguments("{}")
                         .build()),
-                AiMessage.from("It is sunny.")
+                AiMessage.from("It is sunny."),
+                // second invocation
+                AiMessage.from("Still sunny.")
         );
         StreamingChatModelMock spyChatModel = spy(chatModel);
 
@@ -379,6 +409,18 @@ class SkillsWithToolSearchStreamingTest {
         // LLM call 3: responds with text, same tools visible
         inOrder.verify(spyChatModel, times(2)).chat(argThat((ChatRequest request) ->
                 containsTool(request, "get_weather")
+                        && !containsTool(request, "get_time")
+        ), any());
+
+        verifyNoMoreImportantInteractions(spyChatModel);
+
+        // when - second AI Service invocation
+        chat(assistant, "What's the weather now?");
+
+        // then - get_weather still active, get_time still not visible
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                containsTool(request, "activate_skill")
+                        && containsTool(request, "get_weather")
                         && !containsTool(request, "get_time")
         ), any());
 

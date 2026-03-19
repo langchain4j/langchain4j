@@ -259,17 +259,17 @@ public class ToolService {
     public ToolServiceContext createContext(InvocationContext invocationContext,
                                             UserMessage userMessage,
                                             List<ChatMessage> messages) {
-        ToolServiceContext context = doCreateContext(invocationContext, userMessage, messages);
+        ToolServiceContext context = createContextFromStaticToolsAndProviders(invocationContext, userMessage, messages);
         if (toolSearchService != null) {
-            return toolSearchService.adjust(context, messages, invocationContext);
-        } else {
-            return context;
+            context = toolSearchService.adjust(context, messages, invocationContext);
         }
+        context = refreshDynamicProviders(context, messages, invocationContext);
+        return context;
     }
 
-    private ToolServiceContext doCreateContext(InvocationContext invocationContext,
-                                               UserMessage userMessage,
-                                               List<ChatMessage> messages) {
+    private ToolServiceContext createContextFromStaticToolsAndProviders(InvocationContext invocationContext,
+                                                                        UserMessage userMessage,
+                                                                        List<ChatMessage> messages) {
         if (this.toolProviders.isEmpty()) {
             if (this.toolSpecifications.isEmpty()) {
                 return ToolServiceContext.Empty.INSTANCE;
@@ -294,6 +294,10 @@ public class ToolService {
                 .messages(messages)
                 .build();
         toolProviders.forEach(toolProvider -> {
+            if (toolProvider.isDynamic()) {
+                dynamicToolProviders.add(toolProvider);
+                return;
+            }
             ToolProviderResult toolProviderResult = toolProvider.provideTools(toolProviderRequest);
             if (toolProviderResult != null) {
                 for (Map.Entry<ToolSpecification, ToolExecutor> entry :
@@ -308,9 +312,6 @@ public class ToolService {
                 if (toolProviderResult.immediateReturnToolNames() != null) {
                     immediateReturnTools.addAll(toolProviderResult.immediateReturnToolNames());
                 }
-            }
-            if (toolProvider.isDynamic()) {
-                dynamicToolProviders.add(toolProvider);
             }
         });
 
