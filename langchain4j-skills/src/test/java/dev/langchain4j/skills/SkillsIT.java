@@ -2,10 +2,14 @@ package dev.langchain4j.skills;
 
 import dev.langchain4j.LoggingChatModelListener;
 import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.anthropic.AnthropicChatModel;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
@@ -19,6 +23,7 @@ import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_SONNET_4_6;
@@ -617,6 +622,124 @@ class SkillsIT {
                     && toolNames.contains("generate_report")
                     && toolNames.stream().filter("query_inventory"::equals).count() == 1;
         }));
+
+        verifyNoMoreInteractionsFor(spyChatModel);
+    }
+
+    @Test
+    void activating_same_skill_twice_should_not_produce_duplicate_tools() {
+
+        // given
+        Skill skill = Skill.builder()
+                .name("inventory")
+                .description("Inventory management skill")
+                .content("Use query_inventory to check stock.")
+                .tools(Map.of(
+                        ToolSpecification.builder().name("query_inventory")
+                                .description("Queries inventory").build(),
+                        (req, memoryId) -> "47 units"
+                ))
+                .build();
+
+        Skills skills = Skills.from(skill);
+
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .name("activate_skill")
+                        .arguments("{\"skill_name\": \"inventory\"}")
+                        .build()),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .name("activate_skill")
+                        .arguments("{\"skill_name\": \"inventory\"}")
+                        .build()),
+                AiMessage.from("Done.")
+        );
+        ChatModelMock spyChatModel = spy(chatModel);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(spyChatModel)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
+                .systemMessage("""
+                        You have access to the following skills:
+                        %s
+                        When the user's request relates to one of these skills,
+                        activate it first using the 'activate_skill' tool before proceeding.
+                        """.formatted(skills.formatAvailableSkills()))
+                .toolProvider(skills.toolProvider())
+                .build();
+
+        // when
+        assistant.chat("Activate inventory twice");
+
+        // then
+        InOrder inOrder = inOrder(spyChatModel);
+
+        // first call: no skill tools yet
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                containsTool(request, "activate_skill")
+                        && !containsTool(request, "query_inventory")
+        ));
+
+        // subsequent calls: query_inventory visible, no duplicates
+        inOrder.verify(spyChatModel, times(2)).chat(argThat((ChatRequest request) -> {
+            long count = request.toolSpecifications().stream()
+                    .filter(t -> t.name().equals("query_inventory"))
+                    .count();
+            return containsTool(request, "query_inventory") && count == 1;
+        }));
+
+        verifyNoMoreInteractionsFor(spyChatModel);
+    }
+
+    @Test
+    void activating_invalid_skill_should_return_error_to_llm() {
+
+        // given
+        Skills skills = Skills.from(
+                Skill.builder()
+                        .name("inventory")
+                        .description("Inventory management skill")
+                        .content("Use query_inventory to check stock.")
+                        .build()
+        );
+
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .name("activate_skill")
+                        .arguments("{\"skill_name\": \"non-existent\"}")
+                        .build()),
+                AiMessage.from("Sorry, that skill doesn't exist.")
+        );
+        ChatModelMock spyChatModel = spy(chatModel);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(spyChatModel)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
+                .systemMessage("You have skills: " + skills.formatAvailableSkills())
+                .toolProvider(skills.toolProvider())
+                .build();
+
+        // when
+        Result<String> result = assistant.chat("Activate the foo skill");
+
+        // then
+        assertThat(result.content()).contains("doesn't exist");
+
+        var inOrder = inOrder(spyChatModel);
+
+        // LLM call 1: activate_skill with invalid name
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                containsTool(request, "activate_skill")
+        ));
+
+        // LLM call 2: error message sent back containing available skill names
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                request.messages().stream()
+                        .filter(msg -> msg instanceof ToolExecutionResultMessage)
+                        .map(msg -> (ToolExecutionResultMessage) msg)
+                        .anyMatch(msg -> msg.text().contains("'inventory'")
+                                && msg.text().contains("non-existent"))
+        ));
 
         verifyNoMoreInteractionsFor(spyChatModel);
     }

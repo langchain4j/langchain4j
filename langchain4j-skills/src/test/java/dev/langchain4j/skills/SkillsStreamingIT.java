@@ -2,10 +2,14 @@ package dev.langchain4j.skills;
 
 import dev.langchain4j.LoggingChatModelListener;
 import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.anthropic.AnthropicStreamingChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.AiServices;
@@ -16,10 +20,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.mockito.InOrder;
 
+import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.net.URISyntaxException;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
@@ -124,10 +129,10 @@ class SkillsStreamingIT {
                 .content("""
                         When user asks you to use the 'process' tool, you need to first call the 'generate' tool with
                         2 arguments: arg0 (surname) and arg1 (name).
-
+                        
                         When you have an id, call the 'process' tool with 3 arguments:
                         arg0 (name), arg1 (id), arg2 (surname).
-
+                        
                         If 'process' tool returns code 17, proceed with [this](references/17.md) guide,
                         if it returns code 25, proceed with [this](references/25.md) guide.
                         """)
@@ -467,6 +472,124 @@ class SkillsStreamingIT {
                     && toolNames.contains("generate_report")
                     && toolNames.stream().filter("query_inventory"::equals).count() == 1;
         }), any());
+
+        verifyNoMoreImportantInteractions(spyChatModel);
+    }
+
+    @Test
+    void activating_same_skill_twice_should_not_produce_duplicate_tools() throws Exception {
+
+        // given
+        Skill skill = Skill.builder()
+                .name("inventory")
+                .description("Inventory management skill")
+                .content("Use query_inventory to check stock.")
+                .tools(Map.of(
+                        ToolSpecification.builder().name("query_inventory")
+                                .description("Queries inventory").build(),
+                        (req, memoryId) -> "47 units"
+                ))
+                .build();
+
+        Skills skills = Skills.from(skill);
+
+        StreamingChatModelMock chatModel = StreamingChatModelMock.thatAlwaysStreams(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .name("activate_skill")
+                        .arguments("{\"skill_name\": \"inventory\"}")
+                        .build()),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .name("activate_skill")
+                        .arguments("{\"skill_name\": \"inventory\"}")
+                        .build()),
+                AiMessage.from("Done.")
+        );
+        StreamingChatModelMock spyChatModel = spy(chatModel);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .streamingChatModel(spyChatModel)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
+                .systemMessage("""
+                        You have access to the following skills:
+                        %s
+                        When the user's request relates to one of these skills,
+                        activate it first using the 'activate_skill' tool before proceeding.
+                        """.formatted(skills.formatAvailableSkills()))
+                .toolProvider(skills.toolProvider())
+                .build();
+
+        // when
+        chat(assistant, "Activate inventory twice");
+
+        // then
+        InOrder inOrder = inOrder(spyChatModel);
+
+        // first call: no skill tools yet
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                containsTool(request, "activate_skill")
+                        && !containsTool(request, "query_inventory")
+        ), any());
+
+        // subsequent calls: query_inventory visible, no duplicates
+        inOrder.verify(spyChatModel, times(2)).chat(argThat((ChatRequest request) -> {
+            long count = request.toolSpecifications().stream()
+                    .filter(t -> t.name().equals("query_inventory"))
+                    .count();
+            return containsTool(request, "query_inventory") && count == 1;
+        }), any());
+
+        verifyNoMoreImportantInteractions(spyChatModel);
+    }
+
+    @Test
+    void activating_invalid_skill_should_return_error_to_llm() throws Exception {
+
+        // given
+        Skills skills = Skills.from(
+                Skill.builder()
+                        .name("inventory")
+                        .description("Inventory management skill")
+                        .content("Use query_inventory to check stock.")
+                        .build()
+        );
+
+        StreamingChatModelMock chatModel = StreamingChatModelMock.thatAlwaysStreams(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .name("activate_skill")
+                        .arguments("{\"skill_name\": \"non-existent\"}")
+                        .build()),
+                AiMessage.from("Sorry, that skill doesn't exist.")
+        );
+        StreamingChatModelMock spyChatModel = spy(chatModel);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .streamingChatModel(spyChatModel)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
+                .systemMessage("You have skills: " + skills.formatAvailableSkills())
+                .toolProvider(skills.toolProvider())
+                .build();
+
+        // when
+        ChatResponse response = chat(assistant, "Activate the foo skill");
+
+        // then
+        assertThat(response.aiMessage().text()).contains("doesn't exist");
+
+        var inOrder = inOrder(spyChatModel);
+
+        // LLM call 1: activate_skill with invalid name
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                containsTool(request, "activate_skill")
+        ), any());
+
+        // LLM call 2: error message sent back containing available skill names
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                request.messages().stream()
+                        .filter(msg -> msg instanceof ToolExecutionResultMessage)
+                        .map(msg -> (ToolExecutionResultMessage) msg)
+                        .anyMatch(msg -> msg.text().contains("'inventory'")
+                                && msg.text().contains("non-existent"))
+        ), any());
 
         verifyNoMoreImportantInteractions(spyChatModel);
     }
