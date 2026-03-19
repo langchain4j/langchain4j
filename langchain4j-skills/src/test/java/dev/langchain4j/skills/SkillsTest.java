@@ -1,745 +1,904 @@
 package dev.langchain4j.skills;
 
+import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.invocation.InvocationContext;
-import dev.langchain4j.service.tool.ToolExecutor;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.Result;
 import dev.langchain4j.service.tool.ToolProvider;
-import dev.langchain4j.service.tool.ToolProviderRequest;
 import dev.langchain4j.service.tool.ToolProviderResult;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 
+import java.net.URISyntaxException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
-import static dev.langchain4j.skills.ActivateSkillToolExecutor.ACTIVATED_SKILL_ATTRIBUTE;
+import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 class SkillsTest {
 
-    @Test
-    void should_generate_description_for_single_skill() {
-        Skills skills = Skills.from(
-                Skill.builder()
-                        .name("docx")
-                        .description("Edit Word documents")
-                        .content("skill content")
-                        .build()
-        );
+    interface Assistant {
 
-        assertThat(skills.formatAvailableSkills()).isEqualTo(
-                """
-                        <available_skills>
-                        <skill>
-                        <name>docx</name>
-                        <description>Edit Word documents</description>
-                        </skill>
-                        </available_skills>"""
-        );
+        Result<String> chat(String userMessage);
     }
 
-    @Test
-    void should_generate_description_for_multiple_skills() {
-        Skills skills = Skills.from(
-                Skill.builder()
-                        .name("docx")
-                        .description("Edit Word documents")
-                        .content("docx content")
-                        .build(),
-                Skill.builder()
-                        .name("mcp-builder")
-                        .description("Build MCP servers")
-                        .content("mcp content")
-                        .build()
-        );
+    /**
+     * These tools have generic names, inconsistent arguments and cryptic return values on purpose,
+     * they can "make sense" only when skill content/references is loaded.
+     */
+    class Tools {
 
-        assertThat(skills.formatAvailableSkills()).isEqualTo(
-                """
-                        <available_skills>
-                        <skill>
-                        <name>docx</name>
-                        <description>Edit Word documents</description>
-                        </skill>
-                        <skill>
-                        <name>mcp-builder</name>
-                        <description>Build MCP servers</description>
-                        </skill>
-                        </available_skills>"""
-        );
-    }
+        @Tool
+        int process(String name, int id, String surname) {
+            return 25;
+        }
 
-    @Test
-    void should_escape_xml_special_characters_in_name_and_description() {
-        Skills skills = Skills.from(
-                Skill.builder()
-                        .name("skill<>&\"'")
-                        .description("desc<>&\"'")
-                        .content("content")
-                        .build()
-        );
+        @Tool
+        int generate(String surname, String name) {
+            return 177;
+        }
 
-        assertThat(skills.formatAvailableSkills()).isEqualTo(
-                """
-                        <available_skills>
-                        <skill>
-                        <name>skill&lt;&gt;&amp;&quot;&apos;</name>
-                        <description>desc&lt;&gt;&amp;&quot;&apos;</description>
-                        </skill>
-                        </available_skills>"""
-        );
-    }
+        @Tool
+        void finish() {
+        }
 
-    @Test
-    void skill_tools_should_be_in_separate_dynamic_provider() {
+        @Tool
+        void reset() {
+        }
 
-        // given
-        Skill skill = Skill.builder()
-                .name("my-skill")
-                .description("A skill with tools")
-                .content("Use my_tool to do something")
-                .tools(Map.of(
-                        ToolSpecification.builder().name("my_tool").description("Does something").build(),
-                        (request, memoryId) -> "result"
-                ))
-                .build();
-
-        Skills skills = Skills.from(skill);
-
-        // then - single dynamic provider
-        assertThat(skills.toolProvider()).isNotNull();
-        assertThat(skills.toolProvider().isDynamic()).isTrue();
-
-        // before activation: only management tools
-        ToolProviderResult result = skills.toolProvider().provideTools(dummyRequest());
-        assertThat(getToolNames(result)).containsExactly("activate_skill");
-    }
-
-    @Test
-    void skill_provider_should_return_empty_before_skill_activation() {
-
-        // given
-        Skill skill = Skill.builder()
-                .name("my-skill")
-                .description("A skill with tools")
-                .content("Use my_tool")
-                .tools(Map.of(
-                        ToolSpecification.builder().name("my_tool").description("Does something").build(),
-                        (request, memoryId) -> "result"
-                ))
-                .build();
-
-        Skills skills = Skills.from(skill);
-
-        // when - no activation in messages
-        ToolProviderRequest request = requestWithMessages(List.of(UserMessage.from("hello")));
-
-        // then - only management tools, no skill tools
-        ToolProviderResult result = skills.toolProvider().provideTools(request);
-        assertThat(getToolNames(result)).containsExactly("activate_skill");
-    }
-
-    @Test
-    void skill_provider_should_return_tools_after_skill_activation() {
-
-        // given
-        Skill skill = Skill.builder()
-                .name("my-skill")
-                .description("A skill with tools")
-                .content("Use my_tool")
-                .tools(Map.of(
-                        ToolSpecification.builder().name("my_tool").description("Does something").build(),
-                        (request, memoryId) -> "result"
-                ))
-                .build();
-
-        Skills skills = Skills.from(skill);
-
-        // when - activation in messages
-        ToolProviderRequest request = requestWithMessages(List.of(
-                UserMessage.from("Do something"),
-                skillActivatedMessage("my-skill")
-        ));
-
-        // then - management tools + activated skill tools
-        ToolProviderResult result = skills.toolProvider().provideTools(request);
-        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "my_tool");
-    }
-
-    @Test
-    void only_activated_skill_provider_should_return_tools() {
-
-        // given
-        Skill skill1 = Skill.builder()
-                .name("skill-1")
-                .description("First skill")
-                .content("Use tool_a")
-                .tools(Map.of(
-                        ToolSpecification.builder().name("tool_a").description("Tool A").build(),
-                        (request, memoryId) -> "a"
-                ))
-                .build();
-
-        Skill skill2 = Skill.builder()
-                .name("skill-2")
-                .description("Second skill")
-                .content("Use tool_b")
-                .tools(Map.of(
-                        ToolSpecification.builder().name("tool_b").description("Tool B").build(),
-                        (request, memoryId) -> "b"
-                ))
-                .build();
-
-        Skills skills = Skills.from(skill1, skill2);
-
-        // when - only skill-1 activated
-        ToolProviderRequest request = requestWithMessages(List.of(
-                UserMessage.from("Do something"),
-                skillActivatedMessage("skill-1")
-        ));
-
-        // then - only skill-1's tools appear (not skill-2's)
-        ToolProviderResult result = skills.toolProvider().provideTools(request);
-        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "tool_a");
-    }
-
-    @Test
-    void multiple_activated_skills_should_return_tools() {
-
-        // given
-        Skill skill1 = Skill.builder()
-                .name("skill-1")
-                .description("First skill")
-                .content("Use tool_a")
-                .tools(Map.of(
-                        ToolSpecification.builder().name("tool_a").description("Tool A").build(),
-                        (request, memoryId) -> "a"
-                ))
-                .build();
-
-        Skill skill2 = Skill.builder()
-                .name("skill-2")
-                .description("Second skill")
-                .content("Use tool_b")
-                .tools(Map.of(
-                        ToolSpecification.builder().name("tool_b").description("Tool B").build(),
-                        (request, memoryId) -> "b"
-                ))
-                .build();
-
-        Skills skills = Skills.from(skill1, skill2);
-
-        // when - both skills activated
-        ToolProviderRequest request = requestWithMessages(List.of(
-                UserMessage.from("Do something"),
-                skillActivatedMessage("skill-1"),
-                skillActivatedMessage("skill-2")
-        ));
-
-        // then - both skills' tools appear
-        ToolProviderResult result = skills.toolProvider().provideTools(request);
-        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "tool_a", "tool_b");
-    }
-
-    @Test
-    void skill_without_tools_should_have_only_base_provider() {
-
-        // given
-        Skill skill = Skill.builder()
-                .name("simple-skill")
-                .description("A skill without tools")
-                .content("Just instructions")
-                .build();
-
-        Skills skills = Skills.from(skill);
-
-        // then - not dynamic (no skill-scoped tools)
-        assertThat(skills.toolProvider().isDynamic()).isFalse();
-
-        ToolProviderResult result = skills.toolProvider().provideTools(dummyRequest());
-        assertThat(getToolNames(result)).containsExactly("activate_skill");
-    }
-
-    @Test
-    void conditional_tool_executor_should_be_functional() {
-
-        // given
-        ToolSpecification toolSpec = ToolSpecification.builder()
-                .name("greet")
-                .description("Greets someone")
-                .build();
-        ToolExecutor toolExecutor = (request, memoryId) -> "Hello, World!";
-
-        Skill skill = Skill.builder()
-                .name("greeting-skill")
-                .description("A greeting skill")
-                .content("Use greet tool")
-                .tools(Map.of(toolSpec, toolExecutor))
-                .build();
-
-        Skills skills = Skills.from(skill);
-
-        // when - call with activation
-        ToolProviderRequest request = requestWithMessages(List.of(
-                UserMessage.from("greet"),
-                skillActivatedMessage("greeting-skill")
-        ));
-        ToolProviderResult result = skills.toolProvider().provideTools(request);
-        ToolExecutor resolvedExecutor = result.toolExecutorByName("greet");
-
-        // then
-        assertThat(resolvedExecutor).isNotNull();
-        assertThat(resolvedExecutor.execute(
-                ToolExecutionRequest.builder().name("greet").arguments("{}").build(), null))
-                .isEqualTo("Hello, World!");
-    }
-
-    static class MyTools {
-
-        @dev.langchain4j.agent.tool.Tool("Says hello")
-        String sayHello(String name) {
-            return "Hello, " + name + "!";
+        @Tool
+        String poll() {
+            return "Klaus Heisler";
         }
     }
 
     @Test
-    void skill_should_support_tool_annotated_objects() {
+    void should_activate_skill_and_load_resource() {
 
         // given
-        Skill skill = Skill.builder()
-                .name("greeting-skill")
-                .description("A greeting skill")
-                .content("Use sayHello tool")
-                .tools(new MyTools())
-                .build();
+        Skill skill = FileSystemSkillLoader.loadSkill(toPath("skills/using-process-tool"));
+
+        // when
+        Skills skills = Skills.from(skill);
 
         // then
-        assertThat(skill.toolProviders()).hasSize(1);
-    }
-
-    @Test
-    void skill_with_tool_annotated_objects_should_work_with_skills() {
-
-        // given
-        Skill skill = Skill.builder()
-                .name("greeting-skill")
-                .description("A greeting skill")
-                .content("Use sayHello tool")
-                .tools(new MyTools())
-                .build();
-
-        Skills skills = Skills.from(skill);
-
-        // then - dynamic provider
-        assertThat(skills.toolProvider().isDynamic()).isTrue();
-
-        // before activation: only management tools
-        assertThat(getToolNames(skills.toolProvider().provideTools(dummyRequest())))
-                .containsExactly("activate_skill");
-
-        // after activation: management + skill tools
-        ToolProviderRequest activatedRequest = requestWithMessages(List.of(
-                UserMessage.from("greet"),
-                skillActivatedMessage("greeting-skill")
-        ));
-        assertThat(getToolNames(skills.toolProvider().provideTools(activatedRequest)))
-                .containsExactlyInAnyOrder("activate_skill", "sayHello");
-    }
-
-    @Test
-    void skill_should_support_tool_providers() {
+        assertThat(skills.formatAvailableSkills()).contains("using-process-tool");
+        assertThat(getToolNames(skills.toolProvider()))
+                .containsExactlyInAnyOrder("activate_skill", "read_skill_resource");
+        assertThat(skills.toolProvider().provideTools(null).tools().keySet().stream()
+                .filter(it -> it.name().equals("read_skill_resource")).findFirst().get()
+                .parameters().properties().get("relative_path").description())
+                .matches(".*For example: references/\\d+\\.md");
 
         // given
-        ToolProvider myProvider = request -> ToolProviderResult.builder()
-                .add(ToolSpecification.builder().name("dynamic_tool").description("A dynamic tool").build(),
-                        (req, memoryId) -> "dynamic result")
+        Tools spyTools = spy(new Tools());
+
+        ChatModelMock chatModelMock = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .name("activate_skill")
+                        .arguments("{\"skill_name\": \"using-process-tool\"}")
+                        .build()),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .name("generate")
+                        .arguments("{\"arg0\": \"Heisler\", \"arg1\": \"Klaus\"}")
+                        .build()),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .name("process")
+                        .arguments("{\"arg0\": \"Klaus\", \"arg1\": 177, \"arg2\": \"Heisler\"}")
+                        .build()),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .name("read_skill_resource")
+                        .arguments("{\"skill_name\": \"using-process-tool\", \"relative_path\": \"references/25.md\"}")
+                        .build()),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .name("reset")
+                        .arguments("{}")
+                        .build()),
+                AiMessage.from("Done.")
+        );
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModelMock)
+                .systemMessage("You have access to the following skills: " + skills.formatAvailableSkills())
+                .tools(spyTools)
+                .toolProvider(skills.toolProvider())
                 .build();
 
-        Skill skill = Skill.builder()
-                .name("dynamic-skill")
-                .description("A dynamic skill")
-                .content("Use dynamic_tool")
-                .toolProviders(myProvider)
-                .build();
+        // when
+        assistant.chat("Use 'process' tool for Klaus Heisler");
 
         // then
-        assertThat(skill.toolProviders()).hasSize(1);
+        verify(spyTools).generate("Heisler", "Klaus");
+        verify(spyTools).process("Klaus", 177, "Heisler");
+        verify(spyTools).reset();
+        verifyNoMoreInteractions(spyTools);
     }
 
     @Test
-    void skill_with_tool_provider_should_work_with_skills() {
+    void should_activate_skill_and_load_resource__programmatic() {
 
         // given
-        ToolProvider myProvider = request -> ToolProviderResult.builder()
-                .add(ToolSpecification.builder().name("dynamic_tool").description("A dynamic tool").build(),
-                        (req, memoryId) -> "dynamic result")
+        Skill skill = Skill.builder()
+                .name("using-process-tool")
+                .description("Describes how to correctly use 'process' tool")
+                .content("""
+                        When user asks you to use the 'process' tool, you need to first call the 'generate' tool with
+                        2 arguments: arg0 (surname) and arg1 (name).
+                        
+                        When you have an id, call the 'process' tool with 3 arguments:
+                        arg0 (name), arg1 (id), arg2 (surname).
+                        
+                        If 'process' tool returns code 17, proceed with [this](references/17.md) guide,
+                        if it returns code 25, proceed with [this](references/25.md) guide.
+                        """)
+                .resources(List.of(
+                        SkillResource.builder()
+                                .relativePath("references/17.md")
+                                .content("If 'process' tool returns code 17, you need to call the 'finish' tool. " +
+                                        "Do not call the 'reset' tool!")
+                                .build(),
+                        SkillResource.builder()
+                                .relativePath("references/25.md")
+                                .content("If 'process' tool returns code 25, you need to call the 'reset' tool. " +
+                                        "Do not call the 'finish' tool!")
+                                .build()
+                ))
                 .build();
 
+        // when
+        Skills skills = Skills.from(skill);
+
+        // then
+        assertThat(skills.formatAvailableSkills()).contains("using-process-tool");
+        assertThat(getToolNames(skills.toolProvider()))
+                .containsExactlyInAnyOrder("activate_skill", "read_skill_resource");
+
+        // given
+        Tools spyTools = spy(new Tools());
+
+        ChatModelMock chatModelMock = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .name("activate_skill")
+                        .arguments("{\"skill_name\": \"using-process-tool\"}")
+                        .build()),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .name("generate")
+                        .arguments("{\"arg0\": \"Heisler\", \"arg1\": \"Klaus\"}")
+                        .build()),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .name("process")
+                        .arguments("{\"arg0\": \"Klaus\", \"arg1\": 177, \"arg2\": \"Heisler\"}")
+                        .build()),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .name("read_skill_resource")
+                        .arguments("{\"skill_name\": \"using-process-tool\", \"relative_path\": \"references/25.md\"}")
+                        .build()),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .name("reset")
+                        .arguments("{}")
+                        .build()),
+                AiMessage.from("Done.")
+        );
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModelMock)
+                .systemMessage("You have access to the following skills: " + skills.formatAvailableSkills())
+                .tools(spyTools)
+                .toolProvider(skills.toolProvider())
+                .build();
+
+        // when
+        assistant.chat("Use 'process' tool for Klaus Heisler");
+
+        // then
+        verify(spyTools).generate("Heisler", "Klaus");
+        verify(spyTools).process("Klaus", 177, "Heisler");
+        verify(spyTools).reset();
+        verifyNoMoreInteractions(spyTools);
+    }
+
+    @Test
+    void should_activate_multiple_skills() {
+
+        // given
+        Skill firstSkill = Skill.builder()
+                .name("using-poll-tool")
+                .description("Describes how to correctly use the 'poll' tool")
+                .content("""
+                        When user asks you to use the 'poll' tool, you need to call it and then call the 'process' tool
+                        with the output of the 'poll' tool.
+                        """)
+                .build();
+
+        Skill secondSkill = FileSystemSkillLoader.loadSkill(toPath("skills/using-process-tool"));
+
+        // when
+        Skills skills = Skills.from(firstSkill, secondSkill);
+
+        // then
+        assertThat(skills.formatAvailableSkills()).contains("using-poll-tool", "using-process-tool");
+        assertThat(getToolNames(skills.toolProvider()))
+                .containsExactlyInAnyOrder("activate_skill", "read_skill_resource");
+
+        // given
+        Tools spyTools = spy(new Tools());
+
+        ChatModelMock chatModelMock = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .name("activate_skill")
+                        .arguments("{\"skill_name\": \"using-poll-tool\"}")
+                        .build()),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .name("poll")
+                        .arguments("{}")
+                        .build()),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .name("activate_skill")
+                        .arguments("{\"skill_name\": \"using-process-tool\"}")
+                        .build()),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .name("generate")
+                        .arguments("{\"arg0\": \"Heisler\", \"arg1\": \"Klaus\"}")
+                        .build()),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .name("process")
+                        .arguments("{\"arg0\": \"Klaus\", \"arg1\": 177, \"arg2\": \"Heisler\"}")
+                        .build()),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .name("read_skill_resource")
+                        .arguments("{\"skill_name\": \"using-process-tool\", \"relative_path\": \"references/25.md\"}")
+                        .build()),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .name("reset")
+                        .arguments("{}")
+                        .build()),
+                AiMessage.from("Done.")
+        );
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModelMock)
+                .systemMessage("""
+                        You have access to the following skills:
+                        %s
+                        When the user's request relates to one of these skills,
+                        activate it first using the 'activate_skill' tool before proceeding.
+                        """.formatted(skills.formatAvailableSkills()))
+                .tools(spyTools)
+                .toolProvider(skills.toolProvider())
+                .build();
+
+        // when
+        assistant.chat("Use 'poll' tool");
+
+        // then
+        verify(spyTools).poll();
+        verify(spyTools).generate("Heisler", "Klaus");
+        verify(spyTools).process("Klaus", 177, "Heisler");
+        verify(spyTools).reset();
+        verifyNoMoreInteractions(spyTools);
+    }
+
+    @Test
+    void should_not_include_skill_scoped_tools_before_activation_and_include_after__tool_provider() {
+
+        // given
         Skill skill = Skill.builder()
-                .name("dynamic-skill")
-                .description("A dynamic skill")
-                .content("Use dynamic_tool")
-                .toolProviders(myProvider)
+                .name("inventory-management")
+                .description("Describes how to query and manage the internal inventory system")
+                .content("When asked about inventory or stock levels, use the 'query_inventory' tool.")
+                .toolProviders(request -> ToolProviderResult.builder()
+                        .add(ToolSpecification.builder()
+                                        .name("query_inventory")
+                                        .description("Queries the internal inventory system for stock levels")
+                                        .build(),
+                                (req, memoryId) -> "47 units in stock")
+                        .build())
+                .build();
+
+        verifyToolsHiddenBeforeActivationAndVisibleAfter(skill);
+    }
+
+    @Test
+    void should_not_include_skill_scoped_tools_before_activation_and_include_after__tools_map() {
+
+        // given
+        Skill skill = Skill.builder()
+                .name("inventory-management")
+                .description("Describes how to query and manage the internal inventory system")
+                .content("When asked about inventory or stock levels, use the 'query_inventory' tool.")
+                .tools(java.util.Map.of(
+                        ToolSpecification.builder()
+                                .name("query_inventory")
+                                .description("Queries the internal inventory system for stock levels")
+                                .build(),
+                        (req, memoryId) -> "47 units in stock"
+                ))
+                .build();
+
+        verifyToolsHiddenBeforeActivationAndVisibleAfter(skill);
+    }
+
+    @Test
+    void should_not_include_skill_scoped_tools_before_activation_and_include_after__tool_annotated_object() {
+
+        // given
+        Skill skill = Skill.builder()
+                .name("inventory-management")
+                .description("Describes how to query and manage the internal inventory system")
+                .content("When asked about inventory or stock levels, use the 'query_inventory' tool.")
+                .tools(new InventoryTools())
+                .build();
+
+        verifyToolsHiddenBeforeActivationAndVisibleAfter(skill);
+    }
+
+    @Test
+    void should_not_include_skill_scoped_tools_before_activation_and_include_after__combined() {
+
+        // given
+        Skill skill = Skill.builder()
+                .name("inventory-management")
+                .description("Describes how to query and manage the internal inventory system")
+                .content("When asked about inventory or stock levels, use the 'query_inventory' tool.")
+                .tools(new InventoryTools())
+                .toolProviders(request -> ToolProviderResult.builder()
+                        .add(ToolSpecification.builder()
+                                        .name("update_inventory")
+                                        .description("Updates inventory stock level")
+                                        .build(),
+                                (req, memoryId) -> "updated")
+                        .build())
                 .build();
 
         Skills skills = Skills.from(skill);
 
-        // then - dynamic provider
-        assertThat(skills.toolProvider().isDynamic()).isTrue();
+        ChatModelMock chatModelMock = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .name("activate_skill")
+                        .arguments("{\"skill_name\": \"inventory-management\"}")
+                        .build()),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .name("query_inventory")
+                        .arguments("{}")
+                        .build()),
+                AiMessage.from("There are 47 units in stock for widgets.")
+        );
+        ChatModel spyChatModel = spy(chatModelMock);
 
-        // before activation: only management tools
-        assertThat(getToolNames(skills.toolProvider().provideTools(dummyRequest())))
-                .containsExactly("activate_skill");
-    }
-
-    @Test
-    void skill_should_combine_static_tools_and_tool_providers() {
-
-        // given
-        ToolProvider mcpProvider = request -> ToolProviderResult.builder()
-                .add(ToolSpecification.builder().name("mcp_tool").description("An MCP tool").build(),
-                        (req, memoryId) -> "mcp result")
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(spyChatModel)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
+                .systemMessage("""
+                        You have access to the following skills:
+                        %s
+                        When the user's request relates to one of these skills,
+                        activate it first using the 'activate_skill' tool before proceeding.
+                        """.formatted(skills.formatAvailableSkills()))
+                .toolProvider(skills.toolProvider())
                 .build();
 
-        Skill skill = Skill.builder()
-                .name("combo-skill")
-                .description("A skill with both")
-                .content("Use sayHello and mcp_tool")
-                .tools(new MyTools())
-                .toolProviders(mcpProvider)
-                .build();
+        // when
+        assistant.chat("Check the inventory for widgets");
 
-        // then - both static and dynamic providers on Skill
-        assertThat(skill.toolProviders()).hasSize(2);
+        // then
+        InOrder inOrder = inOrder(spyChatModel);
 
-        Skills skills = Skills.from(skill);
-
-        // after activation: management + both skill tools
-        ToolProviderRequest activatedRequest = requestWithMessages(List.of(
-                UserMessage.from("do stuff"),
-                skillActivatedMessage("combo-skill")
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                containsTool(request, "activate_skill")
+                        && !containsTool(request, "query_inventory")
+                        && !containsTool(request, "update_inventory")
         ));
-        ToolProviderResult result = skills.toolProvider().provideTools(activatedRequest);
-        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "sayHello", "mcp_tool");
+
+        inOrder.verify(spyChatModel, atLeast(1)).chat(argThat((ChatRequest request) ->
+                containsTool(request, "activate_skill")
+                        && containsTool(request, "query_inventory")
+                        && containsTool(request, "update_inventory")
+        ));
+
+        verifyNoMoreInteractionsFor(spyChatModel);
     }
 
-    static class AnotherTools {
+    static class InventoryTools {
 
-        @dev.langchain4j.agent.tool.Tool("Says goodbye")
-        String sayGoodbye(String name) {
-            return "Goodbye, " + name + "!";
+        @Tool("Queries the internal inventory system for stock levels")
+        String query_inventory() {
+            return "47 units in stock";
         }
     }
 
-    @Test
-    void tools_map_should_not_override_tool_annotated_methods() {
-
-        // given
-        ToolSpecification manualTool = ToolSpecification.builder()
-                .name("manual_tool")
-                .description("A manual tool")
-                .build();
-        ToolExecutor manualExecutor = (request, memoryId) -> "manual";
-
-        Skill skill = Skill.builder()
-                .name("my-skill")
-                .description("A skill")
-                .content("Use all tools")
-                .tools(new MyTools())
-                .tools(Map.of(manualTool, manualExecutor))
-                .build();
-
+    private void verifyToolsHiddenBeforeActivationAndVisibleAfter(Skill skill) {
         Skills skills = Skills.from(skill);
 
-        // when - activate the skill
-        ToolProviderRequest request = requestWithMessages(List.of(
-                UserMessage.from("do stuff"),
-                skillActivatedMessage("my-skill")
-        ));
-        ToolProviderResult result = skills.toolProvider().provideTools(request);
+        ChatModelMock chatModelMock = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .name("activate_skill")
+                        .arguments("{\"skill_name\": \"inventory-management\"}")
+                        .build()),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .name("query_inventory")
+                        .arguments("{}")
+                        .build()),
+                AiMessage.from("There are 47 units in stock for widgets."),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .name("query_inventory")
+                        .arguments("{}")
+                        .build()),
+                AiMessage.from("There are 47 units in stock for gadgets.")
+        );
+        ChatModel spyChatModel = spy(chatModelMock);
 
-        // then - both @Tool method and Map tool are present
-        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "sayHello", "manual_tool");
-    }
-
-    @Test
-    void tool_annotated_methods_should_not_override_tools_map() {
-
-        // given - reversed order: Map first, then @Tool
-        ToolSpecification manualTool = ToolSpecification.builder()
-                .name("manual_tool")
-                .description("A manual tool")
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(spyChatModel)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
+                .systemMessage("""
+                        You have access to the following skills:
+                        %s
+                        When the user's request relates to one of these skills,
+                        activate it first using the 'activate_skill' tool before proceeding.
+                        """.formatted(skills.formatAvailableSkills()))
+                .toolProvider(skills.toolProvider())
                 .build();
-        ToolExecutor manualExecutor = (request, memoryId) -> "manual";
-
-        Skill skill = Skill.builder()
-                .name("my-skill")
-                .description("A skill")
-                .content("Use all tools")
-                .tools(Map.of(manualTool, manualExecutor))
-                .tools(new MyTools())
-                .build();
-
-        Skills skills = Skills.from(skill);
 
         // when
-        ToolProviderRequest request = requestWithMessages(List.of(
-                UserMessage.from("do stuff"),
-                skillActivatedMessage("my-skill")
-        ));
-        ToolProviderResult result = skills.toolProvider().provideTools(request);
+        assistant.chat("Check the inventory for widgets");
 
         // then
-        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "manual_tool", "sayHello");
+        InOrder inOrder = inOrder(spyChatModel);
+
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                containsTool(request, "activate_skill")
+                        && !containsTool(request, "query_inventory")
+        ));
+
+        inOrder.verify(spyChatModel, times(2)).chat(argThat((ChatRequest request) ->
+                containsTool(request, "activate_skill")
+                        && containsTool(request, "query_inventory")
+        ));
+
+        verifyNoMoreInteractionsFor(spyChatModel);
+
+        // when
+        assistant.chat("Now check the inventory for gadgets");
+
+        // then
+        inOrder.verify(spyChatModel, times(2)).chat(argThat((ChatRequest request) ->
+                containsTool(request, "activate_skill")
+                        && containsTool(request, "query_inventory")
+        ));
+
+        verifyNoMoreInteractionsFor(spyChatModel);
     }
 
     @Test
-    void second_tools_annotated_call_should_override_first() {
+    void should_not_include_skill_tools_for_unrelated_skill() {
 
         // given
+        ToolSpecification weatherTool = ToolSpecification.builder()
+                .name("get_weather")
+                .description("Gets the weather")
+                .build();
+
+        ToolSpecification timeTool = ToolSpecification.builder()
+                .name("get_time")
+                .description("Gets the current time")
+                .build();
+
+        Skill weatherSkill = Skill.builder()
+                .name("weather")
+                .description("A weather skill")
+                .content("When asked about weather, use the 'get_weather' tool.")
+                .toolProviders(request -> ToolProviderResult.builder()
+                        .add(weatherTool, (req, memoryId) -> "Sunny")
+                        .build())
+                .build();
+
+        Skill timeSkill = Skill.builder()
+                .name("time")
+                .description("A time skill")
+                .content("When asked about time, use the 'get_time' tool.")
+                .toolProviders(request -> ToolProviderResult.builder()
+                        .add(timeTool, (req, memoryId) -> "12:00")
+                        .build())
+                .build();
+
+        Skills skills = Skills.from(weatherSkill, timeSkill);
+
+        ChatModelMock chatModelMock = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .name("activate_skill")
+                        .arguments("{\"skill_name\": \"weather\"}")
+                        .build()),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .name("get_weather")
+                        .arguments("{}")
+                        .build()),
+                AiMessage.from("The weather is sunny.")
+        );
+        ChatModel spyChatModel = spy(chatModelMock);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(spyChatModel)
+                .systemMessage("""
+                        You have access to the following skills:
+                        %s
+                        When the user's request relates to one of these skills,
+                        activate it first using the 'activate_skill' tool before proceeding.
+                        Activate only the relevant skill. Do NOT activate unrelated skills.
+                        """.formatted(skills.formatAvailableSkills()))
+                .toolProvider(skills.toolProvider())
+                .build();
+
+        // when
+        Result<String> result = assistant.chat("What is the weather?");
+
+        // then
+        assertThat(result.content().toLowerCase()).contains("sunny");
+
+        InOrder inOrder = inOrder(spyChatModel);
+
+        // First call: only activate_skill, no skill-specific tools
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                containsTool(request, "activate_skill")
+                        && !containsTool(request, "get_weather")
+                        && !containsTool(request, "get_time")
+        ));
+
+        // After activating weather skill: get_weather should appear, get_time should NOT
+        inOrder.verify(spyChatModel, atLeast(1)).chat(argThat((ChatRequest request) ->
+                containsTool(request, "get_weather")
+                        && !containsTool(request, "get_time")
+        ));
+
+        verifyNoMoreInteractionsFor(spyChatModel);
+    }
+
+    @Test
+    void normal_tools_should_always_be_present_regardless_of_skill_activation() {
+
+        // given
+        ToolSpecification skillTool = ToolSpecification.builder()
+                .name("query_inventory")
+                .description("Queries the internal inventory system for stock levels")
+                .build();
+
         Skill skill = Skill.builder()
-                .name("my-skill")
-                .description("A skill")
-                .content("Use all tools")
-                .tools(new MyTools())
-                .tools(new AnotherTools())
+                .name("inventory-management")
+                .description("Describes how to query and manage the internal inventory system")
+                .content("When asked about inventory or stock levels, use the 'query_inventory' tool.")
+                .toolProviders(request -> ToolProviderResult.builder()
+                        .add(skillTool, (req, memoryId) -> "47 units in stock")
+                        .build())
                 .build();
 
         Skills skills = Skills.from(skill);
 
-        // when
-        ToolProviderRequest request = requestWithMessages(List.of(
-                UserMessage.from("do stuff"),
-                skillActivatedMessage("my-skill")
-        ));
-        ToolProviderResult result = skills.toolProvider().provideTools(request);
+        Tools spyTools = spy(new Tools());
 
-        // then - second call overrides first
-        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "sayGoodbye");
+        ChatModelMock chatModelMock = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .name("activate_skill")
+                        .arguments("{\"skill_name\": \"inventory-management\"}")
+                        .build()),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .name("query_inventory")
+                        .arguments("{}")
+                        .build()),
+                AiMessage.from("There are 47 units in stock.")
+        );
+        ChatModel spyChatModel = spy(chatModelMock);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(spyChatModel)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
+                .systemMessage("""
+                        You have access to the following skills:
+                        %s
+                        When the user's request relates to one of these skills,
+                        activate it first using the 'activate_skill' tool before proceeding.
+                        """.formatted(skills.formatAvailableSkills()))
+                .tools(spyTools)
+                .toolProvider(skills.toolProvider())
+                .build();
+
+        // when
+        assistant.chat("Check the inventory for widgets");
+
+        // then - normal tools (process, generate, finish, reset, poll) should be present in every LLM call
+        InOrder inOrder = inOrder(spyChatModel);
+
+        // first call: normal tools + activate_skill, but NOT query_inventory (skill not yet activated)
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                containsTool(request, "activate_skill")
+                        && containsTool(request, "process")
+                        && containsTool(request, "generate")
+                        && containsTool(request, "finish")
+                        && containsTool(request, "reset")
+                        && containsTool(request, "poll")
+                        && !containsTool(request, "query_inventory")
+        ));
+
+        // after activation: normal tools still present alongside skill-scoped tool
+        inOrder.verify(spyChatModel, atLeast(1)).chat(argThat((ChatRequest request) ->
+                containsTool(request, "activate_skill")
+                        && containsTool(request, "process")
+                        && containsTool(request, "generate")
+                        && containsTool(request, "query_inventory")
+        ));
+
+        verifyNoMoreInteractionsFor(spyChatModel);
     }
 
     @Test
-    void second_tools_map_call_should_override_first() {
+    void skills_with_overlapping_tools_should_not_produce_duplicates() {
+
+        // given - two skills share 'query_inventory' tool
+        Skill inventorySkill = Skill.builder()
+                .name("inventory")
+                .description("Inventory management")
+                .content("Use query_inventory to check stock and reorder_item to reorder.")
+                .toolProviders(request -> ToolProviderResult.builder()
+                        .add(ToolSpecification.builder()
+                                        .name("query_inventory")
+                                        .description("Queries inventory levels")
+                                        .build(),
+                                (req, memoryId) -> "47 units")
+                        .add(ToolSpecification.builder()
+                                        .name("reorder_item")
+                                        .description("Reorders an item")
+                                        .build(),
+                                (req, memoryId) -> "reordered")
+                        .build())
+                .build();
+
+        Skill reportingSkill = Skill.builder()
+                .name("reporting")
+                .description("Reporting")
+                .content("Use query_inventory to get data and generate_report to produce a report.")
+                .toolProviders(request -> ToolProviderResult.builder()
+                        .add(ToolSpecification.builder()
+                                        .name("query_inventory")
+                                        .description("Queries inventory levels")
+                                        .build(),
+                                (req, memoryId) -> "47 units")
+                        .add(ToolSpecification.builder()
+                                        .name("generate_report")
+                                        .description("Generates a report")
+                                        .build(),
+                                (req, memoryId) -> "report generated")
+                        .build())
+                .build();
+
+        Skills skills = Skills.from(inventorySkill, reportingSkill);
+
+        ChatModelMock chatModelMock = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(
+                        ToolExecutionRequest.builder()
+                                .name("activate_skill")
+                                .arguments("{\"skill_name\": \"inventory\"}")
+                                .build(),
+                        ToolExecutionRequest.builder()
+                                .name("activate_skill")
+                                .arguments("{\"skill_name\": \"reporting\"}")
+                                .build()),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .name("query_inventory")
+                        .arguments("{}")
+                        .build()),
+                AiMessage.from("Inventory has 47 units."),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .name("generate_report")
+                        .arguments("{}")
+                        .build()),
+                AiMessage.from("Report generated.")
+        );
+        ChatModel spyChatModel = spy(chatModelMock);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(spyChatModel)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
+                .systemMessage("""
+                        You have access to the following skills:
+                        %s
+                        When the user's request relates to one of these skills,
+                        activate it first using the 'activate_skill' tool before proceeding.
+                        You can activate multiple skills if needed.
+                        """.formatted(skills.formatAvailableSkills()))
+                .toolProvider(skills.toolProvider())
+                .build();
+
+        // when - activate both skills
+        assistant.chat("Activate both inventory and reporting skills, then query the inventory");
+
+        // then
+        InOrder inOrder = inOrder(spyChatModel);
+
+        // first call: only activate_skill, no skill-scoped tools
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                containsTool(request, "activate_skill")
+                        && !containsTool(request, "query_inventory")
+                        && !containsTool(request, "reorder_item")
+                        && !containsTool(request, "generate_report")
+        ));
+
+        // after activation(s): all unique tools present, no duplicates
+        inOrder.verify(spyChatModel, atLeast(1)).chat(argThat((ChatRequest request) -> {
+            List<String> toolNames = request.toolSpecifications().stream()
+                    .map(ToolSpecification::name)
+                    .toList();
+            return toolNames.contains("query_inventory")
+                    && toolNames.contains("reorder_item")
+                    && toolNames.contains("generate_report")
+                    && toolNames.stream().filter("query_inventory"::equals).count() == 1;
+        }));
+
+        verifyNoMoreInteractionsFor(spyChatModel);
+
+        // when - second AI Service invocation
+        assistant.chat("Now generate a report");
+
+        // then - all tools still active, no duplicates
+        inOrder.verify(spyChatModel, atLeast(1)).chat(argThat((ChatRequest request) -> {
+            List<String> toolNames = request.toolSpecifications().stream()
+                    .map(ToolSpecification::name)
+                    .toList();
+            return toolNames.contains("query_inventory")
+                    && toolNames.contains("reorder_item")
+                    && toolNames.contains("generate_report")
+                    && toolNames.stream().filter("query_inventory"::equals).count() == 1;
+        }));
+
+        verifyNoMoreInteractionsFor(spyChatModel);
+    }
+
+    @Test
+    void activating_same_skill_twice_should_not_produce_duplicate_tools() {
 
         // given
-        ToolSpecification tool1 = ToolSpecification.builder().name("tool_1").description("Tool 1").build();
-        ToolSpecification tool2 = ToolSpecification.builder().name("tool_2").description("Tool 2").build();
-
         Skill skill = Skill.builder()
-                .name("my-skill")
-                .description("A skill")
-                .content("Use all tools")
-                .tools(Map.of(tool1, (request, memoryId) -> "1"))
-                .tools(Map.of(tool2, (request, memoryId) -> "2"))
+                .name("inventory")
+                .description("Inventory management skill")
+                .content("Use query_inventory to check stock.")
+                .tools(Map.of(
+                        ToolSpecification.builder().name("query_inventory")
+                                .description("Queries inventory").build(),
+                        (req, memoryId) -> "47 units"
+                ))
                 .build();
 
         Skills skills = Skills.from(skill);
 
-        // when
-        ToolProviderRequest request = requestWithMessages(List.of(
-                UserMessage.from("do stuff"),
-                skillActivatedMessage("my-skill")
-        ));
-        ToolProviderResult result = skills.toolProvider().provideTools(request);
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .name("activate_skill")
+                        .arguments("{\"skill_name\": \"inventory\"}")
+                        .build()),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .name("activate_skill")
+                        .arguments("{\"skill_name\": \"inventory\"}")
+                        .build()),
+                AiMessage.from("Done.")
+        );
+        ChatModelMock spyChatModel = spy(chatModel);
 
-        // then - second call overrides first
-        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "tool_2");
-    }
-
-    @Test
-    void second_tool_providers_call_should_override_first() {
-
-        // given
-        ToolProvider provider1 = request -> ToolProviderResult.builder()
-                .add(ToolSpecification.builder().name("provider1_tool").description("P1").build(),
-                        (req, memoryId) -> "p1")
-                .build();
-        ToolProvider provider2 = request -> ToolProviderResult.builder()
-                .add(ToolSpecification.builder().name("provider2_tool").description("P2").build(),
-                        (req, memoryId) -> "p2")
-                .build();
-
-        Skill skill = Skill.builder()
-                .name("my-skill")
-                .description("A skill")
-                .content("Use all tools")
-                .toolProviders(provider1)
-                .toolProviders(provider2)
-                .build();
-
-        // then - second call overrides first
-        assertThat(skill.toolProviders()).hasSize(1);
-    }
-
-    @Test
-    void all_three_tool_types_should_accumulate() {
-
-        // given
-        ToolSpecification manualTool = ToolSpecification.builder()
-                .name("manual_tool")
-                .description("A manual tool")
-                .build();
-        ToolExecutor manualExecutor = (request, memoryId) -> "manual";
-
-        ToolProvider dynamicProvider = request -> ToolProviderResult.builder()
-                .add(ToolSpecification.builder().name("dynamic_tool").description("Dynamic").build(),
-                        (req, memoryId) -> "dynamic")
-                .build();
-
-        Skill skill = Skill.builder()
-                .name("my-skill")
-                .description("A skill")
-                .content("Use all tools")
-                .tools(new MyTools())
-                .tools(Map.of(manualTool, manualExecutor))
-                .toolProviders(dynamicProvider)
-                .build();
-
-        // then - 2 tool providers on skill: 1 static (wrapping @Tool + Map), 1 dynamic
-        assertThat(skill.toolProviders()).hasSize(2);
-
-        Skills skills = Skills.from(skill);
-
-        // when - activate the skill
-        ToolProviderRequest request = requestWithMessages(List.of(
-                UserMessage.from("do stuff"),
-                skillActivatedMessage("my-skill")
-        ));
-        ToolProviderResult result = skills.toolProvider().provideTools(request);
-
-        // then - all three tools present
-        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "sayHello", "manual_tool", "dynamic_tool");
-    }
-
-    @Test
-    void tool_providers_collection_should_not_override_varargs() {
-
-        // given
-        ToolProvider provider1 = request -> ToolProviderResult.builder()
-                .add(ToolSpecification.builder().name("vararg_tool").description("Vararg").build(),
-                        (req, memoryId) -> "vararg")
-                .build();
-        ToolProvider provider2 = request -> ToolProviderResult.builder()
-                .add(ToolSpecification.builder().name("collection_tool").description("Collection").build(),
-                        (req, memoryId) -> "collection")
-                .build();
-
-        Skill skill = Skill.builder()
-                .name("my-skill")
-                .description("A skill")
-                .content("Use all tools")
-                .toolProviders(provider1)
-                .toolProviders(List.of(provider2))
-                .build();
-
-        // then - second call overrides first
-        assertThat(skill.toolProviders()).hasSize(1);
-    }
-
-    @Test
-    void toBuilder_should_copy_all_fields() {
-
-        // given
-        DefaultSkill original = Skill.builder()
-                .name("my-skill")
-                .description("My skill")
-                .content("Some content")
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(spyChatModel)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
+                .systemMessage("""
+                        You have access to the following skills:
+                        %s
+                        When the user's request relates to one of these skills,
+                        activate it first using the 'activate_skill' tool before proceeding.
+                        """.formatted(skills.formatAvailableSkills()))
+                .toolProvider(skills.toolProvider())
                 .build();
 
         // when
-        DefaultSkill copy = original.toBuilder().build();
+        assistant.chat("Activate inventory twice");
 
         // then
-        assertThat(copy.name()).isEqualTo("my-skill");
-        assertThat(copy.description()).isEqualTo("My skill");
-        assertThat(copy.content()).isEqualTo("Some content");
+        InOrder inOrder = inOrder(spyChatModel);
+
+        // first call: no skill tools yet
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                containsTool(request, "activate_skill")
+                        && !containsTool(request, "query_inventory")
+        ));
+
+        // subsequent calls: query_inventory visible, no duplicates
+        inOrder.verify(spyChatModel, times(2)).chat(argThat((ChatRequest request) -> {
+            long count = request.toolSpecifications().stream()
+                    .filter(t -> t.name().equals("query_inventory"))
+                    .count();
+            return containsTool(request, "query_inventory") && count == 1;
+        }));
+
+        verifyNoMoreInteractionsFor(spyChatModel);
     }
 
     @Test
-    void toBuilder_should_allow_adding_tools_to_filesystem_loaded_skill() {
+    void activating_invalid_skill_should_return_error_to_llm() {
 
-        // given - simulate a filesystem-loaded skill (no tools)
-        DefaultSkill original = Skill.builder()
-                .name("my-skill")
-                .description("My skill")
-                .content("Use sayHello")
-                .build();
+        // given
+        Skills skills = Skills.from(
+                Skill.builder()
+                        .name("inventory")
+                        .description("Inventory management skill")
+                        .content("Use query_inventory to check stock.")
+                        .build()
+        );
 
-        assertThat(original.toolProviders()).isEmpty();
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .name("activate_skill")
+                        .arguments("{\"skill_name\": \"non-existent\"}")
+                        .build()),
+                AiMessage.from("Sorry, that skill doesn't exist.")
+        );
+        ChatModelMock spyChatModel = spy(chatModel);
 
-        // when - add tools via toBuilder
-        DefaultSkill withTools = original.toBuilder()
-                .tools(new MyTools())
-                .build();
-
-        // then
-        assertThat(withTools.name()).isEqualTo("my-skill");
-        assertThat(withTools.toolProviders()).hasSize(1);
-    }
-
-    @Test
-    void toBuilder_should_allow_adding_tool_provider_to_filesystem_loaded_skill() {
-
-        // given - simulate a filesystem-loaded skill (no tools)
-        DefaultSkill original = (DefaultSkill) Skill.builder()
-                .name("my-skill")
-                .description("My skill")
-                .content("Use dynamic_tool")
-                .build();
-
-        ToolProvider mcpProvider = request -> ToolProviderResult.builder()
-                .add(ToolSpecification.builder().name("dynamic_tool").description("dynamic").build(),
-                        (req, memoryId) -> "result")
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(spyChatModel)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
+                .systemMessage("You have skills: " + skills.formatAvailableSkills())
+                .toolProvider(skills.toolProvider())
                 .build();
 
         // when
-        DefaultSkill withProvider = original.toBuilder()
-                .toolProviders(mcpProvider)
-                .build();
+        Result<String> result = assistant.chat("Activate the foo skill");
 
         // then
-        assertThat(withProvider.toolProviders()).hasSize(1);
+        assertThat(result.content()).contains("doesn't exist");
 
-        Skills skills = Skills.from(withProvider);
-        assertThat(skills.toolProvider().isDynamic()).isTrue();
+        var inOrder = inOrder(spyChatModel);
 
-        // after activation
-        ToolProviderRequest activatedRequest = requestWithMessages(List.of(
-                UserMessage.from("do stuff"),
-                skillActivatedMessage("my-skill")
+        // LLM call 1: activate_skill with invalid name
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                containsTool(request, "activate_skill")
         ));
-        ToolProviderResult result = skills.toolProvider().provideTools(activatedRequest);
-        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "dynamic_tool");
+
+        // LLM call 2: error message sent back containing available skill names
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                request.messages().stream()
+                        .filter(msg -> msg instanceof ToolExecutionResultMessage)
+                        .map(msg -> (ToolExecutionResultMessage) msg)
+                        .anyMatch(msg -> msg.text().contains("'inventory'")
+                                && msg.text().contains("non-existent"))
+        ));
+
+        verifyNoMoreInteractionsFor(spyChatModel);
     }
 
-    private static ToolProviderRequest dummyRequest() {
-        return ToolProviderRequest.builder()
-                .invocationContext(InvocationContext.builder().build())
-                .userMessage(UserMessage.from("test"))
-                .build();
+    private static boolean containsTool(ChatRequest chatRequest, String toolName) {
+        return chatRequest.toolSpecifications().stream().anyMatch(t -> t.name().equals(toolName));
     }
 
-    private static ToolProviderRequest requestWithMessages(List<ChatMessage> messages) {
-        return ToolProviderRequest.builder()
-                .invocationContext(InvocationContext.builder().build())
-                .userMessage(UserMessage.from("test"))
-                .messages(messages)
-                .build();
+    private Path toPath(String fileName) {
+        try {
+            return Paths.get(getClass().getClassLoader().getResource(fileName).toURI());
+        } catch (URISyntaxException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    private static ToolExecutionResultMessage skillActivatedMessage(String skillName) {
-        return ToolExecutionResultMessage.builder()
-                .toolName("activate_skill")
-                .text("skill activated")
-                .attributes(Map.of(ACTIVATED_SKILL_ATTRIBUTE, skillName))
-                .build();
-    }
-
-    private static Stream<String> getToolNames(ToolProviderResult result) {
-        return result.tools().keySet().stream()
-                .map(ToolSpecification::name);
+    private static Stream<String> getToolNames(ToolProvider toolProvider) {
+        return toolProvider.provideTools(null).tools().keySet().stream().map(ToolSpecification::name);
     }
 }
