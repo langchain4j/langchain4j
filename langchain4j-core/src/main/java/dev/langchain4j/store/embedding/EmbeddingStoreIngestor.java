@@ -48,7 +48,7 @@ import org.slf4j.LoggerFactory;
  * Including a document title or a short summary in each {@code TextSegment} is a common technique
  * to improve the quality of similarity searches.
  */
-public class EmbeddingStoreIngestor {
+public class EmbeddingStoreIngestor implements StoreIngestor {
 
     private static final Logger log = LoggerFactory.getLogger(EmbeddingStoreIngestor.class);
 
