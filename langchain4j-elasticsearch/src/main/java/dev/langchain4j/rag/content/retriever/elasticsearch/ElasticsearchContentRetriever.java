@@ -219,7 +219,8 @@ public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddin
                 return new ElasticsearchContentRetriever(
                         configuration, client, indexName, embeddingModel, maxResults, minScore, filter);
             }
-            log.warn("Using RestClient is deprecated and will be removed in future versions. Please use Elasticsearch Client instead (see client() method).");
+            log.warn(
+                    "Using RestClient is deprecated and will be removed in future versions. Please use Elasticsearch Client instead (see client() method).");
             return new ElasticsearchContentRetriever(
                     configuration, restClient, indexName, embeddingModel, maxResults, minScore, filter);
         }

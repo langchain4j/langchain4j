@@ -118,11 +118,10 @@ public class ElasticsearchConfigurationHybrid implements ElasticsearchConfigurat
                             return new SourceConfig.Builder().filter(f -> f);
                         })
                         .index(indexName)
-                        .retriever(r -> r
-                                .rrf(rf -> rf
-                                        .retrievers(List.of(
-                                                RRFRetrieverEntry.of(rre -> rre.retriever(rt -> rt.standard(st -> st.query(matchQuery)))),
-                                                RRFRetrieverEntry.of(rre -> rre.retriever(rt -> rt.knn(knn)))))))
+                        .retriever(r -> r.rrf(rf -> rf.retrievers(List.of(
+                                RRFRetrieverEntry.of(
+                                        rre -> rre.retriever(rt -> rt.standard(st -> st.query(matchQuery)))),
+                                RRFRetrieverEntry.of(rre -> rre.retriever(rt -> rt.knn(knn)))))))
                         .size(embeddingSearchRequest.maxResults())
                         .minScore(embeddingSearchRequest.minScore()),
                 Document.class);

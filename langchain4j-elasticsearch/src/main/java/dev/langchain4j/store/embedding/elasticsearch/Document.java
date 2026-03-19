@@ -1,7 +1,6 @@
 package dev.langchain4j.store.embedding.elasticsearch;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-
 import java.util.Map;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -11,9 +10,7 @@ public class Document {
     private String text;
     private Map<String, Object> metadata;
 
-    Document() {
-
-    }
+    Document() {}
 
     Document(float[] vector, String text, Map<String, Object> metadata) {
         this.vector = vector;

@@ -457,7 +457,7 @@
                         <ratchetFrom>origin/main</ratchetFrom>
                         <java>
                             <palantirJavaFormat>
-                                <version>2.63.0</version>
+                                <version>2.89.0</version>
                             </palantirJavaFormat>
                         </java>
                         <pom>

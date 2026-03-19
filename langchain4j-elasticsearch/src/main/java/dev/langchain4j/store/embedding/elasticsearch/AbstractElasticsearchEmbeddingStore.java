@@ -66,7 +66,7 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
      * @param restClient            Elasticsearch Rest Client (mandatory)
      * @param indexName             Elasticsearch index name (optional). Default value: "default".
      *                              Index will be created automatically if not exists.
-     * @deprecated Use now {@link #initialize(ElasticsearchConfiguration, ElasticsearchClient, String)}                             
+     * @deprecated Use now {@link #initialize(ElasticsearchConfiguration, ElasticsearchClient, String)}
      */
     @Deprecated(forRemoval = true)
     protected void initialize(ElasticsearchConfiguration configuration, RestClient restClient, String indexName) {
@@ -91,7 +91,8 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
     protected void initialize(ElasticsearchConfiguration configuration, ElasticsearchClient client, String indexName) {
         this.configuration = configuration;
         String version = Version.VERSION == null ? "Unknown" : Version.VERSION.toString();
-        this.client = client.withTransportOptions(t -> t.addHeader("user-agent", "langchain4j elastic-java/" + version));
+        this.client =
+                client.withTransportOptions(t -> t.addHeader("user-agent", "langchain4j elastic-java/" + version));
         this.indexName = ensureNotNull(indexName, "indexName");
     }
 

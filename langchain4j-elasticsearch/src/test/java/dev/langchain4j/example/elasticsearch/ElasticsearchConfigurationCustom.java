@@ -25,20 +25,15 @@ public class ElasticsearchConfigurationCustom implements ElasticsearchConfigurat
                 .took(1L)
                 .timedOut(false)
                 .shards(s -> s.total(1).successful(1).skipped(0).failed(0))
-                .hits(hs -> hs
-                        .total(t -> t.value(1L).relation(TotalHitsRelation.Eq))
-                        .hits(hs2 -> hs2
-                                .id("my-fake-doc")
+                .hits(hs -> hs.total(t -> t.value(1L).relation(TotalHitsRelation.Eq))
+                        .hits(hs2 -> hs2.id("my-fake-doc")
                                 .index("my-fake-index")
                                 .score(1.0)
-                                .source(Document
-                                        .builder()
-                                        .vector(new float[]{0.1f, 0.2f, 0.3f})
+                                .source(Document.builder()
+                                        .vector(new float[] {0.1f, 0.2f, 0.3f})
                                         .text("This is a fake document.")
                                         .metadata(Map.of())
-                                        .build())
-                        )
-                )
+                                        .build())))
                 .build();
     }
 }

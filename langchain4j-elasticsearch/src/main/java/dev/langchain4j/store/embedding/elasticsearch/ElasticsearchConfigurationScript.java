@@ -90,10 +90,11 @@ public class ElasticsearchConfigurationScript implements ElasticsearchConfigurat
         } else {
             query = ElasticsearchMetadataFilterMapper.map(filter);
         }
-        return ScriptScoreQuery.of(q -> q.minScore(minScore).query(query)
-                .script(s -> s.source(sb -> sb.scriptString(
-                        "(cosineSimilarity(params.query_vector, 'vector') + 1.0) / 2"))
-                .params("query_vector", queryVector)));
+        return ScriptScoreQuery.of(q -> q.minScore(minScore)
+                .query(query)
+                .script(s -> s.source(
+                                sb -> sb.scriptString("(cosineSimilarity(params.query_vector, 'vector') + 1.0) / 2"))
+                        .params("query_vector", queryVector)));
     }
 
     private <T> JsonData toJsonData(T rawData) throws JsonProcessingException {
