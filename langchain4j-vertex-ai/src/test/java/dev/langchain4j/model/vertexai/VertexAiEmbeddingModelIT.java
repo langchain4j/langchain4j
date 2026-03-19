@@ -220,7 +220,7 @@ class VertexAiEmbeddingModelIT {
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
                 .publisher("google")
-                .modelName("textembedding-gecko@003")
+                .modelName("text-embedding-005")
                 .taskType(RETRIEVAL_DOCUMENT)
                 .build();
 
