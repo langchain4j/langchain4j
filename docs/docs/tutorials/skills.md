@@ -72,6 +72,41 @@ List<FileSystemSkill> skills = FileSystemSkillLoader.loadSkills(Path.of("skills/
 FileSystemSkill skill = FileSystemSkillLoader.loadSkill(Path.of("skills/docx"));
 ```
 
+### From the Classpath
+
+`ClassPathSkillLoader` works like `FileSystemSkillLoader` but resolves skill directories from
+the classpath instead of the filesystem. This is useful when skills are bundled inside your
+JAR or located under `src/main/resources`:
+
+```
+src/main/resources/
+└── skills/
+    ├── docx/
+    │   ├── SKILL.md
+    │   └── references/
+    │       └── tracked-changes.md
+    └── data-analysis/
+        └── SKILL.md
+```
+
+```java
+// Load all skills from a classpath directory:
+List<FileSystemSkill> skills = ClassPathSkillLoader.loadSkills("skills");
+
+// Or load a single skill:
+FileSystemSkill skill = ClassPathSkillLoader.loadSkill("skills/docx");
+```
+
+By default, `ClassPathSkillLoader` uses the thread's context class loader.
+You can pass a custom `ClassLoader` if needed:
+
+```java
+FileSystemSkill skill = ClassPathSkillLoader.loadSkill("skills/docx", myClassLoader);
+```
+
+The same `SKILL.md` format, resource loading rules, and `scripts/` exclusion apply
+as with `FileSystemSkillLoader`.
+
 ### Programmatically
 
 Skills do not have to be file-system based.
