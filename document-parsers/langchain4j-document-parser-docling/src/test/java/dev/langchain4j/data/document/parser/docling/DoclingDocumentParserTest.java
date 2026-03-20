@@ -64,4 +64,15 @@ class DoclingDocumentParserTest {
         // Then - verify it implements the required interface
         assertThat(parser).isInstanceOf(dev.langchain4j.data.document.DocumentParser.class);
     }
+    @Test
+    void shouldAcceptCustomServerUrl() {
+        // Given
+        String customUrl = "http://my-docling-server:8080";
+
+        // When
+        DoclingDocumentParser parser = new DoclingDocumentParser(customUrl);
+
+        // Then - verify parser was created successfully
+        assertThat(parser).isNotNull();
+    }
 }
