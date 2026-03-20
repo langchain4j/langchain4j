@@ -99,14 +99,13 @@ class HibernateContentRetrieverIT {
         ContentRetriever contentRetriever = contentRetrieverProvider.apply(sessionFactory);
 
         // when
-        List<Content> retrieved = contentRetriever.retrieve(Query.from("Who is our top customer by total spend?"));
+        List<Content> retrieved = contentRetriever.retrieve(
+                Query.from("What is the total sales in dollars for each product (ordered by product name)?"));
 
         // then
         assertThat(retrieved).hasSize(1);
 
-        assertThat(retrieved.get(0).textSegment().text())
-                .contains("Carol")
-                .doesNotContain("John", "Jane", "Alice", "Bob");
+        assertThat(retrieved.get(0).textSegment().text()).contains("99.98", "71.97", "64.95", "22.50", "23.97");
     }
 
     @ParameterizedTest
