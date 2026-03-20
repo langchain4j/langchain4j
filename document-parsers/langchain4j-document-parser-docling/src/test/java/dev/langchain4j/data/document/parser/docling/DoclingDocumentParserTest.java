@@ -10,5 +10,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class DoclingDocumentParserTest {
-    // Tests will be added incrementally
+    class DoclingDocumentParserTest {
+    
+    @Test
+    void shouldThrowExceptionWhenInputStreamIsNull() {
+        // Given
+        DoclingDocumentParser parser = new DoclingDocumentParser("http://localhost:5001");
+
+        // When/Then
+        assertThatThrownBy(() -> parser.parse(null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("cannot be null");
+    }
+}
 }
