@@ -203,6 +203,10 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         return false;
     }
 
+    protected String localDateTimeFieldsSystemMessage() {
+        return null;
+    }
+
     interface PersonExtractor2 {
 
         class Person {
@@ -841,7 +845,13 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         // given
         model = spy(model);
 
-        PersonExtractor13 personExtractor = AiServices.create(PersonExtractor13.class, model);
+        String systemMessage = localDateTimeFieldsSystemMessage();
+        PersonExtractor13 personExtractor = systemMessage == null
+                ? AiServices.create(PersonExtractor13.class, model)
+                : AiServices.builder(PersonExtractor13.class)
+                        .chatModel(model)
+                        .systemMessage(systemMessage)
+                        .build();
 
         String text = "Extract the person's information from the following text."
                 + "Fill in all the fields where the information is available! "
@@ -859,7 +869,12 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         verify(model)
                 .chat(ChatRequest.builder()
-                        .messages(singletonList(userMessage(text)))
+                        .messages(
+                                systemMessage == null
+                                        ? singletonList(userMessage(text))
+                                        : List.of(
+                                                dev.langchain4j.data.message.SystemMessage.systemMessage(systemMessage),
+                                                userMessage(text)))
                         .responseFormat(ResponseFormat.builder()
                                 .type(JSON)
                                 .jsonSchema(JsonSchema.builder()
