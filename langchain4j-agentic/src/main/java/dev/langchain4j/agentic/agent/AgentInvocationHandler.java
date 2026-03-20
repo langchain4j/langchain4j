@@ -154,6 +154,7 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
     }
 
     private static Optional<UserMessage> lastUserMessage(Collection<ChatMessage> messages) {
+        // TODO replace with UserMessage.findLast(messages)
         return messages.stream()
                 .filter(UserMessage.class::isInstance)
                 .map(UserMessage.class::cast)
