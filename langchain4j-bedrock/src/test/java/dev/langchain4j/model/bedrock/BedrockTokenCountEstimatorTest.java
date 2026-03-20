@@ -96,8 +96,7 @@ class BedrockTokenCountEstimatorTest {
                 .addText("Be concise.")
                 .build();
 
-        int count = estimator.estimateTokenCountInMessages(
-                List.of(bedrockSystem, UserMessage.from("Hello")));
+        int count = estimator.estimateTokenCountInMessages(List.of(bedrockSystem, UserMessage.from("Hello")));
 
         assertThat(count).isEqualTo(15);
 
@@ -113,8 +112,10 @@ class BedrockTokenCountEstimatorTest {
         when(mockClient.countTokens(any(CountTokensRequest.class)))
                 .thenReturn(CountTokensResponse.builder().inputTokens(12).build());
 
-        int count = estimator.estimateTokenCountInMessages(
-                List.of(SystemMessage.from("You are helpful."), SystemMessage.from("You are concise."), UserMessage.from("Hi")));
+        int count = estimator.estimateTokenCountInMessages(List.of(
+                SystemMessage.from("You are helpful."),
+                SystemMessage.from("You are concise."),
+                UserMessage.from("Hi")));
 
         assertThat(count).isEqualTo(12);
 
@@ -144,18 +145,18 @@ class BedrockTokenCountEstimatorTest {
     @Test
     void should_fail_when_model_id_is_null() {
         assertThatThrownBy(() -> BedrockTokenCountEstimator.builder()
-                .client(mockClient)
-                .modelId(null)
-                .build())
+                        .client(mockClient)
+                        .modelId(null)
+                        .build())
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void should_fail_when_model_id_is_blank() {
         assertThatThrownBy(() -> BedrockTokenCountEstimator.builder()
-                .client(mockClient)
-                .modelId("  ")
-                .build())
+                        .client(mockClient)
+                        .modelId("  ")
+                        .build())
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -166,9 +167,7 @@ class BedrockTokenCountEstimatorTest {
         when(mockClient.countTokens(any(CountTokensRequest.class)))
                 .thenReturn(CountTokensResponse.builder().inputTokens(3).build());
 
-        estimator.estimateTokenCountInMessages(List.of(
-                UserMessage.from("hi"),
-                AiMessage.from(TOOL_REQUEST)));
+        estimator.estimateTokenCountInMessages(List.of(UserMessage.from("hi"), AiMessage.from(TOOL_REQUEST)));
 
         ArgumentCaptor<CountTokensRequest> captor = ArgumentCaptor.forClass(CountTokensRequest.class);
         verify(mockClient).countTokens(captor.capture());
@@ -176,9 +175,11 @@ class BedrockTokenCountEstimatorTest {
         // USER, ASSISTANT(tool_use), USER(dummy tool_result)
         assertThat(sent).hasSize(3);
         assertThat(sent.get(1).role()).isEqualTo(ConversationRole.ASSISTANT);
-        assertThat(sent.get(1).content().stream().anyMatch(b -> b.toolUse() != null)).isTrue();
+        assertThat(sent.get(1).content().stream().anyMatch(b -> b.toolUse() != null))
+                .isTrue();
         assertThat(sent.get(2).role()).isEqualTo(ConversationRole.USER);
-        assertThat(sent.get(2).content().stream().anyMatch(b -> b.toolResult() != null)).isTrue();
+        assertThat(sent.get(2).content().stream().anyMatch(b -> b.toolResult() != null))
+                .isTrue();
         assertThat(sent.get(2).content().get(0).toolResult().toolUseId()).isEqualTo("t1");
     }
 
@@ -189,9 +190,7 @@ class BedrockTokenCountEstimatorTest {
 
         AiMessage aiWithTextAndTool = new AiMessage("Let me check", List.of(TOOL_REQUEST));
 
-        estimator.estimateTokenCountInMessages(List.of(
-                UserMessage.from("hi"),
-                aiWithTextAndTool));
+        estimator.estimateTokenCountInMessages(List.of(UserMessage.from("hi"), aiWithTextAndTool));
 
         ArgumentCaptor<CountTokensRequest> captor = ArgumentCaptor.forClass(CountTokensRequest.class);
         verify(mockClient).countTokens(captor.capture());
@@ -209,9 +208,8 @@ class BedrockTokenCountEstimatorTest {
         when(mockClient.countTokens(any(CountTokensRequest.class)))
                 .thenReturn(CountTokensResponse.builder().inputTokens(3).build());
 
-        estimator.estimateTokenCountInMessages(List.of(
-                ToolExecutionResultMessage.from("t1", "myTool", "result"),
-                AiMessage.from("The result is 42")));
+        estimator.estimateTokenCountInMessages(
+                List.of(ToolExecutionResultMessage.from("t1", "myTool", "result"), AiMessage.from("The result is 42")));
 
         ArgumentCaptor<CountTokensRequest> captor = ArgumentCaptor.forClass(CountTokensRequest.class);
         verify(mockClient).countTokens(captor.capture());
@@ -239,7 +237,8 @@ class BedrockTokenCountEstimatorTest {
         assertThat(sent).hasSize(5);
         assertThat(sent.get(0).role()).isEqualTo(ConversationRole.USER);
         assertThat(sent.get(1).role()).isEqualTo(ConversationRole.ASSISTANT);
-        assertThat(sent.get(1).content().stream().anyMatch(b -> b.toolUse() != null)).isTrue();
+        assertThat(sent.get(1).content().stream().anyMatch(b -> b.toolUse() != null))
+                .isTrue();
         assertThat(sent.get(2).role()).isEqualTo(ConversationRole.USER);
         assertThat(sent.get(2).content().get(0).toolResult().toolUseId()).isEqualTo("t1");
         assertThat(sent.get(3).role()).isEqualTo(ConversationRole.USER);
@@ -255,10 +254,7 @@ class BedrockTokenCountEstimatorTest {
 
         // AiMessage with text+tool_use followed by UserMessage (no tool_result)
         estimator.estimateTokenCountInMessages(List.of(
-                UserMessage.from("hi"),
-                aiWithTextAndTool,
-                UserMessage.from("never mind"),
-                AiMessage.from("OK")));
+                UserMessage.from("hi"), aiWithTextAndTool, UserMessage.from("never mind"), AiMessage.from("OK")));
 
         ArgumentCaptor<CountTokensRequest> captor = ArgumentCaptor.forClass(CountTokensRequest.class);
         verify(mockClient).countTokens(captor.capture());
@@ -289,9 +285,11 @@ class BedrockTokenCountEstimatorTest {
         assertThat(sent).hasSize(4);
         assertThat(sent.get(0).role()).isEqualTo(ConversationRole.USER);
         assertThat(sent.get(1).role()).isEqualTo(ConversationRole.ASSISTANT);
-        assertThat(sent.get(1).content().stream().anyMatch(b -> b.toolUse() != null)).isTrue();
+        assertThat(sent.get(1).content().stream().anyMatch(b -> b.toolUse() != null))
+                .isTrue();
         assertThat(sent.get(2).role()).isEqualTo(ConversationRole.USER);
-        assertThat(sent.get(2).content().stream().anyMatch(b -> b.toolResult() != null)).isTrue();
+        assertThat(sent.get(2).content().stream().anyMatch(b -> b.toolResult() != null))
+                .isTrue();
         assertThat(sent.get(3).role()).isEqualTo(ConversationRole.ASSISTANT);
     }
 
@@ -305,9 +303,7 @@ class BedrockTokenCountEstimatorTest {
                 .text("The answer is 42")
                 .build();
 
-        estimator.estimateTokenCountInMessages(List.of(
-                UserMessage.from("hi"),
-                aiWithThinking));
+        estimator.estimateTokenCountInMessages(List.of(UserMessage.from("hi"), aiWithThinking));
 
         ArgumentCaptor<CountTokensRequest> captor = ArgumentCaptor.forClass(CountTokensRequest.class);
         verify(mockClient).countTokens(captor.capture());
@@ -336,8 +332,14 @@ class BedrockTokenCountEstimatorTest {
         // USER, ASSISTANT(both tool_use kept), USER(real t1 result + dummy t2 result), ASSISTANT
         assertThat(sent).hasSize(4);
         assertThat(sent.get(1).role()).isEqualTo(ConversationRole.ASSISTANT);
-        assertThat(sent.get(1).content().stream().filter(b -> b.toolUse() != null).count()).isEqualTo(2);
+        assertThat(sent.get(1).content().stream()
+                        .filter(b -> b.toolUse() != null)
+                        .count())
+                .isEqualTo(2);
         assertThat(sent.get(2).role()).isEqualTo(ConversationRole.USER);
-        assertThat(sent.get(2).content().stream().filter(b -> b.toolResult() != null).count()).isEqualTo(2);
+        assertThat(sent.get(2).content().stream()
+                        .filter(b -> b.toolResult() != null)
+                        .count())
+                .isEqualTo(2);
     }
 }
