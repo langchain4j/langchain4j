@@ -1,6 +1,7 @@
 package dev.langchain4j.skills;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.service.tool.ToolProvider;
 
 import java.util.List;
 
@@ -33,9 +34,24 @@ public interface Skill {
     String content();
 
     /**
-     * Returns the list of additional resources associated with this skill (e.g. references, assets, templates, etc.).
+     * Returns the optional list of additional resources associated with this skill
+     * (e.g. references, assets, templates, etc.).
+     *
+     * @return the list of resources, empty by default
      */
-    List<SkillResource> resources();
+    default List<SkillResource> resources() {
+        return List.of();
+    }
+
+    /**
+     * Returns the optional list of tool providers associated with this skill.
+     * These tool providers supply tools that will be exposed to the LLM when this skill is activated.
+     *
+     * @return the list of tool providers, empty by default
+     */
+    default List<ToolProvider> toolProviders() {
+        return List.of();
+    }
 
     static DefaultSkill.Builder builder() {
         return new DefaultSkill.Builder();

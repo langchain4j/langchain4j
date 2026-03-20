@@ -6,7 +6,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.AiServiceParamsUtil.chatRequestParameters;
 
 import dev.langchain4j.Internal;
-import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
@@ -14,6 +13,7 @@ import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialResponse;
 import dev.langchain4j.model.chat.response.PartialResponseContext;
@@ -21,6 +21,7 @@ import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialThinkingContext;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCallContext;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
 import dev.langchain4j.rag.content.Content;
@@ -28,9 +29,9 @@ import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
-import dev.langchain4j.service.tool.ToolExecutor;
+import dev.langchain4j.service.tool.ToolService;
+import dev.langchain4j.service.tool.ToolServiceContext;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -40,9 +41,7 @@ public class AiServiceTokenStream implements TokenStream {
 
     private final List<ChatMessage> messages;
 
-    private final List<ToolSpecification> effectiveTools;
-    private final List<ToolSpecification> availableTools;
-    private final Map<String, ToolExecutor> toolExecutors;
+    private final ToolServiceContext toolServiceContext;
     private final ToolArgumentsErrorHandler toolArgumentsErrorHandler;
     private final ToolExecutionErrorHandler toolExecutionErrorHandler;
     private final Executor toolExecutor;
@@ -88,9 +87,7 @@ public class AiServiceTokenStream implements TokenStream {
     public AiServiceTokenStream(AiServiceTokenStreamParameters parameters) {
         ensureNotNull(parameters, "parameters");
         this.messages = copy(ensureNotEmpty(parameters.messages(), "messages"));
-        this.effectiveTools = copy(parameters.effectiveTools());
-        this.availableTools = copy(parameters.availableTools());
-        this.toolExecutors = copy(parameters.toolExecutors());
+        this.toolServiceContext = parameters.toolServiceContext();
         this.toolArgumentsErrorHandler = parameters.toolArgumentsErrorHandler();
         this.toolExecutionErrorHandler = parameters.toolExecutionErrorHandler();
         this.toolExecutor = parameters.toolExecutor();
@@ -197,6 +194,10 @@ public class AiServiceTokenStream implements TokenStream {
     public void start() {
         validateConfiguration();
 
+        List<ToolSpecification> effectiveTools = toolServiceContext != null
+                ? toolServiceContext.effectiveTools()
+                : null;
+
         ChatRequest chatRequest = context.chatRequestTransformer.apply(
                 ChatRequest.builder()
                         .messages(messages)
@@ -229,8 +230,7 @@ public class AiServiceTokenStream implements TokenStream {
                 errorHandler,
                 initTemporaryMemory(context, messages),
                 new TokenUsage(),
-                availableTools,
-                toolExecutors,
+                toolServiceContext,
                 context.toolService.maxSequentialToolsInvocations(),
                 toolArgumentsErrorHandler,
                 toolExecutionErrorHandler,

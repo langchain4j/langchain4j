@@ -2,6 +2,8 @@ package dev.langchain4j.service;
 
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
+import static dev.langchain4j.service.AiServicesWithToolSearchToolIT.containsTool;
 import static dev.langchain4j.service.AiServicesWithToolsIT.TransactionService.EXPECTED_SPECIFICATION;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonMap;
@@ -11,6 +13,7 @@ import static org.assertj.core.data.MapEntry.entry;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -48,6 +51,7 @@ import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
+import dev.langchain4j.service.tool.ToolProviderRequest;
 import dev.langchain4j.service.tool.ToolProviderResult;
 
 import java.time.LocalDate;
@@ -71,6 +75,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullSource;
+import org.mockito.InOrder;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
@@ -1569,5 +1574,208 @@ class AiServicesWithToolsIT {
             result.set(prod);
             return prod;
         }
+    }
+
+    @Test
+    void should_call_static_tool_provider_once_and_dynamic_tool_provider_before_each_chat_model_request() {
+
+        // given
+        ToolProvider spyStaticProvider = spy(new ToolProvider() {
+            @Override
+            public ToolProviderResult provideTools(ToolProviderRequest request) {
+                ToolSpecification getWeather = ToolSpecification.builder()
+                        .name("getWeather")
+                        .description("Gets the weather for a city")
+                        .build();
+                return ToolProviderResult.builder()
+                        .add(getWeather, (req, memoryId) -> "sunny")
+                        .build();
+            }
+        });
+
+        ToolProvider spyDynamicProvider = spy(new ToolProvider() {
+            @Override
+            public ToolProviderResult provideTools(ToolProviderRequest request) {
+                ToolSpecification getTime = ToolSpecification.builder()
+                        .name("getTime")
+                        .description("Gets the current time")
+                        .build();
+                return ToolProviderResult.builder()
+                        .add(getTime, (req, memoryId) -> "12:00")
+                        .build();
+            }
+
+            @Override
+            public boolean isDynamic() {
+                return true;
+            }
+        });
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("getWeather")
+                        .arguments("{\"city\":\"London\"}")
+                        .build()),
+                AiMessage.from("It is sunny in London")
+        );
+        ChatModel spyChatModel = spy(chatModel);
+
+        interface SimpleAssistant {
+            String chat(String userMessage);
+        }
+
+        SimpleAssistant assistant = AiServices.builder(SimpleAssistant.class)
+                .chatModel(spyChatModel)
+                .toolProviders(spyStaticProvider, spyDynamicProvider)
+                .build();
+
+        // when
+        String answer = assistant.chat("What is the weather in London?");
+
+        // then
+        assertThat(answer).contains("sunny");
+
+        verify(spyStaticProvider, times(1)).provideTools(any());
+        verify(spyDynamicProvider, times(2)).provideTools(any());
+
+        verify(spyChatModel, times(2)).chat(argThat((ChatRequest request) ->
+                request.toolSpecifications().stream().anyMatch(t -> t.name().equals("getWeather"))
+                        && request.toolSpecifications().stream().anyMatch(t -> t.name().equals("getTime"))
+        ));
+    }
+
+    @Test
+    void dynamic_provider_new_tools_in_second_call_should_be_added() {
+
+        // given
+        AtomicInteger callCount = new AtomicInteger(0);
+
+        ToolProvider spyDynamicProvider = spy(new ToolProvider() {
+            @Override
+            public ToolProviderResult provideTools(ToolProviderRequest request) {
+                int call = callCount.incrementAndGet();
+                ToolProviderResult.Builder builder = ToolProviderResult.builder();
+                builder.add(
+                        ToolSpecification.builder().name("getWeather").description("Gets the weather").build(),
+                        (req, memoryId) -> "sunny"
+                );
+                if (call >= 2) {
+                    builder.add(
+                            ToolSpecification.builder().name("getTime").description("Gets the time").build(),
+                            (req, memoryId) -> "12:00"
+                    );
+                }
+                return builder.build();
+            }
+
+            @Override
+            public boolean isDynamic() {
+                return true;
+            }
+        });
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("getWeather")
+                        .arguments("{}")
+                        .build()),
+                AiMessage.from("It is sunny and the time is 12:00")
+        );
+        ChatModel spyChatModel = spy(chatModel);
+
+        interface SimpleAssistant {
+            String chat(String userMessage);
+        }
+
+        SimpleAssistant assistant = AiServices.builder(SimpleAssistant.class)
+                .chatModel(spyChatModel)
+                .toolProviders(spyDynamicProvider)
+                .build();
+
+        // when
+        String answer = assistant.chat("What is the weather?");
+
+        // then
+        assertThat(answer).contains("sunny");
+
+        InOrder inOrder = inOrder(spyChatModel);
+
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                containsTool(request, "getWeather")
+                        && !containsTool(request, "getTime")
+        ));
+
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                containsTool(request, "getWeather")
+                        && containsTool(request, "getTime")
+        ));
+
+        verifyNoMoreInteractionsFor(spyChatModel);
+    }
+
+    @Test
+    void dynamic_provider_not_returning_tool_in_second_call_should_still_have_it() {
+
+        // given
+        AtomicInteger callCount = new AtomicInteger(0);
+
+        ToolProvider spyDynamicProvider = spy(new ToolProvider() {
+            @Override
+            public ToolProviderResult provideTools(ToolProviderRequest request) {
+                int call = callCount.incrementAndGet();
+                ToolProviderResult.Builder builder = ToolProviderResult.builder();
+                builder.add(
+                        ToolSpecification.builder().name("getWeather").description("Gets the weather").build(),
+                        (req, memoryId) -> "sunny"
+                );
+                if (call == 1) {
+                    // Only returned on first call
+                    builder.add(
+                            ToolSpecification.builder().name("getTime").description("Gets the time").build(),
+                            (req, memoryId) -> "12:00"
+                    );
+                }
+                return builder.build();
+            }
+
+            @Override
+            public boolean isDynamic() {
+                return true;
+            }
+        });
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("getWeather")
+                        .arguments("{}")
+                        .build()),
+                AiMessage.from("It is sunny and the time is 12:00")
+        );
+        ChatModel spyChatModel = spy(chatModel);
+
+        interface SimpleAssistant {
+            String chat(String userMessage);
+        }
+
+        SimpleAssistant assistant = AiServices.builder(SimpleAssistant.class)
+                .chatModel(spyChatModel)
+                .toolProviders(spyDynamicProvider)
+                .build();
+
+        // when
+        String answer = assistant.chat("What is the weather?");
+
+        // then
+        assertThat(answer).contains("sunny");
+
+        verify(spyChatModel, times(2)).chat(argThat((ChatRequest request) ->
+                containsTool(request, "getWeather")
+                        && containsTool(request, "getTime")
+        ));
+
+        verifyNoMoreInteractionsFor(spyChatModel);
     }
 }
