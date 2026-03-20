@@ -23,4 +23,16 @@ class DoclingDocumentParserTest {
                 .hasMessageContaining("cannot be null");
     }
 }
+    @Test
+    void shouldThrowExceptionWhenInputStreamIsEmpty() {
+        // Given
+        DoclingDocumentParser parser = new DoclingDocumentParser("http://localhost:5001");
+        InputStream emptyStream = new ByteArrayInputStream(new byte[0]);
+
+        // When/Then
+        assertThatThrownBy(() -> parser.parse(emptyStream))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("empty");
+    }
+
 }
