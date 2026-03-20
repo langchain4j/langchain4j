@@ -41,6 +41,7 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
+import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolErrorHandlerResult;
 import dev.langchain4j.service.tool.ToolExecution;
@@ -54,6 +55,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
@@ -238,6 +240,24 @@ class StreamingAiServicesWithToolsIT {
 
         Tools spyTools = spy(new Tools());
 
+        class AiServiceHooks {
+
+            final Map<String, Object> toolResults = new ConcurrentHashMap<>();
+            final Map<String, Thread> beforeHookThreads = new ConcurrentHashMap<>();
+            final Map<String, Thread> afterHookThreads = new ConcurrentHashMap<>();
+
+            void beforeToolExecution(BeforeToolExecution before) {
+                beforeHookThreads.put(before.request().name(), Thread.currentThread());
+            }
+
+            void afterToolExecution(ToolExecution exec) {
+                toolResults.put(exec.request().name(), exec.resultObject());
+                afterHookThreads.put(exec.request().name(), Thread.currentThread());
+            }
+        }
+
+        AiServiceHooks aiServiceHooks = spy(new AiServiceHooks());
+
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
         Assistant assistant = AiServices.builder(Assistant.class)
@@ -245,6 +265,8 @@ class StreamingAiServicesWithToolsIT {
                 .chatMemory(chatMemory)
                 .tools(spyTools)
                 .executeToolsConcurrently(executor)
+                .beforeToolExecution(aiServiceHooks::beforeToolExecution)
+                .afterToolExecution(aiServiceHooks::afterToolExecution)
                 .build();
 
         String userMessage = "What is the current time and temperature in Munich?";
@@ -274,70 +296,59 @@ class StreamingAiServicesWithToolsIT {
         // then
         assertThat(response.aiMessage().text()).contains(Tools.CURRENT_TIME, Tools.CURRENT_TEMPERATURE);
 
-        // then
-        InOrder inOrder = inOrder(handler, spyTools);
+        // then: verify order per tool: AI Service before -> handler before -> tool -> AI Service after -> handler after
+        InOrder inOrder = inOrder(aiServiceHooks, handler, spyTools);
+        inOrder.verify(aiServiceHooks)
+                .beforeToolExecution(argThat(bte -> bte.request().name().equals("getCurrentTime")));
         inOrder.verify(handler)
                 .beforeToolExecution(argThat(bte -> bte.request().name().equals("getCurrentTime")));
         inOrder.verify(spyTools).getCurrentTime("Munich");
+        inOrder.verify(aiServiceHooks)
+                .afterToolExecution(argThat(te -> te.request().name().equals("getCurrentTime")));
         inOrder.verify(handler).onToolExecuted(argThat(te -> te.request().name().equals("getCurrentTime")));
 
-        InOrder inOrder2 = inOrder(handler, spyTools);
+        InOrder inOrder2 = inOrder(aiServiceHooks, handler, spyTools);
+        inOrder2.verify(aiServiceHooks)
+                .beforeToolExecution(argThat(bte -> bte.request().name().equals("getCurrentTemperature")));
         inOrder2.verify(handler)
                 .beforeToolExecution(argThat(bte -> bte.request().name().equals("getCurrentTemperature")));
         inOrder2.verify(spyTools).getCurrentTemperature("Munich");
+        inOrder2.verify(aiServiceHooks)
+                .afterToolExecution(argThat(te -> te.request().name().equals("getCurrentTemperature")));
         inOrder2.verify(handler)
                 .onToolExecuted(argThat(te -> te.request().name().equals("getCurrentTemperature")));
 
         // then
-        log.info(
-                "should_execute_multiple_tools_in_parallel_concurrently_then_answer({}) allThreadsByMethod: {}",
-                executor,
-                handler.allThreadsByMethod);
-        log.info(
-                "should_execute_multiple_tools_in_parallel_concurrently_then_answer({}) beforeToolExecutionThreads: {}",
-                executor,
-                handler.beforeToolExecutionThreads);
-        log.info(
-                "should_execute_multiple_tools_in_parallel_concurrently_then_answer({}) onToolExecutedThreads: {}",
-                executor,
-                handler.onToolExecutedThreads);
+        assertThat(spyTools.getCurrentTimeThreads).hasSize(1);
+        Thread getCurrentTimeThread = spyTools.getCurrentTimeThreads.poll();
+        assertThat(getCurrentTimeThread).isNotEqualTo(Thread.currentThread());
+
+        assertThat(spyTools.getCurrentTemperatureThreads).hasSize(1);
+        Thread getCurrentTemperatureThread = spyTools.getCurrentTemperatureThreads.poll();
+        assertThat(getCurrentTemperatureThread).isNotEqualTo(Thread.currentThread());
+
+        assertThat(getCurrentTimeThread).isNotEqualTo(getCurrentTemperatureThread);
+
+        assertThat(aiServiceHooks.toolResults)
+                .hasSize(2)
+                .containsEntry("getCurrentTime", Tools.CURRENT_TIME)
+                .containsEntry("getCurrentTemperature", Tools.CURRENT_TEMPERATURE);
+
+        assertThat(aiServiceHooks.beforeHookThreads).hasSize(2);
+        assertThat(aiServiceHooks.beforeHookThreads.get("getCurrentTime")).isEqualTo(getCurrentTimeThread);
+        assertThat(aiServiceHooks.beforeHookThreads.get("getCurrentTemperature")).isEqualTo(getCurrentTemperatureThread);
+
+        assertThat(aiServiceHooks.afterHookThreads).hasSize(2);
+        assertThat(aiServiceHooks.afterHookThreads.get("getCurrentTime")).isEqualTo(getCurrentTimeThread);
+        assertThat(aiServiceHooks.afterHookThreads.get("getCurrentTemperature")).isEqualTo(getCurrentTemperatureThread);
 
         assertThat(handler.beforeToolExecutionThreads).hasSize(2);
         assertThat(handler.beforeToolExecutionThreads.get("getCurrentTime")).hasSize(1);
-        assertThat(handler.beforeToolExecutionThreads.get("getCurrentTemperature"))
-                .hasSize(1);
+        assertThat(handler.beforeToolExecutionThreads.get("getCurrentTemperature")).hasSize(1);
 
         assertThat(handler.onToolExecutedThreads).hasSize(2);
         assertThat(handler.onToolExecutedThreads.get("getCurrentTime")).hasSize(1);
         assertThat(handler.onToolExecutedThreads.get("getCurrentTemperature")).hasSize(1);
-
-        assertThat(spyTools.getCurrentTimeThreads).hasSize(1);
-        Thread getCurrentTimeThread = spyTools.getCurrentTimeThreads.poll();
-        assertThat(getCurrentTimeThread)
-                .isEqualTo(handler.beforeToolExecutionThreads
-                        .get("getCurrentTime")
-                        .iterator()
-                        .next());
-        assertThat(getCurrentTimeThread)
-                .isEqualTo(handler.onToolExecutedThreads
-                        .get("getCurrentTime")
-                        .iterator()
-                        .next());
-
-        assertThat(spyTools.getCurrentTemperatureThreads).hasSize(1);
-        Thread getCurrentTemperatureThread = spyTools.getCurrentTemperatureThreads.poll();
-        assertThat(getCurrentTemperatureThread)
-                .isEqualTo(handler.beforeToolExecutionThreads
-                        .get("getCurrentTemperature")
-                        .iterator()
-                        .next());
-        assertThat(getCurrentTemperatureThread)
-                .isEqualTo(handler.onToolExecutedThreads
-                        .get("getCurrentTemperature")
-                        .iterator()
-                        .next());
-
-        assertThat(getCurrentTimeThread).isNotEqualTo(getCurrentTemperatureThread);
     }
 
     static List<Executor> executors() {
