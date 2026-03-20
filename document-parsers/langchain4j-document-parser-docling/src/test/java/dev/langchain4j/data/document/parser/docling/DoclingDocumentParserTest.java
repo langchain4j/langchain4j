@@ -22,7 +22,7 @@ class DoclingDocumentParserTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("cannot be null");
     }
-}
+    }
     @Test
     void shouldThrowExceptionWhenInputStreamIsEmpty() {
         // Given
@@ -34,5 +34,11 @@ class DoclingDocumentParserTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("empty");
     }
-
+    @Test
+    void shouldThrowExceptionWhenServerUrlIsNull() {
+        // When/Then
+        assertThatThrownBy(() -> new DoclingDocumentParser(null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("server URL");
+    }
 }
