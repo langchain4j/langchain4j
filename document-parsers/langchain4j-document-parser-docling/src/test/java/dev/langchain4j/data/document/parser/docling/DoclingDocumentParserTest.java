@@ -56,4 +56,12 @@ class DoclingDocumentParserTest {
         // Then - verifies constructor doesn't throw and creates valid instance
         assertThat(parser).isNotNull();
     }
+    @Test
+    void shouldImplementDocumentParserInterface() {
+        // Given
+        DoclingDocumentParser parser = new DoclingDocumentParser();
+
+        // Then - verify it implements the required interface
+        assertThat(parser).isInstanceOf(dev.langchain4j.data.document.DocumentParser.class);
+    }
 }
