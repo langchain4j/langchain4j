@@ -50,7 +50,8 @@ class BedrockMessageConverterTest {
 
     @Test
     void convertContents_empty_list() {
-        assertThat(BedrockMessageConverter.convertContents(Collections.emptyList())).isEmpty();
+        assertThat(BedrockMessageConverter.convertContents(Collections.emptyList()))
+                .isEmpty();
     }
 
     @Test

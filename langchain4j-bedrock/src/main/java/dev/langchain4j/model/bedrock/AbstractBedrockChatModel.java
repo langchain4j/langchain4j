@@ -924,8 +924,7 @@ abstract class AbstractBedrockChatModel {
         if (jsonSchema.rootElement() instanceof JsonRawSchema rawSchema) {
             jsonSchemaString = rawSchema.schema();
         } else {
-            Map<String, Object> jsonSchemaMap =
-                    toMap(jsonSchema.rootElement(), true, true, "string");
+            Map<String, Object> jsonSchemaMap = toMap(jsonSchema.rootElement(), true, true, "string");
             jsonSchemaString = Json.toJson(jsonSchemaMap);
         }
 

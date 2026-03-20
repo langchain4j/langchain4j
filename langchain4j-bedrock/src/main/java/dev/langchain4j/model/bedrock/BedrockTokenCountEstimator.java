@@ -102,9 +102,8 @@ public class BedrockTokenCountEstimator implements TokenCountEstimator {
                     }
                 }
             } else if (message instanceof SystemMessage systemMsg) {
-                systemBlocks.add(SystemContentBlock.builder()
-                        .text(systemMsg.text())
-                        .build());
+                systemBlocks.add(
+                        SystemContentBlock.builder().text(systemMsg.text()).build());
             } else if (message instanceof UserMessage userMsg) {
                 sanitizeAndFlush(conversationMessages, pendingToolResults, pendingToolUseIndex);
                 pendingToolUseIndex = -1;
@@ -189,7 +188,8 @@ public class BedrockTokenCountEstimator implements TokenCountEstimator {
             // Inject dummy tool_result for each tool_use that has no matching result
             Message msg = messages.get(toolUseIndex);
             for (ContentBlock block : msg.content()) {
-                if (block.toolUse() != null && !resultIds.contains(block.toolUse().toolUseId())) {
+                if (block.toolUse() != null
+                        && !resultIds.contains(block.toolUse().toolUseId())) {
                     pendingToolResults.add(createDummyToolResult(block.toolUse().toolUseId()));
                 }
             }

@@ -87,9 +87,8 @@ class BedrockMessageConverter {
     static ContentBlock createToolResultBlock(ToolExecutionResultMessage toolResult) {
         ToolResultBlock.Builder resultBuilder = ToolResultBlock.builder()
                 .toolUseId(toolResult.id())
-                .content(ToolResultContentBlock.builder()
-                        .text(toolResult.text())
-                        .build());
+                .content(
+                        ToolResultContentBlock.builder().text(toolResult.text()).build());
         if (Boolean.TRUE.equals(toolResult.isError())) {
             resultBuilder.status(ToolResultStatus.ERROR);
         }
