@@ -13,7 +13,7 @@ https://www.elastic.co/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-elasticsearch</artifactId>
-    <version>1.12.1-beta21</version>
+    <version>1.12.2-beta22</version>
 </dependency>
 ```
 
@@ -262,6 +262,12 @@ public class MyElasticsearchConfiguration implements ElasticsearchConfiguration 
     }
 }
 ```
+
+Please note that you can implement only the methods relevant to your use case:
+
+* `vectorSearch` for vector similarity search (used by both `ElasticsearchEmbeddingStore` and `ElasticsearchContentRetriever`).
+* `fullTextSearch` for full text search (used by `ElasticsearchContentRetriever` only).
+* `hybridSearch` for hybrid search (used by `ElasticsearchContentRetriever` only).
 
 ## Examples
 

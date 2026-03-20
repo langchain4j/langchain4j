@@ -105,7 +105,7 @@ adjusting and customizing more and more aspects.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>1.12.1-beta21</version>
+    <version>1.12.2-beta22</version>
 </dependency>
 ```
 
@@ -786,6 +786,8 @@ Some known approaches to improve retrieval include:
 - Hypothetical document embeddings (HyDE)
 
 More details can be found [here](https://blog.langchain.dev/query-transformations/).
+
+LangChain4j also has an optional community [Prompt Repetition](/integrations/prompt-repetition/) module that provides `RepeatingQueryTransformer`. It repeats the retrieval query before content retrieval and should be used to transform the query itself, not the final augmented prompt sent to the model.
 
 #### Default Query Transformer
 `DefaultQueryTransformer` is the default implementation used in `DefaultRetrievalAugmentor`.
