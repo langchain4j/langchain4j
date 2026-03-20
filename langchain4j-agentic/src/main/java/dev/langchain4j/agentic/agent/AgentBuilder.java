@@ -22,7 +22,6 @@ import dev.langchain4j.agentic.observability.MonitoredAgent;
 import dev.langchain4j.agentic.internal.AgentUtil;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.internal.Context;
-import dev.langchain4j.agentic.internal.UserMessageRecorder;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
@@ -39,6 +38,7 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.observability.api.listener.AiServiceResponseReceivedListener;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.service.AiServiceContext;
@@ -180,20 +180,16 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         setupGuardrails(aiServices);
         setupTools(aiServices);
 
-        UserMessageRecorder messageRecorder = new UserMessageRecorder();
         boolean agenticScopeDependent =
                 contextProvider != null || (contextProvidingAgents != null && contextProvidingAgents.length > 0);
         if (agenticScope != null && agenticScopeDependent) {
             if (contextProvider != null) {
                 aiServices.chatRequestTransformer(
-                        new Context.AgenticScopeContextGenerator(agenticScope, contextProvider)
-                                .andThen(messageRecorder));
+                        new Context.AgenticScopeContextGenerator(agenticScope, contextProvider));
             } else {
                 aiServices.chatRequestTransformer(
-                        new Context.Summarizer(agenticScope, model, contextProvidingAgents).andThen(messageRecorder));
+                        new Context.Summarizer(agenticScope, model, contextProvidingAgents));
             }
-        } else {
-            aiServices.chatRequestTransformer(messageRecorder);
         }
 
         AgentMonitor monitor = listenerOfType(agentListener, AgentMonitor.class);
@@ -209,9 +205,12 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
                 new Class<?>[] {
                     agentServiceClass,
                     InternalAgent.class, AgenticScopeOwner.class,
-                    ChatMemoryAccess.class, ChatMessagesAccess.class
+                    ChatMemoryAccess.class, ChatMessagesAccess.class,
+                    AiServiceResponseReceivedListener.class
                 },
-                new AgentInvocationHandler(context, aiServices.build(), this, messageRecorder, agenticScopeDependent));
+                new AgentInvocationHandler(context, aiServices.build(), this, agenticScopeDependent));
+
+        aiServices.registerListener((AiServiceResponseReceivedListener) agent);
 
         if (monitor != null) {
             monitor.setRootAgent(agent);

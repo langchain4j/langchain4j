@@ -804,7 +804,7 @@ Map<String, Object> input = Map.of(
 String story = styledWriter.invoke(input);
 ```
 
-the `AgentMonitor` records all agents invocations in a tree structure that also keeps track of the start time, finish time, duration, inputs and output of each agent invocation. At this point it is possible to retrieve the recorded executions from the monitor and for instance print it to the console for inspection.
+the `AgentMonitor` records all agents invocations in a tree structure that also keeps track of the start time, finish time, duration, tokens, inputs and output of each agent invocation. At this point it is possible to retrieve the recorded executions from the monitor and for instance print it to the console for inspection.
 
 ```java
 MonitoredExecution execution = monitor.successfulExecutions().get(0);
@@ -814,12 +814,12 @@ System.out.println(execution);
 so it will reveal the nested sequence of agents invocations necessary to generate and refine the story, like it follows:
 
 ```
-AgentInvocation{agent=Sequential, startTime=2026-02-19T17:49:54.822383375, finishTime=2026-02-19T17:50:05.914590184, duration=11092 ms, inputs={style=comedy, topic=dragons and wiz...}, output=In a realm wher...}
-|=> AgentInvocation{agent=generateStory, startTime=2026-02-19T17:49:54.825325661, finishTime=2026-02-19T17:49:57.422386599, duration=2597 ms, inputs={topic=dragons and wiz...}, output=In a realm wher...}
-|=> AgentInvocation{agent=reviewLoop, startTime=2026-02-19T17:49:57.423984553, finishTime=2026-02-19T17:50:05.914543382, duration=8490 ms, inputs={score=0.9, topic=dragons and wiz..., style=comedy, story=In a realm wher...}, output=null}
-    |=> AgentInvocation{agent=scoreStyle, iteration=0, startTime=2026-02-19T17:49:57.424105276, finishTime=2026-02-19T17:49:58.177055502, duration=752 ms, inputs={style=comedy, story=In a realm wher...}, output=0.2}
-    |=> AgentInvocation{agent=editStory, iteration=0, startTime=2026-02-19T17:49:58.177243431, finishTime=2026-02-19T17:50:05.463039694, duration=7285 ms, inputs={style=comedy, story=In a realm wher...}, output=In a realm wher...}
-    |=> AgentInvocation{agent=scoreStyle, iteration=1, startTime=2026-02-19T17:50:05.463154489, finishTime=2026-02-19T17:50:05.914156072, duration=451 ms, inputs={style=comedy, story=In a realm wher...}, output=0.9}
+AgentInvocation{agent=Sequential, startTime=2026-03-18T17:27:28.099439515, finishTime=2026-03-18T17:27:38.683498783, duration=10584 ms, tokens=0, inputs={topic=dragons and wiz..., style=comedy}, output=In a realm wher...}
+|=> AgentInvocation{agent=generateStory, startTime=2026-03-18T17:27:28.101252287, finishTime=2026-03-18T17:27:31.033561726, duration=2932 ms, tokens=127, inputs={topic=dragons and wiz...}, output=In a realm wher...}
+|=> AgentInvocation{agent=reviewLoop, startTime=2026-03-18T17:27:31.035952285, finishTime=2026-03-18T17:27:38.683438433, duration=7647 ms, tokens=0, inputs={score=0.8, topic=dragons and wiz..., style=comedy, story=In a realm wher...}, output=null}
+    |=> AgentInvocation{agent=scoreStyle, iteration=0, startTime=2026-03-18T17:27:31.036155107, finishTime=2026-03-18T17:27:31.671478699, duration=635 ms, tokens=152, inputs={style=comedy, story=In a realm wher...}, output=0.2}
+    |=> AgentInvocation{agent=editStory, iteration=0, startTime=2026-03-18T17:27:31.671711250, finishTime=2026-03-18T17:27:38.182881941, duration=6511 ms, tokens=491, inputs={style=comedy, story=In a realm wher...}, output=In a realm wher...}
+    |=> AgentInvocation{agent=scoreStyle, iteration=1, startTime=2026-03-18T17:27:38.183021641, finishTime=2026-03-18T17:27:38.683085876, duration=500 ms, tokens=439, inputs={style=comedy, story=In a realm wher...}, output=0.8}
 ```
 
 Finally, using the static `generateReport` method esposed by `HtmlReportGenerator` class, it is also possible to generate a visual HTML report of the data collected by the `AgentMonitor` for both the topology of the agentic system and the recorded executions. For instance, generating this report for the former execution: 
