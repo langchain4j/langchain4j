@@ -34,7 +34,7 @@ import dev.langchain4j.agentic.observability.AgentResponse;
 import dev.langchain4j.agentic.observability.BeforeAgentToolExecution;
 import dev.langchain4j.agentic.observability.MonitoredAgent;
 import dev.langchain4j.agentic.observability.MonitoredExecution;
-import dev.langchain4j.agentic.observability.MonitoredToolExecution;
+import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;
@@ -775,19 +775,19 @@ public class SupervisorAgentIT {
         List<AgentInvocation> nestedInvocations = topLevel.nestedInvocations();
         assertThat(nestedInvocations).isNotEmpty();
 
-        List<MonitoredToolExecution> allToolExecutions = collectToolExecutions(topLevel);
+        List<ToolExecution> allToolExecutions = collectToolExecutions(topLevel);
         assertThat(allToolExecutions).isNotEmpty();
 
-        // All tool executions should be completed
-        for (MonitoredToolExecution toolExec : allToolExecutions) {
-            assertThat(toolExec.done()).isTrue();
-            assertThat(toolExec.toolName()).isNotBlank();
+        for (ToolExecution toolExec : allToolExecutions) {
+            assertThat(toolExec.request().name()).isNotBlank();
+            assertThat(toolExec.startTime()).isNotNull();
+            assertThat(toolExec.finishTime()).isNotNull();
             assertThat(toolExec.duration()).isNotNull();
-            assertThat(toolExec.toolExecution()).isNotNull();
+            assertThat(toolExec.result()).isNotNull();
         }
 
         Set<String> toolNames = allToolExecutions.stream()
-                .map(MonitoredToolExecution::toolName)
+                .map(te -> te.request().name())
                 .collect(Collectors.toSet());
         assertThat(toolNames).contains("withdraw", "credit");
 
@@ -795,8 +795,8 @@ public class SupervisorAgentIT {
 //        generateReport(monitor, Path.of("src", "test", "resources", "agents-exection-with-tools.html"));
     }
 
-    private List<MonitoredToolExecution> collectToolExecutions(AgentInvocation invocation) {
-        List<MonitoredToolExecution> result = new ArrayList<>(invocation.toolExecutions());
+    private List<ToolExecution> collectToolExecutions(AgentInvocation invocation) {
+        List<ToolExecution> result = new ArrayList<>(invocation.toolExecutions());
         for (AgentInvocation nested : invocation.nestedInvocations()) {
             result.addAll(collectToolExecutions(nested));
         }

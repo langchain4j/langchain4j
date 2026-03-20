@@ -73,15 +73,6 @@ public class AgentMonitor implements AgentListener {
     }
 
     @Override
-    public void beforeAgentToolExecution(BeforeAgentToolExecution beforeAgentToolExecution) {
-        Object memoryId = beforeAgentToolExecution.agenticScope().memoryId();
-        MonitoredExecution execution = ongoingExecutions.get(memoryId);
-        if (execution != null) {
-            execution.beforeToolExecution(beforeAgentToolExecution);
-        }
-    }
-
-    @Override
     public void afterAgentToolExecution(AfterAgentToolExecution afterAgentToolExecution) {
         Object memoryId = afterAgentToolExecution.agenticScope().memoryId();
         MonitoredExecution execution = ongoingExecutions.get(memoryId);

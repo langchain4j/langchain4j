@@ -1,6 +1,5 @@
 package dev.langchain4j.agentic.observability;
 
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -18,7 +17,7 @@ import java.util.Optional;
 public class AgentInvocation {
 
     private final List<AgentInvocation> nestedInvocations = Collections.synchronizedList(new ArrayList<>());
-    private final List<MonitoredToolExecution> toolExecutions = Collections.synchronizedList(new ArrayList<>());
+    private final List<ToolExecution> toolExecutions = Collections.synchronizedList(new ArrayList<>());
 
     private final AgentRequest agentRequest;
     private final LocalDateTime startTime;
@@ -41,28 +40,8 @@ public class AgentInvocation {
         this.nestedInvocations.add(agentInvocation);
     }
 
-    MonitoredToolExecution beforeToolExecution(ToolExecutionRequest request) {
-        MonitoredToolExecution monitoredToolExecution = new MonitoredToolExecution(request);
-        toolExecutions.add(monitoredToolExecution);
-        return monitoredToolExecution;
-    }
-
-    void afterToolExecution(ToolExecution toolExecution) {
-        ToolExecutionRequest completedRequest = toolExecution.request();
-        for (int i = toolExecutions.size() - 1; i >= 0; i--) {
-            MonitoredToolExecution monitored = toolExecutions.get(i);
-            if (!monitored.done() && matchesRequest(monitored.request(), completedRequest)) {
-                monitored.finished(toolExecution);
-                return;
-            }
-        }
-    }
-
-    private static boolean matchesRequest(ToolExecutionRequest pending, ToolExecutionRequest completed) {
-        if (pending.id() != null && completed.id() != null) {
-            return pending.id().equals(completed.id());
-        }
-        return pending.name().equals(completed.name());
+    void addToolExecution(ToolExecution toolExecution) {
+        toolExecutions.add(toolExecution);
     }
 
     public boolean done() {
@@ -131,7 +110,7 @@ public class AgentInvocation {
         return nestedInvocations;
     }
 
-    public List<MonitoredToolExecution> toolExecutions() {
+    public List<ToolExecution> toolExecutions() {
         return toolExecutions;
     }
 
@@ -153,7 +132,7 @@ public class AgentInvocation {
                 '}');
         if (!toolExecutions.isEmpty()) {
             String toolPrefix = prefix.isEmpty() ? "|-> " : "    " + prefix;
-            for (MonitoredToolExecution toolExec : toolExecutions) {
+            for (ToolExecution toolExec : toolExecutions) {
                 sb.append("\n").append(toolPrefix).append(toolExec);
             }
         }

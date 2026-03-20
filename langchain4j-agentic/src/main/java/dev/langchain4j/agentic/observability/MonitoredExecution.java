@@ -2,7 +2,6 @@ package dev.langchain4j.agentic.observability;
 
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.scope.AgenticScope;
-import dev.langchain4j.service.tool.ToolExecution;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -59,19 +58,11 @@ public class MonitoredExecution {
         this.agentInvocationError = agentInvocationError;
     }
 
-    void beforeToolExecution(BeforeAgentToolExecution beforeToolExecution) {
-        String agentId = beforeToolExecution.agentInstance().agentId();
-        AgentInvocation invocation = ongoingInvocations.get(agentId);
-        if (invocation != null) {
-            invocation.beforeToolExecution(beforeToolExecution.toolExecution().request());
-        }
-    }
-
     void afterToolExecution(AfterAgentToolExecution afterToolExecution) {
         String agentId = afterToolExecution.agentInstance().agentId();
         AgentInvocation invocation = ongoingInvocations.get(agentId);
         if (invocation != null) {
-            invocation.afterToolExecution(afterToolExecution.toolExecution());
+            invocation.addToolExecution(afterToolExecution.toolExecution());
         }
     }
 

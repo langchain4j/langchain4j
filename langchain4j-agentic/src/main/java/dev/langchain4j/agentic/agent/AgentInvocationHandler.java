@@ -18,7 +18,6 @@ import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.invocation.LangChain4jManaged;
-import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.observability.api.listener.AiServiceListener;
 import dev.langchain4j.observability.api.listener.AiServiceResponseReceivedListener;
@@ -89,7 +88,7 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
                 return null;
             }
             return switch (method.getName()) {
-                case "lastUserMessage" -> lastUserMessage(lastResponseEvent.request().messages());
+                case "lastUserMessage" -> lastUserMessage(lastResponseEvent.request().messages()).orElse(null);
                 case "lastChatRequest" -> lastResponseEvent.request();
                 case "lastChatResponse" -> lastResponseEvent.response();
                 default ->

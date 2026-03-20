@@ -6,6 +6,7 @@ import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.workflow.ConditionalAgent;
 import dev.langchain4j.agentic.workflow.ConditionalAgentInstance;
 import dev.langchain4j.agentic.workflow.LoopAgentInstance;
+import dev.langchain4j.service.tool.ToolExecution;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
@@ -497,7 +498,7 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
 
         html.append("</tr>\n");
 
-        for (MonitoredToolExecution toolExec : inv.toolExecutions()) {
+        for (ToolExecution toolExec : inv.toolExecutions()) {
             appendToolWfRow(html, toolExec, depth + 1, base, totalMs);
         }
 
@@ -506,14 +507,19 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         }
     }
 
-    private void appendToolWfRow(StringBuilder html, MonitoredToolExecution toolExec, int depth,
+    private void appendToolWfRow(StringBuilder html, ToolExecution toolExec, int depth,
                                  LocalDateTime base, long totalMs) {
-        long offMs = Duration.between(base, toolExec.startTime()).toMillis();
-        long durMs = toolExec.done()
-                ? toolExec.duration().toMillis()
-                : Duration.between(toolExec.startTime(), LocalDateTime.now()).toMillis();
-        double leftPct = Math.max(0, (double) offMs / totalMs * 100.0);
-        double widthPct = Math.max(0.4, (double) durMs / totalMs * 100.0);
+        Duration dur = toolExec.duration();
+        boolean hasTiming = toolExec.startTime() != null && dur != null;
+
+        double leftPct = 0;
+        double widthPct = 0.4;
+        if (hasTiming) {
+            long offMs = Duration.between(base, toolExec.startTime()).toMillis();
+            long durMs = dur.toMillis();
+            leftPct = Math.max(0, (double) offMs / totalMs * 100.0);
+            widthPct = Math.max(0.4, (double) durMs / totalMs * 100.0);
+        }
 
         html.append("<tr>");
 
@@ -522,7 +528,7 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         for (int i = 0; i < depth; i++) html.append("<span class=\"wf-indent\"></span>");
         html.append("<span class=\"wf-connector\">&#x2514;</span>");
         html.append("<span class=\"topology-badge sm tool\">Tool</span>");
-        html.append(" ").append(esc(toolExec.toolName()));
+        html.append(" ").append(esc(toolExec.request().name()));
         if (toolExec.hasFailed()) {
             html.append(" <span class=\"iter-tag\" style=\"background:#fee2e2;color:#991b1b;border-color:#fca5a5\">failed</span>");
         }
@@ -530,7 +536,9 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
 
         // Duration column
         html.append("<td class=\"wf-dur\">");
-        html.append(toolExec.done() ? fmtDur(toolExec.duration()) : "<em>...</em>");
+        if (hasTiming) {
+            html.append(fmtDur(dur));
+        }
         html.append("</td>");
 
         // Tokens column (empty for tools)
@@ -538,11 +546,14 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
 
         // Timeline bar column
         html.append("<td><div class=\"wf-bar-track\">");
-        html.append("<div class=\"wf-bar bar-tool\" style=\"left:")
-                .append(fmt(leftPct)).append("%;width:").append(fmt(widthPct)).append("%;\"");
-        html.append(" title=\"").append(esc(toolExec.toolName())).append(": ")
-                .append(toolExec.done() ? fmtDur(toolExec.duration()) : "running").append("\">");
-        html.append("</div></div></td>");
+        if (hasTiming) {
+            html.append("<div class=\"wf-bar bar-tool\" style=\"left:")
+                    .append(fmt(leftPct)).append("%;width:").append(fmt(widthPct)).append("%;\"");
+            html.append(" title=\"").append(esc(toolExec.request().name())).append(": ")
+                    .append(fmtDur(dur)).append("\">");
+            html.append("</div>");
+        }
+        html.append("</div></td>");
 
         // Input column (tool arguments)
         html.append("<td class=\"wf-io\">");
@@ -553,8 +564,8 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
 
         // Output column (tool result)
         html.append("<td class=\"wf-io\">");
-        if (toolExec.done() && toolExec.toolExecution() != null) {
-            appendTruncatedWithTooltip(html, toolExec.toolExecution().result(), 80);
+        if (toolExec.result() != null) {
+            appendTruncatedWithTooltip(html, toolExec.result(), 80);
         }
         html.append("</td>");
 
