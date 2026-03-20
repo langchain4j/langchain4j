@@ -392,6 +392,22 @@ public class ToolService {
                         .build();
             }
 
+            // Re-query ToolProviders after tool executions to pick up dynamically
+            // added tools (e.g. MCP servers that update their tool list via
+            // notifications/tools/list_changed after a category-loader tool is called).
+            if (!toolProviders.isEmpty()) {
+                ToolServiceContext refreshed = refreshToolServiceContext(
+                        toolServiceContext, invocationContext, messages, chatMemory);
+                if (refreshed != toolServiceContext) {
+                    toolServiceContext = refreshed;
+                    // Update parameters so the next LLM request includes the refreshed tool specs
+                    parameters = parameters.overrideWith(
+                            ChatRequestParameters.builder()
+                                    .toolSpecifications(toolServiceContext.effectiveTools())
+                                    .build());
+                }
+            }
+
             if (chatMemory != null) {
                 messages = chatMemory.messages();
             }
@@ -420,6 +436,43 @@ public class ToolService {
                 .toolExecutions(toolExecutions)
                 .aggregateTokenUsage(aggregateTokenUsage)
                 .build();
+    }
+
+    /**
+     * Re-queries all ToolProviders and returns a new ToolServiceContext if any tools
+     * have been added or removed. This supports dynamic tool providers (e.g. MCP servers)
+     * that update their tool list during the inference loop.
+     *
+     * Returns the original context unchanged if no tools changed (cheap identity check).
+     */
+    private ToolServiceContext refreshToolServiceContext(
+            ToolServiceContext currentContext,
+            InvocationContext invocationContext,
+            List<ChatMessage> messages,
+            ChatMemory chatMemory) {
+
+        // Extract the last UserMessage from messages for the ToolProviderRequest
+        UserMessage userMessage = null;
+        for (int i = messages.size() - 1; i >= 0; i--) {
+            if (messages.get(i) instanceof UserMessage um) {
+                userMessage = um;
+                break;
+            }
+        }
+        if (userMessage == null) {
+            // Cannot build ToolProviderRequest without a UserMessage; skip refresh
+            return currentContext;
+        }
+
+        // Build a fresh context using the existing createContext() logic
+        ToolServiceContext refreshed = createContext(invocationContext, userMessage, chatMemory);
+
+        // If nothing changed, return the original to signal no update needed
+        if (refreshed.equals(currentContext)) {
+            return currentContext;
+        }
+
+        return refreshed;
     }
 
     private void fireToolExecutedEvent(
