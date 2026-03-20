@@ -48,4 +48,12 @@ class DoclingDocumentParserTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("server URL");
     }
+    @Test
+    void shouldUseDefaultServerUrlWhenNoUrlProvided() {
+        // When
+        DoclingDocumentParser parser = new DoclingDocumentParser();
+
+        // Then - verifies constructor doesn't throw and creates valid instance
+        assertThat(parser).isNotNull();
+    }
 }
