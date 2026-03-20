@@ -86,4 +86,13 @@ class DoclingDocumentParserTest {
         assertThat(parser2).isNotNull();
         assertThat(parser1).isNotSameAs(parser2);
     }
+    @Test
+    void shouldAcceptValidHttpUrl() {
+        // Given
+        String httpUrl = "http://docling-server:5001";
+
+        // When/Then - should not throw
+        DoclingDocumentParser parser = new DoclingDocumentParser(httpUrl);
+        assertThat(parser).isNotNull();
+    }
 }
