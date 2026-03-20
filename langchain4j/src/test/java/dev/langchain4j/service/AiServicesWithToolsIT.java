@@ -58,6 +58,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -443,6 +444,10 @@ class AiServicesWithToolsIT {
 
         Tools spyTools = spy(new Tools());
 
+        Map<String, Object> toolResults = new ConcurrentHashMap<>();
+        Map<String, Thread> beforeToolExecutionThreads = new ConcurrentHashMap<>();
+        Map<String, Thread> afterToolExecutionThreads = new ConcurrentHashMap<>();
+
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
         Assistant assistant = AiServices.builder(Assistant.class)
@@ -450,6 +455,13 @@ class AiServicesWithToolsIT {
                 .chatMemory(chatMemory)
                 .tools(spyTools)
                 .executeToolsConcurrently(executor)
+                .beforeToolExecution(before -> {
+                    beforeToolExecutionThreads.put(before.request().name(), Thread.currentThread());
+                })
+                .afterToolExecution(exec -> {
+                    toolResults.put(exec.request().name(), exec.resultObject());
+                    afterToolExecutionThreads.put(exec.request().name(), Thread.currentThread());
+                })
                 .build();
 
         String userMessage = "What is the current time and temperature in Munich?";
@@ -473,6 +485,19 @@ class AiServicesWithToolsIT {
         assertThat(getCurrentTemperatureThread).isNotEqualTo(Thread.currentThread());
 
         assertThat(getCurrentTimeThread).isNotEqualTo(getCurrentTemperatureThread);
+
+        assertThat(toolResults)
+                .hasSize(2)
+                .containsEntry("getCurrentTime", Tools.CURRENT_TIME)
+                .containsEntry("getCurrentTemperature", Tools.CURRENT_TEMPERATURE);
+
+        assertThat(beforeToolExecutionThreads).hasSize(2);
+        assertThat(beforeToolExecutionThreads.get("getCurrentTime")).isEqualTo(getCurrentTimeThread);
+        assertThat(beforeToolExecutionThreads.get("getCurrentTemperature")).isEqualTo(getCurrentTemperatureThread);
+
+        assertThat(afterToolExecutionThreads).hasSize(2);
+        assertThat(afterToolExecutionThreads.get("getCurrentTime")).isEqualTo(getCurrentTimeThread);
+        assertThat(afterToolExecutionThreads.get("getCurrentTemperature")).isEqualTo(getCurrentTemperatureThread);
     }
 
     static List<Executor> executors() {
