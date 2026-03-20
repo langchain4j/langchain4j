@@ -564,20 +564,7 @@ public class ToolService {
 
         for (ToolExecutionRequest toolRequest : toolRequests) {
             CompletableFuture<ToolExecutionResult> future = CompletableFuture.supplyAsync(
-                    () -> {
-                        ToolExecutor toolExecutor = toolExecutors.get(toolRequest.name());
-                        if (toolExecutor == null) {
-                            return applyToolHallucinationStrategy(toolRequest);
-                        } else {
-                            return executeWithErrorHandling(
-                                    toolRequest,
-                                    toolExecutor,
-                                    invocationContext,
-                                    argumentsErrorHandler(),
-                                    executionErrorHandler());
-                        }
-                    },
-                    executor);
+                    () -> executeTool(invocationContext, toolExecutors, toolRequest), executor);
             futures.put(toolRequest, future);
         }
 
