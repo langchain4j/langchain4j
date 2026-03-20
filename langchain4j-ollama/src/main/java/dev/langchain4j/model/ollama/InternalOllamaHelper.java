@@ -224,8 +224,13 @@ class InternalOllamaHelper {
                     .build();
         }
 
+        Message.Builder builder =
+                Message.builder().role(toOllamaRole(chatMessage.type())).content(toText(chatMessage));
+
         List<ToolCall> toolCalls = null;
         if (chatMessage instanceof AiMessage aiMessage) {
+            builder.thinking(aiMessage.thinking()).attributes(aiMessage.attributes());
+
             List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
             toolCalls = Optional.ofNullable(toolExecutionRequests)
                     .map(reqs -> reqs.stream()
@@ -243,12 +248,13 @@ class InternalOllamaHelper {
                             })
                             .collect(Collectors.toList()))
                     .orElse(null);
+        } else if (chatMessage instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
+            builder.id(toolExecutionResultMessage.id())
+                    .toolName(toolExecutionResultMessage.toolName())
+                    .isError(toolExecutionResultMessage.isError())
+                    .attributes(toolExecutionResultMessage.attributes());
         }
-        return Message.builder()
-                .role(toOllamaRole(chatMessage.type()))
-                .content(toText(chatMessage))
-                .toolCalls(toolCalls)
-                .build();
+        return builder.toolCalls(toolCalls).build();
     }
 
     private static String toText(ChatMessage chatMessage) {

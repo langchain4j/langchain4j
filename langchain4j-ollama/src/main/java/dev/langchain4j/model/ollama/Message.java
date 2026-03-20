@@ -19,6 +19,10 @@ class Message {
     private Role role;
     private String content;
     private String thinking;
+    private String id;
+    private String toolName;
+    private Boolean isError;
+    private Map<String, Object> attributes;
     private List<String> images;
     private List<ToolCall> toolCalls;
     private Map<String, Object> additionalFields;
@@ -29,6 +33,10 @@ class Message {
         this.role = builder.role;
         this.content = builder.content;
         this.thinking = builder.thinking;
+        this.id = builder.id;
+        this.toolName = builder.toolName;
+        this.isError = builder.isError;
+        this.attributes = builder.attributes;
         this.images = builder.images;
         this.toolCalls = builder.toolCalls;
         this.additionalFields = builder.additionalFields;
@@ -88,11 +96,47 @@ class Message {
         this.thinking = thinking;
     }
 
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public String getToolName() {
+        return toolName;
+    }
+
+    public void setToolName(String toolName) {
+        this.toolName = toolName;
+    }
+
+    public Boolean getIsError() {
+        return isError;
+    }
+
+    public void setIsError(Boolean isError) {
+        this.isError = isError;
+    }
+
+    public Map<String, Object> getAttributes() {
+        return attributes;
+    }
+
+    public void setAttributes(Map<String, Object> attributes) {
+        this.attributes = attributes;
+    }
+
     static class Builder {
 
         private Role role;
         private String content;
         private String thinking;
+        private String id;
+        private String toolName;
+        private Boolean isError;
+        private Map<String, Object> attributes;
         private List<String> images;
         private List<ToolCall> toolCalls;
         private Map<String, Object> additionalFields;
@@ -109,6 +153,26 @@ class Message {
 
         Builder thinking(String thinking) {
             this.thinking = thinking;
+            return this;
+        }
+
+        Builder id(String id) {
+            this.id = id;
+            return this;
+        }
+
+        Builder toolName(String toolName) {
+            this.toolName = toolName;
+            return this;
+        }
+
+        Builder isError(Boolean isError) {
+            this.isError = isError;
+            return this;
+        }
+
+        Builder attributes(Map<String, Object> attributes) {
+            this.attributes = attributes;
             return this;
         }
 
