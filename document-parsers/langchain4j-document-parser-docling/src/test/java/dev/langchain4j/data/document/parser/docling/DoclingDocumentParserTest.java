@@ -75,4 +75,15 @@ class DoclingDocumentParserTest {
         // Then - verify parser was created successfully
         assertThat(parser).isNotNull();
     }
+    @Test
+    void shouldAllowMultipleParserInstances() {
+        // When
+        DoclingDocumentParser parser1 = new DoclingDocumentParser();
+        DoclingDocumentParser parser2 = new DoclingDocumentParser("http://localhost:5001");
+
+        // Then - verify both instances are created and independent
+        assertThat(parser1).isNotNull();
+        assertThat(parser2).isNotNull();
+        assertThat(parser1).isNotSameAs(parser2);
+    }
 }
