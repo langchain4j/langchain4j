@@ -389,8 +389,8 @@ public class UserMessage implements ChatMessage {
 
     public static Optional<UserMessage> findLast(Collection<ChatMessage> messages) {
         return messages.stream()
-                .filter(message -> message instanceof UserMessage)
-                .map(message -> (UserMessage) message)
+                .filter(UserMessage.class::isInstance)
+                .map(UserMessage.class::cast)
                 .reduce((first, second) -> second);
     }
 }
