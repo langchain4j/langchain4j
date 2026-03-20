@@ -41,4 +41,11 @@ class DoclingDocumentParserTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("server URL");
     }
+    @Test
+    void shouldThrowExceptionWhenServerUrlIsEmpty() {
+        // When/Then
+        assertThatThrownBy(() -> new DoclingDocumentParser(""))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("server URL");
+    }
 }
