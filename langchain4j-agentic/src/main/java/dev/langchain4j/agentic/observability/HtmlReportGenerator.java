@@ -468,8 +468,8 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
 
         // Tokens column
         html.append("<td class=\"wf-dur\">");
-        if (inv.done() && inv.tokenCount() > 0) {
-            html.append(fmtTokens(inv.tokenCount()));
+        if (inv.done() && inv.totalTokenCount() > 0) {
+            html.append(fmtTokens(inv.totalTokenCount()));
         }
         html.append("</td>");
 

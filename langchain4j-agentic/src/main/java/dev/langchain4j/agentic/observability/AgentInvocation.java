@@ -3,8 +3,9 @@ package dev.langchain4j.agentic.observability;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
-import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.tool.ToolExecution;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -12,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public class AgentInvocation {
 
@@ -101,13 +103,17 @@ public class AgentInvocation {
         return agentResponse.output();
     }
 
-    public int tokenCount() {
+    public int totalTokenCount() {
+        return tokenUsage().map(TokenUsage::totalTokenCount).orElse(0);
+    }
+
+    public Optional<TokenUsage> tokenUsage() {
         if (!done()) {
             throw new IllegalStateException("Agent call is not finished yet");
         }
-        ChatResponse chatResponse = agentResponse.chatResponse();
-        Integer tokenCount = chatResponse == null ? null : chatResponse.metadata().tokenUsage().totalTokenCount();
-        return tokenCount == null ? 0 : tokenCount;
+        return Optional.ofNullable(agentResponse.chatResponse())
+                .map(ChatResponse::metadata)
+                .map(ChatResponseMetadata::tokenUsage);
     }
 
     /**
@@ -141,7 +147,7 @@ public class AgentInvocation {
                 ", startTime=" + startTime +
                 ", finishTime=" + finishTime +
                 ", duration=" + (done() ? duration().toMillis() + " ms" : "in progress") +
-                ", tokens=" + (done() ? tokenCount() : "in progress") +
+                ", tokens=" + (done() ? totalTokenCount() : "in progress") +
                 ", inputs=" + shortToString(inputs()) +
                 ", output=" + (done() ? shortToString(output()) : "in progress") +
                 '}');

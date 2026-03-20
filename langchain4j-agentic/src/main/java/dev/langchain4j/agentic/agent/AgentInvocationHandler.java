@@ -29,8 +29,10 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
@@ -78,7 +80,7 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
         }
 
         if (method.getDeclaringClass() == ChatMessagesAccess.class) {
-            if ("removeLast".equals(method.getName())) {
+            if ("removeLastResponseEvent".equals(method.getName())) {
                 lastResponseEvents.remove(args[0]);
                 return null;
             }
@@ -87,7 +89,7 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
                 return null;
             }
             return switch (method.getName()) {
-                case "lastUserMessage" -> lastUserMessage(lastResponseEvent.request());
+                case "lastUserMessage" -> lastUserMessage(lastResponseEvent.request().messages());
                 case "lastChatRequest" -> lastResponseEvent.request();
                 case "lastChatResponse" -> lastResponseEvent.response();
                 default ->
@@ -152,14 +154,11 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
         return method.invoke(agent, args);
     }
 
-    private static UserMessage lastUserMessage(ChatRequest chatRequest) {
-        List<ChatMessage> messages = chatRequest.messages();
-        for (int i = messages.size() - 1; i >= 0; i--) {
-            if (messages.get(i) instanceof UserMessage userMessage) {
-                return userMessage;
-            }
-        }
-        return null;
+    private static Optional<UserMessage> lastUserMessage(Collection<ChatMessage> messages) {
+        return messages.stream()
+                .filter(UserMessage.class::isInstance)
+                .map(UserMessage.class::cast)
+                .reduce((first, second) -> second);
     }
 
     @Override

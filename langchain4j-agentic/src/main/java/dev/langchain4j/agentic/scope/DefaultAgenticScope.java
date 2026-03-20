@@ -184,7 +184,7 @@ public class DefaultAgenticScope implements AgenticScope {
     	} else if (agentInvocation.output() != null && agent instanceof ChatMessagesAccess chatMessagesAccess) {
             context.add(new AgentMessage(agentInvocation.agentName(), agentInvocation.agentId(), chatMessagesAccess.lastUserMessage(memoryId())));
             context.add(new AgentMessage(agentInvocation.agentName(), agentInvocation.agentId(), AiMessage.aiMessage(agentInvocation.output().toString())));
-            chatMessagesAccess.removeLast(memoryId());
+            chatMessagesAccess.removeLastResponseEvent(memoryId());
         }
     }
 

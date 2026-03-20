@@ -12,5 +12,5 @@ public interface ChatMessagesAccess {
 
     ChatResponse lastChatResponse(Object agenticScopeId);
 
-    void removeLast(Object agenticScopeId);
+    void removeLastResponseEvent(Object agenticScopeId);
 }
