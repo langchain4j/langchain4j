@@ -8,7 +8,6 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 
-import java.time.LocalDateTime;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.Tool;
@@ -35,6 +34,7 @@ import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.service.tool.search.ToolSearchService;
 import dev.langchain4j.service.tool.search.ToolSearchStrategy;
 import java.lang.reflect.Method;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -651,6 +651,8 @@ public class ToolService {
                     BeforeToolExecution.builder().request(toolRequest).build());
         }
 
+        LocalDateTime startTime = LocalDateTime.now();
+
         ToolExecutor executor = toolExecutors.get(toolRequest.name());
         ToolExecutionResult toolResult = executor == null
                 ? applyToolHallucinationStrategy(toolRequest)
@@ -661,6 +663,8 @@ public class ToolService {
             afterToolExecution.accept(ToolExecution.builder()
                     .request(toolRequest)
                     .result(toolResult)
+                    .startTime(startTime)
+                    .finishTime(LocalDateTime.now())
                     .build());
         }
         return toolResult;
