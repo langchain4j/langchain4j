@@ -58,6 +58,14 @@ public class MonitoredExecution {
         this.agentInvocationError = agentInvocationError;
     }
 
+    void afterToolExecution(AfterAgentToolExecution afterToolExecution) {
+        String agentId = afterToolExecution.agentInstance().agentId();
+        AgentInvocation invocation = ongoingInvocations.get(agentId);
+        if (invocation != null) {
+            invocation.addToolExecution(afterToolExecution.toolExecution());
+        }
+    }
+
     public Collection<AgentInvocation> ongoingInvocations() {
         return ongoingInvocations.values();
     }
