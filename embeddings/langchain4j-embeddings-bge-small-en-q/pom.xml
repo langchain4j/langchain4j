@@ -14,6 +14,7 @@
     <description>In-process bge-small-en (quantized) embedding model</description>
 
     <properties>
+        <embeddingsSkipDownload>false</embeddingsSkipDownload>
         <embeddingsSkipCache>false</embeddingsSkipCache>
     </properties>
 
@@ -41,12 +42,14 @@
                         </goals>
                         <phase>generate-resources</phase>
                         <configuration>
+                            <skip>${embeddingsSkipDownload}</skip>
                             <url>https://huggingface.co/Xenova/bge-small-en/resolve/main/onnx/model_quantized.onnx</url>
                             <outputDirectory>${project.build.directory}/classes</outputDirectory>
                             <outputFileName>bge-small-en-q.onnx</outputFileName>
                             <sha256>93b3c104db8309d72a822d18eaae67ccdedaf81bdea0d03dd477dfb666e75e77</sha256>
                             <skipCache>${embeddingsSkipCache}</skipCache>
-                            <readTimeOut>600000</readTimeOut> <!-- 10 minutes -->
+                            <!-- 10 minutes -->
+                            <readTimeOut>600000</readTimeOut>
                             <retries>5</retries>
                         </configuration>
                     </execution>
