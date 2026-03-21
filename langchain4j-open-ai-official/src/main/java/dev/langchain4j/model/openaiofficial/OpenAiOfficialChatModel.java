@@ -28,6 +28,8 @@ import java.util.Set;
 
 public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel implements ChatModel {
 
+    private final boolean returnThinking;
+
     public OpenAiOfficialChatModel(Builder builder) {
 
         if (builder.openAIClient != null) {
@@ -70,6 +72,7 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
                     false);
         }
         this.modelName = builder.modelName;
+        this.returnThinking = builder.returnThinking != null && builder.returnThinking;
     }
 
     @Override
@@ -124,7 +127,7 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
         }
 
         return ChatResponse.builder()
-                .aiMessage(aiMessageFrom(chatCompletion))
+                .aiMessage(aiMessageFrom(chatCompletion, returnThinking))
                 .metadata(responseMetadataBuilder.build())
                 .build();
     }
@@ -171,6 +174,7 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
         private Map<String, String> customHeaders;
         private List<ChatModelListener> listeners;
         private Set<Capability> capabilities;
+        private Boolean returnThinking;
 
         public Builder() {
             // This is public so it can be extended
@@ -302,6 +306,16 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
 
         public Builder strictJsonSchema(Boolean strictJsonSchema) {
             this.strictJsonSchema = strictJsonSchema;
+            return this;
+        }
+
+        /**
+         * Controls whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}.
+         * <p>
+         * If enabled, the thinking text will be stored within the {@link AiMessage} and may be persisted.
+         */
+        public Builder returnThinking(Boolean returnThinking) {
+            this.returnThinking = returnThinking;
             return this;
         }
 
