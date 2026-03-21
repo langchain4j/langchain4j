@@ -10,6 +10,7 @@ import com.openai.client.OpenAIClient;
 import com.openai.credential.Credential;
 import com.openai.models.chat.completions.ChatCompletion;
 import com.openai.models.chat.completions.ChatCompletionCreateParams;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.TokenCountEstimator;
