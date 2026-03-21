@@ -20,13 +20,26 @@ and other core LangChain4j components through properties.
 To use one of the [Spring Boot starters](https://github.com/langchain4j/langchain4j-spring),
 import the corresponding dependency.
 
-The naming convention for the Spring Boot starter dependency is: `langchain4j-{integration-name}-spring-boot-starter`.
+The naming convention for the Spring Boot starter dependency is:
+- `langchain4j-{integration-name}-spring-boot-starter` for **Spring Boot 3**
+- `langchain4j-{integration-name}-spring-boot4-starter` for **Spring Boot 4**
 
-For example, for OpenAI (`langchain4j-open-ai`), the dependency name would be `langchain4j-open-ai-spring-boot-starter`:
+For example, for OpenAI (`langchain4j-open-ai`):
+
+**Spring Boot 3:**
+ ```xml
+ <dependency>
+     <groupId>dev.langchain4j</groupId>
+     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
+     <version>1.12.2-beta22</version>
+ </dependency>
+```
+
+**Spring Boot 4:**
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
-    <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
+    <artifactId>langchain4j-open-ai-spring-boot4-starter</artifactId>
     <version>1.12.2-beta22</version>
 </dependency>
 ```
@@ -73,11 +86,22 @@ LangChain4j provides a Spring Boot starter for auto-configuring
 [AI Services](/tutorials/ai-services), [RAG](/tutorials/rag), [Tools](/tutorials/tools) etc.
 
 Assuming you have already imported one of the integrations starters (see above),
-import `langchain4j-spring-boot-starter`:
+import `langchain4j-spring-boot-starter` (Spring Boot 3) or `langchain4j-spring-boot4-starter` (Spring Boot 4):
+
+**Spring Boot 3:**
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-spring-boot-starter</artifactId>
+    <version>1.12.2-beta22</version>
+</dependency>
+```
+
+**Spring Boot 4:**
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-spring-boot4-starter</artifactId>
     <version>1.12.2-beta22</version>
 </dependency>
 ```
@@ -187,7 +211,8 @@ interface OllamaAssistant {
 In this case, you must explicitly specify **all** components.
 :::
 
-More details can be found [here](https://github.com/langchain4j/langchain4j-spring/blob/main/langchain4j-spring-boot-starter/src/main/java/dev/langchain4j/service/spring/AiService.java).
+More details can be found [here](https://github.com/langchain4j/langchain4j-spring/blob/main/langchain4j-spring-boot-starter/src/main/java/dev/langchain4j/service/spring/AiService.java)
+(same API for the Spring Boot 4 variant).
 
 ### Listening for AI Service Registration Events
 
@@ -402,9 +427,11 @@ For more details about the `langchain4j-observation` library, please check the [
 
 ## Supported versions
 
-LangChain4j Spring Boot integration requires Java 17 and Spring Boot 3.5, in line with the [Spring Boot OSS support policy](https://spring.io/projects/spring-boot#support).
+LangChain4j Spring Boot integration requires Java 17 and supports both:
+- **Spring Boot 3** (3.5+) — use starters with the `-spring-boot-starter` suffix, in line with the [Spring Boot OSS support policy](https://spring.io/projects/spring-boot#support)
+- **Spring Boot 4** (4.0+) — use starters with the `-spring-boot4-starter` suffix
 
-Support for Spring Boot 4.x is not available yet in LangChain4j, but it's planned for a future release.
+Both families are released together and share the same version number. Choose the set of starters that matches the Spring Boot version in your project.
 
 ## Examples
 - [Low-level Spring Boot example](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/main/java/dev/langchain4j/example/lowlevel/ChatModelController.java) using [ChatModel API](/tutorials/chat-and-language-models)
