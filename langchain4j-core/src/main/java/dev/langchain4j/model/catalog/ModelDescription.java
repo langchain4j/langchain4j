@@ -28,6 +28,7 @@ public class ModelDescription {
     private final ModelType type;
     private final Integer maxInputTokens;
     private final Integer maxOutputTokens;
+    private final Integer maxCompletionTokens;
     private final Instant createdAt;
     private final String owner;
 
@@ -39,6 +40,7 @@ public class ModelDescription {
         this.type = builder.type;
         this.maxInputTokens = builder.maxInputTokens;
         this.maxOutputTokens = builder.maxOutputTokens;
+        this.maxCompletionTokens = builder.maxCompletionTokens;
         this.createdAt = builder.createdAt;
         this.owner = builder.owner;
     }
@@ -101,6 +103,16 @@ public class ModelDescription {
     }
 
     /**
+     * Maximum number of tokens allowed for the completion.
+     * May include both prompt and output tokens.
+     * This is Typically smaller than the context window.
+     * May be <code>null</code> if this information is not provided by the provider.
+     */
+    public Integer maxCompletionTokens() {
+        return maxCompletionTokens;
+    }
+
+    /**
      * Timestamp when the model was created or released by the provider.
      * May be <code>null</code> if this information is not available.
      */
@@ -139,7 +151,8 @@ public class ModelDescription {
                 + provider + ", type="
                 + type + ", maxInputTokens="
                 + maxInputTokens + ", maxOutputTokens="
-                + maxOutputTokens + ", createdAt="
+                + maxOutputTokens + ", maxCompletionTokens="
+                + maxCompletionTokens + ", createdAt="
                 + createdAt + ", owner='"
                 + owner + '\'' + '}';
     }
@@ -153,6 +166,7 @@ public class ModelDescription {
         private ModelType type;
         private Integer maxInputTokens;
         private Integer maxOutputTokens;
+        private Integer maxCompletionTokens;
         private Instant createdAt;
         private String owner;
 
@@ -203,6 +217,15 @@ public class ModelDescription {
          */
         public Builder maxOutputTokens(Integer maxOutputTokens) {
             this.maxOutputTokens = maxOutputTokens;
+            return this;
+        }
+
+        /**
+         * Maximum number of tokens for the completion, which may include
+         * both the prompt and the generated output.
+         */
+        public Builder maxCompletionTokens(Integer maxCompletionTokens) {
+            this.maxCompletionTokens = maxCompletionTokens;
             return this;
         }
 
