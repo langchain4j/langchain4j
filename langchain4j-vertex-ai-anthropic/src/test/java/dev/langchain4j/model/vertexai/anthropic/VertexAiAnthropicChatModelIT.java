@@ -9,10 +9,8 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.output.TokenUsage;
-
 import java.time.LocalDate;
 import java.util.List;
-
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -39,11 +37,12 @@ class VertexAiAnthropicChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected ChatModel createModelWith(ChatRequestParameters parameters) {
-        VertexAiAnthropicChatModel.VertexAiAnthropicChatModelBuilder vertexAiAnthropicChatModelBuilder = VertexAiAnthropicChatModel.builder()
-                .project(System.getenv("GCP_PROJECT_ID"))
-                .location(DEFAULT_LOCATION)
-                .logRequests(true)
-                .logResponses(true);
+        VertexAiAnthropicChatModel.VertexAiAnthropicChatModelBuilder vertexAiAnthropicChatModelBuilder =
+                VertexAiAnthropicChatModel.builder()
+                        .project(System.getenv("GCP_PROJECT_ID"))
+                        .location(DEFAULT_LOCATION)
+                        .logRequests(true)
+                        .logResponses(true);
         if (parameters.modelName() == null) {
             vertexAiAnthropicChatModelBuilder.modelName(DEFAULT_MODEL_NAME);
         } else {
