@@ -8,7 +8,6 @@ import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import io.milvus.v2.common.ConsistencyLevel;
 import java.util.Arrays;
 import java.util.List;
-
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,7 +31,12 @@ import org.testcontainers.milvus.MilvusContainer;
 class MilvusV2BGE3ModelIT implements WithAssertions {
 
     @Container
-    private static final MilvusContainer milvus = new MilvusContainer("milvusdb/milvus:v2.5.8");
+    private static final MilvusContainer milvus = new MilvusContainer("milvusdb/milvus:v2.5.8")
+            .withEnv("DEPLOY_MODE", "STANDALONE")
+            .withEnv("MILVUS_MODE", "standalone")
+            .withEnv("ETCD_USE_EMBED", "true")
+            .withEnv("COMMON_STORAGETYPE", "local")
+            .withCommand("milvus", "run", "standalone");
 
     private MilvusV2EmbeddingStore embeddingStore;
     private EmbeddingModel embeddingModel;
@@ -126,16 +130,16 @@ class MilvusV2BGE3ModelIT implements WithAssertions {
             // Create sparse indices and values based on text characteristics
             // This is a simplified simulation - real BGE-M3 would use learned sparse representations
             if (lowerText.contains("programming") || lowerText.contains("java") || lowerText.contains("computer")) {
-                return new SparseEmbedding(new long[]{1L, 3L, 5L, 7L}, new float[]{0.8f, 0.6f, 0.4f, 0.2f});
+                return new SparseEmbedding(new long[] {1L, 3L, 5L, 7L}, new float[] {0.8f, 0.6f, 0.4f, 0.2f});
             } else if (lowerText.contains("robotics") || lowerText.contains("robot")) {
-                return new SparseEmbedding(new long[]{2L, 4L, 6L, 8L}, new float[]{0.7f, 0.5f, 0.3f, 0.1f});
+                return new SparseEmbedding(new long[] {2L, 4L, 6L, 8L}, new float[] {0.7f, 0.5f, 0.3f, 0.1f});
             } else if (lowerText.contains("security") || lowerText.contains("information")) {
-                return new SparseEmbedding(new long[]{3L, 5L, 7L, 9L}, new float[]{0.6f, 0.4f, 0.2f, 0.8f});
+                return new SparseEmbedding(new long[] {3L, 5L, 7L, 9L}, new float[] {0.6f, 0.4f, 0.2f, 0.8f});
             } else if (lowerText.contains("language") || lowerText.contains("speak") || lowerText.contains("french")) {
-                return new SparseEmbedding(new long[]{4L, 6L, 8L, 10L}, new float[]{0.5f, 0.3f, 0.1f, 0.7f});
+                return new SparseEmbedding(new long[] {4L, 6L, 8L, 10L}, new float[] {0.5f, 0.3f, 0.1f, 0.7f});
             } else {
                 // Default sparse embedding for other topics
-                return new SparseEmbedding(new long[]{1L, 2L, 3L, 4L}, new float[]{0.3f, 0.3f, 0.2f, 0.2f});
+                return new SparseEmbedding(new long[] {1L, 2L, 3L, 4L}, new float[] {0.3f, 0.3f, 0.2f, 0.2f});
             }
         }
     }

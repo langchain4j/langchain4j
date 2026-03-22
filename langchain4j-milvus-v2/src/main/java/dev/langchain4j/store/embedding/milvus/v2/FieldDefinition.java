@@ -2,16 +2,16 @@ package dev.langchain4j.store.embedding.milvus.v2;
 
 public class FieldDefinition {
 
-    String idFieldName;
+    final String idFieldName;
 
-    String textFieldName;
+    final String textFieldName;
 
-    String metadataFieldName;
+    final String metadataFieldName;
 
     // dense vector
-    String vectorFieldName;
+    final String vectorFieldName;
     // sparse vector
-    String sparseVectorFieldName;
+    final String sparseVectorFieldName;
 
     public FieldDefinition(
             String idFieldName,

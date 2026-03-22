@@ -40,9 +40,11 @@ The original `langchain4j-milvus` module uses the legacy **Milvus Java SDK v1** 
 | Mode | Description |
 |---|---|
 | `SearchMode.VECTOR` | Dense vector search only. Default. Compatible with standard `EmbeddingStore` usage. |
-| `SearchMode.HYBRID` | Hybrid search combining dense + sparse vectors, re-ranked via RRF (or custom ranker). |
+| `SearchMode.HYBRID` | Hybrid search combining dense + sparse vectors, re-ranked via RRF (or custom ranker). requires `MilvusV2EmbeddingSearchRequest` during search. |
 
 The search mode is set once on the store and applies to all `search()` calls on that store instance.
+
+⚠️ **Important:** `SearchMode` dictates the collection schema (dense-only vs dense+sparse). Switching search modes requires creating a new collection (or manually altering the schema outside of this library).
 
 ---
 
@@ -104,7 +106,7 @@ store.addAllHybrid(ids, denseEmbeddings, sparseEmbeddings, textSegments);
 ### 3. Search
 
 ```java
-MilvusEmbeddingSearchRequest request = MilvusEmbeddingSearchRequest.milvusBuilder()
+MilvusV2EmbeddingSearchRequest request = MilvusV2EmbeddingSearchRequest.milvusBuilder()
         .queryEmbedding(queryDenseEmbedding)
         .sparseEmbedding(querySparseEmbedding)
         .maxResults(10)
@@ -141,7 +143,7 @@ store.addAll(ids, denseEmbeddings, textSegments);
 ### 3. Search with a query string
 
 ```java
-MilvusEmbeddingSearchRequest request = MilvusEmbeddingSearchRequest.milvusBuilder()
+MilvusV2EmbeddingSearchRequest request = MilvusV2EmbeddingSearchRequest.milvusBuilder()
         .queryEmbedding(queryDenseEmbedding)   // dense component
         .query("full-text keywords here")       // sparse component (BM25 auto-computed by Milvus)
         .maxResults(10)
@@ -187,14 +189,15 @@ MilvusV2EmbeddingStore store = MilvusV2EmbeddingStore.builder()
 
         // Sparse index (only relevant for HYBRID mode)
         .sparseMode(MilvusV2EmbeddingStore.MilvusSparseMode.BM25) // BM25 (default) or CUSTOM
-        .sparseIndexType(IndexParam.IndexType.SPARSE_INVERTED_INDEX)
+        .sparseIndexType(IndexParam.IndexType.SPARSE_INVERTED_INDEX) // default: SPARSE_INVERTED_INDEX
         .sparseMetricType(IndexParam.MetricType.BM25)           // BM25 or IP
 
         // Search mode
         .searchMode(MilvusV2EmbeddingStore.SearchMode.VECTOR)     // VECTOR (default) or HYBRID
 
         // Hybrid ranker (only relevant for HYBRID mode)
-        .baseRanker(new RRFRanker(60))                          // default: RRFRanker(60)
+        // Accepts rankers via MilvusV2Ranker builder methods
+        .ranker(MilvusV2Ranker.rrf(60))                         // default: MilvusV2Ranker.rrf(60)
 
         // Field names (customise if your collection uses different names)
         .idFieldName("id")
@@ -204,7 +207,7 @@ MilvusV2EmbeddingStore store = MilvusV2EmbeddingStore.builder()
         .sparseVectorFieldName("sparse_vector")
 
         // Behaviour
-        .consistencyLevel(ConsistencyLevel.EVENTUALLY)          // default: EVENTUALLY
+        .consistencyLevel(ConsistencyLevel.EVENTUALLY)          // default: EVENTUALLY, STRONG, BOUNDED, SESSION
         .retrieveEmbeddingsOnSearch(false)                      // default: false
         .autoFlushOnInsert(false)                               // default: false
 
@@ -230,7 +233,7 @@ MilvusClientV2 client = new MilvusClientV2(ConnectConfig.builder()
         .build());
 
 MilvusV2EmbeddingStore store = MilvusV2EmbeddingStore.builder()
-        .milvusClient(client)
+        .milvusClientV2(client)
         .collectionName("my_collection")
         .dimension(384)
         .build();
@@ -254,12 +257,12 @@ MilvusV2EmbeddingStore hybridStore = MilvusV2EmbeddingStore.builder()
         .build();
 ```
 
-### 3. MilvusEmbeddingSearchRequest
+### 3. MilvusV2EmbeddingSearchRequest
 
-`langchain4j-milvus-v2` introduces `MilvusEmbeddingSearchRequest`, which extends the standard `EmbeddingSearchRequest` with Milvus-specific fields:
+`langchain4j-milvus-v2` introduces `MilvusV2EmbeddingSearchRequest`, which extends the standard `EmbeddingSearchRequest` with Milvus-specific fields:
 
 ```java
-MilvusEmbeddingSearchRequest request = MilvusEmbeddingSearchRequest.milvusBuilder()
+MilvusV2EmbeddingSearchRequest request = MilvusV2EmbeddingSearchRequest.milvusBuilder()
         .queryEmbedding(denseEmbedding)      // dense query vector
         .sparseEmbedding(sparseEmbedding)    // sparse query vector (CUSTOM mode)
         .query("search keywords")            // text query for BM25 (BM25 mode)
@@ -269,7 +272,8 @@ MilvusEmbeddingSearchRequest request = MilvusEmbeddingSearchRequest.milvusBuilde
         .build();
 ```
 
-The standard `EmbeddingSearchRequest` (without Milvus-specific fields) is also accepted by `search()` and will use the store's default search mode.
+Wait, `MilvusV2EmbeddingSearchRequest` is generally required when using `SearchMode.HYBRID`.
+The standard `EmbeddingSearchRequest` (which lacks sparse fields) is supported but will only work with `SearchMode.VECTOR`. Using a standard request with `SearchMode.HYBRID` will result in an exception because sparse inputs are missing.
 
 ### 4. Collection Schema
 
@@ -279,7 +283,42 @@ A **HYBRID** collection automatically creates both a dense vector field and a sp
 
 ## Compatibility
 
-- Milvus 2.4.x and above
-- Zilliz Cloud (fully managed Milvus)
-- Java 17+
+- **Milvus Server 2.5.x** and above (Recommended)
+  - **BM25 (Full Text Search)**: Requires Milvus 2.5+.
+  - **Hybrid Search (RRF/Weighted)**: Supported in Milvus 2.4+, fully compatible with Milvus 2.5+.
+  - **Basic Vector Search**: Compatible with Milvus 2.x.
+- **Java 17+**
 
+> **Note on SDK Version:** This module uses `milvus-sdk-java` v2.6.x. It is backward compatible with Milvus Server v2.5.x for most features (including Hybrid Search and BM25). You do not need to downgrade the SDK to connect to a v2.5 Server.
+
+---
+
+## Hybrid Rankers
+
+When using `SearchMode.HYBRID`, Milvus requires a reranking strategy to combine scores from dense and sparse retrievals. You can configure this via `.ranker(...)` using `MilvusV2Ranker`:
+
+### RRF (Reciprocal Rank Fusion) - Default
+
+```java
+.ranker(MilvusV2Ranker.rrf(60))
+```
+
+### Weighted
+
+Combines search results with specified weights. Dense search is the first component, sparse/text search is the second.
+
+```java
+.ranker(MilvusV2Ranker.weighted(Arrays.asList(0.8f, 0.2f)))
+```
+
+### Advanced Rankers
+
+You can also use Boost, Model, or Decay rankers.
+
+```java
+// Boost
+.ranker(MilvusV2Ranker.boost().weight(0.5f).build())
+
+// Model (e.g. for external reranker)
+.ranker(MilvusV2Ranker.model().endpoint("http://...").build())
+```

@@ -97,13 +97,13 @@ class MilvusV2EmbeddingStoreCloudIT extends EmbeddingStoreWithFilteringIT {
                 .searchMode(MilvusV2EmbeddingStore.SearchMode.HYBRID)
                 .build();
 
-        Embedding denseEmbedding1 = embeddingModel.embed("cloud technology document").content();
-        Embedding denseEmbedding2 = embeddingModel.embed("cloud science document").content();
+        Embedding denseEmbedding1 =
+                embeddingModel.embed("cloud technology document").content();
+        Embedding denseEmbedding2 =
+                embeddingModel.embed("cloud science document").content();
 
-        SparseEmbedding sparseEmbedding1 =
-                new SparseEmbedding(new long[]{1L, 3L, 5L}, new float[]{0.1f, 0.3f, 0.5f});
-        SparseEmbedding sparseEmbedding2 =
-                new SparseEmbedding(new long[]{2L, 4L, 6L}, new float[]{0.2f, 0.4f, 0.6f});
+        SparseEmbedding sparseEmbedding1 = new SparseEmbedding(new long[] {1L, 3L, 5L}, new float[] {0.1f, 0.3f, 0.5f});
+        SparseEmbedding sparseEmbedding2 = new SparseEmbedding(new long[] {2L, 4L, 6L}, new float[] {0.2f, 0.4f, 0.6f});
 
         TextSegment textSegment1 = TextSegment.from("document about cloud technology");
         TextSegment textSegment2 = TextSegment.from("document about cloud science");
@@ -152,7 +152,9 @@ class MilvusV2EmbeddingStoreCloudIT extends EmbeddingStoreWithFilteringIT {
 
             store.addAll(Arrays.asList("h1", "h2"), Arrays.asList(d1, d2), Arrays.asList(t1, t2));
 
-            Embedding queryDense = embeddingModel.embed("How does hybrid search combine signals?").content();
+            Embedding queryDense = embeddingModel
+                    .embed("How does hybrid search combine signals?")
+                    .content();
 
             MilvusV2EmbeddingSearchRequest req = MilvusV2EmbeddingSearchRequest.milvusBuilder()
                     .queryEmbedding(queryDense)
@@ -169,5 +171,4 @@ class MilvusV2EmbeddingStoreCloudIT extends EmbeddingStoreWithFilteringIT {
             store.dropCollection(coll);
         }
     }
-
 }

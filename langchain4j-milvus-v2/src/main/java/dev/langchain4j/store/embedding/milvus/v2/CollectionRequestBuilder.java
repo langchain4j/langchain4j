@@ -22,7 +22,6 @@ import io.milvus.v2.service.vector.request.SearchReq;
 import io.milvus.v2.service.vector.request.data.EmbeddedText;
 import io.milvus.v2.service.vector.request.data.FloatVec;
 import io.milvus.v2.service.vector.request.data.SparseFloatVec;
-import io.milvus.v2.service.vector.request.ranker.BaseRanker;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -73,7 +72,7 @@ public class CollectionRequestBuilder {
             FieldDefinition fieldDefinition,
             IndexParam.MetricType metricType,
             IndexParam.MetricType sparseMetricType,
-            BaseRanker baseRanker,
+            MilvusV2Ranker ranker,
             ConsistencyLevel consistencyLevel) {
         return createHybridSearchReq(
                 fieldDefinition,
@@ -85,7 +84,7 @@ public class CollectionRequestBuilder {
                 embeddingSearchRequest.filter(),
                 embeddingSearchRequest.maxResults(),
                 collectionName,
-                baseRanker,
+                ranker,
                 consistencyLevel);
     }
 
@@ -103,7 +102,7 @@ public class CollectionRequestBuilder {
                 .annsField(fieldDefinition.getVectorFieldName())
                 .metricType(metricType)
                 .consistencyLevel(consistencyLevel)
-                .topK(maxResults)
+                .limit(maxResults)
                 .outputFields(Arrays.asList(
                         fieldDefinition.getIdFieldName(),
                         fieldDefinition.getTextFieldName(),
@@ -130,7 +129,7 @@ public class CollectionRequestBuilder {
                 .annsField(fieldDefinition.getSparseVectorFieldName())
                 .metricType(metricType)
                 .consistencyLevel(consistencyLevel)
-                .topK(maxResults)
+                .limit(maxResults)
                 .outputFields(Arrays.asList(
                         fieldDefinition.getIdFieldName(),
                         fieldDefinition.getTextFieldName(),
@@ -153,8 +152,7 @@ public class CollectionRequestBuilder {
             Filter filter) {
         if (metricType != IndexParam.MetricType.BM25) {
             throw new IllegalArgumentException(
-                    "When using plain text to query sparse embedding, metricType must be BM25 (Milvus built-in)."
-            );
+                    "When using plain text to query sparse embedding, metricType must be BM25 (Milvus built-in).");
         }
         if (queryText == null || queryText.isBlank()) {
             throw new IllegalArgumentException("queryText must not be null or empty");
@@ -165,7 +163,7 @@ public class CollectionRequestBuilder {
                 .annsField(fieldDefinition.getSparseVectorFieldName())
                 .metricType(metricType)
                 .consistencyLevel(consistencyLevel)
-                .topK(maxResults)
+                .limit(maxResults)
                 .outputFields(Arrays.asList(
                         fieldDefinition.getIdFieldName(),
                         fieldDefinition.getTextFieldName(),
@@ -187,10 +185,10 @@ public class CollectionRequestBuilder {
                 .vectorFieldName(fieldDefinition.getVectorFieldName())
                 .vectors(Collections.singletonList(new FloatVec(queryEmbedding.vectorAsList())))
                 .metricType(metricType)
-                .topK(maxResults);
+                .limit(maxResults);
 
         if (filter != null) {
-            builder.expr(MilvusV2MetadataFilterMapper.map(filter, fieldDefinition.getMetadataFieldName()));
+            builder.filter(MilvusV2MetadataFilterMapper.map(filter, fieldDefinition.getMetadataFieldName()));
         }
         return builder.build();
     }
@@ -206,10 +204,10 @@ public class CollectionRequestBuilder {
                 .vectorFieldName(fieldDefinition.getSparseVectorFieldName())
                 .vectors(Collections.singletonList(new SparseFloatVec(sparseEmbedding.vectorAsSortedMap())))
                 .metricType(metricType)
-                .topK(maxResults);
+                .limit(maxResults);
 
         if (filter != null) {
-            builder.expr(MilvusV2MetadataFilterMapper.map(filter, fieldDefinition.getMetadataFieldName()));
+            builder.filter(MilvusV2MetadataFilterMapper.map(filter, fieldDefinition.getMetadataFieldName()));
         }
         return builder.build();
     }
@@ -223,8 +221,7 @@ public class CollectionRequestBuilder {
             int maxResults) {
         if (metricType != IndexParam.MetricType.BM25) {
             throw new IllegalArgumentException(
-                    "When using plain text to query sparse embedding, metricType must be BM25 (Milvus built-in)."
-            );
+                    "When using plain text to query sparse embedding, metricType must be BM25 (Milvus built-in).");
         }
         if (queryText == null || queryText.isBlank()) {
             throw new IllegalArgumentException("queryText must not be null or empty");
@@ -234,10 +231,10 @@ public class CollectionRequestBuilder {
                 .vectorFieldName(fieldDefinition.getSparseVectorFieldName())
                 .vectors(Collections.singletonList(new EmbeddedText(queryText)))
                 .metricType(metricType)
-                .topK(maxResults);
+                .limit(maxResults);
 
         if (filter != null) {
-            builder.expr(MilvusV2MetadataFilterMapper.map(filter, fieldDefinition.getMetadataFieldName()));
+            builder.filter(MilvusV2MetadataFilterMapper.map(filter, fieldDefinition.getMetadataFieldName()));
         }
         return builder.build();
     }
@@ -252,11 +249,11 @@ public class CollectionRequestBuilder {
             Filter filter,
             int maxResults,
             String collectionName,
-            BaseRanker baseRanker,
+            MilvusV2Ranker ranker,
             ConsistencyLevel consistencyLevel) {
         List<AnnSearchReq> searchRequests = new ArrayList<>();
         searchRequests.add(createDenseAnnSearchReq(fieldDefinition, denseEmbedding, metricType, filter, maxResults));
-        if(sparseEmbedding != null) {
+        if (sparseEmbedding != null) {
             searchRequests.add(
                     createSparseAnnSearchReq(fieldDefinition, sparseEmbedding, sparseMetricType, filter, maxResults));
         } else {
@@ -267,8 +264,8 @@ public class CollectionRequestBuilder {
         return HybridSearchReq.builder()
                 .collectionName(collectionName)
                 .searchRequests(searchRequests)
-                .ranker(baseRanker)
-                .topK(maxResults)
+                .ranker(ranker.toFunction())
+                .limit(maxResults)
                 .outFields(Arrays.asList(
                         fieldDefinition.getIdFieldName(),
                         fieldDefinition.getTextFieldName(),
@@ -287,7 +284,7 @@ public class CollectionRequestBuilder {
                 .filter(buildQueryExpression(rowIds, fieldDefinition.getIdFieldName()))
                 .consistencyLevel(consistencyLevel)
                 .outputFields(singletonList(fieldDefinition.getVectorFieldName()))
-                .limit((long) rowIds.size())
+                .limit(rowIds.size())
                 .build();
     }
 

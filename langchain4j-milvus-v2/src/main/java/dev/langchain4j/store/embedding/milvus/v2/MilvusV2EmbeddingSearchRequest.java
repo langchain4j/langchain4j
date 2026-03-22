@@ -3,7 +3,6 @@ package dev.langchain4j.store.embedding.milvus.v2;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.filter.Filter;
-
 import java.util.Objects;
 
 public class MilvusV2EmbeddingSearchRequest extends EmbeddingSearchRequest {
@@ -16,7 +15,12 @@ public class MilvusV2EmbeddingSearchRequest extends EmbeddingSearchRequest {
             Integer maxResults,
             Double minScore,
             Filter filter) {
-        super(queryEmbedding, query, maxResults, minScore, filter);
+        super(builder()
+                .queryEmbedding(queryEmbedding)
+                .query(query)
+                .maxResults(maxResults)
+                .minScore(minScore)
+                .filter(filter));
         this.sparseEmbedding = sparseEmbedding;
     }
 
@@ -28,8 +32,7 @@ public class MilvusV2EmbeddingSearchRequest extends EmbeddingSearchRequest {
     public boolean equals(final Object o) {
         if (o == this) return true;
         if (!(o instanceof MilvusV2EmbeddingSearchRequest other)) return false;
-        return super.equals(other)
-                && Objects.equals(this.sparseEmbedding, other.sparseEmbedding);
+        return super.equals(other) && Objects.equals(this.sparseEmbedding, other.sparseEmbedding);
     }
 
     @Override
@@ -83,12 +86,7 @@ public class MilvusV2EmbeddingSearchRequest extends EmbeddingSearchRequest {
 
         public MilvusV2EmbeddingSearchRequest build() {
             return new MilvusV2EmbeddingSearchRequest(
-                    this.queryEmbedding,
-                    this.sparseEmbedding,
-                    this.query,
-                    this.maxResults,
-                    this.minScore,
-                    this.filter);
+                    this.queryEmbedding, this.sparseEmbedding, this.query, this.maxResults, this.minScore, this.filter);
         }
     }
 }

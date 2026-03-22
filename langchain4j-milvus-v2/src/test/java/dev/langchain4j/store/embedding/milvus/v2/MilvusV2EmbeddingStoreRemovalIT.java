@@ -23,7 +23,12 @@ import org.testcontainers.milvus.MilvusContainer;
 class MilvusV2EmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
 
     @Container
-    static MilvusContainer milvus = new MilvusContainer("milvusdb/milvus:v2.5.8");
+    static MilvusContainer milvus = new MilvusContainer("milvusdb/milvus:v2.6.11")
+            .withEnv("DEPLOY_MODE", "STANDALONE")
+            .withEnv("MILVUS_MODE", "standalone")
+            .withEnv("ETCD_USE_EMBED", "true")
+            .withEnv("COMMON_STORAGETYPE", "local")
+            .withCommand("milvus", "run", "standalone");
 
     MilvusV2EmbeddingStore embeddingStore = MilvusV2EmbeddingStore.builder()
             .uri(milvus.getEndpoint())
@@ -61,14 +66,12 @@ class MilvusV2EmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
         return searchResult.matches();
     }
 
-
     @Test
     void should_remove_hybrid_embeddings() {
         // given
         Embedding denseEmbedding =
                 embeddingModel.embed("test document for removal").content();
-        SparseEmbedding sparseEmbedding =
-                new SparseEmbedding(new long[]{1L, 3L, 5L}, new float[]{0.1f, 0.3f, 0.5f});
+        SparseEmbedding sparseEmbedding = new SparseEmbedding(new long[] {1L, 3L, 5L}, new float[] {0.1f, 0.3f, 0.5f});
         TextSegment textSegment = TextSegment.from("document to be removed");
 
         String id = "removal_test_id";

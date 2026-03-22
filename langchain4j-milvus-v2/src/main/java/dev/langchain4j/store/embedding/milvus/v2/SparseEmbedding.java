@@ -1,6 +1,5 @@
 package dev.langchain4j.store.embedding.milvus.v2;
 
-import java.util.List;
 import java.util.SortedMap;
 import java.util.TreeMap;
 

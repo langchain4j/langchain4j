@@ -16,8 +16,8 @@ class MilvusV2SparseEmbeddingTest implements WithAssertions {
         SparseEmbedding sparseEmbedding = new SparseEmbedding(indices, values);
 
         // then
-        assertThat(sparseEmbedding.getIndices()).isEqualTo(new long[]{1L, 3L, 5L});
-        assertThat(sparseEmbedding.getValues()).isEqualTo(new float[]{0.1f, 0.3f, 0.5f});
+        assertThat(sparseEmbedding.getIndices()).isEqualTo(new long[] {1L, 3L, 5L});
+        assertThat(sparseEmbedding.getValues()).isEqualTo(new float[] {0.1f, 0.3f, 0.5f});
     }
 
     @Test

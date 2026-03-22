@@ -2,7 +2,6 @@ package dev.langchain4j.store.embedding.milvus.v2;
 
 import com.google.gson.JsonObject;
 import dev.langchain4j.internal.Utils;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;

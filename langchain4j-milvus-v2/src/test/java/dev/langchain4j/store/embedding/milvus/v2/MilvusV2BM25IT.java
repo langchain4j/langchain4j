@@ -8,8 +8,8 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import io.milvus.v2.common.ConsistencyLevel;
-import java.util.Arrays;
 import io.milvus.v2.common.IndexParam;
+import java.util.Arrays;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,7 +24,12 @@ import org.testcontainers.milvus.MilvusContainer;
 class MilvusV2BM25IT implements WithAssertions {
 
     @Container
-    private static final MilvusContainer milvus = new MilvusContainer("milvusdb/milvus:v2.5.8");
+    private static final MilvusContainer milvus = new MilvusContainer("milvusdb/milvus:v2.6.11")
+            .withEnv("DEPLOY_MODE", "STANDALONE")
+            .withEnv("MILVUS_MODE", "standalone")
+            .withEnv("ETCD_USE_EMBED", "true")
+            .withEnv("COMMON_STORAGETYPE", "local")
+            .withCommand("milvus", "run", "standalone");
 
     private EmbeddingModel embeddingModel;
     private MilvusV2EmbeddingStore embeddingStore;
@@ -58,10 +63,7 @@ class MilvusV2BM25IT implements WithAssertions {
         Embedding d2 = embeddingModel.embed(t2.text()).content();
         Embedding d3 = embeddingModel.embed(t3.text()).content();
 
-        embeddingStore.addAll(
-                asList("id1", "id2", "id3"),
-                asList(d1, d2, d3),
-                asList(t1, t2, t3));
+        embeddingStore.addAll(asList("id1", "id2", "id3"), asList(d1, d2, d3), asList(t1, t2, t3));
 
         // Use hybrid search with query for BM25
         MilvusV2EmbeddingSearchRequest req = MilvusV2EmbeddingSearchRequest.milvusBuilder()
@@ -73,32 +75,25 @@ class MilvusV2BM25IT implements WithAssertions {
         EmbeddingSearchResult<TextSegment> result = embeddingStore.search(req);
 
         assertThat(result.matches()).isNotEmpty();
-        assertThat(result.matches().get(0).embedded().text())
-                .containsAnyOf("BM25", "full-text");
+        assertThat(result.matches().get(0).embedded().text()).containsAnyOf("BM25", "full-text");
         assertThat(result.matches().get(0).score()).isGreaterThan(0.0);
     }
 
     @Test
     void should_throw_when_client_sparse_insert_in_bm25_mode() {
-        SparseEmbedding sparse = new SparseEmbedding(
-                new long[]{1L, 3L, 5L}, new float[]{0.1f, 0.3f, 0.5f});
+        SparseEmbedding sparse = new SparseEmbedding(new long[] {1L, 3L, 5L}, new float[] {0.1f, 0.3f, 0.5f});
         TextSegment text = TextSegment.from("a document");
 
         // When using built-in BM25 for sparse, it's not allowed to provide sparse embedding
-        assertThatThrownBy(() ->
-                embeddingStore.addAllSparse(
-                        asList("sid"),
-                        asList(sparse),
-                        asList(text))
-        ).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> embeddingStore.addAllSparse(asList("sid"), asList(sparse), asList(text)))
+                .isInstanceOf(IllegalStateException.class);
 
-        assertThatThrownBy(() ->
-                embeddingStore.addAllHybrid(
+        assertThatThrownBy(() -> embeddingStore.addAllHybrid(
                         asList("hid"),
                         asList(embeddingModel.embed(text.text()).content()),
                         asList(sparse),
-                        asList(text))
-        ).isInstanceOf(IllegalStateException.class);
+                        asList(text)))
+                .isInstanceOf(IllegalStateException.class);
     }
 
     @Test
@@ -111,14 +106,12 @@ class MilvusV2BM25IT implements WithAssertions {
         Embedding d2 = embeddingModel.embed(t2.text()).content();
         Embedding d3 = embeddingModel.embed(t3.text()).content();
 
-        embeddingStore.addAll(
-                Arrays.asList("a", "b", "c"),
-                Arrays.asList(d1, d2, d3),
-                Arrays.asList(t1, t2, t3));
+        embeddingStore.addAll(Arrays.asList("a", "b", "c"), Arrays.asList(d1, d2, d3), Arrays.asList(t1, t2, t3));
 
         // Hybrid search with dense embedding and sparse query text (store-level HYBRID)
         MilvusV2EmbeddingSearchRequest hybridReq = MilvusV2EmbeddingSearchRequest.milvusBuilder()
-                .queryEmbedding(embeddingModel.embed("How does hybrid search work?").content())
+                .queryEmbedding(
+                        embeddingModel.embed("How does hybrid search work?").content())
                 .query("full-text BM25 hybrid")
                 .maxResults(5)
                 .build();
@@ -133,26 +126,27 @@ class MilvusV2BM25IT implements WithAssertions {
     void should_reject_query_text_with_non_bm25_metric_in_sparse_search() {
         String query = "some text query";
 
-        assertThatThrownBy(() ->
-                CollectionRequestBuilder.createSparseSearchReq(
-                        "col", query,
-                        new FieldDefinition("id","text","meta","dense","sparse"),
+        assertThatThrownBy(() -> CollectionRequestBuilder.createSparseSearchReq(
+                        "col",
+                        query,
+                        new FieldDefinition("id", "text", "meta", "dense", "sparse"),
                         IndexParam.MetricType.IP,
                         io.milvus.v2.common.ConsistencyLevel.STRONG,
-                        3, null)
-        ).isInstanceOf(IllegalArgumentException.class);
+                        3,
+                        null))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void should_reject_query_text_with_non_bm25_metric_in_ann_sparse() {
         String query = "another text";
 
-        assertThatThrownBy(() ->
-                CollectionRequestBuilder.createSparseAnnSearchReq(
-                        new FieldDefinition("id","text","meta","dense","sparse"),
+        assertThatThrownBy(() -> CollectionRequestBuilder.createSparseAnnSearchReq(
+                        new FieldDefinition("id", "text", "meta", "dense", "sparse"),
                         query,
                         IndexParam.MetricType.COSINE,
-                        null, 5)
-        ).isInstanceOf(IllegalArgumentException.class);
+                        null,
+                        5))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 }

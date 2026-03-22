@@ -1,24 +1,21 @@
 package dev.langchain4j.store.embedding.milvus.v2;
 
+import static dev.langchain4j.store.embedding.milvus.v2.CollectionRequestBuilder.buildHybridSearchRequest;
+import static dev.langchain4j.store.embedding.milvus.v2.CollectionRequestBuilder.buildSearchRequest;
+import static dev.langchain4j.store.embedding.milvus.v2.CollectionRequestBuilder.createDenseAnnSearchReq;
+import static dev.langchain4j.store.embedding.milvus.v2.CollectionRequestBuilder.createDenseSearchReq;
+import static dev.langchain4j.store.embedding.milvus.v2.CollectionRequestBuilder.createHybridSearchReq;
+import static dev.langchain4j.store.embedding.milvus.v2.CollectionRequestBuilder.createSparseAnnSearchReq;
+import static dev.langchain4j.store.embedding.milvus.v2.CollectionRequestBuilder.createSparseSearchReq;
 
 import dev.langchain4j.data.embedding.Embedding;
 import io.milvus.v2.common.ConsistencyLevel;
 import io.milvus.v2.common.IndexParam;
 import io.milvus.v2.service.vector.request.HybridSearchReq;
 import io.milvus.v2.service.vector.request.SearchReq;
-import io.milvus.v2.service.vector.request.ranker.RRFRanker;
 import java.util.Arrays;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
-
-import static dev.langchain4j.store.embedding.milvus.v2.CollectionRequestBuilder.buildSearchRequest;
-import static dev.langchain4j.store.embedding.milvus.v2.CollectionRequestBuilder.buildHybridSearchRequest;
-import static dev.langchain4j.store.embedding.milvus.v2.CollectionRequestBuilder.createDenseSearchReq;
-import static dev.langchain4j.store.embedding.milvus.v2.CollectionRequestBuilder.createSparseSearchReq;
-import static dev.langchain4j.store.embedding.milvus.v2.CollectionRequestBuilder.createHybridSearchReq;
-import static dev.langchain4j.store.embedding.milvus.v2.CollectionRequestBuilder.createDenseAnnSearchReq;
-import static dev.langchain4j.store.embedding.milvus.v2.CollectionRequestBuilder.createSparseAnnSearchReq;
-
 
 class CollectionRequestBuilderTest implements WithAssertions {
 
@@ -48,7 +45,7 @@ class CollectionRequestBuilderTest implements WithAssertions {
         assertThat(result.getCollectionName()).isEqualTo(COLLECTION_NAME);
         assertThat(result.getAnnsField()).isEqualTo("vector");
         assertThat(result.getMetricType()).isEqualTo(IndexParam.MetricType.COSINE);
-        assertThat(result.getTopK()).isEqualTo(5);
+        assertThat(result.getLimit()).isEqualTo(5);
         assertThat(result.getOutputFields()).containsExactly("id", "text", "metadata");
     }
 
@@ -56,8 +53,7 @@ class CollectionRequestBuilderTest implements WithAssertions {
     void should_build_hybrid_search_request() {
         // given
         Embedding queryEmbedding = Embedding.from(Arrays.asList(1.0f, 2.0f, 3.0f));
-        SparseEmbedding sparseEmbedding =
-                new SparseEmbedding(new long[]{1L, 3L, 5L}, new float[]{0.1f, 0.3f, 0.5f});
+        SparseEmbedding sparseEmbedding = new SparseEmbedding(new long[] {1L, 3L, 5L}, new float[] {0.1f, 0.3f, 0.5f});
         MilvusV2EmbeddingSearchRequest searchRequest = MilvusV2EmbeddingSearchRequest.milvusBuilder()
                 .queryEmbedding(queryEmbedding)
                 .sparseEmbedding(sparseEmbedding)
@@ -65,7 +61,7 @@ class CollectionRequestBuilderTest implements WithAssertions {
                 .minScore(0.7)
                 .build();
 
-        RRFRanker ranker = new RRFRanker(60);
+        MilvusV2Ranker ranker = MilvusV2Ranker.rrf(60);
 
         // when
         HybridSearchReq result = buildHybridSearchRequest(
@@ -79,21 +75,21 @@ class CollectionRequestBuilderTest implements WithAssertions {
 
         // then
         assertThat(result.getCollectionName()).isEqualTo(COLLECTION_NAME);
-        assertThat(result.getTopK()).isEqualTo(15);
-        assertThat(result.getRanker()).isEqualTo(ranker);
+        assertThat(result.getLimit()).isEqualTo(15);
+        assertThat(result.getRanker().toString()).isEqualTo(ranker.toFunction().toString());
         assertThat(result.getSearchRequests()).hasSize(2);
 
         // Check dense search request
         var denseSearchReq = result.getSearchRequests().get(0);
         assertThat(denseSearchReq.getVectorFieldName()).isEqualTo("vector");
         assertThat(denseSearchReq.getMetricType()).isEqualTo(IndexParam.MetricType.COSINE);
-        assertThat(denseSearchReq.getTopK()).isEqualTo(15);
+        assertThat(denseSearchReq.getLimit()).isEqualTo(15);
 
         // Check sparse search request
         var sparseSearchReq = result.getSearchRequests().get(1);
         assertThat(sparseSearchReq.getVectorFieldName()).isEqualTo("sparse_vector");
         assertThat(sparseSearchReq.getMetricType()).isEqualTo(IndexParam.MetricType.IP);
-        assertThat(sparseSearchReq.getTopK()).isEqualTo(15);
+        assertThat(sparseSearchReq.getLimit()).isEqualTo(15);
     }
 
     @Test
@@ -115,15 +111,14 @@ class CollectionRequestBuilderTest implements WithAssertions {
         assertThat(result.getCollectionName()).isEqualTo(COLLECTION_NAME);
         assertThat(result.getAnnsField()).isEqualTo("vector");
         assertThat(result.getMetricType()).isEqualTo(IndexParam.MetricType.COSINE);
-        assertThat(result.getTopK()).isEqualTo(5);
+        assertThat(result.getLimit()).isEqualTo(5);
         assertThat(result.getOutputFields()).containsExactly("id", "text", "metadata");
     }
 
     @Test
     void should_create_sparse_search_request() {
         // given
-        SparseEmbedding sparseEmbedding =
-                new SparseEmbedding(new long[]{1L, 3L, 5L}, new float[]{0.1f, 0.3f, 0.5f});
+        SparseEmbedding sparseEmbedding = new SparseEmbedding(new long[] {1L, 3L, 5L}, new float[] {0.1f, 0.3f, 0.5f});
 
         // when
         SearchReq result = createSparseSearchReq(
@@ -139,7 +134,7 @@ class CollectionRequestBuilderTest implements WithAssertions {
         assertThat(result.getCollectionName()).isEqualTo(COLLECTION_NAME);
         assertThat(result.getAnnsField()).isEqualTo("sparse_vector");
         assertThat(result.getMetricType()).isEqualTo(IndexParam.MetricType.IP);
-        assertThat(result.getTopK()).isEqualTo(10);
+        assertThat(result.getLimit()).isEqualTo(10);
         assertThat(result.getOutputFields()).containsExactly("id", "text", "metadata");
     }
 
@@ -147,9 +142,8 @@ class CollectionRequestBuilderTest implements WithAssertions {
     void should_create_hybrid_search_request_with_ann_search_reqs() {
         // given
         Embedding queryEmbedding = Embedding.from(Arrays.asList(1.0f, 2.0f, 3.0f));
-        SparseEmbedding sparseEmbedding =
-                new SparseEmbedding(new long[]{1L, 3L, 5L}, new float[]{0.1f, 0.3f, 0.5f});
-        RRFRanker ranker = new RRFRanker(60);
+        SparseEmbedding sparseEmbedding = new SparseEmbedding(new long[] {1L, 3L, 5L}, new float[] {0.1f, 0.3f, 0.5f});
+        MilvusV2Ranker ranker = MilvusV2Ranker.rrf(60);
 
         // when
         HybridSearchReq result = createHybridSearchReq(
@@ -167,21 +161,21 @@ class CollectionRequestBuilderTest implements WithAssertions {
 
         // then
         assertThat(result.getCollectionName()).isEqualTo(COLLECTION_NAME);
-        assertThat(result.getTopK()).isEqualTo(20);
-        assertThat(result.getRanker()).isEqualTo(ranker);
+        assertThat(result.getLimit()).isEqualTo(20);
+        assertThat(result.getRanker().toString()).isEqualTo(ranker.toFunction().toString());
         assertThat(result.getSearchRequests()).hasSize(2);
 
         // Check dense ANN search request
         var denseAnnReq = result.getSearchRequests().get(0);
         assertThat(denseAnnReq.getVectorFieldName()).isEqualTo("vector");
         assertThat(denseAnnReq.getMetricType()).isEqualTo(IndexParam.MetricType.COSINE);
-        assertThat(denseAnnReq.getTopK()).isEqualTo(20);
+        assertThat(denseAnnReq.getLimit()).isEqualTo(20);
 
         // Check sparse ANN search request
         var sparseAnnReq = result.getSearchRequests().get(1);
         assertThat(sparseAnnReq.getVectorFieldName()).isEqualTo("sparse_vector");
         assertThat(sparseAnnReq.getMetricType()).isEqualTo(IndexParam.MetricType.IP);
-        assertThat(sparseAnnReq.getTopK()).isEqualTo(20);
+        assertThat(sparseAnnReq.getLimit()).isEqualTo(20);
     }
 
     @Test
@@ -200,14 +194,13 @@ class CollectionRequestBuilderTest implements WithAssertions {
         // then
         assertThat(result.getVectorFieldName()).isEqualTo("vector");
         assertThat(result.getMetricType()).isEqualTo(IndexParam.MetricType.COSINE);
-        assertThat(result.getTopK()).isEqualTo(5);
+        assertThat(result.getLimit()).isEqualTo(5);
     }
 
     @Test
     void should_create_sparse_ann_search_request() {
         // given
-        SparseEmbedding sparseEmbedding =
-                new SparseEmbedding(new long[]{1L, 3L, 5L}, new float[]{0.1f, 0.3f, 0.5f});
+        SparseEmbedding sparseEmbedding = new SparseEmbedding(new long[] {1L, 3L, 5L}, new float[] {0.1f, 0.3f, 0.5f});
 
         // when
         var result = createSparseAnnSearchReq(
@@ -220,6 +213,6 @@ class CollectionRequestBuilderTest implements WithAssertions {
         // then
         assertThat(result.getVectorFieldName()).isEqualTo("sparse_vector");
         assertThat(result.getMetricType()).isEqualTo(IndexParam.MetricType.IP);
-        assertThat(result.getTopK()).isEqualTo(10);
+        assertThat(result.getLimit()).isEqualTo(10);
     }
 }
