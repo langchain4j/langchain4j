@@ -14,6 +14,7 @@
 
     <properties>
         <milvus-sdk-java.version>2.6.14</milvus-sdk-java.version>
+        <jackson.version>2.21.1</jackson.version>
         <skipMilvusITs>${skipITs}</skipMilvusITs>
         <!-- TODO: remove enforcer.skipRules -->
         <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>

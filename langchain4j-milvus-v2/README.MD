@@ -289,8 +289,6 @@ A **HYBRID** collection automatically creates both a dense vector field and a sp
   - **Basic Vector Search**: Compatible with Milvus 2.x.
 - **Java 17+**
 
-> **Note on SDK Version:** This module uses `milvus-sdk-java` v2.6.x. It is backward compatible with Milvus Server v2.5.x for most features (including Hybrid Search and BM25). You do not need to downgrade the SDK to connect to a v2.5 Server.
-
 ---
 
 ## Hybrid Rankers
