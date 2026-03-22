@@ -37,7 +37,11 @@ public class EmbeddingSearchRequest {
      *                       This is an optional parameter. Default: no filtering
      */
     public EmbeddingSearchRequest(Embedding queryEmbedding, Integer maxResults, Double minScore, Filter filter) {
-        this(builder().queryEmbedding(queryEmbedding).maxResults(maxResults).minScore(minScore).filter(filter));
+        this(builder()
+                .queryEmbedding(queryEmbedding)
+                .maxResults(maxResults)
+                .minScore(minScore)
+                .filter(filter));
     }
 
     /**
@@ -51,8 +55,14 @@ public class EmbeddingSearchRequest {
      * @param minScore       The minimum score, ranging from 0 to 1 (inclusive). Default: 0
      * @param filter         The filter to be applied to the {@link Metadata} during search.
      */
-    public EmbeddingSearchRequest(Embedding queryEmbedding, String query, Integer maxResults, Double minScore, Filter filter) {
-        this(builder().queryEmbedding(queryEmbedding).query(query).maxResults(maxResults).minScore(minScore).filter(filter));
+    public EmbeddingSearchRequest(
+            Embedding queryEmbedding, String query, Integer maxResults, Double minScore, Filter filter) {
+        this(builder()
+                .queryEmbedding(queryEmbedding)
+                .query(query)
+                .maxResults(maxResults)
+                .minScore(minScore)
+                .filter(filter));
     }
 
     /**
@@ -109,13 +119,12 @@ public class EmbeddingSearchRequest {
 
     @Override
     public String toString() {
-        return "EmbeddingSearchRequest{" +
-                "query='" + query + '\'' +
-                ", queryEmbedding=" + queryEmbedding +
-                ", maxResults=" + maxResults +
-                ", minScore=" + minScore +
-                ", filter=" + filter +
-                '}';
+        return "EmbeddingSearchRequest{" + "query='"
+                + query + '\'' + ", queryEmbedding="
+                + queryEmbedding + ", maxResults="
+                + maxResults + ", minScore="
+                + minScore + ", filter="
+                + filter + '}';
     }
 
     public static EmbeddingSearchRequestBuilder builder() {
