@@ -109,18 +109,23 @@ class AiServicesUserMessageConfigTest {
         String chat17(@ExternalAnnotation1 @ExternalAnnotation2 String msg);
 
         String chat18_1(Content content);
+
         String chat18_2(AudioContent audioContent);
 
         String chat19_1(@UserMessage Content content);
+
         String chat19_2(@UserMessage AudioContent audioContent);
 
         String chat20_1(List<Content> contents);
+
         String chat20_2(List<AudioContent> audioContents);
 
         String chat21_1(@UserMessage List<Content> contents);
+
         String chat21_2(@UserMessage List<AudioContent> audioContents);
 
         String chat22_1(@UserMessage Content content1, @UserMessage Content content2);
+
         String chat22_2(@UserMessage AudioContent audio, @UserMessage ImageContent image);
 
         String chat23_1(Map<String, ?> args);
@@ -718,9 +723,7 @@ class AiServicesUserMessageConfigTest {
         aiService.chat24_simple(audioContent);
 
         verify(chatModel)
-                .chat(ChatRequest.builder()
-                        .messages(userMessage(audioContent))
-                        .build());
+                .chat(ChatRequest.builder().messages(userMessage(audioContent)).build());
         verify(chatModel).supportedCapabilities();
     }
 
@@ -739,9 +742,7 @@ class AiServicesUserMessageConfigTest {
         // then - Content must be passed as AudioContent, NOT as TextContent("AudioContent {...}")
         verify(chatModel)
                 .chat(ChatRequest.builder()
-                        .messages(userMessage(
-                                TextContent.from("Transcribe this audio: "),
-                                audioContent))
+                        .messages(userMessage(TextContent.from("Transcribe this audio: "), audioContent))
                         .build());
         verify(chatModel).supportedCapabilities();
     }
