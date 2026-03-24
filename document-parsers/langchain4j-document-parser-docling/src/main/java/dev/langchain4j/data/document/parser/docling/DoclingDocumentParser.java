@@ -24,7 +24,15 @@ import java.util.Base64;
  * 
  * <p>Example usage:</p>
  * <pre>{@code
- * DoclingDocumentParser parser = new DoclingDocumentParser("http://localhost:5001");
+ * // Default configuration (localhost:5001, 60 second timeout)
+ * DoclingDocumentParser parser = new DoclingDocumentParser();
+ * 
+ * // Custom server URL
+ * DoclingDocumentParser parser = new DoclingDocumentParser("http://my-server:5001");
+ * 
+ * // Custom server URL and timeout
+ * DoclingDocumentParser parser = new DoclingDocumentParser("http://my-server:5001", 120);
+ * 
  * Document document = parser.parse(inputStream);
  * String text = document.text();
  * }</pre>
@@ -35,28 +43,45 @@ import java.util.Base64;
 public class DoclingDocumentParser implements DocumentParser {
 
     private final DoclingServeApi doclingClient;
+    private final int timeoutSeconds;
 
     /**
-     * Creates a new DoclingDocumentParser with the default server URL.
+     * Creates a new DoclingDocumentParser with the default server URL and timeout.
      * 
      * <p>The default URL is {@code http://localhost:5001}, which assumes a local
-     * docling-serve instance is running on the default port.</p>
+     * docling-serve instance is running on the default port. Default timeout is 60 seconds.</p>
      */
     public DoclingDocumentParser() {
-        this("http://localhost:5001");
+        this("http://localhost:5001", 60);
     }
 
     /**
-     * Creates a new DoclingDocumentParser with a custom server URL.
+     * Creates a new DoclingDocumentParser with a custom server URL and default timeout.
      * 
      * @param doclingServerUrl the URL of the docling-serve instance (e.g., "http://localhost:5001").
      *                         Must not be null or empty.
      * @throws IllegalArgumentException if the server URL is null or empty
      */
     public DoclingDocumentParser(String doclingServerUrl) {
+        this(doclingServerUrl, 60);
+    }
+
+    /**
+     * Creates a new DoclingDocumentParser with a custom server URL and timeout.
+     * 
+     * @param doclingServerUrl the URL of the docling-serve instance (e.g., "http://localhost:5001").
+     *                         Must not be null or empty.
+     * @param timeoutSeconds the timeout in seconds for API requests. Must be positive.
+     * @throws IllegalArgumentException if the server URL is null/empty or timeout is not positive
+     */
+    public DoclingDocumentParser(String doclingServerUrl, int timeoutSeconds) {
         if (doclingServerUrl == null || doclingServerUrl.isEmpty()) {
             throw new IllegalArgumentException("You must provide a server URL!");
         }
+        if (timeoutSeconds <= 0) {
+            throw new IllegalArgumentException("Timeout must be positive");
+        }
+        this.timeoutSeconds = timeoutSeconds;
         this.doclingClient = DoclingServeClientBuilderFactory.newBuilder()
                 .baseUrl(doclingServerUrl).build();
     }
@@ -74,6 +99,7 @@ public class DoclingDocumentParser implements DocumentParser {
      *   <li>{@code document_size_bytes}: Original size of the input document</li>
      *   <li>{@code docling_error_count}: Number of non-fatal errors encountered during parsing</li>
      *   <li>{@code parser}: Always set to "Docling"</li>
+     *   <li>{@code timeout_seconds}: Configured timeout value</li>
      * </ul>
      * 
      * @param inputStream the input stream containing the document to parse. Must not be null or empty.
@@ -145,6 +171,9 @@ public class DoclingDocumentParser implements DocumentParser {
 
             // Add source type (indicates this was parsed by Docling)
             metadata.put("parser", "Docling");
+            
+            // Add timeout configuration
+            metadata.put("timeout_seconds", String.valueOf(timeoutSeconds));
 
             // Step 9: Return everything wrapped in a Document object
             return new Document(parsedText, metadata);
