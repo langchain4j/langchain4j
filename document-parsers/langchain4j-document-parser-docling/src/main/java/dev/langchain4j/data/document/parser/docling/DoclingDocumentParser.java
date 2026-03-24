@@ -1,18 +1,13 @@
 package dev.langchain4j.data.document.parser.docling;
 
-// Import the Docling Java library classes
 import ai.docling.serve.api.DoclingServeApi;
 import ai.docling.serve.api.convert.request.ConvertDocumentRequest;
 import ai.docling.serve.api.convert.request.source.BytesSource;
 import ai.docling.serve.api.convert.response.ConvertDocumentResponse;
 import ai.docling.serve.client.DoclingServeClientBuilderFactory;
-
-// Import the LangChain4j classes we need to implement
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
 import dev.langchain4j.data.document.Metadata;
-
-// Import Java utilities
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Base64;
@@ -38,128 +33,122 @@ import java.util.Base64;
  * @since 1.12.0
  */
 public class DoclingDocumentParser implements DocumentParser {
-    
-    // This is our connection to the Docling server
+
     private final DoclingServeApi doclingClient;
-    
+
     /**
-     * Constructor with no arguments - connects to localhost by default
-     * Use this when you're running Docling on your own computer
+     * Creates a new DoclingDocumentParser with the default server URL.
+     * 
+     * <p>The default URL is {@code http://localhost:5001}, which assumes a local
+     * docling-serve instance is running on the default port.</p>
      */
     public DoclingDocumentParser() {
-        this("http://localhost:5001");  // Default server location
+        this("http://localhost:5001");
     }
-    
+
     /**
-     * Constructor that lets you specify where the Docling server is
+     * Creates a new DoclingDocumentParser with a custom server URL.
      * 
-     * @param doclingServerUrl - where the Docling server is running
-     *                           Example: "http://localhost:5001"
+     * @param doclingServerUrl the URL of the docling-serve instance (e.g., "http://localhost:5001").
+     *                         Must not be null or empty.
+     * @throws IllegalArgumentException if the server URL is null or empty
      */
     public DoclingDocumentParser(String doclingServerUrl) {
-        // Make sure they gave us a valid URL
         if (doclingServerUrl == null || doclingServerUrl.isEmpty()) {
             throw new IllegalArgumentException("You must provide a server URL!");
         }
-        
-        // Create the client that talks to the Docling server
         this.doclingClient = DoclingServeClientBuilderFactory.newBuilder()
-                .baseUrl(doclingServerUrl)
-                .build();
+                .baseUrl(doclingServerUrl).build();
     }
-    
+
     /**
-     * This is the main method that does the work!
-     * It takes a document file as input and returns the parsed text.
+     * Parses a document from the provided input stream using the Docling parser.
      * 
-     * @param inputStream - the document file (as a stream of bytes)
-     * @return Document - the parsed text wrapped in a Document object
+     * <p>The document is read into memory, encoded as Base64, and sent to the docling-serve
+     * instance for processing. The returned markdown content is wrapped in a LangChain4j
+     * {@link Document} object along with metadata about the parsing process.</p>
+     * 
+     * <p>Metadata included:</p>
+     * <ul>
+     *   <li>{@code docling_processing_time_ms}: Time taken by Docling to process the document</li>
+     *   <li>{@code document_size_bytes}: Original size of the input document</li>
+     *   <li>{@code docling_error_count}: Number of non-fatal errors encountered during parsing</li>
+     *   <li>{@code parser}: Always set to "Docling"</li>
+     * </ul>
+     * 
+     * @param inputStream the input stream containing the document to parse. Must not be null or empty.
+     * @return a {@link Document} containing the parsed text and metadata
+     * @throws IllegalArgumentException if the input stream is null or empty
+     * @throws RuntimeException if the document cannot be read, the Docling server is unreachable,
+     *                          or parsing fails
      */
     @Override
     public Document parse(InputStream inputStream) {
-        // Validate input
         if (inputStream == null) {
             throw new IllegalArgumentException("Input stream cannot be null");
         }
-        
+
         try {
-            // Step 1: Read all the bytes from the input file
+            // Step 1: Read the entire document into memory
             byte[] documentBytes = inputStream.readAllBytes();
             
-            // Validate we actually got some data
             if (documentBytes.length == 0) {
-                throw new IllegalArgumentException("Input stream is empty - no document to parse");
+                throw new IllegalArgumentException("Input stream is empty");
             }
-            
-            // Step 2: Convert those bytes to base64 format
-            // (This is how we send binary data over HTTP)
+
+            // Step 2: Encode document as Base64 for transmission to Docling
             String base64Content = Base64.getEncoder().encodeToString(documentBytes);
-            
-            // Step 3: Create a request to send to Docling
-            // We're telling it "here's my document as base64 bytes"
+
+            // Step 3: Build the API request with the encoded document
             ConvertDocumentRequest request = ConvertDocumentRequest.builder()
-                    .source(
-                        BytesSource.builder()
-                                .content(base64Content)
-                                .build()
-                    )
+                    .source(BytesSource.builder().content(base64Content).build())
                     .build();
-            
-            // Step 4: Send the request to Docling and get the response
+
+            // Step 4: Send request to Docling and get response
             ConvertDocumentResponse response = doclingClient.convertSource(request);
-            
-            // Step 5: Check if Docling actually returned a document
+
+            // Step 5: Validate response
             if (response == null || response.getDocument() == null) {
-                throw new RuntimeException("Docling returned an empty response - no document was parsed");
+                throw new RuntimeException("Docling returned an empty response");
             }
-            
-            // Step 5a: Check for errors even if we got a document
-            // (Docling can return partial results with errors)
+
+            // Step 6: Check for errors (non-fatal, we still return the document)
             if (response.getErrors() != null && !response.getErrors().isEmpty()) {
-                // Log the first error for debugging
                 var firstError = response.getErrors().get(0);
-                String errorMsg = String.format("Docling reported %d error(s). First error: [%s] %s", 
-                    response.getErrors().size(),
-                    firstError.getComponentType(),
+                System.err.println("Warning: Docling reported " + response.getErrors().size() + 
+                    " error(s). First: [" + firstError.getComponentType() + "] " + 
                     firstError.getErrorMessage());
-                
-                // If there are critical errors, we might want to throw
-                // For now, we'll continue with partial results
-                System.err.println("Warning: " + errorMsg);
             }
-            
-            // Step 6: Extract the text from the response
-            // Docling gives us nice markdown-formatted text
+
+            // Step 7: Extract the parsed text content
             String parsedText = response.getDocument().getMarkdownContent();
-            
-            // Validate we got actual text content
             if (parsedText == null || parsedText.isEmpty()) {
-                throw new RuntimeException("Docling returned a document but with no text content");
+                throw new RuntimeException("Docling returned no text content");
             }
-            
-            // Step 7: Extract metadata from the Docling response
+
+            // Step 8: Build metadata about the parsing process
             Metadata metadata = new Metadata();
-            
+
             // Add processing time (how long Docling took to parse)
             if (response.getProcessingTime() != null) {
                 metadata.put("docling_processing_time_ms", response.getProcessingTime().toString());
             }
-            
+
             // Add document size (original file size in bytes)
             metadata.put("document_size_bytes", String.valueOf(documentBytes.length));
-            
+
             // Add error information if there were any issues
             if (response.getErrors() != null && !response.getErrors().isEmpty()) {
                 metadata.put("docling_error_count", String.valueOf(response.getErrors().size()));
                 // Note: Individual errors available but not included to keep metadata clean
             }
-            
+
             // Add source type (indicates this was parsed by Docling)
             metadata.put("parser", "Docling");
-            
-            // Step 8: Return everything wrapped in a Document object
+
+            // Step 9: Return everything wrapped in a Document object
             return new Document(parsedText, metadata);
-            
+
         } catch (IOException e) {
             // If we can't read the file, throw an error with helpful message
             throw new RuntimeException("Failed to read input stream: " + e.getMessage(), e);
@@ -167,8 +156,8 @@ public class DoclingDocumentParser implements DocumentParser {
             // Re-throw validation errors as-is
             throw e;
         } catch (Exception e) {
-            // If anything else goes wrong with Docling, give a helpful error
-            throw new RuntimeException("Docling failed to parse the document: " + e.getMessage(), e);
+            // Catch any other errors from Docling API and wrap them
+            throw new RuntimeException("Docling failed to parse document: " + e.getMessage(), e);
         }
     }
 }
