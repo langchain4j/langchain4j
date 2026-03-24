@@ -56,21 +56,21 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
    
     // Test InvocationState 
     private static final class InvocationState{
-        private final List<AiServiceEvent> events = new arraylist<>();
+        private final List<AiServiceEvent> events = new ArrayList<>();
 
         synchronized void add(AiServiceEvent event){
             events.add(event);
         }
 
-        synchronized List<AiserviceEvent> snapshot(){
-            return copyof(events);
+        synchronized List<AiServiceEvent> snapshot(){
+            return List.copyOf(events);
         }
 
     }
     /**
      * Test Map to instead be thread safe and store IDs with the events
      */
-    private map<UUID, InvocationState> AiServiceInteractionEvent = new ConcurrenthaspMap<>();
+    private Map<UUID, InvocationState> AiServiceInteractionEvent = new ConcurrentHashMap<>();
 
     /**
      * Fires the given event to all registered {@link AiServiceListener}s.
