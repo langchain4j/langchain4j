@@ -67,26 +67,13 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
         }
 
     }
-    
-    // Test List of invocationstates
-    private static final class AiServiceInteractionEvent{
-        List<InvocationState> states = new ArrayList<>();
 
-        
-        synchronized void add(InvocationState state){
-            state.add(state);
-        }
-
-        synchronized List<InvocationState> snapshot(){
-            return List.copyOf(states);
-        }
-
-    }
-    // Removing Map data structure 
+    // Reintroduce Map data structure 
     /* 
-      Test Map to instead be thread safe and store IDs with the events
-      private Map<UUID, InvocationState> AiServiceInteractionEvent = new ConcurrentHashMap<>();
+      Test Map to instead be thread safe and store *started event* IDs with the events
     */
+      private Map<UUID, InvocationState> AiServiceInteractionEvent = new ConcurrentHashMap<>();
+    
 
     /**
      * Fires the given event to all registered {@link AiServiceListener}s.
@@ -103,6 +90,14 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
 
         // Test features
         
+        if (event.eventClass() == AiServiceStartedEvent.class){
+            UUID startID = event.invocationContext().invocationId();
+            InvocationState state = AiServiceInteractionEvent.computeIfAbsent(startID, id -> new InvocationState());
+        }
+        else{
+            // Future Event Handling: events that are not start events
+        }
+
         
     }
 
