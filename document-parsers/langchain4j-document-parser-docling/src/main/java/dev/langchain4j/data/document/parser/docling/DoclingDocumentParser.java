@@ -18,14 +18,24 @@ import java.io.InputStream;
 import java.util.Base64;
 
 /**
- * This class takes documents (PDF, DOCX, etc.) and converts them to text
- * using IBM's Docling service. Docling is really good at understanding
- * document structure, tables, and images.
+ * A document parser that integrates IBM Research's Docling parser into LangChain4j.
  * 
- * How it works:
- * 1. We send a document to the Docling server
- * 2. Docling parses it and extracts the text
- * 3. We return that text wrapped in a LangChain4j Document object
+ * <p>This parser uses the Docling document processing engine to extract text and structure
+ * from various document formats including PDF, DOCX, PPTX, and more. It provides advanced
+ * capabilities such as OCR, table extraction, and layout analysis.</p>
+ * 
+ * <p>The parser communicates with a docling-serve instance via REST API, sending documents
+ * as Base64-encoded content and receiving parsed markdown output.</p>
+ * 
+ * <p>Example usage:</p>
+ * <pre>{@code
+ * DoclingDocumentParser parser = new DoclingDocumentParser("http://localhost:5001");
+ * Document document = parser.parse(inputStream);
+ * String text = document.text();
+ * }</pre>
+ * 
+ * @see dev.langchain4j.data.document.DocumentParser
+ * @since 1.12.0
  */
 public class DoclingDocumentParser implements DocumentParser {
     
@@ -161,3 +171,4 @@ public class DoclingDocumentParser implements DocumentParser {
             throw new RuntimeException("Docling failed to parse the document: " + e.getMessage(), e);
         }
     }
+}
