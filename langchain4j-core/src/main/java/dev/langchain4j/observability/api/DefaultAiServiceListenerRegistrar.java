@@ -88,7 +88,9 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
         // Test features
         UUID invocationId = event.invocationContext().invocationId();
         
-
+        InvocationState state = AiServiceInteractionEvent.computeIfAbsent(invocationId, id -> new InvocationState());
+        state.add(event);
+        
     }
 
 
