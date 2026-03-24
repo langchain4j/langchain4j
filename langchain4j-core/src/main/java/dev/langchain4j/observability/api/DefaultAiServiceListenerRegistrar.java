@@ -54,7 +54,7 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
 
 
    
-    // Test InvocationState 
+    // Test InvocationState contains every one flowstate of commands
     private static final class InvocationState{
         private final List<AiServiceEvent> events = new ArrayList<>();
 
@@ -67,10 +67,26 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
         }
 
     }
-    /**
-     * Test Map to instead be thread safe and store IDs with the events
-     */
-    private Map<UUID, InvocationState> AiServiceInteractionEvent = new ConcurrentHashMap<>();
+    
+    // Test List of invocationstates
+    private static final class AiServiceInteractionEvent{
+        List<InvocationState> states = new ArrayList<>();
+
+        
+        synchronized void add(InvocationState state){
+            state.add(state);
+        }
+
+        synchronized List<InvocationState> snapshot(){
+            return List.copyOf(states);
+        }
+
+    }
+    // Removing Map data structure 
+    /* 
+      Test Map to instead be thread safe and store IDs with the events
+      private Map<UUID, InvocationState> AiServiceInteractionEvent = new ConcurrentHashMap<>();
+    */
 
     /**
      * Fires the given event to all registered {@link AiServiceListener}s.
@@ -86,10 +102,7 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
                 .ifPresent(l -> l.fireEvent(event));
 
         // Test features
-        UUID invocationId = event.invocationContext().invocationId();
         
-        InvocationState state = AiServiceInteractionEvent.computeIfAbsent(invocationId, id -> new InvocationState());
-        state.add(event);
         
     }
 
