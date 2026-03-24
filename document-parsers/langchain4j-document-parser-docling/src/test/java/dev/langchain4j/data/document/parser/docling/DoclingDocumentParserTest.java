@@ -95,4 +95,64 @@ class DoclingDocumentParserTest {
         DoclingDocumentParser parser = new DoclingDocumentParser(httpUrl);
         assertThat(parser).isNotNull();
     }
+    @Test
+    void shouldAcceptLocalhostUrl() {
+        // Given
+        String localhostUrl = "http://localhost:5001";
+
+        // When/Then - should not throw
+        DoclingDocumentParser parser = new DoclingDocumentParser(localhostUrl);
+        assertThat(parser).isNotNull();
+    }
+
+    @Test
+    void shouldAcceptIpAddressUrl() {
+        // Given
+        String ipUrl = "http://192.168.1.100:5001";
+
+        // When/Then - should not throw
+        DoclingDocumentParser parser = new DoclingDocumentParser(ipUrl);
+        assertThat(parser).isNotNull();
+    }
+
+    @Test
+    void shouldAcceptUrlWithoutPort() {
+        // Given
+        String urlWithoutPort = "http://docling-server";
+
+        // When/Then - should not throw
+        DoclingDocumentParser parser = new DoclingDocumentParser(urlWithoutPort);
+        assertThat(parser).isNotNull();
+    }
+
+    @Test
+    void shouldAcceptUrlWithDifferentPort() {
+        // Given
+        String customPortUrl = "http://localhost:8080";
+
+        // When/Then - should not throw
+        DoclingDocumentParser parser = new DoclingDocumentParser(customPortUrl);
+        assertThat(parser).isNotNull();
+    }
+
+    @Test
+    void shouldThrowExceptionForWhitespaceOnlyServerUrl() {
+        // When/Then
+        assertThatThrownBy(() -> new DoclingDocumentParser("   "))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("server URL");
+    }
+
+    @Test
+    void shouldHandleInputStreamWithContent() {
+        // Given
+        DoclingDocumentParser parser = new DoclingDocumentParser("http://localhost:5001");
+        byte[] sampleData = "Sample PDF content".getBytes();
+        InputStream inputStream = new ByteArrayInputStream(sampleData);
+
+        // When/Then - we can't test full parsing without server, but we can verify it doesn't crash on valid input
+        // This will throw an exception about server connectivity, which is expected
+        assertThatThrownBy(() -> parser.parse(inputStream))
+                .isInstanceOf(RuntimeException.class);
+    }
 }
