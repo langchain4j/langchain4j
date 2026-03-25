@@ -3,6 +3,9 @@ package dev.langchain4j.mcp.protocol;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import dev.langchain4j.Internal;
 
+/**
+ * Corresponds to the {@code Implementation} type from the MCP schema.
+ */
 @Internal
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class McpImplementation {

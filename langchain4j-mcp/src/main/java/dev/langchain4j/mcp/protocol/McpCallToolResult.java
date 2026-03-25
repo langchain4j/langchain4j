@@ -4,6 +4,9 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import dev.langchain4j.Internal;
 import java.util.List;
 
+/**
+ * Corresponds to the {@code CallToolResult} type from the MCP schema.
+ */
 @Internal
 public class McpCallToolResult extends McpJsonRpcMessage {
 
