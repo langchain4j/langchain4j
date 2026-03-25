@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import com.fasterxml.jackson.databind.exc.ValueInstantiationException;
 import java.util.Collection;
@@ -408,5 +410,112 @@ class JsonCodecTest {
         // then
         assertThat(pojo.name).isEqualTo("Klaus");
         assertThat(pojo.age).isEqualTo(42);
+    }
+
+    @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "scope", visible = true)
+    @JsonSubTypes({
+        @JsonSubTypes.Type(value = RefineRequestItem.class, name = "request"),
+        @JsonSubTypes.Type(value = RefineProductItem.class, name = "product")
+    })
+    static abstract class RefineItem {
+        String scope;
+        String description;
+    }
+
+    static class RefineRequestItem extends RefineItem {
+        String requestId;
+    }
+
+    static class RefineProductItem extends RefineItem {
+        String productName;
+        int quantity;
+    }
+
+    @ParameterizedTest
+    @MethodSource("codecs")
+    void should_deserialize_polymorphic_type_with_JsonTypeInfo(Json.JsonCodec codec) {
+
+        // given
+        String requestJson = """
+                {
+                    "scope": "request",
+                    "description": "Update the request",
+                    "requestId": "REQ-123"
+                }
+                """;
+
+        // when
+        RefineItem item = codec.fromJson(requestJson, RefineItem.class);
+
+        // then
+        assertThat(item).isInstanceOf(RefineRequestItem.class);
+        RefineRequestItem requestItem = (RefineRequestItem) item;
+        assertThat(requestItem.scope).isEqualTo("request");
+        assertThat(requestItem.description).isEqualTo("Update the request");
+        assertThat(requestItem.requestId).isEqualTo("REQ-123");
+    }
+
+    @ParameterizedTest
+    @MethodSource("codecs")
+    void should_deserialize_another_polymorphic_subtype(Json.JsonCodec codec) {
+
+        // given
+        String productJson = """
+                {
+                    "scope": "product",
+                    "description": "Add a product",
+                    "productName": "Widget",
+                    "quantity": 5
+                }
+                """;
+
+        // when
+        RefineItem item = codec.fromJson(productJson, RefineItem.class);
+
+        // then
+        assertThat(item).isInstanceOf(RefineProductItem.class);
+        RefineProductItem productItem = (RefineProductItem) item;
+        assertThat(productItem.scope).isEqualTo("product");
+        assertThat(productItem.description).isEqualTo("Add a product");
+        assertThat(productItem.productName).isEqualTo("Widget");
+        assertThat(productItem.quantity).isEqualTo(5);
+    }
+
+    static class PolymorphicContainer {
+        List<RefineItem> items;
+    }
+
+    @ParameterizedTest
+    @MethodSource("codecs")
+    void should_deserialize_list_of_polymorphic_types(Json.JsonCodec codec) {
+
+        // given
+        String json = """
+                {
+                    "items": [
+                        {
+                            "scope": "request",
+                            "description": "First",
+                            "requestId": "REQ-1"
+                        },
+                        {
+                            "scope": "product",
+                            "description": "Second",
+                            "productName": "Gadget",
+                            "quantity": 3
+                        }
+                    ]
+                }
+                """;
+
+        // when
+        PolymorphicContainer container = codec.fromJson(json, PolymorphicContainer.class);
+
+        // then
+        assertThat(container.items).hasSize(2);
+        assertThat(container.items.get(0)).isInstanceOf(RefineRequestItem.class);
+        assertThat(((RefineRequestItem) container.items.get(0)).requestId).isEqualTo("REQ-1");
+        assertThat(container.items.get(1)).isInstanceOf(RefineProductItem.class);
+        assertThat(((RefineProductItem) container.items.get(1)).productName).isEqualTo("Gadget");
     }
 }
