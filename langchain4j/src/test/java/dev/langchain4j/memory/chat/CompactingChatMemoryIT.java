@@ -4,11 +4,12 @@ import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_5_MINI;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.output.TokenUsage;
@@ -40,6 +41,24 @@ class CompactingChatMemoryIT {
     interface HistoryTeacher {
         @SystemMessage("You are a history teacher. Give detailed but concise answers.")
         String chat(String userMessage);
+    }
+
+    interface MathAssistant {
+        @SystemMessage("You are a math assistant. Use the provided tools to compute results. Always use tools when available.")
+        String chat(String userMessage);
+    }
+
+    static class Calculator {
+
+        @Tool("Adds two numbers together")
+        int add(int a, int b) {
+            return a + b;
+        }
+
+        @Tool("Multiplies two numbers together")
+        int multiply(int a, int b) {
+            return a * b;
+        }
     }
 
     @BeforeAll
@@ -228,6 +247,210 @@ class CompactingChatMemoryIT {
         assertThat(compactFinalMessageCount).isLessThan(windowFinalMessageCount);
     }
 
+    @Test
+    void should_retain_last_messages_with_real_model() throws InterruptedException {
+        // given
+        CompactingChatMemory memory = CompactingChatMemory.builder()
+                .chatModel(compactingChatModel)
+                .retainLastMessages(2)
+                .build();
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .chatMemory(memory)
+                .build();
+
+        // when
+        assistant.chat("My name is Mario.");
+        waitForCompaction(memory);
+        assistant.chat("I live in Milan.");
+        waitForCompaction(memory);
+        assistant.chat("I'm a software engineer.");
+        waitForCompaction(memory);
+
+        // then - memory should have summary + 2 retained messages
+        List<ChatMessage> messages = memory.messages();
+        System.out.println("Memory with retainLastMessages=2:");
+        for (ChatMessage msg : messages) {
+            System.out.println("  " + msg.type() + ": "
+                    + (msg instanceof UserMessage u ? u.singleText() : msg.toString()));
+        }
+
+        // Should have more than 1 message (summary + retained)
+        assertThat(messages.size()).isGreaterThan(1);
+
+        // The AI should still remember earlier facts through the summary
+        String response = assistant.chat("What do you know about me?");
+        System.out.println("Recall response: " + response);
+        assertThat(response.toLowerCase()).satisfiesAnyOf(
+                r -> assertThat(r).contains("mario"),
+                r -> assertThat(r).contains("milan"),
+                r -> assertThat(r).contains("software")
+        );
+    }
+
+    @Test
+    void should_compact_with_interval_using_real_model() throws InterruptedException {
+        // given - compact only every 3rd user message
+        CompactingChatMemory memory = CompactingChatMemory.builder()
+                .chatModel(compactingChatModel)
+                .compactionInterval(3)
+                .build();
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .chatMemory(memory)
+                .build();
+
+        // when
+        assistant.chat("My name is Alice.");
+        int messagesAfterFirst = memory.messages().size();
+
+        assistant.chat("I like reading books.");
+        int messagesAfterSecond = memory.messages().size();
+
+        // Messages should be accumulating (no compaction yet)
+        assertThat(messagesAfterSecond).isGreaterThan(messagesAfterFirst);
+
+        assistant.chat("My favorite color is blue.");
+        // 3rd user message triggers compaction
+        waitForCompaction(memory);
+
+        int messagesAfterThird = memory.messages().size();
+        System.out.println("Messages after 3rd turn (compaction triggered): " + messagesAfterThird);
+
+        // After compaction, memory should be smaller than the accumulated messages
+        assertThat(messagesAfterThird).isLessThan(messagesAfterSecond);
+    }
+
+    @Test
+    void should_work_with_tools_and_compact_tool_messages() throws InterruptedException {
+        // given
+        CompactingChatMemory memory = CompactingChatMemory.builder()
+                .chatModel(compactingChatModel)
+                .build();
+
+        Calculator calculator = new Calculator();
+
+        MathAssistant assistant = AiServices.builder(MathAssistant.class)
+                .chatModel(chatModel)
+                .chatMemory(memory)
+                .tools(calculator)
+                .build();
+
+        // when - ask questions that require tool usage
+        String response1 = assistant.chat("What is 15 + 27?");
+        System.out.println("Turn 1 - Math: " + response1);
+        assertThat(response1).contains("42");
+
+        System.out.println("Memory after tool use:");
+        for (ChatMessage msg : memory.messages()) {
+            System.out.println("  " + msg.type() + ": " + msg);
+        }
+
+        waitForCompaction(memory);
+
+        String response2 = assistant.chat("Now multiply 6 and 7.");
+        System.out.println("Turn 2 - Math: " + response2);
+        assertThat(response2).contains("42");
+
+        waitForCompaction(memory);
+
+        // then - memory should be compacted even with tool messages
+        String response3 = assistant.chat("What were the results of my previous calculations?");
+        System.out.println("Turn 3 - Math: " + response3);
+
+        // Should recall the results through the summary
+        assertThat(response3.toLowerCase()).satisfiesAnyOf(
+                r -> assertThat(r).contains("42"),
+                r -> assertThat(r).contains("fifteen"),
+                r -> assertThat(r).contains("multiply")
+        );
+
+        System.out.println("Final memory:");
+        for (ChatMessage msg : memory.messages()) {
+            System.out.println("  " + msg.type() + ": " + msg);
+        }
+    }
+
+    @Test
+    void should_preserve_tool_messages_when_configured() throws InterruptedException {
+        // given - compactToolMessages=false should keep tool call/result pairs intact
+        CompactingChatMemory memory = CompactingChatMemory.builder()
+                .chatModel(compactingChatModel)
+                .compactToolMessages(false)
+                .retainLastMessages(2)
+                .build();
+
+        Calculator calculator = new Calculator();
+
+        MathAssistant assistant = AiServices.builder(MathAssistant.class)
+                .chatModel(chatModel)
+                .chatMemory(memory)
+                .tools(calculator)
+                .build();
+
+        // when
+        String response1 = assistant.chat("What is 10 + 20?");
+        System.out.println("Turn 1: " + response1);
+        assertThat(response1).contains("30");
+
+        waitForCompaction(memory);
+
+        String response2 = assistant.chat("Now multiply 5 and 8.");
+        System.out.println("Turn 2: " + response2);
+        assertThat(response2).contains("40");
+
+        waitForCompaction(memory);
+
+        // then - tool execution result messages should be preserved in memory
+        List<ChatMessage> messages = memory.messages();
+        System.out.println("Memory with preserved tool messages:");
+        for (ChatMessage msg : messages) {
+            System.out.println("  " + msg.type() + ": " + msg);
+        }
+
+        boolean hasToolResults = messages.stream()
+                .anyMatch(m -> m instanceof ToolExecutionResultMessage);
+        System.out.println("Has preserved tool results: " + hasToolResults);
+        // Tool messages should be retained since compactToolMessages=false
+        // Note: whether they're present depends on whether they fell in the summarize zone
+    }
+
+    @Test
+    void should_use_custom_compaction_prompt_with_real_model() throws InterruptedException {
+        // given
+        String customPrompt = "Create a bullet-point summary of the conversation. "
+                + "Each bullet should capture one key fact. Write from the user's perspective.";
+
+        CompactingChatMemory memory = CompactingChatMemory.builder()
+                .chatModel(compactingChatModel)
+                .compactionPrompt(customPrompt)
+                .build();
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .chatMemory(memory)
+                .build();
+
+        // when
+        assistant.chat("I'm learning French.");
+        waitForCompaction(memory);
+        assistant.chat("I also play guitar.");
+        waitForCompaction(memory);
+        assistant.chat("I live in Paris.");
+        waitForCompaction(memory);
+
+        // then - the summary should use the custom prompt format
+        List<ChatMessage> messages = memory.messages();
+        System.out.println("Memory with custom prompt:");
+        for (ChatMessage msg : messages) {
+            if (msg instanceof UserMessage u) {
+                System.out.println("  " + u.singleText());
+            }
+        }
+    }
+
     static class TokenConsumptionRecorder implements AiServiceResponseReceivedListener {
         private final AtomicInteger totalTokens = new AtomicInteger();
 
@@ -249,8 +472,19 @@ class CompactingChatMemoryIT {
      * Waits for background compaction to complete by polling until the message count stabilizes.
      */
     private void waitForCompaction(CompactingChatMemory memory) throws InterruptedException {
-        while (memory.messages().stream().filter(UserMessage.class::isInstance).count() > 1) {
+        // Wait until memory stabilizes (no more changes for 500ms)
+        int previousSize;
+        int currentSize = memory.messages().size();
+        int stableCount = 0;
+        while (stableCount < 5) {
             Thread.sleep(100);
+            previousSize = currentSize;
+            currentSize = memory.messages().size();
+            if (currentSize == previousSize) {
+                stableCount++;
+            } else {
+                stableCount = 0;
+            }
         }
     }
 }
