@@ -164,7 +164,7 @@ class CompactingChatMemoryTest implements WithAssertions {
 
         List<ChatMessage> messages = memory.messages();
         long systemMessageCount = messages.stream()
-                .filter(m -> m instanceof SystemMessage)
+                .filter(SystemMessage.class::isInstance)
                 .count();
         assertThat(systemMessageCount).isEqualTo(1);
         assertThat(((SystemMessage) messages.get(0)).text())
@@ -244,7 +244,7 @@ class CompactingChatMemoryTest implements WithAssertions {
         // System message should NOT be included in the summarization request
         List<ChatMessage> sent = capturedMessages.get();
         assertThat(sent).isNotNull();
-        assertThat(sent.stream().filter(m -> m instanceof SystemMessage)).isEmpty();
+        assertThat(sent.stream().filter(SystemMessage.class::isInstance)).isEmpty();
 
         // The conversation messages should be included, plus the compaction prompt at the end
         assertThat(sent.get(0)).isInstanceOf(UserMessage.class);
@@ -556,7 +556,7 @@ class CompactingChatMemoryTest implements WithAssertions {
         assertThat(capturedMessages.get()).isNotNull();
         // Summarization request should NOT contain tool messages
         assertThat(capturedMessages.get().stream()
-                .filter(m -> m instanceof ToolExecutionResultMessage)).isEmpty();
+                .filter(ToolExecutionResultMessage.class::isInstance)).isEmpty();
         assertThat(capturedMessages.get().stream()
                 .filter(m -> m instanceof AiMessage a && a.hasToolExecutionRequests())).isEmpty();
 
@@ -600,7 +600,7 @@ class CompactingChatMemoryTest implements WithAssertions {
         // All messages including tool messages should be in the summarization request
         List<ChatMessage> sent = capturedMessages.get();
         assertThat(sent).isNotNull();
-        assertThat(sent.stream().filter(m -> m instanceof ToolExecutionResultMessage).count()).isEqualTo(1);
+        assertThat(sent.stream().filter(ToolExecutionResultMessage.class::isInstance).count()).isEqualTo(1);
     }
 
     @Test

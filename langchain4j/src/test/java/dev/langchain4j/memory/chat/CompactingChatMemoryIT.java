@@ -173,7 +173,7 @@ class CompactingChatMemoryIT {
     }
 
     @Test
-    void should_use_fewer_tokens_than_message_window_memory() throws InterruptedException {
+    void should_use_fewer_tokens_than_message_window_memory() {
         // This test runs the SAME conversation with two different memory implementations
         // and compares the total input tokens used across all turns.
 
@@ -411,7 +411,7 @@ class CompactingChatMemoryIT {
         }
 
         boolean hasToolResults = messages.stream()
-                .anyMatch(m -> m instanceof ToolExecutionResultMessage);
+                .anyMatch(ToolExecutionResultMessage.class::isInstance);
         System.out.println("Has preserved tool results: " + hasToolResults);
         // Tool messages should be retained since compactToolMessages=false
         // Note: whether they're present depends on whether they fell in the summarize zone
