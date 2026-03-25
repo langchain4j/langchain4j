@@ -24,6 +24,7 @@ class ColumnsMetadataHandler implements MetadataHandler {
     final PgVectorFilterMapper filterMapper;
     final List<String> indexes;
     final String indexType;
+    final List<List<String>> compoundIndexes;
 
     /**
      * MetadataHandler constructor
@@ -38,6 +39,7 @@ class ColumnsMetadataHandler implements MetadataHandler {
         this.filterMapper = new ColumnFilterMapper();
         this.indexes = getOrDefault(config.indexes(), Collections.emptyList());
         this.indexType = config.indexType();
+        this.compoundIndexes = getOrDefault(config.compoundIndexes(), Collections.emptyList());
     }
 
     @Override
@@ -64,6 +66,17 @@ class ColumnsMetadataHandler implements MetadataHandler {
                         throw new RuntimeException(String.format("Cannot create indexes %s: %s", index, e));
                     }
                 });
+        this.compoundIndexes.forEach(columns -> {
+            String indexName = table + "_" + String.join("_", columns);
+            String columnList = String.join(", ", columns);
+            String indexSql = String.format("create index if not exists %s on %s %s ( %s )",
+                    indexName, table, indexTypeSql, columnList);
+            try {
+                statement.executeUpdate(indexSql);
+            } catch (SQLException e) {
+                throw new RuntimeException(String.format("Cannot create compound index %s: %s", indexName, e));
+            }
+        });
     }
 
     @Override
