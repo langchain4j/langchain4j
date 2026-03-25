@@ -13,10 +13,17 @@ public class McpCallToolRequest extends McpClientMessage {
     private Map<String, Object> params;
 
     public McpCallToolRequest(Long id, String toolName, ObjectNode arguments) {
+        this(id, toolName, arguments, null);
+    }
+
+    public McpCallToolRequest(Long id, String toolName, ObjectNode arguments, String progressToken) {
         super(id, McpClientMethod.TOOLS_CALL);
         this.params = new HashMap<>();
         this.params.put("name", toolName);
         this.params.put("arguments", arguments);
+        if (progressToken != null) {
+            this.params.put("_meta", Map.of("progressToken", progressToken));
+        }
     }
 
     public Map<String, Object> getParams() {

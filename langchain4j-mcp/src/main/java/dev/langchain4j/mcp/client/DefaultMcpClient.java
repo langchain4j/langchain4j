@@ -18,6 +18,7 @@ import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.mcp.client.logging.DefaultMcpLogMessageHandler;
 import dev.langchain4j.mcp.client.logging.McpLogMessageHandler;
+import dev.langchain4j.mcp.client.progress.McpProgressHandler;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.protocol.McpCallToolRequest;
@@ -76,6 +77,7 @@ public class DefaultMcpClient implements McpClient {
     private final Map<Long, CompletableFuture<JsonNode>> pendingOperations = new ConcurrentHashMap<>();
     private final McpOperationHandler messageHandler;
     private final McpLogMessageHandler logHandler;
+    private final McpProgressHandler progressHandler;
     private final AtomicReference<List<McpResource>> resourceRefs = new AtomicReference<>();
     private final AtomicReference<List<McpResourceTemplate>> resourceTemplateRefs = new AtomicReference<>();
     private final AtomicReference<List<McpPrompt>> promptRefs = new AtomicReference<>();
@@ -104,6 +106,7 @@ public class DefaultMcpClient implements McpClient {
             resourcesTimeout = getOrDefault(builder.resourcesTimeout, Duration.ofSeconds(60));
             promptsTimeout = getOrDefault(builder.promptsTimeout, Duration.ofSeconds(60));
             logHandler = getOrDefault(builder.logHandler, new DefaultMcpLogMessageHandler());
+            progressHandler = builder.progressHandler;
             pingTimeout = getOrDefault(builder.pingTimeout, Duration.ofSeconds(10));
             reconnectInterval = getOrDefault(builder.reconnectInterval, Duration.ofSeconds(5));
             autoHealthCheck = getOrDefault(builder.autoHealthCheck, Boolean.TRUE);
@@ -126,7 +129,8 @@ public class DefaultMcpClient implements McpClient {
                     mcpRoots::get,
                     transport,
                     logHandler::handleLogMessage,
-                    () -> toolListOutOfDate.set(true));
+                    () -> toolListOutOfDate.set(true),
+                    progressHandler);
             ((ObjectNode) RESULT_TIMEOUT)
                     .putObject("result")
                     .putArray("content")
@@ -259,7 +263,9 @@ public class DefaultMcpClient implements McpClient {
             throw new ToolArgumentsException(e);
         }
         long operationId = idGenerator.getAndIncrement();
-        McpCallToolRequest operation = new McpCallToolRequest(operationId, executionRequest.name(), arguments);
+        String progressToken = progressHandler != null ? String.valueOf(operationId) : null;
+        McpCallToolRequest operation =
+                new McpCallToolRequest(operationId, executionRequest.name(), arguments, progressToken);
         long timeoutMillis = toolExecutionTimeout.toMillis() == 0 ? Integer.MAX_VALUE : toolExecutionTimeout.toMillis();
         CompletableFuture<JsonNode> resultFuture = null;
         JsonNode result = null;
@@ -605,6 +611,7 @@ public class DefaultMcpClient implements McpClient {
         private List<McpRoot> roots;
         private Boolean cacheToolList;
         private McpClientListener listener;
+        private McpProgressHandler progressHandler;
 
         /**
          * Sets the transport protocol to use for communicating with the
@@ -783,6 +790,16 @@ public class DefaultMcpClient implements McpClient {
          */
         public Builder listener(McpClientListener listener) {
             this.listener = listener;
+            return this;
+        }
+
+        /**
+         * Sets the progress handler for the client. When set, the client will include
+         * a progress token in tool execution requests, and progress notifications
+         * received from the server will be forwarded to this handler.
+         */
+        public Builder progressHandler(McpProgressHandler progressHandler) {
+            this.progressHandler = progressHandler;
             return this;
         }
 
