@@ -1,8 +1,10 @@
 package dev.langchain4j.store.embedding.pgvector;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.store.embedding.filter.Filter;
-
 import java.sql.*;
 import java.util.Collections;
 import java.util.HashMap;
@@ -10,9 +12,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 
 /**
  * Handle Metadata stored in independent columns
@@ -33,9 +32,10 @@ class ColumnsMetadataHandler implements MetadataHandler {
     public ColumnsMetadataHandler(MetadataStorageConfig config) {
         List<String> columnsDefinitionList = ensureNotEmpty(config.columnDefinitions(), "Metadata definition");
         this.columnsDefinition = columnsDefinitionList.stream()
-                .map(MetadataColumDefinition::from).collect(Collectors.toList());
-        this.columnsName = columnsDefinition.stream()
-                .map(MetadataColumDefinition::getName).collect(Collectors.toList());
+                .map(MetadataColumDefinition::from)
+                .collect(Collectors.toList());
+        this.columnsName =
+                columnsDefinition.stream().map(MetadataColumDefinition::getName).collect(Collectors.toList());
         this.filterMapper = new ColumnFilterMapper();
         this.indexes = getOrDefault(config.indexes(), Collections.emptyList());
         this.indexType = config.indexType();
@@ -45,7 +45,8 @@ class ColumnsMetadataHandler implements MetadataHandler {
     @Override
     public String columnDefinitionsString() {
         return this.columnsDefinition.stream()
-                .map(MetadataColumDefinition::getFullDefinition).collect(Collectors.joining(","));
+                .map(MetadataColumDefinition::getFullDefinition)
+                .collect(Collectors.joining(","));
     }
 
     @Override
@@ -56,21 +57,20 @@ class ColumnsMetadataHandler implements MetadataHandler {
     @Override
     public void createMetadataIndexes(Statement statement, String table) {
         String indexTypeSql = indexType == null ? "" : "USING " + indexType;
-        this.indexes.stream().map(String::trim)
-                .forEach(index -> {
-                    String indexSql = String.format("create index if not exists %s_%s on %s %s ( %s )",
-                            table, index, table, indexTypeSql, index);
-                    try {
-                        statement.executeUpdate(indexSql);
-                    } catch (SQLException e) {
-                        throw new RuntimeException(String.format("Cannot create indexes %s: %s", index, e));
-                    }
-                });
+        this.indexes.stream().map(String::trim).forEach(index -> {
+            String indexSql = String.format(
+                    "create index if not exists %s_%s on %s %s ( %s )", table, index, table, indexTypeSql, index);
+            try {
+                statement.executeUpdate(indexSql);
+            } catch (SQLException e) {
+                throw new RuntimeException(String.format("Cannot create indexes %s: %s", index, e));
+            }
+        });
         this.compoundIndexes.forEach(columns -> {
             String indexName = table + "_" + String.join("_", columns);
             String columnList = String.join(", ", columns);
-            String indexSql = String.format("create index if not exists %s on %s %s ( %s )",
-                    indexName, table, indexTypeSql, columnList);
+            String indexSql = String.format(
+                    "create index if not exists %s on %s %s ( %s )", indexName, table, indexTypeSql, columnList);
             try {
                 statement.executeUpdate(indexSql);
             } catch (SQLException e) {
@@ -81,7 +81,8 @@ class ColumnsMetadataHandler implements MetadataHandler {
 
     @Override
     public String insertClause() {
-        return this.columnsName.stream().map(c -> String.format("%s = EXCLUDED.%s", c, c))
+        return this.columnsName.stream()
+                .map(c -> String.format("%s = EXCLUDED.%s", c, c))
                 .collect(Collectors.joining(","));
     }
 
@@ -120,5 +121,4 @@ class ColumnsMetadataHandler implements MetadataHandler {
             throw new RuntimeException(e);
         }
     }
-
 }

@@ -21,7 +21,12 @@ public class DefaultMetadataStorageConfig implements MetadataStorageConfig {
         // Just for javadoc warning ?
     }
 
-    public DefaultMetadataStorageConfig(MetadataStorageMode storageMode, List<String> columnDefinitions, List<String> indexes, String indexType, List<List<String>> compoundIndexes) {
+    public DefaultMetadataStorageConfig(
+            MetadataStorageMode storageMode,
+            List<String> columnDefinitions,
+            List<String> indexes,
+            String indexType,
+            List<List<String>> compoundIndexes) {
         this.storageMode = storageMode;
         this.columnDefinitions = columnDefinitions;
         this.indexes = indexes;
@@ -72,8 +77,7 @@ public class DefaultMetadataStorageConfig implements MetadataStorageConfig {
         private String indexType;
         private List<List<String>> compoundIndexes;
 
-        DefaultMetadataStorageConfigBuilder() {
-        }
+        DefaultMetadataStorageConfigBuilder() {}
 
         public DefaultMetadataStorageConfigBuilder storageMode(MetadataStorageMode storageMode) {
             this.storageMode = storageMode;
@@ -101,11 +105,14 @@ public class DefaultMetadataStorageConfig implements MetadataStorageConfig {
         }
 
         public DefaultMetadataStorageConfig build() {
-            return new DefaultMetadataStorageConfig(this.storageMode, this.columnDefinitions, this.indexes, this.indexType, this.compoundIndexes);
+            return new DefaultMetadataStorageConfig(
+                    this.storageMode, this.columnDefinitions, this.indexes, this.indexType, this.compoundIndexes);
         }
 
         public String toString() {
-            return "DefaultMetadataStorageConfig.DefaultMetadataStorageConfigBuilder(storageMode=" + this.storageMode + ", columnDefinitions=" + this.columnDefinitions + ", indexes=" + this.indexes + ", indexType=" + this.indexType + ", compoundIndexes=" + this.compoundIndexes + ")";
+            return "DefaultMetadataStorageConfig.DefaultMetadataStorageConfigBuilder(storageMode=" + this.storageMode
+                    + ", columnDefinitions=" + this.columnDefinitions + ", indexes=" + this.indexes + ", indexType="
+                    + this.indexType + ", compoundIndexes=" + this.compoundIndexes + ")";
         }
     }
 }

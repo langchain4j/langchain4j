@@ -1,7 +1,9 @@
 package dev.langchain4j.store.embedding.pgvector;
 
-import org.junit.jupiter.api.Test;
-import org.mockito.AdditionalAnswers;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -9,11 +11,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import org.junit.jupiter.api.Test;
+import org.mockito.AdditionalAnswers;
 
 class ColumnsMetadataHandlerTest {
 
@@ -34,8 +33,10 @@ class ColumnsMetadataHandlerTest {
         handler.createMetadataIndexes(statement, "ai_category");
 
         assertThat(sqlStatementQueries).hasSize(2);
-        assertThat(sqlStatementQueries.get(0)).isEqualTo("create index if not exists ai_category_query_id on ai_category  ( query_id )");
-        assertThat(sqlStatementQueries.get(1)).isEqualTo("create index if not exists ai_category_type on ai_category  ( type )");
+        assertThat(sqlStatementQueries.get(0))
+                .isEqualTo("create index if not exists ai_category_query_id on ai_category  ( query_id )");
+        assertThat(sqlStatementQueries.get(1))
+                .isEqualTo("create index if not exists ai_category_type on ai_category  ( type )");
     }
 
     @Test
@@ -55,8 +56,9 @@ class ColumnsMetadataHandlerTest {
         handler.createMetadataIndexes(statement, "ai_category");
 
         assertThat(sqlStatementQueries).hasSize(1);
-        assertThat(sqlStatementQueries.get(0)).isEqualTo(
-                "create index if not exists ai_category_query_id_type_version on ai_category  ( query_id, type, version )");
+        assertThat(sqlStatementQueries.get(0))
+                .isEqualTo(
+                        "create index if not exists ai_category_query_id_type_version on ai_category  ( query_id, type, version )");
     }
 
     @Test
@@ -77,7 +79,9 @@ class ColumnsMetadataHandlerTest {
         handler.createMetadataIndexes(statement, "ai_category");
 
         assertThat(sqlStatementQueries).hasSize(2);
-        assertThat(sqlStatementQueries.get(0)).isEqualTo("create index if not exists ai_category_version on ai_category  ( version )");
-        assertThat(sqlStatementQueries.get(1)).isEqualTo("create index if not exists ai_category_query_id_type on ai_category  ( query_id, type )");
+        assertThat(sqlStatementQueries.get(0))
+                .isEqualTo("create index if not exists ai_category_version on ai_category  ( version )");
+        assertThat(sqlStatementQueries.get(1))
+                .isEqualTo("create index if not exists ai_category_query_id_type on ai_category  ( query_id, type )");
     }
 }
