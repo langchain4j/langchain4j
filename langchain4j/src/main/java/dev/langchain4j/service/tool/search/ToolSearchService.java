@@ -3,10 +3,9 @@ package dev.langchain4j.service.tool.search;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.invocation.InvocationContext;
-import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolServiceContext;
@@ -17,11 +16,13 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import static dev.langchain4j.agent.tool.SearchBehavior.ALWAYS_VISIBLE;
 import static dev.langchain4j.agent.tool.ToolSpecification.METADATA_SEARCH_BEHAVIOR;
 import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.merge;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.stream.Collectors.toCollection;
@@ -42,11 +43,11 @@ public class ToolSearchService {
     }
 
     public ToolServiceContext adjust(ToolServiceContext toolServiceContext,
-                                     ChatMemory chatMemory,
+                                     List<ChatMessage> messages,
                                      InvocationContext invocationContext) {
         List<ToolSpecification> toolSearchTools = strategy.getToolSearchTools(invocationContext);
         List<ToolSpecification> availableTools = toolServiceContext.availableTools();
-        List<ToolSpecification> effectiveTools = calculateEffectiveTools(toolSearchTools, availableTools, chatMemory);
+        List<ToolSpecification> effectiveTools = calculateEffectiveTools(toolSearchTools, availableTools, messages);
         List<ToolSpecification> searchableTools = calculateSearchableTools(availableTools, effectiveTools);
         Map<String, ToolExecutor> toolSearchToolExecutors = createExecutors(toolSearchTools, searchableTools);
         return toolServiceContext.toBuilder()
@@ -57,7 +58,7 @@ public class ToolSearchService {
 
     private List<ToolSpecification> calculateEffectiveTools(List<ToolSpecification> toolSearchTools,
                                                             List<ToolSpecification> availableTools,
-                                                            ChatMemory chatMemory) {
+                                                            List<ChatMessage> messages) {
         List<ToolSpecification> effectiveTools = new ArrayList<>();
 
         availableTools.forEach(tool -> {
@@ -68,18 +69,18 @@ public class ToolSearchService {
 
         effectiveTools.addAll(toolSearchTools);
 
-        if (chatMemory == null) {
+        if (isNullOrEmpty(messages)) {
             return effectiveTools;
         }
 
-        Set<String> toolNamesFoundEarlier = chatMemory.messages().stream()
+        Set<String> toolNamesFoundEarlier = messages.stream()
                 .filter(it -> it instanceof ToolExecutionResultMessage)
                 .map(it -> (ToolExecutionResultMessage) it)
                 .map(it -> it.attributes().get(FOUND_TOOLS_ATTRIBUTE))
-                .filter(it -> it != null)
+                .filter(Objects::nonNull)
                 .map(it -> (List<String>) it)
                 .flatMap(List::stream)
-                .collect(toCollection(() -> new LinkedHashSet<>()));
+                .collect(toCollection(LinkedHashSet::new));
 
         if (toolNamesFoundEarlier.isEmpty()) {
             return effectiveTools;
@@ -108,26 +109,25 @@ public class ToolSearchService {
         return executors;
     }
 
-    public static ChatRequestParameters addFoundTools(ChatRequestParameters parameters,
-                                                      Collection<ToolExecutionResult> toolResults,
-                                                      List<ToolSpecification> availableTools) {
+    public static ToolServiceContext addFoundTools(ToolServiceContext toolServiceContext,
+                                                   Collection<ToolExecutionResult> toolResults) {
         Set<String> foundToolNames = new LinkedHashSet<>();
         for (ToolExecutionResult toolResult : toolResults) {
             Object attribute = toolResult.attributes().get(FOUND_TOOLS_ATTRIBUTE);
-            if (attribute != null && attribute instanceof List<?> foundToolNamesList) {
+            if (attribute instanceof List<?> foundToolNamesList) {
                 foundToolNames.addAll((List<String>) foundToolNamesList);
             }
         }
         if (foundToolNames.isEmpty()) {
-            return parameters;
+            return toolServiceContext;
         }
 
-        Set<String> effectiveToolNames = parameters.toolSpecifications().stream()
-                .map(tool -> tool.name())
+        Set<String> effectiveToolNames = toolServiceContext.effectiveTools().stream()
+                .map(ToolSpecification::name)
                 .collect(toSet());
 
-        Map<String, ToolSpecification> availableToolsByName = new HashMap<>(availableTools.size());
-        availableTools.forEach(tool -> availableToolsByName.put(tool.name(), tool));
+        Map<String, ToolSpecification> availableToolsByName = new HashMap<>(toolServiceContext.availableTools().size());
+        toolServiceContext.availableTools().forEach(tool -> availableToolsByName.put(tool.name(), tool));
 
         List<ToolSpecification> foundTools = new ArrayList<>();
         for (String foundToolName : foundToolNames) {
@@ -141,9 +141,13 @@ public class ToolSearchService {
             foundTools.add(foundTool);
         }
 
-        return parameters.overrideWith(ChatRequestParameters.builder()
-                .toolSpecifications(merge(parameters.toolSpecifications(), foundTools))
-                .build());
+        if (foundTools.isEmpty()) {
+            return toolServiceContext;
+        }
+
+        return toolServiceContext.toBuilder()
+                .effectiveTools(merge(toolServiceContext.effectiveTools(), foundTools))
+                .build();
     }
 
     private class ToolSearchExecutor implements ToolExecutor {
