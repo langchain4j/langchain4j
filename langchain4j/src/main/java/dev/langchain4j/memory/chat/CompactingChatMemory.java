@@ -10,8 +10,8 @@ import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.memory.ChatMemoryService;
+import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -29,6 +29,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * A {@link SystemMessage}, if present, is preserved across compactions and is not included
  * in the summarization. It is always kept as the first message.
  * <p>
+ * The state of chat memory is stored in {@link ChatMemoryStore} ({@link SingleSlotChatMemoryStore} is used by default).
+ * <p>
  * The compaction runs on a separate thread, taken from either a user-provided {@link ExecutorService}
  * or the default one from {@link DefaultExecutorProvider}.
  */
@@ -44,13 +46,16 @@ public class CompactingChatMemory implements ChatMemory {
 
     private final Object id;
     private final ChatModel chatModel;
+    private final String compactionPrompt;
+    private final ChatMemoryStore store;
     private final ExecutorService executorService;
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
-    private final List<ChatMessage> messages = new ArrayList<>();
 
     private CompactingChatMemory(Builder builder) {
         this.id = ensureNotNull(builder.id, "id");
         this.chatModel = ensureNotNull(builder.chatModel, "chatModel");
+        this.compactionPrompt = getOrDefault(builder.compactionPrompt, COMPACTION_PROMPT);
+        this.store = ensureNotNull(builder.store(), "store");
         this.executorService = getOrDefault(
                 builder.executorService,
                 DefaultExecutorProvider.getDefaultExecutorService());
@@ -65,13 +70,17 @@ public class CompactingChatMemory implements ChatMemory {
     public void add(ChatMessage message) {
         lock.writeLock().lock();
         try {
+            List<ChatMessage> messages = new ArrayList<>(store.getMessages(id));
+
             if (message instanceof SystemMessage) {
                 // Replace existing system message if present
                 messages.removeIf(SystemMessage.class::isInstance);
                 messages.add(0, message);
+                store.updateMessages(id, messages);
                 return;
             }
             messages.add(message);
+            store.updateMessages(id, messages);
         } finally {
             lock.writeLock().unlock();
         }
@@ -85,7 +94,7 @@ public class CompactingChatMemory implements ChatMemory {
     public List<ChatMessage> messages() {
         lock.readLock().lock();
         try {
-            return Collections.unmodifiableList(messages);
+            return store.getMessages(id);
         } finally {
             lock.readLock().unlock();
         }
@@ -95,7 +104,7 @@ public class CompactingChatMemory implements ChatMemory {
     public void clear() {
         lock.writeLock().lock();
         try {
-            messages.clear();
+            store.deleteMessages(id);
         } finally {
             lock.writeLock().unlock();
         }
@@ -104,21 +113,22 @@ public class CompactingChatMemory implements ChatMemory {
     private void triggerCompaction() {
         // Snapshot the messages to summarize
         List<ChatMessage> snapshot;
-        SystemMessage systemMessage;
         lock.readLock().lock();
         try {
-            if (messages.size() <= 1) {
-                return; // Nothing to compact if there's only one message (or none)
-            }
-            snapshot = new ArrayList<>(messages);
-            systemMessage = messages.stream()
-                    .filter(SystemMessage.class::isInstance)
-                    .map(SystemMessage.class::cast)
-                    .findFirst()
-                    .orElse(null);
+            snapshot = new ArrayList<>(store.getMessages(id));
         } finally {
             lock.readLock().unlock();
         }
+
+        if (snapshot.size() <= 1) {
+            return; // Nothing to compact if there's only one message (or none)
+        }
+
+        SystemMessage systemMessage = snapshot.stream()
+                .filter(SystemMessage.class::isInstance)
+                .map(SystemMessage.class::cast)
+                .findFirst()
+                .orElse(null);
 
         // Remove system message from the snapshot to summarize only conversation messages
         List<ChatMessage> conversationMessages = new ArrayList<>();
@@ -144,17 +154,19 @@ public class CompactingChatMemory implements ChatMemory {
     private void compact(List<ChatMessage> conversationMessages, SystemMessage systemMessage) {
         // Build the summarization request: include all conversation messages + a summarization instruction
         List<ChatMessage> request = new ArrayList<>(conversationMessages);
-        request.add(UserMessage.from(COMPACTION_PROMPT));
+        request.add(UserMessage.from(compactionPrompt));
 
         String summary = chatModel.chat(request).aiMessage().text();
 
+        List<ChatMessage> compacted = new ArrayList<>();
+        if (systemMessage != null) {
+            compacted.add(systemMessage);
+        }
+        compacted.add(UserMessage.from(summary));
+
         lock.writeLock().lock();
         try {
-            messages.clear();
-            if (systemMessage != null) {
-                messages.add(systemMessage);
-            }
-            messages.add(UserMessage.from(summary));
+            store.updateMessages(id, compacted);
         } finally {
             lock.writeLock().unlock();
         }
@@ -168,6 +180,8 @@ public class CompactingChatMemory implements ChatMemory {
 
         private Object id = ChatMemoryService.DEFAULT;
         private ChatModel chatModel;
+        private String compactionPrompt;
+        private ChatMemoryStore store;
         private ExecutorService executorService;
 
         /**
@@ -187,6 +201,30 @@ public class CompactingChatMemory implements ChatMemory {
         public Builder chatModel(ChatModel chatModel) {
             this.chatModel = chatModel;
             return this;
+        }
+
+        /**
+         * @param compactionPrompt The prompt used to instruct the {@link ChatModel} to summarize messages.
+         *                         If not provided, a default summarization prompt is used.
+         * @return builder
+         */
+        public Builder compactionPrompt(String compactionPrompt) {
+            this.compactionPrompt = compactionPrompt;
+            return this;
+        }
+
+        /**
+         * @param store The chat memory store responsible for storing the chat memory state.
+         *              If not provided, a {@link SingleSlotChatMemoryStore} will be used.
+         * @return builder
+         */
+        public Builder chatMemoryStore(ChatMemoryStore store) {
+            this.store = store;
+            return this;
+        }
+
+        private ChatMemoryStore store() {
+            return store != null ? store : new SingleSlotChatMemoryStore(id);
         }
 
         /**
