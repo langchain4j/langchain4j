@@ -340,7 +340,7 @@ class GoogleAiGeminiImageModelTest {
             assertThat(request.generationConfig().imageConfig()).isNotNull();
             assertThat(request.generationConfig().imageConfig().aspectRatio()).isEqualTo("16:9");
             assertThat(request.generationConfig().imageConfig().imageSize()).isEqualTo("2K");
-            assertThat(request.tools().googleSearch()).isNotNull();
+            assertThat(request.tools().get(0).googleSearch()).isNotNull();
         }
 
         @Test
