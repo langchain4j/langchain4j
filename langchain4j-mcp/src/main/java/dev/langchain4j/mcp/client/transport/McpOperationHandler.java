@@ -7,6 +7,7 @@ import dev.langchain4j.mcp.client.progress.McpProgressHandler;
 import dev.langchain4j.mcp.client.progress.McpProgressNotification;
 import dev.langchain4j.mcp.protocol.McpPingResponse;
 import dev.langchain4j.mcp.protocol.McpRootsListResponse;
+import dev.langchain4j.mcp.protocol.McpServerMethod;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -18,7 +19,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Handles incoming messages from the MCP server. Transport implementations
  * should call the "handle" method on each received message. A transport also has
- * to call "startOperation" when before starting an operation that requires a response
+ * to call "startOperation" before starting an operation that requires a response
  * to register its ID in the map of pending operations.
  */
 public class McpOperationHandler {
@@ -57,49 +58,78 @@ public class McpOperationHandler {
 
     public void handle(JsonNode message) {
         if (message.has("id")) {
-            long messageId = message.get("id").asLong();
-            if (message.has("result") || message.has("error")) {
-                // if there is a result or error, we assume that this is related to a client-initiated operation
-                CompletableFuture<JsonNode> op = pendingOperations.remove(messageId);
-                if (op != null) {
-                    op.complete(message);
-                } else {
-                    log.warn("Received response for unknown message id: {}", messageId);
-                }
+            handleMessageWithId(message);
+        } else if (message.has("method")) {
+            handleNotification(message);
+        }
+    }
+
+    private void handleMessageWithId(JsonNode message) {
+        long messageId = message.get("id").asLong();
+        if (message.has("result") || message.has("error")) {
+            // response to a client-initiated operation
+            CompletableFuture<JsonNode> op = pendingOperations.remove(messageId);
+            if (op != null) {
+                op.complete(message);
             } else {
-                // this is a server-initiated operation, the pendingOperations map is not relevant
-                if (message.has("method")) {
-                    String method = message.get("method").asText();
-                    if (method.equals("ping")) {
-                        transport.executeOperationWithoutResponse(new McpPingResponse(messageId));
-                        return;
-                    } else if (method.equals("roots/list")) {
-                        transport.executeOperationWithoutResponse(new McpRootsListResponse(messageId, roots.get()));
-                        return;
-                    }
-                }
                 log.warn("Received response for unknown message id: {}", messageId);
             }
         } else if (message.has("method")) {
-            String method = message.get("method").asText();
-            if (method.equals("notifications/message")) {
-                // this is a log message
-                if (message.has("params")) {
-                    if (logMessageConsumer != null) {
-                        logMessageConsumer.accept(McpLogMessage.fromJson(message.get("params")));
-                    }
-                } else {
-                    log.warn("Received log message without params: {}", message);
-                }
-            } else if (method.equals("notifications/tools/list_changed")) {
-                onToolListUpdate.run();
-            } else if (method.equals("notifications/progress")) {
-                if (progressHandler != null && message.has("params")) {
-                    progressHandler.onProgress(McpProgressNotification.fromJson(message.get("params")));
-                }
-            } else {
-                log.warn("Received unknown message: {}", message);
+            // server-initiated request requiring a response
+            McpServerMethod method = McpServerMethod.from(message.get("method").asText());
+            if (method == null) {
+                log.warn("Received response for unknown message id: {}", messageId);
+                return;
             }
+            switch (method) {
+                case PING:
+                    transport.executeOperationWithoutResponse(new McpPingResponse(messageId));
+                    break;
+                case ROOTS_LIST:
+                    transport.executeOperationWithoutResponse(new McpRootsListResponse(messageId, roots.get()));
+                    break;
+                default:
+                    log.warn("Received response for unknown message id: {}", messageId);
+            }
+        } else {
+            log.warn("Received response for unknown message id: {}", messageId);
+        }
+    }
+
+    private void handleNotification(JsonNode message) {
+        McpServerMethod method = McpServerMethod.from(message.get("method").asText());
+        if (method == null) {
+            log.warn("Received unknown message: {}", message);
+            return;
+        }
+        switch (method) {
+            case NOTIFICATION_MESSAGE:
+                handleLogMessage(message);
+                break;
+            case NOTIFICATION_TOOLS_LIST_CHANGED:
+                onToolListUpdate.run();
+                break;
+            case NOTIFICATION_PROGRESS:
+                handleProgressNotification(message);
+                break;
+            default:
+                log.warn("Received unknown message: {}", message);
+        }
+    }
+
+    private void handleLogMessage(JsonNode message) {
+        if (message.has("params")) {
+            if (logMessageConsumer != null) {
+                logMessageConsumer.accept(McpLogMessage.fromJson(message.get("params")));
+            }
+        } else {
+            log.warn("Received log message without params: {}", message);
+        }
+    }
+
+    private void handleProgressNotification(JsonNode message) {
+        if (progressHandler != null && message.has("params")) {
+            progressHandler.onProgress(McpProgressNotification.fromJson(message.get("params")));
         }
     }
 
