@@ -154,7 +154,7 @@ public class CompactingChatMemory implements ChatMemory {
     }
 
     private void triggerCompaction() {
-        // Snapshot the messages to summarize
+        // Take a snapshot under the read lock; all other computation happens in the background
         List<ChatMessage> snapshot;
         lock.readLock().lock();
         try {
@@ -167,6 +167,16 @@ public class CompactingChatMemory implements ChatMemory {
             return; // Nothing to compact if there's only one message (or none)
         }
 
+        executorService.submit(() -> {
+            try {
+                prepareAndCompact(snapshot);
+            } catch (Exception e) {
+                // Compaction failure is non-fatal; messages remain as they are
+            }
+        });
+    }
+
+    private void prepareAndCompact(List<ChatMessage> snapshot) {
         SystemMessage systemMessage = snapshot.stream()
                 .filter(SystemMessage.class::isInstance)
                 .map(SystemMessage.class::cast)
@@ -257,16 +267,7 @@ public class CompactingChatMemory implements ChatMemory {
             return; // Not enough messages left to summarize
         }
 
-        List<ChatMessage> retainedMessages = toRetain;
-        List<ChatMessage> messagesToSummarize = toSummarize;
-
-        executorService.submit(() -> {
-            try {
-                compact(messagesToSummarize, retainedMessages, systemMessage);
-            } catch (Exception e) {
-                // Compaction failure is non-fatal; messages remain as they are
-            }
-        });
+        compact(toSummarize, toRetain, systemMessage);
     }
 
     private void compact(List<ChatMessage> messagesToSummarize, List<ChatMessage> retainedMessages,
