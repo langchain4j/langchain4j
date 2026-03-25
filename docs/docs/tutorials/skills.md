@@ -167,6 +167,7 @@ Because only your pre-defined tools can be invoked, **there is no risk of arbitr
 |-----------------------|-----------------------------------------------------------------------------------------------|
 | `activate_skill`      | Always. The LLM calls this to load a skill's full instructions into the context.              |
 | `read_skill_resource` | When at least one skill has resources. The LLM calls this to read individual reference files. |
+| Skill-scoped tools    | After the skill is activated.                                                                 |
 
 #### How It Works
 
@@ -208,7 +209,7 @@ Skills skills = Skills.from(FileSystemSkillLoader.loadSkills(Path.of("skills/"))
 MyAiService service = AiServices.builder(MyAiService.class)
         .chatModel(chatModel)
         .tools(new OrderTools()) // your tools
-        .toolProvider(skills.toolProvider()) // or .toolProviders(mcpToolProvider, skills.toolProvider())
+        .toolProvider(skills.toolProvider()) // or .toolProviders(myToolProvider, skills.toolProvider()) if you already have a tool provider configured
         .systemMessage("You have access to the following skills:\n" + skills.formatAvailableSkills()
                 + "\nWhen the user's request relates to one of these skills, activate it first using the `activate_skill` tool before proceeding.")
         .build();
@@ -255,6 +256,170 @@ Skills skills = Skills.builder()
                 .relativePathParameterDescriptionProvider(...) // dynamic description based on available resources
                 .throwToolArgumentsExceptions(...)       // throw ToolArgumentsException instead of ToolExecutionException (default: false)
                 .build())
+        .build();
+```
+
+#### Skill-Scoped Tools
+
+You can attach tools directly to a skill. These tools are **only exposed to the LLM
+after the skill has been activated** via the `activate_skill` tool.
+This keeps the LLM's tool list small and focused, and ensures skill-specific tools only
+appear when they are relevant.
+
+##### Using `@Tool`-Annotated Methods
+
+The simplest way to attach tools is to pass objects with `@Tool`-annotated methods:
+
+```java
+class OrderTools {
+
+    @Tool("Validates a customer order by ID")
+    String validateOrder(String orderId) {
+        // validation logic
+        return "valid";
+    }
+
+    @Tool("Charges payment for a customer order")
+    String chargePayment(String orderId) {
+        // payment logic
+        return "charged";
+    }
+}
+
+Skill skill = Skill.builder()
+        .name("process-order")
+        .description("Processes a customer order end-to-end")
+        .content("""
+                To process an order:
+                1. Call `validateOrder(orderId)` to check the order is valid.
+                2. Call `chargePayment(orderId)`.
+                """)
+        .tools(new OrderTools())
+        .build();
+```
+
+Tools can also be attached to an already-built skill using `toBuilder()` — for example,
+to add tools to a skill loaded from the file system:
+
+```java
+FileSystemSkill skill = FileSystemSkillLoader.loadSkill(Path.of("skills/process-order"));
+
+Skill skillWithTools = skill.toBuilder()
+        .tools(new OrderTools())
+        .build();
+```
+
+##### Using Tool Providers
+
+You can also attach `ToolProvider`s to a skill — for example, to expose tools from an
+MCP server only after the skill is activated:
+
+```java
+ToolProvider mcpToolProvider = McpToolProvider.builder()
+        .mcpClients(mcpClient)
+        .toolFilter((tool, mcpClient) -> tool.name().startsWith("inventory_"))
+        .build();
+
+Skill skill = Skill.builder()
+        .name("inventory-management")
+        .description("Manages warehouse inventory")
+        .content("""
+                Use inventory tools to check stock levels and update quantities.
+                """)
+        .toolProviders(mcpToolProvider)
+        .build();
+```
+
+##### Using a `Map<ToolSpecification, ToolExecutor>`
+
+For full control over tool specifications and execution logic, you can pass a map directly:
+
+```java
+ToolSpecification validateOrder = ToolSpecification.builder()
+        .name("validateOrder")
+        .description("Validates a customer order by ID")
+        .addParameter("orderId", JsonSchemaProperty.STRING, JsonSchemaProperty.description("The order ID"))
+        .build();
+
+ToolExecutor validateOrderExecutor = (request, memoryId) -> {
+    String orderId = parseOrderId(request.arguments());
+    return validate(orderId);
+};
+
+Skill skill = Skill.builder()
+        .name("process-order")
+        .description("Processes a customer order end-to-end")
+        .content("""
+                To process an order:
+                1. Call `validateOrder(orderId)` to check the order is valid.
+                """)
+        .tools(Map.of(validateOrder, validateOrderExecutor))
+        .build();
+```
+
+All three approaches can be combined — `@Tool` methods, `ToolProvider`s, and `Map` entries
+are merged into a single set of skill-scoped tools:
+
+```java
+Skill skill = Skill.builder()
+        .name("process-order")
+        .description("Processes a customer order end-to-end")
+        .content("...")
+        .tools(new OrderTools())
+        .tools(Map.of(validateOrder, validateOrderExecutor))
+        .toolProviders(mcpToolProvider)
+        .build();
+```
+
+##### Wiring It Up
+
+```java
+Skills skills = Skills.from(skill);
+
+MyAiService service = AiServices.builder(MyAiService.class)
+        .chatModel(chatModel)
+        .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
+        .toolProvider(skills.toolProvider())
+        .systemMessage("You have access to the following skills:\n" + skills.formatAvailableSkills()
+                + "\nWhen the user's request relates to one of these skills, activate it first.")
+        .build();
+```
+
+##### How Skill-Scoped Tools Work
+
+1. Before skill activation, the LLM only sees the `activate_skill` (and `read_skill_resource`) tools.
+   Skill-scoped tools are not included in the tool list.
+2. When the LLM calls `activate_skill("process-order")`, the activation is recorded in the `ToolExecutionResultMessage`.
+3. Before the next LLM call (within the same AI Service invocation), the AI Service re-evaluates dynamic tool providers
+   against the current messages. The skill-scoped tools (e.g. `validateOrder`) become
+   visible and the LLM can call them immediately, in the same AI Service invocation.
+   The skill-scoped tools stay visible to the LLM in the next AI Service invocations, they become invisible only when
+   the skill is deactivated.
+
+##### Using Skills with Tool Search
+
+Skills work alongside [Tool Search](/tutorials/tools#tool-search). When both are configured,
+they operate independently:
+
+- **Skill-scoped tools are never searchable.** They don't appear in the searchable tool pool
+  and cannot be found via `tool_search_tool`. They only become visible after the LLM activates
+  the corresponding skill.
+- **Regular tools remain searchable.** Tools registered via `.tools(...)` on the AI Service
+  (not on a skill) continue to be searchable, regardless of whether any skill is activated.
+- **`activate_skill` is always visible.** It is marked as `ALWAYS_VISIBLE`, so the LLM can
+  always call it even when Tool Search is enabled.
+
+```java
+Skills skills = Skills.from(mySkills);
+
+MyAiService service = AiServices.builder(MyAiService.class)
+        .chatModel(chatModel)
+        .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
+        .tools(new MySearchableTools()) // these are searchable
+        .toolProvider(skills.toolProvider()) // skill-scoped tools are NOT searchable
+        .toolSearchStrategy(new SimpleToolSearchStrategy())
+        .systemMessage("You have access to the following skills:\n" + skills.formatAvailableSkills()
+                + "\nWhen the user's request relates to one of these skills, activate it first.")
         .build();
 ```
 
@@ -314,7 +479,7 @@ ShellSkills skills = ShellSkills.from(FileSystemSkillLoader.loadSkills(Path.of("
 
 MyAiService service = AiServices.builder(MyAiService.class)
         .chatModel(chatModel)
-        .toolProvider(skills.toolProvider()) // or .toolProviders(mcpToolProvider, skills.toolProvider())
+        .toolProvider(skills.toolProvider()) // or .toolProviders(myToolProvider, skills.toolProvider()) if you already have a tool provider configured
         .systemMessage("You have access to the following skills:\n" + skills.formatAvailableSkills()
                 + "\nWhen the user's request relates to one of these skills, read its SKILL.md before proceeding.")
         .build();
