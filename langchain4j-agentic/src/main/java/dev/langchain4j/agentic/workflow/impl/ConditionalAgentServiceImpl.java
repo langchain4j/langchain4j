@@ -20,7 +20,7 @@ import java.util.function.Predicate;
 
 public class ConditionalAgentServiceImpl<T> extends AbstractServiceBuilder<T, ConditionalAgentService<T>> implements ConditionalAgentService<T> {
 
-    private final List<ConditionalAgent> conditionalAgents = new ArrayList<>();
+    protected final List<ConditionalAgent> conditionalAgents = new ArrayList<>();
 
     public ConditionalAgentServiceImpl(Class<T> agentServiceClass, Method agenticMethod) {
         super(agentServiceClass, agenticMethod);

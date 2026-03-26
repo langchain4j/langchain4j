@@ -23,10 +23,10 @@ import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 
 public class LoopAgentServiceImpl<T> extends AbstractServiceBuilder<T, LoopAgentService<T>> implements LoopAgentService<T> {
 
-    private int maxIterations = Integer.MAX_VALUE;
-    private BiPredicate<AgenticScope, Integer> exitCondition = (scope, loopCounter) -> false;
-    private String exitConditionDescription;
-    private boolean testExitAtLoopEnd = false;
+    protected int maxIterations = Integer.MAX_VALUE;
+    protected BiPredicate<AgenticScope, Integer> exitCondition = (scope, loopCounter) -> false;
+    protected String exitConditionDescription;
+    protected boolean testExitAtLoopEnd = false;
 
     public LoopAgentServiceImpl(Class<T> agentServiceClass, Method agenticMethod) {
         super(agentServiceClass, agenticMethod);
