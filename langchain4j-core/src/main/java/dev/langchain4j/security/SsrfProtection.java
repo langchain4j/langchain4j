@@ -288,7 +288,7 @@ public final class SsrfProtection {
      *         embedded credentials, resolves to a blocked IP address, or if
      *         DNS resolution fails or times out.
      *
-     * <h3>Examples</h3>
+     * <h4>Examples</h4>
      *
      * <pre>{@code
      * // ✔ Safe public URL
