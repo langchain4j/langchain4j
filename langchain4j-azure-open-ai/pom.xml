@@ -62,7 +62,7 @@
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-codec-http2</artifactId>
-            <version>4.1.130.Final</version>
+            <version>4.1.132.Final</version>
         </dependency>
 
         <dependency>
