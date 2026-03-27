@@ -2,9 +2,11 @@ package dev.langchain4j.model.openaiofficial;
 
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.finishReasonFrom;
+import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.thinkingFrom;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.toOpenAiChatCompletionCreateParams;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.tokenUsageFrom;
 
@@ -27,6 +29,7 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
@@ -39,6 +42,8 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatModel implements StreamingChatModel {
+
+    private final boolean returnThinking;
 
     public OpenAiOfficialStreamingChatModel(Builder builder) {
 
@@ -82,6 +87,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                     true);
         }
         this.modelName = builder.modelName;
+        this.returnThinking = builder.returnThinking != null && builder.returnThinking;
     }
 
     @Override
@@ -109,6 +115,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                     OpenAiOfficialChatResponseMetadata.builder();
 
             StringBuffer textBuilder = new StringBuffer();
+            StringBuffer thinkingBuilder = new StringBuffer();
             ToolCallBuilder toolCallBuilder = new ToolCallBuilder();
             AtomicReference<StreamingHandle> streamingHandle = new AtomicReference<>();
 
@@ -126,6 +133,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                                     streamingHandle.get(),
                                     responseMetadataBuilder,
                                     textBuilder,
+                                    thinkingBuilder,
                                     toolCallBuilder);
                         }
 
@@ -143,9 +151,11 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                                 }
 
                                 String text = textBuilder.toString();
+                                String thinking = thinkingBuilder.toString();
 
                                 AiMessage aiMessage = AiMessage.builder()
                                         .text(text.isEmpty() ? null : text)
+                                        .thinking(thinking.isEmpty() ? null : thinking)
                                         .toolExecutionRequests(toolCallBuilder.allRequests())
                                         .build();
 
@@ -171,6 +181,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
             StreamingHandle streamingHandle,
             OpenAiOfficialChatResponseMetadata.Builder responseMetadataBuilder,
             StringBuffer text,
+            StringBuffer thinking,
             ToolCallBuilder toolCallBuilder) {
 
         responseMetadataBuilder.id(chatCompletionChunk.id());
@@ -194,6 +205,11 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                 String partialResponse = choice.delta().content().get();
                 text.append(partialResponse);
                 onPartialResponse(handler, partialResponse, streamingHandle);
+            }
+            String partialThinking = returnThinking ? thinkingFrom(choice.delta()) : null;
+            if (isNotNullOrEmpty(partialThinking)) {
+                thinking.append(partialThinking);
+                onPartialThinking(handler, partialThinking, streamingHandle);
             }
             if (choice.delta().toolCalls().isPresent()) {
                 for (ChatCompletionChunk.Choice.Delta.ToolCall toolCall :
@@ -274,6 +290,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
         private Map<String, String> customHeaders;
         private List<ChatModelListener> listeners;
         private Set<Capability> capabilities;
+        private Boolean returnThinking;
 
         public Builder() {
             // This is public so it can be extended
@@ -405,6 +422,17 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
 
         public Builder strictJsonSchema(Boolean strictJsonSchema) {
             this.strictJsonSchema = strictJsonSchema;
+            return this;
+        }
+
+        /**
+         * Controls whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}
+         * and whether to invoke the {@link StreamingChatResponseHandler#onPartialThinking(PartialThinking)} callback.
+         * <p>
+         * If enabled, the thinking text will be stored within the {@link AiMessage} and may be persisted.
+         */
+        public Builder returnThinking(Boolean returnThinking) {
+            this.returnThinking = returnThinking;
             return this;
         }
 
