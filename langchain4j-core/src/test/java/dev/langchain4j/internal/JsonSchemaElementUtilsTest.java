@@ -2,9 +2,11 @@ package dev.langchain4j.internal;
 
 import static dev.langchain4j.internal.JsonSchemaElementUtils.*;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
@@ -297,16 +299,17 @@ class JsonSchemaElementUtilsTest {
 
         // given
         enum MyEnum {
-            A, B, C;
+            A,
+            B,
+            C;
         }
 
         // when
         JsonSchemaElement schema = jsonSchemaElementFrom(MyEnum.class);
 
         // then
-        assertThat(schema).isEqualTo(JsonEnumSchema.builder()
-                .enumValues("A", "B", "C")
-                .build());
+        assertThat(schema)
+                .isEqualTo(JsonEnumSchema.builder().enumValues("A", "B", "C").build());
     }
 
     @Test
@@ -314,7 +317,9 @@ class JsonSchemaElementUtilsTest {
 
         // given
         enum MyEnumWithToString {
-            A, B, C;
+            A,
+            B,
+            C;
 
             @Override
             public String toString() {
@@ -328,61 +333,48 @@ class JsonSchemaElementUtilsTest {
         JsonSchemaElement schema = jsonSchemaElementFrom(MyEnumWithToString.class);
 
         // then
-        assertThat(schema).isEqualTo(JsonEnumSchema.builder()
-                .enumValues("A", "B", "C")
-                .build());
+        assertThat(schema)
+                .isEqualTo(JsonEnumSchema.builder().enumValues("A", "B", "C").build());
     }
 
     @Test
     void shouldConvertJsonStringSchemaToMap() {
-        JsonStringSchema schema = JsonStringSchema.builder()
-                .description("string description")
-                .build();
+        JsonStringSchema schema =
+                JsonStringSchema.builder().description("string description").build();
 
         Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
 
-        assertThat(map)
-                .containsEntry("type", "string")
-                .containsEntry("description", "string description");
+        assertThat(map).containsEntry("type", "string").containsEntry("description", "string description");
     }
 
     @Test
     void shouldConvertJsonIntegerSchemaToMap() {
-        JsonIntegerSchema schema = JsonIntegerSchema.builder()
-                .description("integer description")
-                .build();
+        JsonIntegerSchema schema =
+                JsonIntegerSchema.builder().description("integer description").build();
 
         Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
 
-        assertThat(map)
-                .containsEntry("type", "integer")
-                .containsEntry("description", "integer description");
+        assertThat(map).containsEntry("type", "integer").containsEntry("description", "integer description");
     }
 
     @Test
     void shouldConvertJsonNumberSchemaToMap() {
-        JsonNumberSchema schema = JsonNumberSchema.builder()
-                .description("number description")
-                .build();
+        JsonNumberSchema schema =
+                JsonNumberSchema.builder().description("number description").build();
 
         Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
 
-        assertThat(map)
-                .containsEntry("type", "number")
-                .containsEntry("description", "number description");
+        assertThat(map).containsEntry("type", "number").containsEntry("description", "number description");
     }
 
     @Test
     void shouldConvertJsonBooleanSchemaToMap() {
-        JsonBooleanSchema schema = JsonBooleanSchema.builder()
-                .description("boolean description")
-                .build();
+        JsonBooleanSchema schema =
+                JsonBooleanSchema.builder().description("boolean description").build();
 
         Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
 
-        assertThat(map)
-                .containsEntry("type", "boolean")
-                .containsEntry("description", "boolean description");
+        assertThat(map).containsEntry("type", "boolean").containsEntry("description", "boolean description");
     }
 
     @Test
@@ -439,9 +431,8 @@ class JsonSchemaElementUtilsTest {
 
     @Test
     void shouldConvertJsonReferenceSchemaToMap() {
-        JsonReferenceSchema schema = JsonReferenceSchema.builder()
-                .reference("my-ref")
-                .build();
+        JsonReferenceSchema schema =
+                JsonReferenceSchema.builder().reference("my-ref").build();
 
         Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
 
@@ -453,8 +444,7 @@ class JsonSchemaElementUtilsTest {
         JsonAnyOfSchema schema = JsonAnyOfSchema.builder()
                 .anyOf(Arrays.asList(
                         JsonSchemaElementUtils.jsonSchemaElementFrom(String.class),
-                        JsonSchemaElementUtils.jsonSchemaElementFrom(Integer.class)
-                ))
+                        JsonSchemaElementUtils.jsonSchemaElementFrom(Integer.class)))
                 .description("anyOf description")
                 .build();
 
@@ -481,10 +471,21 @@ class JsonSchemaElementUtilsTest {
     @Test
     void shouldConvertJsonRawSchemaToMap() {
         Map<String, Object> rawMap = Map.of("foo", "bar");
-        JsonRawSchema schema = JsonRawSchema.builder().schema(Json.toJson(rawMap)).build();
+        JsonRawSchema schema =
+                JsonRawSchema.builder().schema(Json.toJson(rawMap)).build();
 
         Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
 
         assertThat(map).containsEntry("foo", "bar");
+    }
+
+    @Test
+    void shouldRejectJsonRawSchemaForOpenAiResponses() {
+        JsonRawSchema schema = JsonRawSchema.from("{\"type\":\"object\"}");
+
+        assertThatThrownBy(() -> JsonSchemaElementUtils.toMapForOpenAiResponses(schema))
+                .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                .hasMessage(
+                        "JsonRawSchema is not supported with OpenAI Responses API; use typed JsonSchema elements instead");
     }
 }

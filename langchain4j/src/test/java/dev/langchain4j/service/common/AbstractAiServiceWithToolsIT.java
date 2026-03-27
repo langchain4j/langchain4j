@@ -1,5 +1,24 @@
 package dev.langchain4j.service.common;
 
+import static dev.langchain4j.data.message.ChatMessageType.TOOL_EXECUTION_RESULT;
+import static dev.langchain4j.internal.Utils.generateUUIDFrom;
+import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
+import static dev.langchain4j.service.common.AbstractAiServiceWithToolsIT.ToolWithEnumParameter.TemperatureUnit.CELSIUS;
+import static dev.langchain4j.service.common.AbstractAiServiceWithToolsIT.ToolWithSetOfEnumsParameter.Color.GREEN;
+import static dev.langchain4j.service.common.AbstractAiServiceWithToolsIT.ToolWithSetOfEnumsParameter.Color.RED;
+import static java.util.Arrays.asList;
+import static java.util.Collections.singletonMap;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatNoException;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.Tool;
@@ -22,6 +41,12 @@ import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.service.Result;
+import java.time.LocalTime;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,31 +55,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.time.LocalTime;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-
-import static dev.langchain4j.data.message.ChatMessageType.TOOL_EXECUTION_RESULT;
-import static dev.langchain4j.internal.Utils.generateUUIDFrom;
-import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
-import static dev.langchain4j.service.common.AbstractAiServiceWithToolsIT.ToolWithEnumParameter.TemperatureUnit.CELSIUS;
-import static dev.langchain4j.service.common.AbstractAiServiceWithToolsIT.ToolWithSetOfEnumsParameter.Color.GREEN;
-import static dev.langchain4j.service.common.AbstractAiServiceWithToolsIT.ToolWithSetOfEnumsParameter.Color.RED;
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonMap;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatNoException;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
-import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @TestInstance(PER_CLASS)
 @ExtendWith(MockitoExtension.class)
@@ -115,10 +115,8 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         ToolWithPrimitiveParameters tool = spy(new ToolWithPrimitiveParameters());
 
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(model)
-                .tools(tool)
-                .build();
+        Assistant assistant =
+                AiServices.builder(Assistant.class).chatModel(model).tools(tool).build();
 
         String text = adaptPrompt2("How much is 37 plus 87?");
 
@@ -151,21 +149,21 @@ public abstract class AbstractAiServiceWithToolsIT {
 
     static class ToolWithPojoParameter {
 
-        record Person(String name, int age, Double height, boolean married) {
-        }
+        record Person(String name, int age, Double height, boolean married) {}
 
         @Tool
-        void process(Person person) {
-        }
+        void process(Person person) {}
 
         static JsonSchemaElement EXPECTED_SCHEMA = JsonObjectSchema.builder()
-                .addProperty("arg0", JsonObjectSchema.builder()
-                        .addStringProperty("name")
-                        .addIntegerProperty("age")
-                        .addNumberProperty("height")
-                        .addBooleanProperty("married")
-                        .required("name", "age", "height", "married")
-                        .build())
+                .addProperty(
+                        "arg0",
+                        JsonObjectSchema.builder()
+                                .addStringProperty("name")
+                                .addIntegerProperty("age")
+                                .addNumberProperty("height")
+                                .addBooleanProperty("married")
+                                .required("name", "age", "height", "married")
+                                .build())
                 .required("arg0")
                 .build();
     }
@@ -179,10 +177,8 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         ToolWithPojoParameter tool = spy(new ToolWithPojoParameter());
 
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(model)
-                .tools(tool)
-                .build();
+        Assistant assistant =
+                AiServices.builder(Assistant.class).chatModel(model).tools(tool).build();
 
         String text = "Use 'process' tool to process the following: Klaus is 37 years old, 1.78m height and single";
 
@@ -209,27 +205,26 @@ public abstract class AbstractAiServiceWithToolsIT {
 
     static class ToolWithNestedPojoParameter {
 
-        record Person(String name, Address address) {
-        }
+        record Person(String name, Address address) {}
 
-        record Address(String city) {
-        }
+        record Address(String city) {}
 
         @Tool
-        void process(Person person) {
-        }
+        void process(Person person) {}
 
         static JsonSchemaElement EXPECTED_SCHEMA = JsonObjectSchema.builder()
-                .addProperty("arg0", JsonObjectSchema.builder()
-                        .addProperty("name", new JsonStringSchema())
-                        .addProperty(
-                                "address",
-                                JsonObjectSchema.builder()
-                                        .addProperty("city", new JsonStringSchema())
-                                        .required("city")
-                                        .build())
-                        .required("name", "address")
-                        .build())
+                .addProperty(
+                        "arg0",
+                        JsonObjectSchema.builder()
+                                .addProperty("name", new JsonStringSchema())
+                                .addProperty(
+                                        "address",
+                                        JsonObjectSchema.builder()
+                                                .addProperty("city", new JsonStringSchema())
+                                                .required("city")
+                                                .build())
+                                .required("name", "address")
+                                .build())
                 .required("arg0")
                 .build();
     }
@@ -243,10 +238,8 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         ToolWithNestedPojoParameter tool = spy(new ToolWithNestedPojoParameter());
 
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(model)
-                .tools(tool)
-                .build();
+        Assistant assistant =
+                AiServices.builder(Assistant.class).chatModel(model).tools(tool).build();
 
         String text = "Use 'process' tool to process the following: Klaus lives in Langley Falls";
 
@@ -275,8 +268,7 @@ public abstract class AbstractAiServiceWithToolsIT {
 
     static class ToolWithRecursion {
 
-        record Person(String name, List<Person> children) {
-        }
+        record Person(String name, List<Person> children) {}
 
         @Tool
         void process(Person person) {
@@ -287,11 +279,13 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         static final JsonObjectSchema PERSON_SCHEMA = JsonObjectSchema.builder()
                 .addStringProperty("name")
-                .addProperty("children", JsonArraySchema.builder()
-                        .items(JsonReferenceSchema.builder()
-                                .reference(REFERENCE)
+                .addProperty(
+                        "children",
+                        JsonArraySchema.builder()
+                                .items(JsonReferenceSchema.builder()
+                                        .reference(REFERENCE)
+                                        .build())
                                 .build())
-                        .build())
                 .required("name", "children")
                 .build();
 
@@ -312,10 +306,8 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         ToolWithRecursion tool = spy(new ToolWithRecursion());
 
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(model)
-                .tools(tool)
-                .build();
+        Assistant assistant =
+                AiServices.builder(Assistant.class).chatModel(model).tools(tool).build();
 
         String text = "Use 'process' tool to process the following: Francine has 2 children: Steve and Hayley";
 
@@ -323,11 +315,13 @@ public abstract class AbstractAiServiceWithToolsIT {
         assistant.chat(text);
 
         // then
-        verify(tool).process(argThat(person -> person.name().equals("Francine")
-                && person.children().size() == 2
-                && person.children().stream().anyMatch(child -> child.name().equals("Steve"))
-                && person.children().stream().anyMatch(child -> child.name().equals("Hayley"))
-        ));
+        verify(tool)
+                .process(argThat(person -> person.name().equals("Francine")
+                        && person.children().size() == 2
+                        && person.children().stream()
+                                .anyMatch(child -> child.name().equals("Steve"))
+                        && person.children().stream()
+                                .anyMatch(child -> child.name().equals("Hayley"))));
         verifyNoMoreInteractions(tool);
 
         if (verifyModelInteractions()) {
@@ -431,10 +425,8 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         ToolWithEnumParameter tool = spy(new ToolWithEnumParameter());
 
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(model)
-                .tools(tool)
-                .build();
+        Assistant assistant =
+                AiServices.builder(Assistant.class).chatModel(model).tools(tool).build();
 
         String text = "What is the current temperature in Munich in celsius?";
 
@@ -461,8 +453,7 @@ public abstract class AbstractAiServiceWithToolsIT {
     static class ToolWithMapParameter {
 
         @Tool
-        void process(@P("map from name to age") Map<String, Integer> ages) {
-        }
+        void process(@P("map from name to age") Map<String, Integer> ages) {}
 
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("process")
@@ -487,10 +478,8 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         ToolWithMapParameter tool = spy(new ToolWithMapParameter());
 
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(model)
-                .tools(tool)
-                .build();
+        Assistant assistant =
+                AiServices.builder(Assistant.class).chatModel(model).tools(tool).build();
 
         String text = "Process the following: Klaus is 42 years old and Francine is 47 years old";
 
@@ -522,8 +511,7 @@ public abstract class AbstractAiServiceWithToolsIT {
     static class ToolWithListOfStringsParameter {
 
         @Tool
-        void processNames(List<String> names) {
-        }
+        void processNames(List<String> names) {}
 
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("processNames")
@@ -547,10 +535,8 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         ToolWithListOfStringsParameter tool = spy(new ToolWithListOfStringsParameter());
 
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(model)
-                .tools(tool)
-                .build();
+        Assistant assistant =
+                AiServices.builder(Assistant.class).chatModel(model).tools(tool).build();
 
         String text = "Process the following names: Klaus and Franny";
 
@@ -581,8 +567,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         }
 
         @Tool
-        void process(Set<Color> colors) {
-        }
+        void process(Set<Color> colors) {}
 
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("process")
@@ -608,10 +593,8 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         ToolWithSetOfEnumsParameter tool = spy(new ToolWithSetOfEnumsParameter());
 
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(model)
-                .tools(tool)
-                .build();
+        Assistant assistant =
+                AiServices.builder(Assistant.class).chatModel(model).tools(tool).build();
 
         String text = "Process the following colors: RED and GREEN";
 
@@ -636,8 +619,7 @@ public abstract class AbstractAiServiceWithToolsIT {
     static class ToolWithCollectionOfIntegersParameter {
 
         @Tool
-        void processNumbers(Collection<Integer> names) {
-        }
+        void processNumbers(Collection<Integer> names) {}
 
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("processNumbers")
@@ -661,10 +643,8 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         ToolWithCollectionOfIntegersParameter tool = spy(new ToolWithCollectionOfIntegersParameter());
 
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(model)
-                .tools(tool)
-                .build();
+        Assistant assistant =
+                AiServices.builder(Assistant.class).chatModel(model).tools(tool).build();
 
         String text = "Process the following integers: 37, 73";
 
@@ -689,12 +669,10 @@ public abstract class AbstractAiServiceWithToolsIT {
 
     static class ToolWithListOfPojoParameter {
 
-        record Person(String name) {
-        }
+        record Person(String name) {}
 
         @Tool
-        void process(List<Person> people) {
-        }
+        void process(List<Person> people) {}
 
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("process")
@@ -721,10 +699,8 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         ToolWithListOfPojoParameter tool = spy(new ToolWithListOfPojoParameter());
 
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(model)
-                .tools(tool)
-                .build();
+        Assistant assistant =
+                AiServices.builder(Assistant.class).chatModel(model).tools(tool).build();
 
         String text = "Process the following people: Klaus and Franny";
 
@@ -787,10 +763,8 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         ToolWithUUIDParameter tool = spy(new ToolWithUUIDParameter());
 
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(model)
-                .tools(tool)
-                .build();
+        Assistant assistant =
+                AiServices.builder(Assistant.class).chatModel(model).tools(tool).build();
 
         String text = "What is the username with ID 62dbcc27-aaf3-449a-b12d-5a904271a57f?";
 
@@ -851,10 +825,8 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         var tool = spy(toolInstance);
 
-        var assistant = AiServices.builder(Assistant.class)
-                .chatModel(model)
-                .tools(tool)
-                .build();
+        var assistant =
+                AiServices.builder(Assistant.class).chatModel(model).tools(tool).build();
 
         var text = adaptPrompt3("How much is 37 plus 87?");
 
@@ -894,6 +866,10 @@ public abstract class AbstractAiServiceWithToolsIT {
         return prompt;
     }
 
+    protected boolean hasDeterministicParallelToolExecutionAssertions() {
+        return true;
+    }
+
     @ParameterizedTest
     @MethodSource("models")
     protected void should_execute_normal_tool_in_parallel_with_primitive_parameters(ChatModel chatModel) {
@@ -930,10 +906,8 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         var tool = spy(toolInstance);
 
-        var assistant = AiServices.builder(Assistant.class)
-                .chatModel(model)
-                .tools(tool)
-                .build();
+        var assistant =
+                AiServices.builder(Assistant.class).chatModel(model).tools(tool).build();
 
         var text = "How much is 37 plus 87? How much is 73 plus 78? Call 2 tools in parallel (at the same time)!";
 
@@ -941,23 +915,30 @@ public abstract class AbstractAiServiceWithToolsIT {
         var response = assistant.chat(text);
 
         // then
-        if (returnBehavior == ReturnBehavior.TO_LLM) {
-            // The tool is called twice, the result is manipulated by the LLM so the response is not equal to the plain tool result
-            assertThat(response.content()).contains("124");
-            assertThat(response.content()).contains("151");
+        if (!hasDeterministicParallelToolExecutionAssertions()) {
+            assertThat(response.toolExecutions().size()).isGreaterThanOrEqualTo(2);
+            assertThat(response.toolExecutions().stream().map(t -> t.result())).contains("124", "151");
+            verify(tool, atLeastOnce()).add(37, 87);
+            verify(tool, atLeastOnce()).add(73, 78);
         } else {
-            // The first tool result is returned immediately so the response is equal to the plain tool result
-            assertThat(response.content()).isNull();
+            if (returnBehavior == ReturnBehavior.TO_LLM) {
+                // The tool is called twice, the result is manipulated by the LLM so the response is not equal to the
+                // plain tool result
+                assertThat(response.content()).contains("124");
+                assertThat(response.content()).contains("151");
+            } else {
+                // The first tool result is returned immediately so the response is equal to the plain tool result
+                assertThat(response.content()).isNull();
+                verify(tool).add(37, 87);
+            }
+
+            assertThat(response.toolExecutions().size()).isEqualTo(2);
+            assertThat(response.toolExecutions().get(0).result()).isEqualTo("124");
+            assertThat(response.toolExecutions().get(1).result()).isEqualTo("151");
             verify(tool).add(37, 87);
+            verify(tool).add(73, 78);
+            verifyNoMoreInteractions(tool);
         }
-
-        assertThat(response.toolExecutions().size()).isEqualTo(2);
-        assertThat(response.toolExecutions().get(0).result()).isEqualTo("124");
-        assertThat(response.toolExecutions().get(1).result()).isEqualTo("151");
-        verify(tool).add(37, 87);
-        verify(tool).add(73, 78);
-
-        verifyNoMoreInteractions(tool);
 
         if (verifyModelInteractions()) {
             verify(model).supportedCapabilities();
@@ -1029,7 +1010,8 @@ public abstract class AbstractAiServiceWithToolsIT {
         // then
         switch (returnBehavior) {
             case TO_LLM: {
-                // the result is not only "20" but is manipulated by the LLM since one of the 2 tools doesn't have direct return
+                // the result is not only "20" but is manipulated by the LLM since one of the 2 tools doesn't have
+                // direct return
                 assertThat(response.content()).contains("20");
                 assertThat(response.toolExecutions()).hasSize(2);
                 break;
@@ -1064,7 +1046,8 @@ public abstract class AbstractAiServiceWithToolsIT {
             assertThat(toolSpecifications).hasSize(2);
         }
 
-        // perform one more invocation of the AI service to make sure that memory is not corrupted and the service can be used further
+        // perform one more invocation of the AI service to make sure that memory is not corrupted and the service can
+        // be used further
         var text2 = "How much is 37 plus 87?";
         var response2 = assistant.chat(text2);
         if (returnBehavior == ReturnBehavior.IMMEDIATE) {
@@ -1116,7 +1099,8 @@ public abstract class AbstractAiServiceWithToolsIT {
         // The second message is the AI response with tool execution request
         assertThat(messages.get(1)).isInstanceOf(AiMessage.class);
         assertThat(((AiMessage) messages.get(1)).toolExecutionRequests()).hasSize(1);
-        assertThat(((AiMessage) messages.get(1)).toolExecutionRequests().get(0).name()).isEqualTo("add");
+        assertThat(((AiMessage) messages.get(1)).toolExecutionRequests().get(0).name())
+                .isEqualTo("add");
 
         // The third message is the tool execution result
         assertThat(messages.get(2)).isInstanceOf(ToolExecutionResultMessage.class);
@@ -1179,10 +1163,11 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         verify(tools).modify(7);
 
-        verify(model).chat(argThat((ChatRequest request) ->
-                request.messages().size() == 3
+        verify(model)
+                .chat(argThat((ChatRequest request) -> request.messages().size() == 3
                         && request.messages().get(2).type() == TOOL_EXECUTION_RESULT
-                        && ((ToolExecutionResultMessage) request.messages().get(2)).text().isEmpty()
-        ));
+                        && ((ToolExecutionResultMessage) request.messages().get(2))
+                                .text()
+                                .isEmpty()));
     }
 }
