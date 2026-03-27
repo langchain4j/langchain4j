@@ -51,7 +51,6 @@ import dev.langchain4j.service.guardrail.GuardrailService;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.service.output.ServiceOutputParser;
-import dev.langchain4j.service.tool.ToolService;
 import dev.langchain4j.service.tool.ToolServiceContext;
 import dev.langchain4j.service.tool.ToolServiceResult;
 import dev.langchain4j.spi.services.TokenStreamAdapter;
@@ -73,6 +72,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Internal
 class DefaultAiServices<T> extends AiServices<T> {
@@ -571,11 +572,72 @@ class DefaultAiServices<T> extends AiServices<T> {
                     "Error: The method '%s' does not have a user message defined.", method.getName());
         }
 
+        if (hasContentInVariables(variables)) {
+            List<Content> contents = applyTemplateWithContentSupport(userMessageTemplate, variables);
+            return maybeUserName
+                    .map(userName -> UserMessage.from(userName, contents))
+                    .orElseGet(() -> UserMessage.from(contents));
+        }
+
         Prompt prompt = PromptTemplate.from(userMessageTemplate).apply(variables);
 
         return maybeUserName
                 .map(userName -> UserMessage.from(userName, prompt.text()))
                 .orElseGet(prompt::toUserMessage);
+    }
+
+    private static final Pattern VARIABLE_PATTERN = Pattern.compile("\\{\\{\\s*(.+?)\\s*\\}\\}");
+
+    private static boolean hasContentInVariables(Map<String, Object> variables) {
+        if (variables == null || variables.isEmpty()) {
+            return false;
+        }
+        for (Object value : variables.values()) {
+            if (value instanceof Content || isListOfContents(value)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static List<Content> applyTemplateWithContentSupport(String template, Map<String, Object> variables) {
+        List<Content> contents = new ArrayList<>();
+        Matcher matcher = VARIABLE_PATTERN.matcher(template);
+        int lastEnd = 0;
+
+        while (matcher.find()) {
+            String textBefore = template.substring(lastEnd, matcher.start());
+            if (!textBefore.isEmpty()) {
+                contents.add(TextContent.from(textBefore));
+            }
+
+            String variableName = matcher.group(1).trim();
+            Object value = variables.get(variableName);
+            if (value == null) {
+                throw illegalArgument("Value for the variable '%s' is null", variableName);
+            }
+
+            if (value instanceof Content content) {
+                contents.add(content);
+            } else if (isListOfContents(value)) {
+                contents.addAll((List<Content>) value);
+            } else {
+                contents.add(TextContent.from(InternalReflectionVariableResolver.asString(value)));
+            }
+
+            lastEnd = matcher.end();
+        }
+
+        String textAfter = template.substring(lastEnd);
+        if (!textAfter.isEmpty()) {
+            contents.add(TextContent.from(textAfter));
+        }
+
+        if (contents.isEmpty()) {
+            contents.add(TextContent.from(""));
+        }
+
+        return contents;
     }
 
     private String getUserMessageTemplate(Object memoryId, Method method, Object[] args) {
@@ -724,6 +786,10 @@ class DefaultAiServices<T> extends AiServices<T> {
                 hasTextContent |= ((List<Content>) args[0]).stream().anyMatch(TextContent.class::isInstance);
                 contents.addAll((List<Content>) args[0]);
             }
+        }
+
+        if (contents.isEmpty() && !userMessage.contents().isEmpty()) {
+            return userMessage;
         }
 
         if (!hasTextContent) {
