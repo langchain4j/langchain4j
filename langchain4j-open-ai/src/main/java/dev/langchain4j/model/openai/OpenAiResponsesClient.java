@@ -161,8 +161,8 @@ class OpenAiResponsesClient {
 
     void streamingChat(ChatRequest chatRequest, OpenAiResponsesConfig config, StreamingChatResponseHandler handler) {
         try {
-            Map<String, Object> payload = buildRequestPayload(chatRequest, config);
-            HttpRequest request = buildHttpRequest(payload);
+            Map<String, Object> payload = buildRequestPayload(chatRequest, config, true);
+            HttpRequest request = buildHttpRequest(payload, true);
 
             httpClient.execute(request, new DefaultServerSentEventParser(), new ResponsesApiEventListener(handler));
 
@@ -171,7 +171,19 @@ class OpenAiResponsesClient {
         }
     }
 
-    private Map<String, Object> buildRequestPayload(ChatRequest chatRequest, OpenAiResponsesConfig config) {
+    ChatResponse chat(ChatRequest chatRequest, OpenAiResponsesConfig config) {
+        try {
+            Map<String, Object> payload = buildRequestPayload(chatRequest, config, false);
+            HttpRequest request = buildHttpRequest(payload, false);
+            SuccessfulHttpResponse rawHttpResponse = httpClient.execute(request);
+            return parseChatResponse(rawHttpResponse);
+        } catch (Exception e) {
+            throw ExceptionMapper.DEFAULT.mapException(e);
+        }
+    }
+
+    private Map<String, Object> buildRequestPayload(
+            ChatRequest chatRequest, OpenAiResponsesConfig config, boolean stream) {
         ChatRequestParameters parameters = chatRequest.parameters();
 
         var input = new ArrayList<Map<String, Object>>();
@@ -184,7 +196,7 @@ class OpenAiResponsesClient {
                 parameters != null && parameters.modelName() != null ? parameters.modelName() : config.modelName();
         payload.put(FIELD_MODEL, effectiveModelName);
         payload.put(FIELD_INPUT, input);
-        payload.put(FIELD_STREAM, true);
+        payload.put(FIELD_STREAM, stream);
         payload.put(FIELD_STORE, config.store());
 
         Double effectiveTemperature = parameters != null && parameters.temperature() != null
@@ -252,7 +264,7 @@ class OpenAiResponsesClient {
             payload.put(FIELD_REASONING, reasoning);
         }
 
-        if (config.streamIncludeObfuscation() != null) {
+        if (stream && config.streamIncludeObfuscation() != null) {
             var streamOptions = new HashMap<String, Object>();
             streamOptions.put(FIELD_INCLUDE_OBFUSCATION, config.streamIncludeObfuscation());
             payload.put(FIELD_STREAM_OPTIONS, streamOptions);
@@ -312,7 +324,7 @@ class OpenAiResponsesClient {
         return payload;
     }
 
-    private HttpRequest buildHttpRequest(Map<String, Object> payload) throws Exception {
+    private HttpRequest buildHttpRequest(Map<String, Object> payload, boolean stream) throws Exception {
         String requestBody = OBJECT_MAPPER.writeValueAsString(payload);
 
         HttpRequest.Builder requestBuilder = HttpRequest.builder()
@@ -320,13 +332,141 @@ class OpenAiResponsesClient {
                 .method(HttpMethod.POST)
                 .addHeader("Authorization", "Bearer " + apiKey)
                 .addHeader("Content-Type", "application/json")
-                .addHeader("Accept", "text/event-stream");
+                .addHeader("Accept", stream ? "text/event-stream" : "application/json");
 
         if (organizationId != null) {
             requestBuilder.addHeader(OPENAI_ORGANIZATION_HEADER, organizationId);
         }
 
         return requestBuilder.body(requestBody).build();
+    }
+
+    private ChatResponse parseChatResponse(SuccessfulHttpResponse rawHttpResponse) throws Exception {
+        JsonNode responseNode = OBJECT_MAPPER.readTree(rawHttpResponse.body());
+
+        String text = extractText(responseNode.path(FIELD_OUTPUT));
+        List<ToolExecutionRequest> toolExecutionRequests =
+                extractToolExecutionRequests(responseNode.path(FIELD_OUTPUT));
+
+        AiMessage aiMessage = !toolExecutionRequests.isEmpty() && text != null
+                ? new AiMessage(text, toolExecutionRequests)
+                : !toolExecutionRequests.isEmpty()
+                        ? AiMessage.from(toolExecutionRequests)
+                        : new AiMessage(text == null ? "" : text);
+
+        OpenAiTokenUsage tokenUsage = parseTokenUsage(responseNode.path(FIELD_USAGE));
+
+        OpenAiChatResponseMetadata.Builder metadataBuilder = OpenAiChatResponseMetadata.builder()
+                .id(responseNode.path(FIELD_ID).asText(null))
+                .modelName(responseNode.path(FIELD_MODEL).asText(null))
+                .rawHttpResponse(rawHttpResponse);
+
+        if (responseNode.hasNonNull(FIELD_CREATED)) {
+            metadataBuilder.created(responseNode.path(FIELD_CREATED).asLong());
+        }
+        if (responseNode.hasNonNull(FIELD_SERVICE_TIER)) {
+            metadataBuilder.serviceTier(responseNode.path(FIELD_SERVICE_TIER).asText());
+        }
+        if (responseNode.hasNonNull(FIELD_SYSTEM_FINGERPRINT)) {
+            metadataBuilder.systemFingerprint(
+                    responseNode.path(FIELD_SYSTEM_FINGERPRINT).asText());
+        }
+        if (tokenUsage != null) {
+            metadataBuilder.tokenUsage(tokenUsage);
+        }
+
+        FinishReason finishReason =
+                finishReasonFromStatus(responseNode.path(FIELD_STATUS).asText(null), !toolExecutionRequests.isEmpty());
+        if (finishReason != null) {
+            metadataBuilder.finishReason(finishReason);
+        }
+
+        return ChatResponse.builder()
+                .aiMessage(aiMessage)
+                .metadata(metadataBuilder.build())
+                .build();
+    }
+
+    private String extractText(JsonNode output) {
+        if (!output.isArray()) {
+            return null;
+        }
+
+        StringBuilder textBuilder = new StringBuilder();
+        for (JsonNode item : output) {
+            if (TYPE_MESSAGE.equals(item.path(FIELD_TYPE).asText())) {
+                JsonNode content = item.path(FIELD_CONTENT);
+                if (content.isArray()) {
+                    for (JsonNode c : content) {
+                        if (TYPE_OUTPUT_TEXT.equals(c.path(FIELD_TYPE).asText())) {
+                            textBuilder.append(c.path(FIELD_TEXT).asText());
+                        }
+                    }
+                }
+            }
+        }
+        return textBuilder.isEmpty() ? null : textBuilder.toString();
+    }
+
+    private List<ToolExecutionRequest> extractToolExecutionRequests(JsonNode output) {
+        if (!output.isArray()) {
+            return List.of();
+        }
+
+        List<ToolExecutionRequest> toolExecutionRequests = new ArrayList<>();
+        for (JsonNode item : output) {
+            if (!TYPE_FUNCTION_CALL.equals(item.path(FIELD_TYPE).asText())) {
+                continue;
+            }
+
+            String id = item.path(FIELD_CALL_ID).asText(null);
+            if (id == null || id.isBlank()) {
+                id = item.path(FIELD_ID).asText(null);
+            }
+
+            ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
+                    .id(id)
+                    .name(item.path(FIELD_NAME).asText())
+                    .arguments(item.path(FIELD_ARGUMENTS).asText("{}"))
+                    .build();
+            toolExecutionRequests.add(toolExecutionRequest);
+        }
+        return toolExecutionRequests;
+    }
+
+    private OpenAiTokenUsage parseTokenUsage(JsonNode usageNode) {
+        if (usageNode == null || usageNode.isMissingNode() || usageNode.isNull()) {
+            return null;
+        }
+
+        OpenAiTokenUsage.Builder usageBuilder = OpenAiTokenUsage.builder()
+                .inputTokenCount(usageNode.path(FIELD_INPUT_TOKENS).asInt())
+                .outputTokenCount(usageNode.path(FIELD_OUTPUT_TOKENS).asInt())
+                .totalTokenCount(usageNode.path(FIELD_TOTAL_TOKENS).asInt());
+
+        JsonNode inputDetailsNode = usageNode.path(FIELD_INPUT_TOKENS_DETAILS);
+        if (!inputDetailsNode.isMissingNode()) {
+            int cachedTokens = inputDetailsNode.path(FIELD_CACHED_TOKENS).asInt();
+            if (cachedTokens > 0) {
+                usageBuilder.inputTokensDetails(OpenAiTokenUsage.InputTokensDetails.builder()
+                        .cachedTokens(cachedTokens)
+                        .build());
+            }
+        }
+
+        return usageBuilder.build();
+    }
+
+    private static FinishReason finishReasonFromStatus(String status, boolean hasToolCalls) {
+        if (status == null || status.isBlank()) {
+            return null;
+        }
+        return switch (status) {
+            case "completed" -> hasToolCalls ? FinishReason.TOOL_EXECUTION : FinishReason.STOP;
+            case "incomplete" -> FinishReason.LENGTH;
+            case "failed" -> FinishReason.OTHER;
+            default -> FinishReason.OTHER;
+        };
     }
 
     private List<Map<String, Object>> toResponsesMessages(ChatMessage msg) {
@@ -726,8 +866,8 @@ class OpenAiResponsesClient {
                     metadataBuilder.tokenUsage(tokenUsage);
                 }
 
-                var finishReason =
-                        determineFinishReason(responseNode.path(FIELD_STATUS).asText(null));
+                var finishReason = finishReasonFromStatus(
+                        responseNode.path(FIELD_STATUS).asText(null), !completedToolCalls.isEmpty());
                 if (finishReason != null) {
                     metadataBuilder.finishReason(finishReason);
                 }
@@ -747,18 +887,6 @@ class OpenAiResponsesClient {
                     }
                 }
             }
-        }
-
-        private FinishReason determineFinishReason(String status) {
-            if (status == null || status.isBlank()) {
-                return null;
-            }
-            return switch (status) {
-                case "completed" -> !completedToolCalls.isEmpty() ? FinishReason.TOOL_EXECUTION : FinishReason.STOP;
-                case "incomplete" -> FinishReason.LENGTH;
-                case "failed" -> FinishReason.OTHER;
-                default -> FinishReason.OTHER;
-            };
         }
 
         private void completeToolCall(String itemId, ToolExecutionRequest.Builder builder) {

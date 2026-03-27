@@ -394,7 +394,18 @@ More information can be found [here](/tutorials/customizable-http-client).
 
 ## OpenAI Responses API
 
-OpenAI's [Responses API](https://platform.openai.com/docs/api-reference/responses) (`/v1/responses`) is an alternative to the Chat Completions API that provides enhanced control over streaming responses and cancellation.
+OpenAI's [Responses API](https://platform.openai.com/docs/api-reference/responses) (`/v1/responses`) is an alternative to the Chat Completions API.
+It supports both non-streaming and streaming chat models in LangChain4j.
+
+### Creating `OpenAiResponsesChatModel`
+
+```java
+ChatModel model = OpenAiResponsesChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("gpt-5.4")
+        .reasoningEffort("low")
+        .build();
+```
 
 ### Creating `OpenAiResponsesStreamingChatModel`
 
@@ -406,9 +417,13 @@ StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
 ```
 
 ### Key differences from Chat Completions API
-- **Streaming-only**: Currently only streaming mode is supported
-- **Cancellation**: Supports `StreamingHandle.cancel()` to stop responses
+- **Non-streaming and streaming**: Use `OpenAiResponsesChatModel` or `OpenAiResponsesStreamingChatModel`
+- **Cancellation (streaming)**: Supports `StreamingHandle.cancel()` to stop responses
 - **Same features**: Full support for tools, listeners, and all standard parameters
+
+:::note
+For models such as `gpt-5.4`, OpenAI requires the Responses API (`/v1/responses`) for combinations like tools + `reasoningEffort`.
+:::
 
 ## Examples
 - [OpenAI Examples](https://github.com/langchain4j/langchain4j-examples/tree/main/open-ai-examples/src/main/java)
