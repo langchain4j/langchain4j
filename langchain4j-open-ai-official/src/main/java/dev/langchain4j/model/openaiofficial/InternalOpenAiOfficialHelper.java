@@ -39,6 +39,7 @@ import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -161,6 +162,23 @@ class InternalOpenAiOfficialHelper {
                                         .build())
                                 .build()
                                 .inputAudio())
+                        .build()));
+            } else if (content instanceof PdfFileContent pdfFileContent) {
+                String fileData;
+                if (pdfFileContent.pdfFile().url() != null) {
+                    fileData = pdfFileContent.pdfFile().url().toString();
+                } else {
+                    fileData = String.format(
+                            "data:%s;base64,%s",
+                            pdfFileContent.pdfFile().mimeType(),
+                            pdfFileContent.pdfFile().base64Data());
+                }
+
+                parts.add(ChatCompletionContentPart.ofFile(ChatCompletionContentPart.File.builder()
+                        .file(ChatCompletionContentPart.File.FileObject.builder()
+                                .fileData(fileData)
+                                .filename("pdf_file")
+                                .build())
                         .build()));
             } else {
                 throw illegalArgument("Unknown content type: " + content);
