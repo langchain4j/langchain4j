@@ -47,9 +47,11 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * <p>
  * Uses a brute force approach by iterating over all embeddings to find the best matches.
  * <p>
- * This store can be persisted using the {@link #serializeToJson()} and {@link #serializeToFile(Path)} methods.
+ * This store can be persisted using the {@link #serializeToJson()}, {@link #serializeToFile(Path)},
+ * and {@link #serializeToStream(OutputStream)} methods.
  * <p>
- * It can also be recreated from JSON or a file using the {@link #fromJson(String)} and {@link #fromFile(Path)} methods.
+ * It can also be recreated from JSON, a file, or an {@link InputStream} using the {@link #fromJson(String)},
+ * {@link #fromFile(Path)}, and {@link #fromStream(InputStream)} methods.
  *
  * @param <Embedded> The class of the object that has been embedded.
  *                   Typically, it is {@link dev.langchain4j.data.segment.TextSegment}.
@@ -209,6 +211,25 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         serializeToFile(Paths.get(filePath));
     }
 
+    /**
+     * Serializes this store to the given {@link OutputStream} in JSON format.
+     *
+     * <p>With the default Jackson codec, this uses streaming serialization to avoid holding
+     * the entire JSON document in memory.
+     * It can be used to persist the store to any stream-based backend (e.g., network, S3, database).
+     *
+     * <p>The caller is responsible for closing the provided {@link OutputStream}.
+     *
+     * @param outputStream the {@link OutputStream} to write to
+     */
+    public void serializeToStream(OutputStream outputStream) {
+        try {
+            loadCodec().toJson(outputStream, this);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public static InMemoryEmbeddingStore<TextSegment> fromJson(String json) {
         return loadCodec().fromJson(json);
     }
@@ -232,6 +253,26 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
      */
     public static InMemoryEmbeddingStore<TextSegment> fromFile(String filePath) {
         return fromFile(Paths.get(filePath));
+    }
+
+    /**
+     * Deserializes an embedding store from the given {@link InputStream} containing JSON.
+     *
+     * <p>With the default Jackson codec, this uses streaming deserialization to avoid loading
+     * the entire JSON document into memory.
+     * It can be used to load the store from any stream-based backend (e.g., network, S3, database).
+     *
+     * <p>The caller is responsible for closing the provided {@link InputStream}.
+     *
+     * @param inputStream the {@link InputStream} to read from
+     * @return a deserialized {@link InMemoryEmbeddingStore}
+     */
+    public static InMemoryEmbeddingStore<TextSegment> fromStream(InputStream inputStream) {
+        try {
+            return loadCodec().fromJson(inputStream);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**
