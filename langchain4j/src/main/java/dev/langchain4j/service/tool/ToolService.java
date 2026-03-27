@@ -7,7 +7,6 @@ import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
-import static dev.langchain4j.service.tool.search.ToolSearchService.addFoundTools;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ReturnBehavior;
@@ -34,8 +33,8 @@ import dev.langchain4j.service.AiServiceContext;
 import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.service.tool.search.ToolSearchService;
 import dev.langchain4j.service.tool.search.ToolSearchStrategy;
-
 import java.lang.reflect.Method;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -44,11 +43,12 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
-import java.util.concurrent.atomic.AtomicBoolean;
+
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -116,46 +116,18 @@ public class ToolService {
     }
 
     public void tools(Collection<Object> objectsWithTools) {
-        for (Object objectWithTool : objectsWithTools) {
-            if (objectWithTool instanceof Class) {
-                throw illegalConfiguration("Tool '%s' must be an object, not a class", objectWithTool);
+        for (Object objectWithTools : objectsWithTools) {
+            for (AiServiceTool tool : findTools(objectWithTools)) {
+                String toolName = tool.toolSpecification().name();
+                if (toolExecutors.containsKey(toolName)) {
+                    throw new IllegalConfigurationException("Duplicated definition for tool: " + toolName);
+                }
+                toolSpecifications.add(tool.toolSpecification());
+                toolExecutors.put(toolName, tool.toolExecutor());
+                if (tool.immediateReturn()) {
+                    immediateReturnTools.add(toolName);
+                }
             }
-
-            if (objectWithTool instanceof Iterable) {
-                throw illegalConfiguration(
-                        "Tool '%s' is an Iterable (likely a nested collection). "
-                                + "Please pass tool objects directly, not wrapped in collections.",
-                        objectWithTool.getClass().getName());
-            }
-
-            AtomicBoolean hasToolMethods = new AtomicBoolean(false);
-            for (Method method : objectWithTool.getClass().getDeclaredMethods()) {
-                getAnnotatedMethod(method, Tool.class).ifPresent(toolMethod -> {
-                    hasToolMethods.set(true);
-                    processToolMethod(objectWithTool, toolMethod);
-                });
-            }
-
-            if (!hasToolMethods.get()) {
-                throw illegalConfiguration(
-                        "Object '%s' does not have any methods annotated with @Tool",
-                        objectWithTool.getClass().getName());
-            }
-        }
-    }
-
-    private void processToolMethod(Object object, Method method) {
-        ToolSpecification toolSpecification = toolSpecificationFrom(method);
-        if (toolExecutors.containsKey(toolSpecification.name())) {
-            throw new IllegalConfigurationException("Duplicated definition for tool: " + toolSpecification.name());
-        }
-        toolSpecifications.add(toolSpecification);
-
-        ToolExecutor toolExecutor = createToolExecutor(object, method);
-        toolExecutors.put(toolSpecification.name(), toolExecutor);
-
-        if (method.getAnnotation(Tool.class).returnBehavior() == ReturnBehavior.IMMEDIATE) {
-            immediateReturnTools.add(toolSpecification.name());
         }
     }
 
@@ -167,6 +139,46 @@ public class ToolService {
                 .wrapToolArgumentsExceptions(true)
                 .propagateToolExecutionExceptions(true)
                 .build();
+    }
+
+    /**
+     * Scans the given object for {@link Tool @Tool}-annotated methods and returns
+     * a list of {@link AiServiceTool}s.
+     *
+     * @param objectWithTools an object containing {@link Tool @Tool}-annotated methods
+     * @return list of resolved tools
+     * @throws IllegalConfigurationException if the object has no {@link Tool @Tool}-annotated methods
+     * @since 1.13.0
+     */
+    public static List<AiServiceTool> findTools(Object objectWithTools) {
+        if (objectWithTools instanceof Class) {
+            throw illegalConfiguration("Tool '%s' must be an object, not a class", objectWithTools);
+        }
+        if (objectWithTools instanceof Iterable) {
+            throw illegalConfiguration(
+                    "Tool '%s' is an Iterable (likely a nested collection). "
+                            + "Please pass tool objects directly, not wrapped in collections.",
+                    objectWithTools.getClass().getName());
+        }
+
+        List<AiServiceTool> result = new ArrayList<>();
+        for (Method method : objectWithTools.getClass().getDeclaredMethods()) {
+            Optional<Method> annotatedMethod = getAnnotatedMethod(method, Tool.class);
+            if (annotatedMethod.isPresent()) {
+                Method toolMethod = annotatedMethod.get();
+                result.add(AiServiceTool.builder()
+                        .toolSpecification(toolSpecificationFrom(toolMethod))
+                        .toolExecutor(createToolExecutor(objectWithTools, toolMethod))
+                        .immediateReturn(toolMethod.getAnnotation(Tool.class).returnBehavior() == ReturnBehavior.IMMEDIATE)
+                        .build());
+            }
+        }
+        if (result.isEmpty()) {
+            throw illegalConfiguration(
+                    "Object '%s' does not have any methods annotated with @Tool",
+                    objectWithTools.getClass().getName());
+        }
+        return result;
     }
 
     /**
@@ -246,62 +258,69 @@ public class ToolService {
 
     public ToolServiceContext createContext(InvocationContext invocationContext,
                                             UserMessage userMessage,
-                                            ChatMemory chatMemory) {
-        ToolServiceContext toolServiceContext = createContext(invocationContext, userMessage);
-        if (toolSearchService == null) {
-            return toolServiceContext;
-        } else {
-            return toolSearchService.adjust(toolServiceContext, chatMemory, invocationContext);
+                                            List<ChatMessage> messages) {
+        ToolServiceContext context = createContextFromStaticToolsAndProviders(invocationContext, userMessage, messages);
+        if (toolSearchService != null) {
+            context = toolSearchService.adjust(context, messages, invocationContext);
         }
+        context = refreshDynamicProviders(context, messages, invocationContext);
+        return context;
     }
 
-    /**
-     * @deprecated use {@link #createContext(InvocationContext, UserMessage, ChatMemory)} instead
-     */
-    @Deprecated(since = "1.12.0")
-    public ToolServiceContext createContext(InvocationContext invocationContext, UserMessage userMessage) {
-        // TODO make private
+    private ToolServiceContext createContextFromStaticToolsAndProviders(InvocationContext invocationContext,
+                                                                        UserMessage userMessage,
+                                                                        List<ChatMessage> messages) {
         if (this.toolProviders.isEmpty()) {
-            return this.toolSpecifications.isEmpty()
-                    ? ToolServiceContext.Empty.INSTANCE
-                    : ToolServiceContext.builder()
-                            .effectiveTools(this.toolSpecifications)
-                            .availableTools(this.toolSpecifications)
-                            .toolExecutors(this.toolExecutors)
-                            .immediateReturnTools(this.immediateReturnTools)
-                            .build();
+            if (this.toolSpecifications.isEmpty()) {
+                return ToolServiceContext.Empty.INSTANCE;
+            }
+
+            return ToolServiceContext.builder()
+                    .effectiveTools(this.toolSpecifications)
+                    .availableTools(this.toolSpecifications)
+                    .toolExecutors(this.toolExecutors)
+                    .immediateReturnTools(this.immediateReturnTools)
+                    .build();
         }
 
         List<ToolSpecification> toolSpecifications = new ArrayList<>(this.toolSpecifications);
         Map<String, ToolExecutor> toolExecutors = new HashMap<>(this.toolExecutors);
         Set<String> immediateReturnTools = new HashSet<>(this.immediateReturnTools);
+        List<ToolProvider> dynamicToolProviders = new ArrayList<>();
+
         ToolProviderRequest toolProviderRequest = ToolProviderRequest.builder()
                 .invocationContext(invocationContext)
                 .userMessage(userMessage)
+                .messages(messages)
                 .build();
         toolProviders.forEach(toolProvider -> {
+            if (toolProvider.isDynamic()) {
+                dynamicToolProviders.add(toolProvider);
+                return;
+            }
             ToolProviderResult toolProviderResult = toolProvider.provideTools(toolProviderRequest);
             if (toolProviderResult != null) {
                 for (Map.Entry<ToolSpecification, ToolExecutor> entry :
                         toolProviderResult.tools().entrySet()) {
                     String toolName = entry.getKey().name();
-                    if (toolExecutors.putIfAbsent(toolName, entry.getValue()) == null) {
-                        toolSpecifications.add(entry.getKey());
-                    } else {
+                    if (toolExecutors.putIfAbsent(toolName, entry.getValue()) != null) {
                         throw new IllegalConfigurationException(
-                                "Duplicated definition for tool: " + entry.getKey().name());
+                                "Duplicated definition for tool: " + toolName);
                     }
+                    toolSpecifications.add(entry.getKey());
                 }
                 if (toolProviderResult.immediateReturnToolNames() != null) {
                     immediateReturnTools.addAll(toolProviderResult.immediateReturnToolNames());
                 }
             }
         });
+
         return ToolServiceContext.builder()
                 .effectiveTools(toolSpecifications)
                 .availableTools(toolSpecifications)
                 .toolExecutors(toolExecutors)
                 .immediateReturnTools(immediateReturnTools)
+                .dynamicToolProviders(dynamicToolProviders)
                 .build();
     }
 
@@ -397,9 +416,13 @@ public class ToolService {
                 messages = chatMemory.messages();
             }
 
+            toolServiceContext = refreshDynamicProviders(toolServiceContext, messages, invocationContext);
             if (toolSearchService != null) {
-                parameters = addFoundTools(parameters, toolResults.values(), toolServiceContext.availableTools());
+                toolServiceContext = ToolSearchService.addFoundTools(toolServiceContext, toolResults.values());
             }
+            parameters = parameters.overrideWith(ChatRequestParameters.builder()
+                    .toolSpecifications(toolServiceContext.effectiveTools())
+                    .build());
 
             ChatRequest chatRequest = context.chatRequestTransformer.apply(
                     ChatRequest.builder()
@@ -420,6 +443,69 @@ public class ToolService {
                 .finalResponse(chatResponse)
                 .toolExecutions(toolExecutions)
                 .aggregateTokenUsage(aggregateTokenUsage)
+                .build();
+    }
+
+    /**
+     * Re-evaluates {@linkplain ToolProvider#isDynamic() dynamic} tool providers and returns
+     * an updated {@link ToolServiceContext} with any newly provided tool specifications and executors.
+     * <p>
+     * Non-dynamic providers are not re-called — their tools remain unchanged.
+     * Tools returned by dynamic providers are only added, never removed: once a tool
+     * is present in the context, it stays for the remainder of the AI service invocation.
+     *
+     * @since 1.13.0
+     */
+    public static ToolServiceContext refreshDynamicProviders(ToolServiceContext toolServiceContext,
+                                                             List<ChatMessage> messages,
+                                                             InvocationContext invocationContext) {
+        if (toolServiceContext == null) {
+            return null;
+        }
+
+        List<ToolProvider> dynamicProviders = toolServiceContext.dynamicToolProviders();
+        if (dynamicProviders.isEmpty()) {
+            return toolServiceContext;
+        }
+
+        UserMessage userMessage = UserMessage.findLast(messages).orElseThrow();
+        ToolProviderRequest request = ToolProviderRequest.builder()
+                .invocationContext(invocationContext)
+                .userMessage(userMessage)
+                .messages(messages)
+                .build();
+
+        List<ToolSpecification> newEffectiveTools = new ArrayList<>(toolServiceContext.effectiveTools());
+        List<ToolSpecification> newAvailableTools = new ArrayList<>(toolServiceContext.availableTools());
+        Map<String, ToolExecutor> newToolExecutors = new HashMap<>(toolServiceContext.toolExecutors());
+        Set<String> newImmediateReturnTools = new HashSet<>(toolServiceContext.immediateReturnTools());
+        boolean changed = false;
+
+        for (ToolProvider dynamicProvider : dynamicProviders) {
+            ToolProviderResult result = dynamicProvider.provideTools(request);
+            if (result != null) {
+                for (Map.Entry<ToolSpecification, ToolExecutor> toolEntry : result.tools().entrySet()) {
+                    String toolName = toolEntry.getKey().name();
+                    if (!newToolExecutors.containsKey(toolName)) {
+                        newEffectiveTools.add(toolEntry.getKey());
+                        newAvailableTools.add(toolEntry.getKey());
+                        newToolExecutors.put(toolName, toolEntry.getValue());
+                        changed = true;
+                    }
+                }
+                newImmediateReturnTools.addAll(result.immediateReturnToolNames());
+            }
+        }
+
+        if (!changed) {
+            return toolServiceContext;
+        }
+
+        return toolServiceContext.toBuilder()
+                .effectiveTools(newEffectiveTools)
+                .availableTools(newAvailableTools)
+                .toolExecutors(newToolExecutors)
+                .immediateReturnTools(newImmediateReturnTools)
                 .build();
     }
 
@@ -478,20 +564,7 @@ public class ToolService {
 
         for (ToolExecutionRequest toolRequest : toolRequests) {
             CompletableFuture<ToolExecutionResult> future = CompletableFuture.supplyAsync(
-                    () -> {
-                        ToolExecutor toolExecutor = toolExecutors.get(toolRequest.name());
-                        if (toolExecutor == null) {
-                            return applyToolHallucinationStrategy(toolRequest);
-                        } else {
-                            return executeWithErrorHandling(
-                                    toolRequest,
-                                    toolExecutor,
-                                    invocationContext,
-                                    argumentsErrorHandler(),
-                                    executionErrorHandler());
-                        }
-                    },
-                    executor);
+                    () -> executeTool(invocationContext, toolExecutors, toolRequest), executor);
             futures.put(toolRequest, future);
         }
 
@@ -565,6 +638,8 @@ public class ToolService {
                     BeforeToolExecution.builder().request(toolRequest).build());
         }
 
+        LocalDateTime startTime = LocalDateTime.now();
+
         ToolExecutor executor = toolExecutors.get(toolRequest.name());
         ToolExecutionResult toolResult = executor == null
                 ? applyToolHallucinationStrategy(toolRequest)
@@ -575,6 +650,8 @@ public class ToolService {
             afterToolExecution.accept(ToolExecution.builder()
                     .request(toolRequest)
                     .result(toolResult)
+                    .startTime(startTime)
+                    .finishTime(LocalDateTime.now())
                     .build());
         }
         return toolResult;
