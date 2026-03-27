@@ -7,6 +7,7 @@ import com.google.auth.oauth2.GoogleCredentials;
 import com.google.genai.Client;
 import com.google.genai.types.Content;
 import com.google.genai.types.GenerateContentConfig;
+import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.SafetySetting;
 import com.google.genai.types.Schema;
 import com.google.genai.types.ToolConfig;
@@ -43,7 +44,10 @@ public class GoogleGenAiChatModel implements ChatModel {
     private final Integer seed;
     private final String responseMimeType;
     private final boolean googleSearchEnabled;
+    private final boolean googleMapsEnabled;
+    private final boolean urlContextEnabled;
     private final List<String> allowedFunctionNames;
+    private final GenerateContentConfig generateContentConfig;
 
     private GoogleGenAiChatModel(Builder builder) {
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
@@ -52,6 +56,8 @@ public class GoogleGenAiChatModel implements ChatModel {
         this.logResponses = builder.logResponses != null && builder.logResponses;
         this.listeners = builder.listeners == null ? emptyList() : new ArrayList<>(builder.listeners);
         this.googleSearchEnabled = builder.googleSearch != null && builder.googleSearch;
+        this.googleMapsEnabled = builder.googleMaps != null && builder.googleMaps;
+        this.urlContextEnabled = builder.urlContext != null && builder.urlContext;
         this.allowedFunctionNames = builder.allowedFunctionNames;
         this.responseSchema = builder.responseSchema;
         this.responseMimeType = builder.responseMimeType;
@@ -59,6 +65,7 @@ public class GoogleGenAiChatModel implements ChatModel {
         this.seed = builder.seed;
         this.safetySettings =
                 builder.safetySettings != null ? new ArrayList<>(builder.safetySettings) : new ArrayList<>();
+        this.generateContentConfig = builder.generateContentConfig;
 
         this.client = builder.client != null
                 ? builder.client
@@ -69,13 +76,17 @@ public class GoogleGenAiChatModel implements ChatModel {
                         builder.location,
                         builder.timeout);
 
-        this.defaultRequestParameters = DefaultChatRequestParameters.builder()
-                .temperature(builder.temperature)
-                .maxOutputTokens(builder.maxOutputTokens)
-                .topP(builder.topP)
-                .topK(builder.topK)
-                .stopSequences(builder.stopSequences)
-                .build();
+        if (builder.defaultRequestParameters != null) {
+            this.defaultRequestParameters = builder.defaultRequestParameters;
+        } else {
+            this.defaultRequestParameters = DefaultChatRequestParameters.builder()
+                    .temperature(builder.temperature)
+                    .maxOutputTokens(builder.maxOutputTokens)
+                    .topP(builder.topP)
+                    .topK(builder.topK)
+                    .stopSequences(builder.stopSequences)
+                    .build();
+        }
     }
 
     @Override
@@ -85,16 +96,20 @@ public class GoogleGenAiChatModel implements ChatModel {
         Content systemInstruction = GoogleGenAiContentMapper.toSystemInstruction(chatRequest.messages());
         List<Content> contents = GoogleGenAiContentMapper.toContents(chatRequest.messages());
 
-        GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
-                parameters,
-                systemInstruction,
-                safetySettings,
-                responseSchema,
-                responseMimeType,
-                thinkingBudget,
-                seed,
-                googleSearchEnabled,
-                allowedFunctionNames);
+        GenerateContentConfig config = generateContentConfig != null
+                ? generateContentConfig
+                : GoogleGenAiConfigBuilder.buildConfig(
+                        parameters,
+                        systemInstruction,
+                        safetySettings,
+                        responseSchema,
+                        responseMimeType,
+                        thinkingBudget,
+                        seed,
+                        googleSearchEnabled,
+                        googleMapsEnabled,
+                        urlContextEnabled,
+                        allowedFunctionNames);
 
         if (logRequests)
             log.info(
@@ -145,13 +160,15 @@ public class GoogleGenAiChatModel implements ChatModel {
         private Integer topK, maxOutputTokens, thinkingBudget, seed, maxRetries = 3;
         private List<String> stopSequences;
         private Duration timeout;
-        private Boolean googleSearch, logRequests, logResponses;
+        private Boolean googleSearch, googleMaps, urlContext, logRequests, logResponses;
         private List<SafetySetting> safetySettings;
         private Schema responseSchema;
         private String responseMimeType;
         private List<String> allowedFunctionNames;
         private ToolConfig toolConfig;
         private List<ChatModelListener> listeners;
+        private ChatRequestParameters defaultRequestParameters;
+        private GenerateContentConfig generateContentConfig;
 
         public Builder client(Client client) {
             this.client = client;
@@ -248,6 +265,16 @@ public class GoogleGenAiChatModel implements ChatModel {
             return this;
         }
 
+        public Builder enableGoogleMaps(boolean googleMaps) {
+            this.googleMaps = googleMaps;
+            return this;
+        }
+
+        public Builder enableUrlContext(boolean urlContext) {
+            this.urlContext = urlContext;
+            return this;
+        }
+
         public Builder toolConfig(ToolConfig toolConfig) {
             this.toolConfig = toolConfig;
             return this;
@@ -270,6 +297,16 @@ public class GoogleGenAiChatModel implements ChatModel {
 
         public Builder listeners(List<ChatModelListener> listeners) {
             this.listeners = listeners;
+            return this;
+        }
+
+        public Builder defaultRequestParameters(ChatRequestParameters defaultRequestParameters) {
+            this.defaultRequestParameters = defaultRequestParameters;
+            return this;
+        }
+
+        public Builder generateContentConfig(GenerateContentConfig generateContentConfig) {
+            this.generateContentConfig = generateContentConfig;
             return this;
         }
 

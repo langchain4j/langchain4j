@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
 import com.google.genai.Client;
+import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.SafetySetting;
 import com.google.genai.types.Schema;
 import com.google.genai.types.Type;
@@ -122,6 +123,8 @@ class GoogleGenAiChatModelTest {
                 .responseSchema(Schema.builder().type(Type.Known.OBJECT).build())
                 .responseMimeType("application/json")
                 .enableGoogleSearch(true)
+                .enableGoogleMaps(true)
+                .enableUrlContext(true)
                 .allowedFunctionNames(List.of("fn1"))
                 .logRequests(true)
                 .logResponses(true)
@@ -166,6 +169,9 @@ class GoogleGenAiChatModelTest {
         assertThat(builder.maxRetries(3)).isSameAs(builder);
         assertThat(builder.timeout(Duration.ofSeconds(10))).isSameAs(builder);
         assertThat(builder.enableGoogleSearch(true)).isSameAs(builder);
+        assertThat(builder.enableGoogleMaps(true)).isSameAs(builder);
+        assertThat(builder.enableUrlContext(true)).isSameAs(builder);
+        assertThat(builder.generateContentConfig(GenerateContentConfig.builder().build())).isSameAs(builder);
         assertThat(builder.logRequests(true)).isSameAs(builder);
         assertThat(builder.logResponses(true)).isSameAs(builder);
         assertThat(builder.safetySettings(List.of())).isSameAs(builder);
@@ -173,6 +179,22 @@ class GoogleGenAiChatModelTest {
         assertThat(builder.responseMimeType("text/plain")).isSameAs(builder);
         assertThat(builder.allowedFunctionNames(List.of("fn1"))).isSameAs(builder);
         assertThat(builder.listeners(List.of())).isSameAs(builder);
+    }
+
+    @Test
+    void should_build_with_generate_content_config() {
+        GenerateContentConfig config = GenerateContentConfig.builder()
+                .temperature(0.5f)
+                .topP(0.9f)
+                .build();
+
+        GoogleGenAiChatModel model = GoogleGenAiChatModel.builder()
+                .apiKey("test-key")
+                .modelName("gemini-2.0-flash")
+                .generateContentConfig(config)
+                .build();
+
+        assertThat(model).isNotNull();
     }
 
     @Test

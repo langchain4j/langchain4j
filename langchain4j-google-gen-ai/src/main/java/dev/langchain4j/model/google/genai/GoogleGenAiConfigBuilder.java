@@ -6,9 +6,11 @@ import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCallingConfig;
 import com.google.genai.types.FunctionDeclaration;
 import com.google.genai.types.GenerateContentConfig;
+import com.google.genai.types.GoogleMaps;
 import com.google.genai.types.GoogleSearch;
 import com.google.genai.types.SafetySetting;
 import com.google.genai.types.Schema;
+import com.google.genai.types.UrlContext;
 import com.google.genai.types.ThinkingConfig;
 import com.google.genai.types.Tool;
 import com.google.genai.types.ToolConfig;
@@ -30,6 +32,8 @@ class GoogleGenAiConfigBuilder {
             Integer thinkingBudget,
             Integer seed,
             boolean googleSearchEnabled,
+            boolean googleMapsEnabled,
+            boolean urlContextEnabled,
             List<String> allowedFunctionNames) {
 
         GenerateContentConfig.Builder configBuilder = GenerateContentConfig.builder();
@@ -80,7 +84,7 @@ class GoogleGenAiConfigBuilder {
         }
 
         // Tools
-        buildTools(configBuilder, parameters, googleSearchEnabled, allowedFunctionNames);
+        buildTools(configBuilder, parameters, googleSearchEnabled, googleMapsEnabled, urlContextEnabled, allowedFunctionNames);
 
         return configBuilder.build();
     }
@@ -89,6 +93,8 @@ class GoogleGenAiConfigBuilder {
             GenerateContentConfig.Builder configBuilder,
             ChatRequestParameters parameters,
             boolean googleSearchEnabled,
+            boolean googleMapsEnabled,
+            boolean urlContextEnabled,
             List<String> allowedFunctionNames) {
 
         List<ToolSpecification> toolSpecs = parameters.toolSpecifications();
@@ -106,10 +112,16 @@ class GoogleGenAiConfigBuilder {
             Tool functionTool =
                     Tool.builder().functionDeclarations(functionDeclarations).build();
             requestTools.add(functionTool);
-        } else if (googleSearchEnabled) {
-            Tool searchTool =
-                    Tool.builder().googleSearch(GoogleSearch.builder().build()).build();
-            requestTools.add(searchTool);
+        }
+
+        if (googleSearchEnabled) {
+            requestTools.add(Tool.builder().googleSearch(GoogleSearch.builder().build()).build());
+        }
+        if (googleMapsEnabled) {
+            requestTools.add(Tool.builder().googleMaps(GoogleMaps.builder().build()).build());
+        }
+        if (urlContextEnabled) {
+            requestTools.add(Tool.builder().urlContext(UrlContext.builder().build()).build());
         }
 
         if (!requestTools.isEmpty()) {
