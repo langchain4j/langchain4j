@@ -35,10 +35,11 @@ class TavilyWebSearchEngineIT extends WebSearchEngineIT {
             assertThat(result.title()).isNotBlank();
             assertThat(result.url()).isNotNull();
             assertThat(result.snippet()).isNotBlank();
-            assertThat(result.metadata()).containsOnlyKeys("score");
+            assertThat(result.metadata()).containsKey("score");
         });
 
-        assertThat(results).anyMatch(result -> result.content() != null && result.content().contains("LangChain4j"));
+        assertThat(results)
+                .anyMatch(result -> result.content() != null && result.content().contains("LangChain4j"));
     }
 
     void should_search_with_answer() {
@@ -87,6 +88,103 @@ class TavilyWebSearchEngineIT extends WebSearchEngineIT {
         // then
         List<WebSearchOrganicResult> results = webSearchResults.results();
         assertThat(results).hasSize(5 + 1); // +1 for answer
+    }
+
+    @Test
+    void should_search_with_topic_news() {
+        TavilyWebSearchEngine engine = TavilyWebSearchEngine.builder()
+                .apiKey(System.getenv("TAVILY_API_KEY"))
+                .topic("news")
+                .build();
+
+        WebSearchResults results = engine.search("latest technology news");
+
+        assertThat(results.results()).isNotEmpty();
+        results.results().forEach(result -> {
+            assertThat(result.title()).isNotBlank();
+            assertThat(result.url()).isNotNull();
+        });
+    }
+
+    @Test
+    void should_search_with_time_range() {
+        TavilyWebSearchEngine engine = TavilyWebSearchEngine.builder()
+                .apiKey(System.getenv("TAVILY_API_KEY"))
+                .timeRange("month")
+                .build();
+
+        WebSearchResults results = engine.search("artificial intelligence");
+
+        assertThat(results.results()).isNotEmpty();
+    }
+
+    @Test
+    void should_search_with_country() {
+        TavilyWebSearchEngine engine = TavilyWebSearchEngine.builder()
+                .apiKey(System.getenv("TAVILY_API_KEY"))
+                .country("france")
+                .build();
+
+        WebSearchResults results = engine.search("actualités technologie");
+
+        assertThat(results.results()).isNotEmpty();
+    }
+
+    @Test
+    void should_search_with_include_images() {
+        TavilyWebSearchEngine engine = TavilyWebSearchEngine.builder()
+                .apiKey(System.getenv("TAVILY_API_KEY"))
+                .includeImages(true)
+                .build();
+
+        WebSearchResults results = engine.search("Eiffel Tower");
+
+        assertThat(results.results()).isNotEmpty();
+    }
+
+    @Test
+    void should_search_with_topic_finance() {
+        TavilyWebSearchEngine engine = TavilyWebSearchEngine.builder()
+                .apiKey(System.getenv("TAVILY_API_KEY"))
+                .topic("finance")
+                .build();
+
+        WebSearchResults results = engine.search("NVIDIA stock price");
+
+        assertThat(results.results()).isNotEmpty();
+    }
+
+    @Test
+    void should_search_with_date_range() {
+        TavilyWebSearchEngine engine = TavilyWebSearchEngine.builder()
+                .apiKey(System.getenv("TAVILY_API_KEY"))
+                .startDate("2025-01-01")
+                .endDate("2025-12-31")
+                .build();
+
+        WebSearchResults results = engine.search("AI breakthroughs");
+
+        assertThat(results.results()).isNotEmpty();
+    }
+
+    @Test
+    void should_search_with_all_new_params_combined() {
+        TavilyWebSearchEngine engine = TavilyWebSearchEngine.builder()
+                .apiKey(System.getenv("TAVILY_API_KEY"))
+                .topic("news")
+                .timeRange("week")
+                .country("united states")
+                .includeImages(true)
+                .includeFavicon(true)
+                .build();
+
+        WebSearchResults results = engine.search("AI regulation");
+
+        assertThat(results.results()).isNotEmpty();
+        // Check that metadata contains expected keys
+        results.results().forEach(result -> {
+            assertThat(result.metadata()).containsKey("score");
+        });
     }
 
     @Override
