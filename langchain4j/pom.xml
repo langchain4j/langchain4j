@@ -15,7 +15,7 @@
     <description>Build LLM-powered applications in Java: chatbots, agents, RAG, and much more</description>
 
     <properties>
-        <opennlp-tools.version>2.5.4</opennlp-tools.version>
+        <opennlp-tools.version>2.5.7</opennlp-tools.version>
     </properties>
 
     <dependencies>
