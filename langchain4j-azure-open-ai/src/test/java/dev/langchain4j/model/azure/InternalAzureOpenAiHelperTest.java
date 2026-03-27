@@ -1,6 +1,7 @@
 package dev.langchain4j.model.azure;
 
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.aiMessageFrom;
+import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.thinkingFrom;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.azure.ai.openai.OpenAIAsyncClient;
@@ -176,6 +177,72 @@ class InternalAzureOpenAiHelperTest {
                         .name(functionName)
                         .arguments(functionArguments)
                         .build());
+    }
+
+    @Test
+    void whenThinkingIsProvidedShouldReturnAiMessageWithThinking() throws IOException {
+
+        // language=json
+        String responseJson =
+                """
+                {
+                  "role": "ASSISTANT",
+                  "content": "Hello",
+                  "reasoning_content": "Let me think first"
+                }
+                """;
+
+        ChatResponseMessage responseMessage;
+        try (JsonReader jsonReader = DefaultJsonReader.fromString(responseJson, new JsonOptions())) {
+            responseMessage = ChatResponseMessage.fromJson(jsonReader);
+        }
+
+        AiMessage aiMessage = aiMessageFrom(responseMessage, "Let me think first");
+
+        assertThat(aiMessage.text()).isEqualTo("Hello");
+        assertThat(aiMessage.thinking()).isEqualTo("Let me think first");
+        assertThat(aiMessage.toolExecutionRequests()).isEmpty();
+    }
+
+    @Test
+    void thinkingFrom_shouldExtractReasoningContent() {
+        // language=json
+        String responseJson =
+                """
+                {
+                  "choices": [
+                    {
+                      "message": {
+                        "role": "assistant",
+                        "content": "Answer",
+                        "reasoning_content": "Let me think first"
+                      }
+                    }
+                  ]
+                }
+                """;
+
+        assertThat(thinkingFrom(responseJson)).isEqualTo("Let me think first");
+    }
+
+    @Test
+    void thinkingFrom_shouldReturnNullWhenReasoningContentIsMissing() {
+        // language=json
+        String responseJson =
+                """
+                {
+                  "choices": [
+                    {
+                      "message": {
+                        "role": "assistant",
+                        "content": "Answer"
+                      }
+                    }
+                  ]
+                }
+                """;
+
+        assertThat(thinkingFrom(responseJson)).isNull();
     }
 
     @Test

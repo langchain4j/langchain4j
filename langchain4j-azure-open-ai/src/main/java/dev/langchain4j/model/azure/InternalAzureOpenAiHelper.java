@@ -1,6 +1,5 @@
 package dev.langchain4j.model.azure;
 
-import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
@@ -17,12 +16,14 @@ import com.azure.ai.openai.OpenAIAsyncClient;
 import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.OpenAIClientBuilder;
 import com.azure.ai.openai.OpenAIServiceVersion;
+import com.azure.ai.openai.models.ChatCompletions;
 import com.azure.ai.openai.models.ChatCompletionsFunctionToolCall;
 import com.azure.ai.openai.models.ChatCompletionsFunctionToolDefinition;
 import com.azure.ai.openai.models.ChatCompletionsFunctionToolDefinitionFunction;
 import com.azure.ai.openai.models.ChatCompletionsJsonResponseFormat;
 import com.azure.ai.openai.models.ChatCompletionsJsonSchemaResponseFormat;
 import com.azure.ai.openai.models.ChatCompletionsJsonSchemaResponseFormatJsonSchema;
+import com.azure.ai.openai.models.ChatCompletionsOptions;
 import com.azure.ai.openai.models.ChatCompletionsResponseFormat;
 import com.azure.ai.openai.models.ChatCompletionsTextResponseFormat;
 import com.azure.ai.openai.models.ChatCompletionsToolCall;
@@ -56,6 +57,8 @@ import com.azure.core.http.policy.RetryOptions;
 import com.azure.core.util.BinaryData;
 import com.azure.core.util.Header;
 import com.azure.core.util.HttpClientOptions;
+import com.azure.json.JsonProviders;
+import com.azure.json.JsonWriter;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -68,6 +71,7 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
@@ -77,6 +81,8 @@ import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
+import java.io.IOException;
+import java.io.StringWriter;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Duration;
@@ -88,6 +94,10 @@ import java.util.Map;
 
 @Internal
 class InternalAzureOpenAiHelper {
+
+    private static final String REASONING_CONTENT = "reasoning_content";
+    private static final String REASONING_CONTENT_CAMEL_CASE = "reasoningContent";
+    private static final String THINKING = "thinking";
 
     static final String DEFAULT_USER_AGENT = "langchain4j-azure-openai";
 
@@ -379,24 +389,107 @@ class InternalAzureOpenAiHelper {
     }
 
     static AiMessage aiMessageFrom(ChatResponseMessage chatResponseMessage) {
+        return aiMessageFrom(chatResponseMessage, null);
+    }
+
+    static AiMessage aiMessageFrom(ChatResponseMessage chatResponseMessage, String thinking) {
         String text = chatResponseMessage.getContent();
 
         if (isNullOrEmpty(chatResponseMessage.getToolCalls())) {
-            return aiMessage(text);
-        } else {
-            List<ToolExecutionRequest> toolExecutionRequests = chatResponseMessage.getToolCalls().stream()
-                    .filter(toolCall -> toolCall instanceof ChatCompletionsFunctionToolCall)
-                    .map(toolCall -> (ChatCompletionsFunctionToolCall) toolCall)
-                    .map(chatCompletionsFunctionToolCall -> ToolExecutionRequest.builder()
-                            .id(chatCompletionsFunctionToolCall.getId())
-                            .name(chatCompletionsFunctionToolCall.getFunction().getName())
-                            .arguments(chatCompletionsFunctionToolCall
-                                    .getFunction()
-                                    .getArguments())
-                            .build())
-                    .collect(toList());
+            return AiMessage.builder()
+                    .text(isNullOrBlank(text) ? null : text)
+                    .thinking(isNullOrBlank(thinking) ? null : thinking)
+                    .build();
+        }
 
-            return isNullOrBlank(text) ? aiMessage(toolExecutionRequests) : aiMessage(text, toolExecutionRequests);
+        List<ToolExecutionRequest> toolExecutionRequests = chatResponseMessage.getToolCalls().stream()
+                .filter(toolCall -> toolCall instanceof ChatCompletionsFunctionToolCall)
+                .map(toolCall -> (ChatCompletionsFunctionToolCall) toolCall)
+                .map(chatCompletionsFunctionToolCall -> ToolExecutionRequest.builder()
+                        .id(chatCompletionsFunctionToolCall.getId())
+                        .name(chatCompletionsFunctionToolCall.getFunction().getName())
+                        .arguments(chatCompletionsFunctionToolCall.getFunction().getArguments())
+                        .build())
+                .collect(toList());
+
+        return AiMessage.builder()
+                .text(isNullOrBlank(text) ? null : text)
+                .thinking(isNullOrBlank(thinking) ? null : thinking)
+                .toolExecutionRequests(toolExecutionRequests)
+                .build();
+    }
+
+    static ChatCompletionsWithThinking chatCompletionsWithThinking(
+            OpenAIClient client, String deploymentName, ChatCompletionsOptions options) {
+        String responseJson = client.getChatCompletionsWithResponse(deploymentName, requestBodyFrom(options), null)
+                .getValue()
+                .toString();
+
+        try (var jsonReader = JsonProviders.createReader(responseJson)) {
+            return new ChatCompletionsWithThinking(ChatCompletions.fromJson(jsonReader), thinkingFrom(responseJson));
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to parse Azure OpenAI chat completions response", e);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    static String thinkingFrom(String responseJson) {
+        Map<String, Object> root = Json.fromJson(responseJson, Map.class);
+        Object choicesObject = root.get("choices");
+        if (!(choicesObject instanceof List<?> choices) || choices.isEmpty()) {
+            return null;
+        }
+
+        Object firstChoiceObject = choices.get(0);
+        if (!(firstChoiceObject instanceof Map<?, ?> firstChoice)) {
+            return null;
+        }
+
+        Object messageObject = firstChoice.get("message");
+        if (!(messageObject instanceof Map<?, ?> message)) {
+            return null;
+        }
+
+        return firstNonBlankString(message, REASONING_CONTENT, REASONING_CONTENT_CAMEL_CASE, THINKING);
+    }
+
+    private static BinaryData requestBodyFrom(ChatCompletionsOptions options) {
+        StringWriter stringWriter = new StringWriter();
+        try (JsonWriter jsonWriter = JsonProviders.createWriter(stringWriter)) {
+            options.toJson(jsonWriter);
+            jsonWriter.flush();
+            return BinaryData.fromString(stringWriter.toString());
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to serialize Azure OpenAI chat completions request", e);
+        }
+    }
+
+    private static String firstNonBlankString(Map<?, ?> values, String... keys) {
+        for (String key : keys) {
+            Object value = values.get(key);
+            if (value instanceof String stringValue && !isNullOrBlank(stringValue)) {
+                return stringValue;
+            }
+        }
+        return null;
+    }
+
+    static final class ChatCompletionsWithThinking {
+
+        private final ChatCompletions chatCompletions;
+        private final String thinking;
+
+        private ChatCompletionsWithThinking(ChatCompletions chatCompletions, String thinking) {
+            this.chatCompletions = chatCompletions;
+            this.thinking = thinking;
+        }
+
+        ChatCompletions chatCompletions() {
+            return chatCompletions;
+        }
+
+        String thinking() {
+            return thinking;
         }
     }
 
