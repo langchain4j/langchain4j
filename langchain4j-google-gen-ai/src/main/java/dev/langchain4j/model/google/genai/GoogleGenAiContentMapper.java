@@ -248,10 +248,15 @@ class GoogleGenAiContentMapper {
                                 : 0))
                 .orElse(new TokenUsage(0, 0));
 
-        return ChatResponse.builder()
-                .aiMessage(aiMessage)
+        GoogleGenAiChatResponseMetadata metadata = GoogleGenAiChatResponseMetadata.builder()
                 .tokenUsage(usage)
                 .finishReason(FinishReason.STOP)
+                .rawResponse(response)
+                .build();
+
+        return ChatResponse.builder()
+                .aiMessage(aiMessage)
+                .metadata(metadata)
                 .build();
     }
 

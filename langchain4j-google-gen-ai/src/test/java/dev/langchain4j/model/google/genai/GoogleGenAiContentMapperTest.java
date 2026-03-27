@@ -267,6 +267,30 @@ class GoogleGenAiContentMapperTest {
     }
 
     @Test
+    void should_return_google_gen_ai_metadata_with_raw_response() {
+        GenerateContentResponse response = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .role("model")
+                                .parts(Part.builder().text("Hello!").build())
+                                .build())
+                        .build()))
+                .usageMetadata(GenerateContentResponseUsageMetadata.builder()
+                        .promptTokenCount(10)
+                        .candidatesTokenCount(5)
+                        .build())
+                .build();
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response);
+
+        assertThat(result.metadata()).isInstanceOf(GoogleGenAiChatResponseMetadata.class);
+        GoogleGenAiChatResponseMetadata metadata = (GoogleGenAiChatResponseMetadata) result.metadata();
+        assertThat(metadata.rawResponse()).isSameAs(response);
+        assertThat(metadata.tokenUsage().inputTokenCount()).isEqualTo(10);
+        assertThat(metadata.finishReason()).isEqualTo(FinishReason.STOP);
+    }
+
+    @Test
     void should_convert_function_call_response() {
         Map<String, Object> args = new HashMap<>();
         args.put("city", "London");

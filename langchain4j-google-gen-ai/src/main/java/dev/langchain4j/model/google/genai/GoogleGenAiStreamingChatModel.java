@@ -52,7 +52,10 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
     private final Integer seed;
     private final String responseMimeType;
     private final boolean googleSearchEnabled;
+    private final boolean googleMapsEnabled;
+    private final boolean urlContextEnabled;
     private final List<String> allowedFunctionNames;
+    private final GenerateContentConfig generateContentConfig;
 
     private final ExecutorService executor;
 
@@ -62,6 +65,8 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         this.logResponses = builder.logResponses != null && builder.logResponses;
         this.listeners = builder.listeners == null ? emptyList() : new ArrayList<>(builder.listeners);
         this.googleSearchEnabled = builder.googleSearch != null && builder.googleSearch;
+        this.googleMapsEnabled = builder.googleMaps != null && builder.googleMaps;
+        this.urlContextEnabled = builder.urlContext != null && builder.urlContext;
         this.allowedFunctionNames = builder.allowedFunctionNames;
         this.responseSchema = builder.responseSchema;
         this.responseMimeType = builder.responseMimeType;
@@ -69,6 +74,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         this.seed = builder.seed;
         this.safetySettings =
                 builder.safetySettings != null ? new ArrayList<>(builder.safetySettings) : new ArrayList<>();
+        this.generateContentConfig = builder.generateContentConfig;
 
         this.client = builder.client != null
                 ? builder.client
@@ -79,13 +85,17 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                         builder.location,
                         builder.timeout);
 
-        this.defaultRequestParameters = DefaultChatRequestParameters.builder()
-                .temperature(builder.temperature)
-                .maxOutputTokens(builder.maxOutputTokens)
-                .topP(builder.topP)
-                .topK(builder.topK)
-                .stopSequences(builder.stopSequences)
-                .build();
+        if (builder.defaultRequestParameters != null) {
+            this.defaultRequestParameters = builder.defaultRequestParameters;
+        } else {
+            this.defaultRequestParameters = DefaultChatRequestParameters.builder()
+                    .temperature(builder.temperature)
+                    .maxOutputTokens(builder.maxOutputTokens)
+                    .topP(builder.topP)
+                    .topK(builder.topK)
+                    .stopSequences(builder.stopSequences)
+                    .build();
+        }
 
         this.executor = builder.executor != null ? builder.executor : Executors.newCachedThreadPool();
     }
@@ -97,16 +107,20 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         Content systemInstruction = GoogleGenAiContentMapper.toSystemInstruction(chatRequest.messages());
         List<Content> contents = GoogleGenAiContentMapper.toContents(chatRequest.messages());
 
-        GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
-                parameters,
-                systemInstruction,
-                safetySettings,
-                responseSchema,
-                responseMimeType,
-                thinkingBudget,
-                seed,
-                googleSearchEnabled,
-                allowedFunctionNames);
+        GenerateContentConfig config = generateContentConfig != null
+                ? generateContentConfig
+                : GoogleGenAiConfigBuilder.buildConfig(
+                        parameters,
+                        systemInstruction,
+                        safetySettings,
+                        responseSchema,
+                        responseMimeType,
+                        thinkingBudget,
+                        seed,
+                        googleSearchEnabled,
+                        googleMapsEnabled,
+                        urlContextEnabled,
+                        allowedFunctionNames);
 
         if (logRequests) {
             log.info(
@@ -124,10 +138,12 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                 List<ToolExecutionRequest> toolRequests = new ArrayList<>();
                 TokenUsage tokenUsage = new TokenUsage();
                 FinishReason finishReason = null;
+                GenerateContentResponse lastChunk = null;
 
                 int toolIndex = 0;
 
                 for (GenerateContentResponse chunk : stream) {
+                    lastChunk = chunk;
                     ChatResponse partialResponse = GoogleGenAiContentMapper.toChatResponse(chunk);
                     AiMessage aiMessage = partialResponse.aiMessage();
 
@@ -162,10 +178,15 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                     finalAiMessage = AiMessage.from(textBuilder.toString());
                 }
 
-                ChatResponse finalChatResponse = ChatResponse.builder()
-                        .aiMessage(finalAiMessage)
+                GoogleGenAiChatResponseMetadata metadata = GoogleGenAiChatResponseMetadata.builder()
                         .tokenUsage(tokenUsage)
                         .finishReason(finishReason != null ? finishReason : FinishReason.STOP)
+                        .rawResponse(lastChunk)
+                        .build();
+
+                ChatResponse finalChatResponse = ChatResponse.builder()
+                        .aiMessage(finalAiMessage)
+                        .metadata(metadata)
                         .build();
 
                 if (logResponses) {
@@ -212,7 +233,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         private Integer topK, maxOutputTokens, thinkingBudget, seed;
         private List<String> stopSequences;
         private Duration timeout;
-        private Boolean googleSearch, logRequests, logResponses;
+        private Boolean googleSearch, googleMaps, urlContext, logRequests, logResponses;
         private List<SafetySetting> safetySettings;
         private Schema responseSchema;
         private String responseMimeType;
@@ -220,6 +241,8 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         private ToolConfig toolConfig;
         private List<ChatModelListener> listeners;
         private ExecutorService executor;
+        private ChatRequestParameters defaultRequestParameters;
+        private GenerateContentConfig generateContentConfig;
 
         public Builder client(Client client) {
             this.client = client;
@@ -311,6 +334,16 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
+        public Builder enableGoogleMaps(boolean googleMaps) {
+            this.googleMaps = googleMaps;
+            return this;
+        }
+
+        public Builder enableUrlContext(boolean urlContext) {
+            this.urlContext = urlContext;
+            return this;
+        }
+
         public Builder toolConfig(ToolConfig toolConfig) {
             this.toolConfig = toolConfig;
             return this;
@@ -338,6 +371,16 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
 
         public Builder executor(ExecutorService executor) {
             this.executor = executor;
+            return this;
+        }
+
+        public Builder defaultRequestParameters(ChatRequestParameters defaultRequestParameters) {
+            this.defaultRequestParameters = defaultRequestParameters;
+            return this;
+        }
+
+        public Builder generateContentConfig(GenerateContentConfig generateContentConfig) {
+            this.generateContentConfig = generateContentConfig;
             return this;
         }
 

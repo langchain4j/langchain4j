@@ -16,7 +16,7 @@
         <dependency>
             <groupId>com.google.genai</groupId>
             <artifactId>google-genai</artifactId>
-            <version>1.41.0</version>
+            <version>1.44.0</version>
             <exclusions>
                 <exclusion>
                     <groupId>com.google.guava</groupId>
