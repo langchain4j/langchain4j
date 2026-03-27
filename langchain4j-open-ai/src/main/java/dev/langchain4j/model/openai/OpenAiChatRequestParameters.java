@@ -23,7 +23,6 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
     private final Map<String, String> metadata;
     private final String serviceTier;
     private final String reasoningEffort;
-    private final Map<String, Object> customParameters;
 
     private OpenAiChatRequestParameters(Builder builder) {
         super(builder);
@@ -36,7 +35,6 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
         this.metadata = copy(builder.metadata);
         this.serviceTier = builder.serviceTier;
         this.reasoningEffort = builder.reasoningEffort;
-        this.customParameters = copy(builder.customParameters);
     }
 
     public Integer maxCompletionTokens() {
@@ -75,10 +73,6 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
         return reasoningEffort;
     }
 
-    public Map<String, Object> customParameters() {
-        return customParameters;
-    }
-
     @Override
     public OpenAiChatRequestParameters overrideWith(ChatRequestParameters that) {
         return OpenAiChatRequestParameters.builder()
@@ -109,8 +103,7 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
                 && Objects.equals(store, that.store)
                 && Objects.equals(metadata, that.metadata)
                 && Objects.equals(serviceTier, that.serviceTier)
-                && Objects.equals(reasoningEffort, that.reasoningEffort)
-                && Objects.equals(customParameters, that.customParameters);
+                && Objects.equals(reasoningEffort, that.reasoningEffort);
     }
 
     @Override
@@ -125,8 +118,7 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
                 store,
                 metadata,
                 serviceTier,
-                reasoningEffort,
-                customParameters);
+                reasoningEffort);
     }
 
     @Override
@@ -152,7 +144,7 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
                 + metadata + ", serviceTier="
                 + quoted(serviceTier) + ", reasoningEffort="
                 + quoted(reasoningEffort) + ", customParameters="
-                + customParameters + '}';
+                + customParameters() + '}';
     }
 
     public static Builder builder() {
@@ -170,7 +162,6 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
         private Map<String, String> metadata;
         private String serviceTier;
         private String reasoningEffort;
-        private Map<String, Object> customParameters;
 
         @Override
         public Builder overrideWith(ChatRequestParameters parameters) {
@@ -185,7 +176,6 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
                 metadata(getOrDefault(openAiParameters.metadata(), metadata));
                 serviceTier(getOrDefault(openAiParameters.serviceTier(), serviceTier));
                 reasoningEffort(getOrDefault(openAiParameters.reasoningEffort(), reasoningEffort));
-                customParameters(getOrDefault(openAiParameters.customParameters(), customParameters));
             }
             return this;
         }
@@ -236,11 +226,6 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
 
         public Builder reasoningEffort(String reasoningEffort) {
             this.reasoningEffort = reasoningEffort;
-            return this;
-        }
-
-        public Builder customParameters(Map<String, Object> customParameters) {
-            this.customParameters = customParameters;
             return this;
         }
 
