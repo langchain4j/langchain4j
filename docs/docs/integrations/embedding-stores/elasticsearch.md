@@ -29,29 +29,28 @@ It comes with two main classes:
 - [`ElasticsearchContentRetriever`](#elasticsearchcontentretriever): an implementation of the `ContentRetriever`
   interface that uses Elasticsearch to retrieve relevant documents based on vector similarity search.
 
-Both classes need an Elasticsearch `RestClient` to connect to the Elasticsearch server.
+Both classes need an [Elasticsearch Client](https://www.elastic.co/docs/reference/elasticsearch/clients/java) to 
+connect to the Elasticsearch server.
 
 ```java
 String apiKey = "VnVhQ2ZHY0JDZGJrU...";
-RestClient restClient = RestClient
-    .builder(HttpHost.create("https://localhost:9200"))
-    .setDefaultHeaders(new Header[]{
-        new BasicHeader("Authorization", "ApiKey " + apiKey)
-    })
-    .build();
+ElasticsearchClient client = ElasticsearchClient.of(ec -> ec
+        .host("https://localhost:9200")
+        .apiKey(apiKey));
 ```
 
 **Note:**
 
-> See the [Elasticsearch documentation](https://www.elastic.co/guide/en/elasticsearch/client/java-api-client/current/connecting.html) on how to create a RestClient instance.
+> See the [Elasticsearch documentation](https://www.elastic.co/docs/reference/elasticsearch/clients/java/setup/connecting) 
+> on how to create an ElasticsearchClient instance.
 
 ## ElasticsearchEmbeddingStore
 
-To create the `ElasticsearchEmbeddingStore` instance, you need to provide an Elasticsearch `RestClient`:
+To create the `ElasticsearchEmbeddingStore` instance, you need to provide an `ElasticsearchClient`:
 
 ```java
 ElasticsearchEmbeddingStore store = ElasticsearchEmbeddingStore.builder()
-    .restClient(restClient)
+    .client(client)
     .build();
 ```
 
@@ -64,7 +63,7 @@ The previous code is equivalent to:
 
 ```java
 ElasticsearchEmbeddingStore store = ElasticsearchEmbeddingStore.builder()
-    .restClient(restClient)
+    .client(client)
     .configuration(ElasticsearchConfigurationKnn.builder().build())
     .indexName("default")
     .build();
@@ -78,12 +77,12 @@ A ContentRetriever needs an embedding model:
 EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 ```
 
-To create an `ElasticsearchContentRetriever` instance, you need to provide the Elasticsearch `RestClient` and 
+To create an `ElasticsearchContentRetriever` instance, you need to provide the `ElasticsearchClient` and 
 the `EmbeddingModel`:
 
 ```java
 ElasticsearchContentRetriever contentRetriever = ElasticsearchContentRetriever.builder()
-    .restClient(restClient)
+    .client(client)
     .embeddingModel(embeddingModel)
     .build();
 ```
@@ -101,7 +100,7 @@ The previous code is equivalent to:
 
 ```java
 ElasticsearchContentRetriever contentRetriever = ElasticsearchContentRetriever.builder()
-    .restClient(restClient)
+    .client(client)
     .embeddingModel(embeddingModel)
     .configuration(ElasticsearchConfigurationKnn.builder().build())
     .indexName("default")
@@ -153,7 +152,7 @@ It comes with the following options:
 
 > **Note:**
 > From version 9.2 of the elasticsearch server, vector fields are excluded from the response by default. To include
-> vector fields in the responses, set the `includeVectorResponse` in the builder:
+> vector fields in the responses (not recommended), set the `includeVectorResponse` in the builder:
 >
 > ```java
 > ElasticsearchConfigurationKnn configuration = ElasticsearchConfigurationKnn.builder()
@@ -181,7 +180,7 @@ It comes with the following options:
 
 > **Note:**
 > From version 9.2 of the elasticsearch server, vector fields are excluded from the response by default. To include
-> vector fields in the responses, set the `includeVectorResponse` in the builder:
+> vector fields in the responses (not recommended), set the `includeVectorResponse` in the builder:
 >
 > ```java
 > ElasticsearchConfiguration configuration = ElasticsearchConfigurationScript.builder()
@@ -222,7 +221,7 @@ It comes with the following options:
 
 > **Note:**
 > From version 9.2 of the elasticsearch server, vector fields are excluded from the response by default. To include
-> vector fields in the responses, set the `includeVectorResponse` in the builder:
+> vector fields in the responses (not recommended), set the `includeVectorResponse` in the builder:
 >
 > ```java
 > ElasticsearchConfiguration configuration = ElasticsearchConfigurationHybrid.builder()
@@ -241,7 +240,7 @@ public class MyElasticsearchConfiguration implements ElasticsearchConfiguration 
             ElasticsearchClient client,
             String indexName,
             EmbeddingSearchRequest embeddingSearchRequest) {
-        // Your custom vector search implementation here
+        // Your optional custom vector search implementation here
     }
 
     @Override
@@ -249,7 +248,7 @@ public class MyElasticsearchConfiguration implements ElasticsearchConfiguration 
             ElasticsearchClient client, 
             String indexName, 
             String textQuery) {
-        // Your custom full text search implementation here
+        // Your optional custom full text search implementation here
     }
 
     @Override
@@ -258,7 +257,7 @@ public class MyElasticsearchConfiguration implements ElasticsearchConfiguration 
             String indexName,
             EmbeddingSearchRequest embeddingSearchRequest,
             String textQuery) {
-        // Your custom hybrid search implementation here
+        // Your optional custom hybrid search implementation here
     }
 }
 ```
@@ -272,6 +271,4 @@ Please note that you can implement only the methods relevant to your use case:
 ## Examples
 
 - [ElasticsearchEmbeddingStoreExample](https://github.com/langchain4j/langchain4j-examples/blob/main/elasticsearch-example/src/main/java/ElasticsearchEmbeddingStoreExample.java)
-
-
-
+- [ElasticsearchEmbeddingStoreWithScriptExample](https://github.com/langchain4j/langchain4j-examples/blob/main/elasticsearch-example/src/main/java/ElasticsearchEmbeddingStoreWithScriptExample.java)
