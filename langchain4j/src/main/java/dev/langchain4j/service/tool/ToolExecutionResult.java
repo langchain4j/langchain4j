@@ -1,15 +1,14 @@
 package dev.langchain4j.service.tool;
 
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.quoted;
+
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.memory.ChatMemory;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
-
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.memory.ChatMemory;
-
-import static dev.langchain4j.internal.Utils.copy;
-import static dev.langchain4j.internal.Utils.quoted;
 
 /**
  * Represents the result of a tool execution.
@@ -97,7 +96,7 @@ public class ToolExecutionResult {
         return isError == that.isError
                 && Objects.equals(result, that.result)
                 && Objects.equals(resultText(), that.resultText())
-                && Objects.equals(attributes, attributes);
+                && Objects.equals(attributes, that.attributes);
     }
 
     @Override
