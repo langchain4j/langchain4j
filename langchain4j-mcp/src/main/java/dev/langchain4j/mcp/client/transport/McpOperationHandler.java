@@ -3,6 +3,8 @@ package dev.langchain4j.mcp.client.transport;
 import com.fasterxml.jackson.databind.JsonNode;
 import dev.langchain4j.mcp.client.McpRoot;
 import dev.langchain4j.mcp.client.logging.McpLogMessage;
+import dev.langchain4j.mcp.client.progress.McpProgressHandler;
+import dev.langchain4j.mcp.client.progress.McpProgressNotification;
 import dev.langchain4j.mcp.protocol.McpPingResponse;
 import dev.langchain4j.mcp.protocol.McpRootsListResponse;
 import java.util.List;
@@ -27,6 +29,7 @@ public class McpOperationHandler {
     private final Consumer<McpLogMessage> logMessageConsumer;
     private final Runnable onToolListUpdate;
     private final Supplier<List<McpRoot>> roots;
+    private final McpProgressHandler progressHandler;
 
     public McpOperationHandler(
             Map<Long, CompletableFuture<JsonNode>> pendingOperations,
@@ -34,11 +37,22 @@ public class McpOperationHandler {
             McpTransport transport,
             Consumer<McpLogMessage> logMessageConsumer,
             Runnable onToolListUpdate) {
+        this(pendingOperations, roots, transport, logMessageConsumer, onToolListUpdate, null);
+    }
+
+    public McpOperationHandler(
+            Map<Long, CompletableFuture<JsonNode>> pendingOperations,
+            Supplier<List<McpRoot>> roots,
+            McpTransport transport,
+            Consumer<McpLogMessage> logMessageConsumer,
+            Runnable onToolListUpdate,
+            McpProgressHandler progressHandler) {
         this.pendingOperations = pendingOperations;
         this.transport = transport;
         this.logMessageConsumer = logMessageConsumer;
         this.onToolListUpdate = onToolListUpdate;
         this.roots = roots;
+        this.progressHandler = progressHandler;
     }
 
     public void handle(JsonNode message) {
@@ -79,6 +93,10 @@ public class McpOperationHandler {
                 }
             } else if (method.equals("notifications/tools/list_changed")) {
                 onToolListUpdate.run();
+            } else if (method.equals("notifications/progress")) {
+                if (progressHandler != null && message.has("params")) {
+                    progressHandler.onProgress(McpProgressNotification.fromJson(message.get("params")));
+                }
             } else {
                 log.warn("Received unknown message: {}", message);
             }
