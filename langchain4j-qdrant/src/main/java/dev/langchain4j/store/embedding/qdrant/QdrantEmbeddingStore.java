@@ -19,10 +19,12 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.*;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import io.qdrant.client.QdrantClient;
 import io.qdrant.client.QdrantGrpcClient;
 import io.qdrant.client.WithVectorsSelectorFactory;
 import io.qdrant.client.grpc.Common.Filter;
+import io.qdrant.client.grpc.Common.PointId;
 import io.qdrant.client.grpc.JsonWithInt.Value;
 import io.qdrant.client.grpc.Points;
 import io.qdrant.client.grpc.Points.DeletePoints;
@@ -60,7 +62,7 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param port           The GRPC port of the Qdrant instance.
      * @param useTls         Whether to use TLS(HTTPS).
      * @param payloadTextKey The field name of the text segment in the Qdrant
-     *                       payload.
+     * payload.
      * @param apiKey         The Qdrant API key to authenticate with.
      */
     public QdrantEmbeddingStore(
@@ -86,7 +88,7 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param client         A Qdrant client instance.
      * @param collectionName The name of the Qdrant collection.
      * @param payloadTextKey The field name of the text segment in the Qdrant
-     *                       payload.
+     * payload.
      */
     public QdrantEmbeddingStore(QdrantClient client, String collectionName, String payloadTextKey) {
         this.client = client;
@@ -140,16 +142,18 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
             for (int i = 0; i < embeddings.size(); i++) {
 
                 String id = ids.get(i);
-                UUID uuid = UUID.fromString(id);
+                PointId qdrantId = toPointId(id);
                 Embedding embedding = embeddings.get(i);
 
                 PointStruct.Builder pointBuilder =
-                        PointStruct.newBuilder().setId(id(uuid)).setVectors(vectors(embedding.vector()));
+                        PointStruct.newBuilder().setId(qdrantId).setVectors(vectors(embedding.vector()));
 
                 if (textSegments != null) {
                     Map<String, Object> metadata =
                             textSegments.get(i).metadata().toMap();
 
+                    // Assuming ValueMapFactory is available in your actual codebase imports
+                    // If not, it might be an internal class you need to make sure is accessible
                     Map<String, Value> payload = ValueMapFactory.valueMap(metadata);
                     payload.put(payloadTextKey, value(textSegments.get(i).text()));
                     pointBuilder.putAllPayload(payload);
@@ -178,7 +182,7 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
         try {
 
             Points.PointsIdsList pointsIdsList = Points.PointsIdsList.newBuilder()
-                    .addAllIds(ids.stream().map(id -> id(UUID.fromString(id))).toList())
+                    .addAllIds(ids.stream().map(QdrantEmbeddingStore::toPointId).collect(toList()))
                     .build();
             PointsSelector pointsSelector =
                     PointsSelector.newBuilder().setPoints(pointsIdsList).build();
@@ -291,7 +295,7 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         return new EmbeddingMatch<>(
                 RelevanceScore.fromCosineSimilarity(cosineSimilarity),
-                scoredPoint.getId().getUuid(),
+                pointIdToString(scoredPoint.getId()),
                 embedding,
                 textSegmentValue == null
                         ? null
@@ -352,8 +356,8 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         /**
          * @param payloadTextKey The field name of the text segment in the payload.
-         *                       Defaults to
-         *                       "text_segment".
+         * Defaults to
+         * "text_segment".
          * @return
          */
         public Builder payloadTextKey(String payloadTextKey) {
@@ -385,5 +389,22 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
             }
             return new QdrantEmbeddingStore(collectionName, host, port, useTls, payloadTextKey, apiKey);
         }
+    }
+
+    private static PointId toPointId(String id) {
+        try {
+            long num = Long.parseUnsignedLong(id);
+            return id(num);
+        } catch (NumberFormatException e) {
+            return id(UUID.fromString(id));
+        }
+    }
+
+    private static String pointIdToString(PointId pointId) {
+        return switch (pointId.getPointIdOptionsCase()) {
+            case NUM -> Long.toUnsignedString(pointId.getNum());
+            case UUID -> pointId.getUuid();
+            default -> throw new IllegalStateException("Unknown point ID type: " + pointId.getPointIdOptionsCase());
+        };
     }
 }
