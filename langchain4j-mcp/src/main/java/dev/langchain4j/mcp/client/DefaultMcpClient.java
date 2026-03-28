@@ -457,21 +457,31 @@ public class DefaultMcpClient implements McpClient {
     }
 
     private synchronized void obtainToolList(InvocationContext invocationContext) {
-        McpListToolsRequest operation = new McpListToolsRequest(idGenerator.getAndIncrement());
-        CompletableFuture<JsonNode> resultFuture =
-                transport.executeOperationWithResponse(new McpCallContext(invocationContext, operation));
-        JsonNode result = null;
-        try {
-            result = resultFuture.get();
-        } catch (InterruptedException | ExecutionException e) {
-            throw new RuntimeException(e);
-        } finally {
-            pendingOperations.remove(operation.getId());
-        }
-
-        final List<ToolSpecification> toolList = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(
-                (ArrayNode) result.get("result").get("tools"));
-        toolListRefs.set(toolList);
+        long timeoutMillis = toolExecutionTimeout.toMillis() == 0 ? Integer.MAX_VALUE : toolExecutionTimeout.toMillis();
+        List<ToolSpecification> allTools = new ArrayList<>();
+        String cursor = null;
+        do {
+            McpListToolsRequest operation = new McpListToolsRequest(idGenerator.getAndIncrement());
+            if (cursor != null) {
+                operation.setCursor(cursor);
+            }
+            CompletableFuture<JsonNode> resultFuture =
+                    transport.executeOperationWithResponse(new McpCallContext(invocationContext, operation));
+            JsonNode result;
+            try {
+                result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
+            } catch (InterruptedException | ExecutionException | TimeoutException e) {
+                throw new RuntimeException(e);
+            } finally {
+                pendingOperations.remove(operation.getId());
+            }
+            JsonNode resultBody = result.get("result");
+            allTools.addAll(
+                    ToolSpecificationHelper.toolSpecificationListFromMcpResponse((ArrayNode) resultBody.get("tools")));
+            JsonNode nextCursorNode = resultBody.get("nextCursor");
+            cursor = (nextCursorNode != null && !nextCursorNode.isNull()) ? nextCursorNode.asText() : null;
+        } while (!isNullOrBlank(cursor));
+        toolListRefs.set(allTools);
     }
 
     private synchronized void obtainResourceList(InvocationContext invocationContext) {

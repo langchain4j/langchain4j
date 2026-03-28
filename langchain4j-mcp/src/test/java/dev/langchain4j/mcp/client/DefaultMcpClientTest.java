@@ -18,6 +18,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
+import dev.langchain4j.mcp.protocol.McpListToolsRequest;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -267,6 +268,10 @@ public class DefaultMcpClientTest {
     }
 
     private static ObjectNode getToolResultJson(ToolDefinition... tools) {
+        return getToolResultJsonWithCursor(null, tools);
+    }
+
+    private static ObjectNode getToolResultJsonWithCursor(String nextCursor, ToolDefinition... tools) {
         final ArrayNode toolsArray = JsonNodeFactory.instance.arrayNode();
         toolsArray.addAll(Stream.of(tools)
                 .map(tool -> {
@@ -286,8 +291,79 @@ public class DefaultMcpClientTest {
                 .collect(Collectors.toList()));
 
         final ObjectNode rootNode = JsonNodeFactory.instance.objectNode();
-        rootNode.putObject("result").set("tools", toolsArray);
+        final ObjectNode resultNode = rootNode.putObject("result");
+        resultNode.set("tools", toolsArray);
+        if (nextCursor != null) {
+            resultNode.put("nextCursor", nextCursor);
+        }
         return rootNode;
+    }
+
+    @Test
+    public void should_paginate_tool_list_when_nextCursor_is_present() throws Exception {
+        // given
+        final McpTransport transport = getMinimalMcpTransportMock();
+        final DefaultMcpClient client =
+                new DefaultMcpClient.Builder().transport(transport).build();
+
+        // first page: one tool + cursor pointing to next page
+        final ObjectNode page1 = getToolResultJsonWithCursor(
+                "cursor-page2", new ToolDefinition("tool1", "First tool", new ToolArg("arg1", "string", "Arg 1")));
+        // second page: one tool + cursor pointing to next page
+        final ObjectNode page2 = getToolResultJsonWithCursor(
+                "cursor-page3", new ToolDefinition("tool2", "Second tool", new ToolArg("arg2", "integer", "Arg 2")));
+        // third page: one tool + no cursor (last page)
+        final ObjectNode page3 =
+                getToolResultJson(new ToolDefinition("tool3", "Third tool", new ToolArg("arg3", "boolean", "Arg 3")));
+
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(page1))
+                .thenReturn(CompletableFuture.completedFuture(page2))
+                .thenReturn(CompletableFuture.completedFuture(page3));
+
+        // when
+        final List<ToolSpecification> tools = client.listTools();
+
+        // then: all tools from all pages are collected
+        assertThat(tools).hasSize(3);
+        assertThat(tools.get(0).name()).isEqualTo("tool1");
+        assertThat(tools.get(1).name()).isEqualTo("tool2");
+        assertThat(tools.get(2).name()).isEqualTo("tool3");
+
+        // and: transport was called three times (once per page)
+        ArgumentCaptor<McpCallContext> captor = ArgumentCaptor.forClass(McpCallContext.class);
+        verify(transport, times(3)).executeOperationWithResponse(captor.capture());
+
+        // and: the cursors were passed correctly in subsequent requests
+        List<McpCallContext> calls = captor.getAllValues();
+        McpListToolsRequest firstRequest = (McpListToolsRequest) calls.get(0).message();
+        McpListToolsRequest secondRequest = (McpListToolsRequest) calls.get(1).message();
+        McpListToolsRequest thirdRequest = (McpListToolsRequest) calls.get(2).message();
+        assertThat(firstRequest.getParams()).doesNotContainKey("cursor");
+        assertThat(secondRequest.getParams()).containsEntry("cursor", "cursor-page2");
+        assertThat(thirdRequest.getParams()).containsEntry("cursor", "cursor-page3");
+    }
+
+    @Test
+    public void should_return_all_tools_when_no_pagination() throws Exception {
+        // given
+        final McpTransport transport = getMinimalMcpTransportMock();
+        final DefaultMcpClient client =
+                new DefaultMcpClient.Builder().transport(transport).build();
+        final ObjectNode toolsJsonResult =
+                getToolResultJson(new ToolDefinition("toolA", "Tool A"), new ToolDefinition("toolB", "Tool B"));
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(toolsJsonResult));
+
+        // when
+        final List<ToolSpecification> tools = client.listTools();
+
+        // then: both tools returned from a single page
+        assertThat(tools).hasSize(2);
+        assertThat(tools.get(0).name()).isEqualTo("toolA");
+        assertThat(tools.get(1).name()).isEqualTo("toolB");
+        // and: transport was called only once
+        verify(transport, times(1)).executeOperationWithResponse(any(McpCallContext.class));
     }
 
     private static record ToolDefinition(String name, String description, ToolArg... args) {}
