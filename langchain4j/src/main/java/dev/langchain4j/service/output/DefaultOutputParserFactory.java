@@ -1,7 +1,7 @@
 package dev.langchain4j.service.output;
 
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import dev.langchain4j.Internal;
-
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.LocalDate;
@@ -57,6 +57,11 @@ class DefaultOutputParserFactory implements OutputParserFactory {
             return new EnumOutputParser<>(rawClass.asSubclass(Enum.class));
         }
 
+        JsonTypeInfo jsonTypeInfo = rawClass.getAnnotation(JsonTypeInfo.class);
+        if (jsonTypeInfo != null && jsonTypeInfo.use() != JsonTypeInfo.Id.NONE) {
+            return new PolymorphicOutputParser<>(rawClass);
+        }
+
         if (rawClass.equals(List.class)) {
             if (typeArgumentClass.isEnum()) {
                 return new EnumListOutputParser<>(typeArgumentClass.asSubclass(Enum.class));
@@ -66,7 +71,11 @@ class DefaultOutputParserFactory implements OutputParserFactory {
                 return new StringListOutputParser();
             }
 
-            return new PojoListOutputParser<>(typeArgumentClass);
+            @SuppressWarnings("unchecked")
+            Class<Object> tClass = (Class<Object>) typeArgumentClass;
+            @SuppressWarnings("unchecked")
+            OutputParser<Object> tParser = (OutputParser<Object>) this.get(typeArgumentClass, null);
+            return new PojoListOutputParser<>(tClass, tParser);
         }
 
         if (rawClass.equals(Set.class)) {
@@ -78,7 +87,11 @@ class DefaultOutputParserFactory implements OutputParserFactory {
                 return new StringSetOutputParser();
             }
 
-            return new PojoSetOutputParser<>(typeArgumentClass);
+            @SuppressWarnings("unchecked")
+            Class<Object> tClass = (Class<Object>) typeArgumentClass;
+            @SuppressWarnings("unchecked")
+            OutputParser<Object> tParser = (OutputParser<Object>) this.get(typeArgumentClass, null);
+            return new PojoSetOutputParser<>(tClass, tParser);
         }
 
         OutputParser<?> outputParser = OUTPUT_PARSERS.get(rawClass);
