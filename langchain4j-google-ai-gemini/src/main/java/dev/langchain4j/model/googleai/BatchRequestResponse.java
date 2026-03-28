@@ -2,6 +2,7 @@ package dev.langchain4j.model.googleai;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import dev.langchain4j.model.batch.BatchError;
 import dev.langchain4j.model.googleai.BatchRequestResponse.Operation.Status;
 import java.util.List;
 import java.util.Map;
@@ -9,67 +10,6 @@ import org.jspecify.annotations.Nullable;
 
 public final class BatchRequestResponse {
     private BatchRequestResponse() {}
-
-    /**
-     * Represents the response of a batch operation.
-     */
-    public sealed interface BatchResponse<T> permits BatchIncomplete, BatchSuccess, BatchError {}
-
-    /**
-     * Represents a batch operation that is currently pending or in progress.
-     */
-    public record BatchIncomplete<T>(BatchName batchName, BatchJobState state) implements BatchResponse<T> {}
-
-    /**
-     * Represents a successful batch operation.
-     */
-    public record BatchSuccess<T>(BatchName batchName, List<T> responses, @Nullable List<Operation.Status> errors)
-            implements BatchResponse<T> {}
-
-    /**
-     * Represents an error that occurred during a batch operation.
-     */
-    public record BatchError<T>(
-            BatchName batchName, int code, String message, BatchJobState state, List<Map<String, Object>> details)
-            implements BatchResponse<T> {}
-
-    /**
-     * Represents a List of Batches.
-     *
-     * @param pageToken Token used to paginate to the next page.
-     * @param responses List of batch responses.
-     */
-    public record BatchList<T>(String pageToken, List<BatchResponse<T>> responses) {}
-
-    /**
-     * Represents the name of a batch operation.
-     */
-    public record BatchName(String value) {
-        public BatchName {
-            ensureOperationNameFormat(value);
-        }
-
-        private static void ensureOperationNameFormat(String operationName) {
-            if (!operationName.startsWith("batches/")) {
-                throw new IllegalArgumentException(
-                        "Batch name must start with 'batches/'. This name is returned when creating "
-                                + "the batch with #createBatchInline.");
-            }
-        }
-    }
-
-    /**
-     * Represents the possible states of a batch job.
-     */
-    public enum BatchJobState {
-        BATCH_STATE_PENDING,
-        BATCH_STATE_RUNNING,
-        BATCH_STATE_SUCCEEDED,
-        BATCH_STATE_FAILED,
-        BATCH_STATE_CANCELLED,
-        BATCH_STATE_EXPIRED,
-        UNSPECIFIED
-    }
 
     /**
      * Represents a batch request for the Gemini API.
@@ -167,7 +107,11 @@ public final class BatchRequestResponse {
          * @param details A list of messages that carry the error details.
          */
         @JsonIgnoreProperties(ignoreUnknown = true)
-        public record Status(int code, String message, @Nullable List<Map<String, Object>> details) {}
+        public record Status(int code, String message, @Nullable List<Map<String, Object>> details) {
+            BatchError toGenericStatus() {
+                return new BatchError(code, message, details);
+            }
+        }
     }
 
     /**
