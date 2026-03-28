@@ -4,6 +4,7 @@ import static com.azure.ai.openai.models.CompletionsFinishReason.CONTENT_FILTERE
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.ModelProvider.AZURE_OPEN_AI;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.aiMessageFrom;
@@ -213,6 +214,10 @@ public class AzureOpenAiChatModel implements ChatModel {
 
         ChatCompletions chatCompletions = AzureOpenAiExceptionMapper.INSTANCE.withExceptionMapper(
                 () -> client.getChatCompletions(parameters.modelName(), options));
+
+        if (isNullOrEmpty(chatCompletions.getChoices())) {
+            throw new IllegalArgumentException("Chat completion failed: no choices returned");
+        }
 
         ChatChoice chatChoice = chatCompletions.getChoices().get(0);
 
