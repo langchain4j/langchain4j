@@ -1,10 +1,12 @@
 package dev.langchain4j.mcp.protocol;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import dev.langchain4j.Internal;
 
 @Internal
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class McpImplementation {
 
     private String name;

@@ -290,6 +290,106 @@ public class DefaultMcpClientTest {
         return rootNode;
     }
 
+    @Test
+    public void should_parse_and_store_server_capabilities_on_initialize() throws Exception {
+        // given
+        McpTransport transport = mock(McpTransport.class);
+
+        ObjectNode response = JsonNodeFactory.instance.objectNode();
+        response.put("jsonrpc", "2.0");
+        response.put("id", 1);
+
+        ObjectNode result = response.putObject("result");
+        result.put("protocolVersion", "2025-11-25");
+
+        ObjectNode capabilities = result.putObject("capabilities");
+        capabilities.putObject("logging");
+        capabilities.putObject("tools").put("listChanged", true);
+
+        when(transport.initialize(any())).thenReturn(CompletableFuture.completedFuture(response));
+
+        // when
+        DefaultMcpClient client =
+                new DefaultMcpClient.Builder().transport(transport).build();
+
+        // then
+        assertThat(client.getServerCapabilities()).isNotNull();
+        assertThat(client.getServerCapabilities().getLogging()).isNotNull();
+        assertThat(client.getServerCapabilities().getTools().getListChanged()).isTrue();
+    }
+
+    @Test
+    public void should_correctly_report_supported_capabilities() throws Exception {
+        // given
+        McpTransport transport = mock(McpTransport.class);
+
+        ObjectNode response = JsonNodeFactory.instance.objectNode();
+        response.put("jsonrpc", "2.0");
+        response.put("id", 1);
+
+        ObjectNode result = response.putObject("result");
+        ObjectNode capabilities = result.putObject("capabilities");
+
+        capabilities.putObject("tools").put("listChanged", true);
+        capabilities.putObject("prompts").put("listChanged", true);
+
+        when(transport.initialize(any())).thenReturn(CompletableFuture.completedFuture(response));
+
+        DefaultMcpClient client =
+                new DefaultMcpClient.Builder().transport(transport).build();
+
+        // then
+        assertThat(client.supportsTools()).isTrue();
+        assertThat(client.supportsPrompts()).isTrue();
+        assertThat(client.supportsResources()).isFalse();
+    }
+
+    @Test
+    public void should_update_capabilities_on_reinitialize() throws Exception {
+        // given
+        McpTransport transport = mock(McpTransport.class);
+
+        ArgumentCaptor<Runnable> onFailureCaptor = ArgumentCaptor.forClass(Runnable.class);
+        doNothing().when(transport).onFailure(onFailureCaptor.capture());
+
+        ObjectNode firstResponse = JsonNodeFactory.instance.objectNode();
+        firstResponse.put("jsonrpc", "2.0");
+        firstResponse.put("id", 1);
+        firstResponse
+                .putObject("result")
+                .putObject("capabilities")
+                .putObject("tools")
+                .put("listChanged", true);
+
+        ObjectNode secondResponse = JsonNodeFactory.instance.objectNode();
+        secondResponse.put("jsonrpc", "2.0");
+        secondResponse.put("id", 2);
+        secondResponse
+                .putObject("result")
+                .putObject("capabilities")
+                .putObject("resources")
+                .put("subscribe", true);
+
+        when(transport.initialize(any()))
+                .thenReturn(
+                        CompletableFuture.completedFuture(firstResponse),
+                        CompletableFuture.completedFuture(secondResponse));
+
+        DefaultMcpClient client =
+                new DefaultMcpClient.Builder().transport(transport).build();
+
+        // initial state
+        assertThat(client.supportsTools()).isTrue();
+        assertThat(client.supportsResources()).isFalse();
+
+        // when: reconnect happens
+        onFailureCaptor.getValue().run();
+
+        // then: updated capabilities
+        assertThat(client.supportsTools()).isFalse();
+        assertThat(client.supportsResources()).isTrue();
+    }
+
     private static record ToolDefinition(String name, String description, ToolArg... args) {}
 
     private static record ToolArg(String name, String type, String description) {}
