@@ -3,6 +3,7 @@ package dev.langchain4j.model.openai;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.ModelProvider.OPEN_AI;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_OPENAI_URL;
@@ -18,6 +19,7 @@ import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.asList;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.exception.InternalServerException;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
@@ -154,6 +156,10 @@ public class OpenAiChatModel implements ChatModel {
                 () -> client.chatCompletion(openAiRequest).executeRaw(), maxRetries);
 
         ChatCompletionResponse openAiResponse = parsedAndRawResponse.parsedResponse();
+
+        if (isNullOrEmpty(openAiResponse.choices())) {
+            throw new InternalServerException("Chat completion failed: no choices returned in response");
+        }
 
         OpenAiChatResponseMetadata responseMetadata = OpenAiChatResponseMetadata.builder()
                 .id(openAiResponse.id())

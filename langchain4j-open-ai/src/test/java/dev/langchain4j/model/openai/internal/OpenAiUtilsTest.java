@@ -3,11 +3,14 @@ package dev.langchain4j.model.openai.internal;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.aiMessageFrom;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.toOpenAiToolChoice;
 import static dev.langchain4j.model.openai.internal.chat.ToolType.FUNCTION;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.exception.InternalServerException;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.openai.internal.chat.AssistantMessage;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
@@ -245,5 +248,29 @@ class OpenAiUtilsTest {
         // then
         assertThat(aiMessage.text()).isNull();
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
+    }
+
+    @Test
+    void should_throw_when_choices_is_null() {
+        // given
+        ChatCompletionResponse response =
+                ChatCompletionResponse.builder().choices(null).build();
+
+        // when/then
+        assertThatThrownBy(() -> aiMessageFrom(response))
+                .isInstanceOf(InternalServerException.class)
+                .hasMessageContaining("no choices returned");
+    }
+
+    @Test
+    void should_throw_when_choices_is_empty() {
+        // given
+        ChatCompletionResponse response =
+                ChatCompletionResponse.builder().choices(emptyList()).build();
+
+        // when/then
+        assertThatThrownBy(() -> aiMessageFrom(response))
+                .isInstanceOf(InternalServerException.class)
+                .hasMessageContaining("no choices returned");
     }
 }

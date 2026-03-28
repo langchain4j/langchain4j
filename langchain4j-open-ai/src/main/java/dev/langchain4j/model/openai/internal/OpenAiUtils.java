@@ -36,8 +36,8 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.data.video.Video;
 import dev.langchain4j.exception.ContentFilteredException;
+import dev.langchain4j.exception.InternalServerException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
-import dev.langchain4j.model.audio.AudioTranscriptionRequest;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -89,7 +89,8 @@ public class OpenAiUtils {
         return toOpenAiMessages(messages, false, null);
     }
 
-    public static List<Message> toOpenAiMessages(List<ChatMessage> messages, boolean sendThinking, String thinkingFieldName) {
+    public static List<Message> toOpenAiMessages(
+            List<ChatMessage> messages, boolean sendThinking, String thinkingFieldName) {
         return messages.stream()
                 .map(message -> toOpenAiMessage(message, sendThinking, thinkingFieldName))
                 .collect(toList());
@@ -128,8 +129,7 @@ public class OpenAiUtils {
             }
 
             if (!aiMessage.hasToolExecutionRequests()) {
-                AssistantMessage.Builder builder = AssistantMessage.builder()
-                        .content(aiMessage.text());
+                AssistantMessage.Builder builder = AssistantMessage.builder().content(aiMessage.text());
                 if (thinking != null) {
                     builder.customParameter(thinkingFieldName, thinking);
                 }
@@ -162,9 +162,8 @@ public class OpenAiUtils {
                             .build())
                     .collect(toList());
 
-            AssistantMessage.Builder builder = AssistantMessage.builder()
-                    .content(aiMessage.text())
-                    .toolCalls(toolCalls);
+            AssistantMessage.Builder builder =
+                    AssistantMessage.builder().content(aiMessage.text()).toolCalls(toolCalls);
             if (thinking != null) {
                 builder.customParameter(thinkingFieldName, thinking);
             }
@@ -343,6 +342,9 @@ public class OpenAiUtils {
     }
 
     public static AiMessage aiMessageFrom(ChatCompletionResponse response, boolean returnThinking) {
+        if (isNullOrEmpty(response.choices())) {
+            throw new InternalServerException("Chat completion failed: no choices returned in response");
+        }
         AssistantMessage assistantMessage = response.choices().get(0).message();
 
         String refusal = assistantMessage.refusal();
