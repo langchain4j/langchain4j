@@ -3,6 +3,8 @@ package dev.langchain4j.internal;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
@@ -486,5 +488,122 @@ class JsonSchemaElementUtilsTest {
         Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
 
         assertThat(map).containsEntry("foo", "bar");
+    }
+
+    @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "scope", visible = true)
+    @JsonSubTypes({
+        @JsonSubTypes.Type(value = RefineRequestItem.class, name = "request"),
+        @JsonSubTypes.Type(value = RefineProductItem.class, name = "product")
+    })
+    static abstract class RefineItem {
+        String scope;
+        String description;
+    }
+
+    static class RefineRequestItem extends RefineItem {
+        String requestId;
+    }
+
+    static class RefineProductItem extends RefineItem {
+        String productName;
+        int quantity;
+    }
+
+    @Test
+    void should_create_anyOf_schema_for_class_with_JsonTypeInfo() {
+
+        // when
+        JsonSchemaElement schema = jsonSchemaElementFrom(RefineItem.class);
+
+        // then
+        assertThat(schema).isInstanceOf(JsonAnyOfSchema.class);
+        JsonAnyOfSchema anyOfSchema = (JsonAnyOfSchema) schema;
+        assertThat(anyOfSchema.anyOf()).hasSize(2);
+
+        // First subtype: RefineRequestItem (includes inherited fields)
+        JsonObjectSchema requestSchema = (JsonObjectSchema) anyOfSchema.anyOf().get(0);
+        assertThat(requestSchema.properties()).containsKeys("requestId", "scope", "description");
+
+        // Second subtype: RefineProductItem (includes inherited fields)
+        JsonObjectSchema productSchema = (JsonObjectSchema) anyOfSchema.anyOf().get(1);
+        assertThat(productSchema.properties()).containsKeys("productName", "quantity", "scope", "description");
+    }
+
+    static class OrderWithPolymorphicItems {
+        String orderId;
+        List<RefineItem> items;
+    }
+
+    @Test
+    void should_create_schema_for_class_with_polymorphic_field() {
+
+        // when
+        JsonSchemaElement schema = jsonSchemaElementFrom(
+                OrderWithPolymorphicItems.class, OrderWithPolymorphicItems.class, null, true, new LinkedHashMap<>());
+
+        // then
+        assertThat(schema).isInstanceOf(JsonObjectSchema.class);
+        JsonObjectSchema objectSchema = (JsonObjectSchema) schema;
+        assertThat(objectSchema.properties()).containsKeys("orderId", "items");
+
+        // items should be an array
+        JsonArraySchema itemsArray = (JsonArraySchema) objectSchema.properties().get("items");
+        // whose item type is an anyOf schema
+        assertThat(itemsArray.items()).isInstanceOf(JsonAnyOfSchema.class);
+        JsonAnyOfSchema anyOf = (JsonAnyOfSchema) itemsArray.items();
+        assertThat(anyOf.anyOf()).hasSize(2);
+    }
+
+    @Test
+    void should_convert_polymorphic_schema_to_map() throws JsonProcessingException {
+
+        // given
+        JsonSchemaElement schema = jsonSchemaElementFrom(RefineItem.class);
+
+        // when
+        Map<String, Object> map = toMap(schema, false);
+
+        // then
+        String json = new ObjectMapper().writeValueAsString(map);
+        assertThat(json).contains("\"anyOf\"");
+        assertThat(json).contains("requestId");
+        assertThat(json).contains("productName");
+        assertThat(json).contains("quantity");
+    }
+
+    @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
+    @JsonSubTypes({
+        @JsonSubTypes.Type(value = Circle.class, name = "circle"),
+        @JsonSubTypes.Type(value = Rectangle.class, name = "rectangle")
+    })
+    static abstract class Shape {
+        String color;
+    }
+
+    static class Circle extends Shape {
+        double radius;
+    }
+
+    static class Rectangle extends Shape {
+        double width;
+        double height;
+    }
+
+    @Test
+    void should_create_anyOf_schema_for_shapes_example() {
+
+        // when
+        JsonSchemaElement schema = jsonSchemaElementFrom(Shape.class);
+
+        // then
+        assertThat(schema).isInstanceOf(JsonAnyOfSchema.class);
+        JsonAnyOfSchema anyOfSchema = (JsonAnyOfSchema) schema;
+        assertThat(anyOfSchema.anyOf()).hasSize(2);
+
+        JsonObjectSchema circleSchema = (JsonObjectSchema) anyOfSchema.anyOf().get(0);
+        assertThat(circleSchema.properties()).containsKeys("radius", "color");
+
+        JsonObjectSchema rectangleSchema = (JsonObjectSchema) anyOfSchema.anyOf().get(1);
+        assertThat(rectangleSchema.properties()).containsKeys("width", "height", "color");
     }
 }
