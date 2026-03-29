@@ -30,6 +30,7 @@ public class AnthropicCreateMessageRequest {
     public AnthropicOutputConfig outputConfig;
     public AnthropicThinking thinking;
     public AnthropicMetadata metadata;
+
     @JsonIgnore
     public Map<String, Object> customParameters;
 
