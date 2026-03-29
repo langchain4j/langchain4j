@@ -3,6 +3,7 @@ package dev.langchain4j.model.anthropic;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelIT.randomString;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_HAIKU_4_5_20251001;
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_SONNET_4_6;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_SONNET_4_5_20250929;
 import static java.lang.System.getenv;
 import static java.util.Arrays.asList;
@@ -89,6 +90,28 @@ class AnthropicStreamingChatModelIT {
 
         // then
         assertThat(response.aiMessage().text()).isNotBlank();
+    }
+
+    @Test
+    void should_support_output_config_effort_via_custom_parameters() {
+
+        // given
+        StreamingChatModel model = AnthropicStreamingChatModel.builder()
+                .apiKey(getenv("ANTHROPIC_API_KEY"))
+                .modelName(CLAUDE_SONNET_4_6)
+                .maxTokens(32)
+                .customParameters(Map.of("output_config", Map.of("effort", "low")))
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        // when
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat("Reply with exactly OK.", handler);
+        ChatResponse response = handler.get();
+
+        // then
+        assertThat(response.aiMessage().text()).containsIgnoringCase("ok");
     }
 
     @Test

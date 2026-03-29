@@ -3,6 +3,7 @@ package dev.langchain4j.model.anthropic.internal.api;
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY;
 
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
@@ -29,6 +30,7 @@ public class AnthropicCreateMessageRequest {
     public AnthropicOutputConfig outputConfig;
     public AnthropicThinking thinking;
     public AnthropicMetadata metadata;
+    @JsonIgnore
     public Map<String, Object> customParameters;
 
     public AnthropicCreateMessageRequest() {}
