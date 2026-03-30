@@ -13,6 +13,8 @@ public enum McpServerMethod {
     ROOTS_LIST("roots/list"),
     NOTIFICATION_MESSAGE("notifications/message"),
     NOTIFICATION_TOOLS_LIST_CHANGED("notifications/tools/list_changed"),
+    NOTIFICATION_RESOURCES_LIST_CHANGED("notifications/resources/list_changed"),
+    NOTIFICATION_PROMPTS_LIST_CHANGED("notifications/prompts/list_changed"),
     NOTIFICATION_PROGRESS("notifications/progress");
 
     private final String value;
