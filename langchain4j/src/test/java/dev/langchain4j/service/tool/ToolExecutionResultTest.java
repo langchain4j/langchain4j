@@ -3,6 +3,7 @@ package dev.langchain4j.service.tool;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
@@ -202,5 +203,59 @@ class ToolExecutionResultTest {
         // but should be called at least once and significantly fewer times than thread count
         // (accepting rare duplicate computation in concurrent scenarios)
         assertThat(callCount.get()).isGreaterThanOrEqualTo(1).isLessThanOrEqualTo(threads.length);
+    }
+
+    @Test
+    void should_not_be_equal_when_attributes_differ() {
+        // given
+        ToolExecutionResult result1 = ToolExecutionResult.builder()
+                .result("obj")
+                .resultText("text")
+                .attributes(Map.of("key", "value1"))
+                .build();
+
+        ToolExecutionResult result2 = ToolExecutionResult.builder()
+                .result("obj")
+                .resultText("text")
+                .attributes(Map.of("key", "value2"))
+                .build();
+
+        // when/then
+        assertThat(result1).isNotEqualTo(result2);
+        assertThat(result2).isNotEqualTo(result1);
+    }
+
+    @Test
+    void should_be_equal_when_attributes_are_the_same() {
+        // given
+        ToolExecutionResult result1 = ToolExecutionResult.builder()
+                .result("obj")
+                .resultText("text")
+                .attributes(Map.of("key", "value"))
+                .build();
+
+        ToolExecutionResult result2 = ToolExecutionResult.builder()
+                .result("obj")
+                .resultText("text")
+                .attributes(Map.of("key", "value"))
+                .build();
+
+        // when/then
+        assertThat(result1).isEqualTo(result2);
+        assertThat(result1.hashCode()).isEqualTo(result2.hashCode());
+    }
+
+    @Test
+    void should_be_equal_when_both_have_null_attributes() {
+        // given
+        ToolExecutionResult result1 =
+                ToolExecutionResult.builder().result("obj").resultText("text").build();
+
+        ToolExecutionResult result2 =
+                ToolExecutionResult.builder().result("obj").resultText("text").build();
+
+        // when/then
+        assertThat(result1).isEqualTo(result2);
+        assertThat(result1.hashCode()).isEqualTo(result2.hashCode());
     }
 }
