@@ -38,6 +38,8 @@ import dev.langchain4j.mcp.protocol.McpListToolsRequest;
 import dev.langchain4j.mcp.protocol.McpPingRequest;
 import dev.langchain4j.mcp.protocol.McpReadResourceRequest;
 import dev.langchain4j.mcp.protocol.McpRootsListChangedNotification;
+import dev.langchain4j.mcp.protocol.McpSubscribeResourceRequest;
+import dev.langchain4j.mcp.protocol.McpUnsubscribeResourceRequest;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -54,6 +56,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -96,6 +99,7 @@ public class DefaultMcpClient implements McpClient {
             new AtomicReference<>(null);
     private final AtomicReference<CompletableFuture<List<McpPrompt>>> promptListUpdateInProgress =
             new AtomicReference<>(null);
+    private final BiConsumer<McpClient, String> onResourceUpdated;
     private final Duration reconnectInterval;
     private volatile boolean closed = false;
     private final Boolean autoHealthCheck;
@@ -141,6 +145,7 @@ public class DefaultMcpClient implements McpClient {
             cacheToolList = getOrDefault(builder.cacheToolList, Boolean.TRUE);
             cacheResourceList = getOrDefault(builder.cacheResourceList, Boolean.TRUE);
             cachePromptList = getOrDefault(builder.cachePromptList, Boolean.TRUE);
+            onResourceUpdated = builder.onResourceUpdated;
             RESULT_TIMEOUT = JsonNodeFactory.instance.objectNode();
             messageHandler = new McpOperationHandler(
                     pendingOperations,
@@ -153,6 +158,11 @@ public class DefaultMcpClient implements McpClient {
                         resourceTemplateRefs.set(null);
                     },
                     () -> promptRefs.set(null),
+                    uri -> {
+                        if (onResourceUpdated != null) {
+                            onResourceUpdated.accept(this, uri);
+                        }
+                    },
                     progressHandler);
             ((ObjectNode) RESULT_TIMEOUT)
                     .putObject("result")
@@ -461,6 +471,50 @@ public class DefaultMcpClient implements McpClient {
     }
 
     @Override
+    public void subscribeToResource(String uri) {
+        assertNotClosed();
+        if (onResourceUpdated == null) {
+            log.warn(
+                    "Subscribing to MCP resource '{}' but no onResourceUpdated callback was registered. The client will"
+                            + "not react to resource update notifications in any way.",
+                    uri);
+        }
+        long operationId = idGenerator.getAndIncrement();
+        McpSubscribeResourceRequest operation = new McpSubscribeResourceRequest(operationId, uri);
+        long timeoutMillis = resourcesTimeout.toMillis() == 0 ? Integer.MAX_VALUE : resourcesTimeout.toMillis();
+        try {
+            CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(operation);
+            resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
+        } catch (ExecutionException | TimeoutException e) {
+            throw new RuntimeException(e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        } finally {
+            pendingOperations.remove(operationId);
+        }
+    }
+
+    @Override
+    public void unsubscribeFromResource(String uri) {
+        assertNotClosed();
+        long operationId = idGenerator.getAndIncrement();
+        McpUnsubscribeResourceRequest operation = new McpUnsubscribeResourceRequest(operationId, uri);
+        long timeoutMillis = resourcesTimeout.toMillis() == 0 ? Integer.MAX_VALUE : resourcesTimeout.toMillis();
+        try {
+            CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(operation);
+            resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
+        } catch (ExecutionException | TimeoutException e) {
+            throw new RuntimeException(e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        } finally {
+            pendingOperations.remove(operationId);
+        }
+    }
+
+    @Override
     public List<McpResourceTemplate> listResourceTemplates() {
         return listResourceTemplates(null);
     }
@@ -699,6 +753,7 @@ public class DefaultMcpClient implements McpClient {
         private McpClientListener listener;
         private McpProgressHandler progressHandler;
         private McpMetaSupplier metaSupplier;
+        private BiConsumer<McpClient, String> onResourceUpdated;
 
         /**
          * Sets the transport protocol to use for communicating with the
@@ -922,6 +977,18 @@ public class DefaultMcpClient implements McpClient {
          */
         public Builder metaSupplier(McpMetaSupplier metaSupplier) {
             this.metaSupplier = metaSupplier;
+            return this;
+        }
+
+        /**
+         * Sets a callback to be invoked when the server sends a
+         * {@code notifications/resources/updated} notification for a
+         * subscribed resource. The callback receives the instance
+         * of the affected MCP client and the URI of the
+         * updated resource.
+         */
+        public Builder onResourceUpdated(BiConsumer<McpClient, String> onResourceUpdated) {
+            this.onResourceUpdated = onResourceUpdated;
             return this;
         }
 
