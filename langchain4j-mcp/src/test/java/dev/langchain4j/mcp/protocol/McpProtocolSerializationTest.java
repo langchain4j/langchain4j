@@ -142,7 +142,7 @@ class McpProtocolSerializationTest {
 
     @Test
     void should_serialize_list_tools_request_without_cursor() throws Exception {
-        McpListToolsRequest request = new McpListToolsRequest(5L);
+        McpListToolsRequest request = new McpListToolsRequest(5L, null);
 
         JsonNode json = OBJECT_MAPPER.readTree(OBJECT_MAPPER.writeValueAsString(request));
 
@@ -152,8 +152,7 @@ class McpProtocolSerializationTest {
 
     @Test
     void should_serialize_list_tools_request_with_cursor() throws Exception {
-        McpListToolsRequest request = new McpListToolsRequest(5L);
-        request.setCursor("next_page");
+        McpListToolsRequest request = new McpListToolsRequest(5L, "next_page");
 
         JsonNode json = OBJECT_MAPPER.readTree(OBJECT_MAPPER.writeValueAsString(request));
 

@@ -8,7 +8,12 @@ import dev.langchain4j.Internal;
 @Internal
 public class McpListPromptsRequest extends McpClientRequest {
 
-    public McpListPromptsRequest(Long id) {
+    public McpListPromptsRequest(Long id, String cursor) {
         super(id, McpClientMethod.PROMPTS_LIST);
+        if (cursor != null) {
+            McpListPromptsParams p = new McpListPromptsParams();
+            p.setCursor(cursor);
+            setParams(p);
+        }
     }
 }
