@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openai.internal.chat;
 
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -26,6 +27,8 @@ public final class Delta {
     @JsonProperty
     private final String reasoningContent;
     @JsonProperty
+    private final String reasoning;
+    @JsonProperty
     private final List<ToolCall> toolCalls;
     @JsonProperty
     @Deprecated
@@ -35,6 +38,7 @@ public final class Delta {
         this.role = builder.role;
         this.content = builder.content;
         this.reasoningContent = builder.reasoningContent;
+        this.reasoning = builder.reasoning;
         this.toolCalls = builder.toolCalls;
         this.functionCall = builder.functionCall;
     }
@@ -48,6 +52,9 @@ public final class Delta {
     }
 
     public String reasoningContent() {
+        if(isNullOrEmpty(reasoningContent)){
+            return reasoning;
+        }
         return reasoningContent;
     }
 
@@ -96,6 +103,7 @@ public final class Delta {
                 + "role=" + role
                 + ", content=" + content
                 + ", reasoningContent=" + reasoningContent
+                + ", reasoning=" + reasoning
                 + ", toolCalls=" + toolCalls
                 + ", functionCall=" + functionCall
                 + "}";
@@ -113,6 +121,7 @@ public final class Delta {
         private String role;
         private String content;
         private String reasoningContent;
+        private String reasoning;
         private List<ToolCall> toolCalls;
         @Deprecated
         private FunctionCall functionCall;
@@ -129,6 +138,11 @@ public final class Delta {
 
         public Builder reasoningContent(String reasoningContent) {
             this.reasoningContent = reasoningContent;
+            return this;
+        }
+
+        public Builder reasoning(String reasoning) {
+            this.reasoning = reasoning;
             return this;
         }
 
