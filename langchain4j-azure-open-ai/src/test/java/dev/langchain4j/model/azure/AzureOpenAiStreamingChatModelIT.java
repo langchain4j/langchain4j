@@ -78,7 +78,7 @@ class AzureOpenAiStreamingChatModelIT {
                 .deploymentName(deploymentName)
                 .responseFormat(JSON)
                 .temperature(0.0)
-                .maxTokens(50)
+                .maxCompletionTokens(50)
                 .logRequestsAndResponses(true)
                 .build();
 

@@ -3,8 +3,11 @@ package dev.langchain4j.mcp.protocol;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import dev.langchain4j.Internal;
 
+/**
+ * Corresponds to the {@code params} of the {@code InitializeRequest} type from the MCP schema.
+ */
 @Internal
-public class McpInitializeParams {
+public class McpInitializeParams extends McpClientParams {
 
     private String protocolVersion;
     private Capabilities capabilities;

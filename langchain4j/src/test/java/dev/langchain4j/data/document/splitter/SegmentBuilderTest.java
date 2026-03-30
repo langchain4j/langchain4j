@@ -65,4 +65,18 @@ class SegmentBuilderTest implements WithAssertions {
             assertThat(builder.toString()).isEqualTo("Hello world");
         }
     }
+
+    @Test
+    void should_handle_many_appends_efficiently() {
+        // Regression test: with String += this was O(n²) and took minutes for large inputs.
+        // With StringBuilder it should complete in well under 1 second.
+        int count = 50_000;
+        SegmentBuilder builder = new SegmentBuilder(Integer.MAX_VALUE, String::length, " ");
+        for (int i = 0; i < count; i++) {
+            builder.append("x");
+        }
+        String result = builder.toString();
+        // count "x" characters + (count - 1) space separators
+        assertThat(result).hasSize(count + count - 1);
+    }
 }

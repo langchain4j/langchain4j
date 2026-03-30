@@ -8,7 +8,7 @@ import java.util.List;
 record GeminiGenerateContentRequest(
         String model,
         List<GeminiContent> contents,
-        GeminiTool tools,
+        List<GeminiTool> tools,
         GeminiToolConfig toolConfig,
         List<GeminiSafetySetting> safetySettings,
         GeminiContent systemInstruction,
@@ -21,7 +21,7 @@ record GeminiGenerateContentRequest(
     static class GeminiGenerateContentRequestBuilder {
         private String model;
         private List<GeminiContent> contents;
-        private GeminiTool tools;
+        private List<GeminiTool> tools;
         private GeminiToolConfig toolConfig;
         private List<GeminiSafetySetting> safetySettings;
         private GeminiContent systemInstruction;
@@ -39,7 +39,7 @@ record GeminiGenerateContentRequest(
             return this;
         }
 
-        GeminiGenerateContentRequestBuilder tools(GeminiTool tools) {
+        GeminiGenerateContentRequestBuilder tools(List<GeminiTool> tools) {
             this.tools = tools;
             return this;
         }
