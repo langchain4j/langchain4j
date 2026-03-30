@@ -4,7 +4,7 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReasonToFinishReason;
-import static dev.langchain4j.model.googleai.FunctionMapper.fromToolSepcsToGTool;
+import static dev.langchain4j.model.googleai.FunctionMapper.fromToolSpecsToGTools;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromGPartsToAiMessage;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromMessageToGContent;
 import static dev.langchain4j.model.googleai.SchemaMapper.fromJsonSchemaToGSchema;
@@ -156,7 +156,7 @@ class BaseGeminiChatModel {
                         .mediaResolution(this.mediaResolution)
                         .build())
                 .safetySettings(this.safetySettings)
-                .tools(fromToolSepcsToGTool(
+                .tools(fromToolSpecsToGTools(
                         chatRequest.toolSpecifications(),
                         this.allowCodeExecution,
                         this.allowGoogleSearch,
