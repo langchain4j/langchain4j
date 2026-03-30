@@ -4,7 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class McpProtocolSerializationTest {
@@ -63,6 +65,125 @@ class McpProtocolSerializationTest {
         assertThat(json.get("clientInfo").get("name").asText()).isEqualTo("client");
         assertThat(json.get("clientInfo").get("version").asText()).isEqualTo("1.0");
         assertThat(json.get("clientInfo").get("title").asText()).isEqualTo("Client Title");
+    }
+
+    @Test
+    void should_serialize_call_tool_request() throws Exception {
+        ObjectNode args = OBJECT_MAPPER.createObjectNode();
+        args.put("location", "Prague");
+        McpCallToolRequest request = new McpCallToolRequest(1L, "get_weather", args);
+
+        JsonNode json = OBJECT_MAPPER.readTree(OBJECT_MAPPER.writeValueAsString(request));
+
+        assertThat(json.get("jsonrpc").asText()).isEqualTo("2.0");
+        assertThat(json.get("id").asLong()).isEqualTo(1L);
+        assertThat(json.get("method").asText()).isEqualTo("tools/call");
+        assertThat(json.get("params").get("name").asText()).isEqualTo("get_weather");
+        assertThat(json.get("params").get("arguments").get("location").asText()).isEqualTo("Prague");
+        assertThat(json.get("params").has("_meta")).isFalse();
+    }
+
+    @Test
+    void should_serialize_call_tool_request_with_meta() throws Exception {
+        ObjectNode args = OBJECT_MAPPER.createObjectNode();
+        args.put("location", "Prague");
+        McpCallToolRequest request = new McpCallToolRequest(2L, "get_weather", args);
+        request.getParams().setMeta(Map.of("traceparent", "00-0af7651916cd43dd8448eb211c80319c-00f067aa0ba902b7-01"));
+
+        JsonNode json = OBJECT_MAPPER.readTree(OBJECT_MAPPER.writeValueAsString(request));
+
+        assertThat(json.get("params").get("_meta").get("traceparent").asText())
+                .isEqualTo("00-0af7651916cd43dd8448eb211c80319c-00f067aa0ba902b7-01");
+        assertThat(json.get("params").get("name").asText()).isEqualTo("get_weather");
+    }
+
+    @Test
+    void should_serialize_cancellation_notification() throws Exception {
+        McpCancellationNotification notification = new McpCancellationNotification(42L, "Timeout");
+
+        JsonNode json = OBJECT_MAPPER.readTree(OBJECT_MAPPER.writeValueAsString(notification));
+
+        assertThat(json.has("id")).isFalse();
+        assertThat(json.get("method").asText()).isEqualTo("notifications/cancelled");
+        assertThat(json.get("params").get("requestId").asLong()).isEqualTo(42L);
+        assertThat(json.get("params").get("reason").asText()).isEqualTo("Timeout");
+    }
+
+    @Test
+    void should_serialize_cancellation_notification_without_reason() throws Exception {
+        McpCancellationNotification notification = new McpCancellationNotification(42L, null);
+
+        JsonNode json = OBJECT_MAPPER.readTree(OBJECT_MAPPER.writeValueAsString(notification));
+
+        assertThat(json.get("params").get("requestId").asLong()).isEqualTo(42L);
+        assertThat(json.get("params").has("reason")).isFalse();
+    }
+
+    @Test
+    void should_serialize_get_prompt_request() throws Exception {
+        McpGetPromptRequest request = new McpGetPromptRequest(3L, "summarize", Map.of("text", "hello"));
+
+        JsonNode json = OBJECT_MAPPER.readTree(OBJECT_MAPPER.writeValueAsString(request));
+
+        assertThat(json.get("method").asText()).isEqualTo("prompts/get");
+        assertThat(json.get("params").get("name").asText()).isEqualTo("summarize");
+        assertThat(json.get("params").get("arguments").get("text").asText()).isEqualTo("hello");
+    }
+
+    @Test
+    void should_serialize_read_resource_request() throws Exception {
+        McpReadResourceRequest request = new McpReadResourceRequest(4L, "file:///tmp/test.txt");
+
+        JsonNode json = OBJECT_MAPPER.readTree(OBJECT_MAPPER.writeValueAsString(request));
+
+        assertThat(json.get("method").asText()).isEqualTo("resources/read");
+        assertThat(json.get("params").get("uri").asText()).isEqualTo("file:///tmp/test.txt");
+    }
+
+    @Test
+    void should_serialize_list_tools_request_without_cursor() throws Exception {
+        McpListToolsRequest request = new McpListToolsRequest(5L);
+
+        JsonNode json = OBJECT_MAPPER.readTree(OBJECT_MAPPER.writeValueAsString(request));
+
+        assertThat(json.get("method").asText()).isEqualTo("tools/list");
+        assertThat(json.has("params")).isFalse();
+    }
+
+    @Test
+    void should_serialize_list_tools_request_with_cursor() throws Exception {
+        McpListToolsRequest request = new McpListToolsRequest(5L);
+        request.setCursor("next_page");
+
+        JsonNode json = OBJECT_MAPPER.readTree(OBJECT_MAPPER.writeValueAsString(request));
+
+        assertThat(json.get("method").asText()).isEqualTo("tools/list");
+        assertThat(json.get("params").get("cursor").asText()).isEqualTo("next_page");
+    }
+
+    @Test
+    void should_serialize_ping_request_without_params() throws Exception {
+        McpPingRequest request = new McpPingRequest(6L);
+
+        JsonNode json = OBJECT_MAPPER.readTree(OBJECT_MAPPER.writeValueAsString(request));
+
+        assertThat(json.get("method").asText()).isEqualTo("ping");
+        assertThat(json.has("params")).isFalse();
+    }
+
+    @Test
+    void should_serialize_initialize_request() throws Exception {
+        McpInitializeRequest request = new McpInitializeRequest(7L);
+        McpInitializeParams params = new McpInitializeParams();
+        params.setProtocolVersion("2025-06-18");
+        params.setClientInfo(new McpImplementation("test", "1.0", null));
+        request.setParams(params);
+
+        JsonNode json = OBJECT_MAPPER.readTree(OBJECT_MAPPER.writeValueAsString(request));
+
+        assertThat(json.get("method").asText()).isEqualTo("initialize");
+        assertThat(json.get("params").get("protocolVersion").asText()).isEqualTo("2025-06-18");
+        assertThat(json.get("params").get("clientInfo").get("name").asText()).isEqualTo("test");
     }
 
     @Test

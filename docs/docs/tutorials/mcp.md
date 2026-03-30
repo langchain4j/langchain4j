@@ -254,6 +254,32 @@ The `title` field that exists directly in the MCP tool definition is exposed und
 `McpToolMetadataKeys.TITLE` key in the metadata map to distinguish it from the title
 that is retrieved from annotations - that one is exposed under the `McpToolMetadataKeys.ANNOTATION_TITLE` key.
 
+## Providing `_meta` fields
+
+The MCP protocol allows clients to attach a `_meta` object to the `params` of every
+request and notification sent to the server. This can be used for passing
+OpenTelemetry trace context, custom application metadata, or any other
+out-of-band information that the server may need.
+
+To supply `_meta` fields, register an `McpMetaSupplier` on the client builder.
+The supplier is called before every request or notification, and the returned
+map is placed into `params._meta`. Unlike HTTP headers, this works across
+all transports (stdio, HTTP, WebSocket).
+
+```java
+McpClient mcpClient = DefaultMcpClient.builder()
+    .transport(transport)
+    .metaSupplier(context -> Map.of(
+        "traceparent", "00-0af7651916cd43dd8448eb211c80319c-00f067aa0ba902b7-01",
+        "custom-key", "custom-value"))
+    .build();
+```
+
+The supplier receives an `McpCallContext` (nullable) that contains the
+message being sent and, when applicable, the `InvocationContext` of the
+AI service call that triggered it. This allows the supplier to vary
+the metadata based on which operation is being performed.
+
 ## Logging
 
 The MCP protocol also defines a way for the server to send log messages to
