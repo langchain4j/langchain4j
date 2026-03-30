@@ -24,6 +24,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Nested;
@@ -114,6 +115,31 @@ class DefaultAnthropicClientTest {
             assertThat(sentRequest.headers().get("x-api-key")).containsExactly(TEST_API_KEY);
             assertThat(sentRequest.headers().get("anthropic-version")).containsExactly(TEST_VERSION);
             assertThat(sentRequest.body()).isEqualTo(Json.toJson(request));
+        }
+
+        @Test
+        void shouldFlattenCustomParametersWithoutSerializingCustomParametersField() {
+            // Given
+            AnthropicCreateMessageResponse expectedResponse = createMessageResponse("Test");
+            SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
+                    .statusCode(200)
+                    .body(Json.toJson(expectedResponse))
+                    .build();
+            MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(httpResponse);
+            DefaultAnthropicClient subject = createClient(mockHttpClient);
+
+            AnthropicCreateMessageRequest request = createMessageRequest().toBuilder()
+                    .customParameters(Map.of("output_config", Map.of("effort", "low")))
+                    .build();
+
+            // When
+            subject.createMessage(request);
+
+            // Then
+            HttpRequest sentRequest = mockHttpClient.request();
+            assertThat(sentRequest.body()).contains("\"output_config\"");
+            assertThat(sentRequest.body()).contains("\"effort\" : \"low\"");
+            assertThat(sentRequest.body()).doesNotContain("\"custom_parameters\"");
         }
 
         @Test
