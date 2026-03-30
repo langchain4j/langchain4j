@@ -4,13 +4,12 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Self-healing utility for chat message history stored in a {@link dev.langchain4j.store.memory.chat.ChatMemoryStore}.
@@ -91,11 +90,10 @@ public final class ToolAwareMessageSanitizer {
                 if (isOrphaned) {
                     log.warn(
                         "[langchain4j] Removing orphaned ToolExecutionResultMessage (id={}) from chat memory. "
-                        + "Its parent AiMessage with tool_calls was already evicted. "
-                        + "This self-healing prevents a permanent corrupt-memory state. "
-                        + "See https://github.com/langchain4j/langchain4j/issues/3133",
-                        id
-                    );
+                            + "Its parent AiMessage with tool_calls was already evicted. "
+                            + "This self-healing prevents a permanent corrupt-memory state. "
+                            + "See https://github.com/langchain4j/langchain4j/issues/3133",
+                        id);
                     if (sanitized == null) {
                         // First orphan found - materialise the prefix we've passed already.
                         sanitized = new ArrayList<>(messages.size());
