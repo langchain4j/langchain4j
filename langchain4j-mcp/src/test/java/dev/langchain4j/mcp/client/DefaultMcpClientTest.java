@@ -15,10 +15,13 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -257,6 +260,50 @@ public class DefaultMcpClientTest {
         assertThat(subsequentTools.get(0).name()).isEqualTo("testToolAnother");
         // and: the transport operation was executed as many times as tools were retrieved
         verify(transport, times(2)).executeOperationWithResponse(any(McpCallContext.class));
+    }
+
+    @Test
+    public void listener_should_run_before_meta_supplier() throws Exception {
+        // given
+        final McpTransport transport = getMinimalMcpTransportMock();
+        ObjectNode toolResult = JsonNodeFactory.instance.objectNode();
+        toolResult
+                .putObject("result")
+                .putArray("content")
+                .addObject()
+                .put("type", "text")
+                .put("text", "ok");
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(toolResult));
+
+        List<String> callOrder = new ArrayList<>();
+        McpClientListener listener = new McpClientListener() {
+            @Override
+            public void beforeExecuteTool(McpCallContext context) {
+                callOrder.add("listener");
+            }
+        };
+        McpMetaSupplier metaSupplier = ctx -> {
+            callOrder.add("meta");
+            return Map.of("key", "value");
+        };
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .listener(listener)
+                .metaSupplier(metaSupplier)
+                .build();
+
+        // when
+        callOrder.clear();
+        client.executeTool(
+                ToolExecutionRequest.builder().name("test").arguments("{}").build());
+
+        // then
+        assertThat(callOrder)
+                .as("Listener must run before meta supplier so that listeners can set up context "
+                        + "(e.g. a tracing span) that the meta supplier can then reference")
+                .containsExactly("listener", "meta");
     }
 
     private static McpTransport getMinimalMcpTransportMock() {
