@@ -59,7 +59,12 @@ class GeminiStreamingResponseBuilder {
             return new TextAndTools(Optional.empty(), Optional.empty(), List.of());
         }
 
-        GeminiCandidate firstCandidate = partialResponse.candidates().get(0);
+        List<GeminiCandidate> candidates = partialResponse.candidates();
+        if (candidates == null || candidates.isEmpty()) {
+            return new TextAndTools(Optional.empty(), Optional.empty(), List.of());
+        }
+
+        GeminiCandidate firstCandidate = candidates.get(0);
 
         updateId(partialResponse);
         updateModelName(partialResponse);
