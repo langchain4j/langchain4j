@@ -23,6 +23,10 @@ import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.protocol.McpCallToolRequest;
 import dev.langchain4j.mcp.protocol.McpCancellationNotification;
+import dev.langchain4j.mcp.protocol.McpClientMessage;
+import dev.langchain4j.mcp.protocol.McpClientNotification;
+import dev.langchain4j.mcp.protocol.McpClientParams;
+import dev.langchain4j.mcp.protocol.McpClientRequest;
 import dev.langchain4j.mcp.protocol.McpGetPromptRequest;
 import dev.langchain4j.mcp.protocol.McpImplementation;
 import dev.langchain4j.mcp.protocol.McpInitializeParams;
@@ -93,6 +97,7 @@ public class DefaultMcpClient implements McpClient {
     private final AtomicReference<List<McpRoot>> mcpRoots;
     private final Boolean cacheToolList;
     private final McpClientListener listener;
+    private final McpMetaSupplier metaSupplier;
 
     public DefaultMcpClient(Builder builder) {
         try {
@@ -112,6 +117,7 @@ public class DefaultMcpClient implements McpClient {
             autoHealthCheck = getOrDefault(builder.autoHealthCheck, Boolean.TRUE);
             autoHealthCheckInterval = getOrDefault(builder.autoHealthCheckInterval, Duration.ofSeconds(30));
             listener = builder.listener;
+            metaSupplier = builder.metaSupplier;
             healthCheckScheduler = autoHealthCheck
                     ? Executors.newSingleThreadScheduledExecutor(r -> {
                         Thread t = new Thread(r, "mcp-server-health-checker");
@@ -165,6 +171,7 @@ public class DefaultMcpClient implements McpClient {
         McpInitializeRequest request = new McpInitializeRequest(operationId);
         McpInitializeParams params = createInitializeParams();
         request.setParams(params);
+        applyMeta(request, null);
         try {
             JsonNode capabilities =
                     transport.initialize(request).get(initializationTimeout.toMillis(), TimeUnit.MILLISECONDS);
@@ -274,13 +281,16 @@ public class DefaultMcpClient implements McpClient {
             if (listener != null) {
                 listener.beforeExecuteTool(context);
             }
+            applyMeta(operation, context);
             resultFuture = transport.executeOperationWithResponse(context);
             result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
         } catch (TimeoutException timeout) {
             if (listener != null) {
                 listener.onExecuteToolError(context, timeout);
             }
-            transport.executeOperationWithoutResponse(new McpCancellationNotification(operationId, "Timeout"));
+            McpCancellationNotification cancellation = new McpCancellationNotification(operationId, "Timeout");
+            applyMeta(cancellation, null);
+            transport.executeOperationWithoutResponse(cancellation);
             return ToolExecutionHelper.extractResult(RESULT_TIMEOUT, false);
         } catch (ExecutionException e) {
             if (listener != null) {
@@ -350,6 +360,7 @@ public class DefaultMcpClient implements McpClient {
         if (listener != null) {
             listener.beforeResourceGet(context);
         }
+        applyMeta(operation, context);
         try {
             resultFuture = transport.executeOperationWithResponse(context);
             result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
@@ -399,6 +410,7 @@ public class DefaultMcpClient implements McpClient {
         if (listener != null) {
             listener.beforePromptGet(context);
         }
+        applyMeta(operation, context);
         try {
             resultFuture = transport.executeOperationWithResponse(context);
             result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
@@ -432,6 +444,7 @@ public class DefaultMcpClient implements McpClient {
         transport.checkHealth();
         long operationId = idGenerator.getAndIncrement();
         McpPingRequest ping = new McpPingRequest(operationId);
+        applyMeta(ping, null);
         try {
             CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(ping);
             resultFuture.get(pingTimeout.toMillis(), TimeUnit.MILLISECONDS);
@@ -445,7 +458,9 @@ public class DefaultMcpClient implements McpClient {
     @Override
     public void setRoots(final List<McpRoot> roots) {
         this.mcpRoots.set(roots);
-        transport.executeOperationWithoutResponse(new McpRootsListChangedNotification());
+        McpRootsListChangedNotification notification = new McpRootsListChangedNotification();
+        applyMeta(notification, null);
+        transport.executeOperationWithoutResponse(notification);
     }
 
     @Override
@@ -464,8 +479,9 @@ public class DefaultMcpClient implements McpClient {
 
     private synchronized void obtainToolList(InvocationContext invocationContext) {
         McpListToolsRequest operation = new McpListToolsRequest(idGenerator.getAndIncrement());
-        CompletableFuture<JsonNode> resultFuture =
-                transport.executeOperationWithResponse(new McpCallContext(invocationContext, operation));
+        McpCallContext context = new McpCallContext(invocationContext, operation);
+        applyMeta(operation, context);
+        CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(context);
         JsonNode result = null;
         try {
             result = resultFuture.get();
@@ -485,11 +501,13 @@ public class DefaultMcpClient implements McpClient {
             return;
         }
         McpListResourcesRequest operation = new McpListResourcesRequest(idGenerator.getAndIncrement());
+        McpCallContext context = new McpCallContext(invocationContext, operation);
+        applyMeta(operation, context);
         long timeoutMillis = resourcesTimeout.toMillis() == 0 ? Integer.MAX_VALUE : resourcesTimeout.toMillis();
         JsonNode result = null;
         CompletableFuture<JsonNode> resultFuture = null;
         try {
-            resultFuture = transport.executeOperationWithResponse(new McpCallContext(invocationContext, operation));
+            resultFuture = transport.executeOperationWithResponse(context);
             result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
             resourceRefs.set(ResourcesHelper.parseResourceRefs(result));
         } catch (ExecutionException | InterruptedException | TimeoutException e) {
@@ -504,11 +522,13 @@ public class DefaultMcpClient implements McpClient {
             return;
         }
         McpListResourceTemplatesRequest operation = new McpListResourceTemplatesRequest(idGenerator.getAndIncrement());
+        McpCallContext context = new McpCallContext(invocationContext, operation);
+        applyMeta(operation, context);
         long timeoutMillis = toolExecutionTimeout.toMillis() == 0 ? Integer.MAX_VALUE : toolExecutionTimeout.toMillis();
         JsonNode result = null;
         CompletableFuture<JsonNode> resultFuture = null;
         try {
-            resultFuture = transport.executeOperationWithResponse(new McpCallContext(invocationContext, operation));
+            resultFuture = transport.executeOperationWithResponse(context);
             result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
             resourceTemplateRefs.set(ResourcesHelper.parseResourceTemplateRefs(result));
         } catch (ExecutionException | InterruptedException | TimeoutException e) {
@@ -554,6 +574,7 @@ public class DefaultMcpClient implements McpClient {
             return;
         }
         McpListPromptsRequest operation = new McpListPromptsRequest(idGenerator.getAndIncrement());
+        applyMeta(operation, null);
         long timeoutMillis = promptsTimeout.toMillis() == 0 ? Integer.MAX_VALUE : promptsTimeout.toMillis();
         JsonNode result = null;
         CompletableFuture<JsonNode> resultFuture = null;
@@ -578,6 +599,27 @@ public class DefaultMcpClient implements McpClient {
             transport.close();
         } catch (Exception e) {
             log.warn("Cannot close MCP transport", e);
+        }
+    }
+
+    private void applyMeta(McpClientMessage message, McpCallContext context) {
+        if (metaSupplier == null) {
+            return;
+        }
+        Map<String, Object> meta = metaSupplier.apply(context);
+        if (meta == null || meta.isEmpty()) {
+            return;
+        }
+        if (message instanceof McpClientRequest request) {
+            if (request.getParams() == null) {
+                request.setParams(new McpClientParams());
+            }
+            request.getParams().setMeta(meta);
+        } else if (message instanceof McpClientNotification notification) {
+            if (notification.getParams() == null) {
+                notification.setParams(new McpClientParams());
+            }
+            notification.getParams().setMeta(meta);
         }
     }
 
@@ -612,6 +654,7 @@ public class DefaultMcpClient implements McpClient {
         private Boolean cacheToolList;
         private McpClientListener listener;
         private McpProgressHandler progressHandler;
+        private McpMetaSupplier metaSupplier;
 
         /**
          * Sets the transport protocol to use for communicating with the
@@ -800,6 +843,16 @@ public class DefaultMcpClient implements McpClient {
          */
         public Builder progressHandler(McpProgressHandler progressHandler) {
             this.progressHandler = progressHandler;
+            return this;
+        }
+
+        /**
+         * Sets a supplier of {@code _meta} fields for MCP client requests and notifications.
+         * The supplier is called before every request or notification sent to the server.
+         * Unlike HTTP headers, this applies to all transports.
+         */
+        public Builder metaSupplier(McpMetaSupplier metaSupplier) {
+            this.metaSupplier = metaSupplier;
             return this;
         }
 
