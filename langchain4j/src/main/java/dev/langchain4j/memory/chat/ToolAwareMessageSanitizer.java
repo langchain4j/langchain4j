@@ -90,9 +90,9 @@ public final class ToolAwareMessageSanitizer {
                 if (isOrphaned) {
                     log.warn(
                         "[langchain4j] Removing orphaned ToolExecutionResultMessage (id={}) from chat memory. "
-                            + "Its parent AiMessage with tool_calls was already evicted. "
-                            + "This self-healing prevents a permanent corrupt-memory state. "
-                            + "See https://github.com/langchain4j/langchain4j/issues/3133",
+                        + "Its parent AiMessage with tool_calls was already evicted. "
+                        + "This self-healing prevents a permanent corrupt-memory state. "
+                        + "See https://github.com/langchain4j/langchain4j/issues/3133",
                         id);
                     if (sanitized == null) {
                         // First orphan found - materialise the prefix we've passed already.
