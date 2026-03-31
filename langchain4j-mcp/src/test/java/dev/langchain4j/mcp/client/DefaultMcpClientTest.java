@@ -19,6 +19,8 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
+import dev.langchain4j.mcp.protocol.McpListToolsParams;
+import dev.langchain4j.mcp.protocol.McpListToolsRequest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -304,6 +306,53 @@ public class DefaultMcpClientTest {
                 .as("Listener must run before meta supplier so that listeners can set up context "
                         + "(e.g. a tracing span) that the meta supplier can then reference")
                 .containsExactly("listener", "meta");
+    }
+
+    /**
+     * Verify that when a tool list operation returns a cursor, the client
+     * proceeds to another request using that cursor.
+     */
+    @Test
+    public void should_paginate_tool_list_using_cursor() throws Exception {
+        // given
+        final McpTransport transport = getMinimalMcpTransportMock();
+        final DefaultMcpClient client =
+                new DefaultMcpClient.Builder().transport(transport).build();
+
+        // first page: 2 tools + nextCursor
+        final ObjectNode firstPage = getToolResultJson(
+                new ToolDefinition("tool1", "First tool"), new ToolDefinition("tool2", "Second tool"));
+        ((ObjectNode) firstPage.get("result")).put("nextCursor", "cursor-page2");
+
+        // second page: 1 tool, no nextCursor
+        final ObjectNode secondPage = getToolResultJson(new ToolDefinition("tool3", "Third tool"));
+
+        final ArgumentCaptor<McpCallContext> callCaptor = ArgumentCaptor.forClass(McpCallContext.class);
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(firstPage))
+                .thenReturn(CompletableFuture.completedFuture(secondPage));
+
+        // when
+        final List<ToolSpecification> tools = client.listTools();
+
+        // then: all tools from both pages are returned
+        assertThat(tools).hasSize(3);
+        assertThat(tools.stream().map(ToolSpecification::name).collect(Collectors.toList()))
+                .containsExactly("tool1", "tool2", "tool3");
+
+        // and: the transport was called exactly twice
+        verify(transport, times(2)).executeOperationWithResponse(callCaptor.capture());
+
+        // and: the first request has no cursor
+        McpListToolsRequest firstRequest =
+                (McpListToolsRequest) callCaptor.getAllValues().get(0).message();
+        assertThat(firstRequest.getParams()).isNull();
+
+        // and: the second request carries the cursor from the first response
+        McpListToolsRequest secondRequest =
+                (McpListToolsRequest) callCaptor.getAllValues().get(1).message();
+        assertThat(secondRequest.getParams()).isInstanceOf(McpListToolsParams.class);
+        assertThat(((McpListToolsParams) secondRequest.getParams()).getCursor()).isEqualTo("cursor-page2");
     }
 
     private static McpTransport getMinimalMcpTransportMock() {
