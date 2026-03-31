@@ -46,6 +46,7 @@ jobs:
         run: |
           echo "Stable version: ${{ env.STABLE_VERSION }}"
           echo "Beta version: ${{ env.BETA_VERSION }}"
+          echo "Branch to release from: ${{ env.BRANCH }}"
 
       - name: Extract current stable SNAPSHOT version from POM property
         id: extract-stable-snapshot-version
@@ -149,7 +150,6 @@ jobs:
           client-payload: |
             {
               "stableVersion": "${{ env.STABLE_VERSION }}",
-              "betaVersion": "${{ env.BETA_VERSION }}"
               "betaVersion": "${{ env.BETA_VERSION }}",
               "branch": "${{ env.BRANCH }}"
             }
