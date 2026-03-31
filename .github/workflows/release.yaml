@@ -10,7 +10,7 @@ on:
         description: "Beta release version (e.g., 1.8.0-beta15)"
         required: true
       branch:
-        description: "Branch to release from (default: main)"
+        description: "Branch to release from (e.g., 'main' for minor releases, 'release/x.y.z' for patch releases)"
         required: false
         default: "main"
 
@@ -132,7 +132,7 @@ jobs:
           git add .
           git commit -m "Release versions ${{ env.STABLE_VERSION }} and ${{ env.BETA_VERSION }}"
 
-      - name: Push to main
+      - name: Push
         run: |
           git push origin ${{ env.BRANCH }}
 
