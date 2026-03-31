@@ -5,8 +5,8 @@ import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_OPUS
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_SONNET_4_5_20250929;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
+import static org.junit.jupiter.params.provider.EnumSource.Mode.INCLUDE;
 
-import java.util.List;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -19,6 +19,7 @@ import dev.langchain4j.http.client.jdk.JdkHttpClient;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import java.util.List;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -32,27 +33,29 @@ class AnthropicChatModelThinkingIT {
     private static final int THINKING_BUDGET_TOKENS = 1024;
 
     @ParameterizedTest
-    @EnumSource(value = AnthropicChatModelName.class, mode = EXCLUDE, names = {
-            "CLAUDE_3_HAIKU_20240307",
-    })
+    @EnumSource(
+            value = AnthropicChatModelName.class,
+            mode = EXCLUDE,
+            names = {
+                "CLAUDE_3_HAIKU_20240307",
+            })
     void should_return_and_send_thinking(AnthropicChatModelName modelName) {
 
         // given
         boolean returnThinking = true;
         // sendThinking = true by default
 
-        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+        SpyingHttpClient spyingHttpClient =
+                new SpyingHttpClient(JdkHttpClient.builder().build());
 
         ChatModel model = AnthropicChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(modelName)
-
                 .thinkingType("enabled")
                 .thinkingBudgetTokens(THINKING_BUDGET_TOKENS)
                 .maxTokens(THINKING_BUDGET_TOKENS + 100)
                 .returnThinking(returnThinking)
-
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -91,28 +94,30 @@ class AnthropicChatModelThinkingIT {
     }
 
     @ParameterizedTest
-    @EnumSource(value = AnthropicChatModelName.class, mode = EXCLUDE, names = {
-            "CLAUDE_3_HAIKU_20240307",
-    })
+    @EnumSource(
+            value = AnthropicChatModelName.class,
+            mode = EXCLUDE,
+            names = {
+                "CLAUDE_3_HAIKU_20240307",
+            })
     void should_return_and_NOT_send_thinking(AnthropicChatModelName modelName) {
 
         // given
         boolean returnThinking = true;
         boolean sendThinking = false;
 
-        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+        SpyingHttpClient spyingHttpClient =
+                new SpyingHttpClient(JdkHttpClient.builder().build());
 
         ChatModel model = AnthropicChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(modelName)
-
                 .thinkingType("enabled")
                 .thinkingBudgetTokens(THINKING_BUDGET_TOKENS)
                 .maxTokens(THINKING_BUDGET_TOKENS + 100)
                 .returnThinking(returnThinking)
                 .sendThinking(sendThinking)
-
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -151,9 +156,12 @@ class AnthropicChatModelThinkingIT {
     }
 
     @ParameterizedTest
-    @EnumSource(value = AnthropicChatModelName.class, mode = EXCLUDE, names = {
-            "CLAUDE_3_HAIKU_20240307",
-    })
+    @EnumSource(
+            value = AnthropicChatModelName.class,
+            mode = EXCLUDE,
+            names = {
+                "CLAUDE_3_HAIKU_20240307",
+            })
     void should_return_and_send_thinking_with_tools(AnthropicChatModelName modelName) {
 
         // given
@@ -168,19 +176,18 @@ class AnthropicChatModelThinkingIT {
                         .build())
                 .build();
 
-        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+        SpyingHttpClient spyingHttpClient =
+                new SpyingHttpClient(JdkHttpClient.builder().build());
 
         ChatModel model = AnthropicChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(modelName)
-
                 .thinkingType("enabled")
                 .thinkingBudgetTokens(THINKING_BUDGET_TOKENS)
                 .maxTokens(THINKING_BUDGET_TOKENS + 100)
                 .returnThinking(returnThinking)
                 .toolSpecifications(toolSpecification)
-
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -197,7 +204,8 @@ class AnthropicChatModelThinkingIT {
         String signature1 = aiMessage1.attribute("thinking_signature", String.class);
         assertThat(signature1).isNotBlank();
         assertThat(aiMessage1.toolExecutionRequests()).hasSize(1);
-        ToolExecutionRequest toolExecutionRequest1 = aiMessage1.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest1 =
+                aiMessage1.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest1.name()).isEqualTo(toolSpecification.name());
         assertThat(toolExecutionRequest1.arguments()).contains("Munich");
 
@@ -227,7 +235,8 @@ class AnthropicChatModelThinkingIT {
         String signature2 = aiMessage3.attribute("thinking_signature", String.class);
         assertThat(signature2).isNotBlank();
         assertThat(aiMessage3.toolExecutionRequests()).hasSize(1);
-        ToolExecutionRequest toolExecutionRequest2 = aiMessage3.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest2 =
+                aiMessage3.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest2.name()).isEqualTo(toolSpecification.name());
         assertThat(toolExecutionRequest2.arguments()).contains("Paris");
 
@@ -235,7 +244,8 @@ class AnthropicChatModelThinkingIT {
         ToolExecutionResultMessage toolResultMessage2 = ToolExecutionResultMessage.from(toolExecutionRequest2, "rainy");
 
         // when
-        ChatResponse chatResponse4 = model.chat(userMessage1, aiMessage1, toolResultMessage1, aiMessage2, userMessage2, aiMessage3, toolResultMessage2);
+        ChatResponse chatResponse4 = model.chat(
+                userMessage1, aiMessage1, toolResultMessage1, aiMessage2, userMessage2, aiMessage3, toolResultMessage2);
 
         // then
         AiMessage aiMessage4 = chatResponse4.aiMessage();
@@ -247,12 +257,8 @@ class AnthropicChatModelThinkingIT {
         // should send thinking in the follow-up requests
         List<HttpRequest> httpRequests = spyingHttpClient.requests();
         assertThat(httpRequests).hasSize(4);
-        assertThat(httpRequests.get(1).body())
-                .contains(jsonify(thinking1))
-                .contains(jsonify(signature1));
-        assertThat(httpRequests.get(3).body())
-                .contains(jsonify(thinking2))
-                .contains(jsonify(signature2));
+        assertThat(httpRequests.get(1).body()).contains(jsonify(thinking1)).contains(jsonify(signature1));
+        assertThat(httpRequests.get(3).body()).contains(jsonify(thinking2)).contains(jsonify(signature2));
     }
 
     @Test
@@ -273,12 +279,12 @@ class AnthropicChatModelThinkingIT {
                         .build())
                 .build();
 
-        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+        SpyingHttpClient spyingHttpClient =
+                new SpyingHttpClient(JdkHttpClient.builder().build());
 
         ChatModel model = AnthropicChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-
                 .beta(beta)
                 .modelName(modelName)
                 .thinkingType("enabled")
@@ -286,7 +292,6 @@ class AnthropicChatModelThinkingIT {
                 .maxTokens(THINKING_BUDGET_TOKENS + 100)
                 .returnThinking(returnThinking)
                 .toolSpecifications(toolSpecification)
-
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -306,7 +311,8 @@ class AnthropicChatModelThinkingIT {
         assertThat(signature1).isNotBlank();
 
         assertThat(aiMessage1.toolExecutionRequests()).hasSize(1);
-        ToolExecutionRequest toolExecutionRequest1 = aiMessage1.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest1 =
+                aiMessage1.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest1.name()).isEqualTo(toolSpecification.name());
         assertThat(toolExecutionRequest1.arguments()).contains("Munich");
 
@@ -344,7 +350,8 @@ class AnthropicChatModelThinkingIT {
         assertThat(signature3).isNotBlank();
 
         assertThat(aiMessage3.toolExecutionRequests()).hasSize(1);
-        ToolExecutionRequest toolExecutionRequest2 = aiMessage3.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest2 =
+                aiMessage3.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest2.name()).isEqualTo(toolSpecification.name());
         assertThat(toolExecutionRequest2.arguments()).contains("Paris");
 
@@ -352,7 +359,8 @@ class AnthropicChatModelThinkingIT {
         ToolExecutionResultMessage toolResultMessage2 = ToolExecutionResultMessage.from(toolExecutionRequest2, "rainy");
 
         // when
-        ChatResponse chatResponse4 = model.chat(userMessage1, aiMessage1, toolResultMessage1, aiMessage2, userMessage2, aiMessage3, toolResultMessage2);
+        ChatResponse chatResponse4 = model.chat(
+                userMessage1, aiMessage1, toolResultMessage1, aiMessage2, userMessage2, aiMessage3, toolResultMessage2);
 
         // then
         AiMessage aiMessage4 = chatResponse4.aiMessage();
@@ -369,15 +377,9 @@ class AnthropicChatModelThinkingIT {
         // should send thinking in the follow-up requests
         List<HttpRequest> httpRequests = spyingHttpClient.requests();
         assertThat(httpRequests).hasSize(4);
-        assertThat(httpRequests.get(1).body())
-                .contains(jsonify(thinking1))
-                .contains(jsonify(signature1));
-        assertThat(httpRequests.get(2).body())
-                .contains(jsonify(thinking2))
-                .contains(jsonify(signature2));
-        assertThat(httpRequests.get(3).body())
-                .contains(jsonify(thinking3))
-                .contains(jsonify(signature3));
+        assertThat(httpRequests.get(1).body()).contains(jsonify(thinking1)).contains(jsonify(signature1));
+        assertThat(httpRequests.get(2).body()).contains(jsonify(thinking2)).contains(jsonify(signature2));
+        assertThat(httpRequests.get(3).body()).contains(jsonify(thinking3)).contains(jsonify(signature3));
     }
 
     @ParameterizedTest
@@ -389,12 +391,10 @@ class AnthropicChatModelThinkingIT {
         ChatModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_SONNET_4_5_20250929)
-
                 .thinkingType("enabled")
                 .thinkingBudgetTokens(THINKING_BUDGET_TOKENS)
                 .maxTokens(THINKING_BUDGET_TOKENS + 100)
                 .returnThinking(returnThinking)
-
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -409,5 +409,241 @@ class AnthropicChatModelThinkingIT {
         assertThat(aiMessage.text()).containsIgnoringCase("Berlin");
         assertThat(aiMessage.thinking()).isNull();
         assertThat(aiMessage.attributes()).isEmpty();
+    }
+
+    // =========================================================================
+    // Adaptive thinking tests (Opus 4.6 / Sonnet 4.6)
+    // =========================================================================
+
+    @ParameterizedTest
+    @EnumSource(
+            value = AnthropicChatModelName.class,
+            mode = INCLUDE,
+            names = {
+                "CLAUDE_OPUS_4_6",
+                "CLAUDE_SONNET_4_6",
+            })
+    void should_use_adaptive_thinking(AnthropicChatModelName modelName) {
+
+        // given
+        ChatModel model = AnthropicChatModel.builder()
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(modelName)
+                .thinkingType("adaptive")
+                .maxTokens(4000)
+                .returnThinking(true)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        // when
+        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
+        ChatResponse chatResponse = model.chat(userMessage);
+
+        // then
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.text()).containsIgnoringCase("Berlin");
+        // with default HIGH effort, Claude almost always thinks
+        // thinking may or may not be present depending on complexity, but text must be present
+        assertThat(aiMessage.text()).isNotBlank();
+    }
+
+    @ParameterizedTest
+    @EnumSource(
+            value = AnthropicChatModelName.class,
+            mode = INCLUDE,
+            names = {
+                "CLAUDE_OPUS_4_6",
+                "CLAUDE_SONNET_4_6",
+            })
+    void should_use_adaptive_thinking_and_return_thinking(AnthropicChatModelName modelName) {
+
+        // given
+        ChatModel model = AnthropicChatModel.builder()
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(modelName)
+                .thinkingType("adaptive")
+                .thinkingEffort(AnthropicThinkingEffort.HIGH)
+                .maxTokens(4000)
+                .returnThinking(true)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        // when
+        UserMessage userMessage = UserMessage.from("Explain why the sum of two even numbers is always even.");
+        ChatResponse chatResponse = model.chat(userMessage);
+
+        // then
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.text()).isNotBlank();
+        // HIGH effort → Claude always thinks
+        assertThat(aiMessage.thinking()).isNotBlank();
+        assertThat(aiMessage.attribute("thinking_signature", String.class)).isNotBlank();
+    }
+
+    @ParameterizedTest
+    @EnumSource(
+            value = AnthropicChatModelName.class,
+            mode = INCLUDE,
+            names = {
+                "CLAUDE_OPUS_4_6",
+                "CLAUDE_SONNET_4_6",
+            })
+    void should_send_adaptive_thinking_in_request_json(AnthropicChatModelName modelName) {
+
+        // given – spy on outgoing requests
+        SpyingHttpClient spyingHttpClient =
+                new SpyingHttpClient(JdkHttpClient.builder().build());
+
+        ChatModel model = AnthropicChatModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(modelName)
+                .thinkingType("adaptive")
+                .thinkingEffort(AnthropicThinkingEffort.MEDIUM)
+                .maxTokens(4000)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        // when
+        model.chat("What is 2 + 2?");
+
+        // then – verify serialized request contains adaptive config and no budget_tokens
+        List<HttpRequest> requests = spyingHttpClient.requests();
+        assertThat(requests).hasSize(1);
+        String body = requests.get(0).body();
+        assertThat(body).contains("\"adaptive\"");
+        assertThat(body).contains("\"medium\"");
+        assertThat(body).doesNotContain("budget_tokens");
+    }
+
+    @ParameterizedTest
+    @EnumSource(
+            value = AnthropicChatModelName.class,
+            mode = INCLUDE,
+            names = {
+                "CLAUDE_OPUS_4_6",
+                "CLAUDE_SONNET_4_6",
+            })
+    void should_use_adaptive_thinking_with_display_OMITTED(AnthropicChatModelName modelName) {
+
+        // given
+        SpyingHttpClient spyingHttpClient =
+                new SpyingHttpClient(JdkHttpClient.builder().build());
+
+        ChatModel model = AnthropicChatModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(modelName)
+                .thinkingType("adaptive")
+                .thinkingDisplay(AnthropicThinkingDisplay.OMITTED)
+                .maxTokens(4000)
+                .returnThinking(true)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        // when
+        UserMessage userMessage = UserMessage.from("What is the capital of France?");
+        ChatResponse chatResponse = model.chat(userMessage);
+
+        // then
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.text()).containsIgnoringCase("Paris");
+        // With display=OMITTED the thinking field is empty but signature is still returned
+        // thinking() will be null or blank; signature should still be present for multi-turn
+        String signature = aiMessage.attribute("thinking_signature", String.class);
+        assertThat(signature).isNotBlank();
+
+        // verify request body contains display:omitted
+        String body = spyingHttpClient.requests().get(0).body();
+        assertThat(body).contains("\"omitted\"");
+    }
+
+    @ParameterizedTest
+    @EnumSource(
+            value = AnthropicChatModelName.class,
+            mode = INCLUDE,
+            names = {
+                "CLAUDE_OPUS_4_6",
+                "CLAUDE_SONNET_4_6",
+            })
+    void should_use_adaptive_thinking_with_low_effort(AnthropicChatModelName modelName) {
+
+        // given
+        ChatModel model = AnthropicChatModel.builder()
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(modelName)
+                .thinkingType("adaptive")
+                .thinkingEffort(AnthropicThinkingEffort.LOW)
+                .maxTokens(4000)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        // when – simple question where LOW effort may skip thinking
+        UserMessage userMessage = UserMessage.from("What is the capital of Japan?");
+        ChatResponse chatResponse = model.chat(userMessage);
+
+        // then
+        assertThat(chatResponse.aiMessage().text()).containsIgnoringCase("Tokyo");
+    }
+
+    @ParameterizedTest
+    @EnumSource(
+            value = AnthropicChatModelName.class,
+            mode = INCLUDE,
+            names = {
+                "CLAUDE_OPUS_4_6",
+                "CLAUDE_SONNET_4_6",
+            })
+    void should_return_and_send_adaptive_thinking_multi_turn(AnthropicChatModelName modelName) {
+
+        // given
+        SpyingHttpClient spyingHttpClient =
+                new SpyingHttpClient(JdkHttpClient.builder().build());
+
+        ChatModel model = AnthropicChatModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(modelName)
+                .thinkingType("adaptive")
+                .thinkingEffort(AnthropicThinkingEffort.HIGH)
+                .maxTokens(4000)
+                .returnThinking(true)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        UserMessage userMessage1 = UserMessage.from("What is the capital of Germany?");
+
+        // when
+        ChatResponse chatResponse1 = model.chat(userMessage1);
+
+        // then
+        AiMessage aiMessage1 = chatResponse1.aiMessage();
+        assertThat(aiMessage1.text()).containsIgnoringCase("Berlin");
+        assertThat(aiMessage1.thinking()).isNotBlank();
+        String signature1 = aiMessage1.attribute("thinking_signature", String.class);
+        assertThat(signature1).isNotBlank();
+
+        // given
+        UserMessage userMessage2 = UserMessage.from("What is the capital of France?");
+
+        // when
+        ChatResponse chatResponse2 = model.chat(userMessage1, aiMessage1, userMessage2);
+
+        // then
+        AiMessage aiMessage2 = chatResponse2.aiMessage();
+        assertThat(aiMessage2.text()).containsIgnoringCase("Paris");
+
+        // should send thinking signature in the follow-up request
+        List<HttpRequest> httpRequests = spyingHttpClient.requests();
+        assertThat(httpRequests).hasSize(2);
+        assertThat(httpRequests.get(1).body())
+                .contains(jsonify(aiMessage1.thinking()))
+                .contains(jsonify(signature1));
     }
 }

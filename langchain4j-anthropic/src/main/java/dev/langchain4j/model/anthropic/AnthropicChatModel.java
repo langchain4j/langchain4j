@@ -69,6 +69,8 @@ public class AnthropicChatModel implements ChatModel {
     private final boolean cacheTools;
     private final String thinkingType;
     private final Integer thinkingBudgetTokens;
+    private final AnthropicThinkingDisplay thinkingDisplay;
+    private final AnthropicThinkingEffort thinkingEffort;
     private final boolean returnThinking;
     private final boolean sendThinking;
     private final int maxRetries;
@@ -101,6 +103,8 @@ public class AnthropicChatModel implements ChatModel {
         this.cacheTools = getOrDefault(builder.cacheTools, false);
         this.thinkingType = builder.thinkingType;
         this.thinkingBudgetTokens = builder.thinkingBudgetTokens;
+        this.thinkingDisplay = builder.thinkingDisplay;
+        this.thinkingEffort = builder.thinkingEffort;
         this.returnThinking = getOrDefault(builder.returnThinking, false);
         this.sendThinking = getOrDefault(builder.sendThinking, true);
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
@@ -166,6 +170,8 @@ public class AnthropicChatModel implements ChatModel {
         private Boolean cacheTools;
         private String thinkingType;
         private Integer thinkingBudgetTokens;
+        private AnthropicThinkingDisplay thinkingDisplay;
+        private AnthropicThinkingEffort thinkingEffort;
         private Boolean returnThinking;
         private Boolean sendThinking;
         private Duration timeout;
@@ -350,9 +356,35 @@ public class AnthropicChatModel implements ChatModel {
 
         /**
          * Configures <a href="https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking">thinking</a>.
+         * Required for manual ({@code "enabled"}) mode; not used for adaptive ({@code "adaptive"}) mode.
          */
         public AnthropicChatModelBuilder thinkingBudgetTokens(Integer thinkingBudgetTokens) {
             this.thinkingBudgetTokens = thinkingBudgetTokens;
+            return this;
+        }
+
+        /**
+         * Controls how thinking content is returned in API responses.
+         * <ul>
+         *   <li>{@code "summarized"} (default) – thinking blocks contain summarized text.</li>
+         *   <li>{@code "omitted"} – thinking blocks are returned with an empty {@code thinking} field;
+         *       the encrypted {@code signature} is still included for multi-turn continuity.
+         *       Reduces time-to-first-text-token when streaming.</li>
+         * </ul>
+         * Cannot be used when thinking type is {@code "disabled"}.
+         */
+        public AnthropicChatModelBuilder thinkingDisplay(AnthropicThinkingDisplay thinkingDisplay) {
+            this.thinkingDisplay = thinkingDisplay;
+            return this;
+        }
+
+        /**
+         * Soft guidance for thinking depth when using adaptive thinking ({@code thinkingType = "adaptive"}).
+         * Accepted values: {@code "max"} (Opus 4.6 only), {@code "high"} (default), {@code "medium"}, {@code "low"}.
+         * Passed as {@code output_config.effort} in the API request.
+         */
+        public AnthropicChatModelBuilder thinkingEffort(AnthropicThinkingEffort thinkingEffort) {
+            this.thinkingEffort = thinkingEffort;
             return this;
         }
 
@@ -479,7 +511,7 @@ public class AnthropicChatModel implements ChatModel {
 
         AnthropicCreateMessageRequest anthropicRequest = createAnthropicRequest(
                 chatRequest,
-                toThinking(thinkingType, thinkingBudgetTokens),
+                toThinking(thinkingType, thinkingBudgetTokens, thinkingDisplay),
                 sendThinking,
                 cacheSystemMessages ? EPHEMERAL : NO_CACHE,
                 cacheTools ? EPHEMERAL : NO_CACHE,
@@ -490,7 +522,8 @@ public class AnthropicChatModel implements ChatModel {
                 toolMetadataKeysToSend,
                 userId,
                 customParameters,
-                strictTools);
+                strictTools,
+                thinkingEffort);
 
         ParsedAndRawResponse response =
                 withRetryMappingExceptions(() -> client.createMessageWithRawResponse(anthropicRequest), maxRetries);
@@ -514,11 +547,13 @@ public class AnthropicChatModel implements ChatModel {
                 .build();
     }
 
-    static AnthropicThinking toThinking(String thinkingType, Integer thinkingBudgetTokens) {
+    static AnthropicThinking toThinking(
+            String thinkingType, Integer thinkingBudgetTokens, AnthropicThinkingDisplay thinkingDisplay) {
         if (thinkingType != null || thinkingBudgetTokens != null) {
             return AnthropicThinking.builder()
                     .type(thinkingType)
                     .budgetTokens(thinkingBudgetTokens)
+                    .display(thinkingDisplay)
                     .build();
         }
         return null;

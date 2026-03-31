@@ -38,7 +38,8 @@ class InternalAnthropicHelper {
         if (parameters.presencePenalty() != null) {
             unsupportedFeatures.add("Presence Penalty");
         }
-        if (parameters.responseFormat() != null && parameters.responseFormat().type() == JSON
+        if (parameters.responseFormat() != null
+                && parameters.responseFormat().type() == JSON
                 && parameters.responseFormat().jsonSchema() == null) {
             unsupportedFeatures.add("Schemaless JSON response format");
         }
@@ -65,7 +66,8 @@ class InternalAnthropicHelper {
             Set<String> toolMetadataKeysToSend,
             String userId,
             Map<String, Object> customParameters,
-            Boolean strictTools) {
+            Boolean strictTools,
+            AnthropicThinkingEffort thinkingEffort) {
 
         AnthropicCreateMessageRequest.Builder requestBuilder = AnthropicCreateMessageRequest.builder().stream(stream)
                 .model(chatRequest.modelName())
@@ -77,7 +79,7 @@ class InternalAnthropicHelper {
                 .topP(chatRequest.topP())
                 .topK(chatRequest.topK())
                 .thinking(thinking)
-                .outputConfig(toAnthropicOutputConfig(chatRequest.responseFormat()))
+                .outputConfig(toAnthropicOutputConfig(chatRequest.responseFormat(), thinkingEffort))
                 .customParameters(customParameters);
 
         List<AnthropicTool> tools = new ArrayList<>();
@@ -85,7 +87,8 @@ class InternalAnthropicHelper {
             tools.addAll(toAnthropicTools(serverTools));
         }
         if (!isNullOrEmpty(chatRequest.toolSpecifications())) {
-            tools.addAll(toAnthropicTools(chatRequest.toolSpecifications(), toolsCacheType, toolMetadataKeysToSend, strictTools));
+            tools.addAll(toAnthropicTools(
+                    chatRequest.toolSpecifications(), toolsCacheType, toolMetadataKeysToSend, strictTools));
         }
         if (!tools.isEmpty()) {
             requestBuilder.tools(tools);
@@ -104,12 +107,20 @@ class InternalAnthropicHelper {
     }
 
     public static AnthropicOutputConfig toAnthropicOutputConfig(ResponseFormat responseFormat) {
-        if (responseFormat == null || responseFormat.type() == TEXT || responseFormat.jsonSchema() == null) {
+        return toAnthropicOutputConfig(responseFormat, null);
+    }
+
+    public static AnthropicOutputConfig toAnthropicOutputConfig(
+            ResponseFormat responseFormat, AnthropicThinkingEffort effort) {
+        AnthropicFormat format = null;
+        if (responseFormat != null && responseFormat.type() != TEXT && responseFormat.jsonSchema() != null) {
+            format = AnthropicFormat.fromJsonSchema(responseFormat.jsonSchema());
+        }
+
+        if (format == null && effort == null) {
             return null;
         }
 
-        return AnthropicOutputConfig.builder()
-                .format(AnthropicFormat.fromJsonSchema(responseFormat.jsonSchema()))
-                .build();
+        return AnthropicOutputConfig.builder().format(format).effort(effort).build();
     }
 }
