@@ -149,7 +149,6 @@ jobs:
           client-payload: |
             {
               "stableVersion": "${{ env.STABLE_VERSION }}",
-              "betaVersion": "${{ env.BETA_VERSION }}"
               "betaVersion": "${{ env.BETA_VERSION }}",
               "branch": "${{ env.BRANCH }}"
             }
