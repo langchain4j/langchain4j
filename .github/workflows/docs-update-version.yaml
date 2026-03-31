@@ -80,7 +80,6 @@ jobs:
         if: steps.git-check.outputs.changed == 'true'
         uses: peter-evans/repository-dispatch@v4
         with:
-          token: ${{ secrets.GH_RELEASE_AUTOMATION_PAT }}
           repository: langchain4j/langchain4j
           event-type: trigger-docs-build-and-deploy
 
@@ -88,6 +87,5 @@ jobs:
         if: steps.git-check.outputs.changed == 'true'
         uses: peter-evans/repository-dispatch@v4
         with:
-          token: ${{ secrets.GH_RELEASE_AUTOMATION_PAT }}
           repository: langchain4j/langchain4j
           event-type: trigger-docs-update-chatbot
