@@ -67,29 +67,35 @@ public class MistralAiModerationModel implements ModerationModel {
 
         MistralAiModerationResponse response = withRetryMappingExceptions(() -> client.moderation(request), maxRetries);
 
-        int i = 0;
-        for (MistralAiModerationResult moderationResult : response.results()) {
+        List<String> texts = moderationRequest.texts();
+        List<MistralAiModerationResult> results = response.results();
+        int flaggedIndex = findFirstFlaggedIndex(results);
 
-            if (isAnyCategoryFlagged(moderationResult.getCategories())) {
-                return ModerationResponse.builder()
-                        .moderation(Moderation.flagged(moderationRequest.texts().get(i)))
-                        .build();
+        Moderation moderation =
+                flaggedIndex >= 0 ? Moderation.flagged(texts.get(flaggedIndex)) : Moderation.notFlagged();
+
+        return ModerationResponse.builder().moderation(moderation).build();
+    }
+
+    private int findFirstFlaggedIndex(List<MistralAiModerationResult> results) {
+        for (int i = 0; i < results.size(); i++) {
+            MistralAiCategories categories = results.get(i).getCategories();
+            if (categories != null && isAnyCategoryFlagged(categories)) {
+                return i;
             }
-            i++;
         }
-
-        return ModerationResponse.builder().moderation(Moderation.notFlagged()).build();
+        return -1;
     }
 
     private boolean isAnyCategoryFlagged(MistralAiCategories categories) {
-        return (categories.getSexual() != null && categories.getSexual())
-                || (categories.getHateAndDiscrimination() != null && categories.getHateAndDiscrimination())
-                || (categories.getViolenceAndThreats() != null && categories.getViolenceAndThreats())
-                || (categories.getDangerousAndCriminalContent() != null && categories.getDangerousAndCriminalContent())
-                || (categories.getSelfHarm() != null && categories.getSelfHarm())
-                || (categories.getHealth() != null && categories.getHealth())
-                || (categories.getLaw() != null && categories.getLaw())
-                || (categories.getPii() != null && categories.getPii());
+        return Boolean.TRUE.equals(categories.getSexual())
+                || Boolean.TRUE.equals(categories.getHateAndDiscrimination())
+                || Boolean.TRUE.equals(categories.getViolenceAndThreats())
+                || Boolean.TRUE.equals(categories.getDangerousAndCriminalContent())
+                || Boolean.TRUE.equals(categories.getSelfHarm())
+                || Boolean.TRUE.equals(categories.getHealth())
+                || Boolean.TRUE.equals(categories.getLaw())
+                || Boolean.TRUE.equals(categories.getPii());
     }
 
     public static Builder builder() {

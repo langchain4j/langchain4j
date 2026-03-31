@@ -4,7 +4,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-aggregator</artifactId>
-    <version>1.13.0-beta22-SNAPSHOT</version>
+    <version>1.13.0-beta23-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>LangChain4j :: Aggregator</name>
 
@@ -124,6 +124,7 @@
 
         <!-- experimental -->
         <module>experimental/langchain4j-experimental-sql</module>
+        <module>experimental/langchain4j-experimental-hibernate</module>
         <module>experimental/langchain4j-experimental-skills-shell</module>
         <module>langchain4j-agentic</module>
         <module>langchain4j-agentic-a2a</module>
@@ -139,12 +140,13 @@
         <module>integration-tests</module>
 
         <!-- internal -->
+        <module>internal/langchain4j-internal-test-retry</module>
         <module>internal/langchain4j-docu-chatbot-updater</module>
     </modules>
 
     <properties>
         <langchain4j.stable.version>1.13.0-SNAPSHOT</langchain4j.stable.version>
-        <langchain4j.beta.version>1.13.0-beta22-SNAPSHOT</langchain4j.beta.version>
+        <langchain4j.beta.version>1.13.0-beta23-SNAPSHOT</langchain4j.beta.version>
         <gib.disable>true</gib.disable>
     </properties>
 

@@ -2,7 +2,6 @@ package dev.langchain4j.agentic;
 
 import static dev.langchain4j.agentic.Models.baseModel;
 import static dev.langchain4j.agentic.Models.plannerModel;
-import static dev.langchain4j.agentic.observability.HtmlReportGenerator.generateReport;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -72,8 +71,6 @@ import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
-import dev.langchain4j.service.memory.ChatMemoryAccess;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -84,6 +81,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -752,6 +750,9 @@ public class DeclarativeAgentIT {
                 responseStrategy = SupervisorResponseStrategy.SUMMARY,
                 subAgents = {WithdrawAgent.class, CreditAgent.class})
         String invoke(@V("request") String request);
+    }
+
+    public interface SupervisorBankerWithPlannerModel extends SupervisorBanker {
 
         @ChatModelSupplier
         static ChatModel chatModel() {
@@ -760,11 +761,23 @@ public class DeclarativeAgentIT {
     }
 
     @Test
-    void declarative_tools_tests() {
+    void declarative_tools_with_default_model_tests() {
+        declarative_tools_tests(false);
+    }
+
+    @Test
+    void declarative_tools_with_planner_model_tests() {
+        declarative_tools_tests(true);
+    }
+
+    private void declarative_tools_tests(boolean usePlannerModel) {
+        bankTool.clearAccounts();
         bankTool.createAccount("Mario", 1000.0);
         bankTool.createAccount("Georgios", 1000.0);
 
-        SupervisorBanker bankSupervisor = AgenticServices.createAgenticSystem(SupervisorBanker.class, baseModel());
+        SupervisorBanker bankSupervisor = usePlannerModel ?
+                AgenticServices.createAgenticSystem(SupervisorBankerWithPlannerModel.class, baseModel()) :
+                AgenticServices.createAgenticSystem(SupervisorBanker.class, baseModel());
         String result = bankSupervisor.invoke("Transfer 100 USD from Mario's account to Georgios' one");
         assertThat(result).isNotBlank().contains("Mario").contains("Georgios");
 

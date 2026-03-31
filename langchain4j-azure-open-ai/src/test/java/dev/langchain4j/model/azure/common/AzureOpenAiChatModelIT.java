@@ -81,4 +81,9 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
     protected void should_accept_multiple_images_as_public_URLs(ChatModel model) {
         // TODO fix
     }
+
+    @Override
+    protected ChatRequestParameters saveTokens(ChatRequestParameters parameters) {
+        return parameters; // Azure OpenAI does not support max_tokens any more, only max_completion_tokens
+    }
 }

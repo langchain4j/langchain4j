@@ -24,8 +24,9 @@ import java.io.IOException;
  *
  * @see <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-script-score-query.html#vector-functions-cosine">vector-functions-cosine</a>
  */
-public class ElasticsearchConfigurationScript extends ElasticsearchConfiguration {
+public class ElasticsearchConfigurationScript implements ElasticsearchConfiguration {
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final boolean includeVectorResponse;
 
     public static class Builder {
         private boolean includeVectorResponse = false;
@@ -55,7 +56,12 @@ public class ElasticsearchConfigurationScript extends ElasticsearchConfiguration
     }
 
     @Override
-    SearchResponse<Document> vectorSearch(
+    public boolean isIncludeVectorResponse() {
+        return includeVectorResponse;
+    }
+
+    @Override
+    public SearchResponse<Document> vectorSearch(
             ElasticsearchClient client, String indexName, EmbeddingSearchRequest embeddingSearchRequest)
             throws ElasticsearchException, IOException {
         ScriptScoreQuery scriptScoreQuery = buildDefaultScriptScoreQuery(
@@ -75,23 +81,6 @@ public class ElasticsearchConfigurationScript extends ElasticsearchConfiguration
                 Document.class);
     }
 
-    @Override
-    SearchResponse<Document> fullTextSearch(
-            final ElasticsearchClient client, final String indexName, final String textQuery)
-            throws ElasticsearchException {
-        throw new UnsupportedOperationException("Script configuration does not support full text search");
-    }
-
-    @Override
-    SearchResponse<Document> hybridSearch(
-            final ElasticsearchClient client,
-            final String indexName,
-            final EmbeddingSearchRequest embeddingSearchRequest,
-            final String textQuery)
-            throws ElasticsearchException {
-        throw new UnsupportedOperationException("Script configuration does not support hybrid search");
-    }
-
     private ScriptScoreQuery buildDefaultScriptScoreQuery(float[] vector, float minScore, Filter filter)
             throws JsonProcessingException {
         JsonData queryVector = toJsonData(vector);
@@ -101,9 +90,11 @@ public class ElasticsearchConfigurationScript extends ElasticsearchConfiguration
         } else {
             query = ElasticsearchMetadataFilterMapper.map(filter);
         }
-        return ScriptScoreQuery.of(q -> q.minScore(minScore).query(query).script(s -> s.source(
-                        "(cosineSimilarity(params.query_vector, 'vector') + 1.0) / 2")
-                .params("query_vector", queryVector)));
+        return ScriptScoreQuery.of(q -> q.minScore(minScore)
+                .query(query)
+                .script(s -> s.source(
+                                sb -> sb.scriptString("(cosineSimilarity(params.query_vector, 'vector') + 1.0) / 2"))
+                        .params("query_vector", queryVector)));
     }
 
     private <T> JsonData toJsonData(T rawData) throws JsonProcessingException {

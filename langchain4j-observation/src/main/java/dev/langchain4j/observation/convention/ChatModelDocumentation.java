@@ -1,4 +1,4 @@
-package convention;
+package dev.langchain4j.observation.convention;
 
 import io.micrometer.common.docs.KeyName;
 import io.micrometer.observation.Observation;

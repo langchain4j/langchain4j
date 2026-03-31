@@ -63,7 +63,7 @@ class MicrosoftFoundryStreamingChatModelIT extends AbstractStreamingChatModelIT 
     @Override
     protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
         return OpenAiOfficialChatRequestParameters.builder()
-                .maxOutputTokens(maxOutputTokens)
+                .maxCompletionTokens(maxOutputTokens)
                 .build();
     }
 
@@ -135,4 +135,12 @@ class MicrosoftFoundryStreamingChatModelIT extends AbstractStreamingChatModelIT 
     @MethodSource("modelsSupportingImageInputs")
     @EnabledIf("supportsMultipleImageInputsAsBase64EncodedStrings")
     protected void should_accept_multiple_images_as_base64_encoded_strings(StreamingChatModel model) {}
+
+    @Disabled("Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.")
+    @Override
+    protected void should_respect_maxOutputTokens_in_default_model_parameters() {}
+
+    @Disabled("Unsupported parameter: 'stop' is not supported with this model.")
+    @Override
+    protected void should_respect_stopSequences_in_default_model_parameters() {}
 }

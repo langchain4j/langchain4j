@@ -1,5 +1,7 @@
 package dev.langchain4j.service.tool;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.Objects;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 
@@ -12,10 +14,14 @@ public class ToolExecution {
 
     private final ToolExecutionRequest request;
     private final ToolExecutionResult result;
+    private final LocalDateTime startTime;
+    private final LocalDateTime finishTime;
 
     private ToolExecution(Builder builder) {
         this.request = ensureNotNull(builder.request, "request");
         this.result = ensureNotNull(builder.result, "result");
+        this.startTime = builder.startTime;
+        this.finishTime = builder.finishTime;
     }
 
     /**
@@ -55,18 +61,44 @@ public class ToolExecution {
         return result.isError();
     }
 
+    /**
+     * Returns the time when the tool execution started, or {@code null} if not recorded.
+     */
+    public LocalDateTime startTime() {
+        return startTime;
+    }
+
+    /**
+     * Returns the time when the tool execution finished, or {@code null} if not recorded.
+     */
+    public LocalDateTime finishTime() {
+        return finishTime;
+    }
+
+    /**
+     * Returns the duration of the tool execution, or {@code null} if timing was not recorded.
+     */
+    public Duration duration() {
+        if (startTime == null || finishTime == null) {
+            return null;
+        }
+        return Duration.between(startTime, finishTime);
+    }
+
     @Override
     public boolean equals(final Object object) {
         if (this == object) return true;
         if (object == null || getClass() != object.getClass()) return false;
         ToolExecution that = (ToolExecution) object;
         return Objects.equals(request, that.request)
-                && Objects.equals(result, that.result);
+                && Objects.equals(result, that.result)
+                && Objects.equals(startTime, that.startTime)
+                && Objects.equals(finishTime, that.finishTime);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(request, result);
+        return Objects.hash(request, result, startTime, finishTime);
     }
 
     @Override
@@ -74,6 +106,8 @@ public class ToolExecution {
         return "ToolExecution{" +
                 "request=" + request +
                 ", result=" + result +
+                ", startTime=" + startTime +
+                ", finishTime=" + finishTime +
                 '}';
     }
 
@@ -85,6 +119,8 @@ public class ToolExecution {
 
         private ToolExecutionRequest request;
         private ToolExecutionResult result;
+        private LocalDateTime startTime;
+        private LocalDateTime finishTime;
 
         private Builder() {
         }
@@ -96,6 +132,16 @@ public class ToolExecution {
 
         public Builder result(ToolExecutionResult result) {
             this.result = result;
+            return this;
+        }
+
+        public Builder startTime(LocalDateTime startTime) {
+            this.startTime = startTime;
+            return this;
+        }
+
+        public Builder finishTime(LocalDateTime finishTime) {
+            this.finishTime = finishTime;
             return this;
         }
 

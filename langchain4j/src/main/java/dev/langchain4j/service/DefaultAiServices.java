@@ -51,6 +51,7 @@ import dev.langchain4j.service.guardrail.GuardrailService;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.service.output.ServiceOutputParser;
+import dev.langchain4j.service.tool.ToolService;
 import dev.langchain4j.service.tool.ToolServiceContext;
 import dev.langchain4j.service.tool.ToolServiceResult;
 import dev.langchain4j.spi.services.TokenStreamAdapter;
@@ -205,6 +206,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                             userMessageForAugmentation = (UserMessage) augmentationResult.chatMessage();
                         }
 
+                        UserMessage userMessage = addContentsToUserMessage(method, args, userMessageForAugmentation);
+
                         var commonGuardrailParam = GuardrailRequestParams.builder()
                                 .chatMemory(chatMemory)
                                 .augmentationResult(augmentationResult)
@@ -214,10 +217,11 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .variables(variables)
                                 .build();
 
-                        UserMessage userMessage = invokeInputGuardrails(
-                                context.guardrailService(), method, userMessageForAugmentation, commonGuardrailParam);
+                        userMessage = invokeInputGuardrails(
+                                context.guardrailService(), method, userMessage, commonGuardrailParam);
 
-                        Type returnType = context.returnType != null ? context.returnType : method.getGenericReturnType();
+                        Type returnType =
+                                context.returnType != null ? context.returnType : method.getGenericReturnType();
                         boolean streaming = returnType == TokenStream.class || canAdaptTokenStreamTo(returnType);
 
                         // TODO should it be called when returnType==String?
@@ -231,8 +235,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                         if ((!supportsJsonSchema || jsonSchema.isEmpty()) && !streaming && !returnsImage) {
                             userMessage = appendOutputFormatInstructions(returnType, userMessage);
                         }
-
-                        userMessage = addContentsToUserMessage(method, args, userMessage);
 
                         List<ChatMessage> messages = new ArrayList<>();
                         if (context.hasChatMemory()) {
@@ -252,14 +254,12 @@ class DefaultAiServices<T> extends AiServices<T> {
                         Future<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
 
                         ToolServiceContext toolServiceContext =
-                                context.toolService.createContext(invocationContext, userMessage, chatMemory);
+                                context.toolService.createContext(invocationContext, userMessage, messages);
 
                         if (streaming) {
                             var tokenStreamParameters = AiServiceTokenStreamParameters.builder()
                                     .messages(messages)
-                                    .effectiveTools(toolServiceContext.effectiveTools())
-                                    .availableTools(toolServiceContext.availableTools())
-                                    .toolExecutors(toolServiceContext.toolExecutors())
+                                    .toolServiceContext(toolServiceContext)
                                     .toolArgumentsErrorHandler(context.toolService.argumentsErrorHandler())
                                     .toolExecutionErrorHandler(context.toolService.executionErrorHandler())
                                     .toolExecutor(context.toolService.executor())
@@ -607,8 +607,10 @@ class DefaultAiServices<T> extends AiServices<T> {
             return "";
         }
 
-        return context.userMessageProvider.apply(memoryId)
-                .orElseThrow(() -> illegalConfiguration("Error: The method '%s' does not have a user message defined.", method.getName()));
+        return context.userMessageProvider
+                .apply(memoryId)
+                .orElseThrow(() -> illegalConfiguration(
+                        "Error: The method '%s' does not have a user message defined.", method.getName()));
     }
 
     private static boolean hasContentArgument(Method method, Object[] args) {
@@ -728,12 +730,14 @@ class DefaultAiServices<T> extends AiServices<T> {
             prependTextContentsToUserMessage(userMessage, contents);
         }
 
-        return userMessage.contents().size() == contents.size() ? userMessage : userMessage.toBuilder().contents(contents).build();
+        return userMessage.contents().size() == contents.size()
+                ? userMessage
+                : userMessage.toBuilder().contents(contents).build();
     }
 
     private static void prependTextContentsToUserMessage(UserMessage userMessage, List<Content> contents) {
         List<Content> originalContent = userMessage.contents();
-        for (int i = originalContent.size()-1; i >= 0; i--) {
+        for (int i = originalContent.size() - 1; i >= 0; i--) {
             if (originalContent.get(i) instanceof TextContent textContent) {
                 contents.add(0, textContent);
             }
@@ -741,7 +745,7 @@ class DefaultAiServices<T> extends AiServices<T> {
     }
 
     private static boolean isMapOfContents(Object o) {
-        return o instanceof Map<?,?> map && map.values().stream().allMatch(Content.class::isInstance);
+        return o instanceof Map<?, ?> map && map.values().stream().allMatch(Content.class::isInstance);
     }
 
     private static boolean isListOfContents(Object o) {

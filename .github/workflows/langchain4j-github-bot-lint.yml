@@ -13,7 +13,7 @@ jobs:
     name: "langchain4j-github-bot.yml validation"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: install yamllint
         shell: bash
         run: sudo apt-get install -y yamllint

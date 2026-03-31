@@ -10,13 +10,17 @@ import dev.langchain4j.agentic.observability.MonitoredAgent;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
-import dev.langchain4j.agentic.internal.UserMessageRecorder;
 import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.invocation.LangChain4jManaged;
+import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
+import dev.langchain4j.observability.api.listener.AiServiceListener;
+import dev.langchain4j.observability.api.listener.AiServiceResponseReceivedListener;
 import dev.langchain4j.service.AiServiceContext;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import dev.langchain4j.service.memory.ChatMemoryService;
@@ -24,7 +28,11 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.listenerOfType;
@@ -34,32 +42,55 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
     private final AiServiceContext context;
     private final AgentBuilder<?, ?> builder;
     private final Object agent;
-    private final UserMessageRecorder messageRecorder;
     private final boolean agenticScopeDependent;
     private String agentId;
     private InternalAgent parent;
     private AgentListener agentListener;
 
+    private final Map<Object, AiServiceResponseReceivedEvent> lastResponseEvents = new ConcurrentHashMap<>();
+
     AgentInvocationHandler(
             AiServiceContext context,
             Object agent,
             AgentBuilder<?, ?> builder,
-            UserMessageRecorder messageRecorder,
             boolean agenticScopeDependent) {
         this.context = context;
         this.agent = agent;
         this.builder = builder;
         this.agentId = builder.name;
-        this.messageRecorder = messageRecorder;
         this.agenticScopeDependent = agenticScopeDependent;
         this.agentListener = builder.agentListener;
     }
 
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Exception {
-        if (method.getDeclaringClass() == ChatMessagesAccess.class) {
+        if (method.getDeclaringClass() == AiServiceListener.class || method.getDeclaringClass() == AiServiceResponseReceivedListener.class) {
             return switch (method.getName()) {
-                case "lastUserMessage" -> messageRecorder.lastUserMessage();
+                case "getEventClass" -> AiServiceResponseReceivedEvent.class;
+                case "onEvent" -> {
+                    Object agenticScopeId = ((AgenticScope) LangChain4jManaged.current().get(AgenticScope.class)).memoryId();
+                    lastResponseEvents.put(agenticScopeId, (AiServiceResponseReceivedEvent) args[0]);
+                    yield null;
+                }
+                default ->
+                        throw new UnsupportedOperationException(
+                                "Unknown method on AiServiceResponseReceivedListener class : " + method.getName());
+            };
+        }
+
+        if (method.getDeclaringClass() == ChatMessagesAccess.class) {
+            if ("removeLastResponseEvent".equals(method.getName())) {
+                lastResponseEvents.remove(args[0]);
+                return null;
+            }
+            AiServiceResponseReceivedEvent lastResponseEvent = lastResponseEvents.get(args[0]);
+            if (lastResponseEvent == null) {
+                return null;
+            }
+            return switch (method.getName()) {
+                case "lastUserMessage" -> lastUserMessage(lastResponseEvent.request().messages()).orElse(null);
+                case "lastChatRequest" -> lastResponseEvent.request();
+                case "lastChatResponse" -> lastResponseEvent.response();
                 default ->
                     throw new UnsupportedOperationException(
                             "Unknown method on AgenticScopeOwner class : " + method.getName());
@@ -120,6 +151,14 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
         }
 
         return method.invoke(agent, args);
+    }
+
+    private static Optional<UserMessage> lastUserMessage(Collection<ChatMessage> messages) {
+        // TODO replace with UserMessage.findLast(messages)
+        return messages.stream()
+                .filter(UserMessage.class::isInstance)
+                .map(UserMessage.class::cast)
+                .reduce((first, second) -> second);
     }
 
     @Override
