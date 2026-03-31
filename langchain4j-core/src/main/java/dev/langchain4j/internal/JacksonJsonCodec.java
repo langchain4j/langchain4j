@@ -2,6 +2,8 @@ package dev.langchain4j.internal;
 
 import static com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY;
 import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
+import static com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
+import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_TIME;
@@ -127,6 +129,7 @@ class JacksonJsonCodec implements Json.JsonCodec {
         // to prevent issues caused by LLM hallucinations
         return JsonMapper.builder()
                 .visibility(FIELD, ANY)
+                .disable(INDENT_OUTPUT) // disabled on purpose, to save tokens when sending tool results to LLM
                 .enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS)
                 .build()
                 .findAndRegisterModules()
