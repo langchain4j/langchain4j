@@ -89,14 +89,16 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
                 .ifPresent(l -> l.fireEvent(event));
 
         // Test features
-        
+        UUID InvocationID = event.invocationContext().invocationId();
+
         if (event.eventClass() == AiServiceStartedEvent.class){
-            UUID startID = event.invocationContext().invocationId();
-            InvocationState state = AiServiceInteractionEvent.computeIfAbsent(startID, id -> new InvocationState());
+            InvocationState state = AiServiceInteractionEvent.computeIfAbsent(InvocationID, id -> new InvocationState());
+            state.add(event);
         }
         else{
-            // Future Event Handling: events that are not start events
-        }
+            InvocationState state = AiServiceInteractionEvent.get(InvocationID);
+            state.add(event);
+            }
 
         
     }
