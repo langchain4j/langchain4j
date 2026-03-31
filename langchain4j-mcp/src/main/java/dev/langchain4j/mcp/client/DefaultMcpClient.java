@@ -55,6 +55,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -478,64 +480,34 @@ public class DefaultMcpClient implements McpClient {
     }
 
     private synchronized void obtainToolList(InvocationContext invocationContext) {
-        McpListToolsRequest operation = new McpListToolsRequest(idGenerator.getAndIncrement());
-        McpCallContext context = new McpCallContext(invocationContext, operation);
-        applyMeta(operation, context);
-        CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(context);
-        JsonNode result = null;
-        try {
-            result = resultFuture.get();
-        } catch (InterruptedException | ExecutionException e) {
-            throw new RuntimeException(e);
-        } finally {
-            pendingOperations.remove(operation.getId());
-        }
-
-        final List<ToolSpecification> toolList = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(
-                (ArrayNode) result.get("result").get("tools"));
-        toolListRefs.set(toolList);
+        toolListRefs.set(fetchPaginatedList(
+                (id, cursor) -> new McpListToolsRequest(id, cursor),
+                toolExecutionTimeout,
+                invocationContext,
+                result -> ToolSpecificationHelper.toolSpecificationListFromMcpResponse(
+                        (ArrayNode) result.get("result").get("tools"))));
     }
 
     private synchronized void obtainResourceList(InvocationContext invocationContext) {
         if (resourceRefs.get() != null) {
             return;
         }
-        McpListResourcesRequest operation = new McpListResourcesRequest(idGenerator.getAndIncrement());
-        McpCallContext context = new McpCallContext(invocationContext, operation);
-        applyMeta(operation, context);
-        long timeoutMillis = resourcesTimeout.toMillis() == 0 ? Integer.MAX_VALUE : resourcesTimeout.toMillis();
-        JsonNode result = null;
-        CompletableFuture<JsonNode> resultFuture = null;
-        try {
-            resultFuture = transport.executeOperationWithResponse(context);
-            result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
-            resourceRefs.set(ResourcesHelper.parseResourceRefs(result));
-        } catch (ExecutionException | InterruptedException | TimeoutException e) {
-            throw new RuntimeException(e);
-        } finally {
-            pendingOperations.remove(operation.getId());
-        }
+        resourceRefs.set(fetchPaginatedList(
+                (id, cursor) -> new McpListResourcesRequest(id, cursor),
+                resourcesTimeout,
+                invocationContext,
+                ResourcesHelper::parseResourceRefs));
     }
 
     private synchronized void obtainResourceTemplateList(InvocationContext invocationContext) {
         if (resourceTemplateRefs.get() != null) {
             return;
         }
-        McpListResourceTemplatesRequest operation = new McpListResourceTemplatesRequest(idGenerator.getAndIncrement());
-        McpCallContext context = new McpCallContext(invocationContext, operation);
-        applyMeta(operation, context);
-        long timeoutMillis = toolExecutionTimeout.toMillis() == 0 ? Integer.MAX_VALUE : toolExecutionTimeout.toMillis();
-        JsonNode result = null;
-        CompletableFuture<JsonNode> resultFuture = null;
-        try {
-            resultFuture = transport.executeOperationWithResponse(context);
-            result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
-            resourceTemplateRefs.set(ResourcesHelper.parseResourceTemplateRefs(result));
-        } catch (ExecutionException | InterruptedException | TimeoutException e) {
-            throw new RuntimeException(e);
-        } finally {
-            pendingOperations.remove(operation.getId());
-        }
+        resourceTemplateRefs.set(fetchPaginatedList(
+                (id, cursor) -> new McpListResourceTemplatesRequest(id, cursor),
+                resourcesTimeout,
+                invocationContext,
+                ResourcesHelper::parseResourceTemplateRefs));
     }
 
     private void startAutoHealthCheck() {
@@ -573,20 +545,49 @@ public class DefaultMcpClient implements McpClient {
         if (promptRefs.get() != null) {
             return;
         }
-        McpListPromptsRequest operation = new McpListPromptsRequest(idGenerator.getAndIncrement());
-        applyMeta(operation, null);
-        long timeoutMillis = promptsTimeout.toMillis() == 0 ? Integer.MAX_VALUE : promptsTimeout.toMillis();
-        JsonNode result = null;
-        CompletableFuture<JsonNode> resultFuture = null;
-        try {
-            resultFuture = transport.executeOperationWithResponse(operation);
-            result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
-            promptRefs.set(PromptsHelper.parsePromptRefs(result));
-        } catch (ExecutionException | InterruptedException | TimeoutException e) {
-            throw new RuntimeException(e);
-        } finally {
-            pendingOperations.remove(operation.getId());
+        promptRefs.set(fetchPaginatedList(
+                (id, cursor) -> new McpListPromptsRequest(id, cursor),
+                promptsTimeout,
+                null,
+                PromptsHelper::parsePromptRefs));
+    }
+
+    private <T> List<T> fetchPaginatedList(
+            BiFunction<Long, String, McpClientRequest> requestFactory,
+            Duration timeout,
+            InvocationContext invocationContext,
+            Function<JsonNode, List<T>> resultParser) {
+        long timeoutMillis = timeout.toMillis() == 0 ? Integer.MAX_VALUE : timeout.toMillis();
+        List<T> allItems = new ArrayList<>();
+        String cursor = null;
+        do {
+            McpClientRequest operation = requestFactory.apply(idGenerator.getAndIncrement(), cursor);
+            McpCallContext context = new McpCallContext(invocationContext, operation);
+            applyMeta(operation, context);
+            JsonNode result;
+            try {
+                CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(context);
+                result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
+            } catch (ExecutionException | InterruptedException | TimeoutException e) {
+                throw new RuntimeException(e);
+            } finally {
+                pendingOperations.remove(operation.getId());
+            }
+            allItems.addAll(resultParser.apply(result));
+            cursor = getNextCursor(result);
+        } while (cursor != null);
+        return allItems;
+    }
+
+    private static String getNextCursor(JsonNode response) {
+        JsonNode resultNode = response.get("result");
+        if (resultNode != null && resultNode.has("nextCursor")) {
+            String nextCursor = resultNode.get("nextCursor").asText();
+            if (!nextCursor.isEmpty()) {
+                return nextCursor;
+            }
         }
+        return null;
     }
 
     @Override

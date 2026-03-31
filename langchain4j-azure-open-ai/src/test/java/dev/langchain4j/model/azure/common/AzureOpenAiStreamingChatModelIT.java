@@ -131,6 +131,11 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
         io.verify(handler).onCompleteToolCall(complete(1, id2, "getTime", "{\"country\": \"France\"}"));
     }
 
+    @Override
+    protected ChatRequestParameters saveTokens(ChatRequestParameters parameters) {
+        return parameters; // Azure OpenAI does not support max_tokens any more, only max_completion_tokens
+    }
+
     @AfterEach
     void afterEach() throws InterruptedException {
         String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_AZURE_OPENAI");
