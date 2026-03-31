@@ -199,7 +199,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
 
         Planner planner = plannerSupplier.get();
         planner.init(new InitPlanningContext(currentScope, this, subagents));
-        Object result = new PlannerLoop(planner, currentScope).loop();
+        Object result = new PlannerLoop(planner, currentScope, registry).loop();
         Object output = outputKey != null ? currentScope.readState(outputKey) : result;
 
         if (isRootCall()) {
@@ -338,17 +338,27 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
     }
 
     private class PlannerLoop implements PlannerExecutor {
+        static final String EXECUTION_STATE_PREFIX = "__planner_state_";
+
         private final Planner planner;
         private final DefaultAgenticScope agenticScope;
+        private final AgenticScopeRegistry registry;
 
         private Action nextAction = null;
 
-        private PlannerLoop(Planner planner, DefaultAgenticScope agenticScope) {
+        private PlannerLoop(Planner planner, DefaultAgenticScope agenticScope, AgenticScopeRegistry registry) {
             this.planner = planner;
             this.agenticScope = agenticScope;
+            this.registry = registry;
         }
 
+        @SuppressWarnings("unchecked")
         public Object loop() {
+            Map<String, Object> savedState = agenticScope.readState(executionStateId(), Map.of());
+            if (!savedState.isEmpty()) {
+                planner.restoreExecutionState(savedState);
+            }
+
             nextAction = planner.firstAction(new PlanningContext(agenticScope, null));
             while (nextAction == null || !nextAction.isDone()) {
                 if (nextAction == null) {
@@ -363,7 +373,15 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
                     default -> parallelExecution(agents);
                 }
             }
+
+            // Clear execution state when planner is done
+            agenticScope.writeState(executionStateId(), null);
+
             return result();
+        }
+
+        private String executionStateId() {
+            return EXECUTION_STATE_PREFIX + agentId();
         }
 
         private void parallelExecution(List<AgentExecutor> agents) {
@@ -399,6 +417,16 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
         @Override
         public void onSubagentInvoked(AgentInvocation agentInvocation) {
             this.nextAction = composeActions(this.nextAction, planner.nextAction(new PlanningContext(agenticScope, agentInvocation)));
+
+            // Save planner execution state after each agent invocation
+            Map<String, Object> execState = planner.executionState();
+            if (!execState.isEmpty()) {
+                agenticScope.writeState(executionStateId(), execState);
+            }
+
+            if (registry != null) {
+                agenticScope.checkpoint(registry);
+            }
         }
 
         @Override
