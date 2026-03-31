@@ -71,8 +71,8 @@ public class AnthropicModelCatalog implements ModelCatalog {
         if (modelInfo.maxInputTokens != null) {
             builder.maxInputTokens(modelInfo.maxInputTokens);
         }
-        if (modelInfo.maxTokens != null) {
-            builder.maxOutputTokens(modelInfo.maxTokens);
+        if (modelInfo.maxOutputTokens != null) {
+            builder.maxOutputTokens(modelInfo.maxOutputTokens);
         }
 
         return builder.build();
