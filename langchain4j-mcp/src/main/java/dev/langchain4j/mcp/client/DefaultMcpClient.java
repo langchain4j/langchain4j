@@ -31,6 +31,7 @@ import dev.langchain4j.mcp.protocol.McpGetPromptRequest;
 import dev.langchain4j.mcp.protocol.McpImplementation;
 import dev.langchain4j.mcp.protocol.McpInitializeParams;
 import dev.langchain4j.mcp.protocol.McpInitializeRequest;
+import dev.langchain4j.mcp.protocol.McpInitializeResult;
 import dev.langchain4j.mcp.protocol.McpListPromptsRequest;
 import dev.langchain4j.mcp.protocol.McpListResourceTemplatesRequest;
 import dev.langchain4j.mcp.protocol.McpListResourcesRequest;
@@ -43,6 +44,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -90,6 +92,7 @@ public class DefaultMcpClient implements McpClient {
     private final AtomicReference<List<ToolSpecification>> toolListRefs = new AtomicReference<>();
     private final AtomicBoolean toolListOutOfDate = new AtomicBoolean(true);
     private final AtomicReference<CompletableFuture<Void>> toolListUpdateInProgress = new AtomicReference<>(null);
+    private final AtomicReference<McpInitializeResult> initializeResultRef = new AtomicReference<>();
     private final Duration reconnectInterval;
     private volatile boolean closed = false;
     private final Boolean autoHealthCheck;
@@ -177,12 +180,50 @@ public class DefaultMcpClient implements McpClient {
         try {
             JsonNode capabilities =
                     transport.initialize(request).get(initializationTimeout.toMillis(), TimeUnit.MILLISECONDS);
+
+            setServerCapabilities(capabilities);
+
             log.debug("MCP server capabilities: {}", capabilities.get("result"));
         } catch (Exception e) {
             throw new RuntimeException(e);
         } finally {
             pendingOperations.remove(operationId);
         }
+    }
+
+    private void setServerCapabilities(JsonNode capabilities) {
+        try {
+            // Convert JsonNode -> McpInitializeResult
+            McpInitializeResult initializeResult = OBJECT_MAPPER.treeToValue(capabilities, McpInitializeResult.class);
+
+            // Persist it
+            initializeResultRef.set(initializeResult);
+        } catch (Exception e) {
+            log.error("Failed to extract MCP capabilities", e);
+        }
+    }
+
+    public McpInitializeResult.Capabilities getServerCapabilities() {
+        McpInitializeResult result = initializeResultRef.get();
+        return result != null ? result.getResult().getCapabilities() : null;
+    }
+
+    public boolean supportsTools() {
+        return Optional.ofNullable(getServerCapabilities())
+                .map(McpInitializeResult.Capabilities::getTools)
+                .isPresent();
+    }
+
+    public boolean supportsPrompts() {
+        return Optional.ofNullable(getServerCapabilities())
+                .map(McpInitializeResult.Capabilities::getPrompts)
+                .isPresent();
+    }
+
+    public boolean supportsResources() {
+        return Optional.ofNullable(getServerCapabilities())
+                .map(McpInitializeResult.Capabilities::getResources)
+                .isPresent();
     }
 
     private McpInitializeParams createInitializeParams() {

@@ -189,8 +189,8 @@ class McpProtocolSerializationTest {
     void should_serialize_initialize_result_with_server_info() throws Exception {
         // given
         McpImplementation serverInfo = new McpImplementation("server", "1.0", "Server Title");
-        McpInitializeResult.Capabilities.Tools tools = new McpInitializeResult.Capabilities.Tools(true);
-        McpInitializeResult.Capabilities capabilities = new McpInitializeResult.Capabilities(tools);
+        McpInitializeResult.Capabilities capabilities =
+                McpInitializeResult.Capabilities.builder().tools(true).build();
         McpInitializeResult.Result result = new McpInitializeResult.Result("2025-06-18", capabilities, serverInfo);
         McpInitializeResult response = new McpInitializeResult(1L, result);
 
@@ -210,5 +210,96 @@ class McpProtocolSerializationTest {
                         .get("listChanged")
                         .asBoolean())
                 .isTrue();
+    }
+
+    @Test
+    void should_deserialize_initialize_result_with_full_capabilities_json() throws Exception {
+
+        // given
+        String jsonString =
+                """
+            {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "result": {
+                "protocolVersion": "2025-11-25",
+                "capabilities": {
+                  "logging": {},
+                  "prompts": {
+                    "listChanged": true
+                  },
+                  "resources": {
+                    "subscribe": true,
+                    "listChanged": true
+                  },
+                  "tools": {
+                    "listChanged": true
+                  },
+                  "tasks": {
+                    "list": {},
+                    "cancel": {},
+                    "requests": {
+                      "tools": {
+                        "call": {}
+                      }
+                    }
+                  }
+                },
+                "serverInfo": {
+                  "name": "ExampleServer",
+                  "title": "Example Server Display Name",
+                  "version": "1.0.0",
+                  "description": "An example MCP server providing tools and resources",
+                  "icons": [
+                    {
+                      "src": "https://example.com/server-icon.svg",
+                      "mimeType": "image/svg+xml",
+                      "sizes": ["any"]
+                    }
+                  ],
+                  "websiteUrl": "https://example.com/server"
+                },
+                "instructions": "Optional instructions for the client"
+              }
+            }
+            """;
+
+        // when
+        McpInitializeResult response = OBJECT_MAPPER.readValue(jsonString, McpInitializeResult.class);
+
+        // then
+        assertThat(response).isNotNull();
+        assertThat(response.getId()).isEqualTo(1L);
+
+        McpInitializeResult.Result result = response.getResult();
+        assertThat(result).isNotNull();
+        assertThat(result.getProtocolVersion()).isEqualTo("2025-11-25");
+
+        // ---- capabilities ----
+        McpInitializeResult.Capabilities capabilities = result.getCapabilities();
+        assertThat(capabilities).isNotNull();
+
+        // logging (marker object)
+        assertThat(capabilities.getLogging()).isNotNull();
+
+        // prompts
+        assertThat(capabilities.getPrompts()).isNotNull();
+        assertThat(capabilities.getPrompts().getListChanged()).isTrue();
+
+        // resources
+        assertThat(capabilities.getResources()).isNotNull();
+        assertThat(capabilities.getResources().getSubscribe()).isTrue();
+        assertThat(capabilities.getResources().getListChanged()).isTrue();
+
+        // tools
+        assertThat(capabilities.getTools()).isNotNull();
+        assertThat(capabilities.getTools().getListChanged()).isTrue();
+
+        // ---- server info ----
+        McpImplementation serverInfo = result.getServerInfo();
+        assertThat(serverInfo).isNotNull();
+        assertThat(serverInfo.getName()).isEqualTo("ExampleServer");
+        assertThat(serverInfo.getVersion()).isEqualTo("1.0.0");
+        assertThat(serverInfo.getTitle()).isEqualTo("Example Server Display Name");
     }
 }
