@@ -3,6 +3,7 @@ package dev.langchain4j.internal;
 import static com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY;
 import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
 import static com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
+import static com.fasterxml.jackson.databind.MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS;
 import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
@@ -14,7 +15,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.json.JsonMapper;
@@ -125,12 +125,11 @@ class JacksonJsonCodec implements Json.JsonCodec {
             }
         });
 
-        // FAIL_ON_UNKNOWN_PROPERTIES is enabled by default
-        // to prevent issues caused by LLM hallucinations
         return JsonMapper.builder()
                 .visibility(FIELD, ANY)
-                .disable(INDENT_OUTPUT) // disabled on purpose, to save tokens when sending tool results to LLM
-                .enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS)
+                .disable(INDENT_OUTPUT) // disabled on purpose to save tokens when sending tool results to LLM
+                .enable(FAIL_ON_UNKNOWN_PROPERTIES) // enabled on purpose to prevent issues caused by LLM hallucinations
+                .enable(ACCEPT_CASE_INSENSITIVE_ENUMS)
                 .build()
                 .findAndRegisterModules()
                 .registerModule(module);
