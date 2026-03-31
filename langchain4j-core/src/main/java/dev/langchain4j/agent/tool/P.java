@@ -20,6 +20,12 @@ public @interface P {
     String value();
 
     /**
+     * Name of a parameter
+     * @return the name of a parameter
+     */
+    String name() default "";
+
+    /**
      * Whether the parameter is required
      * @return true if the parameter is required, false otherwise
      * Default is true.
