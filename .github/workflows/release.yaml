@@ -150,6 +150,8 @@ jobs:
             {
               "stableVersion": "${{ env.STABLE_VERSION }}",
               "betaVersion": "${{ env.BETA_VERSION }}"
+              "betaVersion": "${{ env.BETA_VERSION }}",
+              "branch": "${{ env.BRANCH }}"
             }
 
       - name: Publish Test Report
