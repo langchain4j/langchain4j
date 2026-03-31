@@ -77,6 +77,7 @@
         <module>langchain4j-infinispan</module>
         <module>langchain4j-mariadb</module>
         <module>langchain4j-milvus</module>
+        <module>langchain4j-mongodb</module>
         <module>langchain4j-mongodb-atlas</module>
         <module>langchain4j-oracle</module>
         <module>langchain4j-opensearch</module>
