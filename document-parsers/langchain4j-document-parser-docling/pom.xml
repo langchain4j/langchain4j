@@ -14,6 +14,11 @@
     <artifactId>langchain4j-document-parser-docling</artifactId>
     <name>LangChain4j :: Document Parser :: Docling</name>
 
+    <properties>
+        <!-- docling-serve-client brings in conflicting Jackson transitive versions -->
+        <enforcer.skipRules>dependencyConvergence,requireUpperBoundDeps</enforcer.skipRules>
+    </properties>
+
     <dependencies>
         <!-- LangChain4j Core -->
         <dependency>
@@ -28,7 +33,7 @@
             <artifactId>docling-serve-client</artifactId>
             <version>0.1.5</version>
         </dependency>
-        
+
         <dependency>
             <groupId>ai.docling</groupId>
             <artifactId>docling-serve-api</artifactId>
@@ -41,13 +46,13 @@
             <artifactId>junit-jupiter-engine</artifactId>
             <scope>test</scope>
         </dependency>
-        
+
         <dependency>
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
             <scope>test</scope>
         </dependency>
-        
+
         <!-- Docling Testcontainers for integration testing -->
         <dependency>
             <groupId>ai.docling</groupId>
