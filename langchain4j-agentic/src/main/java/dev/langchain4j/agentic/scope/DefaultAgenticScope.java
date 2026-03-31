@@ -7,6 +7,7 @@ import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.internal.DelayedResponse;
+import dev.langchain4j.agentic.internal.PendingResponse;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.data.message.AiMessage;
@@ -22,11 +23,13 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import static dev.langchain4j.agentic.internal.AgentUtil.keyDefaultValue;
 import static dev.langchain4j.agentic.internal.AgentUtil.keyName;
@@ -295,5 +298,39 @@ public class DefaultAgenticScope implements AgenticScope {
 
     public ErrorRecoveryResult handleError(String agentName, AgentInvocationException exception) {
         return errorHandler.apply(new ErrorContext(agentName, this, exception));
+    }
+
+    /**
+     * Checkpoints the current state of this scope by persisting it to the store.
+     * This is a no-op for non-persistent scopes. For persistent scopes, it acquires
+     * the write lock and flushes the current state to the store.
+     *
+     * @param registry the registry managing this scope's persistence
+     */
+    public void checkpoint(AgenticScopeRegistry registry) {
+        if (kind == Kind.PERSISTENT) {
+            flush(registry);
+        }
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public boolean completePendingResponse(String responseId, Object value) {
+        for (Object stateValue : state.values()) {
+            if (stateValue instanceof PendingResponse<?> pending && pending.responseId().equals(responseId)) {
+                return ((PendingResponse<Object>) pending).complete(value);
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public Set<String> pendingResponseIds() {
+        return state.values().stream()
+                .filter(PendingResponse.class::isInstance)
+                .map(PendingResponse.class::cast)
+                .filter(p -> !p.isDone())
+                .map(PendingResponse::responseId)
+                .collect(Collectors.toSet());
     }
 }

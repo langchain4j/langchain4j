@@ -51,12 +51,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -88,8 +88,14 @@ public class DefaultMcpClient implements McpClient {
     private final AtomicReference<List<McpResourceTemplate>> resourceTemplateRefs = new AtomicReference<>();
     private final AtomicReference<List<McpPrompt>> promptRefs = new AtomicReference<>();
     private final AtomicReference<List<ToolSpecification>> toolListRefs = new AtomicReference<>();
-    private final AtomicBoolean toolListOutOfDate = new AtomicBoolean(true);
-    private final AtomicReference<CompletableFuture<Void>> toolListUpdateInProgress = new AtomicReference<>(null);
+    private final AtomicReference<CompletableFuture<List<ToolSpecification>>> toolListUpdateInProgress =
+            new AtomicReference<>(null);
+    private final AtomicReference<CompletableFuture<List<McpResource>>> resourceListUpdateInProgress =
+            new AtomicReference<>(null);
+    private final AtomicReference<CompletableFuture<List<McpResourceTemplate>>> resourceTemplateListUpdateInProgress =
+            new AtomicReference<>(null);
+    private final AtomicReference<CompletableFuture<List<McpPrompt>>> promptListUpdateInProgress =
+            new AtomicReference<>(null);
     private final Duration reconnectInterval;
     private volatile boolean closed = false;
     private final Boolean autoHealthCheck;
@@ -98,6 +104,8 @@ public class DefaultMcpClient implements McpClient {
     private final ReentrantLock initializationLock = new ReentrantLock();
     private final AtomicReference<List<McpRoot>> mcpRoots;
     private final Boolean cacheToolList;
+    private final Boolean cacheResourceList;
+    private final Boolean cachePromptList;
     private final McpClientListener listener;
     private final McpMetaSupplier metaSupplier;
 
@@ -131,13 +139,20 @@ public class DefaultMcpClient implements McpClient {
                     getOrDefault(builder.toolExecutionTimeoutErrorMessage, "There was a timeout executing the tool");
             mcpRoots = new AtomicReference<>(getOrDefault(builder.roots, new ArrayList<>()));
             cacheToolList = getOrDefault(builder.cacheToolList, Boolean.TRUE);
+            cacheResourceList = getOrDefault(builder.cacheResourceList, Boolean.TRUE);
+            cachePromptList = getOrDefault(builder.cachePromptList, Boolean.TRUE);
             RESULT_TIMEOUT = JsonNodeFactory.instance.objectNode();
             messageHandler = new McpOperationHandler(
                     pendingOperations,
                     mcpRoots::get,
                     transport,
                     logHandler::handleLogMessage,
-                    () -> toolListOutOfDate.set(true),
+                    () -> toolListRefs.set(null),
+                    () -> {
+                        resourceRefs.set(null);
+                        resourceTemplateRefs.set(null);
+                    },
+                    () -> promptRefs.set(null),
                     progressHandler);
             ((ObjectNode) RESULT_TIMEOUT)
                     .putObject("result")
@@ -216,32 +231,12 @@ public class DefaultMcpClient implements McpClient {
     @Override
     public List<ToolSpecification> listTools(InvocationContext invocationContext) {
         assertNotClosed();
-        if (isToolListRefreshNeeded()) {
-            CompletableFuture<Void> updateInProgress = this.toolListUpdateInProgress.get();
-            if (updateInProgress != null) {
-                // if an update is already in progress, wait for it to finish
-                updateInProgress.join();
-                return toolListRefs.get();
-            } else {
-                // if no update is in progress, start one
-                CompletableFuture<Void> update = new CompletableFuture<>();
-                this.toolListUpdateInProgress.set(update);
-                try {
-                    obtainToolList(invocationContext);
-                } finally {
-                    update.complete(null);
-                    toolListOutOfDate.set(false);
-                    toolListUpdateInProgress.set(null);
-                }
-                return toolListRefs.get();
-            }
-        } else {
-            return toolListRefs.get();
-        }
-    }
-
-    private boolean isToolListRefreshNeeded() {
-        return Boolean.FALSE.equals(cacheToolList) || toolListOutOfDate.get();
+        return retrieveWithPossibleCaching(
+                cacheToolList,
+                this::obtainToolList,
+                toolListUpdateInProgress,
+                () -> toolListRefs.get(),
+                invocationContext);
     }
 
     /**
@@ -250,7 +245,7 @@ public class DefaultMcpClient implements McpClient {
      * from the MCP server.
      */
     public void evictToolListCache() {
-        toolListOutOfDate.set(true);
+        toolListRefs.set(null);
     }
 
     @Override
@@ -339,10 +334,12 @@ public class DefaultMcpClient implements McpClient {
     @Override
     public List<McpResource> listResources(InvocationContext invocationContext) {
         assertNotClosed();
-        if (resourceRefs.get() == null) {
-            obtainResourceList(invocationContext);
-        }
-        return resourceRefs.get();
+        return retrieveWithPossibleCaching(
+                cacheToolList,
+                this::obtainResourceList,
+                resourceListUpdateInProgress,
+                () -> resourceRefs.get(),
+                invocationContext);
     }
 
     @Override
@@ -393,10 +390,8 @@ public class DefaultMcpClient implements McpClient {
     @Override
     public List<McpPrompt> listPrompts() {
         assertNotClosed();
-        if (promptRefs.get() == null) {
-            obtainPromptList();
-        }
-        return promptRefs.get();
+        return retrieveWithPossibleCaching(
+                cachePromptList, this::obtainPromptList, promptListUpdateInProgress, () -> promptRefs.get(), null);
     }
 
     @Override
@@ -473,41 +468,98 @@ public class DefaultMcpClient implements McpClient {
     @Override
     public List<McpResourceTemplate> listResourceTemplates(InvocationContext invocationContext) {
         assertNotClosed();
-        if (resourceTemplateRefs.get() == null) {
-            obtainResourceTemplateList(invocationContext);
-        }
-        return resourceTemplateRefs.get();
+        return retrieveWithPossibleCaching(
+                cacheResourceList,
+                this::obtainResourceTemplateList,
+                resourceTemplateListUpdateInProgress,
+                () -> resourceTemplateRefs.get(),
+                invocationContext);
     }
 
-    private synchronized void obtainToolList(InvocationContext invocationContext) {
-        toolListRefs.set(fetchPaginatedList(
+    /**
+     * Retrieves a value from the server (in this case, a list of tools/resources/prompts) taking
+     * a cache into account, if configured to use one. If the cache was invalidated and an update is needed,
+     * it launches a CompletableFuture that represents a running update so that we avoid
+     * updating multiple times concurrently. If an update is already running, this method
+     * will, instead of starting a new update, join on the existing update and return its result when available.
+     */
+    private <T> T retrieveWithPossibleCaching(
+            boolean useCache,
+            Function<InvocationContext, T> retriever,
+            AtomicReference<CompletableFuture<T>> updateInProgressReference,
+            Supplier<T> cachedReferenceSupplier,
+            InvocationContext invocationContext) {
+        if (useCache) {
+            T cachedValue = cachedReferenceSupplier.get();
+            if (cachedValue != null) {
+                // if there is a value in the cache, just return it
+                return cachedValue;
+            } else {
+                // we need to fetch a new value from the server
+                CompletableFuture<T> newUpdate = new CompletableFuture<>();
+                CompletableFuture<T> updateInProgress = updateInProgressReference.compareAndExchange(null, newUpdate);
+                if (updateInProgress == null) {
+                    // if no update is in progress, start one and retrieve a fresh value
+                    try {
+                        T result = retriever.apply(invocationContext);
+                        newUpdate.complete(result);
+                        return result;
+                    } catch (RuntimeException e) {
+                        newUpdate.completeExceptionally(e);
+                        throw e;
+                    } finally {
+                        updateInProgressReference.set(null);
+                    }
+                } else {
+                    // if an update is already in progress, wait for it to finish and return its result
+                    return updateInProgress.join();
+                }
+            }
+        } else {
+            // if not using cache, always fetch a fresh value
+            return retriever.apply(invocationContext);
+        }
+    }
+
+    private List<ToolSpecification> obtainToolList(InvocationContext invocationContext) {
+        List<ToolSpecification> list = fetchPaginatedList(
                 (id, cursor) -> new McpListToolsRequest(id, cursor),
                 toolExecutionTimeout,
                 invocationContext,
                 result -> ToolSpecificationHelper.toolSpecificationListFromMcpResponse(
-                        (ArrayNode) result.get("result").get("tools"))));
+                        (ArrayNode) result.get("result").get("tools")));
+        toolListRefs.set(list);
+        return list;
     }
 
-    private synchronized void obtainResourceList(InvocationContext invocationContext) {
-        if (resourceRefs.get() != null) {
-            return;
-        }
-        resourceRefs.set(fetchPaginatedList(
+    private List<McpResource> obtainResourceList(InvocationContext invocationContext) {
+        List<McpResource> list = fetchPaginatedList(
                 (id, cursor) -> new McpListResourcesRequest(id, cursor),
                 resourcesTimeout,
                 invocationContext,
-                ResourcesHelper::parseResourceRefs));
+                ResourcesHelper::parseResourceRefs);
+        resourceRefs.set(list);
+        return list;
     }
 
-    private synchronized void obtainResourceTemplateList(InvocationContext invocationContext) {
-        if (resourceTemplateRefs.get() != null) {
-            return;
-        }
-        resourceTemplateRefs.set(fetchPaginatedList(
+    private List<McpResourceTemplate> obtainResourceTemplateList(InvocationContext invocationContext) {
+        List<McpResourceTemplate> list = fetchPaginatedList(
                 (id, cursor) -> new McpListResourceTemplatesRequest(id, cursor),
                 resourcesTimeout,
                 invocationContext,
-                ResourcesHelper::parseResourceTemplateRefs));
+                ResourcesHelper::parseResourceTemplateRefs);
+        resourceTemplateRefs.set(list);
+        return list;
+    }
+
+    private List<McpPrompt> obtainPromptList(InvocationContext invocationContext) {
+        List<McpPrompt> list = fetchPaginatedList(
+                (id, cursor) -> new McpListPromptsRequest(id, cursor),
+                promptsTimeout,
+                invocationContext,
+                PromptsHelper::parsePromptRefs);
+        promptRefs.set(list);
+        return list;
     }
 
     private void startAutoHealthCheck() {
@@ -539,17 +591,6 @@ public class DefaultMcpClient implements McpClient {
                 initializationLock.unlock();
             }
         }
-    }
-
-    private synchronized void obtainPromptList() {
-        if (promptRefs.get() != null) {
-            return;
-        }
-        promptRefs.set(fetchPaginatedList(
-                (id, cursor) -> new McpListPromptsRequest(id, cursor),
-                promptsTimeout,
-                null,
-                PromptsHelper::parsePromptRefs));
     }
 
     private <T> List<T> fetchPaginatedList(
@@ -653,6 +694,8 @@ public class DefaultMcpClient implements McpClient {
         private Duration autoHealthCheckInterval;
         private List<McpRoot> roots;
         private Boolean cacheToolList;
+        private Boolean cacheResourceList;
+        private Boolean cachePromptList;
         private McpClientListener listener;
         private McpProgressHandler progressHandler;
         private McpMetaSupplier metaSupplier;
@@ -824,6 +867,31 @@ public class DefaultMcpClient implements McpClient {
          */
         public Builder cacheToolList(boolean cacheToolList) {
             this.cacheToolList = cacheToolList;
+            return this;
+        }
+
+        /**
+         * If set to true, the client will cache the resource and resource
+         * template lists obtained from the server until it's notified by
+         * the server that the resources have changed. If set to false,
+         * there is no caching and the client will always fetch the
+         * resource list from the server.
+         * The default is true.
+         */
+        public Builder cacheResourceList(boolean cacheResourceList) {
+            this.cacheResourceList = cacheResourceList;
+            return this;
+        }
+
+        /**
+         * If set to true, the client will cache the prompt list obtained
+         * from the server until it's notified by the server that the
+         * prompts have changed. If set to false, there is no caching
+         * and the client will always fetch the prompt list from the server.
+         * The default is true.
+         */
+        public Builder cachePromptList(boolean cachePromptList) {
+            this.cachePromptList = cachePromptList;
             return this;
         }
 
