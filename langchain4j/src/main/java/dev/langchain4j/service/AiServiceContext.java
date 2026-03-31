@@ -46,6 +46,9 @@ public class AiServiceContext {
 
     public RetrievalAugmentor retrievalAugmentor;
 
+    public boolean includeInheritedFields = false;
+    public final java.util.List<Object> deferredToolObjects = new java.util.ArrayList<>();
+
     public boolean storeRetrievedContentInChatMemory = true;
 
     public Function<Object, Optional<String>> userMessageProvider = DEFAULT_USER_MESSAGE_PROVIDER;
