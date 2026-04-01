@@ -28,6 +28,7 @@ import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.agent.tool.ToolSpecifications;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -658,7 +659,7 @@ class AiServicesWithToolsIT {
         assistant.chat(userMessage);
 
         // then
-        verify(stringArrayProcessor).processStrings(new String[] {"cat", "dog"});
+        verify(stringArrayProcessor).processStrings(new String[]{"cat", "dog"});
         verifyNoMoreInteractions(stringArrayProcessor);
 
         List<ChatMessage> messages = chatMemory.messages();
@@ -715,6 +716,34 @@ class AiServicesWithToolsIT {
         }
     }
 
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_use_name_field_of_p(ChatModel chatModel) {
+
+        List<ToolSpecification> toolSpecifications = ToolSpecifications.toolSpecificationsFrom(BashTool.class);
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("Run a shell command 'ls -la'"))
+                .toolSpecifications(toolSpecifications)
+                .build();
+        ChatResponse chatResponse = chatModel.chat(chatRequest);
+
+        AiMessage aiMessage = chatResponse.aiMessage();
+
+        // 打印 toolExecutionRequests 中的参数名称与值
+        for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
+            assertThat(toolExecutionRequest.arguments()).contains("command");
+        }
+    }
+
+    static class BashTool {
+
+        @Tool(value = "Run a shell command.", name = "bash")
+        String runBash(@P(description = "The shell command to run.", name = "command") String command) {
+            return "Running command: " + command;
+        }
+    }
+
     @Test
     void should_use_tool_provider() {
 
@@ -757,17 +786,17 @@ class AiServicesWithToolsIT {
 
         // given
         ToolProvider addToolProvider = (toolProviderRequest) -> {
-                ToolSpecification toolSpecification = ToolSpecification.builder()
-                        .name("add")
-                        .parameters(JsonObjectSchema.builder()
-                                .addNumberProperty("a")
-                                .addNumberProperty("b")
-                                .required("a", "b")
-                                .build())
-                        .build();
-                return ToolProviderResult.builder()
-                        .add(toolSpecification, (request, memoryId) -> "does not matter")
-                        .build();
+            ToolSpecification toolSpecification = ToolSpecification.builder()
+                    .name("add")
+                    .parameters(JsonObjectSchema.builder()
+                            .addNumberProperty("a")
+                            .addNumberProperty("b")
+                            .required("a", "b")
+                            .build())
+                    .build();
+            return ToolProviderResult.builder()
+                    .add(toolSpecification, (request, memoryId) -> "does not matter")
+                    .build();
         };
 
         ToolProvider multiplyToolProvider = (toolProviderRequest) -> {
@@ -874,8 +903,8 @@ class AiServicesWithToolsIT {
                 .build();
 
         assertThat(assertThrows(
-                        IllegalConfigurationException.class,
-                        () -> assistant.chat("Apply the function xyz on the number 2027")))
+                IllegalConfigurationException.class,
+                () -> assistant.chat("Apply the function xyz on the number 2027")))
                 .hasMessageContaining("xyz");
     }
 
@@ -1098,7 +1127,7 @@ class AiServicesWithToolsIT {
                             public ToolExecutionResult executeWithContext(
                                     ToolExecutionRequest request, InvocationContext context) {
                                 assertThat((boolean)
-                                                context.invocationParameters().get(includeToolsKey))
+                                        context.invocationParameters().get(includeToolsKey))
                                         .isEqualTo(true);
                                 Map<String, Object> arguments = toMap(request.arguments());
                                 assertThat(arguments).containsExactly(entry("number", 2027));
@@ -1151,7 +1180,8 @@ class AiServicesWithToolsIT {
 
     private static Map<String, Object> toMap(String arguments) {
         try {
-            return new ObjectMapper().readValue(arguments, new TypeReference<>() {});
+            return new ObjectMapper().readValue(arguments, new TypeReference<>() {
+            });
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
@@ -1301,7 +1331,8 @@ class AiServicesWithToolsIT {
 
         LocalDate now = LocalDate.of(2025, 2, 24);
 
-        record ToolResult(LocalDate localDate) {}
+        record ToolResult(LocalDate localDate) {
+        }
 
         class Tools {
 
@@ -1377,12 +1408,12 @@ class AiServicesWithToolsIT {
 
         @dev.langchain4j.service.UserMessage(
                 """
-            Analyze the following user request and categorize it as 'legal', 'medical' or 'technical',
-            then forward the request as it is to the corresponding expert provided as a tool.
-            Finally return the answer that you received from the expert without any modification.
-
-            The user request is: '{{it}}'.
-            """)
+                        Analyze the following user request and categorize it as 'legal', 'medical' or 'technical',
+                        then forward the request as it is to the corresponding expert provided as a tool.
+                        Finally return the answer that you received from the expert without any modification.
+                        
+                        The user request is: '{{it}}'.
+                        """)
         String askToExpert(String request);
     }
 
@@ -1390,10 +1421,10 @@ class AiServicesWithToolsIT {
 
         @dev.langchain4j.service.UserMessage(
                 """
-            You are a medical expert.
-            Analyze the following user request under a medical point of view and provide the best possible answer.
-            The user request is {{it}}.
-            """)
+                        You are a medical expert.
+                        Analyze the following user request under a medical point of view and provide the best possible answer.
+                        The user request is {{it}}.
+                        """)
         @Tool("A medical expert")
         String medicalRequest(String request);
     }
@@ -1402,10 +1433,10 @@ class AiServicesWithToolsIT {
 
         @dev.langchain4j.service.UserMessage(
                 """
-            You are a legal expert.
-            Analyze the following user request under a legal point of view and provide the best possible answer.
-            The user request is {{it}}.
-            """)
+                        You are a legal expert.
+                        Analyze the following user request under a legal point of view and provide the best possible answer.
+                        The user request is {{it}}.
+                        """)
         @Tool("A legal expert")
         String legalRequest(String request);
     }
@@ -1414,10 +1445,10 @@ class AiServicesWithToolsIT {
 
         @dev.langchain4j.service.UserMessage(
                 """
-            You are a technical expert.
-            Analyze the following user request under a technical point of view and provide the best possible answer.
-            The user request is {{it}}.
-            """)
+                        You are a technical expert.
+                        Analyze the following user request under a technical point of view and provide the best possible answer.
+                        The user request is {{it}}.
+                        """)
         @Tool("A technical expert")
         String technicalRequest(String request);
     }
@@ -1462,7 +1493,8 @@ class AiServicesWithToolsIT {
 
         LocalDate now = LocalDate.of(2025, 2, 24);
 
-        record ToolResult(LocalDate localDate) {}
+        record ToolResult(LocalDate localDate) {
+        }
 
         class Tools {
 
@@ -1500,7 +1532,8 @@ class AiServicesWithToolsIT {
 
         LocalDate now = LocalDate.of(2025, 2, 24);
 
-        record ToolResult(LocalDate localDate) {}
+        record ToolResult(LocalDate localDate) {
+        }
 
         class Tools {
 
