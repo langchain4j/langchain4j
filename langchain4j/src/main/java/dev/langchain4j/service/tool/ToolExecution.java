@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Objects;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.invocation.InvocationContext;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
@@ -16,12 +17,14 @@ public class ToolExecution {
     private final ToolExecutionResult result;
     private final LocalDateTime startTime;
     private final LocalDateTime finishTime;
+    private final InvocationContext invocationContext;
 
     private ToolExecution(Builder builder) {
         this.request = ensureNotNull(builder.request, "request");
         this.result = ensureNotNull(builder.result, "result");
         this.startTime = builder.startTime;
         this.finishTime = builder.finishTime;
+        this.invocationContext = builder.invocationContext;
     }
 
     /**
@@ -85,6 +88,13 @@ public class ToolExecution {
         return Duration.between(startTime, finishTime);
     }
 
+    /**
+     * Returns the invocation context of the tool execution.
+     */
+    public InvocationContext invocationContext() {
+        return invocationContext;
+    }
+
     @Override
     public boolean equals(final Object object) {
         if (this == object) return true;
@@ -121,6 +131,7 @@ public class ToolExecution {
         private ToolExecutionResult result;
         private LocalDateTime startTime;
         private LocalDateTime finishTime;
+        private InvocationContext invocationContext;
 
         private Builder() {
         }
@@ -142,6 +153,11 @@ public class ToolExecution {
 
         public Builder finishTime(LocalDateTime finishTime) {
             this.finishTime = finishTime;
+            return this;
+        }
+
+        public Builder invocationContext(InvocationContext invocationContext) {
+            this.invocationContext = invocationContext;
             return this;
         }
 
