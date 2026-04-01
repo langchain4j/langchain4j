@@ -477,7 +477,7 @@ class AnthropicChatModelIT {
 
         ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name("calculator")
-                .description("returns a sum of two numbers".repeat(450) + randomString(3))
+                .description("returns a sum of two numbers".repeat(500) + randomString(10))
                 .parameters(JsonObjectSchema.builder()
                         .addIntegerProperty("first")
                         .addIntegerProperty("second")
