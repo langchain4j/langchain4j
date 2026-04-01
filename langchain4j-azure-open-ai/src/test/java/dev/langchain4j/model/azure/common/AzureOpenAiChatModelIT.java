@@ -86,4 +86,19 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
     protected ChatRequestParameters saveTokens(ChatRequestParameters parameters) {
         return parameters; // Azure OpenAI does not support max_tokens any more, only max_completion_tokens
     }
+    @Override
+    @Disabled("Setting 'max_tokens' and 'max_completion_tokens' at the same time is not supported.")
+    protected void should_respect_common_parameters_wrapped_in_integration_specific_class_in_chat_request(ChatModel model) {}
+
+    @Override
+    @Disabled("Setting 'max_tokens' and 'max_completion_tokens' at the same time is not supported.")
+    protected void should_respect_common_parameters_wrapped_in_integration_specific_class_in_default_model_parameters() {}
+
+    @Override
+    @Disabled("Setting 'max_tokens' and 'max_completion_tokens' at the same time is not supported.")
+    protected void should_respect_maxOutputTokens_in_chat_request(ChatModel model) {}
+
+    @Override
+    @Disabled("Setting 'max_tokens' and 'max_completion_tokens' at the same time is not supported.")
+    protected void should_respect_maxOutputTokens_in_default_model_parameters() {}
 }
