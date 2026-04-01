@@ -17,7 +17,12 @@ public @interface P {
      * Description of a parameter
      * @return the description of a parameter
      */
-    String value();
+    String value() default "";
+
+    /**
+     * Alias of value. Use description instead.
+     */
+    String description() default "";
 
     /**
      * Name of a parameter
