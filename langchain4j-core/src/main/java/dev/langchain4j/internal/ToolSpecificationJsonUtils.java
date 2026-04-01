@@ -1,11 +1,14 @@
 package dev.langchain4j.internal;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.agent.tool.ToolSpecificationJsonCodec;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
+import dev.langchain4j.spi.agent.tool.ToolSpecificationJsonCodecFactory;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -16,6 +19,15 @@ import java.util.Map;
  */
 @Internal
 public class ToolSpecificationJsonUtils {
+
+    private static final ToolSpecificationJsonCodec CODEC = loadCodec();
+
+    private static ToolSpecificationJsonCodec loadCodec() {
+        for (ToolSpecificationJsonCodecFactory factory : loadFactories(ToolSpecificationJsonCodecFactory.class)) {
+            return factory.create();
+        }
+        return new JacksonToolSpecificationJsonCodec();
+    }
 
     private ToolSpecificationJsonUtils() {}
 
@@ -37,7 +49,7 @@ public class ToolSpecificationJsonUtils {
                 && !toolSpecification.metadata().isEmpty()) {
             map.put("metadata", toolSpecification.metadata());
         }
-        return Json.toJson(map);
+        return CODEC.toJson(map);
     }
 
     /**
@@ -47,7 +59,7 @@ public class ToolSpecificationJsonUtils {
     public static ToolSpecification fromJson(String json) {
         ensureNotNull(json, "json");
 
-        Map<String, Object> map = Json.fromJson(json, Map.class);
+        Map<String, Object> map = CODEC.fromJson(json, Map.class);
 
         ToolSpecification.Builder builder = ToolSpecification.builder()
                 .name(optionalString(map, "name"))
