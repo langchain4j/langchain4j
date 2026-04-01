@@ -28,7 +28,7 @@ jobs:
         with:
           ref: ${{ env.BRANCH }}
           fetch-depth: 0
-          token: ${{ secrets.GH_RELEASE_AUTOMATION_MAIN_REPO }}
+          token: ${{ secrets.GH_RELEASE_AUTOMATION }}
 
       - name: Set up JDK 25
         uses: actions/setup-java@v5
@@ -145,6 +145,7 @@ jobs:
       - name: Trigger release in the langchain4j/langchain4j-spring repo
         uses: peter-evans/repository-dispatch@v4
         with:
+          token: ${{ secrets.GH_RELEASE_AUTOMATION }}
           repository: langchain4j/langchain4j-spring
           event-type: trigger-release
           client-payload: |
