@@ -203,6 +203,11 @@ String json = toolSpecification.toJson();
 ToolSpecification deserialized = ToolSpecification.fromJson(json);
 ```
 
+By default, a dedicated Jackson `ObjectMapper` is used for the JSON conversion.
+You can provide your own implementation of `ToolSpecificationJsonCodec` via SPI
+by implementing `ToolSpecificationJsonCodecFactory` and registering it
+in `META-INF/services/dev.langchain4j.spi.agent.tool.ToolSpecificationJsonCodecFactory`.
+
 ### Using `ChatModel`
 
 Once you have a `List<ToolSpecification>`, you can call the model:
