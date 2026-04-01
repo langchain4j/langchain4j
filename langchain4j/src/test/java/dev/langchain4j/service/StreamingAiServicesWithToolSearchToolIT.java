@@ -8,8 +8,10 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.chat.ChatRequestOptions;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
@@ -1068,6 +1070,7 @@ public class StreamingAiServicesWithToolSearchToolIT {
         ignoreInteractions(model).supportedCapabilities();
         ignoreInteractions(model).listeners();
         ignoreInteractions(model).provider();
+        ignoreInteractions(model).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class), any(ChatRequestOptions.class));
         verifyNoMoreInteractions(model);
     }
 }

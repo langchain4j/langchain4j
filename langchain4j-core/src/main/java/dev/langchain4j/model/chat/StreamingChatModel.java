@@ -1,5 +1,6 @@
 package dev.langchain4j.model.chat;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.ModelProvider.OTHER;
 import static dev.langchain4j.model.chat.ChatModelListenerUtils.onRequest;
 import static dev.langchain4j.model.chat.ChatModelListenerUtils.onResponse;
@@ -39,6 +40,20 @@ public interface StreamingChatModel {
      * @param handler     a {@link StreamingChatResponseHandler} that will handle streaming response from the LLM
      */
     default void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+        chat(chatRequest, handler, ChatRequestOptions.EMPTY);
+    }
+
+    /**
+     * Sends a streaming chat request with additional invocation options.
+     *
+     * @param chatRequest a {@link ChatRequest}, containing all the inputs to the LLM
+     * @param handler     a {@link StreamingChatResponseHandler} that will handle streaming response from the LLM
+     * @param options     a {@link ChatRequestOptions} carrying listener attributes and other per-call metadata
+     * @since 1.13.0
+     */
+    default void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler, ChatRequestOptions options) {
+
+        ChatRequestOptions effectiveOptions = getOrDefault(options, ChatRequestOptions.EMPTY);
 
         ChatRequest finalChatRequest = ChatRequest.builder()
                 .messages(chatRequest.messages())
@@ -46,7 +61,7 @@ public interface StreamingChatModel {
                 .build();
 
         List<ChatModelListener> listeners = listeners();
-        Map<Object, Object> attributes = new ConcurrentHashMap<>();
+        Map<Object, Object> attributes = new ConcurrentHashMap<>(effectiveOptions.listenerAttributes());
 
         StreamingChatResponseHandler observingHandler = new StreamingChatResponseHandler() {
 
