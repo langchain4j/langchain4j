@@ -26,9 +26,6 @@ import java.util.Set;
 
 import static dev.langchain4j.agent.tool.SearchBehavior.SEARCHABLE;
 import static dev.langchain4j.agent.tool.ToolSpecification.METADATA_SEARCH_BEHAVIOR;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static java.util.Arrays.stream;
-import static java.util.stream.Collectors.toList;
 
 /**
  * Utility methods for {@link ToolSpecification}s.
