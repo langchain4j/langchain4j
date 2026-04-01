@@ -104,13 +104,10 @@ class DoclingDocumentParserIntegrationTest {
 
     // Helper methods - to be implemented with actual sample documents
     private byte[] createSamplePdfBytes() {
-        // TODO: Load sample PDF from test resources or create minimal valid PDF
-        // For now, return placeholder
-        return new byte[0];
+        return TestDocumentHelper.createMinimalPdf();
     }
 
     private byte[] createSampleDocxBytes() {
-        // TODO: Load sample DOCX from test resources
-        return new byte[0];
+        return TestDocumentHelper.createMinimalDocx();
     }
 }
