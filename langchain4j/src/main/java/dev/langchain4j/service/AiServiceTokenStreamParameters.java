@@ -2,6 +2,7 @@ package dev.langchain4j.service;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -32,6 +33,7 @@ public class AiServiceTokenStreamParameters {
     private final InvocationContext invocationContext;
     private final GuardrailRequestParams commonGuardrailParams;
     private final Object methodKey;
+    private final UserMessage userMessageForToolReplay;
 
     protected AiServiceTokenStreamParameters(Builder builder) {
         this.messages = builder.messages;
@@ -44,6 +46,7 @@ public class AiServiceTokenStreamParameters {
         this.invocationContext = builder.invocationContext;
         this.commonGuardrailParams = builder.commonGuardrailParams;
         this.methodKey = builder.methodKey;
+        this.userMessageForToolReplay = builder.userMessageForToolReplay;
     }
 
     /**
@@ -163,6 +166,10 @@ public class AiServiceTokenStreamParameters {
         return methodKey;
     }
 
+    public UserMessage userMessageForToolReplay() {
+        return userMessageForToolReplay;
+    }
+
     /**
      * Creates a new builder for {@link AiServiceTokenStreamParameters}.
      *
@@ -187,6 +194,7 @@ public class AiServiceTokenStreamParameters {
         private InvocationContext invocationContext;
         private GuardrailRequestParams commonGuardrailParams;
         private Object methodKey;
+        private UserMessage userMessageForToolReplay;
 
         protected Builder() {}
 
@@ -345,6 +353,11 @@ public class AiServiceTokenStreamParameters {
          */
         public Builder methodKey(Object methodKey) {
             this.methodKey = methodKey;
+            return this;
+        }
+
+        public Builder userMessageForToolReplay(UserMessage userMessageForToolReplay) {
+            this.userMessageForToolReplay = userMessageForToolReplay;
             return this;
         }
 

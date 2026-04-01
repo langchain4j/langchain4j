@@ -251,6 +251,11 @@ class DefaultAiServices<T> extends AiServices<T> {
                             messages.add(userMessage);
                         }
 
+                        UserMessage userMessageForToolReplay = null;
+                        if (context.hasChatMemory() && !context.storeRetrievedContentInChatMemory) {
+                            userMessageForToolReplay = userMessage;
+                        }
+
                         Future<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
 
                         ToolServiceContext toolServiceContext =
@@ -269,6 +274,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .invocationContext(invocationContext)
                                     .commonGuardrailParams(commonGuardrailParam)
                                     .methodKey(method)
+                                    .userMessageForToolReplay(userMessageForToolReplay)
                                     .build();
 
                             TokenStream tokenStream = new AiServiceTokenStream(tokenStreamParameters);
@@ -324,6 +330,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 chatMemory,
                                 invocationContext,
                                 toolServiceContext,
+                                userMessageForToolReplay,
                                 isReturnTypeResult);
 
                         if (toolServiceResult.immediateToolReturn() && isReturnTypeResult) {
