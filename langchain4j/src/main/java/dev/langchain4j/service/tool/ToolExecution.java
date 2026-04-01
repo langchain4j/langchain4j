@@ -24,7 +24,7 @@ public class ToolExecution {
         this.result = ensureNotNull(builder.result, "result");
         this.startTime = builder.startTime;
         this.finishTime = builder.finishTime;
-        this.invocationContext = builder.invocationContext;
+        this.invocationContext = ensureNotNull(builder.invocationContext, "invocationContext");
     }
 
     /**
