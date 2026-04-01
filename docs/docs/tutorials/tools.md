@@ -192,6 +192,17 @@ class WeatherTools {
 List<ToolSpecification> toolSpecifications = ToolSpecifications.toolSpecificationsFrom(WeatherTools.class);
 ```
 
+### JSON Serialization
+
+`ToolSpecification` can be serialized to JSON and deserialized back using `toJson()` and `fromJson()` methods.
+This can be useful, for example, when you want to store tool specifications in a database or transfer them over the network.
+
+```java
+String json = toolSpecification.toJson();
+
+ToolSpecification deserialized = ToolSpecification.fromJson(json);
+```
+
 ### Using `ChatModel`
 
 Once you have a `List<ToolSpecification>`, you can call the model:
