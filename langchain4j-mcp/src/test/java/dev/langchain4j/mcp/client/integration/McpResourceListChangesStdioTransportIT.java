@@ -8,7 +8,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.mcp.client.DefaultMcpClient;
 import dev.langchain4j.mcp.client.McpClient;
-import dev.langchain4j.mcp.client.McpPrompt;
+import dev.langchain4j.mcp.client.McpResource;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.client.transport.stdio.StdioMcpTransport;
 import java.time.Duration;
@@ -17,7 +17,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-class McpPromptSubscriptionsStdioTransportIT {
+class McpResourceListChangesStdioTransportIT {
 
     static McpClient mcpClient;
 
@@ -30,7 +30,7 @@ class McpPromptSubscriptionsStdioTransportIT {
                         "--quiet",
                         "--fresh",
                         "run",
-                        getPathToScript("prompt_list_changes_mcp_server.java")))
+                        getPathToScript("resource_list_changes_mcp_server.java")))
                 .logEvents(true)
                 .build();
         mcpClient = new DefaultMcpClient.Builder()
@@ -47,26 +47,26 @@ class McpPromptSubscriptionsStdioTransportIT {
     }
 
     @Test
-    public void promptListChangedNotification() {
-        // initially, we have 1 prompt
-        List<McpPrompt> prompts = mcpClient.listPrompts();
-        assertThat(prompts).hasSize(1);
+    public void resourceListChangedNotification() {
+        // initially, we have 1 resource
+        List<McpResource> resources = mcpClient.listResources();
+        assertThat(resources).hasSize(1);
 
-        // register a new dynamic prompt on the server
+        // register a new dynamic resource on the server
         mcpClient.executeTool(ToolExecutionRequest.builder()
-                .name("registerNewPrompt")
+                .name("registerNewResource")
                 .arguments("{}")
                 .build());
 
-        // after the notification, the client should see the new prompt
-        List<McpPrompt> promptsAfterAdd = mcpClient.listPrompts();
-        assertThat(promptsAfterAdd).hasSize(2);
+        // after the notification, the client should see the new resource
+        List<McpResource> resourcesAfterAdd = mcpClient.listResources();
+        assertThat(resourcesAfterAdd).hasSize(2);
 
-        McpPrompt dynamicPrompt = promptsAfterAdd.stream()
-                .filter(p -> p.name().equals("dynamicPrompt"))
+        McpResource dynamicResource = resourcesAfterAdd.stream()
+                .filter(r -> r.uri().equals("file:///dynamic"))
                 .findFirst()
                 .orElse(null);
-        assertThat(dynamicPrompt).isNotNull();
-        assertThat(dynamicPrompt.description()).isEqualTo("A dynamically added prompt");
+        assertThat(dynamicResource).isNotNull();
+        assertThat(dynamicResource.description()).isEqualTo("A dynamically added resource");
     }
 }
