@@ -37,9 +37,7 @@ class OpenAiOfficialStreamingChatModelThinkingIT {
         // then
         AiMessage aiMessage = spyHandler.get().aiMessage();
         assertThat(aiMessage.text()).containsIgnoringCase("Berlin");
-        assertThat(aiMessage.thinking())
-                .isNotBlank()
-                .isEqualTo(spyHandler.getThinking());
+        assertThat(aiMessage.thinking()).isNotBlank().isEqualTo(spyHandler.getThinking());
 
         InOrder inOrder = inOrder(spyHandler);
         inOrder.verify(spyHandler).get();
