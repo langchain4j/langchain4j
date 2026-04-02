@@ -35,4 +35,9 @@ class GoogleAiGeminiAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
     @ParameterizedTest
     @MethodSource("models")
     protected void should_execute_tool_with_list_of_strings_parameter(ChatModel model) {}
+
+    @Override
+    protected boolean supportsMultimodalToolResults() {
+        return true;
+    }
 }

@@ -8,7 +8,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.List;
 
-import static dev.langchain4j.model.bedrock.TestedModels.MISTRAL_LARGE;
+import static dev.langchain4j.model.bedrock.TestedModels.CLAUDE_3_HAIKU;
 import static dev.langchain4j.model.bedrock.common.BedrockAiServicesIT.sleepIfNeeded;
 
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
@@ -16,7 +16,7 @@ class BedrockAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
 
     @Override
     protected List<ChatModel> models() {
-        return List.of(MISTRAL_LARGE);
+        return List.of(CLAUDE_3_HAIKU);
     }
 
     @Override
@@ -30,5 +30,10 @@ class BedrockAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
     @AfterEach
     void afterEach() {
         sleepIfNeeded();
+    }
+
+    @Override
+    protected boolean supportsMultimodalToolResults() {
+        return true;
     }
 }

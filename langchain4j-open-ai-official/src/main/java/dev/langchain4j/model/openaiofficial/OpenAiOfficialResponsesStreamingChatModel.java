@@ -56,6 +56,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.model.ModelProvider;
@@ -360,6 +361,11 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
             return items;
         } else if (msg instanceof ToolExecutionResultMessage toolResultMessage) {
+            if (!toolResultMessage.hasSingleText()) {
+                throw new UnsupportedFeatureException(
+                        "OpenAI Responses API does not support non-text content in tool results. "
+                                + "Only text content is supported in function_call_output.");
+            }
             // Tool execution result - convert to function call output
             return List.of(ResponseInputItem.ofFunctionCallOutput(ResponseInputItem.FunctionCallOutput.builder()
                     .callId(toolResultMessage.id())
