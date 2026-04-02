@@ -1,6 +1,5 @@
 package dev.langchain4j.agent.tool;
 
-import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.toList;
@@ -155,7 +154,7 @@ public class ToolSpecifications {
 
             String paramName = Optional.ofNullable(pAnnotation)
                     .map(P::name)
-                    .filter(name -> isNotNullOrBlank(name))
+                    .filter(s -> !s.isEmpty())
                     .orElse(parameter.getName());
 
             properties.put(paramName, jsonSchemaElementFrom(parameter, visited));
@@ -185,14 +184,7 @@ public class ToolSpecifications {
     private static JsonSchemaElement jsonSchemaElementFrom(
             Parameter parameter, Map<Class<?>, VisitedClassMetadata> visited) {
         P annotation = parameter.getAnnotation(P.class);
-        String description = null;
-
-        if (annotation != null) {
-            // Use annotation.value() if annotation.description() is blank
-            description = isNotNullOrBlank(annotation.description())
-                    ? annotation.description()
-                    : annotation.value();
-        }
+        String description = annotation == null ? null : annotation.value();
 
         Type type = parameter.getParameterizedType();
         Class<?> clazz = parameter.getType();
