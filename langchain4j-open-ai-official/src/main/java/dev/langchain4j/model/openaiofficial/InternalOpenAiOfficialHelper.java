@@ -69,6 +69,11 @@ class InternalOpenAiOfficialHelper {
     private static final String REASONING_CONTENT = "reasoning_content";
     private static final String REASONING_CONTENT_CAMEL_CASE = "reasoningContent";
     private static final String THINKING = "thinking";
+    // OpenAI-compatible providers do not expose reasoning consistently:
+    // some use snake_case, some camelCase, and some a plain `thinking` field.
+    private static final String[] THINKING_PROPERTY_NAMES = {
+        REASONING_CONTENT, REASONING_CONTENT_CAMEL_CASE, THINKING
+    };
 
     static List<ChatCompletionMessageParam> toOpenAiMessages(List<ChatMessage> messages) {
         return messages.stream()
@@ -276,7 +281,7 @@ class InternalOpenAiOfficialHelper {
     }
 
     private static String thinkingFrom(Map<String, JsonValue> additionalProperties) {
-        return firstNonBlankString(additionalProperties, REASONING_CONTENT, REASONING_CONTENT_CAMEL_CASE, THINKING);
+        return firstNonBlankString(additionalProperties, THINKING_PROPERTY_NAMES);
     }
 
     private static String firstNonBlankString(Map<String, JsonValue> additionalProperties, String... keys) {

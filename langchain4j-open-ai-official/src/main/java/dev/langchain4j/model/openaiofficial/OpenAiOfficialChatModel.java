@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openaiofficial;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.aiMessageFrom;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.finishReasonFrom;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.toOpenAiChatCompletionCreateParams;
@@ -73,7 +74,7 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
                     false);
         }
         this.modelName = builder.modelName;
-        this.returnThinking = builder.returnThinking != null && builder.returnThinking;
+        this.returnThinking = getOrDefault(builder.returnThinking, false);
     }
 
     @Override
