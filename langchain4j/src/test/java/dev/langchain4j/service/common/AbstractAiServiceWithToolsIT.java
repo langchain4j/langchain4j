@@ -44,7 +44,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-import static dev.langchain4j.data.message.ChatMessageType.TOOL_EXECUTION_RESULT;
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
