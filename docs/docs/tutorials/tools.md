@@ -182,7 +182,7 @@ class WeatherTools {
   
     @Tool("Returns the weather forecast for a given city")
     String getWeather(
-            @P("The city for which the weather forecast should be returned") String city,
+            @P(description = "The city for which the weather forecast should be returned", name = "city") String city,
             TemperatureUnit temperatureUnit
     ) {
         ...
@@ -324,12 +324,12 @@ You can find implementation details in `DefaultToolExecutor`.
 A few tool examples:
 ```java
 @Tool("Searches Google for relevant URLs, given the query")
-public List<String> searchGoogle(@P("search query") String query) {
+public List<String> searchGoogle(@P(description = "search query", name = "query") String query) {
     return googleSearchService.search(query);
 }
 
 @Tool("Returns the content of a web page, given the URL")
-public String getWebPageContent(@P("URL of the page") String url) {
+public String getWebPageContent(@P(description = "URL of the page", name = "url") String url) {
     Document jsoupDocument = Jsoup.connect(url).get();
     return jsoupDocument.body().text();
 }
@@ -353,25 +353,25 @@ Methods without parameters are supported as well.
 
 #### Parameter Name
 
-By default, if the `name` attribute of `@P` is not specified, the parameter name is obtained via reflection.
-However, without the `-parameters` javac option, reflection returns generic names like `arg0`, `arg1`, etc.
-The semantic meaning of the parameter is lost, which may confuse the LLM.
+By default, if the `name` attribute of `@P` is not specified, the method registration will automatically obtain the
+default parameter names of the method through reflection, such as `arg0`, `arg1`, `arg2`, etc., depending on the number
+of parameters. This is what LLM will see. If there are any special requirements, please use @P's name attribute to specify the
+name of the parameter.
 
-Setting `name` in `@P` is useful in two cases:
-
-1. **Missing `-parameters` javac option** — to avoid generic `arg0`/`arg1` names that the LLM would otherwise see.
-   Note that frameworks like Quarkus and Spring enable `-parameters` by default,
-   so the actual method parameter names are preserved and you typically do not need to set `name` when using those frameworks.
-2. **Custom name for the LLM** — when you want the LLM to see a different parameter name than the one in the source code
-   (for example, to match a specific API contract or to provide a more descriptive name).
+Also it is worth mentioning that argX is happening when javac -parameters is not enabled.
+So when using LC4j with Quarkus/Spring/etc, this is not a problem,
+as -parameters option is enabled by default by those frameworks,
+so the actual names of method parameters are preserved and one does not need to specify the name in @P.
 
 **Example:**
 
 ```java
+
 @Tool
 void getTemperature(
-        @P("Temperature value") double value,
-        @P("Unit of temperature") Optional<String> unit) {
+        @P(description = "Temperature value", name = "value") double value,
+        @P(description = "Unit of temperature", name = "unit") Optional<String> unit
+) {
     ...
 }
 ```
@@ -383,7 +383,7 @@ This means that the LLM will have to produce a value for such a parameter.
 A parameter can be made optional by annotating it with `@P(required = false)`:
 ```java
 @Tool
-void getTemperature(String location, @P("Unit of temperature", required = false) Unit unit) {
+void getTemperature(String location, @P(description = "Unit of temperature", required = false, name = "unit") Unit unit) {
     ...
 }
 ```
@@ -397,8 +397,8 @@ Any parameter of type `Optional<T>` will be treated as optional automatically, e
 ```java
 @Tool
 void getTemperature(
-    @P("Temperature value") double value,
-    @P("Unit of temperature") Optional<String> unit
+    @P(description = "Temperature value") double value,
+    @P(description = "Unit of temperature") Optional<String> unit
 ) {
     ...
 }
@@ -563,44 +563,12 @@ This way, the LLM has more information to decide whether or not to call the give
 ### `@P`
 Method parameters can optionally be annotated with `@P`.
 
-The `@P` annotation has the following optional fields:
+The `@P` annotation has 4 fields
 
-- `name`: name of the parameter as seen by the LLM. If not specified, the actual method parameter name is used.
-- `description`: description of the parameter (alias of `value`). Empty by default.
-- `value`: description of the parameter (alias of `description`). Empty by default.
-- `required`: whether the parameter is required, default is `true`.
-
-#### Parameter Name
-
-The `name` attribute overrides the parameter name that the LLM will see.
-Setting `name` is useful in two cases:
-
-1. **Missing `-parameters` javac option.**
-   Without the `-parameters` javac option, Java reflection returns generic names such as `arg0`, `arg1`, etc.
-   The semantic meaning of the parameter is lost, which may confuse the LLM.
-   Setting `name` restores a meaningful name.
-   Note that frameworks like Quarkus and Spring enable `-parameters` by default,
-   so the actual method parameter names are preserved and you typically do not need to set `name` when using those frameworks.
-
-2. **Custom name for the LLM.**
-   When you want the LLM to see a different parameter name than the one the developer uses in the source code
-   (for example, to match a specific API contract or to provide a more descriptive name).
-
-
-#### Parameter Description
-
-`description` and `value` are interchangeable — they both set the parameter's description that the LLM will see.
-When only a description is needed, use the shorthand `value` form:
-```java
-@Tool
-void getWeather(@P("The city name") String city) { ... }
-```
-
-When both a name and a description are needed, use named attributes:
-```java
-@Tool
-void getWeather(@P(name = "city", description = "The city name") String city) { ... }
-```
+- `value`: description of the parameter. Mandatory field.
+- `description`: alias of value. Use description instead.
+- `name` : name of the parameter, default value is `""`. Optional field.
+- `required`: whether the parameter is required, default is `true`. Optional field.
 
 ### `@Description`
 The description of classes and fields can be specified using the `@Description` annotation:

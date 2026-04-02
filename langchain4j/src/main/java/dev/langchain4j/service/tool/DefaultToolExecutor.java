@@ -2,11 +2,9 @@ package dev.langchain4j.service.tool;
 
 import static dev.langchain4j.internal.Exceptions.unwrapRuntimeException;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
 
-import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
 import dev.langchain4j.exception.ToolArgumentsException;
@@ -196,7 +194,7 @@ public class DefaultToolExecutor implements ToolExecutor {
                 continue;
             }
 
-            String parameterName = getName(parameter);
+            String parameterName = parameter.getName();
             Object argument = argumentsMap.get(parameterName);
             Class<?> parameterClass = parameter.getType();
             Type parameterType = parameter.getParameterizedType();
@@ -209,14 +207,6 @@ public class DefaultToolExecutor implements ToolExecutor {
         }
 
         return arguments;
-    }
-
-    private static String getName(Parameter parameter) {
-        P pAnnotation = parameter.getAnnotation(P.class);
-        if (pAnnotation != null && isNotNullOrBlank(pAnnotation.name())) {
-            return pAnnotation.name();
-        }
-        return parameter.getName();
     }
 
     private static Type extractActualType(Type parameterType) {
