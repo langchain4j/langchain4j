@@ -77,6 +77,10 @@ public class DefaultAgenticScope implements AgenticScope {
         this.lock = (kind == Kind.PERSISTENT) ? new ReentrantReadWriteLock() : null;
     }
 
+    public static DefaultAgenticScope ephemeralAgenticScope() {
+        return new DefaultAgenticScope(DefaultAgenticScope.Kind.EPHEMERAL);
+    }
+
     @Override
     public Object memoryId() {
         return memoryId;
