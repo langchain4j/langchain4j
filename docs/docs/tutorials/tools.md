@@ -144,11 +144,11 @@ You can specify one or more `ToolSpecification`s when creating the `ChatRequest`
 - The `description` of the tool
 - The `parameters` of the tool and their descriptions
 - The `metadata` of the tool.
-By default, it is not sent to the LLM provider, you must explicitly specify which metadata keys should be sent
-when creating a `ChatModel`.
-Currently, tool metadata is supported only by the `langchain4j-anthropic` module.
-When tools are provided by the [McpToolProvider](/tutorials/mcp#mcp-tool-provider),
-`metadata` can contain MCP-specific entries.
+  By default, it is not sent to the LLM provider, you must explicitly specify which metadata keys should be sent
+  when creating a `ChatModel`.
+  Currently, tool metadata is supported only by the `langchain4j-anthropic` module.
+  When tools are provided by the [McpToolProvider](/tutorials/mcp#mcp-tool-provider),
+  `metadata` can contain MCP-specific entries.
 
 It is recommended to provide as much information about the tool as possible:
 a clear name, a comprehensive description, and a description for each parameter, etc.
@@ -508,7 +508,7 @@ Using AI services as tools for other AI services is a powerful feature that enab
 - This implementation requires the LLM to copy-paste the user request without modifications as a tool call and this could be an error-prone operation.
 - The LLM calling the other LLM as a tool has to reprocess its response, as it happens for any other tool invocation, and this could be a wasteful computation in terms of both time and consumed tokens.
 - The agent-tool, being a totally separated AI service, has no access to the chat memory of the agent calling it, so it cannot use the chat memory to provide a more informed answer.
-:::
+  :::
 
 
 ### `@Tool`
@@ -551,9 +551,9 @@ The `@Tool` annotation has these fields:
 - `value`: the tool's description.
 - `returnBehavior`: see [this](/tutorials/tools#returning-immediately-the-result-of-a-tool-execution-request) for more details
 - `metadata`: a valid JSON string that contains LLM-provider-specific tool metadata entries.
-By default, it is not sent to the LLM provider, you must explicitly specify which metadata keys should be sent
-when creating a `ChatModel`.
-Currently, tool metadata is supported only by the `langchain4j-anthropic` module.
+  By default, it is not sent to the LLM provider, you must explicitly specify which metadata keys should be sent
+  when creating a `ChatModel`.
+  Currently, tool metadata is supported only by the `langchain4j-anthropic` module.
 
 Depending on the tool, the LLM might understand it well even without any description
 (for example, `add(a, b)` is obvious),
@@ -636,8 +636,8 @@ they are only visible to LangChain4j and user code.
 `InvocationParameters` can also be accessed within other AI Service components, such as:
 - [`ToolProvider`](/tutorials/tools#specifying-tools-dynamically): inside the `ToolProviderRequest`
 - [`ToolArgumentsErrorHandler`](/tutorials/tools#handling-tool-arguments-errors)
-and [`ToolExecutionErrorHandler`](https://docs.langchain4j.dev/tutorials/tools#handling-tool-execution-errors):
-inside the `ToolErrorContext`
+  and [`ToolExecutionErrorHandler`](https://docs.langchain4j.dev/tutorials/tools#handling-tool-execution-errors):
+  inside the `ToolErrorContext`
 - [RAG components](/tutorials/rag/): inside the `Query` -> `Metadata`
 
 Parameters are stored in a mutable, thread safe `Map`.
@@ -699,18 +699,18 @@ using either the default or the specified `Executor`.
 
 #### When using `ChatModel`:
 - When the LLM calls multiple tools, they are executed concurrently in separate threads
-using the `Executor`.
+  using the `Executor`.
 - When the LLM calls a single tool, it is executed in the same (caller) thread,
-the `Executor` is **_not_** used to avoid wasting resources.
+  the `Executor` is **_not_** used to avoid wasting resources.
 
 #### When using `StreamingChatModel`:
 - When the LLM calls multiple tools, they are executed concurrently in separate threads
-using the `Executor`.
-Each tool is executed as soon as `StreamingChatResponseHandler.onCompleteToolCall(CompleteToolCall)`
-is called, without waiting for other tools or for the response streaming to complete.
+  using the `Executor`.
+  Each tool is executed as soon as `StreamingChatResponseHandler.onCompleteToolCall(CompleteToolCall)`
+  is called, without waiting for other tools or for the response streaming to complete.
 - When the LLM calls a single tool, it is executed in a separate thread using the `Executor`.
-We cannot execute it in the same thread because, at that point,
-we do not yet know how many tools the LLM will call.
+  We cannot execute it in the same thread because, at that point,
+  we do not yet know how many tools the LLM will call.
 
 ### Accessing Executed Tools
 If you wish to access tools executed during the invocation of an AI Service,
@@ -896,14 +896,14 @@ This enables scalable, token-efficient, and model-driven tool discovery.
 
 A tool search flow typically looks like this:
 1. Initial request:
-   - The LLM sees only tool-search tools (not the full tool set)
+    - The LLM sees only tool-search tools (not the full tool set)
 2. Tool search
-   - The LLM calls a tool-search tool, describing what kind of tool it needs
-   - The tool-search strategy matches the request against available tools
+    - The LLM calls a tool-search tool, describing what kind of tool it needs
+    - The tool-search strategy matches the request against available tools
 4. Tool exposure
-   - Matching tools are added to the next request to the LLM
+    - Matching tools are added to the next request to the LLM
 5. Tool execution
-   - The LLM can now call the found tools normally
+    - The LLM can now call the found tools normally
 
 Previously found tools are accumulated across multiple tool-search calls.
 Each time the LLM invokes the tool-search tool,
@@ -1087,8 +1087,8 @@ Also note that if the LLM calls multiple tools and at least one of them is not i
 
 :::note
 When using programmatic tools, you can mark tools for immediate return by passing a set of tool names
-to the `.tools()` method. When using dynamic tools via `ToolProvider`, you can use the overloaded method, 
-`.add(ToolSpecification, ToolExecutor, ReturnBehavior)`, on `ToolProviderResult.builder()`. 
+to the `.tools()` method. When using dynamic tools via `ToolProvider`, you can use the overloaded method,
+`.add(ToolSpecification, ToolExecutor, ReturnBehavior)`, on `ToolProviderResult.builder()`.
 See the respective sections above for examples.
 :::
 
@@ -1144,10 +1144,10 @@ Assistant assistant = AiServices.builder(Assistant.class)
         .build();
 
 try {
-    assistant.chat(...);
+        assistant.chat(...);
 } catch (MyCustomException e) {
-    // handle e
-}
+        // handle e
+        }
 ```
 
 Here is an example of the second approach:
