@@ -93,7 +93,7 @@ public class ToolProviderResult {
         }
 
         public Builder addAll(Map<ToolSpecification, ToolExecutor> tools) {
-            tools.forEach((tool, executor) -> add(tool, executor));
+            tools.forEach(this::add);
             return this;
         }
 

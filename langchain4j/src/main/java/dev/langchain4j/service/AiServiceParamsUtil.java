@@ -21,7 +21,7 @@ class AiServiceParamsUtil {
             ToolServiceContext toolServiceContext,
             ResponseFormat responseFormat) {
         ChatRequestParameters defaultParams = ChatRequestParameters.builder()
-                .toolSpecifications(toolServiceContext.toolSpecifications())
+                .toolSpecifications(toolServiceContext.effectiveTools())
                 .responseFormat(responseFormat)
                 .build();
         return findArgumentOfType(ChatRequestParameters.class, args, method.getParameters())
