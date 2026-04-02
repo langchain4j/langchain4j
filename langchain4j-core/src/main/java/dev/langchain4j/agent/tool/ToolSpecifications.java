@@ -153,14 +153,14 @@ public class ToolSpecifications {
                             .map(P::required)
                             .orElse(true);
 
-            String paramName = Optional.ofNullable(pAnnotation)
+            String parameterName = Optional.ofNullable(pAnnotation)
                     .map(P::name)
                     .filter(name -> isNotNullOrBlank(name))
                     .orElse(parameter.getName());
 
-            properties.put(paramName, jsonSchemaElementFrom(parameter, visited));
+            properties.put(parameterName, jsonSchemaElementFrom(parameter, visited));
             if (isRequired) {
-                required.add(paramName);
+                required.add(parameterName);
             }
         }
 
@@ -193,9 +193,11 @@ public class ToolSpecifications {
                         "Parameter '%s' has both 'value' and 'description' set in @P. Use one or the other, but not both.",
                         parameter.getName()));
             }
-            description = isNotNullOrBlank(annotation.description())
-                    ? annotation.description()
-                    : annotation.value();
+            if (isNotNullOrBlank(annotation.description())) {
+                description = annotation.description();
+            } else if (isNotNullOrBlank(annotation.value())) {
+                description = annotation.value();
+            }
         }
 
         Type type = parameter.getParameterizedType();

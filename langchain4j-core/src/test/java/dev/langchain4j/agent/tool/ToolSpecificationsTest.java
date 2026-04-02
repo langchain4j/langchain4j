@@ -471,4 +471,18 @@ class ToolSpecificationsTest implements WithAssertions {
         JsonSchemaElement element = ts.parameters().properties().get("arg0");
         assertThat(element).isEqualTo(JsonStringSchema.builder().description("desc via value").build());
     }
+
+    @Test
+    void should_have_null_description_when_only_name_is_set_in_P() throws NoSuchMethodException {
+        class Tools {
+            @Tool
+            public void tool(@P(name = "myParam") String param) {}
+        }
+        Method method = Tools.class.getMethod("tool", String.class);
+        ToolSpecification ts = ToolSpecifications.toolSpecificationFrom(method);
+
+        assertThat(ts.parameters().properties()).containsKey("myParam");
+        JsonStringSchema element = (JsonStringSchema) ts.parameters().properties().get("myParam");
+        assertThat(element.description()).isNull();
+    }
 }
