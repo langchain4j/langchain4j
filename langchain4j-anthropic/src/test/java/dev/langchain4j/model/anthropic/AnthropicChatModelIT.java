@@ -462,7 +462,7 @@ class AnthropicChatModelIT {
     }
 
     @Test
-    void should_cache_tools() {
+    void should_cache_tools() throws InterruptedException {
 
         // given
         AnthropicChatModel model = AnthropicChatModel.builder()
@@ -498,6 +498,8 @@ class AnthropicChatModelIT {
         int minCacheableTokenThresholdForHaiku = 4096;
         assertThat(createCacheTokenUsage.cacheCreationInputTokens()).isGreaterThan(minCacheableTokenThresholdForHaiku);
         assertThat(createCacheTokenUsage.cacheReadInputTokens()).isEqualTo(0);
+
+        Thread.sleep(1000);
 
         // when
         ChatResponse response2 = model.chat(request);
