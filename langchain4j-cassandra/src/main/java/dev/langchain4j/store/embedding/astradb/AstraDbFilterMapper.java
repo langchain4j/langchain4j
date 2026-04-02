@@ -1,19 +1,18 @@
 package dev.langchain4j.store.embedding.astradb;
 
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
-import dev.langchain4j.store.embedding.filter.comparison.IsNotEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThan;
 import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThanOrEqualTo;
+import dev.langchain4j.store.embedding.filter.comparison.IsIn;
 import dev.langchain4j.store.embedding.filter.comparison.IsLessThan;
 import dev.langchain4j.store.embedding.filter.comparison.IsLessThanOrEqualTo;
-import dev.langchain4j.store.embedding.filter.comparison.IsIn;
+import dev.langchain4j.store.embedding.filter.comparison.IsNotEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsNotIn;
 import dev.langchain4j.store.embedding.filter.logical.And;
 import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
 import io.stargate.sdk.data.domain.query.Filter;
 import io.stargate.sdk.utils.JsonUtils;
-
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -49,7 +48,7 @@ class AstraDbFilterMapper {
             return mapNot((Not) filter);
         } else {
             throw new UnsupportedOperationException(
-                "Unsupported filter type: " + filter.getClass().getName());
+                    "Unsupported filter type: " + filter.getClass().getName());
         }
     }
 
@@ -95,19 +94,13 @@ class AstraDbFilterMapper {
 
     private static Filter mapAnd(And f) {
         Map<String, Object> map = new HashMap<>();
-        map.put("$and", Arrays.asList(
-            map(f.left()).getFilter(),
-            map(f.right()).getFilter()
-        ));
+        map.put("$and", Arrays.asList(map(f.left()).getFilter(), map(f.right()).getFilter()));
         return new Filter(JsonUtils.marshallForDataApi(map));
     }
 
     private static Filter mapOr(Or f) {
         Map<String, Object> map = new HashMap<>();
-        map.put("$or", Arrays.asList(
-            map(f.left()).getFilter(),
-            map(f.right()).getFilter()
-        ));
+        map.put("$or", Arrays.asList(map(f.left()).getFilter(), map(f.right()).getFilter()));
         return new Filter(JsonUtils.marshallForDataApi(map));
     }
 

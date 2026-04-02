@@ -1,25 +1,24 @@
 package dev.langchain4j.store.embedding.astradb;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
-import dev.langchain4j.store.embedding.filter.comparison.IsNotEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThan;
 import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThanOrEqualTo;
+import dev.langchain4j.store.embedding.filter.comparison.IsIn;
 import dev.langchain4j.store.embedding.filter.comparison.IsLessThan;
 import dev.langchain4j.store.embedding.filter.comparison.IsLessThanOrEqualTo;
-import dev.langchain4j.store.embedding.filter.comparison.IsIn;
+import dev.langchain4j.store.embedding.filter.comparison.IsNotEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsNotIn;
 import dev.langchain4j.store.embedding.filter.logical.And;
 import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
 import io.stargate.sdk.data.domain.query.Filter;
-import org.junit.jupiter.api.Test;
-
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.Test;
 
 class AstraDbFilterMapperTest {
 
@@ -74,7 +73,7 @@ class AstraDbFilterMapperTest {
         assertThat(statusMap).containsKey("$in");
         assertThat((List<Object>) statusMap.get("$in")).containsExactlyInAnyOrder("active", "pending");
     }
-    
+
     @Test
     void should_map_not_in() {
         IsNotIn filter = new IsNotIn("status", Arrays.asList("deleted", "archived"));
@@ -118,12 +117,12 @@ class AstraDbFilterMapperTest {
     @Test
     void should_throw_for_unknown_filter_type() {
         assertThatThrownBy(() -> AstraDbFilterMapper.map(new dev.langchain4j.store.embedding.filter.Filter() {
-            @Override
-            public boolean test(Object object) {
-                return false;
-            }
-        }))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("Unsupported filter type");
+                    @Override
+                    public boolean test(Object object) {
+                        return false;
+                    }
+                }))
+                .isInstanceOf(UnsupportedOperationException.class)
+                .hasMessageContaining("Unsupported filter type");
     }
 }
