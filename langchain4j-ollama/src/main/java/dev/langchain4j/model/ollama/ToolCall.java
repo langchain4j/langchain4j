@@ -1,28 +1,37 @@
 package dev.langchain4j.model.ollama;
 
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-
-import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(NON_NULL)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 class ToolCall {
 
+    private String id;
     private FunctionCall function;
 
-    ToolCall() {
-    }
+    ToolCall() {}
 
-    ToolCall(FunctionCall function) {
+    ToolCall(String id, FunctionCall function) {
+        this.id = id;
         this.function = function;
     }
 
     static Builder builder() {
         return new Builder();
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
     }
 
     public FunctionCall getFunction() {
@@ -35,7 +44,13 @@ class ToolCall {
 
     static class Builder {
 
+        private String id;
         private FunctionCall function;
+
+        Builder id(String id) {
+            this.id = id;
+            return this;
+        }
 
         Builder function(FunctionCall function) {
             this.function = function;
@@ -43,7 +58,7 @@ class ToolCall {
         }
 
         ToolCall build() {
-            return new ToolCall(function);
+            return new ToolCall(id, function);
         }
     }
 }

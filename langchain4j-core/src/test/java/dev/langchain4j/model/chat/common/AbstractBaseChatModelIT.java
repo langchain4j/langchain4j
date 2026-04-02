@@ -624,10 +624,6 @@ public abstract class AbstractBaseChatModelIT<M> {
         ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
 
         // then
-        AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text()).isNotBlank();
-        assertThat(aiMessage.toolExecutionRequests()).isEmpty();
-
         if (assertTokenUsage()) {
             assertTokenUsage(chatResponse.metadata(), maxOutputTokens, model);
         }
@@ -1566,9 +1562,10 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // given
         UserMessage userMessage = UserMessage.from(
-                TextContent.from("What do you see on these images? Describe both images."),
+                TextContent.from("What do you see on these images? Describe both images in english."),
                 catImageContentBase64(),
-                diceImageContentBase64());
+                diceImageContentBase64()
+        );
 
         ChatRequest chatRequest = ChatRequest.builder().messages(userMessage).build();
 

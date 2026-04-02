@@ -14,6 +14,7 @@
     <description>In-process bge-small-zh-v1.5 embedding model</description>
 
     <properties>
+        <embeddingsSkipDownload>false</embeddingsSkipDownload>
         <embeddingsSkipCache>false</embeddingsSkipCache>
     </properties>
 
@@ -41,12 +42,14 @@
                         </goals>
                         <phase>generate-resources</phase>
                         <configuration>
+                            <skip>${embeddingsSkipDownload}</skip>
                             <url>https://huggingface.co/Xenova/bge-small-zh-v1.5/resolve/main/onnx/model.onnx</url>
                             <outputDirectory>${project.build.directory}/classes</outputDirectory>
                             <outputFileName>bge-small-zh-v1.5.onnx</outputFileName>
                             <sha256>69a0b846f4f116b5e6aabf9546ea6754d02264f3211a13a1bd69b31b8040749a</sha256>
                             <skipCache>${embeddingsSkipCache}</skipCache>
-                            <readTimeOut>600000</readTimeOut> <!-- 10 minutes -->
+                            <!-- 10 minutes -->
+                            <readTimeOut>600000</readTimeOut>
                             <retries>5</retries>
                         </configuration>
                     </execution>

@@ -44,10 +44,18 @@
                     <autoPublish>true</autoPublish>
                     <waitUntil>published</waitUntil>
                     <!-- waitMaxTime is specified in seconds-->
-                    <waitMaxTime>1800</waitMaxTime>
+                    <waitMaxTime>3600</waitMaxTime>
                 </configuration>
             </plugin>
         </plugins>
     </build>
+
+    <licenses>
+        <license>
+            <name>The Apache Software License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
 
 </project>

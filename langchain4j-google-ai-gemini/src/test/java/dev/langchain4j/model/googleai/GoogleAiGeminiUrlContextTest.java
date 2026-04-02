@@ -107,7 +107,7 @@ class GoogleAiGeminiUrlContextTest {
             var request = requestCaptor.getValue();
             assertThat(request.tools()).isNotNull();
 
-            GeminiTool tool = request.tools();
+            GeminiTool tool = request.tools().get(0);
             assertThat(tool.urlContext()).isNotNull();
         }
     }

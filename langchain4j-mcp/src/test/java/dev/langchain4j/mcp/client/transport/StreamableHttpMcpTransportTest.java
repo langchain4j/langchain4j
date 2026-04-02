@@ -32,6 +32,24 @@ class StreamableHttpMcpTransportTest {
     }
 
     @Test
+    void shouldNotFollowRedirectsByDefault() throws Exception {
+        StreamableHttpMcpTransport transport =
+                StreamableHttpMcpTransport.builder().url("http://localhost/mcp").build();
+
+        assertThat(extractHttpClient(transport).followRedirects()).isEqualTo(HttpClient.Redirect.NEVER);
+    }
+
+    @Test
+    void shouldFollowRedirectsWhenEnabled() throws Exception {
+        StreamableHttpMcpTransport transport = StreamableHttpMcpTransport.builder()
+                .url("http://localhost/mcp")
+                .followRedirects(true)
+                .build();
+
+        assertThat(extractHttpClient(transport).followRedirects()).isEqualTo(HttpClient.Redirect.NORMAL);
+    }
+
+    @Test
     void shouldForceHttp11ForStreamableTransport() throws Exception {
         StreamableHttpMcpTransport transport = StreamableHttpMcpTransport.builder()
                 .url("http://localhost/mcp")

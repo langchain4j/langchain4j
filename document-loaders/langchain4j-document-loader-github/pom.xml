@@ -14,7 +14,7 @@
     <name>LangChain4j :: Document Loader :: GitHub</name>
 
     <properties>
-        <github-api.version>1.329</github-api.version>
+        <github-api.version>1.330</github-api.version>
     </properties>
 
     <dependencies>
