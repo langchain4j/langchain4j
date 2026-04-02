@@ -188,7 +188,11 @@ public class ToolSpecifications {
         String description = null;
 
         if (annotation != null) {
-            // Use annotation.value() if annotation.description() is blank
+            if (isNotNullOrBlank(annotation.value()) && isNotNullOrBlank(annotation.description())) {
+                throw new IllegalArgumentException(String.format(
+                        "Parameter '%s' has both 'value' and 'description' set in @P. Use one or the other, but not both.",
+                        parameter.getName()));
+            }
             description = isNotNullOrBlank(annotation.description())
                     ? annotation.description()
                     : annotation.value();

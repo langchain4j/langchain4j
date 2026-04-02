@@ -13,6 +13,7 @@ import static org.assertj.core.data.MapEntry.entry;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
@@ -28,7 +29,6 @@ import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.agent.tool.ToolSpecifications;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -718,30 +718,38 @@ class AiServicesWithToolsIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_use_name_field_of_p(ChatModel chatModel) {
+    void should_support_custom_tool_parameter_name(ChatModel chatModel) {
 
-        List<ToolSpecification> toolSpecifications = ToolSpecifications.toolSpecificationsFrom(BashTool.class);
+        // given
+        class BashTool {
 
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("Run a shell command 'ls -la'"))
-                .toolSpecifications(toolSpecifications)
+            @Tool
+            String runBash(@P(name = "command") String cmd) {
+                return "Running command: " + cmd;
+            }
+        }
+
+        BashTool bashTool = spy(new BashTool());
+        ChatModel spyChatModel = spy(chatModel);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(spyChatModel)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
+                .tools(bashTool)
                 .build();
-        ChatResponse chatResponse = chatModel.chat(chatRequest);
 
-        AiMessage aiMessage = chatResponse.aiMessage();
+        // when
+        Result<String> result = assistant.chat("Run a shell command 'ls -la'");
 
-        // 打印 toolExecutionRequests 中的参数名称与值
-        for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
-            assertThat(toolExecutionRequest.arguments()).contains("command");
-        }
-    }
+        // then
+        verify(spyChatModel, atLeastOnce()).chat(argThat((ChatRequest request) -> {
+            ToolSpecification toolSpec = request.toolSpecifications().get(0);
+            return toolSpec.parameters().properties().containsKey("command");
+        }));
 
-    static class BashTool {
-
-        @Tool(value = "Run a shell command.", name = "bash")
-        String runBash(@P(description = "The shell command to run.", name = "command") String command) {
-            return "Running command: " + command;
-        }
+        // verify that the tool method is called with the expected argument value
+        verify(bashTool).runBash("ls -la");
+        assertThat(result.content()).contains("ls -la");
     }
 
     @Test
