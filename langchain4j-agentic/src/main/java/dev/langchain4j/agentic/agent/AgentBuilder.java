@@ -218,11 +218,9 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
         if (agentListener != null) {
             aiServices.beforeToolExecution(beforeToolExecution ->
-                    agentListener.beforeAgentToolExecution(new BeforeAgentToolExecution(
-                            (AgenticScope) LangChain4jManaged.current().get(AgenticScope.class), agent, beforeToolExecution)));
+                    agentListener.beforeAgentToolExecution(new BeforeAgentToolExecution(agent, beforeToolExecution)));
             aiServices.afterToolExecution(afterToolExecution ->
-                    agentListener.afterAgentToolExecution(new AfterAgentToolExecution(
-                            (AgenticScope) LangChain4jManaged.current().get(AgenticScope.class), agent, afterToolExecution)));
+                    agentListener.afterAgentToolExecution(new AfterAgentToolExecution(agent, afterToolExecution)));
         }
 
         return (T) agent;
