@@ -159,12 +159,12 @@ public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
-        if (request.filter() != null) {
-            throw new UnsupportedOperationException("EmbeddingSearchRequest.Filter is not supported yet.");
-        }
+        Filter stargateFilter = request.filter() != null
+                ? AstraDbFilterMapper.map(request.filter())
+                : null;
 
         List<EmbeddingMatch<TextSegment>> matches =
-                findRelevant(request.queryEmbedding(), request.maxResults(), request.minScore());
+                findRelevant(request.queryEmbedding(), stargateFilter, request.maxResults(), request.minScore());
         return new EmbeddingSearchResult<>(matches);
     }
 
