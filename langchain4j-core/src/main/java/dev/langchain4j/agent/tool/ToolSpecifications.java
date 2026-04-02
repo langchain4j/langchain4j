@@ -149,20 +149,14 @@ public class ToolSpecifications {
             }
 
             boolean isOptional = Optional.class.equals(parameter.getType());
-            P pAnnotation = parameter.getAnnotation(P.class);
             boolean isRequired = !isOptional
-                    && Optional.ofNullable(pAnnotation)
+                    && Optional.ofNullable(parameter.getAnnotation(P.class))
                             .map(P::required)
                             .orElse(true);
 
-            String paramName = Optional.ofNullable(pAnnotation)
-                    .map(P::name)
-                    .filter(s -> !s.isEmpty())
-                    .orElse(parameter.getName());
-
-            properties.put(paramName, jsonSchemaElementFrom(parameter, visited));
+            properties.put(parameter.getName(), jsonSchemaElementFrom(parameter, visited));
             if (isRequired) {
-                required.add(paramName);
+                required.add(parameter.getName());
             }
         }
 
