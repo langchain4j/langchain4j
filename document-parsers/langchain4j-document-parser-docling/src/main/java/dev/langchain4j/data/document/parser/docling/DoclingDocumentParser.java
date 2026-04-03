@@ -95,10 +95,12 @@ public class DoclingDocumentParser implements DocumentParser {
      */
     public DoclingDocumentParser(String doclingServerUrl, int timeoutSeconds) {
         if (doclingServerUrl == null || doclingServerUrl.isBlank()) {
-            throw new IllegalArgumentException("You must provide a server URL!");
+            throw new IllegalArgumentException(
+                    "Server URL cannot be null or empty. Please provide a valid URL (e.g., 'http://localhost:5001').");
         }
         if (timeoutSeconds <= 0) {
-            throw new IllegalArgumentException("Timeout must be positive");
+            throw new IllegalArgumentException(
+                    "Timeout must be a positive number. Received: " + timeoutSeconds + " seconds.");
         }
         this.timeoutSeconds = timeoutSeconds;
         this.doclingClient = DoclingServeClientBuilderFactory.newBuilder()
@@ -157,7 +159,7 @@ public class DoclingDocumentParser implements DocumentParser {
             byte[] documentBytes = inputStream.readAllBytes();
 
             if (documentBytes.length == 0) {
-                throw new IllegalArgumentException("Input stream is empty");
+                throw new IllegalArgumentException("Input stream is empty. Please provide a document with content.");
             }
 
             // Step 2: Encode document as Base64 for transmission to Docling
