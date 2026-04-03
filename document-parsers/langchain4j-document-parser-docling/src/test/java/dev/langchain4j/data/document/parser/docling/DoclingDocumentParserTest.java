@@ -32,6 +32,7 @@ class DoclingDocumentParserTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("empty");
     }
+
     @Test
     void shouldThrowExceptionWhenServerUrlIsNull() {
         // When/Then
@@ -39,6 +40,7 @@ class DoclingDocumentParserTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("server URL");
     }
+
     @Test
     void shouldThrowExceptionWhenServerUrlIsEmpty() {
         // When/Then
@@ -46,6 +48,7 @@ class DoclingDocumentParserTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("server URL");
     }
+
     @Test
     void shouldUseDefaultServerUrlWhenNoUrlProvided() {
         // When
@@ -54,6 +57,7 @@ class DoclingDocumentParserTest {
         // Then - verifies constructor doesn't throw and creates valid instance
         assertThat(parser).isNotNull();
     }
+
     @Test
     void shouldImplementDocumentParserInterface() {
         // Given
@@ -62,6 +66,7 @@ class DoclingDocumentParserTest {
         // Then - verify it implements the required interface
         assertThat(parser).isInstanceOf(dev.langchain4j.data.document.DocumentParser.class);
     }
+
     @Test
     void shouldAcceptCustomServerUrl() {
         // Given
@@ -73,6 +78,7 @@ class DoclingDocumentParserTest {
         // Then - verify parser was created successfully
         assertThat(parser).isNotNull();
     }
+
     @Test
     void shouldAllowMultipleParserInstances() {
         // When
@@ -84,6 +90,7 @@ class DoclingDocumentParserTest {
         assertThat(parser2).isNotNull();
         assertThat(parser1).isNotSameAs(parser2);
     }
+
     @Test
     void shouldAcceptValidHttpUrl() {
         // Given
@@ -93,6 +100,7 @@ class DoclingDocumentParserTest {
         DoclingDocumentParser parser = new DoclingDocumentParser(httpUrl);
         assertThat(parser).isNotNull();
     }
+
     @Test
     void shouldAcceptLocalhostUrl() {
         // Given
@@ -148,9 +156,38 @@ class DoclingDocumentParserTest {
         byte[] sampleData = "Sample PDF content".getBytes();
         InputStream inputStream = new ByteArrayInputStream(sampleData);
 
-        // When/Then - we can't test full parsing without server, but we can verify it doesn't crash on valid input
+        // When/Then - we can't test full parsing without server, but we can verify it
+        // doesn't crash on valid input
         // This will throw an exception about server connectivity, which is expected
         assertThatThrownBy(() -> parser.parse(inputStream))
                 .isInstanceOf(RuntimeException.class);
+    }
+
+    @Test
+    void shouldAcceptPositiveTimeout() {
+        // Given
+        int timeout = 120;
+
+        // When
+        DoclingDocumentParser parser = new DoclingDocumentParser("http://localhost:5001", timeout);
+
+        // Then
+        assertThat(parser).isNotNull();
+    }
+
+    @Test
+    void shouldRejectZeroTimeout() {
+        // When/Then
+        assertThatThrownBy(() -> new DoclingDocumentParser("http://localhost:5001", 0))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("positive");
+    }
+
+    @Test
+    void shouldRejectNegativeTimeout() {
+        // When/Then
+        assertThatThrownBy(() -> new DoclingDocumentParser("http://localhost:5001", -1))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("positive");
     }
 }
