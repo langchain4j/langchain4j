@@ -6,7 +6,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.Metadata;
 import java.io.IOException;
-
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -33,9 +32,7 @@ class ClassPathSourceTests {
         var classPathSource = ClassPathSource.from(classPathResource);
         var urlString = classPathSource.url().getFile();
         var filename = urlString.substring(urlString.lastIndexOf('/') + 1);
-        var expectedMetaData = new Metadata()
-                .put(Document.URL, urlString)
-                .put(Document.FILE_NAME, filename);
+        var expectedMetaData = new Metadata().put(Document.URL, urlString).put(Document.FILE_NAME, filename);
 
         assertThat(classPathSource)
                 .isNotNull()
@@ -47,10 +44,7 @@ class ClassPathSourceTests {
     }
 
     @ParameterizedTest
-    @CsvSource(
-            delimiter = '|',
-            textBlock =
-                    """
+    @CsvSource(delimiter = '|', textBlock = """
       classPathSourceTests                               | false
       classPathSourceTests/file1.txt                      | false
       classPathSourceTests/anotherDir                    | false
