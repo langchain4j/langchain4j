@@ -5,6 +5,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import org.slf4j.Logger;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -30,6 +31,7 @@ public class NomicEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final Integer maxSegmentsPerBatch;
     private final Integer maxRetries;
 
+    @Deprecated(forRemoval = true, since = "1.5.0")
     public NomicEmbeddingModel(
             String baseUrl,
             String apiKey,
@@ -54,6 +56,20 @@ public class NomicEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.maxRetries = getOrDefault(maxRetries, 2);
     }
 
+    public NomicEmbeddingModel(NomicEmbeddingModelBuilder builder) {
+        this.client = NomicClient.builder()
+                .baseUrl(getOrDefault(builder.baseUrl, DEFAULT_BASE_URL))
+                .apiKey(ensureNotBlank(builder.apiKey, "apiKey"))
+                .timeout(getOrDefault(builder.timeout, ofSeconds(60)))
+                .logRequests(getOrDefault(builder.logRequests, false))
+                .logResponses(getOrDefault(builder.logResponses, false))
+                .build();
+        this.modelName = ensureNotBlank(builder.modelName, "modelName");
+        this.taskType = builder.taskType;
+        this.maxSegmentsPerBatch = getOrDefault(builder.maxSegmentsPerBatch, 500);
+        this.maxRetries = getOrDefault(builder.maxRetries, 2);
+    }
+
     public static NomicEmbeddingModelBuilder builder() {
         return new NomicEmbeddingModelBuilder();
     }
@@ -66,6 +82,11 @@ public class NomicEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .collect(toList());
 
         return embedTexts(texts);
+    }
+
+    @Override
+    public String modelName() {
+        return this.modelName;
     }
 
     private Response<List<Embedding>> embedTexts(List<String> texts) {
@@ -114,6 +135,7 @@ public class NomicEmbeddingModel extends DimensionAwareEmbeddingModel {
         private Integer maxRetries;
         private Boolean logRequests;
         private Boolean logResponses;
+        private Logger logger;
 
         NomicEmbeddingModelBuilder() {
         }
@@ -163,8 +185,17 @@ public class NomicEmbeddingModel extends DimensionAwareEmbeddingModel {
             return this;
         }
 
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public NomicEmbeddingModelBuilder logger(Logger logger) {
+            this.logger = logger;
+            return this;
+        }
+
         public NomicEmbeddingModel build() {
-            return new NomicEmbeddingModel(this.baseUrl, this.apiKey, this.modelName, this.taskType, this.maxSegmentsPerBatch, this.timeout, this.maxRetries, this.logRequests, this.logResponses);
+            return new NomicEmbeddingModel(this);
         }
 
         public String toString() {

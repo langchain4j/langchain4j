@@ -1,0 +1,113 @@
+package dev.langchain4j.model.watsonx.it;
+
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.common.AbstractChatModelIT;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.watsonx.WatsonxChatModel;
+import dev.langchain4j.model.watsonx.WatsonxChatRequestParameters;
+import java.time.Duration;
+import java.util.List;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+
+@EnabledIfEnvironmentVariable(named = "WATSONX_API_KEY", matches = ".+")
+@EnabledIfEnvironmentVariable(named = "WATSONX_PROJECT_ID", matches = ".+")
+@EnabledIfEnvironmentVariable(named = "WATSONX_URL", matches = ".+")
+public class WatsonxChatModelIT extends AbstractChatModelIT {
+
+    static final String API_KEY = System.getenv("WATSONX_API_KEY");
+    static final String PROJECT_ID = System.getenv("WATSONX_PROJECT_ID");
+    static final String URL = System.getenv("WATSONX_URL");
+
+    @Override
+    protected List<ChatModel> models() {
+        return List.of(createChatModel("mistralai/mistral-medium-2505").build());
+    }
+
+    @Override
+    protected String customModelName() {
+        return "ibm/granite-4-h-small";
+    }
+
+    @Override
+    protected ChatModel createModelWith(ChatRequestParameters parameters) {
+        return createChatModel("ibm/granite-4-h-small")
+                .defaultRequestParameters(parameters)
+                .build();
+    }
+
+    @Override
+    protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
+        return WatsonxChatRequestParameters.builder()
+                .maxOutputTokens(maxOutputTokens)
+                .build();
+    }
+
+    @Override
+    public boolean supportsSingleImageInputAsPublicURL() {
+        // Watsonx does not support images as URLs, only as Base64-encoded strings
+        return false;
+    }
+
+    @Override
+    protected void should_execute_a_tool_then_answer(ChatModel model) {
+        super.should_execute_a_tool_then_answer(
+                createChatModel("ibm/granite-4-h-small").build());
+    }
+
+    @Override
+    protected void should_execute_a_tool_without_arguments_then_answer(ChatModel model) {
+        super.should_execute_a_tool_without_arguments_then_answer(
+                createChatModel("ibm/granite-4-h-small").build());
+    }
+
+    @Override
+    protected void should_execute_multiple_tools_in_parallel_then_answer(ChatModel model) {
+        super.should_execute_multiple_tools_in_parallel_then_answer(
+                createChatModel("ibm/granite-4-h-small").build());
+    }
+
+    @Override
+    protected void should_force_LLM_to_execute_any_tool(ChatModel model) {
+        super.should_force_LLM_to_execute_any_tool(
+                createChatModel("ibm/granite-4-h-small").build());
+    }
+
+    @Override
+    protected void should_force_LLM_to_execute_specific_tool(ChatModel model) {
+        super.should_force_LLM_to_execute_specific_tool(
+                createChatModel("ibm/granite-4-h-small").build());
+    }
+
+    @Override
+    protected void should_execute_a_tool_then_answer_respecting_JSON_response_format_with_schema(ChatModel model) {
+        super.should_execute_a_tool_then_answer_respecting_JSON_response_format_with_schema(
+                createChatModel("ibm/granite-4-h-small").build());
+    }
+
+    @Override
+    protected void should_respect_user_message(ChatModel model) {
+        super.should_respect_user_message(
+                createChatModel("ibm/granite-4-h-small").build());
+    }
+
+    @Override
+    protected void should_respect_JSON_response_format(ChatModel model) {
+        super.should_respect_JSON_response_format(
+                createChatModel("ibm/granite-4-h-small").build());
+    }
+
+    @Override
+    protected void should_respect_JSON_response_format_with_schema(ChatModel model) {
+        super.should_respect_JSON_response_format_with_schema(
+                createChatModel("ibm/granite-4-h-small").build());
+    }
+
+    private WatsonxChatModel.Builder createChatModel(String model) {
+        return WatsonxChatModel.builder()
+                .baseUrl(URL)
+                .apiKey(API_KEY)
+                .projectId(PROJECT_ID)
+                .modelName(model)
+                .timeout(Duration.ofSeconds(30));
+    }
+}

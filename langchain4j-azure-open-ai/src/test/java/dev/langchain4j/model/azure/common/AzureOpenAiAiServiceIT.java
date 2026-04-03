@@ -1,34 +1,26 @@
 package dev.langchain4j.model.azure.common;
 
-import dev.langchain4j.model.azure.AzureOpenAiChatModel;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.service.common.AbstractAiServiceIT;
-
-import java.util.List;
-
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 
-class AzureOpenAiAiServiceIT extends AbstractAiServiceIT {
+import dev.langchain4j.model.azure.AzureModelBuilders;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.service.common.AbstractAiServiceIT;
+import java.util.List;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
-    private static AzureOpenAiChatModel.Builder defaultModelBuilder() {
-        return AzureOpenAiChatModel.builder()
-                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-                .deploymentName("gpt-4o-mini")
-                .logRequestsAndResponses(true);
-    }
+@EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
+class AzureOpenAiAiServiceIT extends AbstractAiServiceIT {
 
     @Override
     protected List<ChatModel> models() {
         return List.of(
-                defaultModelBuilder()
+                AzureModelBuilders.chatModelBuilder()
                         .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)
                         .strictJsonSchema(true)
                         .build(),
-                defaultModelBuilder()
+                AzureModelBuilders.chatModelBuilder()
                         .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)
                         .strictJsonSchema(false)
-                        .build()
-        );
+                        .build());
     }
 }

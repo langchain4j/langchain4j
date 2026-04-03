@@ -1,32 +1,28 @@
 package dev.langchain4j.model.openai;
 
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.http.client.HttpClientBuilder;
-import dev.langchain4j.model.moderation.Moderation;
-import dev.langchain4j.model.moderation.ModerationModel;
-import dev.langchain4j.model.openai.internal.OpenAiClient;
-import dev.langchain4j.model.openai.internal.moderation.ModerationRequest;
-import dev.langchain4j.model.openai.internal.moderation.ModerationResponse;
-import dev.langchain4j.model.openai.internal.moderation.ModerationResult;
-import dev.langchain4j.model.openai.spi.OpenAiModerationModelBuilderFactory;
-import dev.langchain4j.model.output.Response;
-
-import java.time.Duration;
-import java.util.List;
-import java.util.Map;
-
-import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_OPENAI_URL;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_USER_AGENT;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
-import static java.util.Collections.singletonList;
+
+import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.model.ModelProvider;
+import dev.langchain4j.model.moderation.Moderation;
+import dev.langchain4j.model.moderation.ModerationModel;
+import dev.langchain4j.model.moderation.ModerationRequest;
+import dev.langchain4j.model.moderation.ModerationResponse;
+import dev.langchain4j.model.moderation.listener.ModerationModelListener;
+import dev.langchain4j.model.openai.internal.OpenAiClient;
+import dev.langchain4j.model.openai.internal.moderation.ModerationResult;
+import dev.langchain4j.model.openai.spi.OpenAiModerationModelBuilderFactory;
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Supplier;
+import org.slf4j.Logger;
 
 /**
  * Represents an OpenAI moderation model, such as text-moderation-latest.
@@ -36,6 +32,7 @@ public class OpenAiModerationModel implements ModerationModel {
     private final OpenAiClient client;
     private final String modelName;
     private final Integer maxRetries;
+    private final List<ModerationModelListener> listeners;
 
     public OpenAiModerationModel(OpenAiModerationModelBuilder builder) {
 
@@ -49,63 +46,53 @@ public class OpenAiModerationModel implements ModerationModel {
                 .readTimeout(getOrDefault(builder.timeout, ofSeconds(60)))
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
+                .logger(builder.logger)
                 .userAgent(DEFAULT_USER_AGENT)
-                .customHeaders(builder.customHeaders)
+                .customHeaders(builder.customHeadersSupplier)
+                .customQueryParams(builder.customQueryParams)
                 .build();
         this.modelName = builder.modelName;
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
+        this.listeners = copy(builder.listeners);
     }
 
+    @Override
     public String modelName() {
         return modelName;
     }
 
     @Override
-    public Response<Moderation> moderate(String text) {
-        return moderateInternal(singletonList(text));
+    public List<ModerationModelListener> listeners() {
+        return listeners;
     }
 
-    private Response<Moderation> moderateInternal(List<String> inputs) {
+    @Override
+    public ModelProvider provider() {
+        return ModelProvider.OPEN_AI;
+    }
 
-        ModerationRequest request = ModerationRequest.builder()
-                .model(modelName)
-                .input(inputs)
-                .build();
+    @Override
+    public ModerationResponse doModerate(ModerationRequest moderationRequest) {
+        dev.langchain4j.model.openai.internal.moderation.ModerationRequest request =
+                dev.langchain4j.model.openai.internal.moderation.ModerationRequest.builder()
+                        .model(moderationRequest.modelName())
+                        .input(moderationRequest.texts())
+                        .build();
 
-        ModerationResponse response = withRetryMappingExceptions(() -> client.moderation(request).execute(), maxRetries);
+        dev.langchain4j.model.openai.internal.moderation.ModerationResponse response =
+                withRetryMappingExceptions(() -> client.moderation(request).execute(), maxRetries);
 
         int i = 0;
         for (ModerationResult moderationResult : response.results()) {
             if (Boolean.TRUE.equals(moderationResult.isFlagged())) {
-                return Response.from(Moderation.flagged(inputs.get(i)));
+                return ModerationResponse.builder()
+                        .moderation(Moderation.flagged(moderationRequest.texts().get(i)))
+                        .build();
             }
             i++;
         }
 
-        return Response.from(Moderation.notFlagged());
-    }
-
-    @Override
-    public Response<Moderation> moderate(List<ChatMessage> messages) {
-        List<String> inputs = messages.stream()
-                .map(OpenAiModerationModel::toText)
-                .toList();
-
-        return moderateInternal(inputs);
-    }
-
-    private static String toText(ChatMessage chatMessage) {
-        if (chatMessage instanceof SystemMessage systemMessage) {
-            return systemMessage.text();
-        } else if (chatMessage instanceof UserMessage userMessage) {
-            return userMessage.singleText();
-        } else if (chatMessage instanceof AiMessage aiMessage) {
-            return aiMessage.text();
-        } else if (chatMessage instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
-            return toolExecutionResultMessage.text();
-        } else {
-            throw new IllegalArgumentException("Unsupported message type: " + chatMessage.type());
-        }
+        return ModerationResponse.builder().moderation(Moderation.notFlagged()).build();
     }
 
     public static OpenAiModerationModelBuilder builder() {
@@ -128,7 +115,10 @@ public class OpenAiModerationModel implements ModerationModel {
         private Integer maxRetries;
         private Boolean logRequests;
         private Boolean logResponses;
-        private Map<String, String> customHeaders;
+        private Logger logger;
+        private Supplier<Map<String, String>> customHeadersSupplier;
+        private Map<String, String> customQueryParams;
+        private List<ModerationModelListener> listeners;
 
         public OpenAiModerationModelBuilder() {
             // This is public so it can be extended
@@ -189,8 +179,46 @@ public class OpenAiModerationModel implements ModerationModel {
             return this;
         }
 
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public OpenAiModerationModelBuilder logger(Logger logger) {
+            this.logger = logger;
+            return this;
+        }
+
+        /**
+         * Sets custom HTTP headers.
+         */
         public OpenAiModerationModelBuilder customHeaders(Map<String, String> customHeaders) {
-            this.customHeaders = customHeaders;
+            this.customHeadersSupplier = () -> customHeaders;
+            return this;
+        }
+
+        /**
+         * Sets a supplier for custom HTTP headers.
+         * The supplier is called before each request, allowing dynamic header values.
+         * For example, this is useful for OAuth2 tokens that expire and need refreshing.
+         */
+        public OpenAiModerationModelBuilder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
+            return this;
+        }
+
+        public OpenAiModerationModelBuilder customQueryParams(Map<String, String> customQueryParams) {
+            this.customQueryParams = customQueryParams;
+            return this;
+        }
+
+        /**
+         * Sets the listeners for this moderation model.
+         *
+         * @param listeners the listeners.
+         * @return {@code this}.
+         */
+        public OpenAiModerationModelBuilder listeners(List<ModerationModelListener> listeners) {
+            this.listeners = listeners;
             return this;
         }
 

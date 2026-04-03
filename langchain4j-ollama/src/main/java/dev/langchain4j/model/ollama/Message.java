@@ -1,16 +1,15 @@
 package dev.langchain4j.model.ollama;
 
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-
 import java.util.List;
 import java.util.Map;
-
-import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(NON_NULL)
@@ -19,19 +18,20 @@ class Message {
 
     private Role role;
     private String content;
+    private String thinking;
     private List<String> images;
     private List<ToolCall> toolCalls;
     private Map<String, Object> additionalFields;
 
-    Message() {
-    }
+    Message() {}
 
-    public Message(Role role, String content, List<String> images, List<ToolCall> toolCalls, Map<String, Object> additionalFields) {
-        this.role = role;
-        this.content = content;
-        this.images = images;
-        this.toolCalls = toolCalls;
-        this.additionalFields = additionalFields;
+    Message(Builder builder) {
+        this.role = builder.role;
+        this.content = builder.content;
+        this.thinking = builder.thinking;
+        this.images = builder.images;
+        this.toolCalls = builder.toolCalls;
+        this.additionalFields = builder.additionalFields;
     }
 
     static Builder builder() {
@@ -80,10 +80,19 @@ class Message {
         this.additionalFields = additionalFields;
     }
 
+    public String getThinking() {
+        return thinking;
+    }
+
+    public void setThinking(String thinking) {
+        this.thinking = thinking;
+    }
+
     static class Builder {
 
         private Role role;
         private String content;
+        private String thinking;
         private List<String> images;
         private List<ToolCall> toolCalls;
         private Map<String, Object> additionalFields;
@@ -95,6 +104,11 @@ class Message {
 
         Builder content(String content) {
             this.content = content;
+            return this;
+        }
+
+        Builder thinking(String thinking) {
+            this.thinking = thinking;
             return this;
         }
 
@@ -114,7 +128,7 @@ class Message {
         }
 
         Message build() {
-            return new Message(role, content, images, toolCalls, additionalFields);
+            return new Message(this);
         }
     }
 }

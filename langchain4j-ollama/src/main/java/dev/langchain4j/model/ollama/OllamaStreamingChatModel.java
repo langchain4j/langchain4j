@@ -8,7 +8,6 @@ import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.ollama.spi.OllamaStreamingChatModelBuilderFactory;
 import java.util.List;
@@ -28,11 +27,11 @@ public class OllamaStreamingChatModel extends OllamaBaseChatModel implements Str
     @Override
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
         validate(chatRequest.parameters());
-        client.streamingChat(chatRequest, handler);
+        client.streamingChat(chatRequest, this.returnThinking, handler);
     }
 
     @Override
-    public ChatRequestParameters defaultRequestParameters() {
+    public OllamaChatRequestParameters defaultRequestParameters() {
         return defaultRequestParameters;
     }
 
@@ -64,7 +63,6 @@ public class OllamaStreamingChatModel extends OllamaBaseChatModel implements Str
 
         public OllamaStreamingChatModelBuilder() {
             // This is public so it can be extended
-            // By default with Lombok it becomes package private
         }
 
         @Override

@@ -1,6 +1,18 @@
 package dev.langchain4j.model.openai;
 
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.finishReasonFrom;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.tokenUsageFrom;
+import static java.util.stream.Collectors.toList;
+
 import dev.langchain4j.Internal;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.sse.ServerSentEvent;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.openai.internal.ParsedAndRawResponse;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.chat.Delta;
@@ -9,23 +21,16 @@ import dev.langchain4j.model.openai.internal.chat.ToolCall;
 import dev.langchain4j.model.openai.internal.completion.CompletionChoice;
 import dev.langchain4j.model.openai.internal.completion.CompletionResponse;
 import dev.langchain4j.model.openai.internal.shared.Usage;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
-
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.model.openai.internal.OpenAiUtils.finishReasonFrom;
-import static dev.langchain4j.model.openai.internal.OpenAiUtils.tokenUsageFrom;
-import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.toList;
 
 /**
  * This class needs to be thread safe because it is called when a streaming result comes back
@@ -36,11 +41,14 @@ import static java.util.stream.Collectors.toList;
 public class OpenAiStreamingResponseBuilder {
 
     private final StringBuffer contentBuilder = new StringBuffer();
+    private final StringBuffer reasoningContentBuilder;
 
-    private final StringBuffer toolNameBuilder = new StringBuffer();
-    private final StringBuffer toolArgumentsBuilder = new StringBuffer();
+    private final StringBuffer toolNameBuilder = new StringBuffer(); // legacy
+    private final StringBuffer toolArgumentsBuilder = new StringBuffer(); // legacy
 
-    private final Map<Integer, ToolExecutionRequestBuilder> indexToToolExecutionRequestBuilder = new ConcurrentHashMap<>();
+    private final Map<Integer, ToolExecutionRequestBuilder> indexToToolExecutionRequestBuilder =
+            new ConcurrentHashMap<>();
+    private final AtomicInteger fallbackToolCallIndex = new AtomicInteger(0);
 
     private final AtomicReference<String> id = new AtomicReference<>();
     private final AtomicReference<Long> created = new AtomicReference<>();
@@ -49,6 +57,42 @@ public class OpenAiStreamingResponseBuilder {
     private final AtomicReference<String> systemFingerprint = new AtomicReference<>();
     private final AtomicReference<TokenUsage> tokenUsage = new AtomicReference<>();
     private final AtomicReference<FinishReason> finishReason = new AtomicReference<>();
+    private final AtomicReference<SuccessfulHttpResponse> rawHttpResponse = new AtomicReference<>();
+    private final Queue<ServerSentEvent> rawServerSentEvents = new ConcurrentLinkedQueue<>();
+
+    private final boolean returnThinking;
+    private final boolean accumulateToolCallId;
+
+    public OpenAiStreamingResponseBuilder() {
+        this(false, true);
+    }
+
+    public OpenAiStreamingResponseBuilder(boolean returnThinking) {
+        this(returnThinking, true);
+    }
+
+    public OpenAiStreamingResponseBuilder(boolean returnThinking, boolean accumulateToolCallId) {
+        this.returnThinking = returnThinking;
+        this.accumulateToolCallId = accumulateToolCallId;
+        if (returnThinking) {
+            this.reasoningContentBuilder = new StringBuffer();
+        } else {
+            this.reasoningContentBuilder = null;
+        }
+    }
+
+    public void append(ParsedAndRawResponse<ChatCompletionResponse> parsedAndRawResponse) {
+        if (parsedAndRawResponse != null) {
+            if (parsedAndRawResponse.rawHttpResponse() != null) {
+                rawHttpResponse.set(parsedAndRawResponse.rawHttpResponse());
+            }
+            if (parsedAndRawResponse.rawServerSentEvent() != null) {
+                rawServerSentEvents.add(parsedAndRawResponse.rawServerSentEvent());
+            }
+
+            append(parsedAndRawResponse.parsedResponse());
+        }
+    }
 
     public void append(ChatCompletionResponse partialResponse) {
         if (partialResponse == null) {
@@ -77,7 +121,7 @@ public class OpenAiStreamingResponseBuilder {
         }
 
         List<ChatCompletionChoice> choices = partialResponse.choices();
-        if (choices == null || choices.isEmpty()) {
+        if (isNullOrEmpty(choices)) {
             return;
         }
 
@@ -101,6 +145,11 @@ public class OpenAiStreamingResponseBuilder {
             this.contentBuilder.append(content);
         }
 
+        String reasoningContent = delta.reasoningContent();
+        if (returnThinking && !isNullOrEmpty(reasoningContent)) {
+            this.reasoningContentBuilder.append(reasoningContent);
+        }
+
         if (delta.functionCall() != null) {
             FunctionCall functionCall = delta.functionCall();
 
@@ -115,14 +164,28 @@ public class OpenAiStreamingResponseBuilder {
 
         if (delta.toolCalls() != null && !delta.toolCalls().isEmpty()) {
             ToolCall toolCall = delta.toolCalls().get(0);
+            int toolCallIndex = toolCall.index() != null ? toolCall.index() : fallbackToolCallIndex.get();
 
             ToolExecutionRequestBuilder builder = this.indexToToolExecutionRequestBuilder.computeIfAbsent(
-                    toolCall.index(),
-                    idx -> new ToolExecutionRequestBuilder()
-            );
+                    toolCallIndex, idx -> new ToolExecutionRequestBuilder());
+
+            // When index is null and a different tool call id appears, increment the fallback index
+            if (toolCall.index() == null
+                    && toolCall.id() != null
+                    && !builder.idBuilder.isEmpty()
+                    && !builder.idBuilder.toString().equals(toolCall.id())) {
+                toolCallIndex = fallbackToolCallIndex.incrementAndGet();
+                builder = this.indexToToolExecutionRequestBuilder.computeIfAbsent(
+                        toolCallIndex, idx -> new ToolExecutionRequestBuilder());
+            }
 
             if (toolCall.id() != null) {
-                builder.idBuilder.append(toolCall.id());
+                if (accumulateToolCallId) {
+                    builder.idBuilder.append(toolCall.id());
+                } else {
+                    builder.idBuilder.setLength(0);
+                    builder.idBuilder.append(toolCall.id());
+                }
             }
 
             FunctionCall functionCall = toolCall.function();
@@ -146,7 +209,7 @@ public class OpenAiStreamingResponseBuilder {
         }
 
         List<CompletionChoice> choices = partialResponse.choices();
-        if (choices == null || choices.isEmpty()) {
+        if (isNullOrEmpty(choices)) {
             return;
         }
 
@@ -167,8 +230,56 @@ public class OpenAiStreamingResponseBuilder {
     }
 
     public ChatResponse build() {
+        return ChatResponse.builder()
+                .aiMessage(buildAiMessage())
+                .metadata(buildMetadata())
+                .build();
+    }
 
-        OpenAiChatResponseMetadata chatResponseMetadata = OpenAiChatResponseMetadata.builder()
+    private AiMessage buildAiMessage() {
+        String text = contentBuilder.toString();
+
+        String thinking = null;
+        if (returnThinking) {
+            thinking = reasoningContentBuilder.toString();
+        }
+
+        return AiMessage.builder()
+                .text(isNullOrEmpty(text) ? null : text)
+                .thinking(isNullOrEmpty(thinking) ? null : thinking)
+                .toolExecutionRequests(buildToolExecutionRequests())
+                .build();
+    }
+
+    private List<ToolExecutionRequest> buildToolExecutionRequests() {
+        List<ToolExecutionRequest> toolExecutionRequests = new ArrayList<>();
+
+        // legacy
+        String toolName = toolNameBuilder.toString();
+        if (!toolName.isEmpty()) {
+            ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
+                    .name(toolName)
+                    .arguments(toolArgumentsBuilder.toString())
+                    .build();
+            toolExecutionRequests.add(toolExecutionRequest);
+        }
+
+        if (!indexToToolExecutionRequestBuilder.isEmpty()) {
+            List<ToolExecutionRequest> toolRequests = indexToToolExecutionRequestBuilder.values().stream()
+                    .map(it -> ToolExecutionRequest.builder()
+                            .id(it.idBuilder.toString())
+                            .name(it.nameBuilder.toString())
+                            .arguments(it.argumentsBuilder.toString())
+                            .build())
+                    .collect(toList());
+            toolExecutionRequests.addAll(toolRequests);
+        }
+
+        return toolExecutionRequests;
+    }
+
+    private OpenAiChatResponseMetadata buildMetadata() {
+        return OpenAiChatResponseMetadata.builder()
                 .id(id.get())
                 .modelName(model.get())
                 .tokenUsage(tokenUsage.get())
@@ -176,55 +287,9 @@ public class OpenAiStreamingResponseBuilder {
                 .created(created.get())
                 .serviceTier(serviceTier.get())
                 .systemFingerprint(systemFingerprint.get())
+                .rawHttpResponse(rawHttpResponse.get())
+                .rawServerSentEvents(new ArrayList<>(rawServerSentEvents))
                 .build();
-
-        String text = contentBuilder.toString();
-
-        String toolName = toolNameBuilder.toString();
-        if (!toolName.isEmpty()) {
-            ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
-                    .name(toolName)
-                    .arguments(toolArgumentsBuilder.toString())
-                    .build();
-
-            AiMessage aiMessage = isNullOrBlank(text) ?
-                    AiMessage.from(toolExecutionRequest) :
-                    AiMessage.from(text, singletonList(toolExecutionRequest));
-
-            return ChatResponse.builder()
-                    .aiMessage(aiMessage)
-                    .metadata(chatResponseMetadata)
-                    .build();
-        }
-
-        if (!indexToToolExecutionRequestBuilder.isEmpty()) {
-            List<ToolExecutionRequest> toolExecutionRequests = indexToToolExecutionRequestBuilder.values().stream()
-                    .map(it -> ToolExecutionRequest.builder()
-                            .id(it.idBuilder.toString())
-                            .name(it.nameBuilder.toString())
-                            .arguments(it.argumentsBuilder.toString())
-                            .build())
-                    .collect(toList());
-
-            AiMessage aiMessage = isNullOrBlank(text) ?
-                    AiMessage.from(toolExecutionRequests) :
-                    AiMessage.from(text, toolExecutionRequests);
-
-            return ChatResponse.builder()
-                    .aiMessage(aiMessage)
-                    .metadata(chatResponseMetadata)
-                    .build();
-        }
-
-        if (!isNullOrBlank(text)) {
-            AiMessage aiMessage = AiMessage.from(text);
-            return ChatResponse.builder()
-                    .aiMessage(aiMessage)
-                    .metadata(chatResponseMetadata)
-                    .build();
-        }
-
-        return null;
     }
 
     private static class ToolExecutionRequestBuilder {

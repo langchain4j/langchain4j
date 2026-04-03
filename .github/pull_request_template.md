@@ -20,7 +20,7 @@ Closes #
 
 ## General checklist
 <!-- Please double-check the following points and mark them like this: [X] -->
-- [ ] There are no breaking changes
+- [ ] There are no breaking changes (API, behaviour)
 - [ ] I have added unit and/or integration tests for my change
 - [ ] The tests cover both positive and negative cases
 - [ ] I have manually run all the unit and integration tests in the module I have added/changed, and they are all green

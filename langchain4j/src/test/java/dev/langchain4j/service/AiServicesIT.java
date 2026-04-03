@@ -1,8 +1,11 @@
 package dev.langchain4j.service;
 
+import static dev.langchain4j.MockitoUtils.ignoreInteractions;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.O3_MINI;
+import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.service.AiServicesIT.Ingredient.OIL;
 import static dev.langchain4j.service.AiServicesIT.Ingredient.PEPPER;
 import static dev.langchain4j.service.AiServicesIT.Ingredient.SALT;
@@ -17,19 +20,25 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.data.MapEntry.entry;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.moderation.ModerationModel;
+import dev.langchain4j.model.moderation.ModerationRequest;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.model.openai.OpenAiChatRequestParameters;
 import dev.langchain4j.model.openai.OpenAiModerationModel;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.output.structured.Description;
 import java.time.LocalDate;
@@ -38,16 +47,22 @@ import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.function.UnaryOperator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 public class AiServicesIT {
+
+    @Captor
+    ArgumentCaptor<ChatRequest> chatRequestCaptor;
 
     @Spy
     ChatModel chatModel = OpenAiChatModel.builder()
@@ -77,32 +92,13 @@ public class AiServicesIT {
         verifyNoMoreInteractions(moderationModel);
     }
 
+    // TODO rename verifyNoMoreImportantInteractions
     public static void verifyNoMoreInteractionsFor(ChatModel model) {
-        try {
-            verify(model, atLeastOnce()).doChat(any());
-        } catch (Throwable ignored) {
-            // don't care if it was called or not
-        }
-        try {
-            verify(model, atLeastOnce()).defaultRequestParameters();
-        } catch (Throwable ignored) {
-            // don't care if it was called or not
-        }
-        try {
-            verify(model, atLeastOnce()).supportedCapabilities();
-        } catch (Throwable ignored) {
-            // don't care if it was called or not
-        }
-        try {
-            verify(model, atLeastOnce()).listeners();
-        } catch (Throwable ignored) {
-            // don't care if it was called or not
-        }
-        try {
-            verify(model, atLeastOnce()).provider();
-        } catch (Throwable ignored) {
-            // don't care if it was called or not
-        }
+        ignoreInteractions(model).doChat(any());
+        ignoreInteractions(model).defaultRequestParameters();
+        ignoreInteractions(model).supportedCapabilities();
+        ignoreInteractions(model).listeners();
+        ignoreInteractions(model).provider();
         verifyNoMoreInteractions(model);
     }
 
@@ -259,8 +255,7 @@ public class AiServicesIT {
     @Test
     void extract_single_enum_with_description() {
 
-        WeatherForecastAnalyzer weatherForecastAnalyzer =
-                AiServices.create(WeatherForecastAnalyzer.class, chatModel);
+        WeatherForecastAnalyzer weatherForecastAnalyzer = AiServices.create(WeatherForecastAnalyzer.class, chatModel);
 
         String weatherForecast =
                 "It will be cloudy and mostly rainy. No more rain early in the day but the sky remains overcast. Afternoon it is mostly cloudy. The sun will not be visible. The forecast has a moderate, 40% chance of Precipitation. Temperatures peaking at 17 °C.";
@@ -829,10 +824,22 @@ public class AiServicesIT {
 
         assertThatThrownBy(() -> chatWithModeration.chat(message))
                 .isExactlyInstanceOf(ModerationException.class)
-                .hasMessage("Text \"" + message + "\" violates content policy");
+                .hasMessage("Text \"" + message + "\" violates content policy")
+                .satisfies(e -> {
+                    final var moderationException = (ModerationException) e;
+                    final var moderation = moderationException.moderation();
+                    assertThat(moderation.flagged()).isTrue();
+                    assertThat(moderation.flaggedText()).contains("I WILL KILL YOU!!!");
+                });
 
         verify(chatModel).chat(chatRequest(message));
-        verify(moderationModel).moderate(singletonList(userMessage(message)));
+
+        verify(moderationModel).doModerate(argThat(req -> req.texts().equals(List.of(message))));
+        ignoreInteractions(moderationModel).moderate(any(List.class));
+        ignoreInteractions(moderationModel).moderate(any(ModerationRequest.class));
+        ignoreInteractions(moderationModel).modelName();
+        ignoreInteractions(moderationModel).provider();
+        ignoreInteractions(moderationModel).listeners();
     }
 
     @Test
@@ -850,7 +857,13 @@ public class AiServicesIT {
         assertThat(response).isNotBlank();
 
         verify(chatModel).chat(chatRequest(message));
-        verify(moderationModel).moderate(singletonList(userMessage(message)));
+
+        verify(moderationModel).doModerate(argThat(req -> req.texts().equals(List.of(message))));
+        ignoreInteractions(moderationModel).moderate(any(List.class));
+        ignoreInteractions(moderationModel).moderate(any(ModerationRequest.class));
+        ignoreInteractions(moderationModel).modelName();
+        ignoreInteractions(moderationModel).provider();
+        ignoreInteractions(moderationModel).listeners();
     }
 
     interface AssistantReturningResult {
@@ -873,13 +886,22 @@ public class AiServicesIT {
         assertThat(result.content()).containsIgnoringCase("Berlin");
 
         TokenUsage tokenUsage = result.tokenUsage();
-        assertThat(tokenUsage).isNotNull();
         assertThat(tokenUsage.inputTokenCount()).isPositive();
         assertThat(tokenUsage.outputTokenCount()).isPositive();
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         assertThat(result.sources()).isEmpty();
+
+        assertThat(result.finishReason()).isEqualTo(STOP);
+
+        assertThat(result.toolExecutions()).isEmpty();
+
+        assertThat(result.intermediateResponses()).isEmpty();
+
+        assertThat(result.finalResponse().aiMessage().text()).isEqualTo(result.content());
+        assertThat(result.finalResponse().tokenUsage()).isEqualTo(result.tokenUsage());
+        assertThat(result.finalResponse().finishReason()).isEqualTo(result.finishReason());
 
         verify(chatModel).chat(chatRequest(userMessage));
     }
@@ -921,9 +943,122 @@ public class AiServicesIT {
                         + "}"));
     }
 
+    @Test
+    void should_rewrite_chat_request() {
+        UserMessageTransformer requestTransformer = userMessage -> userMessage.replace("three", "four");
+
+        EggCounter eggCounter = AiServices.builder(EggCounter.class)
+                .chatModel(chatModel)
+                .chatRequestTransformer(requestTransformer)
+                .build();
+
+        String sentence = "I have ten eggs in my basket and three in my pocket.";
+
+        int count = eggCounter.count(sentence);
+        assertThat(count).isEqualTo(14);
+
+        verify(chatModel)
+                .chat(chatRequest("Count the number of eggs mentioned in this sentence:\n"
+                        + "|||I have ten eggs in my basket and four in my pocket.|||\n"
+                        + "You must answer strictly in the following format: integer number"));
+    }
+
     static ChatRequest chatRequest(String userMessage) {
         return ChatRequest.builder()
                 .messages(dev.langchain4j.data.message.UserMessage.from(userMessage))
                 .build();
+    }
+
+    @FunctionalInterface
+    public interface UserMessageTransformer extends UnaryOperator<ChatRequest> {
+
+        @Override
+        default ChatRequest apply(ChatRequest chatRequest) {
+            return chatRequest.messages().stream()
+                    .filter(dev.langchain4j.data.message.UserMessage.class::isInstance)
+                    .map(dev.langchain4j.data.message.UserMessage.class::cast)
+                    .findFirst()
+                    .map(userMessage -> {
+                        String originalMessage = userMessage.singleText();
+                        String transformedMessage = transformUserMessage(originalMessage);
+                        if (transformedMessage == null || transformedMessage.equals(originalMessage)) {
+                            return chatRequest; // No transformation needed
+                        }
+                        List<ChatMessage> messages = chatRequest.messages().stream()
+                                .map(message -> message == userMessage ?
+                                        dev.langchain4j.data.message.UserMessage.from(transformedMessage) :
+                                        message)
+                                .toList();
+                        return ChatRequest.builder()
+                                .messages(messages)
+                                .parameters(chatRequest.parameters())
+                                .build();
+                    })
+                    .orElse(chatRequest);
+        }
+
+        String transformUserMessage(String userMessage);
+    }
+
+    interface AssistantWithChatRequestParams {
+
+        Response<AiMessage> chat(@UserMessage String userMessage, ChatRequestParameters params);
+    }
+
+    @Test
+    void should_use_custom_chat_request_parameters_passed_in_method() {
+        AssistantWithChatRequestParams assistant = AiServices.builder(AssistantWithChatRequestParams.class)
+                .chatModel(chatModel)
+                .chatRequestTransformer(chatRequest -> {
+                    assertThat(chatRequest.parameters().temperature()).isEqualTo(0.76);
+                    assertThat(chatRequest.parameters().stopSequences()).containsExactly("DONE");
+                    return chatRequest;
+                })
+                .build();
+
+        ChatRequestParameters customParams = ChatRequestParameters.builder()
+                .temperature(0.76)
+                .stopSequences("DONE")
+                .build();
+
+        Response<AiMessage> response = assistant.chat("Hello, I'm passing custom parameters!", customParams);
+
+        verify(chatModel).chat(chatRequestCaptor.capture());
+        ChatRequest actualRequest = chatRequestCaptor.getValue();
+
+        assertThat(actualRequest.parameters().temperature()).isEqualTo(0.76);
+        assertThat(actualRequest.parameters().stopSequences()).containsExactly("DONE");
+
+        assertThat(response.content()).isNotNull();
+    }
+
+    @Test
+    void should_use_custom_chat_request_for_provider_specific_params() {
+        OpenAiChatModel modelWithReasoningEffort = spy(OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(O3_MINI)
+                .logRequests(true)
+                .logResponses(true)
+                .build());
+
+        AssistantWithChatRequestParams assistant = AiServices.builder(AssistantWithChatRequestParams.class)
+                .chatModel(modelWithReasoningEffort)
+                .build();
+
+        OpenAiChatRequestParameters openAiParams = OpenAiChatRequestParameters.builder()
+                .reasoningEffort("low")
+                .build();
+
+        Response<AiMessage> response = assistant.chat("Hello, I'm passing custom parameters!", openAiParams);
+
+        verify(modelWithReasoningEffort).chat(chatRequestCaptor.capture());
+        ChatRequest actualRequest = chatRequestCaptor.getValue();
+
+        assertThat(actualRequest.parameters()).isInstanceOf(OpenAiChatRequestParameters.class);
+        assertThat(((OpenAiChatRequestParameters)actualRequest.parameters()).reasoningEffort()).isEqualTo("low");
+
+        assertThat(response.content()).isNotNull();
     }
 }

@@ -3,6 +3,7 @@ package dev.langchain4j.model.voyageai;
 import static dev.langchain4j.http.client.HttpMethod.POST;
 import static dev.langchain4j.internal.Utils.ensureTrailingForwardSlash;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.voyageai.VoyageAiJsonUtils.fromJson;
 import static dev.langchain4j.model.voyageai.VoyageAiJsonUtils.toJson;
@@ -17,6 +18,8 @@ import dev.langchain4j.http.client.log.LoggingHttpClient;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Supplier;
+import org.slf4j.Logger;
 
 class VoyageAiClient {
 
@@ -25,6 +28,7 @@ class VoyageAiClient {
     private final HttpClient httpClient;
     private final String baseUrl;
     private final Map<String, String> defaultHeaders;
+    private final Supplier<Map<String, String>> customHeadersSupplier;
 
     VoyageAiClient(Builder builder) {
         HttpClientBuilder httpClientBuilder =
@@ -39,7 +43,8 @@ class VoyageAiClient {
 
         if (builder.logRequests != null && builder.logRequests
                 || builder.logResponses != null && builder.logResponses) {
-            this.httpClient = new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses);
+            this.httpClient =
+                    new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses, builder.logger);
         } else {
             this.httpClient = httpClient;
         }
@@ -50,10 +55,19 @@ class VoyageAiClient {
         if (builder.apiKey != null) {
             defaultHeaders.put("Authorization", "Bearer " + builder.apiKey);
         }
-        if (builder.customHeaders != null) {
-            defaultHeaders.putAll(builder.customHeaders);
-        }
         this.defaultHeaders = defaultHeaders;
+        this.customHeadersSupplier = getOrDefault(builder.customHeadersSupplier, () -> Map::of);
+    }
+
+    private Map<String, String> buildRequestHeaders() {
+        Map<String, String> dynamicHeaders = customHeadersSupplier.get();
+        if (isNullOrEmpty(dynamicHeaders)) {
+            return defaultHeaders;
+        }
+
+        Map<String, String> headers = new HashMap<>(defaultHeaders);
+        headers.putAll(dynamicHeaders);
+        return headers;
     }
 
     EmbeddingResponse embed(EmbeddingRequest request) {
@@ -64,7 +78,7 @@ class VoyageAiClient {
                 .body(toJson(request))
                 .addHeader("Content-Type", "application/json")
                 .addHeader("Accept", "application/json")
-                .addHeaders(defaultHeaders)
+                .addHeaders(buildRequestHeaders())
                 .build();
 
         SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
@@ -79,7 +93,7 @@ class VoyageAiClient {
                 .body(toJson(request))
                 .addHeader("Content-Type", "application/json")
                 .addHeader("Accept", "application/json")
-                .addHeaders(defaultHeaders)
+                .addHeaders(buildRequestHeaders())
                 .build();
 
         SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
@@ -99,7 +113,8 @@ class VoyageAiClient {
         private String apiKey;
         private Boolean logRequests;
         private Boolean logResponses;
-        private Map<String, String> customHeaders;
+        private Logger logger;
+        private Supplier<Map<String, String>> customHeadersSupplier;
 
         Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
@@ -131,8 +146,36 @@ class VoyageAiClient {
             return this;
         }
 
-        public Builder customHeaders(Map<String, String> customHeaders) {
-            this.customHeaders = customHeaders;
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        Builder logger(Logger logger) {
+            this.logger = logger;
+            return this;
+        }
+
+        /**
+         * Custom headers to be added to each HTTP request.
+         *
+         * @param customHeaders a map of headers
+         * @return builder
+         */
+        Builder customHeaders(Map<String, String> customHeaders) {
+            this.customHeadersSupplier = () -> customHeaders;
+            return this;
+        }
+
+        /**
+         * A supplier for custom headers to be added to each HTTP request.
+         * The supplier is called before each request, allowing dynamic header values.
+         * For example, this is useful for OAuth2 tokens that expire and need refreshing.
+         *
+         * @param customHeadersSupplier a supplier that provides a map of headers
+         * @return builder
+         */
+        Builder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
             return this;
         }
 

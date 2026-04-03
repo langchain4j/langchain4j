@@ -67,6 +67,11 @@ class VertexAiChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
+    protected boolean supportsJsonResponseFormatWithRawSchema() {
+        return false; // TODO check if supported
+    }
+
+    @Override
     protected boolean supportsSingleImageInputAsBase64EncodedString() {
         return false; // TODO check if supported
     }

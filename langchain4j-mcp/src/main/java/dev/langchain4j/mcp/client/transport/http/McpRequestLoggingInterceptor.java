@@ -1,5 +1,8 @@
 package dev.langchain4j.mcp.client.transport.http;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+
+import dev.langchain4j.mcp.client.logging.McpLoggers;
 import java.io.IOException;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -14,7 +17,12 @@ import org.slf4j.LoggerFactory;
 class McpRequestLoggingInterceptor implements Interceptor {
 
     private static final Logger log = LoggerFactory.getLogger(McpRequestLoggingInterceptor.class);
-    private static final Logger trafficLog = LoggerFactory.getLogger("MCP");
+
+    private final Logger trafficLog;
+
+    McpRequestLoggingInterceptor(Logger logger) {
+        this.trafficLog = getOrDefault(logger, McpLoggers.traffic());
+    }
 
     @Override
     public Response intercept(Chain chain) throws IOException {

@@ -4,9 +4,11 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.vertexai.gemini.VertexAiGeminiChatModel;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.List;
 
+@EnabledIfEnvironmentVariable(named = "GCP_PROJECT_ID", matches = ".+")
 class VertexAiGeminiChatModelIT extends AbstractChatModelIT {
 
     // TODO https://github.com/langchain4j/langchain4j/issues/2219
@@ -53,6 +55,11 @@ class VertexAiGeminiChatModelIT extends AbstractChatModelIT {
     protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
         return false; // Gemini does not support tools and response format simultaneously
     }
+    
+    @Override
+    protected boolean supportsJsonResponseFormatWithRawSchema() {
+        return false; // not tested
+    }
 
     @Override
     protected boolean assertResponseId() {
@@ -64,8 +71,14 @@ class VertexAiGeminiChatModelIT extends AbstractChatModelIT {
         return false; // TODO implement
     }
 
+    @Override
     protected boolean assertFinishReason() {
         return false; // TODO implement
+    }
+
+    @Override
+    protected boolean assertToolId(ChatModel model) {
+        return false; // Gemini does not provide a tool ID
     }
 
     @AfterEach

@@ -4,6 +4,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.scoring.ScoringModel;
+import org.slf4j.Logger;
 
 import java.net.Proxy;
 import java.time.Duration;
@@ -28,6 +29,7 @@ public class CohereScoringModel implements ScoringModel {
     private final String modelName;
     private final Integer maxRetries;
 
+    @Deprecated(forRemoval = true, since = "1.4.0")
     public CohereScoringModel(
             String baseUrl,
             String apiKey,
@@ -48,6 +50,20 @@ public class CohereScoringModel implements ScoringModel {
                 .build();
         this.modelName = modelName;
         this.maxRetries = getOrDefault(maxRetries, 2);
+    }
+
+    public CohereScoringModel(CohereScoringModelBuilder builder) {
+        this.client = CohereClient.builder()
+                .baseUrl(getOrDefault(builder.baseUrl, DEFAULT_BASE_URL))
+                .apiKey(ensureNotBlank(builder.apiKey, "apiKey"))
+                .timeout(getOrDefault(builder.timeout, ofSeconds(60)))
+                .proxy(builder.proxy)
+                .logRequests(getOrDefault(builder.logRequests, false))
+                .logResponses(getOrDefault(builder.logResponses, false))
+                .logger(builder.logger)
+                .build();
+        this.modelName = builder.modelName;
+        this.maxRetries = getOrDefault(builder.maxRetries, 2);
     }
 
     /**
@@ -93,6 +109,7 @@ public class CohereScoringModel implements ScoringModel {
         private Proxy proxy;
         private Boolean logRequests;
         private Boolean logResponses;
+        private Logger logger;
 
         CohereScoringModelBuilder() {
         }
@@ -137,8 +154,17 @@ public class CohereScoringModel implements ScoringModel {
             return this;
         }
 
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public CohereScoringModelBuilder logger(Logger logger) {
+            this.logger = logger;
+            return this;
+        }
+
         public CohereScoringModel build() {
-            return new CohereScoringModel(this.baseUrl, this.apiKey, this.modelName, this.timeout, this.maxRetries, this.proxy, this.logRequests, this.logResponses);
+            return new CohereScoringModel(this);
         }
 
         public String toString() {

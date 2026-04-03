@@ -2,6 +2,8 @@ package dev.langchain4j.internal;
 
 import dev.langchain4j.Internal;
 
+import java.util.concurrent.Callable;
+
 /**
  * Utility methods for creating common exceptions.
  */
@@ -34,5 +36,26 @@ public class Exceptions {
      */
     public static RuntimeException runtime(String format, Object... args) {
         return new RuntimeException(format.formatted(args));
+    }
+
+    public static Throwable unwrapRuntimeException(Exception e) {
+        if (e.getClass() == RuntimeException.class && e.getCause() != null) {
+            // when checked exception (e.g., JsonProcessingException) is wrapped into RuntimeException
+            return e.getCause();
+        } else {
+            return e;
+        }
+    }
+
+    public static <T> T unchecked(Callable<T> callable) {
+        try {
+            return callable.call();
+        } catch (Exception e) {
+            if (e instanceof RuntimeException re) {
+                throw re;
+            } else {
+                throw new RuntimeException(e);
+            }
+        }
     }
 }

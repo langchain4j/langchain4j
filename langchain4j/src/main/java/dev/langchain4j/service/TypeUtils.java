@@ -1,6 +1,8 @@
 package dev.langchain4j.service;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.message.ImageContent;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -11,11 +13,14 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.stream.Collectors.toList;
 
 @Internal
 public class TypeUtils {
+
+    private TypeUtils() { }
 
     public static Class<?> getRawClass(Type type) {
         if (type == null) {
@@ -69,12 +74,9 @@ public class TypeUtils {
         }
 
         Type[] typeArguments = parameterizedType.getActualTypeArguments();
-        if (typeArguments.length == 0) {
-            throw new IllegalArgumentException("Parameterized type has no type arguments.");
-        }
+        ensureNotEmpty(typeArguments, "%s", "Parameterized type has no type arguments.");
         return typeArguments;
     }
-
 
     /**
      * <p>Ensures that no wildcard and/or parametrized types are being used as service method return type.</p>
@@ -160,4 +162,7 @@ public class TypeUtils {
         return declarationExample.toString();
     }
 
+    public static boolean isImageType(Class<?> rawReturnType) {
+        return Image.class.isAssignableFrom(rawReturnType) || ImageContent.class.isAssignableFrom(rawReturnType);
+    }
 }

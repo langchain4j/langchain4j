@@ -1,5 +1,6 @@
 package dev.langchain4j.mcp.client.integration;
 
+import static dev.langchain4j.mcp.client.integration.McpServerHelper.destroyProcessTree;
 import static dev.langchain4j.mcp.client.integration.McpServerHelper.getJBangCommand;
 import static dev.langchain4j.mcp.client.integration.McpServerHelper.getPathToScript;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -15,7 +16,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-public class McpHealthStdioTransportIT {
+class McpHealthStdioTransportIT {
 
     static McpClient mcpClient;
     static McpTransport transport;
@@ -41,12 +42,15 @@ public class McpHealthStdioTransportIT {
         if (mcpClient != null) {
             mcpClient.close();
         }
+        if (process != null && process.isAlive()) {
+            destroyProcessTree(process);
+        }
     }
 
     @Test
-    public void testHealth() throws ExecutionException, InterruptedException {
+    void health() throws ExecutionException, InterruptedException {
         mcpClient.checkHealth();
-        process.destroy();
+        destroyProcessTree(process);
         process.onExit().get();
         assertThatThrownBy(() -> mcpClient.checkHealth())
                 .isInstanceOf(IllegalStateException.class)

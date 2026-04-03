@@ -1,19 +1,19 @@
 package dev.langchain4j.model.azure;
 
+import static java.util.Collections.singletonList;
+
 import dev.langchain4j.exception.AuthenticationException;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
-import static java.util.Collections.singletonList;
-
+@EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
 class AzureOpenAiChatModelListenerIT extends AbstractChatModelListenerIT {
 
     @Override
     protected ChatModel createModel(ChatModelListener listener) {
-        return AzureOpenAiChatModel.builder()
-                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+        return AzureModelBuilders.chatModelBuilder()
                 .deploymentName(modelName())
                 .temperature(temperature())
                 .topP(topP())

@@ -1,12 +1,13 @@
 package dev.langchain4j.internal;
 
-import dev.langchain4j.Internal;
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
+import dev.langchain4j.Internal;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
-
-import static dev.langchain4j.internal.Exceptions.illegalArgument;
 
 /**
  * Utility class for validating method arguments.
@@ -65,7 +66,7 @@ public class ValidationUtils {
      *           @throws IllegalArgumentException if the collection is null or empty.
      */
     public static <T extends Collection<?>> T ensureNotEmpty(T collection, String name) {
-        if (collection == null || collection.isEmpty()) {
+        if (isNullOrEmpty(collection)) {
             throw illegalArgument("%s cannot be null or empty", name);
         }
 
@@ -81,10 +82,22 @@ public class ValidationUtils {
      * @throws IllegalArgumentException if the array is null or empty.
      */
     public static <T> T[] ensureNotEmpty(T[] array, String name) {
-        if (array == null || array.length == 0) {
-            throw illegalArgument("%s cannot be null or empty", name);
-        }
+        return ensureNotEmpty(array, "%s cannot be null or empty", name);
+    }
 
+    /**
+     * Ensures that the given array is not null and not empty.
+     * @param array The array to check.
+     * @param format The format of the exception message.
+     * @param args The arguments for the exception message.
+     * @return The array if it is not null and not empty.
+     * @param <T> The component type of the array.
+     * @throws IllegalArgumentException if the array is null or empty.
+     */
+    public static <T> T[] ensureNotEmpty(T[] array, String format, Object... args) {
+        if (array == null || array.length == 0) {
+            throw illegalArgument(format, args);
+        }
         return array;
     }
 
@@ -99,11 +112,37 @@ public class ValidationUtils {
      * @throws IllegalArgumentException if the collection is null or empty.
      */
     public static <K, V> Map<K, V> ensureNotEmpty(Map<K, V> map, String name) {
-        if (map == null || map.isEmpty()) {
+        if (isNullOrEmpty(map)) {
             throw illegalArgument("%s cannot be null or empty", name);
         }
 
         return map;
+    }
+
+    /**
+     * Ensures that the given string is not null and not empty.
+     * @param string The string to check.
+     * @param name The name of the string to be used in the exception message.
+     * @return The string if it is not null and not empty.
+     * @throws IllegalArgumentException if the string is null or empty.
+     */
+    public static String ensureNotEmpty(String string, String name) {
+        return ensureNotEmpty(string, "%s cannot be null or empty", name);
+    }
+
+    /**
+     * Ensures that the given string is not null and not empty.
+     * @param string The string to check.
+     * @param format The format of the exception message.
+     * @param args The arguments for the exception message.
+     * @return The string if it is not null and not empty.
+     * @throws IllegalArgumentException if the string is null or empty.
+     */
+    public static String ensureNotEmpty(String string, String format, Object... args) {
+        if (isNullOrEmpty(string)) {
+            throw illegalArgument(format, args);
+        }
+        return string;
     }
 
     /**
@@ -114,10 +153,21 @@ public class ValidationUtils {
      * @throws IllegalArgumentException if the string is null or blank.
      */
     public static String ensureNotBlank(String string, String name) {
-        if (string == null || string.trim().isEmpty()) {
-            throw illegalArgument("%s cannot be null or blank", name);
-        }
+        return ensureNotBlank(string, "%s cannot be null or blank", name);
+    }
 
+    /**
+     * Ensures that the given string is not null and not blank.
+     * @param string The string to check.
+     * @param format The format of the exception message.
+     * @param args The arguments for the exception message.
+     * @return The string if it is not null and not blank.
+     * @throws IllegalArgumentException if the string is null or blank.
+     */
+    public static String ensureNotBlank(String string, String format, Object... args) {
+        if (isNullOrBlank(string)) {
+            throw illegalArgument(format, args);
+        }
         return string;
     }
 
@@ -131,6 +181,21 @@ public class ValidationUtils {
         if (!expression) {
             throw illegalArgument(msg);
         }
+    }
+
+    /**
+     * Ensures that the given integer is not negative.
+     * @param i The integer to check.
+     * @param name The logical name of the integer, to be used in the exception.
+     * @return The value if it is not negative.
+     * @throws IllegalArgumentException if the integer is negative.
+     */
+    public static int ensureNotNegative(Integer i, String name) {
+        if (i == null || i < 0) {
+            throw illegalArgument("%s must not be negative, but is: %s", name, i);
+        }
+
+        return i;
     }
 
     /**
@@ -194,6 +259,7 @@ public class ValidationUtils {
         }
         return i;
     }
+
     /**
      * Ensures that the given Long value is in {@code [min, max]}.
      * @param i The value to check.

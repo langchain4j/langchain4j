@@ -15,8 +15,8 @@ public class InputGuardrailValidation implements InputGuardrail {
         return INSTANCE;
     }
 
-    public InputGuardrailResult validate(InputGuardrailRequest params) {
-        this.params = params;
+    public InputGuardrailResult validate(InputGuardrailRequest request) {
+        this.params = request;
         return success();
     }
 

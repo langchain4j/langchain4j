@@ -5,15 +5,19 @@ import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 
+import com.google.auth.oauth2.GoogleCredentials;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import java.io.IOException;
 import java.util.*;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+@EnabledIfEnvironmentVariable(named = "GCP_PROJECT_ID", matches = ".+")
 class VertexAiEmbeddingModelIT {
 
     @Test
@@ -49,6 +53,27 @@ class VertexAiEmbeddingModelIT {
         assertThat(tokenUsage.totalTokenCount()).isEqualTo(6);
 
         assertThat(response.finishReason()).isNull();
+    }
+
+    @Test
+    void embeddingModelWithCustomCredentials() throws IOException {
+        EmbeddingModel embeddingModel = VertexAiEmbeddingModel.builder()
+                .endpoint(System.getenv("GCP_VERTEXAI_ENDPOINT"))
+                .project(System.getenv("GCP_PROJECT_ID"))
+                .location(System.getenv("GCP_LOCATION"))
+                .publisher("google")
+                .modelName("text-embedding-005")
+                .maxRetries(2)
+                .credentials(GoogleCredentials.getApplicationDefault())
+                .build();
+
+        List<TextSegment> segments =
+                asList(TextSegment.from("one"), TextSegment.from("two"), TextSegment.from("three"));
+
+        Response<List<Embedding>> response = embeddingModel.embedAll(segments);
+
+        List<Embedding> embeddings = response.content();
+        assertThat(embeddings).hasSize(3);
     }
 
     @Test
@@ -109,51 +134,26 @@ class VertexAiEmbeddingModelIT {
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
                 .publisher("google")
-                .modelName("text-embedding-005")
+                .modelName("text-multilingual-embedding-002")
+                .maxSegmentsPerBatch(125)
+                .maxTokensPerBatch(10_000)
                 .build();
 
-        // 1234 segments requires splitting in batches of 250 or less
-        // 1234 times 21 tokens is above the 20k token limit
+        // 617 segments requires splitting in batches of 125 or less
+        // 617 times 21 tokens is above the 10k token limit
         List<TextSegment> segments = Collections.nCopies(
-                1234, TextSegment.from("Once upon a time, in a haunted forrest, lived a gentle squirrel."));
+                617, TextSegment.from("Once upon a time, in forrest, lived a squirrel."));
 
         List<Integer> tokenCounts = model.calculateTokensCounts(segments);
+        assertThat(tokenCounts).hasSize(617);
 
-        assertThat(tokenCounts).hasSize(1234);
         for (Integer tokenCount : tokenCounts) {
             assertThat(tokenCount).isEqualTo(21);
         }
 
         List<Embedding> embeddings = model.embedAll(segments).content();
 
-        assertThat(embeddings).hasSize(1234);
-    }
-
-    @Test
-    void batchingEmbeddingsWithMaxSet() {
-        VertexAiEmbeddingModel model = VertexAiEmbeddingModel.builder()
-                .endpoint(System.getenv("GCP_VERTEXAI_ENDPOINT"))
-                .project(System.getenv("GCP_PROJECT_ID"))
-                .location(System.getenv("GCP_LOCATION"))
-                .publisher("google")
-                .modelName("text-embedding-005")
-                .maxSegmentsPerBatch(50)
-                .maxTokensPerBatch(1000)
-                .build();
-
-        List<TextSegment> segments = Collections.nCopies(
-                1234, TextSegment.from("Once upon a time, in a haunted forrest, lived a gentle squirrel."));
-
-        List<Integer> tokenCounts = model.calculateTokensCounts(segments);
-
-        assertThat(tokenCounts).hasSize(1234);
-        for (Integer tokenCount : tokenCounts) {
-            assertThat(tokenCount).isEqualTo(21);
-        }
-
-        List<Embedding> embeddings = model.embedAll(segments).content();
-
-        assertThat(embeddings).hasSize(1234);
+        assertThat(embeddings).hasSize(617);
     }
 
     @Test

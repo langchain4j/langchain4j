@@ -1,7 +1,6 @@
 package dev.langchain4j.model.openaiofficial;
 
-import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.detectModelHost;
-import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.setupSyncClient;
+import static dev.langchain4j.model.openaiofficial.setup.OpenAiOfficialSetup.setupSyncClient;
 
 import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.client.OpenAIClient;
@@ -21,7 +20,6 @@ public class OpenAiOfficialImageModel implements ImageModel {
 
     private final OpenAIClient client;
     private final String modelName;
-    private InternalOpenAiOfficialHelper.ModelHost modelHost;
     private final ImageGenerateParams.Size size;
     private final ImageGenerateParams.Quality quality;
     private final ImageGenerateParams.Style style;
@@ -31,27 +29,24 @@ public class OpenAiOfficialImageModel implements ImageModel {
 
     public OpenAiOfficialImageModel(Builder builder) {
 
-        this.modelHost = detectModelHost(
-                builder.isAzure,
-                builder.isGitHubModels,
-                builder.baseUrl,
-                builder.azureDeploymentName,
-                builder.azureOpenAIServiceVersion);
-
-        this.client = setupSyncClient(
-                builder.baseUrl,
-                builder.apiKey,
-                builder.credential,
-                builder.azureDeploymentName,
-                builder.azureOpenAIServiceVersion,
-                builder.organizationId,
-                this.modelHost,
-                builder.openAIClient,
-                builder.modelName,
-                builder.timeout,
-                builder.maxRetries,
-                builder.proxy,
-                builder.customHeaders);
+        if (builder.openAIClient != null) {
+            this.client = builder.openAIClient;
+        } else {
+            this.client = setupSyncClient(
+                    builder.baseUrl,
+                    builder.apiKey,
+                    builder.credential,
+                    builder.microsoftFoundryDeploymentName,
+                    builder.azureOpenAIServiceVersion,
+                    builder.organizationId,
+                    builder.isMicrosoftFoundry,
+                    builder.isGitHubModels,
+                    builder.modelName,
+                    builder.timeout,
+                    builder.maxRetries,
+                    builder.proxy,
+                    builder.customHeaders);
+        }
 
         this.modelName = builder.modelName;
         this.size = builder.size;
@@ -154,10 +149,10 @@ public class OpenAiOfficialImageModel implements ImageModel {
         private String baseUrl;
         private String apiKey;
         private Credential credential;
-        private String azureDeploymentName;
+        private String microsoftFoundryDeploymentName;
         private AzureOpenAIServiceVersion azureOpenAIServiceVersion;
         private String organizationId;
-        private boolean isAzure;
+        private boolean isMicrosoftFoundry;
         private boolean isGitHubModels;
         private OpenAIClient openAIClient;
         private String modelName;
@@ -186,8 +181,17 @@ public class OpenAiOfficialImageModel implements ImageModel {
             return this;
         }
 
+        /**
+         * @deprecated Use {@link #microsoftFoundryDeploymentName(String)} instead
+         */
+        @Deprecated
         public Builder azureDeploymentName(String azureDeploymentName) {
-            this.azureDeploymentName = azureDeploymentName;
+            this.microsoftFoundryDeploymentName = azureDeploymentName;
+            return this;
+        }
+
+        public Builder microsoftFoundryDeploymentName(String microsoftFoundryDeploymentName) {
+            this.microsoftFoundryDeploymentName = microsoftFoundryDeploymentName;
             return this;
         }
 
@@ -201,8 +205,17 @@ public class OpenAiOfficialImageModel implements ImageModel {
             return this;
         }
 
+        /**
+         * @deprecated Use {@link #isMicrosoftFoundry(boolean)} instead
+         */
+        @Deprecated
         public Builder isAzure(boolean isAzure) {
-            this.isAzure = isAzure;
+            this.isMicrosoftFoundry = isAzure;
+            return this;
+        }
+
+        public Builder isMicrosoftFoundry(boolean isMicrosoftFoundry) {
+            this.isMicrosoftFoundry = isMicrosoftFoundry;
             return this;
         }
 

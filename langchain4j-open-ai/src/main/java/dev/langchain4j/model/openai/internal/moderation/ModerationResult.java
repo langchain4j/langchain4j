@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 
 import java.util.Objects;
 
@@ -41,12 +42,14 @@ public final class ModerationResult {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
         return another instanceof ModerationResult
                 && equalTo((ModerationResult) another);
     }
 
+    @JacocoIgnoreCoverageGenerated
     private boolean equalTo(ModerationResult another) {
         return Objects.equals(categories, another.categories)
                 && Objects.equals(categoryScores, another.categoryScores)
@@ -54,6 +57,7 @@ public final class ModerationResult {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         int h = 5381;
         h += (h << 5) + Objects.hashCode(categories);
@@ -63,6 +67,7 @@ public final class ModerationResult {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public String toString() {
         return "ModerationResult{"
                 + "categories=" + categories

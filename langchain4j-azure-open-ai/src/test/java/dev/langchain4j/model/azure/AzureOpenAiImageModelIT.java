@@ -1,5 +1,8 @@
 package dev.langchain4j.model.azure;
 
+import static com.azure.ai.openai.models.ImageGenerationQuality.STANDARD;
+import static com.azure.ai.openai.models.ImageGenerationResponseFormat.BASE64;
+import static com.azure.ai.openai.models.ImageSize.SIZE1024X1024;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 
@@ -21,10 +24,10 @@ class AzureOpenAiImageModelIT {
     @Test
     void should_generate_image_with_url() {
 
-        AzureOpenAiImageModel model = AzureOpenAiImageModel.builder()
-                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+        AzureOpenAiImageModel model = AzureModelBuilders.imageModelBuilder()
                 .deploymentName("dall-e-3-30")
+                .size(SIZE1024X1024)
+                .quality(STANDARD)
                 .logRequestsAndResponses(true)
                 .build();
 
@@ -39,12 +42,15 @@ class AzureOpenAiImageModelIT {
 
     @Test
     void should_generate_image_in_base64() throws IOException {
-        AzureOpenAiImageModel model = AzureOpenAiImageModel.builder()
-                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+
+        ImageGenerationResponseFormat responseFormat = BASE64;
+
+        AzureOpenAiImageModel model = AzureModelBuilders.imageModelBuilder()
                 .deploymentName("dall-e-3-30")
-                .logRequestsAndResponses(false) // The image is big, so we don't want to log it by default
-                .responseFormat(ImageGenerationResponseFormat.BASE64.toString())
+                .size(SIZE1024X1024)
+                .quality(STANDARD)
+                .responseFormat(responseFormat)
+                .logRequestsAndResponses(true)
                 .build();
 
         Response<Image> response = model.generate("A croissant in Paris, France");
@@ -71,10 +77,10 @@ class AzureOpenAiImageModelIT {
         // given
         String modelNameString = modelName.toString();
 
-        AzureOpenAiImageModel model = AzureOpenAiImageModel.builder()
-                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+        AzureOpenAiImageModel model = AzureModelBuilders.imageModelBuilder()
                 .deploymentName(modelNameString)
+                .size(SIZE1024X1024)
+                .quality(STANDARD)
                 .logRequestsAndResponses(true)
                 .build();
 

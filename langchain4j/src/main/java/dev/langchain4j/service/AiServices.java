@@ -2,16 +2,21 @@ package dev.langchain4j.service;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static dev.langchain4j.spi.ServiceHelper.loadFactory;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
 
+import dev.langchain4j.Internal;
+import dev.langchain4j.agent.tool.ReturnBehavior;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.exception.ToolArgumentsException;
+import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
@@ -20,25 +25,41 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.CompleteToolCall;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.observability.api.event.AiServiceEvent;
+import dev.langchain4j.observability.api.listener.AiServiceListener;
 import dev.langchain4j.rag.DefaultRetrievalAugmentor;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
+import dev.langchain4j.service.tool.BeforeToolExecution;
+import dev.langchain4j.service.tool.DefaultToolExecutor;
+import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
+import dev.langchain4j.service.tool.ToolExecution;
+import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
+import dev.langchain4j.service.tool.search.ToolSearchStrategy;
 import dev.langchain4j.spi.services.AiServicesFactory;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
 /**
  * AI Services is a high-level API of LangChain4j to interact with {@link ChatModel} and {@link StreamingChatModel}.
@@ -146,7 +167,7 @@ public abstract class AiServices<T> {
      * This convenience method can be used to create simple AI Services.
      * For more complex cases, please use {@link #builder}.
      *
-     * @param aiService         The class of the interface to be implemented.
+     * @param aiService The class of the interface to be implemented.
      * @param chatModel The chat model to be used under the hood.
      * @return An instance of the provided interface, implementing all its defined methods.
      */
@@ -159,9 +180,9 @@ public abstract class AiServices<T> {
      * This convenience method can be used to create simple AI Services.
      * For more complex cases, please use {@link #builder}.
      *
-     * @param aiService                  The class of the interface to be implemented.
+     * @param aiService          The class of the interface to be implemented.
      * @param streamingChatModel The streaming chat model to be used under the hood.
-     *                                   The return type of all methods should be {@link TokenStream}.
+     *                           The return type of all methods should be {@link TokenStream}.
      * @return An instance of the provided interface, implementing all its defined methods.
      */
     public static <T> T create(Class<T> aiService, StreamingChatModel streamingChatModel) {
@@ -175,11 +196,19 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public static <T> AiServices<T> builder(Class<T> aiService) {
-        AiServiceContext context = new AiServiceContext(aiService);
-        for (AiServicesFactory factory : loadFactories(AiServicesFactory.class)) {
-            return factory.create(context);
-        }
-        return new DefaultAiServices<>(context);
+        AiServiceContext context = AiServiceContext.create(aiService);
+        return builder(context);
+    }
+
+    private static class FactoryHolder {
+        private static final AiServicesFactory aiServicesFactory = loadFactory(AiServicesFactory.class);
+    }
+
+    @Internal
+    public static <T> AiServices<T> builder(AiServiceContext context) {
+        return FactoryHolder.aiServicesFactory != null
+                ? FactoryHolder.aiServicesFactory.create(context)
+                : new DefaultAiServices<>(context);
     }
 
     /**
@@ -212,6 +241,21 @@ public abstract class AiServices<T> {
     }
 
     /**
+     * Configures the system message to be used each time an AI service is invoked.
+     * It can be either a complete system message or a system message template containing unresolved template
+     * variables (e.g. "{{name}}"), which will be resolved using the values of method parameters annotated with @{@link V}.
+     * <br>
+     * When both {@code @SystemMessage} and the system message provider are configured,
+     * {@code @SystemMessage} takes precedence.
+     *
+     * @param systemMessage The system message to be used.
+     * @return builder
+     */
+    public AiServices<T> systemMessage(String systemMessage) {
+        return systemMessageProvider(ignore -> systemMessage);
+    }
+
+    /**
      * Configures the system message provider, which provides a system message to be used each time an AI service is invoked.
      * <br>
      * When both {@code @SystemMessage} and the system message provider are configured,
@@ -233,6 +277,88 @@ public abstract class AiServices<T> {
     }
 
     /**
+     * Configures a transformer that will be applied to the system message on each AI service invocation,
+     * after all other system message configuration (i.e., {@code @SystemMessage} annotation and
+     * {@link #systemMessageProvider(Function)}) has been applied, but before the
+     * {@link #chatRequestTransformer(UnaryOperator)} is invoked.
+     * <p>
+     * This can be used to dynamically modify the content of the system message,
+     * for example to append or prepend additional instructions.
+     * The transformer receives the current system message text (or {@code null} if no system message
+     * has been configured) and must return the new system message text.
+     *
+     * @param systemMessageTransformer A {@link UnaryOperator} that accepts the current system message
+     *                                 text and returns the transformed text.
+     * @return builder
+     * @see #systemMessageTransformer(BiFunction)
+     * @since 1.12.0
+     */
+    public AiServices<T> systemMessageTransformer(UnaryOperator<String> systemMessageTransformer) {
+        context.systemMessageTransformer = (msg, ctx) -> systemMessageTransformer.apply(msg);
+        return this;
+    }
+
+    /**
+     * Configures a transformer that will be applied to the system message on each AI service invocation,
+     * after all other system message configuration (i.e., {@code @SystemMessage} annotation and
+     * {@link #systemMessageProvider(Function)}) has been applied, but before the
+     * {@link #chatRequestTransformer(UnaryOperator)} is invoked.
+     * <p>
+     * This can be used to dynamically modify the content of the system message,
+     * for example to append or prepend additional instructions.
+     * The transformer receives the current system message text (or {@code null} if no system message
+     * has been configured) and the {@link InvocationContext} of the current invocation,
+     * and must return the new system message text.
+     *
+     * @param systemMessageTransformer A {@link BiFunction} that accepts the current system message text
+     *                                 and the {@link InvocationContext}, and returns the transformed text.
+     * @return builder
+     * @see #systemMessageTransformer(UnaryOperator)
+     * @since 1.12.0
+     */
+    public AiServices<T> systemMessageTransformer(
+            BiFunction<String, InvocationContext, String> systemMessageTransformer) {
+        context.systemMessageTransformer = systemMessageTransformer;
+        return this;
+    }
+
+    /**
+     * Configures the user message to be used each time an AI service is invoked.
+     * It can be either a complete user message or a user message template containing unresolved template
+     * variables (e.g. "{{name}}"), which will be resolved using the values of method parameters annotated with @{@link V}.
+     * <br>
+     * When both {@code @UserMessage} and the user message provider are configured,
+     * {@code @UserMessage} takes precedence.
+     *
+     * @param userMessage The user message to be used.
+     * @return builder
+     */
+    public AiServices<T> userMessage(String userMessage) {
+        return userMessageProvider(ignore -> userMessage);
+    }
+
+    /**
+     * Configures the user message provider, which provides a user message to be used each time an AI service is invoked.
+     * <br>
+     * When both {@code @UserMessage} and the user message provider are configured,
+     * {@code @UserMessage} takes precedence.
+     *
+     * @param userMessageProvider A {@link Function} that accepts a chat memory ID
+     *                              (a value of a method parameter annotated with @{@link MemoryId})
+     *                              and returns a user message to be used.
+     *                              If there is no parameter annotated with {@code @MemoryId},
+     *                              the value of memory ID is "default".
+     *                              The returned {@link String} can be either a complete user message
+     *                              or a user message template containing unresolved template variables (e.g. "{{name}}"),
+     *                              which will be resolved using the values of method parameters annotated with @{@link V}.
+     * @return builder
+     */
+    public AiServices<T> userMessageProvider(Function<Object, String> userMessageProvider) {
+        context.userMessageProvider = userMessageProvider.andThen(Optional::ofNullable);
+        return this;
+    }
+
+    /**
      * Configures the chat memory that will be used to preserve conversation history between method calls.
      * <p>
      * Unless a {@link ChatMemory} or {@link ChatMemoryProvider} is configured, all method calls will be independent of each other.
@@ -248,7 +374,9 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public AiServices<T> chatMemory(ChatMemory chatMemory) {
-        context.initChatMemories(chatMemory);
+        if (chatMemory != null) {
+            context.initChatMemories(chatMemory);
+        }
         return this;
     }
 
@@ -273,7 +401,38 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public AiServices<T> chatMemoryProvider(ChatMemoryProvider chatMemoryProvider) {
-        context.initChatMemories(chatMemoryProvider);
+        if (chatMemoryProvider != null) {
+            context.initChatMemories(chatMemoryProvider);
+        }
+        return this;
+    }
+
+    /**
+     * Configures a transformer that will be applied to the {@link ChatRequest} before it is sent to the LLM.
+     * <p>
+     * This can be used to modify the request, e.g., by adding additional messages or modifying existing ones.
+     *
+     * @param chatRequestTransformer A {@link UnaryOperator} that transforms the {@link ChatRequest}.
+     * @return builder
+     */
+    public AiServices<T> chatRequestTransformer(UnaryOperator<ChatRequest> chatRequestTransformer) {
+        context.chatRequestTransformer = (req, memId) -> chatRequestTransformer.apply(req);
+        return this;
+    }
+
+    /**
+     * Configures a transformer that will be applied to the {@link ChatRequest} before it is sent to the LLM.
+     * <p>
+     * This can be used to modify the request, e.g., by adding additional messages or modifying existing ones.
+     * <p>
+     * The transformer receives the {@link ChatRequest} and the memory ID (the value of a method parameter annotated with @{@link MemoryId}),
+     * which can be used to retrieve additional information from the chat memory.
+     *
+     * @param chatRequestTransformer A {@link BiFunction} that transforms the {@link ChatRequest} and memory ID.
+     * @return builder
+     */
+    public AiServices<T> chatRequestTransformer(BiFunction<ChatRequest, Object, ChatRequest> chatRequestTransformer) {
+        context.chatRequestTransformer = chatRequestTransformer;
         return this;
     }
 
@@ -319,13 +478,59 @@ public abstract class AiServices<T> {
     }
 
     /**
-     * Configures the tool provider that the LLM can use
+     * Configures a tool provider that dynamically supplies tools for each LLM request.
+     * <p>
+     * Unlike {@link #tools(Object...)}, which registers a fixed set of tools upfront,
+     * a {@link ToolProvider} is invoked on every AI service call and can return a
+     * different set of tools based on the current request context (e.g. the user message,
+     * memory ID, or invocation parameters).
      *
-     * @param toolProvider Decides which tools the LLM could use to handle the request
-     * @return builder
+     * @param toolProvider the tool provider to use
+     * @return this builder
+     * @see #toolProviders(Collection)
+     * @see #toolProviders(ToolProvider...)
+     * @see ToolProvider
      */
     public AiServices<T> toolProvider(ToolProvider toolProvider) {
         context.toolService.toolProvider(toolProvider);
+        return this;
+    }
+
+    /**
+     * Configures multiple tool providers that dynamically supply tools for each LLM request.
+     * <p>
+     * All registered providers are invoked on every AI service call. Tools returned by each
+     * provider are merged and included in the request to the LLM. In case of a conflict
+     * (e.g. duplicate tool names), an exception will be thrown and AI Service invocation will fail.
+     *
+     * @param toolProviders the tool providers to use
+     * @return this builder
+     * @see #toolProvider(ToolProvider)
+     * @see #toolProviders(ToolProvider...)
+     * @see ToolProvider
+     */
+    public AiServices<T> toolProviders(Collection<ToolProvider> toolProviders) {
+        context.toolService.toolProviders(toolProviders);
+        return this;
+    }
+
+    /**
+     * Configures multiple tool providers that dynamically supply tools for each LLM request.
+     * <p>
+     * All registered providers are invoked on every AI service call. Tools returned by each
+     * provider are merged and included in the request to the LLM. In case of a conflict
+     * (e.g. duplicate tool names), an exception will be thrown and AI Service invocation will fail.
+     *
+     * @param toolProviders the tool providers to use
+     * @return this builder
+     * @see #toolProvider(ToolProvider)
+     * @see #toolProviders(Collection)
+     * @see ToolProvider
+     */
+    public AiServices<T> toolProviders(ToolProvider... toolProviders) {
+        if (toolProviders != null && toolProviders.length > 0) {
+            context.toolService.toolProviders(asList(toolProviders));
+        }
         return this;
     }
 
@@ -343,8 +548,118 @@ public abstract class AiServices<T> {
         return this;
     }
 
+    /**
+     * Configures the tools that the LLM can use.
+     *
+     * @param tools A map of {@link ToolSpecification} to {@link ToolExecutor} entries.
+     * @param immediateReturnToolNames A set of Tool names {@link ToolSpecification#name()}
+     *               This method of configuring tools is useful when tools must be configured programmatically.
+     *               Otherwise, it is recommended to use the {@link Tool}-annotated java methods
+     *               and configure tools with the {@link #tools(Object...)} and {@link #tools(Collection)} methods.
+     *               Specifically, this method allows you to specify a set of tool that should not automatically
+     *               perform a llm call with the tool results provided by a {@link ToolExecutor}.
+     *               This is similar to using the {@link ReturnBehavior#IMMEDIATE} when using the {@link Tool}-annotated java methods
+     * @return builder
+     */
+    public AiServices<T> tools(Map<ToolSpecification, ToolExecutor> tools, Set<String> immediateReturnToolNames) {
+        context.toolService.tools(tools, immediateReturnToolNames);
+        return this;
+    }
+
+    /**
+     * By default, when the LLM calls multiple tools, the AI Service executes them sequentially.
+     * If you enable this option, tools will be executed concurrently (with one exception - see below),
+     * using the default {@link Executor}.
+     * You can also specify your own {@link Executor}, see {@link #executeToolsConcurrently(Executor)}.
+     * <ul>
+     *     <li>When using {@link ChatModel}:
+     *         <ul>
+     *             <li>When the LLM calls multiple tools, they are executed concurrently in separate threads
+     *                 using the {@link Executor}.</li>
+     *             <li>When the LLM calls a single tool, it is executed in the same (caller) thread,
+     *                 the {@link Executor} is not used to avoid wasting resources.</li>
+     *         </ul>
+     *     </li>
+     *     <li>When using {@link StreamingChatModel}:
+     *         <ul>
+     *             <li>When the LLM calls multiple tools, they are executed concurrently in separate threads
+     *                 using the {@link Executor}.
+     *                 Each tool is executed as soon as {@link StreamingChatResponseHandler#onCompleteToolCall(CompleteToolCall)}
+     *                 is called, without waiting for other tools or for the response streaming to complete.</li>
+     *             <li>When the LLM calls a single tool, it is executed in a separate thread using the {@link Executor}.
+     *                 We cannot execute it in the same thread because, at that point,
+     *                 we do not yet know how many tools the LLM will call.</li>
+     *         </ul>
+     *     </li>
+     * </ul>
+     *
+     * @return builder
+     * @see #executeToolsConcurrently(Executor)
+     * @since 1.4.0
+     */
+    public AiServices<T> executeToolsConcurrently() {
+        context.toolService.executeToolsConcurrently();
+        return this;
+    }
+
+    /**
+     * See {@link #executeToolsConcurrently()}'s Javadoc for more info.
+     * <p>
+     * If {@code null} is specified, the default {@link Executor} will be used.
+     *
+     * @param executor The {@link Executor} to be used to execute tools.
+     * @return builder
+     * @see #executeToolsConcurrently()
+     * @since 1.4.0
+     */
+    public AiServices<T> executeToolsConcurrently(Executor executor) {
+        context.toolService.executeToolsConcurrently(executor);
+        return this;
+    }
+
+    /**
+     * Sets the maximum number of times the LLM may respond with tool calls.
+     * If this limit is exceeded, an exception is thrown and the AI service invocation is terminated.
+     *
+     * <p>
+     * NOTE: This value does not represent the total number of tool calls.
+     * Each LLM response that contains one or more tool calls counts as a single invocation
+     * and reduces this limit by one.
+     *
+     * <p>
+     * The default value is 100.
+     *
+     * @param maxSequentialToolsInvocations the maximum number of LLM responses containing tool calls
+     * @return the builder instance
+     */
     public AiServices<T> maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
         context.toolService.maxSequentialToolsInvocations(maxSequentialToolsInvocations);
+        return this;
+    }
+
+    /**
+     * Configures a callback to be invoked before each tool execution.
+     *
+     * @param beforeToolExecution A {@link Consumer} that accepts a {@link BeforeToolExecution}
+     *                            representing the tool execution request about to be executed.
+     * @return builder
+     * @since 1.11.0
+     */
+    public AiServices<T> beforeToolExecution(Consumer<BeforeToolExecution> beforeToolExecution) {
+        context.toolService.beforeToolExecution(beforeToolExecution);
+        return this;
+    }
+
+    /**
+     * Configures a callback to be invoked after each tool execution.
+     *
+     * @param afterToolExecution A {@link Consumer} that accepts a {@link ToolExecution}
+     *                           containing the tool execution request that was executed and its result.
+     * @return builder
+     * @since 1.11.0
+     */
+    public AiServices<T> afterToolExecution(Consumer<ToolExecution> afterToolExecution) {
+        context.toolService.afterToolExecution(afterToolExecution);
         return this;
     }
 
@@ -352,12 +667,90 @@ public abstract class AiServices<T> {
      * Configures the strategy to be used when the LLM hallucinates a tool name (i.e., attempts to call a nonexistent tool).
      *
      * @param hallucinatedToolNameStrategy A Function from {@link ToolExecutionRequest} to {@link ToolExecutionResultMessage} defining
-     *                                  the response provided to the LLM when it hallucinates a tool name.
+     *                                     the response provided to the LLM when it hallucinates a tool name.
      * @return builder
+     * @see #toolArgumentsErrorHandler(ToolArgumentsErrorHandler)
+     * @see #toolExecutionErrorHandler(ToolExecutionErrorHandler)
      */
     public AiServices<T> hallucinatedToolNameStrategy(
             Function<ToolExecutionRequest, ToolExecutionResultMessage> hallucinatedToolNameStrategy) {
         context.toolService.hallucinatedToolNameStrategy(hallucinatedToolNameStrategy);
+        return this;
+    }
+
+    /**
+     * Configures the handler to be invoked when errors related to tool arguments occur,
+     * such as JSON parsing failures or mismatched argument types.
+     * <p>
+     * Within this handler, you can either:
+     * <p>
+     * 1. Throw an exception: this will stop the AI Service flow. This is the default behavior if no handler is configured.
+     * <p>
+     * 2. Return a text message (e.g., an error description) that will be sent back to the LLM,
+     * allowing it to respond appropriately (for example, by correcting the error and retrying).
+     * <p>
+     * NOTE: If you create a {@link DefaultToolExecutor} manually or use a custom {@link ToolExecutor},
+     * ensure that a {@link ToolArgumentsException} is thrown by {@link ToolExecutor} in such cases.
+     * For {@link DefaultToolExecutor}, you can enable this by setting
+     * {@link DefaultToolExecutor.Builder#wrapToolArgumentsExceptions(Boolean)} to {@code true}.
+     *
+     * @param handler The handler responsible for processing tool argument errors
+     * @return builder
+     * @see #hallucinatedToolNameStrategy(Function)
+     * @see #toolExecutionErrorHandler(ToolExecutionErrorHandler)
+     */
+    public AiServices<T> toolArgumentsErrorHandler(ToolArgumentsErrorHandler handler) {
+        context.toolService.argumentsErrorHandler(handler);
+        return this;
+    }
+
+    /**
+     * Configures the handler to be invoked when errors occur during tool execution.
+     * <p>
+     * Within this handler, you can either:
+     * <p>
+     * 1. Throw an exception: this will stop the AI Service flow.
+     * <p>
+     * 2. Return a text message (e.g., an error description) that will be sent back to the LLM,
+     * allowing it to respond appropriately (for example, by correcting the error and retrying).
+     * This is the default behavior if no handler is configured.
+     * The {@link Throwable#getMessage()} is sent to the LLM by default.
+     * <p>
+     * NOTE: If you create a {@link DefaultToolExecutor} manually or use a custom {@link ToolExecutor},
+     * ensure that a {@link ToolExecutionException} is thrown by {@link ToolExecutor} in such cases.
+     * For {@link DefaultToolExecutor}, you can enable this by setting
+     * {@link DefaultToolExecutor.Builder#propagateToolExecutionExceptions(Boolean)} to {@code true}.
+     *
+     * @param handler The handler responsible for processing tool execution errors
+     * @return builder
+     * @see #hallucinatedToolNameStrategy(Function)
+     * @see #toolArgumentsErrorHandler(ToolArgumentsErrorHandler)
+     */
+    public AiServices<T> toolExecutionErrorHandler(ToolExecutionErrorHandler handler) {
+        context.toolService.executionErrorHandler(handler);
+        return this;
+    }
+
+    /**
+     * Configures a tool search strategy that can be used to reduce token usage.
+     * <p>
+     * When configured, the LLM initially "sees" only a single special tool, which it can call
+     * to discover additional tools. Once tools are found, they are included in subsequent
+     * requests to the LLM.
+     * <p>
+     * Previously found tools are accumulated until the {@link ToolExecutionResultMessage}
+     * containing the tool search results is evicted from the {@link ChatMemory}.
+     * <p>
+     * You can use one of the out-of-the-box implementations, such as
+     * {@link dev.langchain4j.service.tool.search.simple.SimpleToolSearchStrategy}
+     * or {@link dev.langchain4j.service.tool.search.vector.VectorToolSearchStrategy}, or implement your own.
+     *
+     * @param toolSearchStrategy the tool search strategy to use
+     * @return builder
+     * @since 1.12.0
+     */
+    public AiServices<T> toolSearchStrategy(ToolSearchStrategy toolSearchStrategy) {
+        context.toolService.toolSearchStrategy(toolSearchStrategy);
         return this;
     }
 
@@ -397,6 +790,76 @@ public abstract class AiServices<T> {
         }
         retrievalAugmentorSet = true;
         context.retrievalAugmentor = ensureNotNull(retrievalAugmentor, "retrievalAugmentor");
+        return this;
+    }
+
+    /**
+     * Registers an {@link AiServiceListener} listener for AI service events for this AI Service.
+     *
+     * @param listener the listener to be registered, must not be {@code null}
+     * @return builder
+     */
+    public <I extends AiServiceEvent> AiServices<T> registerListener(AiServiceListener<I> listener) {
+        context.eventListenerRegistrar.register(ensureNotNull(listener, "listener"));
+        return this;
+    }
+
+    /**
+     * Registers one or more invocation event listeners to the AI service.
+     * This enables tracking and handling of invocation events through the provided listeners.
+     *
+     * @param listeners the invocation event listeners to be registered; can be null or empty
+     * @return builder
+     */
+    public AiServices<T> registerListeners(AiServiceListener<?>... listeners) {
+        context.eventListenerRegistrar.register(listeners);
+        return this;
+    }
+
+    /**
+     * Registers one or more invocation event listeners to the AI service.
+     * This enables tracking and handling of invocation events through the provided listeners.
+     *
+     * @param listeners the invocation event listeners to be registered; can be null or empty
+     * @return builder
+     */
+    public AiServices<T> registerListeners(Collection<? extends AiServiceListener<?>> listeners) {
+        context.eventListenerRegistrar.register(listeners);
+        return this;
+    }
+
+    /**
+     * Unregisters an {@link AiServiceListener} listener for AI service events for this AI Service.
+     *
+     * @param listener the listener to be registered, must not be {@code null}
+     * @return builder
+     */
+    public <I extends AiServiceEvent> AiServices<T> unregisterListener(AiServiceListener<I> listener) {
+        context.eventListenerRegistrar.unregister(ensureNotNull(listener, "listener"));
+        return this;
+    }
+
+    /**
+     * Unregisters one or more invocation event listeners from the AI service.
+     *
+     * @param listeners the invocation event listeners to be unregistered.
+     *                  Can be null, in which case no action will be performed.
+     * @return builder
+     */
+    public AiServices<T> unregisterListeners(AiServiceListener<?>... listeners) {
+        context.eventListenerRegistrar.unregister(listeners);
+        return this;
+    }
+
+    /**
+     * Unregisters one or more invocation event listeners to the AI service.
+     * This enables tracking and handling of invocation events through the provided listeners.
+     *
+     * @param listeners the invocation event listeners to be unregistered; can be null or empty
+     * @return builder
+     */
+    public AiServices<T> unregisterListeners(Collection<? extends AiServiceListener<?>> listeners) {
+        context.eventListenerRegistrar.unregister(listeners);
         return this;
     }
 
@@ -681,6 +1144,28 @@ public abstract class AiServices<T> {
     }
 
     /**
+     * Configures whether user messages that were augmented with retrieved content
+     * (RAG) should be stored in {@link ChatMemory}.
+     * <p>
+     * By default, this is {@code true}, meaning that the final augmented user
+     * message (after RAG augmentation) is stored in chat memory. This matches
+     * the historical behaviour and ensures that the model sees the same
+     * augmented content in subsequent turns.
+     * <p>
+     * If set to {@code false}, only the original user message (before RAG
+     * augmentation) is stored in chat memory, while the augmented message is
+     * still used for the LLM request. This helps to avoid storing retrieved
+     * content in the conversation history and keeps the memory size smaller.
+     *
+     * @param storeRetrievedContentInChatMemory whether to store RAG-augmented user messages in chat memory
+     * @return builder
+     */
+    public AiServices<T> storeRetrievedContentInChatMemory(boolean storeRetrievedContentInChatMemory) {
+        context.storeRetrievedContentInChatMemory = storeRetrievedContentInChatMemory;
+        return this;
+    }
+
+    /**
      * Constructs and returns the AI Service.
      *
      * @return An instance of the AI Service implementing the specified interface.
@@ -706,7 +1191,7 @@ public abstract class AiServices<T> {
                 Moderation moderation = moderationFuture.get();
                 if (moderation.flagged()) {
                     throw new ModerationException(
-                            String.format("Text \"%s\" violates content policy", moderation.flaggedText()));
+                            String.format("Text \"%s\" violates content policy", moderation.flaggedText()), moderation);
                 }
             } catch (InterruptedException | ExecutionException e) {
                 throw new RuntimeException(e);

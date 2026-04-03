@@ -12,16 +12,22 @@ import dev.langchain4j.model.mistralai.spi.MistralAiModelsBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Supplier;
+import org.slf4j.Logger;
 
 /**
  * Represents a collection of Mistral AI models.
  * You can find description of parameters <a href="https://docs.mistral.ai/api/#operation/listModels">here</a>.
+ *
+ * @see MistralAiModels
  */
 public class MistralAiModels {
 
     private final MistralAiClient client;
     private final Integer maxRetries;
 
+    @SuppressWarnings({"unchecked"})
     public MistralAiModels(MistralAiModelsBuilder builder) {
         this.client = MistralAiClient.builder()
                 .httpClientBuilder(builder.httpClientBuilder)
@@ -30,29 +36,10 @@ public class MistralAiModels {
                 .timeout(builder.timeout)
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
+                .logger(builder.logger)
+                .customHeaders(builder.customHeadersSupplier)
                 .build();
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
-    }
-
-    /**
-     * @deprecated please use {@link #MistralAiModels(MistralAiModelsBuilder)} instead
-     */
-    @Deprecated(forRemoval = true)
-    public MistralAiModels(
-            String baseUrl,
-            String apiKey,
-            Duration timeout,
-            Boolean logRequests,
-            Boolean logResponses,
-            Integer maxRetries) {
-        this.client = MistralAiClient.builder()
-                .baseUrl(getOrDefault(baseUrl, "https://api.mistral.ai/v1"))
-                .apiKey(apiKey)
-                .timeout(timeout)
-                .logRequests(getOrDefault(logRequests, false))
-                .logResponses(getOrDefault(logResponses, false))
-                .build();
-        this.maxRetries = getOrDefault(maxRetries, 2);
     }
 
     public static MistralAiModels withApiKey(String apiKey) {
@@ -84,7 +71,9 @@ public class MistralAiModels {
         private Duration timeout;
         private Boolean logRequests;
         private Boolean logResponses;
+        private Logger logger;
         private Integer maxRetries;
+        private Supplier<Map<String, String>> customHeadersSupplier;
 
         public MistralAiModelsBuilder() {}
 
@@ -140,10 +129,24 @@ public class MistralAiModels {
         }
 
         /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public MistralAiModelsBuilder logger(Logger logger) {
+            this.logger = logger;
+            return this;
+        }
+
+        /**
          * @return {@code this}.
          */
         public MistralAiModelsBuilder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public MistralAiModelsBuilder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
             return this;
         }
 

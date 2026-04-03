@@ -64,7 +64,7 @@ public class OpenAiTokenCountEstimator implements TokenCountEstimator {
      */
     public OpenAiTokenCountEstimator(String modelName) {
         this.modelName = ensureNotBlank(modelName, "modelName");
-        if (modelName.startsWith("o") || modelName.startsWith("gpt-4.")) {
+        if (modelName.startsWith("o") || modelName.startsWith("gpt-4.") || modelName.startsWith("gpt-5")) {
             // temporary fix until https://github.com/knuddelsgmbh/jtokkit/pull/118 is released
             this.encoding = ENCODING_REGISTRY.getEncoding(O200K_BASE);
         } else {

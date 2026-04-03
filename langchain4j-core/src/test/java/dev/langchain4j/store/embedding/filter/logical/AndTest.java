@@ -1,6 +1,7 @@
 package dev.langchain4j.store.embedding.filter.logical;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
 import dev.langchain4j.store.embedding.filter.Filter;
@@ -69,5 +70,51 @@ class AndTest {
         And andFilter = new And(mockFilterPasses, mockFilterPasses);
 
         assertThat(andFilter).hasToString("And(left=mockFilterPasses, right=mockFilterPasses)");
+    }
+
+    @Test
+    void handlesNullInput() {
+        when(mockFilterPasses.test(null)).thenReturn(true);
+
+        And andFilter = new And(mockFilterPasses, mockFilterPasses);
+
+        assertThat(andFilter.test(null)).isTrue();
+    }
+
+    @Test
+    void constructorWithNullLeftFilter() {
+        assertThatThrownBy(() -> new And(null, mockFilterPasses)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void constructorWithNullRightFilter() {
+        assertThatThrownBy(() -> new And(mockFilterPasses, null)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void constructorWithBothFiltersNull() {
+        assertThatThrownBy(() -> new And(null, null)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void notEqualsWithDifferentFilters() {
+        And andFilter1 = new And(mockFilterPasses, mockFilterFails);
+        And andFilter2 = new And(mockFilterFails, mockFilterPasses);
+
+        assertThat(andFilter1).isNotEqualTo(andFilter2);
+    }
+
+    @Test
+    void notEqualsWithNull() {
+        And andFilter = new And(mockFilterPasses, mockFilterPasses);
+
+        assertThat(andFilter).isNotEqualTo(null);
+    }
+
+    @Test
+    void notEqualsWithDifferentClass() {
+        And andFilter = new And(mockFilterPasses, mockFilterPasses);
+
+        assertThat(andFilter).isNotEqualTo("not an And filter");
     }
 }

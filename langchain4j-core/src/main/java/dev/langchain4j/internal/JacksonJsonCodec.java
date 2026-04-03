@@ -13,8 +13,10 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import dev.langchain4j.Internal;
@@ -117,11 +119,13 @@ class JacksonJsonCodec implements Json.JsonCodec {
 
         // FAIL_ON_UNKNOWN_PROPERTIES is enabled by default
         // to prevent issues caused by LLM hallucinations
-        return new ObjectMapper()
-                .setVisibility(FIELD, ANY)
+        return JsonMapper.builder()
+                .visibility(FIELD, ANY)
+                .enable(INDENT_OUTPUT)
+                .enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS)
+                .build()
                 .findAndRegisterModules()
-                .registerModule(module)
-                .enable(INDENT_OUTPUT);
+                .registerModule(module);
     }
 
     /**

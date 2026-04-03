@@ -1,7 +1,9 @@
 package dev.langchain4j.store.embedding.chroma;
 
+import dev.langchain4j.Internal;
 import java.util.Map;
 
+@Internal
 class Collection {
 
     private String id;

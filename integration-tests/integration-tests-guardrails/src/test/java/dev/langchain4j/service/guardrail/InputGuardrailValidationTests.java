@@ -179,14 +179,14 @@ class InputGuardrailValidationTests extends BaseGuardrailTests {
         private final AtomicInteger spy = new AtomicInteger(0);
 
         @Override
-        public InputGuardrailResult validate(InputGuardrailRequest params) {
+        public InputGuardrailResult validate(InputGuardrailRequest request) {
             spy.incrementAndGet();
-            var messages = Optional.ofNullable(params.requestParams().chatMemory())
+            var messages = Optional.ofNullable(request.requestParams().chatMemory())
                     .map(ChatMemory::messages)
                     .orElseGet(List::of);
 
             if (messages.isEmpty()) {
-                assertThat(params.userMessage().singleText()).isEqualTo("foo");
+                assertThat(request.userMessage().singleText()).isEqualTo("foo");
             }
 
             if (messages.size() == 2) {
@@ -204,7 +204,7 @@ class InputGuardrailValidationTests extends BaseGuardrailTests {
                                         .isEqualTo("Hi!"),
                                 atIndex(1));
 
-                assertThat(params.userMessage().singleText()).isEqualTo("bar");
+                assertThat(request.userMessage().singleText()).isEqualTo("bar");
             }
             return success();
         }

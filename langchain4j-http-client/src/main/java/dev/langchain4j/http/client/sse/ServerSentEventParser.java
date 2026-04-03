@@ -6,8 +6,6 @@ import java.io.InputStream;
  * Parses server-sent events (SSE) from an {@link InputStream},
  * constructs {@link ServerSentEvent} objects,
  * and delivers them to the provided {@link ServerSentEventListener}.
- * <p>
- * This interface is currently experimental and subject to change.
  */
 public interface ServerSentEventParser {
 

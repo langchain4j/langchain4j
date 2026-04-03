@@ -55,9 +55,9 @@ public final class InputGuardrailRequest implements GuardrailRequest<InputGuardr
                 .map(c -> (c.type() == ContentType.TEXT) ? new TextContent(text) : c)
                 .toList();
 
-        return Objects.nonNull(this.userMessage.name())
-                ? UserMessage.from(this.userMessage.name(), rewrittenContent)
-                : UserMessage.from(rewrittenContent);
+        return this.userMessage.toBuilder()
+                .contents(rewrittenContent)
+                .build();
     }
 
     /**

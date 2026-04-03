@@ -1,5 +1,11 @@
 package dev.langchain4j.service.output;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.service.TypeUtils.getRawClass;
+import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterClass;
+import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterType;
+import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
+
 import dev.langchain4j.Internal;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
@@ -7,16 +13,9 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.service.Result;
 import dev.langchain4j.service.TokenStream;
-
 import java.lang.reflect.Type;
 import java.util.Map;
 import java.util.Optional;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.service.TypeUtils.getRawClass;
-import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterClass;
-import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterType;
-import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 
 @Internal
 public class ServiceOutputParser {
@@ -38,15 +37,15 @@ public class ServiceOutputParser {
             returnType = resolveFirstGenericParameterType(returnType);
         }
 
-        // In the case of returnType = List<String> these two would be set like:
-        // rawClass = List.class
-        // typeArgumentClass = String.class
         Class<?> rawClass = getRawClass(returnType);
-        Class<?> typeArgumentClass = resolveFirstGenericParameterClass(returnType);
 
         if (rawClass == Response.class) {
             // legacy
             return Response.from(chatResponse.aiMessage(), chatResponse.tokenUsage(), chatResponse.finishReason());
+        }
+
+        if (rawClass == void.class || rawClass == Void.class) {
+            return null;
         }
 
         AiMessage aiMessage = chatResponse.aiMessage();
@@ -54,11 +53,19 @@ public class ServiceOutputParser {
             return aiMessage;
         }
 
-        String text = aiMessage.text();
+        return parseText(returnType, rawClass, aiMessage.text());
+    }
+
+    public Object parseText(Type returnType, String text) {
+        return parseText(returnType, getRawClass(returnType), text);
+    }
+
+    private Object parseText(Type returnType, Class<?> rawClass, String text) {
         if (rawClass == String.class) {
             return text;
         }
 
+        Class<?> typeArgumentClass = resolveFirstGenericParameterClass(returnType);
         OutputParser<?> outputParser = outputParserFactory.get(rawClass, typeArgumentClass);
         return outputParser.parse(text);
     }
@@ -114,6 +121,8 @@ public class ServiceOutputParser {
                 || type == AiMessage.class
                 || type == TokenStream.class
                 || type == Response.class
-                || type == Map.class;
+                || type == Map.class
+                || type == void.class
+                || type == Void.class;
     }
 }

@@ -1,16 +1,16 @@
 package dev.langchain4j.mcp.client.logging;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-public class McpLogMessageTest {
+class McpLogMessageTest {
 
     @Test
-    public void testLogMessageWithoutLogger() {
+    void logMessageWithoutLogger() {
         String json =
                 """
                 {
@@ -39,5 +39,4 @@ public class McpLogMessageTest {
             throw new RuntimeException(e);
         }
     }
-
 }

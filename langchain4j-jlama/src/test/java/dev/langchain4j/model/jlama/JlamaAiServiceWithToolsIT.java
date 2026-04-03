@@ -4,7 +4,6 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceWithToolsIT;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
 
 import java.io.File;
 import java.util.List;
@@ -32,10 +31,14 @@ class JlamaAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
         );
     }
 
-    @Test
     @Disabled("qwen2.5 struggles with this test scenario")
     @Override
     protected void should_execute_tool_with_list_of_POJOs_parameter(ChatModel model) {
+    }
+
+    @Disabled("qwen2.5 struggles with this test scenario")
+    @Override
+    protected void should_return_immediately_from_first_tool_when_not_called_in_parallel(ChatModel model) {
     }
 
     @Override

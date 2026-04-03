@@ -4,8 +4,11 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
+import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
 import java.util.List;
 
 /**
@@ -28,21 +31,39 @@ import java.util.List;
 @Internal
 abstract class AbstractChatExecutor implements ChatExecutor {
     protected final ChatRequest chatRequest;
+    protected final InvocationContext invocationContext;
+    protected final AiServiceListenerRegistrar eventListenerRegistrar;
 
     protected AbstractChatExecutor(AbstractBuilder<?> builder) {
         this.chatRequest = ensureNotNull(builder.chatRequest, "chatRequest");
+        this.invocationContext = ensureNotNull(builder.invocationContext, "invocationContext");
+        this.eventListenerRegistrar = builder.eventListenerRegistrar;
     }
 
     @Override
     public ChatResponse execute(List<ChatMessage> chatMessages) {
         var newChatRequest = this.chatRequest.toBuilder().messages(chatMessages).build();
 
-        return execute(newChatRequest);
+        return executeInternal(newChatRequest);
     }
 
     @Override
     public ChatResponse execute() {
-        return execute(this.chatRequest);
+        return executeInternal(this.chatRequest);
+    }
+
+    protected void fireRequestIssuedEvent(ChatRequest chatRequest) {
+        if (this.eventListenerRegistrar != null) {
+            this.eventListenerRegistrar.fireEvent(AiServiceRequestIssuedEvent.builder()
+                    .invocationContext(this.invocationContext)
+                    .request(chatRequest)
+                    .build());
+        }
+    }
+
+    private ChatResponse executeInternal(ChatRequest chatRequest) {
+        fireRequestIssuedEvent(chatRequest);
+        return execute(chatRequest);
     }
 
     /**

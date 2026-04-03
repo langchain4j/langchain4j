@@ -1,11 +1,14 @@
 package dev.langchain4j.store.embedding.chroma;
 
+import dev.langchain4j.Internal;
+
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 
 import java.util.List;
 import java.util.Map;
 
+@Internal
 class QueryRequest {
 
     private final Map<String, Object> where;

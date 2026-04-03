@@ -1,8 +1,11 @@
 package dev.langchain4j;
 
-import java.lang.annotation.Target;
-
+import static java.lang.annotation.ElementType.METHOD;
+import static java.lang.annotation.ElementType.PACKAGE;
 import static java.lang.annotation.ElementType.TYPE;
+
+import java.lang.annotation.Inherited;
+import java.lang.annotation.Target;
 
 /**
  * Indicates that the annotated class is intended for internal use only within the library.
@@ -13,6 +16,6 @@ import static java.lang.annotation.ElementType.TYPE;
  * Usage of internal APIs by external code is strongly discouraged and may lead to
  * compatibility issues in future versions of the library.
  */
-@Target({TYPE})
-public @interface Internal {
-}
+@Target({TYPE, METHOD, PACKAGE})
+@Inherited
+public @interface Internal {}

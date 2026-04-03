@@ -1,12 +1,11 @@
 package dev.langchain4j.model.chat.request.json;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+
+import java.util.List;
+import java.util.Objects;
 
 public class JsonEnumSchema implements JsonSchemaElement {
 
@@ -60,8 +59,7 @@ public class JsonEnumSchema implements JsonSchemaElement {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         JsonEnumSchema that = (JsonEnumSchema) o;
-        return Objects.equals(this.description, that.description)
-                && Objects.equals(this.enumValues, that.enumValues);
+        return Objects.equals(this.description, that.description) && Objects.equals(this.enumValues, that.enumValues);
     }
 
     @Override
@@ -71,9 +69,6 @@ public class JsonEnumSchema implements JsonSchemaElement {
 
     @Override
     public String toString() {
-        return "JsonEnumSchema {" +
-                "description = " + quoted(description) +
-                ", enumValues = " + enumValues +
-                " }";
+        return "JsonEnumSchema {" + "description = " + quoted(description) + ", enumValues = " + enumValues + " }";
     }
 }

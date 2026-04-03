@@ -19,6 +19,8 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
+import org.slf4j.Logger;
 
 /**
  * An implementation of an {@link EmbeddingModel} that uses
@@ -34,6 +36,7 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final String encodingFormat;
     private final Integer maxSegmentsPerBatch;
 
+    @Deprecated(forRemoval = true, since = "1.4.0")
     public VoyageAiEmbeddingModel(
             HttpClientBuilder httpClientBuilder,
             Map<String, String> customHeaders,
@@ -62,7 +65,27 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
-                .customHeaders(customHeaders)
+                .customHeaders(() -> customHeaders)
+                .build();
+    }
+
+    public VoyageAiEmbeddingModel(Builder builder) {
+        this.maxRetries = getOrDefault(builder.maxRetries, 2);
+        this.modelName = ensureNotBlank(builder.modelName, "modelName");
+        this.maxSegmentsPerBatch = getOrDefault(builder.maxSegmentsPerBatch, 128);
+        this.truncation = builder.truncation;
+        this.inputType = builder.inputType;
+        this.encodingFormat = builder.encodingFormat;
+
+        this.client = VoyageAiClient.builder()
+                .httpClientBuilder(builder.httpClientBuilder)
+                .baseUrl(getOrDefault(builder.baseUrl, DEFAULT_BASE_URL))
+                .apiKey(ensureNotBlank(builder.apiKey, "apiKey"))
+                .timeout(getOrDefault(builder.timeout, ofSeconds(60)))
+                .logRequests(getOrDefault(builder.logRequests, false))
+                .logResponses(getOrDefault(builder.logResponses, false))
+                .logger(builder.logger)
+                .customHeaders(builder.customHeadersSupplier)
                 .build();
     }
 
@@ -71,6 +94,11 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         List<String> texts = textSegments.stream().map(TextSegment::text).collect(toList());
 
         return embedTexts(texts);
+    }
+
+    @Override
+    public String modelName() {
+        return this.modelName;
     }
 
     private Response<List<Embedding>> embedTexts(List<String> texts) {
@@ -124,7 +152,7 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     public static class Builder {
 
         private HttpClientBuilder httpClientBuilder;
-        private Map<String, String> customHeaders;
+        private Supplier<Map<String, String>> customHeadersSupplier;
         private String baseUrl;
         private Duration timeout;
         private Integer maxRetries;
@@ -135,6 +163,7 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         private String encodingFormat;
         private Boolean logRequests;
         private Boolean logResponses;
+        private Logger logger;
         private Integer maxSegmentsPerBatch;
 
         public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
@@ -142,8 +171,21 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
             return this;
         }
 
+        /**
+         * Sets custom HTTP headers.
+         */
         public Builder customHeaders(Map<String, String> customHeaders) {
-            this.customHeaders = customHeaders;
+            this.customHeadersSupplier = () -> customHeaders;
+            return this;
+        }
+
+        /**
+         * Sets a supplier for custom HTTP headers.
+         * The supplier is called before each request, allowing dynamic header values.
+         * For example, this is useful for OAuth2 tokens that expire and need refreshing.
+         */
+        public Builder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
             return this;
         }
 
@@ -245,26 +287,22 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
             return this;
         }
 
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public Builder logger(Logger logger) {
+            this.logger = logger;
+            return this;
+        }
+
         public Builder maxSegmentsPerBatch(Integer maxSegmentsPerBatch) {
             this.maxSegmentsPerBatch = maxSegmentsPerBatch;
             return this;
         }
 
         public VoyageAiEmbeddingModel build() {
-            return new VoyageAiEmbeddingModel(
-                    httpClientBuilder,
-                    customHeaders,
-                    baseUrl,
-                    timeout,
-                    maxRetries,
-                    apiKey,
-                    modelName,
-                    inputType,
-                    truncation,
-                    encodingFormat,
-                    logRequests,
-                    logResponses,
-                    maxSegmentsPerBatch);
+            return new VoyageAiEmbeddingModel(this);
         }
     }
 }

@@ -13,7 +13,8 @@ import java.util.Objects;
 @Experimental
 public class OpenAiOfficialChatRequestParameters extends DefaultChatRequestParameters {
 
-    public static final OpenAiOfficialChatRequestParameters EMPTY = OpenAiOfficialChatRequestParameters.builder().build();
+    public static final OpenAiOfficialChatRequestParameters EMPTY =
+            OpenAiOfficialChatRequestParameters.builder().build();
 
     private final Integer maxCompletionTokens;
     private final Map<String, Integer> logitBias;
@@ -79,6 +80,14 @@ public class OpenAiOfficialChatRequestParameters extends DefaultChatRequestParam
         return OpenAiOfficialChatRequestParameters.builder()
                 .overrideWith(this)
                 .overrideWith(that)
+                .build();
+    }
+
+    @Override
+    public OpenAiOfficialChatRequestParameters defaultedBy(ChatRequestParameters that) {
+        return OpenAiOfficialChatRequestParameters.builder()
+                .overrideWith(that)
+                .overrideWith(this)
                 .build();
     }
 

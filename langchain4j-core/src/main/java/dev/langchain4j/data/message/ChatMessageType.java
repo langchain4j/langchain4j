@@ -1,7 +1,7 @@
 package dev.langchain4j.data.message;
 
 /**
- * The type of content, e.g. text or image.
+ * The type of chat message, e.g. system, user or AI.
  * Maps to implementations of {@link ChatMessage}.
  */
 public enum ChatMessageType {

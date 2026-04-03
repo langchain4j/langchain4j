@@ -43,4 +43,24 @@ class OllamaAiServiceWithToolsIT extends AbstractOllamaToolsLanguageModelInfrast
     @Override
     @Disabled("llama 3.1 cannot do it properly")
     protected void should_execute_tool_with_collection_of_integers_parameter(ChatModel model) {}
+
+    @Override
+    @Disabled("llama 3.1 cannot manage the invocation of 2 different tools in the same call")
+    protected void should_return_immediately_from_first_tool_when_not_called_in_parallel(ChatModel model) { }
+
+    @Override
+    @Disabled("llama 3.1 cannot manage the invocation of 2 different tools in the same call")
+    protected void should_return_to_LLM(ChatModel model) { }
+
+    @Override
+    @Disabled("llama 3.1 cannot do it properly")
+    protected void  should_execute_immediate_tool_in_parallel_with_primitive_parameters(ChatModel model) { }
+
+    @Override
+    @Disabled("llama 3.1 cannot do it properly")
+    protected void  should_execute_normal_tool_in_parallel_with_primitive_parameters(ChatModel model) { }
+
+    @Override
+    @Disabled("llama 3.1 cannot do it properly")
+    protected void  should_execute_tool_with_enum_parameter(ChatModel model) { }
 }

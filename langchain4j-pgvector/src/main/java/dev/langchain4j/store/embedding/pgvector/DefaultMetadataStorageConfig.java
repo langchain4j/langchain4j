@@ -1,14 +1,11 @@
 package dev.langchain4j.store.embedding.pgvector;
 
-import lombok.experimental.Accessors;
-
 import java.util.Collections;
 import java.util.List;
 
 /**
  * Metadata configuration implementation
  */
-@Accessors(fluent = true)
 public class DefaultMetadataStorageConfig implements MetadataStorageConfig {
     private MetadataStorageMode storageMode;
     private List<String> columnDefinitions;

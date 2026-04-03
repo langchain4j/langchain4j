@@ -21,6 +21,7 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 public class JlamaEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final BertModel model;
     private final Generator.PoolingType poolingType;
+    private final String modelName;
 
     public JlamaEmbeddingModel(Path modelCachePath,
                                String modelName,
@@ -53,6 +54,8 @@ public class JlamaEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.dimension = model.getConfig().embeddingLength;
 
         this.poolingType = poolingType == null ? Generator.PoolingType.MODEL : poolingType;
+
+        this.modelName = modelName;
     }
 
     public static JlamaEmbeddingModelBuilder builder() {
@@ -73,6 +76,11 @@ public class JlamaEmbeddingModel extends DimensionAwareEmbeddingModel {
         return Response.from(embeddings);
     }
 
+    @Override
+    public String modelName() {
+        return this.modelName;
+    }
+
     public static class JlamaEmbeddingModelBuilder {
         private Path modelCachePath;
         private String modelName;
@@ -84,7 +92,6 @@ public class JlamaEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         public JlamaEmbeddingModelBuilder() {
             // This is public, so it can be extended
-            // By default with Lombok it becomes package private
         }
 
         public JlamaEmbeddingModelBuilder modelCachePath(Path modelCachePath) {

@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 
 import java.util.List;
 import java.util.Objects;
@@ -25,6 +26,8 @@ public final class Delta {
     @JsonProperty
     private final String content;
     @JsonProperty
+    private final String reasoningContent;
+    @JsonProperty
     private final List<ToolCall> toolCalls;
     @JsonProperty
     @Deprecated
@@ -33,6 +36,7 @@ public final class Delta {
     public Delta(Builder builder) {
         this.role = builder.role;
         this.content = builder.content;
+        this.reasoningContent = builder.reasoningContent;
         this.toolCalls = builder.toolCalls;
         this.functionCall = builder.functionCall;
         this.reasoningContent = builder.reasoningContent;
@@ -44,6 +48,10 @@ public final class Delta {
 
     public String content() {
         return content;
+    }
+
+    public String reasoningContent() {
+        return reasoningContent;
     }
 
     public List<ToolCall> toolCalls() {
@@ -61,37 +69,44 @@ public final class Delta {
 
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
         return another instanceof Delta
                 && equalTo((Delta) another);
     }
 
+    @JacocoIgnoreCoverageGenerated
     private boolean equalTo(Delta another) {
         return Objects.equals(role, another.role)
                 && Objects.equals(reasoningContent, another.reasoningContent)
                 && Objects.equals(content, another.content)
+                && Objects.equals(reasoningContent, another.reasoningContent)
                 && Objects.equals(toolCalls, another.toolCalls)
                 && Objects.equals(functionCall, another.functionCall);
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         int h = 5381;
         h += (h << 5) + Objects.hashCode(role);
         h += (h << 5) + Objects.hashCode(reasoningContent);
         h += (h << 5) + Objects.hashCode(content);
+        h += (h << 5) + Objects.hashCode(reasoningContent);
         h += (h << 5) + Objects.hashCode(toolCalls);
         h += (h << 5) + Objects.hashCode(functionCall);
         return h;
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public String toString() {
         return "Delta{"
                 + "role=" + role
                 + ", reasoningContent=" + reasoningContent
                 + ", content=" + content
+                + ", reasoningContent=" + reasoningContent
                 + ", toolCalls=" + toolCalls
                 + ", functionCall=" + functionCall
                 + "}";
@@ -120,6 +135,11 @@ public final class Delta {
 
         public Builder content(String content) {
             this.content = content;
+            return this;
+        }
+
+        public Builder reasoningContent(String reasoningContent) {
+            this.reasoningContent = reasoningContent;
             return this;
         }
 

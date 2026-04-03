@@ -143,9 +143,17 @@ You can specify one or more `ToolSpecification`s when creating the `ChatRequest`
 - The `name` of the tool
 - The `description` of the tool
 - The `parameters` of the tool and their descriptions
+- The `metadata` of the tool.
+By default, it is not sent to the LLM provider, you must explicitly specify which metadata keys should be sent
+when creating a `ChatModel`.
+Currently, tool metadata is supported only by the `langchain4j-anthropic` module.
+When tools are provided by the [McpToolProvider](/tutorials/mcp#mcp-tool-provider),
+`metadata` can contain MCP-specific entries.
 
 It is recommended to provide as much information about the tool as possible:
 a clear name, a comprehensive description, and a description for each parameter, etc.
+
+### Creating Tool Specification
 
 There are two ways to create a `ToolSpecification`:
 
@@ -184,6 +192,8 @@ class WeatherTools {
 List<ToolSpecification> toolSpecifications = ToolSpecifications.toolSpecificationsFrom(WeatherTools.class);
 ```
 
+### Using `ChatModel`
+
 Once you have a `List<ToolSpecification>`, you can call the model:
 ```java
 ChatRequest request = ChatRequest.builder()
@@ -201,7 +211,7 @@ Depending on the LLM, it can contain one or multiple `ToolExecutionRequest` obje
 (some LLMs support calling multiple tools in parallel).
 
 Each `ToolExecutionRequest` should contain:
-- The `id` of the tool call (some LLMs do not provide it)
+- The `id` of the tool call. Please note that some LLM providers (e.g., Google, Ollama) may omit this ID.
 - The `name` of the tool to be called, for example: `getWeather`
 - The `arguments`, for example: `{ "city": "London", "temperatureUnit": "CELSIUS" }`
 
@@ -220,6 +230,70 @@ ChatRequest request2 = ChatRequest.builder()
         .build();
 ChatResponse response2 = model.chat(request2);
 ```
+
+### Using `StreamingChatModel`
+
+Once you have a `List<ToolSpecification>`, you can call the model:
+```java
+ChatRequest request = ChatRequest.builder()
+    .messages(UserMessage.from("What will the weather be like in London tomorrow?"))
+    .toolSpecifications(toolSpecifications)
+    .build();
+
+model.chat(request, new StreamingChatResponseHandler() {
+
+    @Override
+    public void onPartialResponse(String partialResponse) {
+        System.out.println("onPartialResponse: " + partialResponse);
+    }
+
+    @Override
+    public void onPartialToolCall(PartialToolCall partialToolCall) {
+        System.out.println("onPartialToolCall: " + partialToolCall);
+    }
+
+    @Override
+    public void onCompleteToolCall(CompleteToolCall completeToolCall) {
+        System.out.println("onCompleteToolCall: " + completeToolCall);
+    }
+
+    @Override
+    public void onCompleteResponse(ChatResponse completeResponse) {
+        System.out.println("onCompleteResponse: " + completeResponse);
+    }
+
+    @Override
+    public void onError(Throwable error) {
+        error.printStackTrace();
+    }
+});
+```
+
+If the LLM decides to call the tool, the `onPartialToolCall(PartialToolCall)` callback
+will typically be called multiple times before an `onCompleteToolCall(CompleteToolCall)` callback
+is eventually called, indicating that streaming for that tool call is finished.
+
+:::note
+Please note that not all LLM providers stream partial tool calls.
+Some providers (e.g., Bedrock, Google, Mistral, Ollama) return only complete tool calls.
+In those cases, `onPartialToolCall` callback won't be invoked - only `onCompleteToolCall` will be called.
+:::
+
+Here's an example of what streaming of a single tool call might look like:
+```
+onPartialToolCall(index = 0, id = "call_abc", name = "get_weather", partialArguments = "{\"")
+onPartialToolCall(index = 0, id = "call_abc", name = "get_weather", partialArguments = "city")
+onPartialToolCall(index = 0, id = "call_abc", name = "get_weather", partialArguments = ""\":\"")
+onPartialToolCall(index = 0, id = "call_abc", name = "get_weather", partialArguments = "London")
+onPartialToolCall(index = 0, id = "call_abc", name = "get_weather", partialArguments = "\"}")
+onCompleteToolCall(index = 0, id = "call_abc", name = "get_weather", arguments = "{\"city\":\"London\"}")
+```
+
+If the LLM initiates multiple tool calls, the `index` will increment, allowing you to correlate
+the different `PartialToolCall`s with each other and with the final `CompleteToolCall`.
+
+When complete response streaming is over and `onCompleteResponse(ChatResponse)` is invoked,
+the `AiMessage` inside the `ChatResponse` will contain all the tool calls that occurred during streaming.
 
 ## High Level Tool API
 At a high level of abstraction, you can annotate any Java method with the `@Tool` annotation
@@ -269,6 +343,22 @@ A parameter can be made optional by annotating it with `@P(required = false)`:
 ```java
 @Tool
 void getTemperature(String location, @P(value = "Unit of temperature", required = false) Unit unit) {
+    ...
+}
+```
+
+#### Alternative: Using `Optional<T>` for Optional Parameters
+
+Instead of annotating parameters with `@P(required = false)`, you simply declare the parameter as `Optional<T>`.
+Any parameter of type `Optional<T>` will be treated as optional automatically, even without specify `required = false` in the `@P` annotation.
+
+**Example:**
+```java
+@Tool
+void getTemperature(
+    @P("Temperature value") double value,
+    @P("Unit of temperature") Optional<String> unit
+) {
     ...
 }
 ```
@@ -379,10 +469,6 @@ Using AI services as tools for other AI services is a powerful feature that enab
 - The agent-tool, being a totally separated AI service, has no access to the chat memory of the agent calling it, so it cannot use the chat memory to provide a more informed answer.
 :::
 
-### Exception Handling
-If a method annotated with `@Tool` throws an `Exception`,
-the message of the `Exception` (`e.getMessage()`) will be sent to the LLM as the result of tool's execution.
-This allows the LLM to correct its mistake and retry, if it considers it necessary.
 
 ### `@Tool`
 Any Java method annotated with `@Tool`
@@ -419,9 +505,14 @@ System.out.println(answer); // The square root of 475695037565 is 689706.486532.
 When the `ask` method is called, 2 interactions with the LLM occur, as described in the earlier section.
 In between those interactions, the `squareRoot` method is called automatically.
 
-The `@Tool` annotation has 2 optional fields:
+The `@Tool` annotation has these fields:
 - `name`: the tool's name. If this is not provided, the method's name will serve as the tool's name.
 - `value`: the tool's description.
+- `returnBehavior`: see [this](/tutorials/tools#returning-immediately-the-result-of-a-tool-execution-request) for more details
+- `metadata`: a valid JSON string that contains LLM-provider-specific tool metadata entries.
+By default, it is not sent to the LLM provider, you must explicitly specify which metadata keys should be sent
+when creating a `ChatModel`.
+Currently, tool metadata is supported only by the `langchain4j-anthropic` module.
 
 Depending on the tool, the LLM might understand it well even without any description
 (for example, `add(a, b)` is obvious),
@@ -473,12 +564,109 @@ enum Priority {
 ```
 :::
 
+### `InvocationParameters`
+If you wish to pass extra data into the tool when invoking AI Service, you can do it with
+`InvocationParameters`:
+```java
+
+interface Assistant {
+    String chat(@UserMessage String userMessage, InvocationParameters parameters);
+}
+
+class Tools {
+    @Tool
+    String getWeather(String city, InvocationParameters parameters) {
+        String userId = parameters.get("userId");
+        UserPreferences preferences = getUserPreferences(userId);
+        return weatherService.getWeather(city, preferences.temperatureUnits());
+    }
+}
+
+InvocationParameters parameters = InvocationParameters.from(Map.of("userId", "12345"));
+String response = assistant.chat("What is the weather in London?", parameters);
+```
+
+In this case, the LLM is not aware of these parameters;
+they are only visible to LangChain4j and user code.
+
+`InvocationParameters` can also be accessed within other AI Service components, such as:
+- [`ToolProvider`](/tutorials/tools#specifying-tools-dynamically): inside the `ToolProviderRequest`
+- [`ToolArgumentsErrorHandler`](/tutorials/tools#handling-tool-arguments-errors)
+and [`ToolExecutionErrorHandler`](https://docs.langchain4j.dev/tutorials/tools#handling-tool-execution-errors):
+inside the `ToolErrorContext`
+- [RAG components](/tutorials/rag/): inside the `Query` -> `Metadata`
+
+Parameters are stored in a mutable, thread safe `Map`.
+
+Data can be passed between AI Service components inside the `InvocationParameters`
+(for example, from one tool to another or from a RAG component to a tool)
+during a single invocation of the AI Service.
+
+### `InvocationContext`
+
+Similarly to `InvocationParameters`, `@Tool`-annotated methods
+can accept `InvocationContext` parameter to get access to the information
+about AI Service invocation.
+
+```java
+class Tools {
+    @Tool
+    String getWeather(String city, InvocationContext context) {
+        UUID invocationId = context.invocationId();
+        String aiServiceInterfaceName = context.interfaceName();
+        ...
+    }
+}
+```
+
+In this case, the LLM is not aware of these parameters;
+they are only visible to LangChain4j and user code.
+
 ### `@ToolMemoryId`
 If your AI Service method has a parameter annotated with `@MemoryId`,
-you can also annotate a parameter of a `@Tool` method with `@ToolMemoryId`.
+you can also annotate a parameter of a `@Tool` method with `@ToolMemoryId`:
+
+```java
+interface Assistant{
+    String chat(@UserMessage String userMessage, @MemoryId memoryId);
+}
+
+class Tools {
+    @Tool
+    String addCalendarEvent(CalendarEvent event, @ToolMemoryId memoryId) {
+        ...
+    }
+}
+
+String answer = assistant.chat("Tomorrow I will have a meeting with Klaus at 14:00", "12345");
+```
+
 The value provided to the AI Service method will be automatically passed to the `@Tool` method.
 This feature is useful if you have multiple users and/or multiple chats/memories per user
 and wish to distinguish between them inside the `@Tool` method.
+
+### Executing Tools Concurrently
+
+By default, when the LLM calls **_multiple_** tools at once (also known as parallel tool calling),
+the AI Service executes them sequentially. If you want the tools to be executed concurrently,
+you can call `executeToolsConcurrently()` or `executeToolsConcurrently(Executor)` when building the AI Service.
+If you enable one of these options, the tools will be executed concurrently (with one exception - see below),
+using either the default or the specified `Executor`.
+
+#### When using `ChatModel`:
+- When the LLM calls multiple tools, they are executed concurrently in separate threads
+using the `Executor`.
+- When the LLM calls a single tool, it is executed in the same (caller) thread,
+the `Executor` is **_not_** used to avoid wasting resources.
+
+#### When using `StreamingChatModel`:
+- When the LLM calls multiple tools, they are executed concurrently in separate threads
+using the `Executor`.
+Each tool is executed as soon as `StreamingChatResponseHandler.onCompleteToolCall(CompleteToolCall)`
+is called, without waiting for other tools or for the response streaming to complete.
+- When the LLM calls a single tool, it is executed in a separate thread using the `Executor`.
+We cannot execute it in the same thread because, at that point,
+we do not yet know how many tools the LLM will call.
 
 ### Accessing Executed Tools
 If you wish to access tools executed during the invocation of an AI Service,
@@ -493,6 +681,11 @@ Result<String> result = assistant.chat("Cancel my booking 123-456");
 
 String answer = result.content();
 List<ToolExecution> toolExecutions = result.toolExecutions();
+
+ToolExecution toolExecution = toolExecutions.get(0);
+ToolExecutionRequest request = toolExecution.request();
+String result = toolExecution.result(); // tool execution result as text
+Object resultObject = toolExecution.resultObject(); // actual value returned by the tool
 ```
 
 In streaming mode, you can do so by specifying `onToolExecuted` callback:
@@ -545,6 +738,21 @@ ToolExecutor toolExecutor = (toolExecutionRequest, memoryId) -> {
 };
 ```
 
+LangChain4j also provides the `DefaultToolExecutor`, which can automatically invoke methods on Java objects and handle
+parameter mapping:
+```java
+class BookingTools {
+    String getBookingDetails(String bookingNumber) {
+        Booking booking = loadBookingFromDatabase(bookingNumber);
+        return booking.toString();
+    }
+}
+
+BookingTools tools = new BookingTools();
+Method method = BookingTools.class.getMethod("getBookingDetails", String.class);
+ToolExecutor toolExecutor = new DefaultToolExecutor(tools, method);
+```
+
 Once we have one or multiple (`ToolSpecification`, `ToolExecutor`) pairs,
 we can specify them when creating an AI Service:
 ```java
@@ -554,12 +762,24 @@ Assistant assistant = AiServices.builder(Assistant.class)
     .build();
 ```
 
+Additionally, we can pass a list of tool names that should [immediately/directly return](/tutorials/tools#returning-immediately-the-result-of-a-tool-execution-request) their results and not send them to the LLM for reprocessing.
+
+```java
+Set<String> immediateReturnToolNames = Set.of("get_booking_details");
+
+Assistant assistant = AiServices.builder(Assistant.class)
+    .chatModel(chatModel)
+    .tools(Map.of(toolSpecification, toolExecutor), immediateReturnToolNames)
+    .build();
+```
+
 ### Specifying Tools Dynamically
 
 When using AI services, tools can also be specified dynamically for each invocation.
 One can configure a `ToolProvider` that will be called each time the AI service is invoked
 and will provide the tools that should be included in the current request to the LLM.
-The `ToolProvider` accepts a `ToolProviderRequest` that contains the `UserMessage` and chat memory ID
+The `ToolProvider` accepts a `ToolProviderRequest`
+(that contains the `UserMessage`, chat memory ID and [`InvocationParameters`](/tutorials/tools#invocationparameters))
 and returns a `ToolProviderResult` that contains tools in a form of a `Map` from `ToolSpecification` to `ToolExecutor`.
 
 Here is an example of how to add the `get_booking_details` tool only when the user's message contains the word "booking":
@@ -587,11 +807,256 @@ Assistant assistant = AiServices.builder(Assistant.class)
     .build();
 ```
 
+#### Configuring Immediate Return in Dynamic Tools
+
+When building `ToolProviderResult`, you can mark tools for [immediate return](/tutorials/tools#returning-immediately-the-result-of-a-tool-execution-request) using the ToolProviderResult.builder():
+
+```java
+ToolProvider toolProvider = (toolProviderRequest) -> {
+    return ToolProviderResult.builder()
+        .add(bookingToolSpec, bookingExecutor, ReturnBehavior.IMMEDIATE)
+        .add(weatherToolSpec, weatherExecutor)
+        .build();
+};
+```
+
+You can also mark multiple tools by name:
+
+```java
+ToolProvider toolProvider = (toolProviderRequest) -> {
+    return ToolProviderResult.builder()
+        .addAll(allTools)
+        .immediateReturnToolNames(Set.of("get_booking_details", "cancel_booking"))
+        .build();
+};
+```
+
 It is possible for an AI service to use both programmatically and dynamically specified tools in the same invocation.
 
-### Tools Hallucination Strategy
+### Tool Search
 
-It may happen that an LLM hallucinates on tools invocation, or in other words that it asks to use a tool with a name that doesn't exist. In this case by default LangChain4j will throw an exception reporting the problem, but it is possible to configure a different behavior providing the AI service with a strategy to be used in this situation. 
+When working with a large number of tools,
+sending all tools on every request can significantly increase token usage and reduce model performance.
+To address this, LangChain4j provides a tool search mechanism
+that allows tools to be discovered dynamically by the LLM itself,
+instead of being exposed upfront.
+
+The core idea is simple:
+- Initially, the LLM is exposed to one or more special tool-search tools
+- The LLM can call these tools to search for relevant tools
+- Once relevant tools are found, they are included in subsequent requests to the LLM
+
+This enables scalable, token-efficient, and model-driven tool discovery.
+
+#### How Tool Search Works
+
+A tool search flow typically looks like this:
+1. Initial request:
+   - The LLM sees only tool-search tools (not the full tool set)
+2. Tool search
+   - The LLM calls a tool-search tool, describing what kind of tool it needs
+   - The tool-search strategy matches the request against available tools
+4. Tool exposure
+   - Matching tools are added to the next request to the LLM
+5. Tool execution
+   - The LLM can now call the found tools normally
+
+Previously found tools are accumulated across multiple tool-search calls.
+Each time the LLM invokes the tool-search tool,
+the newly matched tools are added to the existing set of tools visible to the LLM (they are merged, not replaced).
+This means the list of tools visible to the LLM can grow over time.
+Found tools remain visible to the LLM until their corresponding `ToolExecutionResultMessage`
+is evicted from the `ChatMemory`, and at least until the end of the AI Service invocation.
+
+If `ChatMemory` is not configured, the found tools remain visible to the LLM
+only until the end of the AI service invocation.
+
+#### ToolSearchStrategy
+
+Tool search is implemented via the `ToolSearchStrategy` interface:
+
+```java
+@Experimental
+public interface ToolSearchStrategy {
+
+    List<ToolSpecification> getToolSearchTools(InvocationContext invocationContext);
+
+    ToolSearchResult search(ToolSearchRequest toolSearchRequest);
+}
+```
+
+A `ToolSearchStrategy` is responsible for:
+- Exposing tool-search tools to the LLM
+- Executing tool search requests generated by the LLM
+- Returning matching tool names, which will then be resolved and exposed
+
+LangChain4j currently provides 2 out-of-the-box implementations:
+- `SimpleToolSearchStrategy` – keyword-based matching
+- `VectorToolSearchStrategy` – semantic search using embeddings
+
+See Javadoc of these classes for more details.
+
+You can also implement custom strategies.
+
+#### Configuring Tool Search in AI Services
+
+Tool search is configured at the AI Service level:
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+    .chatModel(chatModel)
+    .chatMemory(chatMemory)
+    .tools(tools) // tool search works for static tools
+    .toolProvider(mcpToolProvider) // tool search works for tools provided dynamically (e.g., MCP)
+    .toolSearchStrategy(new SimpleToolSearchStrategy())
+    .build();
+```
+
+Once configured:
+- The LLM no longer sees all tools upfront
+- Tool discovery becomes an explicit, model-driven step
+- Token usage is reduced, especially with large tool sets
+
+#### When to Use Tool Search
+
+Tool search is especially useful when:
+- You have many tools (dozens or hundreds)
+- Tools are domain-specific or rarely used
+- Tool availability depends on context, user, or permissions
+- You want the LLM to reason about which tools it needs, instead of guessing from a long list
+
+If you have only a small number of tools, or all tools are always relevant,
+using regular approach may be simpler.
+
+#### Always Visible Tools
+
+When tool search is enabled, tools are normally hidden from the LLM until they are discovered via a tool-search call.
+However, in some cases you may want certain tools to always be visible to the LLM.
+
+Typical use cases:
+- Core tools that should always be accessible
+- Frequently used tools where search overhead is unnecessary
+- Utility tools
+
+LangChain4j supports this via the `ALWAYS_VISIBLE` tool search behavior.
+
+##### How It Works
+
+When a tool is marked as `ALWAYS_VISIBLE`:
+- It is exposed to the LLM in the very first request
+- It does not require discovery via tool search
+- It remains visible throughout the AI Service invocation
+- It is not included in searchable tool candidates
+
+All other tools continue to follow the normal tool-search flow.
+
+##### Using `@Tool` Annotation
+
+You can mark a tool as always visible via the @Tool annotation:
+```java
+@Tool(searchBehavior = ALWAYS_VISIBLE)
+String getWeather(String city) {
+    return weatherService.getWeather(city);
+}
+```
+
+##### Using `McpToolProvider`
+
+When using MCP tools (via `McpToolProvider`), always-visible tools can be configured via `alwaysVisibleToolNames`:
+
+```java
+McpToolProvider.builder()
+    .mcpClients(mcpClient)
+    .alwaysVisibleToolNames("getWeather")
+    .build();
+```
+
+##### Using `ToolSpecification`
+
+If you configure tools programmatically, you can mark them as always visible using `metadata`:
+```java
+ToolSpecification toolSpecification = ToolSpecification.builder()
+    .name("getWeather")
+    .parameters(JsonObjectSchema.builder()
+        .addStringProperty("city")
+        .required("city")
+        .build())
+    .metadata(Map.of(ToolSpecification.METADATA_SEARCH_BEHAVIOR, SearchBehavior.ALWAYS_VISIBLE))
+    .build();
+```
+
+#### Notes and Limitations
+
+:::note
+Tool search relies on the LLM’s ability to understand when and how to search for tools.
+The effectiveness of this feature depends heavily on the chosen model.
+:::
+
+:::note
+Tool search is currently marked as experimental and may evolve in future releases.
+:::
+
+### Returning immediately the result of a tool execution request
+
+By default, the result of a tool execution request is sent back to the LLM that uses this result and further reprocesses it. However, in some circumstances, the result produced by that tool execution request already represents the expected result of the AI service invocation. In this case it is possible to configure the tool to immediately/directly return its result, skipping a wasteful and resource consuming reprocessing by the LLM. This can be done by configuring the `returnBehavior` field of the `@Tool` annotation as in the following example:
+
+```java
+class CalculatorWithImmediateReturn {
+    
+    @Tool(returnBehavior = ReturnBehavior.IMMEDIATE)
+    double add(int a, int b) {
+        return a + b;
+    }
+}
+```
+
+:::note
+This feature is supported only on AI Services having a `Result<T>` return type. Attempting to use it on AI Service with a different return type will produce an `IllegalConfigurationException`. See [Return Types](/tutorials/ai-services#return-types) for more information about `Result<T>`.
+:::
+
+In this way, an `Assistant` service like the following
+
+```java
+interface Assistant {
+    Result<String> chat(String userMessage);
+}
+```
+
+configured to use the above `CalculatorWithImmediateReturn` tool
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatModel(model)
+        .tools(new CalculatorWithImmediateReturn())
+        .build();
+```
+
+will return a response directly from the tool invocation. For instance, prompting the assistant with
+
+```java
+Result<String> result = assistant.chat("How much is 37 plus 87?");
+```
+
+will produce a `Result` with a null content, while the actual response of `124` will have to be retrieved from the `result.toolExecutions()`. Without the immediate return, the LLM would have to reprocess the result of the `add` tool execution request, thus returning a response like: `The result of adding 37 and 87 is 124.`
+
+Also note that if the LLM calls multiple tools and at least one of them is not immediate, then reprocessing will happen.
+
+:::note
+When using programmatic tools, you can mark tools for immediate return by passing a set of tool names
+to the `.tools()` method. When using dynamic tools via `ToolProvider`, you can use the overloaded method, 
+`.add(ToolSpecification, ToolExecutor, ReturnBehavior)`, on `ToolProviderResult.builder()`. 
+See the respective sections above for examples.
+:::
+
+### Error Handling
+
+#### Handling Tool Name Errors
+
+It may happen that an LLM hallucinates on tools invocation,
+or in other words that it asks to use a tool with a name that doesn't exist.
+In this case by default LangChain4j will throw an exception reporting the problem,
+but it is possible to configure a different behavior providing the AI service
+with a strategy to be used in this situation.
 
 This strategy is an implementation of a `Function<ToolExecutionRequest, ToolExecutionResultMessage>` defining which `ToolExecutionResultMessage` should be produced as the result for a `ToolExecutionRequest` containing the request to invoke a tool that is not available. For instance, it could be possible to configure the AI service with a strategy that returns to the LLM a response that hopefully will push it to retry a different tool invocation, knowing that the formerly required tool doesn't exist, as in the following example:
 
@@ -603,6 +1068,72 @@ AssistantHallucinatedTool assistant = AiServices.builder(AssistantHallucinatedTo
                 toolExecutionRequest, "Error: there is no tool called " + toolExecutionRequest.name()))
         .build();
 ```
+
+#### Handling Tool Arguments Errors
+
+By default, when something is wrong with tool arguments (e.g., the LLM generates an invalid JSON),
+the AI Service will not be able to execute the tool, so it will fail with an exception.
+
+You can customize this behaviour by configuring a `ToolArgumentsErrorHandler` on the AI Service:
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatModel(chatModel)
+        .tools(tools)
+        .toolArgumentsErrorHandler((error, errorContext) -> ...)
+        .build();
+```
+
+Currently, there are two ways to handle errors inside the `ToolArgumentsErrorHandler`:
+
+- Throw an exception: this will stop the AI service flow.
+- Return a text message (e.g., an error description) that will be sent back to the LLM,
+  allowing it to respond appropriately (for example, by correcting the error and retrying).
+
+Here is an example of the first approach:
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatModel(chatModel)
+        .tools(tools)
+        .toolArgumentsErrorHandler((error, errorContext) -> { throw MyCustomException(error); })
+        .build();
+
+try {
+    assistant.chat(...);
+} catch (MyCustomException e) {
+    // handle e
+}
+```
+
+Here is an example of the second approach:
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatModel(chatModel)
+        .tools(tools)
+        .toolArgumentsErrorHandler((error, errorContext) -> ToolErrorHandlerResult.text("Something is wrong with tool arguments: " + error.getMessage()))
+        .build();
+```
+
+#### Handling Tool Execution Errors
+
+By default, when a method annotated with `@Tool` throws an `Exception`,
+the message of the `Exception` (`e.getMessage()`) will be sent to the LLM as the result of tool's execution.
+This allows the LLM to correct its mistake and retry, if it considers it necessary.
+
+You can customize this behaviour by configuring a `ToolExecutionErrorHandler` on the AI Service:
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatModel(chatModel)
+        .tools(tools)
+        .toolExecutionErrorHandler((error, errorContext) -> ToolErrorHandlerResult.text("Something is wrong with tool execution: " + error.getMessage()))
+        .build();
+```
+
+As with the `ToolArgumentsErrorHandler`, there are two ways to handle errors in `ToolExecutionErrorHandler`:
+throw an exception or return a text message.
 
 ## Model Context Protocol (MCP)
 

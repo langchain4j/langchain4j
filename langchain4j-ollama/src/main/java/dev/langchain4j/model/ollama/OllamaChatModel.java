@@ -13,7 +13,6 @@ import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.ollama.spi.OllamaChatModelBuilderFactory;
 import java.util.List;
@@ -42,13 +41,13 @@ public class OllamaChatModel extends OllamaBaseChatModel implements ChatModel {
                 withRetryMappingExceptions(() -> client.chat(ollamaChatRequest), maxRetries);
 
         return ChatResponse.builder()
-                .aiMessage(aiMessageFrom(ollamaChatResponse))
+                .aiMessage(aiMessageFrom(ollamaChatResponse.getMessage(), this.returnThinking))
                 .metadata(chatResponseMetadataFrom(ollamaChatResponse))
                 .build();
     }
 
     @Override
-    public ChatRequestParameters defaultRequestParameters() {
+    public OllamaChatRequestParameters defaultRequestParameters() {
         return defaultRequestParameters;
     }
 
@@ -80,7 +79,6 @@ public class OllamaChatModel extends OllamaBaseChatModel implements ChatModel {
 
         public OllamaChatModelBuilder() {
             // This is public so it can be extended
-            // By default with Lombok it becomes package private
         }
 
         @Override

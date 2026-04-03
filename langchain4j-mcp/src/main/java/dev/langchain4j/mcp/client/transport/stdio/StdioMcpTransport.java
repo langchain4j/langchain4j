@@ -1,17 +1,25 @@
 package dev.langchain4j.mcp.client.transport.stdio;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.langchain4j.mcp.client.protocol.InitializationNotification;
-import dev.langchain4j.mcp.client.protocol.McpClientMessage;
-import dev.langchain4j.mcp.client.protocol.McpInitializeRequest;
+import dev.langchain4j.internal.DefaultExecutorProvider;
+import dev.langchain4j.mcp.client.McpCallContext;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
+import dev.langchain4j.mcp.protocol.McpClientMessage;
+import dev.langchain4j.mcp.protocol.McpInitializationNotification;
+import dev.langchain4j.mcp.protocol.McpInitializeRequest;
+import dev.langchain4j.mcp.transport.stdio.JsonRpcIoHandler;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,16 +28,26 @@ public class StdioMcpTransport implements McpTransport {
     private final List<String> command;
     private final Map<String, String> environment;
     private Process process;
-    private ProcessIOHandler processIOHandler;
+    private JsonRpcIoHandler jsonRpcIoHandler;
     private final boolean logEvents;
+    private final Logger logger;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Logger log = LoggerFactory.getLogger(StdioMcpTransport.class);
     private volatile McpOperationHandler messageHandler;
+    private ProcessStderrHandler stderrHandler;
+    private ExecutorService executorService;
+    private boolean shouldShutdownExecutorService;
 
     public StdioMcpTransport(Builder builder) {
         this.command = builder.command;
         this.environment = builder.environment;
         this.logEvents = builder.logEvents;
+        this.logger = builder.logger;
+        this.executorService =
+                getOrDefault(builder.executorService, DefaultExecutorProvider::getDefaultExecutorService);
+        // FIXME: are there actually any cases where we should shut down the executor service?
+        // the DefaultExecutorProvider always returns a single shared instance, so we can't shut it down
+        this.shouldShutdownExecutorService = false;
     }
 
     @Override
@@ -42,22 +60,26 @@ public class StdioMcpTransport implements McpTransport {
             process = processBuilder.start();
             log.debug("PID of the started process: {}", process.pid());
             process.onExit().thenRun(() -> {
+                if (messageHandler != null) {
+                    messageHandler.cancelAllPendingOperations("Process has exited");
+                }
                 log.debug("Subprocess has exited with code: {}", process.exitValue());
             });
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        processIOHandler = new ProcessIOHandler(process, messageHandler, logEvents);
-        // FIXME: where should we obtain the thread?
-        new Thread(processIOHandler).start();
-        new Thread(new ProcessStderrHandler(process)).start();
+        jsonRpcIoHandler = new JsonRpcIoHandler(
+                process.getInputStream(), process.getOutputStream(), messageHandler::handle, logEvents, logger);
+        stderrHandler = new ProcessStderrHandler(process);
+        executorService.submit(jsonRpcIoHandler);
+        executorService.submit(stderrHandler);
     }
 
     @Override
     public CompletableFuture<JsonNode> initialize(McpInitializeRequest operation) {
         try {
             String requestString = OBJECT_MAPPER.writeValueAsString(operation);
-            String initializationNotification = OBJECT_MAPPER.writeValueAsString(new InitializationNotification());
+            String initializationNotification = OBJECT_MAPPER.writeValueAsString(new McpInitializationNotification());
             return execute(requestString, operation.getId())
                     .thenCompose(originalResponse -> execute(initializationNotification, null)
                             .thenCompose(nullNode -> CompletableFuture.completedFuture(originalResponse)));
@@ -68,9 +90,14 @@ public class StdioMcpTransport implements McpTransport {
 
     @Override
     public CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage operation) {
+        return executeOperationWithResponse(new McpCallContext(null, operation));
+    }
+
+    @Override
+    public CompletableFuture<JsonNode> executeOperationWithResponse(McpCallContext context) {
         try {
-            String requestString = OBJECT_MAPPER.writeValueAsString(operation);
-            return execute(requestString, operation.getId());
+            String requestString = OBJECT_MAPPER.writeValueAsString(context.message());
+            return execute(requestString, context.message().getId());
         } catch (JsonProcessingException e) {
             return CompletableFuture.failedFuture(e);
         }
@@ -78,8 +105,13 @@ public class StdioMcpTransport implements McpTransport {
 
     @Override
     public void executeOperationWithoutResponse(McpClientMessage operation) {
+        executeOperationWithoutResponse(new McpCallContext(null, operation));
+    }
+
+    @Override
+    public void executeOperationWithoutResponse(McpCallContext context) {
         try {
-            String requestString = OBJECT_MAPPER.writeValueAsString(operation);
+            String requestString = OBJECT_MAPPER.writeValueAsString(context.message());
             execute(requestString, null);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
@@ -100,7 +132,30 @@ public class StdioMcpTransport implements McpTransport {
 
     @Override
     public void close() throws IOException {
+        try {
+            stderrHandler.close();
+        } catch (Exception ignored) {
+        }
+        try {
+            jsonRpcIoHandler.close();
+        } catch (Exception ignored) {
+        }
+        if (executorService != null && shouldShutdownExecutorService) {
+            executorService.shutdown();
+            try {
+                if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
+                    executorService.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                executorService.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+        }
         process.destroy();
+    }
+
+    public static Builder builder() {
+        return new Builder();
     }
 
     private CompletableFuture<JsonNode> execute(String request, Long id) {
@@ -109,7 +164,7 @@ public class StdioMcpTransport implements McpTransport {
             messageHandler.startOperation(id, future);
         }
         try {
-            processIOHandler.submit(request);
+            jsonRpcIoHandler.submit(request);
             // For messages with null ID, we don't wait for a corresponding response
             if (id == null) {
                 future.complete(null);
@@ -129,6 +184,8 @@ public class StdioMcpTransport implements McpTransport {
         private List<String> command;
         private Map<String, String> environment;
         private boolean logEvents;
+        private Logger logger;
+        private ExecutorService executorService;
 
         public Builder command(List<String> command) {
             this.command = command;
@@ -145,10 +202,32 @@ public class StdioMcpTransport implements McpTransport {
             return this;
         }
 
+        /**
+         * Sets the {@link ExecutorService} to use for background I/O operations.
+         * If not provided, will use {@link DefaultExecutorProvider#getDefaultExecutorService()}.
+         * <p>
+         * Frameworks like Quarkus should provide their managed executor here.
+         * If an executor is provided, it will not be shut down when the transport is closed.
+         *
+         * @param executorService the executor service to use
+         * @return {@code this}
+         */
+        public Builder executorService(ExecutorService executorService) {
+            this.executorService = executorService;
+            return this;
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for traffic logging.
+         * @return {@code this}.
+         */
+        public Builder logger(Logger logger) {
+            this.logger = logger;
+            return this;
+        }
+
         public StdioMcpTransport build() {
-            if (command == null || command.isEmpty()) {
-                throw new IllegalArgumentException("Missing command");
-            }
+            ensureNotEmpty(command, "command");
             if (environment == null) {
                 environment = Map.of();
             }

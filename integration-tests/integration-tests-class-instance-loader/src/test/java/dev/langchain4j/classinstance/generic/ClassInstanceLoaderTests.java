@@ -38,4 +38,32 @@ class ClassInstanceLoaderTests {
                 .isThrownBy(() -> ClassInstanceLoader.getClassInstance(Classes.Class3.class))
                 .withMessage("Unknown class: %s", Classes.Class3.class.getName());
     }
+
+    @Test
+    void shouldThrowExceptionForNullClass() {
+        assertThatExceptionOfType(NullPointerException.class)
+                .isThrownBy(() -> ClassInstanceLoader.getClassInstance(null));
+    }
+
+    @Test
+    void shouldReturnDifferentInstancesOnMultipleCalls() {
+        var instance1 = ClassInstanceLoader.getClassInstance(Classes.Class1.class);
+        var instance2 = ClassInstanceLoader.getClassInstance(Classes.Class1.class);
+        var instance3 = ClassInstanceLoader.getClassInstance(Classes.Class1.class);
+
+        assertThat(instance1).isNotSameAs(instance2);
+        assertThat(instance2).isNotSameAs(instance3);
+        assertThat(instance1).isNotSameAs(instance3);
+    }
+
+    @Test
+    void shouldHandleMultipleClassTypes() {
+        var class1Instance = ClassInstanceLoader.getClassInstance(Classes.Class1.class);
+        var class2Instance = ClassInstanceLoader.getClassInstance(Classes.Class2.class);
+
+        assertThat(class1Instance).isNotNull().isExactlyInstanceOf(Classes.Class1.class);
+        assertThat(class2Instance).isNotNull().isExactlyInstanceOf(Classes.Class2.class);
+        assertThat(class1Instance).isNotInstanceOf(Classes.Class2.class);
+        assertThat(class2Instance).isNotInstanceOf(Classes.Class1.class);
+    }
 }

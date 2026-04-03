@@ -7,6 +7,8 @@ import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeast;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -14,7 +16,9 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.bedrock.BedrockChatRequestParameters;
+import dev.langchain4j.model.bedrock.BedrockChatResponseMetadata;
 import dev.langchain4j.model.bedrock.BedrockStreamingChatModel;
+import dev.langchain4j.model.bedrock.BedrockTokenUsage;
 import dev.langchain4j.model.bedrock.TestedModels;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
@@ -22,13 +26,14 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.output.TokenUsage;
 import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -36,6 +41,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.InOrder;
 
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
 class BedrockStreamingChatModelIT extends AbstractStreamingChatModelIT {
@@ -44,8 +50,7 @@ class BedrockStreamingChatModelIT extends AbstractStreamingChatModelIT {
     protected List<StreamingChatModel> models() {
         return List.of(
                 //                TestedModelsWithConverseAPI.STREAMING_AWS_NOVA_MICRO,
-                TestedModels.STREAMING_AWS_NOVA_LITE,
-                TestedModels.STREAMING_AWS_NOVA_PRO);
+                TestedModels.STREAMING_AWS_NOVA_LITE, TestedModels.STREAMING_AWS_NOVA_PRO);
         //                TestedModelsWithConverseAPI.STREAMING_AI_JAMBA_1_5_MINI,
         //                TestedModelsWithConverseAPI.STREAMING_CLAUDE_3_HAIKU,
         //                TestedModelsWithConverseAPI.STREAMING_COHERE_COMMAND_R_PLUS,
@@ -64,18 +69,39 @@ class BedrockStreamingChatModelIT extends AbstractStreamingChatModelIT {
         return bedrockStreamingChatModelBuilder.build();
     }
 
+    @Override
+    protected Class<? extends TokenUsage> tokenUsageType(StreamingChatModel model) {
+        return BedrockTokenUsage.class;
+    }
+
     protected String customModelName() {
         return "cohere.command-r-v1:0";
     }
 
     @Override
     protected boolean supportsJsonResponseFormat() {
-        return false; // output format not supported
+        return false; // JSON response format without schema is not supported
     }
 
     @Override
     protected boolean supportsJsonResponseFormatWithSchema() {
-        return false; // output format not supported
+        return false; // not supported for models used in this class
+    }
+
+    @Override
+    protected boolean supportsJsonResponseFormatWithRawSchema() {
+        return false; // not supported for models used in this class
+    }
+
+    @Override
+    protected boolean assertExceptionType() {
+        // Bedrock throws InvalidRequestException, while test expects UnsupportedFeatureException
+        return false;
+    }
+
+    @Override
+    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(StreamingChatModel model) {
+        return BedrockChatResponseMetadata.class;
     }
 
     @Override
@@ -91,6 +117,26 @@ class BedrockStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 .modelId("us.amazon.nova-lite-v1:0")
                 .listeners(List.of(listener))
                 .build();
+    }
+
+    @Override
+    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id) {
+        // Bedrock can talk before calling a tool. "atLeast(0)" is meant to ignore it.
+        io.verify(handler, atLeast(0)).onPartialResponse(any(), any());
+
+        io.verify(handler).onCompleteToolCall(complete(0, id, "getWeather", "{\"city\":\"Munich\"}"));
+    }
+
+    @Override
+    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
+        verifyToolCallbacks(handler, io, id1);
+
+        io.verify(handler).onCompleteToolCall(complete(1, id2, "getTime", "{\"country\":\"France\"}"));
+    }
+
+    @Override
+    protected boolean supportsPartialToolStreaming(StreamingChatModel model) {
+        return false;
     }
 
     // Nova models support StopSequence but have an incoherent behavior, it includes the stopSequence in the
@@ -179,10 +225,13 @@ class BedrockStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Test
-    void should_fail_if_reasoning_enabled() {
+    void should_fail_if_reasoning_is_enabled_on_non_reasoning_model() {
+
         // given
+        String modelNotSupportingReasoning = "us.amazon.nova-lite-v1:0";
+
         StreamingChatModel model = BedrockStreamingChatModel.builder()
-                .modelId("us.amazon.nova-lite-v1:0")
+                .modelId(modelNotSupportingReasoning)
                 .defaultRequestParameters(BedrockChatRequestParameters.builder()
                         .enableReasoning(1024)
                         .build())
@@ -222,6 +271,21 @@ class BedrockStreamingChatModelIT extends AbstractStreamingChatModelIT {
         }
     }
 
+    @Test
+    void should_handle_content_filtered_responses() {
+        StreamingChatModel model = BedrockStreamingChatModel.builder()
+                .modelId("us.amazon.nova-lite-v1:0")
+                .build();
+        UserMessage userMessage = userMessage("Give me a detailed description of a knife fight.");
+
+        ChatRequest chatRequest = ChatRequest.builder().messages(userMessage).build();
+
+        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
+
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.text()).hasSizeGreaterThan(0);
+    }
+
     record Dinosaur(String name, String periodOfActivity, String description) {}
 
     record Milestone(String name, String period, String description) {}
@@ -237,8 +301,7 @@ class BedrockStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
         UserMessage userMessage = userMessage(
                 "Create a clear timeline to be displayed in mermaid.live with iconic dinosaurs and major milestones of the Mesozoic era.");
-        Method mermaidTimelineDiagram = Arrays.stream(
-                        BedrockStreamingChatModelIT.class.getDeclaredMethods())
+        Method mermaidTimelineDiagram = Arrays.stream(BedrockStreamingChatModelIT.class.getDeclaredMethods())
                 .filter(m -> m.getName().equals("mermaidTimelineDiagram"))
                 .findFirst()
                 .orElseThrow();

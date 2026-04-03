@@ -16,7 +16,7 @@ import java.util.Locale;
 
 import static dev.langchain4j.data.message.ContentType.TEXT;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
+import static dev.langchain4j.model.chat.request.ToolChoice.AUTO;
 
 @Internal
 public class ChatRequestValidationUtils {
@@ -71,9 +71,9 @@ public class ChatRequestValidationUtils {
     }
 
     public static void validate(ToolChoice toolChoice) {
-        if (toolChoice == REQUIRED) {
+        if (toolChoice != null && toolChoice != AUTO) {
             throw new UnsupportedFeatureException(String.format("%s.%s is not supported yet by this model provider",
-                    ToolChoice.class.getSimpleName(), REQUIRED.name()));
+                    ToolChoice.class.getSimpleName(), toolChoice));
         }
     }
 

@@ -1,16 +1,18 @@
 package dev.langchain4j.model.azure;
 
-import dev.langchain4j.model.TokenCountEstimator;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
-
-import java.util.ArrayList;
-import java.util.List;
-
 import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_3_5_TURBO;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.model.TokenCountEstimator;
+import java.util.ArrayList;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+
+@Execution(ExecutionMode.CONCURRENT)
 class AzureOpenAiTokenCountEstimatorTest {
 
     TokenCountEstimator tokenCountEstimator = new AzureOpenAiTokenCountEstimator(GPT_3_5_TURBO.modelType());
@@ -19,7 +21,8 @@ class AzureOpenAiTokenCountEstimatorTest {
     void should_count_tokens_in_short_texts() {
         assertThat(tokenCountEstimator.estimateTokenCountInText("Hello")).isEqualTo(1);
         assertThat(tokenCountEstimator.estimateTokenCountInText("Hello!")).isEqualTo(2);
-        assertThat(tokenCountEstimator.estimateTokenCountInText("Hello, how are you?")).isEqualTo(6);
+        assertThat(tokenCountEstimator.estimateTokenCountInText("Hello, how are you?"))
+                .isEqualTo(6);
 
         assertThat(tokenCountEstimator.estimateTokenCountInText("")).isEqualTo(0);
         assertThat(tokenCountEstimator.estimateTokenCountInText("\n")).isEqualTo(1);

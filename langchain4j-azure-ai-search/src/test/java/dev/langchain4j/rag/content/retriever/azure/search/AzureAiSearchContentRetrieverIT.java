@@ -107,7 +107,7 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
             contentRetrieverWithVector.add(embedding, textSegment);
         }
 
-        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(contents.size()));
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSameSizeAs(contents));
 
         String content = "fruit";
         Query query = Query.from(content);
@@ -143,7 +143,7 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
             contentRetrieverWithVector.add(embedding, textSegment);
         }
 
-        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(contents.size()));
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSameSizeAs(contents));
 
         String content = "house";
         Query query = Query.from(content);
@@ -200,7 +200,7 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
         }
 
         awaitUntilAsserted(() -> assertThat(contentRetrieverWithFullText.retrieve(Query.from("a")))
-                .hasSize(contents.size()));
+                .hasSameSizeAs(contents));
 
         Query query = Query.from("Alain");
         List<Content> relevant = contentRetrieverWithFullText.retrieve(query);
@@ -263,7 +263,7 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
             contentRetrieverWithHybrid.add(embedding, textSegment);
         }
 
-        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(contents.size()));
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSameSizeAs(contents));
 
         Query query = Query.from("Algeria");
         List<Content> relevant = contentRetrieverWithHybrid.retrieve(query);
@@ -309,7 +309,7 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
             contentRetrieverWithHybridAndReranking.add(embedding, textSegment);
         }
 
-        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(contents.size()));
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSameSizeAs(contents));
 
         Query query = Query.from("A philosopher who was in the French Resistance");
         List<Content> relevant = contentRetrieverWithHybridAndReranking.retrieve(query);

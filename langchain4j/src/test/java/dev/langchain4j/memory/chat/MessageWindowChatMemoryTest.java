@@ -10,6 +10,8 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.memory.chat.HitCountChatMemoryStore.HitCounts;
+import java.util.function.Function;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
@@ -407,5 +409,230 @@ class MessageWindowChatMemoryTest implements WithAssertions {
 
         // then orphan toolExecutionResultMessage1 and toolExecutionResultMessage2 are evicted together with aiMessage
         assertThat(chatMemory.messages()).containsExactly(systemMessage, aiMessage2);
+    }
+
+    @Test
+    void dynamic_max_messages_behavior() {
+
+        // Dynamic maxMessages function returns different limits based on memory ID
+        Function<Object, Integer> dynamicMaxMessages = id -> {
+            if ("short".equals(id)) return 2;
+            if ("long".equals(id)) return 4;
+            return 3;
+        };
+
+        var msgA = userMessage("a");
+        var msgB = userMessage("b");
+        var msgC = userMessage("c");
+        var msg1 = userMessage("1");
+        var msg2 = userMessage("2");
+        var msg3 = userMessage("3");
+        var msg4 = userMessage("4");
+        var msg5 = userMessage("5");
+        var msgX = userMessage("x");
+        var msgY = userMessage("y");
+        var msgZ = userMessage("z");
+        var msgW = userMessage("w");
+
+        // Create shortMemory with ID "short" (window size 2)
+        MessageWindowChatMemory shortMemory = MessageWindowChatMemory.builder()
+                .id("short")
+                .dynamicMaxMessages(dynamicMaxMessages)
+                .build();
+
+        // Create longMemory with ID "long" (window size 4)
+        MessageWindowChatMemory longMemory = MessageWindowChatMemory.builder()
+                .id("long")
+                .dynamicMaxMessages(dynamicMaxMessages)
+                .build();
+
+        // Add messages to shortMemory and exceed its limit
+        shortMemory.add(msgA);
+        shortMemory.add(msgB);
+        shortMemory.add(msgC); // Exceeds maxMessages
+
+        assertThat(shortMemory.messages()).containsExactly(msgB, msgC); // Oldest message is evicted
+
+        // Test longMemory (window size 4)
+        longMemory.add(msg1);
+        longMemory.add(msg2);
+        longMemory.add(msg3);
+        longMemory.add(msg4);
+        longMemory.add(msg5); // Exceeds maxMessages
+
+        assertThat(longMemory.messages()).containsExactly(msg2, msg3, msg4, msg5);
+
+        // Test default case (ID not matched, window size 3)
+        MessageWindowChatMemory defaultMemory = MessageWindowChatMemory.builder()
+                .id("other")
+                .dynamicMaxMessages(dynamicMaxMessages)
+                .build();
+
+        defaultMemory.add(msgX);
+        defaultMemory.add(msgY);
+        defaultMemory.add(msgZ);
+        defaultMemory.add(msgW); // Exceeds maxMessages
+
+        assertThat(defaultMemory.messages()).containsExactly(msgY, msgZ, msgW);
+
+        // Clear memory test
+        shortMemory.clear();
+        assertThat(shortMemory.messages()).isEmpty();
+    }
+
+    @Test
+    void dynamic_max_messages_can_change_for_same_id() {
+
+        // Array to hold the current dynamic max value
+        int[] currentMax = {3};
+        Function<Object, Integer> dynamicMaxMessages = id -> currentMax[0];
+
+        // Create chat memory instance
+        MessageWindowChatMemory memory = MessageWindowChatMemory.builder()
+                .id("same-id")
+                .dynamicMaxMessages(dynamicMaxMessages)
+                .build();
+
+        var msgA = userMessage("A");
+        var msgB = userMessage("B");
+        var msgC = userMessage("C");
+        var msgD = userMessage("D");
+        var msgE = userMessage("E");
+
+        memory.add(msgA);
+        memory.add(msgB);
+        memory.add(msgC);
+
+        assertThat(memory.messages()).containsExactly(msgA, msgB, msgC);
+
+        memory.add(msgD);
+
+        assertThat(memory.messages()).containsExactly(msgB, msgC, msgD);
+
+        // Increase maxMessages to 5 and add another message
+        currentMax[0] = 5;
+
+        memory.add(msgE);
+        assertThat(memory.messages()).containsExactly(msgB, msgC, msgD, msgE);
+
+        // Decrease maxMessages to 2, which should trigger eviction immediately
+        currentMax[0] = 2;
+
+        // Fetch messages list; excess messages are automatically evicted
+        var msgsAfterShrink = memory.messages();
+        assertThat(msgsAfterShrink).containsExactly(msgD, msgE); // Keep the most recent two messages
+    }
+
+    @Test
+    void system_message_first_enabled() {
+        MessageWindowChatMemory chatMemory = MessageWindowChatMemory.builder()
+                .maxMessages(5)
+                .alwaysKeepSystemMessageFirst(true)
+                .build();
+
+        SystemMessage systemMessage = systemMessage("You are a helpful assistant");
+        chatMemory.add(systemMessage);
+
+        UserMessage userMessage = userMessage("Hello");
+        chatMemory.add(userMessage);
+
+        AiMessage aiMessage = aiMessage("Hi, how can I help?");
+        chatMemory.add(aiMessage);
+
+        // System message should be at the beginning
+        assertThat(chatMemory.messages()).containsExactly(systemMessage, userMessage, aiMessage);
+
+        chatMemory = MessageWindowChatMemory.builder()
+                .maxMessages(5)
+                .alwaysKeepSystemMessageFirst(true)
+                .build();
+
+        chatMemory.add(userMessage);
+        chatMemory.add(systemMessage);
+        chatMemory.add(aiMessage);
+
+        // System message should be at the beginning
+        assertThat(chatMemory.messages()).containsExactly(systemMessage, userMessage, aiMessage);
+    }
+
+    @Test
+    void system_message_first_disabled() {
+        MessageWindowChatMemory chatMemory = MessageWindowChatMemory.builder()
+                .maxMessages(5)
+                .alwaysKeepSystemMessageFirst(false)
+                .build();
+
+        SystemMessage systemMessage = systemMessage("You are a helpful assistant");
+        chatMemory.add(systemMessage);
+
+        UserMessage userMessage = userMessage("Hello");
+        chatMemory.add(userMessage);
+
+        AiMessage aiMessage = aiMessage("Hi, how can I help?");
+        chatMemory.add(aiMessage);
+
+        // System message should be at the beginning
+        assertThat(chatMemory.messages()).containsExactly(systemMessage, userMessage, aiMessage);
+
+        chatMemory = MessageWindowChatMemory.builder()
+                .maxMessages(5)
+                .alwaysKeepSystemMessageFirst(false)
+                .build();
+
+        chatMemory.add(userMessage);
+        chatMemory.add(systemMessage);
+        chatMemory.add(aiMessage);
+
+        // System message should NOT be at the beginning
+        assertThat(chatMemory.messages()).containsExactly(userMessage, systemMessage, aiMessage);
+    }
+
+    @Test
+    void system_message_first_with_message_eviction() {
+        ChatMemory chatMemory = MessageWindowChatMemory.builder()
+                .maxMessages(3)
+                .alwaysKeepSystemMessageFirst(true)
+                .build();
+
+        SystemMessage systemMessage = systemMessage("You are a helpful assistant");
+        chatMemory.add(systemMessage);
+
+        UserMessage msg1 = userMessage("Message 1");
+        chatMemory.add(msg1);
+
+        UserMessage msg2 = userMessage("Message 2");
+        chatMemory.add(msg2);
+
+        // At capacity: systemMessage, msg1, msg2
+        assertThat(chatMemory.messages()).containsExactly(systemMessage, msg1, msg2);
+
+        UserMessage msg3 = userMessage("Message 3");
+        chatMemory.add(msg3);
+
+        // msg1 should be evicted, systemMessage should remain at the beginning
+        assertThat(chatMemory.messages()).containsExactly(systemMessage, msg2, msg3);
+    }
+
+    @Test
+    void chat_memory_set_uses_reduced_store_ops() {
+
+        var store = new HitCountChatMemoryStore();
+        var chatMemory = MessageWindowChatMemory.builder()
+                .maxMessages(3)
+                .chatMemoryStore(store)
+                .build();
+
+        var counts = store.measureHitCounts(() -> {
+            chatMemory.add(userMessage("first"), aiMessage("second"), aiMessage("3rd"));
+        });
+        assertThat(counts).isEqualTo(new HitCounts(3, 3, 0));
+
+        counts = store.measureHitCounts(chatMemory::messages);
+        assertThat(counts).isEqualTo(new HitCounts(1, 0, 0));
+
+        counts = store.measureHitCounts(() -> {
+            chatMemory.set(userMessage("world"), aiMessage("hi"));
+        });
+        assertThat(counts).isEqualTo(new HitCounts(0, 1, 0));
     }
 }

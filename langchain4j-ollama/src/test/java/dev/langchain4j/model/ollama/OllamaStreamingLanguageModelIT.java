@@ -1,20 +1,17 @@
 package dev.langchain4j.model.ollama;
 
+import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.ModelNotFoundException;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
-import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import org.junit.jupiter.api.Test;
-
 import java.util.concurrent.CompletableFuture;
-
-import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.Test;
 
 class OllamaStreamingLanguageModelIT extends AbstractOllamaLanguageModelInfrastructure {
 

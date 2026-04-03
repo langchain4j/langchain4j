@@ -208,7 +208,6 @@ public class JlamaStreamingChatModel implements StreamingChatModel {
 
         public JlamaStreamingChatModelBuilder() {
             // This is public, so it can be extended
-            // By default with Lombok it becomes package private
         }
 
         public JlamaStreamingChatModelBuilder modelCachePath(Path modelCachePath) {

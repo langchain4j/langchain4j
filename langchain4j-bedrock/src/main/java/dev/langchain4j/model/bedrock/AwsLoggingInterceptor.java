@@ -1,5 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
@@ -25,14 +26,16 @@ import software.amazon.awssdk.utils.IoUtils;
 @Internal
 class AwsLoggingInterceptor implements ExecutionInterceptor {
 
-    private static final Logger logger = LoggerFactory.getLogger(AwsLoggingInterceptor.class);
+    private static final Logger DEFAULT_LOGGER = LoggerFactory.getLogger(AwsLoggingInterceptor.class);
 
     private final boolean logRequests;
     private final boolean logResponses;
+    private final Logger logger;
 
-    public AwsLoggingInterceptor(boolean logRequests, boolean logResponses) {
+    AwsLoggingInterceptor(boolean logRequests, boolean logResponses, Logger logger) {
         this.logRequests = logRequests;
         this.logResponses = logResponses;
+        this.logger = getOrDefault(logger, DEFAULT_LOGGER);
     }
 
     @Override
@@ -55,12 +58,13 @@ class AwsLoggingInterceptor implements ExecutionInterceptor {
                 }
             }
             logger.debug(
-                    "Request:\n- method: {}\n- url: {}\n- headers: {}\n- body: {}{}",
+                    "Request:\n- method: {}\n- url: {}\n- headers: {}\n- query parameters: {}\n- body: {}",
                     request.method(),
                     request.getUri(),
                     request.headers(),
-                    body,
-                    request.rawQueryParameters());
+                    request.rawQueryParameters(),
+                    body
+            );
         }
     }
 

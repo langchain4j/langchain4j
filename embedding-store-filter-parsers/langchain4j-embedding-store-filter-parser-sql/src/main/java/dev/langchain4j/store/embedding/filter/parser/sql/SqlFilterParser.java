@@ -1,5 +1,9 @@
 package dev.langchain4j.store.embedding.filter.parser.sql;
 
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static java.time.temporal.IsoFields.WEEK_OF_WEEK_BASED_YEAR;
+
 import dev.langchain4j.Experimental;
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.FilterParser;
@@ -7,6 +11,11 @@ import dev.langchain4j.store.embedding.filter.comparison.*;
 import dev.langchain4j.store.embedding.filter.logical.And;
 import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
+import java.net.URLEncoder;
+import java.time.Clock;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collection;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.*;
 import net.sf.jsqlparser.expression.operators.arithmetic.Addition;
@@ -19,16 +28,6 @@ import net.sf.jsqlparser.expression.operators.relational.*;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.select.PlainSelect;
-
-import java.net.URLEncoder;
-import java.time.Clock;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collection;
-
-import static dev.langchain4j.internal.Exceptions.illegalArgument;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static java.time.temporal.IsoFields.WEEK_OF_WEEK_BASED_YEAR;
 
 /**
  * Parses an SQL "WHERE" clause into a {@link Filter} object using
@@ -58,7 +57,7 @@ import static java.time.temporal.IsoFields.WEEK_OF_WEEK_BASED_YEAR;
  * - {@link Not}: {@code NOT(name = 'Klaus')} / {@code NOT name = 'Klaus'}
  * - {@link Or}: {@code name = 'Klaus' OR age = 18}
  *
- * - YEAR/MONTH(CURDATE()): For example, {@code year = YEAR(CURDATE())} to get the current year. Provided {@link Clock} will be used to resolve {@code CURDATE()}.
+ * - YEAR/MONTH/WEEKOFYEAR/DAYOFYEAR/DAYOFMONTH/DAYOFWEEK(CURDATE()): For example, {@code year = YEAR(CURDATE())} to get the current year. Provided {@link Clock} will be used to resolve {@code CURDATE()}.
  * - EXTRACT(YEAR/MONTH/WEEK/DAY/DOW/DOY/HOUR/MINUTE FROM CURRENT_DATE/CURRENT_TIME/CURRENT_TIMESTAMP): For example: {@code year = EXTRACT(YEAR FROM CURRENT_DATE)} to get the current year. Provided {@link Clock} will be used to resolve {@code CURRENT_DATE}.
  *
  * - Arithmetic: {@code +}, {@code -}, {@code *}, {@code /}. For example: {@code year = YEAR(CURDATE()) - 1} to get previous year.
@@ -137,9 +136,9 @@ public class SqlFilterParser implements FilterParser {
 
     private static String createGithubIssueLink(Expression unsupportedExpression) {
         try {
-            return ". Please click the following link to open an issue on our GitHub: " +
-                    "https://github.com/langchain4j/langchain4j/issues/new?labels=SqlFilterParser&title=SqlFilterParser:%20Support%20new%20expression%20type&body=" +
-                    URLEncoder.encode(unsupportedExpression.toString(), "UTF-8");
+            return ". Please click the following link to open an issue on our GitHub: "
+                    + "https://github.com/langchain4j/langchain4j/issues/new?labels=SqlFilterParser&title=SqlFilterParser:%20Support%20new%20expression%20type&body="
+                    + URLEncoder.encode(unsupportedExpression.toString(), "UTF-8");
         } catch (Exception e) {
             return "";
         }
@@ -168,7 +167,7 @@ public class SqlFilterParser implements FilterParser {
     }
 
     private Filter mapInExpression(InExpression inExpression) {
-        String key = ((Column) inExpression.getLeftExpression()).getColumnName();
+        String key = getKey(inExpression.getLeftExpression());
 
         Collection<Object> comparisonValues = new ArrayList<>();
         inExpression.getRightExpression().accept(new ExpressionVisitorAdapter() {
@@ -197,14 +196,32 @@ public class SqlFilterParser implements FilterParser {
     }
 
     private Filter mapBetween(Between between) {
-        String key = ((Column) between.getLeftExpression()).getColumnName();
+        String key = getKey(between.getLeftExpression());
         Comparable<?> from = getValue(between.getBetweenExpressionStart());
         Comparable<?> to = getValue(between.getBetweenExpressionEnd());
         return new IsGreaterThanOrEqualTo(key, from).and(new IsLessThanOrEqualTo(key, to));
     }
 
     private String getKey(BinaryExpression binaryExpression) {
-        return ((Column) binaryExpression.getLeftExpression()).getColumnName();
+        return getKey(binaryExpression.getLeftExpression());
+    }
+
+    private String getKey(Expression expression) {
+        if (expression instanceof Column column) {
+            return column.getColumnName();
+        } else if (expression instanceof Function function) {
+            String name = function.getName();
+            if (name.equalsIgnoreCase("YEAR") || name.equalsIgnoreCase("MONTH")) {
+                ExpressionList<?> parameters = function.getParameters();
+                if (parameters != null && parameters.size() == 1) {
+                    Expression parameter = parameters.get(0);
+                    if (parameter instanceof Column parameterColumn) {
+                        return parameterColumn.getColumnName();
+                    }
+                }
+            }
+        }
+        throw illegalArgument("Unsupported expression: '%s'%s", expression, createGithubIssueLink(expression));
     }
 
     private Comparable<?> getValue(BinaryExpression binaryExpression) {
@@ -247,8 +264,36 @@ public class SqlFilterParser implements FilterParser {
                         return currentMonth();
                     }
                 }
+            } else if (function.getName().equalsIgnoreCase("WEEKOFYEAR")) {
+                ExpressionList<?> parameters = function.getParameters();
+                if (parameters.size() == 1 && parameters.get(0) instanceof Function function2) {
+                    if (function2.getName().equalsIgnoreCase("CURDATE")) {
+                        return currentWeekOfYear();
+                    }
+                }
+            } else if (function.getName().equalsIgnoreCase("DAYOFYEAR")) {
+                ExpressionList<?> parameters = function.getParameters();
+                if (parameters.size() == 1 && parameters.get(0) instanceof Function) {
+                    Function function2 = (Function) parameters.get(0);
+                    if (function2.getName().equalsIgnoreCase("CURDATE")) {
+                        return currentDayOfYear();
+                    }
+                }
+            } else if (function.getName().equalsIgnoreCase("DAYOFMONTH")) {
+                ExpressionList<?> parameters = function.getParameters();
+                if (parameters.size() == 1 && parameters.get(0) instanceof Function function2) {
+                    if (function2.getName().equalsIgnoreCase("CURDATE")) {
+                        return currentDayOfMonth();
+                    }
+                }
+            } else if (function.getName().equalsIgnoreCase("DAYOFWEEK")) {
+                ExpressionList<?> parameters = function.getParameters();
+                if (parameters.size() == 1 && parameters.get(0) instanceof Function function2) {
+                    if (function2.getName().equalsIgnoreCase("CURDATE")) {
+                        return currentDayOfWeek();
+                    }
+                }
             }
-            // TODO add other
         } else if (expression instanceof ExtractExpression) {
             ExtractExpression extractExpression = (ExtractExpression) expression;
             if (extractExpression.getExpression() instanceof TimeKeyExpression) {
@@ -274,7 +319,7 @@ public class SqlFilterParser implements FilterParser {
                             return currentHour();
                         case "MINUTE":
                             return currentMinute();
-                        // TODO add other
+                            // TODO add other
                     }
                 } else {
                     // TODO parse timestamp?

@@ -3,13 +3,11 @@ package dev.langchain4j.model.bedrock;
 import static dev.langchain4j.model.bedrock.AwsDocumentConverter.documentFromJson;
 import static java.util.Objects.nonNull;
 
+import dev.langchain4j.Internal;
 import java.util.ArrayList;
 import java.util.List;
-
-import dev.langchain4j.Internal;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlockDelta;
-import software.amazon.awssdk.services.bedrockruntime.model.ContentBlockDeltaEvent;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlockStart;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlockStartEvent;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlockStopEvent;
@@ -18,6 +16,9 @@ import software.amazon.awssdk.services.bedrockruntime.model.ConverseStreamMetada
 import software.amazon.awssdk.services.bedrockruntime.model.Message;
 import software.amazon.awssdk.services.bedrockruntime.model.MessageStartEvent;
 import software.amazon.awssdk.services.bedrockruntime.model.MessageStopEvent;
+import software.amazon.awssdk.services.bedrockruntime.model.ReasoningContentBlock;
+import software.amazon.awssdk.services.bedrockruntime.model.ReasoningContentBlockDelta;
+import software.amazon.awssdk.services.bedrockruntime.model.ReasoningTextBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlock;
 
 @Internal
@@ -25,13 +26,19 @@ class ConverseResponseFromStreamBuilder {
 
     private final ConverseResponse.Builder converseResponseBuilder = ConverseResponse.builder();
     private Message.Builder messageBuilder = Message.builder();
+
     private final StringBuilder stringBuilder = new StringBuilder();
+
+    private final boolean returnThinking;
+    private final StringBuilder thinkingBuilder = new StringBuilder();
+    private final StringBuilder thinkingSignatureBuilder = new StringBuilder();
+
     private ToolUseBlock.Builder toolUseBlockBuilder = null;
     private StringBuilder toolUseInputBuilder = new StringBuilder();
     private final List<ToolUseBlock> toolUseBlocks = new ArrayList<>();
 
-    public static ConverseResponseFromStreamBuilder builder() {
-        return new ConverseResponseFromStreamBuilder();
+    ConverseResponseFromStreamBuilder(boolean returnThinking) {
+        this.returnThinking = returnThinking;
     }
 
     public ConverseResponseFromStreamBuilder append(ContentBlockStartEvent contentBlockStartEvent) {
@@ -44,11 +51,23 @@ class ConverseResponseFromStreamBuilder {
         return this;
     }
 
-    public ConverseResponseFromStreamBuilder append(ContentBlockDeltaEvent contentBlockDeltaEvent) {
-        if (contentBlockDeltaEvent.delta().type().equals(ContentBlockDelta.Type.TEXT)) {
-            stringBuilder.append(contentBlockDeltaEvent.delta().text());
-        } else if (contentBlockDeltaEvent.delta().type().equals(ContentBlockDelta.Type.TOOL_USE)) {
-            toolUseInputBuilder.append(contentBlockDeltaEvent.delta().toolUse().input());
+    public ConverseResponseFromStreamBuilder append(ContentBlockDelta delta) {
+        if (delta.type().equals(ContentBlockDelta.Type.TEXT)) {
+            if (delta.text() != null) {
+                stringBuilder.append(delta.text());
+            }
+        } else if (delta.type().equals(ContentBlockDelta.Type.REASONING_CONTENT)) {
+            ReasoningContentBlockDelta reasoningContent = delta.reasoningContent();
+            if (reasoningContent.text() != null) {
+                thinkingBuilder.append(reasoningContent.text());
+            }
+            if (reasoningContent.signature() != null) {
+                thinkingSignatureBuilder.append(reasoningContent.signature());
+            }
+        } else if (delta.type().equals(ContentBlockDelta.Type.TOOL_USE)) {
+            if (delta.toolUse().input() != null) {
+                toolUseInputBuilder.append(delta.toolUse().input());
+            }
         }
         return this;
     }
@@ -69,6 +88,12 @@ class ConverseResponseFromStreamBuilder {
         converseResponseBuilder.usage(metadataEvent.usage());
         converseResponseBuilder.metrics(builder ->
                 builder.latencyMs(metadataEvent.metrics().latencyMs()).build());
+        if (metadataEvent.trace() != null) {
+            converseResponseBuilder.trace(builder -> {
+                builder.guardrail(metadataEvent.trace().guardrail()).build();
+                builder.promptRouter(metadataEvent.trace().promptRouter()).build();
+            });
+        }
         return this;
     }
 
@@ -83,9 +108,20 @@ class ConverseResponseFromStreamBuilder {
         converseResponseBuilder.additionalModelResponseFields(messageStopEvent.additionalModelResponseFields());
         if (nonNull(this.messageBuilder)) {
             ArrayList<ContentBlock> contents = new ArrayList<>();
+            if (returnThinking && !thinkingBuilder.isEmpty()) {
+                ReasoningContentBlock reasoningContent = ReasoningContentBlock.builder()
+                        .reasoningText(ReasoningTextBlock.builder()
+                                .text(thinkingBuilder.toString())
+                                .signature(thinkingSignatureBuilder.toString())
+                                .build())
+                        .build();
+                contents.add(ContentBlock.builder()
+                        .reasoningContent(reasoningContent)
+                        .build());
+            }
             contents.add(ContentBlock.builder().text(stringBuilder.toString()).build());
             contents.addAll(
-                    this.toolUseBlocks.stream().map(ContentBlock::fromToolUse).toList());
+                    toolUseBlocks.stream().map(ContentBlock::fromToolUse).toList());
             converseResponseBuilder.output(builder -> builder.message(
                             this.messageBuilder.content(contents).build())
                     .build());

@@ -1,5 +1,12 @@
 package dev.langchain4j.store.embedding;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.toList;
+
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.DocumentTransformer;
@@ -10,18 +17,10 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.spi.data.document.splitter.DocumentSplitterFactory;
 import dev.langchain4j.spi.model.embedding.EmbeddingModelFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.Collection;
 import java.util.List;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.toList;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The {@code EmbeddingStoreIngestor} represents an ingestion pipeline and is responsible
@@ -70,26 +69,25 @@ public class EmbeddingStoreIngestor {
      *                               If none is specified, it tries to load one through SPI (see {@link EmbeddingModelFactory}).
      * @param embeddingStore         The {@link EmbeddingStore} to use. Mandatory.
      */
-    public EmbeddingStoreIngestor(DocumentTransformer documentTransformer,
-                                  DocumentSplitter documentSplitter,
-                                  TextSegmentTransformer textSegmentTransformer,
-                                  EmbeddingModel embeddingModel,
-                                  EmbeddingStore<TextSegment> embeddingStore) {
+    public EmbeddingStoreIngestor(
+            DocumentTransformer documentTransformer,
+            DocumentSplitter documentSplitter,
+            TextSegmentTransformer textSegmentTransformer,
+            EmbeddingModel embeddingModel,
+            EmbeddingStore<TextSegment> embeddingStore) {
         this.documentTransformer = documentTransformer;
         this.documentSplitter = getOrDefault(documentSplitter, EmbeddingStoreIngestor::loadDocumentSplitter);
         this.textSegmentTransformer = textSegmentTransformer;
         this.embeddingModel = ensureNotNull(
-                getOrDefault(embeddingModel, EmbeddingStoreIngestor::loadEmbeddingModel),
-                "embeddingModel"
-        );
+                getOrDefault(embeddingModel, EmbeddingStoreIngestor::loadEmbeddingModel), "embeddingModel");
         this.embeddingStore = ensureNotNull(embeddingStore, "embeddingStore");
     }
 
     private static DocumentSplitter loadDocumentSplitter() {
         Collection<DocumentSplitterFactory> factories = loadFactories(DocumentSplitterFactory.class);
         if (factories.size() > 1) {
-            throw new RuntimeException("Conflict: multiple document splitters have been found in the classpath. " +
-                    "Please explicitly specify the one you wish to use.");
+            throw new RuntimeException("Conflict: multiple document splitters have been found in the classpath. "
+                    + "Please explicitly specify the one you wish to use.");
         }
 
         for (DocumentSplitterFactory factory : factories) {
@@ -104,8 +102,8 @@ public class EmbeddingStoreIngestor {
     private static EmbeddingModel loadEmbeddingModel() {
         Collection<EmbeddingModelFactory> factories = loadFactories(EmbeddingModelFactory.class);
         if (factories.size() > 1) {
-            throw new RuntimeException("Conflict: multiple embedding models have been found in the classpath. " +
-                    "Please explicitly specify the one you wish to use.");
+            throw new RuntimeException("Conflict: multiple embedding models have been found in the classpath. "
+                    + "Please explicitly specify the one you wish to use.");
         }
 
         for (EmbeddingModelFactory factory : factories) {
@@ -189,13 +187,11 @@ public class EmbeddingStoreIngestor {
             segments = documentSplitter.splitAll(documents);
             log.debug("Documents were split into {} text segments", segments.size());
         } else {
-            segments = documents.stream()
-                    .map(Document::toTextSegment)
-                    .collect(toList());
+            segments = documents.stream().map(Document::toTextSegment).collect(toList());
         }
         if (textSegmentTransformer != null) {
             segments = textSegmentTransformer.transformAll(segments);
-            log.debug("Text segments were transformed into {} text segments", documents.size());
+            log.debug("{} documents were transformed into {} text segments", documents.size(), segments.size());
         }
 
         log.debug("Starting to embed {} text segments", segments.size());
@@ -232,8 +228,7 @@ public class EmbeddingStoreIngestor {
         /**
          * Creates a new EmbeddingStoreIngestor builder.
          */
-        public Builder() {
-        }
+        public Builder() {}
 
         /**
          * Sets the document transformer. Optional.
@@ -301,12 +296,7 @@ public class EmbeddingStoreIngestor {
          */
         public EmbeddingStoreIngestor build() {
             return new EmbeddingStoreIngestor(
-                    documentTransformer,
-                    documentSplitter,
-                    textSegmentTransformer,
-                    embeddingModel,
-                    embeddingStore
-            );
+                    documentTransformer, documentSplitter, textSegmentTransformer, embeddingModel, embeddingStore);
         }
     }
 }

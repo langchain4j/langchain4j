@@ -1,5 +1,6 @@
 package dev.langchain4j.mcp.client.integration;
 
+import static dev.langchain4j.mcp.client.integration.McpServerHelper.destroyProcessTree;
 import static dev.langchain4j.mcp.client.integration.McpServerHelper.skipTestsIfJbangNotAvailable;
 import static dev.langchain4j.mcp.client.integration.McpServerHelper.startServerHttp;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -17,7 +18,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-public class McpHealthHttpTransportIT {
+class McpHealthHttpTransportIT {
 
     static McpClient mcpClient;
     static McpTransport transport;
@@ -43,12 +44,15 @@ public class McpHealthHttpTransportIT {
         if (mcpClient != null) {
             mcpClient.close();
         }
+        if (process != null && process.isAlive()) {
+            destroyProcessTree(process);
+        }
     }
 
     @Test
-    public void testHealth() throws ExecutionException, InterruptedException {
+    void health() throws ExecutionException, InterruptedException {
         mcpClient.checkHealth();
-        process.destroy();
+        destroyProcessTree(process);
         process.onExit().get();
         assertThatThrownBy(() -> mcpClient.checkHealth())
                 .rootCause()

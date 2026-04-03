@@ -6,18 +6,23 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.langchain4j.mcp.client.protocol.InitializationNotification;
-import dev.langchain4j.mcp.client.protocol.McpClientMessage;
-import dev.langchain4j.mcp.client.protocol.McpInitializeRequest;
+import dev.langchain4j.mcp.client.McpCallContext;
+import dev.langchain4j.mcp.client.McpHeadersSupplier;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
+import dev.langchain4j.mcp.protocol.McpClientMessage;
+import dev.langchain4j.mcp.protocol.McpInitializationNotification;
+import dev.langchain4j.mcp.protocol.McpInitializeRequest;
 import java.io.IOException;
 import java.net.URI;
 import java.time.Duration;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import okhttp3.Call;
 import okhttp3.Callback;
+import okhttp3.Headers;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
@@ -27,15 +32,23 @@ import okhttp3.sse.EventSources;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * The legacy HTTP/SSE transport (see <a href="https://modelcontextprotocol.io/specification/2024-11-05/basic/transports#http-with-sse">specification</a>).
+ * Whenever possible, it is recommended to use {@link StreamableHttpMcpTransport} instead.
+ */
+@Deprecated(forRemoval = true, since = "1.4.0-beta10")
 public class HttpMcpTransport implements McpTransport {
 
     private static final Logger log = LoggerFactory.getLogger(HttpMcpTransport.class);
     private final String sseUrl;
+    private final McpHeadersSupplier customHeadersSupplier;
     private final OkHttpClient client;
     private final boolean logResponses;
     private final boolean logRequests;
     private EventSource mcpSseEventListener;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final String CONTENT_TYPE = "Content-Type";
+    private static final String CONTENT_TYPE_JSON = "application/json";
     private volatile Runnable onFailure;
 
     // this is obtained from the server after initializing the SSE channel
@@ -51,10 +64,11 @@ public class HttpMcpTransport implements McpTransport {
         httpClientBuilder.writeTimeout(timeout);
         this.logRequests = builder.logRequests;
         if (builder.logRequests) {
-            httpClientBuilder.addInterceptor(new McpRequestLoggingInterceptor());
+            httpClientBuilder.addInterceptor(new McpRequestLoggingInterceptor(builder.logger));
         }
         this.logResponses = builder.logResponses;
         sseUrl = ensureNotNull(builder.sseUrl, "Missing SSE endpoint URL");
+        customHeadersSupplier = getOrDefault(builder.customHeadersSupplier, (i) -> Map.of());
         client = httpClientBuilder.build();
     }
 
@@ -69,8 +83,8 @@ public class HttpMcpTransport implements McpTransport {
         Request httpRequest = null;
         Request initializationNotification = null;
         try {
-            httpRequest = createRequest(operation);
-            initializationNotification = createRequest(new InitializationNotification());
+            httpRequest = createRequest(new McpCallContext(null, operation));
+            initializationNotification = createRequest(new McpCallContext(null, new McpInitializationNotification()));
         } catch (JsonProcessingException e) {
             return CompletableFuture.failedFuture(e);
         }
@@ -82,9 +96,14 @@ public class HttpMcpTransport implements McpTransport {
 
     @Override
     public CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage operation) {
+        return executeOperationWithResponse(new McpCallContext(null, operation));
+    }
+
+    @Override
+    public CompletableFuture<JsonNode> executeOperationWithResponse(McpCallContext context) {
         try {
-            Request httpRequest = createRequest(operation);
-            return execute(httpRequest, operation.getId());
+            Request httpRequest = createRequest(context);
+            return execute(httpRequest, context.message().getId());
         } catch (JsonProcessingException e) {
             return CompletableFuture.failedFuture(e);
         }
@@ -92,8 +111,13 @@ public class HttpMcpTransport implements McpTransport {
 
     @Override
     public void executeOperationWithoutResponse(McpClientMessage operation) {
+        executeOperationWithoutResponse(new McpCallContext(null, operation));
+    }
+
+    @Override
+    public void executeOperationWithoutResponse(McpCallContext context) {
         try {
-            Request httpRequest = createRequest(operation);
+            Request httpRequest = createRequest(context);
             execute(httpRequest, null);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
@@ -143,7 +167,10 @@ public class HttpMcpTransport implements McpTransport {
     }
 
     private EventSource startSseChannel(boolean logResponses) {
-        Request request = new Request.Builder().url(sseUrl).build();
+        Request request = new Request.Builder()
+                .url(sseUrl)
+                .headers(buildCommonHeaders(null))
+                .build();
         CompletableFuture<String> initializationFinished = new CompletableFuture<>();
         SseEventListener listener =
                 new SseEventListener(messageHandler, logResponses, initializationFinished, onFailure);
@@ -169,11 +196,26 @@ public class HttpMcpTransport implements McpTransport {
         }
     }
 
-    private Request createRequest(McpClientMessage message) throws JsonProcessingException {
+    private Headers buildCommonHeaders(McpCallContext callContext) {
+        Headers.Builder headerBuilder = new Headers.Builder();
+        Map<String, String> headers = customHeadersSupplier.apply(callContext);
+        if (headers != null) {
+            headers.forEach(headerBuilder::add);
+        }
+        return headerBuilder.build();
+    }
+
+    private Request createRequest(McpCallContext callContext) throws JsonProcessingException {
+        Headers.Builder headerBuilder = new Headers.Builder().add(CONTENT_TYPE, CONTENT_TYPE_JSON);
+        Map<String, String> headers = customHeadersSupplier.apply(callContext);
+        if (headers != null) {
+            headers.forEach(headerBuilder::add);
+        }
+
         return new Request.Builder()
                 .url(postUrl)
-                .header("Content-Type", "application/json")
-                .post(RequestBody.create(OBJECT_MAPPER.writeValueAsBytes(message)))
+                .headers(headerBuilder.build())
+                .post(RequestBody.create(OBJECT_MAPPER.writeValueAsBytes(callContext.message())))
                 .build();
     }
 
@@ -187,12 +229,18 @@ public class HttpMcpTransport implements McpTransport {
         }
     }
 
+    public static Builder builder() {
+        return new Builder();
+    }
+
     public static class Builder {
 
         private String sseUrl;
+        private McpHeadersSupplier customHeadersSupplier;
         private Duration timeout;
         private boolean logRequests = false;
         private boolean logResponses = false;
+        private Logger logger;
 
         /**
          * The initial URL where to connect to the server and request a SSE
@@ -200,6 +248,21 @@ public class HttpMcpTransport implements McpTransport {
          */
         public Builder sseUrl(String sseUrl) {
             this.sseUrl = sseUrl;
+            return this;
+        }
+
+        public Builder customHeaders(Map<String, String> customHeaders) {
+            this.customHeadersSupplier = (i) -> customHeaders;
+            return this;
+        }
+
+        public Builder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = (i) -> customHeadersSupplier.get();
+            return this;
+        }
+
+        public Builder customHeaders(McpHeadersSupplier customMcpHeadersSupplier) {
+            this.customHeadersSupplier = customMcpHeadersSupplier;
             return this;
         }
 
@@ -215,6 +278,15 @@ public class HttpMcpTransport implements McpTransport {
 
         public Builder logResponses(boolean logResponses) {
             this.logResponses = logResponses;
+            return this;
+        }
+
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for traffic logging.
+         * @return {@code this}.
+         */
+        public Builder logger(Logger logger) {
+            this.logger = logger;
             return this;
         }
 

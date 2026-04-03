@@ -1,6 +1,6 @@
 package dev.langchain4j.data.document;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.mockito.Mockito.mock;
 
 import dev.langchain4j.data.segment.TextSegment;
@@ -84,17 +84,22 @@ class DocumentTest implements WithAssertions {
     @ValueSource(strings = {"", " ", "\t"})
     @NullSource
     void constructor_should_fail_on_empty_text(String text) {
-        final var exception = assertThrows(IllegalArgumentException.class, () -> Document.from(text));
+        final var exception = assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> Document.from(text))
+                .actual();
         assertThat(exception).hasMessage("text cannot be null or blank");
 
-        final var exception2 =
-                assertThrows(IllegalArgumentException.class, () -> Document.from(text, mock(Metadata.class)));
+        final var exception2 = assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> Document.from(text, mock(Metadata.class)))
+                .actual();
         assertThat(exception2).hasMessage("text cannot be null or blank");
     }
 
     @Test
     void constructor_should_fail_on_empty_metadata() {
-        final var exception = assertThrows(IllegalArgumentException.class, () -> Document.from("ok", null));
+        final var exception = assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> Document.from("ok", null))
+                .actual();
         assertThat(exception).hasMessage("metadata cannot be null");
     }
 }

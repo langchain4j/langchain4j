@@ -3,6 +3,10 @@ package dev.langchain4j.model.github;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * @deprecated This module is deprecated and will be removed in a future release. Please use the langchain4j-openai-official module instead.
+ */
+@Deprecated(since = "1.10.0", forRemoval = true)
 public enum GitHubModelsEmbeddingModelName {
 
     TEXT_EMBEDDING_3_SMALL("text-embedding-3-small", 1536),

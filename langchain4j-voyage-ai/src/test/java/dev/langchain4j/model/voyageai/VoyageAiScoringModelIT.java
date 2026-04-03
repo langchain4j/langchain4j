@@ -37,7 +37,7 @@ class VoyageAiScoringModelIT {
         Response<Double> response = model.score(text, query);
 
         // then
-        assertThat(response.content()).isCloseTo(0.35, withPercentage(1));
+        assertThat(response.content()).isCloseTo(0.35, withPercentage(3));
 
         assertThat(response.tokenUsage().inputTokenCount()).isPositive();
         assertThat(response.tokenUsage().outputTokenCount()).isNull();

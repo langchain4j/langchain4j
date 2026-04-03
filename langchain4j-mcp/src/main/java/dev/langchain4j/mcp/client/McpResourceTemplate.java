@@ -2,7 +2,7 @@ package dev.langchain4j.mcp.client;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-
+import dev.langchain4j.internal.Utils;
 import java.util.Objects;
 
 /**
@@ -20,10 +20,9 @@ public class McpResourceTemplate {
             @JsonProperty("uriTemplate") String uriTemplate,
             @JsonProperty("name") String name,
             @JsonProperty("description") String description,
-            @JsonProperty("mimeType") String mimeType
-    ) {
-        this.uriTemplate = uriTemplate;
-        this.name = name;
+            @JsonProperty("mimeType") String mimeType) {
+        this.uriTemplate = Utils.warnIfNullOrBlank(uriTemplate, "uriTemplate", McpResourceTemplate.class);
+        this.name = Utils.warnIfNullOrBlank(name, "name", McpResourceTemplate.class);
         this.description = description;
         this.mimeType = mimeType;
     }
@@ -49,10 +48,10 @@ public class McpResourceTemplate {
         if (obj == this) return true;
         if (obj == null || obj.getClass() != this.getClass()) return false;
         var that = (McpResourceTemplate) obj;
-        return Objects.equals(this.uriTemplate, that.uriTemplate) &&
-                Objects.equals(this.name, that.name) &&
-                Objects.equals(this.description, that.description) &&
-                Objects.equals(this.mimeType, that.mimeType);
+        return Objects.equals(this.uriTemplate, that.uriTemplate)
+                && Objects.equals(this.name, that.name)
+                && Objects.equals(this.description, that.description)
+                && Objects.equals(this.mimeType, that.mimeType);
     }
 
     @Override
@@ -62,10 +61,10 @@ public class McpResourceTemplate {
 
     @Override
     public String toString() {
-        return "McpResourceTemplate[" +
-                "uriTemplate=" + uriTemplate + ", " +
-                "name=" + name + ", " +
-                "description=" + description + ", " +
-                "mimeType=" + mimeType + ']';
+        return "McpResourceTemplate[" + "uriTemplate="
+                + uriTemplate + ", " + "name="
+                + name + ", " + "description="
+                + description + ", " + "mimeType="
+                + mimeType + ']';
     }
 }

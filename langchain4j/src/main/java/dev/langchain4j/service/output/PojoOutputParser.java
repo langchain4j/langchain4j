@@ -1,10 +1,15 @@
 package dev.langchain4j.service.output;
 
+import static dev.langchain4j.internal.JsonParsingUtils.extractAndParseJson;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.jsonObjectOrReferenceSchemaFrom;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
+import static dev.langchain4j.service.output.ParsingUtils.outputParsingException;
+import static java.lang.String.format;
+
 import dev.langchain4j.Internal;
-import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.output.structured.Description;
-
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -14,19 +19,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.internal.JsonSchemaElementUtils.jsonObjectOrReferenceSchemaFrom;
-import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
-import static dev.langchain4j.service.output.ParsingUtils.outputParsingException;
-import static java.lang.String.format;
 
 @Internal
 class PojoOutputParser<T> implements OutputParser<T> {
-
-    private static final Pattern JSON_BLOCK_PATTERN = Pattern.compile("(?s)\\{.*\\}|\\[.*\\]");
 
     private final Class<T> type;
 
@@ -41,14 +36,9 @@ class PojoOutputParser<T> implements OutputParser<T> {
         }
 
         try {
-            return Json.fromJson(text, type);
-        } catch (Exception ignored) {
-            try {
-                String jsonBlock = extractJsonBlock(text);
-                return Json.fromJson(jsonBlock, type);
-            } catch (Exception innerException) {
-                throw outputParsingException(text, type.getName(), innerException);
-            }
+            return extractAndParseJson(text, type).value();
+        } catch (Exception e) {
+            throw outputParsingException(text, type.getTypeName(), e);
         }
     }
 
@@ -99,22 +89,30 @@ class PojoOutputParser<T> implements OutputParser<T> {
     }
 
     private static String typeOf(Field field, Set<Class<?>> visited) {
-        Type type = field.getGenericType();
+        return typeOf(field.getGenericType(), visited);
+    }
 
+    private static String typeOf(Type type, Set<Class<?>> visited) {
         if (type instanceof ParameterizedType parameterizedType) {
-            Type[] typeArguments = parameterizedType.getActualTypeArguments();
+            Type rawType = parameterizedType.getRawType();
 
-            if (parameterizedType.getRawType().equals(List.class)
-                    || parameterizedType.getRawType().equals(Set.class)) {
-                return format("array of %s", simpleNameOrJsonStructure((Class<?>) typeArguments[0], visited));
+            if (rawType instanceof Class<?> rawClass && (rawClass == List.class || rawClass == Set.class)) {
+
+                return format("array of %s", typeOf(parameterizedType.getActualTypeArguments()[0], visited));
             }
-        } else if (field.getType().isArray()) {
-            return format("array of %s", simpleNameOrJsonStructure(field.getType().getComponentType(), visited));
-        } else if (((Class<?>) type).isEnum()) {
-            return "enum, must be one of " + Arrays.toString(((Class<?>) type).getEnumConstants());
+        } else if (type instanceof Class<?> clazz) {
+            if (clazz.isArray()) {
+                return format("array of %s", typeOf(clazz.getComponentType(), visited));
+            } else if (clazz.isEnum()) {
+                return "enum, must be one of "
+                        + Arrays.stream(clazz.getEnumConstants())
+                                .map(e -> ((Enum<?>) e).name())
+                                .toList();
+            }
+            return simpleNameOrJsonStructure(clazz, visited);
         }
 
-        return simpleNameOrJsonStructure(field.getType(), visited);
+        return simpleTypeName(type);
     }
 
     private static String simpleNameOrJsonStructure(Class<?> structured, Set<Class<?>> visited) {
@@ -143,19 +141,11 @@ class PojoOutputParser<T> implements OutputParser<T> {
         };
     }
 
-    private String extractJsonBlock(String text) {
-        Matcher matcher = JSON_BLOCK_PATTERN.matcher(text);
-        if (matcher.find()) {
-            return matcher.group();
-        }
-        return text;
-    }
-
     private void validateJsonStructure(String jsonStructure, Type returnType) {
         if (jsonStructure.replaceAll("\\s", "").equals("{}")) {
             if (returnType.toString().contains("reactor.core.publisher.Flux")) {
-                throw illegalConfiguration("Please import langchain4j-reactor module " +
-                        "if you wish to use Flux<String> as a method return type");
+                throw illegalConfiguration("Please import langchain4j-reactor module "
+                        + "if you wish to use Flux<String> as a method return type");
             }
             throw illegalConfiguration("Illegal method return type: " + returnType);
         }

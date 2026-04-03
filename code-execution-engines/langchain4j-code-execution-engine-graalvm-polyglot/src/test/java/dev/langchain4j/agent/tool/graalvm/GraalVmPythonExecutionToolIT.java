@@ -8,7 +8,9 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.service.AiServices;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class GraalVmPythonExecutionToolIT {
 
     OpenAiChatModel model = OpenAiChatModel.builder()
@@ -16,6 +18,8 @@ class GraalVmPythonExecutionToolIT {
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
             .modelName(GPT_4_O_MINI)
+            .logRequests(true)
+            .logResponses(true)
             .build();
 
     interface Assistant {
@@ -31,7 +35,7 @@ class GraalVmPythonExecutionToolIT {
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
                 .tools(tool)
-                .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
                 .build();
 
         String answer = assistant.chat("What is the square root of 485906798473894056 in scientific notation?");

@@ -1,12 +1,13 @@
 package dev.langchain4j.model.googleai;
 
+import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.Internal;
-
-import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 
 @Internal
 class Json {
@@ -16,7 +17,9 @@ class Json {
             .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
             .setSerializationInclusion(JsonInclude.Include.NON_NULL);
 
-    public static String toJson(Object o) {
+    static final ObjectMapper OBJECT_MAPPER_WITHOUT_INDENT = new ObjectMapper().disable(INDENT_OUTPUT);
+
+    static String toJson(Object o) {
         try {
             return OBJECT_MAPPER.writeValueAsString(o);
         } catch (JsonProcessingException e) {
@@ -24,7 +27,15 @@ class Json {
         }
     }
 
-    public static <T> T fromJson(String json, Class<T> type) {
+    static String toJsonWithoutIndent(Object o) {
+        try {
+            return OBJECT_MAPPER_WITHOUT_INDENT.writeValueAsString(o);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    static <T> T fromJson(String json, Class<T> type) {
         try {
             return OBJECT_MAPPER.readValue(json, type);
         } catch (JsonProcessingException e) {
@@ -32,4 +43,7 @@ class Json {
         }
     }
 
+    static <T> T convertValue(Object fromValue, TypeReference<T> toValue) {
+        return OBJECT_MAPPER.convertValue(fromValue, toValue);
+    }
 }

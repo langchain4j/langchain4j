@@ -1,5 +1,6 @@
 package dev.langchain4j.model.chat.request;
 
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 
 import java.util.Objects;
@@ -31,6 +32,7 @@ public class ResponseFormat {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
@@ -40,11 +42,13 @@ public class ResponseFormat {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         return Objects.hash(type, jsonSchema);
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public String toString() {
         return "ResponseFormat {" +
                 " type = " + type +

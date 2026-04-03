@@ -1,24 +1,31 @@
 package dev.langchain4j.web.search;
 
-import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.document.Metadata;
-import dev.langchain4j.data.segment.TextSegment;
-
-import java.net.URI;
-import java.util.Map;
-import java.util.Objects;
-
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import dev.langchain4j.data.document.Document;
+import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.data.segment.TextSegment;
+import java.net.URI;
+import java.util.Map;
+import java.util.Objects;
+
 /**
- * Represents an organic search results are the web pages that are returned by the search engine in response to a search query.
+ * Represents organic search results, which are the web pages returned by a search engine in response to a query.
  * This includes the title, URL, snippet and/or content, and metadata of the web page.
  * <p>
  * These results are typically ranked by relevance to the search query.
+ * </p>
+ * <b>Snippet vs Content:</b><br>
+ * A <i>snippet</i> is a concise extract or summary from the web page relevant to the query. It is meant for preview purposes.<br>
+ * <i>Content</i> (if available) refers to the full textual content extracted from the web page.
  * <p>
+ * <b>Search Engine Specific Behavior:</b><br>
+ * - <b>Google:</b> Snippet is a short preview (from Google's API); content is typically <code>null</code>.<br>
+ * - <b>Tavily:</b> Snippet contains a short extract of content that is most relevant to the search query; content includes the full raw page content.
+ * </p>
  */
 public class WebSearchOrganicResult {
 
@@ -35,11 +42,7 @@ public class WebSearchOrganicResult {
      * @param url The URL associated with the search result.
      */
     public WebSearchOrganicResult(String title, URI url) {
-        this.title = ensureNotBlank(title, "title");
-        this.url = ensureNotNull(url, "url");
-        this.snippet = null;
-        this.content = null;
-        this.metadata = Map.of();
+        this(title, url, null, null);
     }
 
     /**
@@ -51,11 +54,7 @@ public class WebSearchOrganicResult {
      * @param content The most query related content from the scraped url.
      */
     public WebSearchOrganicResult(String title, URI url, String snippet, String content) {
-        this.title = ensureNotBlank(title, "title");
-        this.url = ensureNotNull(url, "url");
-        this.snippet = snippet;
-        this.content = content;
-        this.metadata = Map.of();
+        this(title, url, snippet, content, Map.of());
     }
 
     /**
@@ -69,7 +68,7 @@ public class WebSearchOrganicResult {
      */
     public WebSearchOrganicResult(String title, URI url, String snippet, String content, Map<String, String> metadata) {
         this.title = ensureNotBlank(title, "title");
-        this.url = ensureNotNull(url,"url");
+        this.url = ensureNotNull(url, "url");
         this.snippet = snippet;
         this.content = content;
         this.metadata = copy(metadata);
@@ -139,13 +138,12 @@ public class WebSearchOrganicResult {
 
     @Override
     public String toString() {
-        return "WebSearchOrganicResult{" +
-                "title='" + title + '\'' +
-                ", url=" + url +
-                ", snippet='" + snippet + '\'' +
-                ", content='" + content + '\'' +
-                ", metadata=" + metadata +
-                '}';
+        return "WebSearchOrganicResult{" + "title='"
+                + title + '\'' + ", url="
+                + url + ", snippet='"
+                + snippet + '\'' + ", content='"
+                + content + '\'' + ", metadata="
+                + metadata + '}';
     }
 
     /**
@@ -181,10 +179,8 @@ public class WebSearchOrganicResult {
     private Metadata copyToMetadata() {
         Metadata docMetadata = new Metadata();
         docMetadata.put("url", url.toString());
-        if (metadata != null) {
-            for (Map.Entry<String, String> entry : metadata.entrySet()) {
-                docMetadata.put(entry.getKey(), entry.getValue());
-            }
+        for (Map.Entry<String, String> entry : metadata.entrySet()) {
+            docMetadata.put(entry.getKey(), entry.getValue());
         }
         return docMetadata;
     }
@@ -223,7 +219,8 @@ public class WebSearchOrganicResult {
      * @param metadata  The metadata associated with the search result.
      * @return The created WebSearchOrganicResult object.
      */
-    public static WebSearchOrganicResult from(String title, URI url, String snippet, String content, Map<String, String> metadata) {
+    public static WebSearchOrganicResult from(
+            String title, URI url, String snippet, String content, Map<String, String> metadata) {
         return new WebSearchOrganicResult(title, url, snippet, content, metadata);
     }
 }

@@ -1,9 +1,11 @@
 package dev.langchain4j.store.embedding.chroma;
 
+import dev.langchain4j.Internal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+@Internal
 class AddEmbeddingsRequest {
 
     private final List<String> ids;
@@ -73,7 +75,7 @@ class AddEmbeddingsRequest {
             return this;
         }
 
-        AddEmbeddingsRequest build() {
+        public AddEmbeddingsRequest build() {
             return new AddEmbeddingsRequest(this);
         }
     }

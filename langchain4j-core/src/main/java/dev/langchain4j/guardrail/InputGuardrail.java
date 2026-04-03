@@ -36,13 +36,13 @@ public interface InputGuardrail extends Guardrail<InputGuardrailRequest, InputGu
      * <p>
      * Implementation must not attempt to write to the memory or the augmentation result.
      *
-     * @param params
+     * @param request
      *            the parameters, including the user message, the memory, and the augmentation result.
      */
     @Override
-    default InputGuardrailResult validate(InputGuardrailRequest params) {
-        ensureNotNull(params, "params");
-        return validate(params.userMessage());
+    default InputGuardrailResult validate(InputGuardrailRequest request) {
+        ensureNotNull(request, "params");
+        return validate(request.userMessage());
     }
 
     /**

@@ -1,0 +1,818 @@
+package dev.langchain4j.agentic;
+
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.agenticScopePredicate;
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.checkReturnType;
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureAgent;
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.invokeStatic;
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.predicateMethod;
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.selectMethod;
+import static dev.langchain4j.agentic.internal.AgentUtil.agentInvocationArguments;
+import static dev.langchain4j.agentic.internal.AgentUtil.agentToExecutor;
+import static dev.langchain4j.agentic.internal.AgentUtil.getAnnotatedMethodOnClass;
+import static dev.langchain4j.agentic.internal.AgentUtil.nonAiAgentInvoker;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+import java.util.ServiceLoader;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
+import dev.langchain4j.agentic.agent.AgentBuilder;
+import dev.langchain4j.agentic.agent.UntypedAgentBuilder;
+import dev.langchain4j.agentic.declarative.A2AClientAgent;
+import dev.langchain4j.agentic.declarative.ActivationCondition;
+import dev.langchain4j.agentic.declarative.AgentListenerSupplier;
+import dev.langchain4j.agentic.declarative.ChatModelSupplier;
+import dev.langchain4j.agentic.declarative.ConditionalAgent;
+import dev.langchain4j.agentic.declarative.LoopAgent;
+import dev.langchain4j.agentic.declarative.McpClientAgent;
+import dev.langchain4j.agentic.declarative.McpClientSupplier;
+import dev.langchain4j.agentic.declarative.ParallelAgent;
+import dev.langchain4j.agentic.declarative.ParallelMapperAgent;
+import dev.langchain4j.agentic.declarative.PlannerAgent;
+import dev.langchain4j.agentic.declarative.SequenceAgent;
+import dev.langchain4j.agentic.internal.A2AClientBuilder;
+import dev.langchain4j.agentic.internal.A2AService;
+import dev.langchain4j.agentic.internal.AgentExecutor;
+import dev.langchain4j.agentic.internal.AgentInvoker;
+import dev.langchain4j.agentic.internal.AgentUtil;
+import dev.langchain4j.agentic.internal.InternalAgent;
+import dev.langchain4j.agentic.internal.McpService;
+import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.planner.AgenticService;
+import dev.langchain4j.agentic.planner.PlannerBasedService;
+import dev.langchain4j.agentic.planner.PlannerBasedServiceImpl;
+import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.supervisor.SupervisorAgent;
+import dev.langchain4j.agentic.supervisor.SupervisorAgentService;
+import dev.langchain4j.agentic.supervisor.SupervisorAgentServiceImpl;
+import dev.langchain4j.agentic.workflow.ConditionalAgentService;
+import dev.langchain4j.agentic.workflow.HumanInTheLoop;
+import dev.langchain4j.agentic.workflow.LoopAgentService;
+import dev.langchain4j.agentic.workflow.ParallelAgentService;
+import dev.langchain4j.agentic.workflow.ParallelMapperService;
+import dev.langchain4j.agentic.workflow.SequentialAgentService;
+import dev.langchain4j.agentic.workflow.WorkflowAgentsBuilder;
+import dev.langchain4j.agentic.workflow.impl.WorkflowAgentsBuilderImpl;
+import dev.langchain4j.model.chat.ChatModel;
+
+/**
+ * Provides static factory methods to create and configure various types of agent services.
+ */
+public class AgenticServices {
+
+    private AgenticServices() {}
+
+    private enum WorkflowBuilderProvider {
+        INSTANCE;
+
+        private WorkflowAgentsBuilder workflowAgentsBuilder;
+
+        WorkflowBuilderProvider() {
+            internalSetWorkflowAgentsBuilder(loadWorkflowAgentsBuilder());
+        }
+
+        private static WorkflowAgentsBuilder loadWorkflowAgentsBuilder() {
+            ServiceLoader<WorkflowAgentsBuilder> loader = ServiceLoader.load(WorkflowAgentsBuilder.class);
+
+            for (WorkflowAgentsBuilder builder : loader) {
+                return builder; // Return the first builder found
+            }
+            return WorkflowAgentsBuilderImpl.INSTANCE; // Use default implementation
+        }
+
+        private void internalSetWorkflowAgentsBuilder(final WorkflowAgentsBuilder workflowAgentsBuilder) {
+            this.workflowAgentsBuilder = workflowAgentsBuilder;
+        }
+    }
+
+    /**
+     * Explicitly set a WorkflowAgentsBuilder.
+     */
+    public static void setWorkflowAgentsBuilder(WorkflowAgentsBuilder workflowAgentsBuilder) {
+        WorkflowBuilderProvider.INSTANCE.internalSetWorkflowAgentsBuilder(workflowAgentsBuilder);
+    }
+
+    private static WorkflowAgentsBuilder workflowAgentsBuilder() {
+        return WorkflowBuilderProvider.INSTANCE.workflowAgentsBuilder;
+    }
+
+    /**
+     * Creates an agent builder for untyped agents.
+     *
+     * @return a new UntypedAgentBuilder instance
+     */
+    public static UntypedAgentBuilder agentBuilder() {
+        return new UntypedAgentBuilder();
+    }
+
+    /**
+     * Creates an agent builder for the given agent service class.
+     *
+     * @param agentServiceClass the class of the agent service
+     * @return a new AgentBuilder instance
+     */
+    public static <T> AgentBuilder<T, AgentBuilder<T, ?>> agentBuilder(Class<T> agentServiceClass) {
+        return new AgentBuilder<>(agentServiceClass);
+    }
+
+    /**
+     * Creates a builder for an agent implementing the human-in-the-loop pattern.
+     */
+    public static HumanInTheLoop.HumanInTheLoopBuilder humanInTheLoopBuilder() {
+        return new HumanInTheLoop.HumanInTheLoopBuilder();
+    }
+
+    /**
+     * Creates a builder for an untyped agent implementing a workflow sequence of its subagents.
+     */
+    public static SequentialAgentService<UntypedAgent> sequenceBuilder() {
+        return workflowAgentsBuilder().sequenceBuilder();
+    }
+
+    /**
+     * Creates a builder for an agent implementing a workflow sequence of its subagents
+     * that can be invoked in a strongly typed way through the provided agent service interface.
+     *
+     * @param agentServiceClass the class of the agent service
+     */
+    public static <T> SequentialAgentService<T> sequenceBuilder(Class<T> agentServiceClass) {
+        return workflowAgentsBuilder().sequenceBuilder(agentServiceClass);
+    }
+
+    /**
+     * Creates a builder for an untyped agent implementing a parallel workflow of its subagents.
+     */
+    public static ParallelAgentService<UntypedAgent> parallelBuilder() {
+        return workflowAgentsBuilder().parallelBuilder();
+    }
+
+    /**
+     * Creates a builder for an agent implementing a parallel workflow of its subagents
+     * that can be invoked in a strongly typed way through the provided agent service interface.
+     *
+     * @param agentServiceClass the class of the agent service
+     */
+    public static <T> ParallelAgentService<T> parallelBuilder(Class<T> agentServiceClass) {
+        return workflowAgentsBuilder().parallelBuilder(agentServiceClass);
+    }
+
+    /**
+     * Creates a builder for an untyped agent implementing a parallel mapper workflow
+     * that creates multiple instances of the same sub-agent, one per item in a collection.
+     */
+    public static ParallelMapperService<UntypedAgent> parallelMapperBuilder() {
+        return workflowAgentsBuilder().parallelMapperBuilder();
+    }
+
+    /**
+     * Creates a builder for an agent implementing a parallel mapper workflow
+     * that creates multiple instances of the same sub-agent, one per item in a collection,
+     * and can be invoked in a strongly typed way through the provided agent service interface.
+     *
+     * @param agentServiceClass the class of the agent service
+     */
+    public static <T> ParallelMapperService<T> parallelMapperBuilder(Class<T> agentServiceClass) {
+        return workflowAgentsBuilder().parallelMapperBuilder(agentServiceClass);
+    }
+
+    /**
+     * Creates a builder for an untyped agent implementing a loop workflow of its subagents.
+     */
+    public static LoopAgentService<UntypedAgent> loopBuilder() {
+        return workflowAgentsBuilder().loopBuilder();
+    }
+
+    /**
+     * Creates a builder for an agent implementing a loop workflow of its subagents
+     * that can be invoked in a strongly typed way through the provided agent service interface.
+     *
+     * @param agentServiceClass the class of the agent service
+     */
+    public static <T> LoopAgentService<T> loopBuilder(Class<T> agentServiceClass) {
+        return workflowAgentsBuilder().loopBuilder(agentServiceClass);
+    }
+
+    /**
+     * Creates a builder for an untyped agent implementing a conditional workflow of its subagents.
+     */
+    public static ConditionalAgentService<UntypedAgent> conditionalBuilder() {
+        return workflowAgentsBuilder().conditionalBuilder();
+    }
+
+    /**
+     * Creates a builder for an agent implementing a conditional workflow of its subagents
+     * that can be invoked in a strongly typed way through the provided agent service interface.
+     *
+     * @param agentServiceClass the class of the agent service
+     */
+    public static <T> ConditionalAgentService<T> conditionalBuilder(Class<T> agentServiceClass) {
+        return workflowAgentsBuilder().conditionalBuilder(agentServiceClass);
+    }
+
+    /**
+     * Creates a builder for a supervisor agent service that can be used to manage and supervise other agents.
+     * This is useful for building complex agentic systems where one agent oversees the execution of others.
+     */
+    public static SupervisorAgentService<SupervisorAgent> supervisorBuilder() {
+        return SupervisorAgentServiceImpl.builder();
+    }
+
+    /**
+     * Creates a builder for a supervisor agent service that can be used to manage and supervise other agents.
+     * This is useful for building complex agentic systems where one agent oversees the execution of others.
+     *
+     * @param agentServiceClass the class of the agent service
+     */
+    public static <T> SupervisorAgentService<T> supervisorBuilder(Class<T> agentServiceClass) {
+        return SupervisorAgentServiceImpl.builder(agentServiceClass);
+    }
+
+    /**
+     * Creates a builder for a customizable planner agent service.
+     */
+    public static PlannerBasedService<UntypedAgent> plannerBuilder() {
+        return PlannerBasedServiceImpl.builder(UntypedAgent.class);
+    }
+
+    /**
+     * Creates a builder for a customizable planner agent service.
+     *
+     * @param agentServiceClass the class of the agent service
+     */
+    public static <T> PlannerBasedService<T> plannerBuilder(Class<T> agentServiceClass) {
+        return PlannerBasedServiceImpl.builder(agentServiceClass);
+    }
+
+    /**
+     * Creates a builder for an A2A client that can be used to interact with agents over the A2A protocol.
+     * This is useful for building agentic systems that communicate with remote agents.
+     *
+     * @param a2aServerUrl the URL of the A2A server
+     * @return a new A2AClientBuilder instance
+     */
+    public static A2AClientBuilder<UntypedAgent> a2aBuilder(String a2aServerUrl) {
+        return a2aBuilder(a2aServerUrl, UntypedAgent.class);
+    }
+
+    /**
+     * Creates a builder for an A2A client that can be used to interact with agents over the A2A protocol.
+     * This is useful for building agentic systems that communicate with remote agents.
+     *
+     * @param a2aServerUrl the URL of the A2A server
+     * @param agentServiceClass the class of the agent service
+     * @return a new A2AClientBuilder instance
+     */
+    public static <T> A2AClientBuilder<T> a2aBuilder(String a2aServerUrl, Class<T> agentServiceClass) {
+        return A2AService.get().a2aBuilder(a2aServerUrl, agentServiceClass);
+    }
+
+    public interface DeclarativeAgentCreationContext<T> {
+        Class<T> agentServiceClass();
+
+        AgentBuilder<T, ?> agentBuilder();
+    }
+
+    public record DefaultDeclarativeAgentCreationContext<T>(Class<T> agentServiceClass, AgentBuilder<T, ?> agentBuilder)
+            implements DeclarativeAgentCreationContext<T> {}
+
+    /**
+     * Creates an instance of an agentic system defined through the declarative API.
+     *
+     * @param agentServiceClass the class of the agent service
+     */
+    public static <T> T createAgenticSystem(Class<T> agentServiceClass) {
+        return createAgenticSystem(agentServiceClass, declarativeChatModel(agentServiceClass));
+    }
+
+    /**
+     * Creates an instance of an agentic system defined through the declarative API and using the provided ChatModel.
+     *
+     * @param agentServiceClass the class of the agent service
+     * @param chatModel the ChatModel used by default for all agents participating in this agentic system
+     */
+    public static <T> T createAgenticSystem(Class<T> agentServiceClass, ChatModel chatModel) {
+        return createAgenticSystem(agentServiceClass, chatModel, ctx -> {});
+    }
+
+    /**
+     * Creates an instance of an agentic system defined through the declarative API.
+     *
+     * @param agentServiceClass the class of the agent service
+     * @param agentConfigurator A callback to tweak the configuration of each agent created in this agentic system
+     */
+    public static <T> T createAgenticSystem(
+            Class<T> agentServiceClass, Consumer<DeclarativeAgentCreationContext<?>> agentConfigurator) {
+        return createAgenticSystem(agentServiceClass, declarativeChatModel(agentServiceClass), agentConfigurator);
+    }
+
+    /**
+     * Creates an instance of an agentic system defined through the declarative API and using the provided ChatModel.
+     *
+     * @param agentServiceClass the class of the agent service
+     * @param chatModel the ChatModel used by default for all agents participating in this agentic system
+     * @param agentConfigurator A callback to tweak the configuration of each agent created in this agentic system
+     */
+    public static <T> T createAgenticSystem(
+            Class<T> agentServiceClass,
+            ChatModel chatModel,
+            Consumer<DeclarativeAgentCreationContext<?>> agentConfigurator) {
+        T agent = createComposedAgent(agentServiceClass, chatModel, agentConfigurator);
+
+        if (agent == null) {
+            var agentBuilder = agentBuilder(agentServiceClass);
+            configureAgent(agentServiceClass, chatModel, agentBuilder, agentConfigurator);
+            agent = agentBuilder.build();
+        }
+
+        if (agent == null) {
+            throw new IllegalArgumentException("Provided class " + agentServiceClass.getName() + " is not an agent.");
+        }
+
+        return agent;
+    }
+
+    private static <T> ChatModel declarativeChatModel(Class<T> agentServiceClass) {
+        return selectMethod(
+                        agentServiceClass,
+                        method -> method.isAnnotationPresent(ChatModelSupplier.class)
+                                && method.getReturnType() == ChatModel.class
+                                && method.getParameterCount() == 0)
+                .map(method -> (ChatModel) invokeStatic(method))
+                .orElse(null);
+    }
+
+    private static <T> T createComposedAgent(
+            Class<T> agentServiceClass,
+            ChatModel chatModel,
+            Consumer<DeclarativeAgentCreationContext<?>> agentConfigurator) {
+        Optional<Method> sequenceMethod = getAnnotatedMethodOnClass(agentServiceClass, SequenceAgent.class);
+        if (sequenceMethod.isPresent()) {
+            return buildSequentialAgent(agentServiceClass, sequenceMethod.get(), chatModel, agentConfigurator);
+        }
+
+        Optional<Method> loopMethod = getAnnotatedMethodOnClass(agentServiceClass, LoopAgent.class);
+        if (loopMethod.isPresent()) {
+            return buildLoopAgent(agentServiceClass, loopMethod.get(), chatModel, agentConfigurator);
+        }
+
+        Optional<Method> conditionalMethod = getAnnotatedMethodOnClass(agentServiceClass, ConditionalAgent.class);
+        if (conditionalMethod.isPresent()) {
+            return buildConditionalAgent(agentServiceClass, conditionalMethod.get(), chatModel, agentConfigurator);
+        }
+
+        Optional<Method> parallelMethod = getAnnotatedMethodOnClass(agentServiceClass, ParallelAgent.class);
+        if (parallelMethod.isPresent()) {
+            return buildParallelAgent(agentServiceClass, parallelMethod.get(), chatModel, agentConfigurator);
+        }
+
+        Optional<Method> parallelMapperMethod =
+                getAnnotatedMethodOnClass(agentServiceClass, ParallelMapperAgent.class);
+        if (parallelMapperMethod.isPresent()) {
+            return buildParallelMapperAgent(
+                    agentServiceClass, parallelMapperMethod.get(), chatModel, agentConfigurator);
+        }
+
+        Optional<Method> supervisorMethod =
+                getAnnotatedMethodOnClass(agentServiceClass, dev.langchain4j.agentic.declarative.SupervisorAgent.class);
+        if (supervisorMethod.isPresent()) {
+            return buildSupervisorAgent(agentServiceClass, supervisorMethod.get(), chatModel, agentConfigurator);
+        }
+
+        Optional<Method> plannerMethod = getAnnotatedMethodOnClass(agentServiceClass, PlannerAgent.class);
+        if (plannerMethod.isPresent()) {
+            return buildPlannerAgent(agentServiceClass, plannerMethod.get(), chatModel, agentConfigurator);
+        }
+
+        return null;
+    }
+
+    private static void buildAgentSpecs(
+            Method agentMethod,
+            String name,
+            String description,
+            String outputKey,
+            AgenticService<?, ?> builder) {
+        if (!isNullOrBlank(name)) {
+            builder.name(name);
+        } else {
+            builder.name(agentMethod.getName());
+        }
+        if (!isNullOrBlank(description)) {
+            builder.description(description);
+        }
+        if (!isNullOrBlank(outputKey)) {
+            builder.outputKey(outputKey);
+        }
+    }
+
+    private static <T> T buildSequentialAgent(
+            Class<T> agentServiceClass,
+            Method agentMethod,
+            ChatModel chatModel,
+            Consumer<DeclarativeAgentCreationContext<?>> agentConfigurator) {
+        SequenceAgent annotation = agentMethod.getAnnotation(SequenceAgent.class);
+        var builder = sequenceBuilder(agentServiceClass)
+                .subAgents(createSubagents(annotation.subAgents(), chatModel, agentConfigurator));
+
+        buildAgentSpecs(
+                agentMethod,
+                annotation.name(),
+                annotation.description(),
+                AgentUtil.outputKey(annotation.outputKey(), annotation.typedOutputKey()),
+                builder);
+
+        return builder.build();
+    }
+
+    private static <T> T buildLoopAgent(
+            Class<T> agentServiceClass,
+            Method agentMethod,
+            ChatModel chatModel,
+            Consumer<DeclarativeAgentCreationContext<?>> agentConfigurator) {
+        LoopAgent annotation = agentMethod.getAnnotation(LoopAgent.class);
+        var builder = loopBuilder(agentServiceClass)
+                .subAgents(createSubagents(annotation.subAgents(), chatModel, agentConfigurator))
+                .maxIterations(annotation.maxIterations());
+
+        buildAgentSpecs(
+                agentMethod,
+                annotation.name(),
+                annotation.description(),
+                AgentUtil.outputKey(annotation.outputKey(), annotation.typedOutputKey()),
+                builder);
+
+        return builder.build();
+    }
+
+    private static <T> T buildConditionalAgent(
+            Class<T> agentServiceClass,
+            Method agentMethod,
+            ChatModel chatModel,
+            Consumer<DeclarativeAgentCreationContext<?>> agentConfigurator) {
+        ConditionalAgent annotation = agentMethod.getAnnotation(ConditionalAgent.class);
+        var builder = conditionalBuilder(agentServiceClass);
+
+        buildAgentSpecs(
+                agentMethod,
+                annotation.name(),
+                annotation.description(),
+                AgentUtil.outputKey(annotation.outputKey(), annotation.typedOutputKey()),
+                builder);
+
+        for (Class<?> subagent : annotation.subAgents()) {
+            predicateMethod(agentServiceClass, method -> {
+                        ActivationCondition activationCondition = method.getAnnotation(ActivationCondition.class);
+                        return activationCondition != null
+                                && Arrays.asList(activationCondition.value()).contains(subagent);
+                    })
+                    .ifPresent(method -> builder.subAgent(
+                            method.getAnnotation(ActivationCondition.class).description(),
+                            agenticScopePredicate(method),
+                            createSubagent(subagent, chatModel, agentConfigurator)));
+        }
+
+        return builder.build();
+    }
+
+    private static <T> T buildParallelAgent(
+            Class<T> agentServiceClass,
+            Method agentMethod,
+            ChatModel chatModel,
+            Consumer<DeclarativeAgentCreationContext<?>> agentConfigurator) {
+        ParallelAgent annotation = agentMethod.getAnnotation(ParallelAgent.class);
+        var builder = parallelBuilder(agentServiceClass)
+                .subAgents(createSubagents(annotation.subAgents(), chatModel, agentConfigurator));
+
+        buildAgentSpecs(
+                agentMethod,
+                annotation.name(),
+                annotation.description(),
+                AgentUtil.outputKey(annotation.outputKey(), annotation.typedOutputKey()),
+                builder);
+
+        return builder.build();
+    }
+
+    private static <T> T buildParallelMapperAgent(
+            Class<T> agentServiceClass,
+            Method agentMethod,
+            ChatModel chatModel,
+            Consumer<DeclarativeAgentCreationContext<?>> agentConfigurator) {
+        ParallelMapperAgent annotation = agentMethod.getAnnotation(ParallelMapperAgent.class);
+        var builder = parallelMapperBuilder(agentServiceClass)
+                .subAgents(List.of(createSubagent(annotation.subAgent(), chatModel, agentConfigurator)))
+                .itemsProvider(annotation.itemsProvider());
+
+        buildAgentSpecs(
+                agentMethod,
+                annotation.name(),
+                annotation.description(),
+                AgentUtil.outputKey(annotation.outputKey(), annotation.typedOutputKey()),
+                builder);
+
+        return builder.build();
+    }
+
+    private static <T> T buildPlannerAgent(
+            Class<T> agentServiceClass,
+            Method agentMethod,
+            ChatModel chatModel,
+            Consumer<DeclarativeAgentCreationContext<?>> agentConfigurator) {
+        PlannerAgent annotation = agentMethod.getAnnotation(PlannerAgent.class);
+        var builder = new PlannerBasedServiceImpl<>(agentServiceClass, agentMethod)
+                .subAgents(createSubagents(annotation.subAgents(), chatModel, agentConfigurator));
+
+        buildAgentSpecs(
+                agentMethod,
+                annotation.name(),
+                annotation.description(),
+                AgentUtil.outputKey(annotation.outputKey(), annotation.typedOutputKey()),
+                builder);
+
+        return builder.build();
+    }
+
+    private static <T> T buildSupervisorAgent(
+            Class<T> agentServiceClass,
+            Method agentMethod,
+            ChatModel chatModel,
+            Consumer<DeclarativeAgentCreationContext<?>> agentConfigurator) {
+        dev.langchain4j.agentic.declarative.SupervisorAgent supervisorAgent =
+                agentMethod.getAnnotation(dev.langchain4j.agentic.declarative.SupervisorAgent.class);
+        var builder = new SupervisorAgentServiceImpl<>(agentServiceClass, agentMethod, chatModel)
+                .maxAgentsInvocations(supervisorAgent.maxAgentsInvocations())
+                .contextGenerationStrategy(supervisorAgent.contextStrategy())
+                .responseStrategy(supervisorAgent.responseStrategy())
+                .subAgents(createSubagents(supervisorAgent.subAgents(), chatModel, agentConfigurator));
+
+        if (!isNullOrBlank(supervisorAgent.name())) {
+            builder.name(supervisorAgent.name());
+        } else {
+            builder.name(agentMethod.getName());
+        }
+        if (!isNullOrBlank(supervisorAgent.description())) {
+            builder.description(supervisorAgent.description());
+        }
+        builder.outputKey(AgentUtil.outputKey(supervisorAgent.outputKey(), supervisorAgent.typedOutputKey()));
+
+        return builder.build();
+    }
+
+    private static List<AgentExecutor> createSubagents(
+            Class<?>[] subAgents, ChatModel chatModel, Consumer<DeclarativeAgentCreationContext<?>> agentConfigurator) {
+        return Stream.of(subAgents)
+                .map(subagent -> createSubagent(subagent, chatModel, agentConfigurator))
+                .toList();
+    }
+
+    private static AgentExecutor createSubagent(
+            Class<?> subgentClass, ChatModel chatModel, Consumer<DeclarativeAgentCreationContext<?>> agentConfigurator) {
+        AgentExecutor agentExecutor = createBuiltInAgentExecutor(subgentClass, chatModel, agentConfigurator);
+        if (agentExecutor != null) {
+            return agentExecutor;
+        }
+
+        AgentBuilder<?, ?> agentBuilder = agentBuilder(subgentClass);
+        configureAgent(subgentClass, chatModel, agentBuilder, agentConfigurator);
+
+        return agentToExecutor(agentBuilder.build());
+    }
+
+    public static AgentExecutor createBuiltInAgentExecutor(Class<?> agentServiceClass) {
+        return createBuiltInAgentExecutor(agentServiceClass, declarativeChatModel(agentServiceClass), context -> {});
+    }
+
+    private static AgentExecutor createBuiltInAgentExecutor(
+            Class<?> agentServiceClass,
+            ChatModel chatModel,
+            Consumer<DeclarativeAgentCreationContext<?>> agentConfigurator) {
+        Optional<Method> sequenceMethod = getAnnotatedMethodOnClass(agentServiceClass, SequenceAgent.class);
+        if (sequenceMethod.isPresent()) {
+            Method method = sequenceMethod.get();
+            InternalAgent agent =
+                    (InternalAgent) buildSequentialAgent(agentServiceClass, method, chatModel, agentConfigurator);
+            return new AgentExecutor(AgentInvoker.fromMethod(agent, method), agent);
+        }
+
+        Optional<Method> loopMethod = getAnnotatedMethodOnClass(agentServiceClass, LoopAgent.class);
+        if (loopMethod.isPresent()) {
+            Method method = loopMethod.get();
+            InternalAgent agent =
+                    (InternalAgent) buildLoopAgent(agentServiceClass, method, chatModel, agentConfigurator);
+            return new AgentExecutor(AgentInvoker.fromMethod(agent, method), agent);
+        }
+
+        Optional<Method> conditionalMethod = getAnnotatedMethodOnClass(agentServiceClass, ConditionalAgent.class);
+        if (conditionalMethod.isPresent()) {
+            Method method = conditionalMethod.get();
+            InternalAgent agent =
+                    (InternalAgent) buildConditionalAgent(agentServiceClass, method, chatModel, agentConfigurator);
+            return new AgentExecutor(AgentInvoker.fromMethod(agent, method), agent);
+        }
+
+        Optional<Method> parallelMethod = getAnnotatedMethodOnClass(agentServiceClass, ParallelAgent.class);
+        if (parallelMethod.isPresent()) {
+            Method method = parallelMethod.get();
+            InternalAgent agent =
+                    (InternalAgent) buildParallelAgent(agentServiceClass, method, chatModel, agentConfigurator);
+            return new AgentExecutor(AgentInvoker.fromMethod(agent, method), agent);
+        }
+
+        Optional<Method> parallelMapperMethod =
+                getAnnotatedMethodOnClass(agentServiceClass, ParallelMapperAgent.class);
+        if (parallelMapperMethod.isPresent()) {
+            Method method = parallelMapperMethod.get();
+            InternalAgent agent = (InternalAgent)
+                    buildParallelMapperAgent(agentServiceClass, method, chatModel, agentConfigurator);
+            return new AgentExecutor(AgentInvoker.fromMethod(agent, method), agent);
+        }
+
+        Optional<Method> supervisorMethod =
+                getAnnotatedMethodOnClass(agentServiceClass, dev.langchain4j.agentic.declarative.SupervisorAgent.class);
+        if (supervisorMethod.isPresent()) {
+            Method method = supervisorMethod.get();
+            InternalAgent agent =
+                    (InternalAgent) buildSupervisorAgent(agentServiceClass, method, chatModel, agentConfigurator);
+            return new AgentExecutor(AgentInvoker.fromMethod(agent, method), agent);
+        }
+
+        Optional<Method> humanInTheLoopMethod =
+                getAnnotatedMethodOnClass(agentServiceClass, dev.langchain4j.agentic.declarative.HumanInTheLoop.class);
+        if (humanInTheLoopMethod.isPresent()) {
+            return createHumanInTheLoopAgent(agentServiceClass, humanInTheLoopMethod.get());
+        }
+
+        Optional<Method> a2aClientMethod = getAnnotatedMethodOnClass(agentServiceClass, A2AClientAgent.class);
+        if (a2aClientMethod.isPresent()) {
+            return createA2AClientAgent(agentServiceClass, a2aClientMethod.get());
+        }
+
+        Optional<Method> mcpClientMethod = getAnnotatedMethodOnClass(agentServiceClass, McpClientAgent.class);
+        if (mcpClientMethod.isPresent()) {
+            return createMcpClientAgent(agentServiceClass, mcpClientMethod.get());
+        }
+
+        if (!agentServiceClass.isInterface()) {
+            Method agenticMethod = nonAiAgentMethod(agentServiceClass);
+            if (agenticMethod != null) {
+                if (agenticMethod.getParameterCount() == 0) {
+                    return agentToExecutor(new AgentAction(() -> invokeStatic(agenticMethod)));
+                }
+                return agentToExecutor(new AgenticScopeAction((scope -> invokeStatic(
+                        agenticMethod,
+                        agentInvocationArguments(scope, agenticMethod).positionalArgs()))));
+            }
+        }
+
+        return null;
+    }
+
+    private static AgentExecutor createA2AClientAgent(Class<?> agentServiceClass, Method a2aMethod) {
+        var a2aClient = a2aMethod.getAnnotation(A2AClientAgent.class);
+        var a2aClientBuilder = a2aBuilder(a2aClient.a2aServerUrl(), agentServiceClass)
+                .inputKeys(Stream.of(a2aMethod.getParameters())
+                        .map(AgentInvoker::parameterName)
+                        .toArray(String[]::new))
+                .outputKey(AgentUtil.outputKey(a2aClient.outputKey(), a2aClient.typedOutputKey()))
+                .async(a2aClient.async());
+
+        getAnnotatedMethodOnClass(agentServiceClass, AgentListenerSupplier.class)
+                .ifPresent(method -> {
+                    checkReturnType(method, AgentListener.class);
+                    a2aClientBuilder.listener(invokeStatic(method));
+                });
+
+        return agentToExecutor(a2aClientBuilder.build());
+    }
+
+    private static AgentExecutor createMcpClientAgent(Class<?> agentServiceClass, Method mcpMethod) {
+        var mcpAgent = mcpMethod.getAnnotation(McpClientAgent.class);
+
+        Object mcpClient = selectMethod(agentServiceClass,
+                method -> method.isAnnotationPresent(McpClientSupplier.class)
+                        && method.getParameterCount() == 0)
+                .map(method -> invokeStatic(method))
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "An MCP client agent requires a method annotated with @McpClientSupplier that returns the McpClient instance."));
+
+        var mcpClientBuilder = McpService.get().mcpBuilder(mcpClient, agentServiceClass)
+                .toolName(mcpAgent.toolName())
+                .inputKeys(Stream.of(mcpMethod.getParameters())
+                        .map(AgentInvoker::parameterName)
+                        .toArray(String[]::new))
+                .outputKey(AgentUtil.outputKey(mcpAgent.outputKey(), mcpAgent.typedOutputKey()))
+                .async(mcpAgent.async());
+
+        getAnnotatedMethodOnClass(agentServiceClass, AgentListenerSupplier.class)
+                .ifPresent(method -> {
+                    checkReturnType(method, AgentListener.class);
+                    mcpClientBuilder.listener(invokeStatic(method));
+                });
+
+        return agentToExecutor(mcpClientBuilder.build());
+    }
+
+    private static AgentExecutor createHumanInTheLoopAgent(Class<?> agentServiceClass, Method method) {
+        var humanInTheLoop = method.getAnnotation(dev.langchain4j.agentic.declarative.HumanInTheLoop.class);
+
+        var humanInTheLoopBuilder = humanInTheLoopBuilder()
+                .description(humanInTheLoop.description())
+                .outputKey(humanInTheLoop.outputKey())
+                .async(humanInTheLoop.async())
+                .responseProvider(scope -> invokeStatic(
+                        method, agentInvocationArguments(scope, method).positionalArgs()));
+
+        getAnnotatedMethodOnClass(agentServiceClass, AgentListenerSupplier.class)
+                .ifPresent(listenerMethod -> {
+                    checkReturnType(listenerMethod, AgentListener.class);
+                    humanInTheLoopBuilder.listener(invokeStatic(listenerMethod));
+                });
+
+        String name = isNullOrBlank(humanInTheLoop.name()) ? method.getName() : humanInTheLoop.name();
+        AgentInvoker agentInvoker = nonAiAgentInvoker(
+                method, name, humanInTheLoop.description(), humanInTheLoop.outputKey(), humanInTheLoop.async());
+        return new AgentExecutor(agentInvoker, humanInTheLoopBuilder.build());
+    }
+
+    private static Method nonAiAgentMethod(Class<?> agentServiceClass) {
+        Method agenticMethod = null;
+        for (Method method : agentServiceClass.getDeclaredMethods()) {
+            if (method.isAnnotationPresent(Agent.class) && Modifier.isStatic(method.getModifiers())) {
+                if (agenticMethod != null) {
+                    throw new IllegalArgumentException(
+                            "Multiple agent methods found in class: " + agentServiceClass.getName());
+                }
+                agenticMethod = method;
+            }
+        }
+        return agenticMethod;
+    }
+
+    /**
+     * Wraps a runnable into an agent action that can be executed within the context of an agent.
+     *
+     * @param runnable the runnable to be executed
+     * @return an AgentAction that encapsulates the runnable
+     */
+    public static AgentAction agentAction(AgentAction.NonThrowingRunnable runnable) {
+        return new AgentAction(runnable);
+    }
+
+    public static class AgentAction {
+        private final NonThrowingRunnable runnable;
+
+        @FunctionalInterface
+        public interface NonThrowingRunnable {
+            void run() throws Exception;
+        }
+
+        private AgentAction(NonThrowingRunnable runnable) {
+            this.runnable = runnable;
+        }
+
+        @Agent
+        public void run() {
+            try {
+                runnable.run();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    /**
+     * Wraps a consumer of the AgenticScope into an agent action that can be executed within the context of an agent.
+     *
+     * @param consumer the consumer to be executed
+     * @return an AgentAction that encapsulates the consumer
+     */
+    public static AgenticScopeAction agentAction(AgenticScopeAction.NonThrowingConsumer<AgenticScope> consumer) {
+        return new AgenticScopeAction(consumer);
+    }
+
+    public static class AgenticScopeAction {
+        private final NonThrowingConsumer<AgenticScope> consumer;
+
+        @FunctionalInterface
+        public interface NonThrowingConsumer<T> {
+            void accept(T arg) throws Exception;
+        }
+
+        private AgenticScopeAction(NonThrowingConsumer<AgenticScope> consumer) {
+            this.consumer = consumer;
+        }
+
+        @Agent
+        public void accept(AgenticScope agenticScope) {
+            try {
+                consumer.accept(agenticScope);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+}

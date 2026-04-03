@@ -16,6 +16,8 @@ import dev.langchain4j.model.scoring.ScoringModel;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
+import org.slf4j.Logger;
 
 /**
  * An implementation of a {@link ScoringModel} that uses
@@ -29,6 +31,7 @@ public class VoyageAiScoringModel implements ScoringModel {
     private final Integer topK;
     private final Boolean truncation;
 
+    @Deprecated(forRemoval = true, since = "1.4.0")
     public VoyageAiScoringModel(
             HttpClientBuilder httpClientBuilder,
             Map<String, String> customHeaders,
@@ -55,7 +58,27 @@ public class VoyageAiScoringModel implements ScoringModel {
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
-                .customHeaders(customHeaders)
+                .customHeaders(() -> customHeaders)
+                .build();
+    }
+
+    public VoyageAiScoringModel(Builder builder) {
+        // Below attributes are force to non-null
+        this.maxRetries = getOrDefault(builder.maxRetries, 2);
+        this.modelName = ensureNotBlank(builder.modelName, "modelName");
+        // Below attributes can be null
+        this.truncation = builder.truncation;
+        this.topK = builder.topK;
+
+        this.client = VoyageAiClient.builder()
+                .httpClientBuilder(builder.httpClientBuilder)
+                .baseUrl(getOrDefault(builder.baseUrl, DEFAULT_BASE_URL))
+                .apiKey(ensureNotBlank(builder.apiKey, "apiKey"))
+                .timeout(getOrDefault(builder.timeout, ofSeconds(60)))
+                .logRequests(getOrDefault(builder.logRequests, false))
+                .logResponses(getOrDefault(builder.logResponses, false))
+                .logger(builder.logger)
+                .customHeaders(builder.customHeadersSupplier)
                 .build();
     }
 
@@ -86,7 +109,7 @@ public class VoyageAiScoringModel implements ScoringModel {
     public static class Builder {
 
         private HttpClientBuilder httpClientBuilder;
-        private Map<String, String> customHeaders;
+        private Supplier<Map<String, String>> customHeadersSupplier;
         private String baseUrl;
         private Duration timeout;
         private Integer maxRetries;
@@ -96,6 +119,30 @@ public class VoyageAiScoringModel implements ScoringModel {
         private Boolean truncation;
         private Boolean logRequests;
         private Boolean logResponses;
+        private Logger logger;
+
+        public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
+
+        /**
+         * Sets custom HTTP headers.
+         */
+        public Builder customHeaders(Map<String, String> customHeaders) {
+            this.customHeadersSupplier = () -> customHeaders;
+            return this;
+        }
+
+        /**
+         * Sets a supplier for custom HTTP headers.
+         * The supplier is called before each request, allowing dynamic header values.
+         * For example, this is useful for OAuth2 tokens that expire and need refreshing.
+         */
+        public Builder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
+            return this;
+        }
 
         public Builder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
@@ -174,19 +221,17 @@ public class VoyageAiScoringModel implements ScoringModel {
             return this;
         }
 
+        /**
+         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
+         * @return {@code this}.
+         */
+        public Builder logger(Logger logger) {
+            this.logger = logger;
+            return this;
+        }
+
         public VoyageAiScoringModel build() {
-            return new VoyageAiScoringModel(
-                    httpClientBuilder,
-                    customHeaders,
-                    baseUrl,
-                    timeout,
-                    maxRetries,
-                    apiKey,
-                    modelName,
-                    topK,
-                    truncation,
-                    logRequests,
-                    logResponses);
+            return new VoyageAiScoringModel(this);
         }
     }
 }

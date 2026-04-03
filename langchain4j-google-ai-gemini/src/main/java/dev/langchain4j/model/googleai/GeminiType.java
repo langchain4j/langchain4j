@@ -6,7 +6,8 @@ enum GeminiType {
     INTEGER,
     BOOLEAN,
     ARRAY,
-    OBJECT;
+    OBJECT,
+    NULL;
 
     @Override
     public String toString() {

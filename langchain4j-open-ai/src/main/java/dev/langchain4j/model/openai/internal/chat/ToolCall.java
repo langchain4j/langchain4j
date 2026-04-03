@@ -7,8 +7,12 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 
+import java.util.Locale;
 import java.util.Objects;
+
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 
 @JsonDeserialize(builder = ToolCall.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -48,12 +52,14 @@ public class ToolCall {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
         return another instanceof ToolCall
                 && equalTo((ToolCall) another);
     }
 
+    @JacocoIgnoreCoverageGenerated
     private boolean equalTo(ToolCall another) {
         return Objects.equals(id, another.id)
                 && Objects.equals(index, another.index)
@@ -62,6 +68,7 @@ public class ToolCall {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         int h = 5381;
         h += (h << 5) + Objects.hashCode(id);
@@ -72,6 +79,7 @@ public class ToolCall {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public String toString() {
         return "ToolCall{"
                 + "id=" + id
@@ -102,6 +110,13 @@ public class ToolCall {
 
         public Builder index(Integer index) {
             this.index = index;
+            return this;
+        }
+
+        public Builder type(String type) {
+            if (isNotNullOrBlank(type)) {
+                this.type = ToolType.valueOf(type.toUpperCase(Locale.ROOT));
+            }
             return this;
         }
 

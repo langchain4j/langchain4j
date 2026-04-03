@@ -12,6 +12,7 @@ import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "SEARCHAPI_API_KEY", matches = ".+")
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class SearchApiContentRetrieverIT extends WebSearchContentRetrieverIT {
 
     private final WebSearchEngine searchEngine = SearchApiWebSearchEngine.builder()

@@ -70,7 +70,7 @@ public class ClassPathDocumentLoader {
      * @throws IllegalArgumentException If specified path is not a file.
      */
     public static Document loadDocument(String pathOnClasspath, ClassLoader classLoader) {
-        return loadDocument(pathOnClasspath, DEFAULT_DOCUMENT_PARSER);
+        return loadDocument(pathOnClasspath, DEFAULT_DOCUMENT_PARSER, classLoader);
     }
 
     /**

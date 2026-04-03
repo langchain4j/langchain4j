@@ -72,7 +72,7 @@ public class CompressingQueryTransformer implements QueryTransformer {
     public Collection<Query> transform(Query query) {
 
         List<ChatMessage> chatMemory = query.metadata().chatMemory();
-        if (chatMemory.isEmpty()) {
+        if (chatMemory == null || chatMemory.isEmpty()) {
             // no need to compress if there are no previous messages
             return singletonList(query);
         }

@@ -5,10 +5,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import dev.langchain4j.data.document.Metadata;
 import org.junit.jupiter.api.Test;
 
-public class DocumentTest {
+class DocumentTest {
 
     @Test
-    void testMetadataConversion() {
+    void metadataConversion() {
         dev.langchain4j.data.document.Document document =
                 dev.langchain4j.data.document.Document.document("test", Metadata.metadata("keyTest", "valueTest"));
         Document.Metadata metadata = new Document.Metadata();

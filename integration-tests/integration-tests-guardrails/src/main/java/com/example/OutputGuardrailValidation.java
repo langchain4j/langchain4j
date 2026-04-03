@@ -15,8 +15,8 @@ public class OutputGuardrailValidation implements OutputGuardrail {
         return INSTANCE;
     }
 
-    public OutputGuardrailResult validate(OutputGuardrailRequest params) {
-        this.params = params;
+    public OutputGuardrailResult validate(OutputGuardrailRequest request) {
+        this.params = request;
         return success();
     }
 

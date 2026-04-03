@@ -19,10 +19,16 @@ import org.apache.tika.sax.BodyContentHandler;
 import org.xml.sax.ContentHandler;
 
 /**
- * Parses files into {@link Document}s using Apache Tika library, automatically detecting the file format.
- * This parser supports various file formats, including PDF, DOC, PPT, XLS.
- * For detailed information on supported formats,
- * please refer to the <a href="https://tika.apache.org/2.9.1/formats.html">Apache Tika documentation</a>.
+ * Parses an {@link InputStream} into a {@link Document} using the Apache Tika library by
+ * automatically detecting the file format and extracting its textual content.
+ * <p>
+ * This parser supports a wide range of formats, including PDF, DOC, PPT, XLS, and many others.
+ * Optionally, metadata can also be extracted and attached to the {@code Document}.
+ * </p>
+ * <p>
+ * For a full list of supported formats, refer to the
+ * <a href="https://tika.apache.org/3.0.0/formats.html">Apache Tika documentation</a>.
+ * </p>
  */
 public class ApacheTikaDocumentParser implements DocumentParser {
 

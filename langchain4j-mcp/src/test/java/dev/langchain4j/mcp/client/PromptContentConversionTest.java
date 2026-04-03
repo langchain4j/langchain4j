@@ -15,10 +15,10 @@ import org.junit.jupiter.api.Test;
  * Test for converting PromptMessage as returned from MCP servers to instances
  * of ChatMessage from the core langchain4j API.
  */
-public class PromptContentConversionTest {
+class PromptContentConversionTest {
 
     @Test
-    public void testUserMessageWithText() throws JsonProcessingException {
+    void userMessageWithText() throws JsonProcessingException {
         // language=JSON
         String response =
                 """
@@ -33,7 +33,7 @@ public class PromptContentConversionTest {
     }
 
     @Test
-    public void testAiMessageWithText() throws JsonProcessingException {
+    void aiMessageWithText() throws JsonProcessingException {
         // language=JSON
         String response =
                 """
@@ -48,7 +48,7 @@ public class PromptContentConversionTest {
     }
 
     @Test
-    public void testUserMessageWithImage() throws JsonProcessingException {
+    void userMessageWithImage() throws JsonProcessingException {
         // language=JSON
         String response =
                 """

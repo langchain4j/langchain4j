@@ -13,13 +13,13 @@ import io.stargate.sdk.data.domain.JsonDocumentMutationResult;
 import io.stargate.sdk.data.domain.JsonDocumentResult;
 import io.stargate.sdk.data.domain.odm.Document;
 import io.stargate.sdk.data.domain.query.Filter;
-import lombok.NonNull;
-import lombok.experimental.Accessors;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
@@ -30,7 +30,6 @@ import static dev.langchain4j.internal.Utils.toStringValueMap;
  *
  * @see EmbeddingStore
  */
-@Accessors(fluent = true)
 public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     /**
@@ -42,7 +41,6 @@ public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
      * Metadata used for similarity.
      */
     public static final String KEY_SIMILARITY = "$similarity";
-    private static final Logger log = org.slf4j.LoggerFactory.getLogger(AstraDbEmbeddingStore.class);
 
     /**
      * Client to work with an Astra Collection
@@ -75,6 +73,7 @@ public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param itemsPerChunk size of 1 chunk in between 1 and 20
      */
     public AstraDbEmbeddingStore(@NonNull AstraDBCollection client, int itemsPerChunk, int concurrentThreads) {
+        Objects.requireNonNull(client, "'client' must not be null");
         if (itemsPerChunk > 20 || itemsPerChunk < 1) {
             throw new IllegalArgumentException("'itemsPerChunk' should be in between 1 and 20");
         }

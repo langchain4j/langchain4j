@@ -45,4 +45,35 @@ class ContainsStringTest {
                 .hasMessage(
                         "Type mismatch: actual value of metadata key \"key\" (42) has type java.lang.Integer, while it is expected to be a string");
     }
+
+    @Test
+    void shouldReturnFalseWhenCaseMismatch() {
+        ContainsString containsString = new ContainsString("key", "VALUE");
+        Metadata metadata = new Metadata(Map.of("key", "testvalue123"));
+        assertThat(containsString.test(metadata)).isFalse();
+    }
+
+    @Test
+    void shouldHandleEmptySearchString() {
+        ContainsString containsString = new ContainsString("key", "");
+        Metadata metadata = new Metadata(Map.of("key", "any string"));
+        assertThat(containsString.test(metadata)).isTrue();
+    }
+
+    @Test
+    void shouldHandleBothEmpty() {
+        ContainsString containsString = new ContainsString("key", "");
+        Metadata metadata = new Metadata(Map.of("key", ""));
+        assertThat(containsString.test(metadata)).isTrue();
+    }
+
+    @Test
+    void shouldThrowWhenMetadataValueIsDouble() {
+        ContainsString containsString = new ContainsString("key", "value");
+        Metadata metadata = new Metadata(Map.of("key", 3.14));
+        assertThatThrownBy(() -> containsString.test(metadata))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Type mismatch")
+                .hasMessageContaining("java.lang.Double");
+    }
 }

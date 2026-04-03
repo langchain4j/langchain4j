@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 
 import java.util.List;
 import java.util.Objects;
@@ -44,12 +45,14 @@ public final class ModerationResponse {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
         return another instanceof ModerationResponse
                 && equalTo((ModerationResponse) another);
     }
 
+    @JacocoIgnoreCoverageGenerated
     private boolean equalTo(ModerationResponse another) {
         return Objects.equals(id, another.id)
                 && Objects.equals(model, another.model)
@@ -57,6 +60,7 @@ public final class ModerationResponse {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         int h = 5381;
         h += (h << 5) + Objects.hashCode(id);
@@ -66,6 +70,7 @@ public final class ModerationResponse {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public String toString() {
         return "ModerationResponse{"
                 + "id=" + id

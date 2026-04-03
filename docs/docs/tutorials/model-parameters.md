@@ -59,7 +59,7 @@ and your changes are automatically ported to the code.
 The DEV UI can be accessed by running your Quarkus application with the command `quarkus dev`,
 then you can find it on localhost:8080/q/dev-ui (or wherever you deploy your application).
 
-[![](/img/quarkus-dev-ui-parameters.png)](/tutorials/model-parameters)
+![](/img/quarkus-dev-ui-parameters.png)
 
 More info on Quarkus integration can be found [here](/tutorials/quarkus-integration).
 

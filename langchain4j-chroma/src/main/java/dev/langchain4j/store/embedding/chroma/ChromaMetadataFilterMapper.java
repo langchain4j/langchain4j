@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.chroma;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThan;
@@ -18,6 +19,7 @@ import java.util.Map;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonMap;
 
+@Internal
 class ChromaMetadataFilterMapper {
 
     ChromaMetadataFilterMapper() {

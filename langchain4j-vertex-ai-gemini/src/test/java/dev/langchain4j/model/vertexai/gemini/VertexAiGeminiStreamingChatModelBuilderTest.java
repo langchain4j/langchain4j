@@ -44,4 +44,17 @@ class VertexAiGeminiStreamingChatModelBuilderTest {
         final String actualFooHeader = model.vertexAI().getHeaders().getOrDefault("user-agent", "error");
         assertThat(actualFooHeader).contains("my-custom-user-agent");
     }
+
+    @Test
+    void setCustomApiEndpoint() {
+        String customEndpoint = "https://custom-endpoint.example.com";
+        VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
+                .project("does-not-matter")
+                .location("does-not-matter")
+                .modelName("does-not-matter")
+                .apiEndpoint(customEndpoint)
+                .build();
+
+        assertThat(model.vertexAI().getApiEndpoint()).isEqualTo(customEndpoint);
+    }
 }

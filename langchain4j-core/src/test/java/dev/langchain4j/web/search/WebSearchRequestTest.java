@@ -1,7 +1,7 @@
 package dev.langchain4j.web.search;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 
 import org.junit.jupiter.api.Test;
 
@@ -100,8 +100,9 @@ class WebSearchRequestTest {
 
     @Test
     void should_throw_illegalArgumentException_without_searchTerms() {
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class, () -> WebSearchRequest.builder().build());
+        IllegalArgumentException exception = assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> WebSearchRequest.builder().build())
+                .actual();
         assertThat(exception).hasMessage("searchTerms cannot be null or blank");
     }
 }

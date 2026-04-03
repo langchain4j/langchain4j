@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.comparison.*;
-import io.qdrant.client.grpc.Points;
+import io.qdrant.client.grpc.Common;
 import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 
@@ -13,7 +13,7 @@ class QdrantFilterConverterTest {
     @Test
     void containsFilter() {
         Filter filter = new ContainsString("string-value", "contains");
-        Points.Filter convertedFilter = QdrantFilterConverter.convertExpression(filter);
+        Common.Filter convertedFilter = QdrantFilterConverter.convertExpression(filter);
         assertThat(convertedFilter).isNotNull();
         assertThat(convertedFilter.getMustCount()).isEqualTo(1);
         assertThat(convertedFilter.getMust(0).getField().getKey()).isEqualTo("string-value");
@@ -23,7 +23,7 @@ class QdrantFilterConverterTest {
     @Test
     void isEqualToFilter() {
         Filter filter = new IsEqualTo("num-value", 5);
-        Points.Filter convertedFilter = QdrantFilterConverter.convertExpression(filter);
+        Common.Filter convertedFilter = QdrantFilterConverter.convertExpression(filter);
         assertThat(convertedFilter).isNotNull();
         assertThat(convertedFilter.getMustCount()).isEqualTo(1);
         assertThat(convertedFilter.getMust(0).getField().getKey()).isEqualTo("num-value");
@@ -50,7 +50,7 @@ class QdrantFilterConverterTest {
     @Test
     void isNotEqualToFilter() {
         Filter filter = new IsNotEqualTo("num-value", 5);
-        Points.Filter convertedFilter = QdrantFilterConverter.convertExpression(filter);
+        Common.Filter convertedFilter = QdrantFilterConverter.convertExpression(filter);
         assertThat(convertedFilter).isNotNull();
         assertThat(convertedFilter.getMustCount()).isEqualTo(1);
         assertThat(convertedFilter
@@ -113,7 +113,7 @@ class QdrantFilterConverterTest {
     @Test
     void isGreaterThanFilter() {
         Filter filter = new IsGreaterThan("key", 1);
-        Points.Filter convertedFilter = QdrantFilterConverter.convertExpression(filter);
+        Common.Filter convertedFilter = QdrantFilterConverter.convertExpression(filter);
 
         assertThat(convertedFilter).isNotNull();
         assertThat(convertedFilter.getMustCount()).isEqualTo(1);
@@ -123,7 +123,7 @@ class QdrantFilterConverterTest {
     @Test
     void isLessThanFilter() {
         Filter filter = new IsLessThan("key", 10);
-        Points.Filter convertedFilter = QdrantFilterConverter.convertExpression(filter);
+        Common.Filter convertedFilter = QdrantFilterConverter.convertExpression(filter);
 
         assertThat(convertedFilter).isNotNull();
         assertThat(convertedFilter.getMustCount()).isEqualTo(1);
@@ -133,7 +133,7 @@ class QdrantFilterConverterTest {
     @Test
     void isGreaterThanOrEqualToFilter() {
         Filter filter = new IsGreaterThanOrEqualTo("key", 1);
-        Points.Filter convertedFilter = QdrantFilterConverter.convertExpression(filter);
+        Common.Filter convertedFilter = QdrantFilterConverter.convertExpression(filter);
 
         assertThat(convertedFilter).isNotNull();
         assertThat(convertedFilter.getMustCount()).isEqualTo(1);
@@ -143,7 +143,7 @@ class QdrantFilterConverterTest {
     @Test
     void isLessThanOrEqualToFilter() {
         Filter filter = new IsLessThanOrEqualTo("key", 10);
-        Points.Filter convertedFilter = QdrantFilterConverter.convertExpression(filter);
+        Common.Filter convertedFilter = QdrantFilterConverter.convertExpression(filter);
 
         assertThat(convertedFilter).isNotNull();
         assertThat(convertedFilter.getMustCount()).isEqualTo(1);
@@ -153,7 +153,7 @@ class QdrantFilterConverterTest {
     @Test
     void inFilter() {
         Filter filter = new IsIn("key", Arrays.asList(1, 2, 3));
-        Points.Filter convertedFilter = QdrantFilterConverter.convertExpression(filter);
+        Common.Filter convertedFilter = QdrantFilterConverter.convertExpression(filter);
         assertThat(convertedFilter).isNotNull();
         assertThat(convertedFilter.getMustCount()).isEqualTo(1);
         assertThat(convertedFilter
@@ -180,7 +180,7 @@ class QdrantFilterConverterTest {
     @Test
     void nInFilter() {
         Filter filter = new IsNotIn("key", Arrays.asList(1, 2, 3, 4));
-        Points.Filter convertedFilter = QdrantFilterConverter.convertExpression(filter);
+        Common.Filter convertedFilter = QdrantFilterConverter.convertExpression(filter);
         assertThat(convertedFilter).isNotNull();
         assertThat(convertedFilter.getMustCount()).isEqualTo(1);
         assertThat(convertedFilter

@@ -7,9 +7,11 @@ import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.List;
 
+@EnabledIfEnvironmentVariable(named = "MISTRAL_AI_API_KEY", matches = ".+")
 class MistralAiFimModelIT {
 
     LanguageModel codestral = MistralAiFimModel.builder()
@@ -95,14 +97,13 @@ class MistralAiFimModelIT {
     }
 
     @Test
-    void should_generate_code_completion_with_suffix_and_max_min_tokens() {
+    void should_generate_code_completion_with_suffix_and_max_tokens() {
 
         // Given
         MistralAiFimModel codestral = MistralAiFimModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
                 .modelName(MistralAiFimModelName.CODESTRAL_LATEST)
                 .maxTokens(1024)
-                .minTokens(0)
                 .logRequests(true)
                 .build();
 

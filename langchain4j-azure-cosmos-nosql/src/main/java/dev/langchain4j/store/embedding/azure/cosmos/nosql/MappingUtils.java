@@ -1,11 +1,11 @@
 package dev.langchain4j.store.embedding.azure.cosmos.nosql;
 
+import static dev.langchain4j.internal.Utils.toStringValueMap;
+
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
-
-import static dev.langchain4j.internal.Utils.toStringValueMap;
 
 class MappingUtils {
 
@@ -17,7 +17,18 @@ class MappingUtils {
         if (textSegment == null) {
             return new AzureCosmosDbNoSqlDocument(id, embedding.vectorAsList(), null, null);
         }
-        return new AzureCosmosDbNoSqlDocument(id, embedding.vectorAsList(), textSegment.text(), toStringValueMap(textSegment.metadata().toMap()));
+        if (embedding == null) {
+            return new AzureCosmosDbNoSqlDocument(
+                    id,
+                    null,
+                    textSegment.text(),
+                    toStringValueMap(textSegment.metadata().toMap()));
+        }
+        return new AzureCosmosDbNoSqlDocument(
+                id,
+                embedding.vectorAsList(),
+                textSegment.text(),
+                toStringValueMap(textSegment.metadata().toMap()));
     }
 
     static EmbeddingMatch<TextSegment> toEmbeddingMatch(AzureCosmosDbNoSqlMatchedDocument matchedDocument) {
@@ -25,6 +36,13 @@ class MappingUtils {
         if (matchedDocument.getText() != null) {
             textSegment = TextSegment.from(matchedDocument.getText(), Metadata.from(matchedDocument.getMetadata()));
         }
-        return new EmbeddingMatch<>(matchedDocument.getScore(), matchedDocument.getId(), Embedding.from(matchedDocument.getEmbedding()), textSegment);
+        if (matchedDocument.getScore() == null) {
+            return new EmbeddingMatch<>(0.0, matchedDocument.getId(), null, textSegment);
+        }
+        return new EmbeddingMatch<>(
+                matchedDocument.getScore(),
+                matchedDocument.getId(),
+                Embedding.from(matchedDocument.getEmbedding()),
+                textSegment);
     }
 }

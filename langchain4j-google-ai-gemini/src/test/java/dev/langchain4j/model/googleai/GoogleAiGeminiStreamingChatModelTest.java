@@ -1,6 +1,7 @@
 package dev.langchain4j.model.googleai;
 
 import static org.assertj.core.api.Assertions.assertThatCharSequence;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -10,6 +11,14 @@ import org.junit.jupiter.api.Test;
 class GoogleAiGeminiStreamingChatModelTest {
     private static final ChatRequest DEFAULT_REQUEST =
             ChatRequest.builder().messages(new UserMessage("Hi")).build();
+
+    @Test
+    void should_fail_when_empty_messages_provided() {
+        // when/then
+        assertThatThrownBy(() -> ChatRequest.builder().messages().build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("messages cannot be null or empty");
+    }
 
     @Nested
     class GoogleAiGeminiStreamingChatModelBuilder {
@@ -23,7 +32,7 @@ class GoogleAiGeminiStreamingChatModelTest {
                     .build();
             GeminiGenerateContentRequest result = chatModel.createGenerateContentRequest(DEFAULT_REQUEST);
 
-            assertThatCharSequence(Json.toJson(result.getGenerationConfig())).contains("\"seed\" : 42");
+            assertThatCharSequence(Json.toJson(result.generationConfig())).contains("\"seed\" : 42");
         }
 
         @Test
@@ -34,7 +43,7 @@ class GoogleAiGeminiStreamingChatModelTest {
                     .build();
             GeminiGenerateContentRequest result = chatModel.createGenerateContentRequest(DEFAULT_REQUEST);
 
-            assertThatCharSequence(Json.toJson(result.getGenerationConfig())).doesNotContain("\"seed\"");
+            assertThatCharSequence(Json.toJson(result.generationConfig())).doesNotContain("\"seed\"");
         }
     }
 }

@@ -49,4 +49,9 @@ public class FileSystemSource implements DocumentSource {
     public static FileSystemSource from(File file) {
         return new FileSystemSource(file.toPath());
     }
+
+    @Override
+    public String toString() {
+        return "FileSystemSource { path = " + path + " }";
+    }
 }

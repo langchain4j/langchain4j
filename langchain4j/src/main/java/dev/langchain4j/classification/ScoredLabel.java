@@ -1,9 +1,9 @@
 package dev.langchain4j.classification;
 
-import java.util.Objects;
-
 import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
+import java.util.Objects;
 
 /**
  * Represents a classification label with score.
@@ -30,11 +30,10 @@ public class ScoredLabel<L> {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj == this) return true;
-        if (obj == null || obj.getClass() != this.getClass()) return false;
-        var that = (ScoredLabel) obj;
-        return Objects.equals(this.label, that.label) &&
-                Double.doubleToLongBits(this.score) == Double.doubleToLongBits(that.score);
+        if (this == obj) return true;
+        if (!(obj instanceof ScoredLabel<?> that)) return false;
+        return Objects.equals(this.label, that.label)
+                && Double.doubleToLongBits(this.score) == Double.doubleToLongBits(that.score);
     }
 
     @Override
@@ -44,9 +43,6 @@ public class ScoredLabel<L> {
 
     @Override
     public String toString() {
-        return "ScoredLabel {" +
-                " label = " + quoted(label) +
-                ", score = " + score +
-                " }";
+        return "ScoredLabel {" + " label = " + quoted(label) + ", score = " + score + " }";
     }
 }

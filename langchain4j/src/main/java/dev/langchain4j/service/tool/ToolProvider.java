@@ -1,6 +1,8 @@
 package dev.langchain4j.service.tool;
 
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.invocation.InvocationParameters;
+import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.service.MemoryId;
 
 /**
@@ -14,7 +16,8 @@ public interface ToolProvider {
     /**
      * Provides tools for the request to the LLM.
      *
-     * @param request {@link ToolProviderRequest} contains {@link UserMessage} and chat memory id (see {@link MemoryId}).
+     * @param request the {@link ToolProviderRequest}, contains {@link UserMessage},
+     *                {@link ChatMemory} ID (see {@link MemoryId}) and {@link InvocationParameters}.
      * @return {@link ToolProviderResult} contains tools that should be included in the request to the LLM.
      */
     ToolProviderResult provideTools(ToolProviderRequest request);

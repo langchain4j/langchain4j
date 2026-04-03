@@ -32,8 +32,8 @@ thus capturing deeper semantic meanings.
 - Hybrid. Combining multiple search methods (e.g., full-text + vector) usually improves the effectiveness of the search.
 
 Currently, this page focuses mostly on vector search.
-Full-text and hybrid search are currently supported only by Azure AI Search integration,
-see `AzureAiSearchContentRetriever` for more details.
+Full-text and hybrid search are currently supported only by Azure AI Search integration and Elasticsearch,
+see `AzureAiSearchContentRetriever` and `ElasticsearchContentRetriever` for more details.
 We plan to expand the RAG toolbox to include full-text and hybrid search in the near future.
 
 
@@ -57,7 +57,7 @@ However, in some scenarios, end users may want to upload their custom documents 
 In this case, indexing should be performed online and be a part of the main application.
 
 Here is a simplified diagram of the indexing stage:
-[![](/img/rag-ingestion.png)](/tutorials/rag)
+![](/img/rag-ingestion.png)
 
 
 ### Retrieval
@@ -70,7 +70,7 @@ and performing a similarity search in the embedding store.
 Relevant segments (pieces of the original documents) are then injected into the prompt and sent to the LLM.
 
 Here is a simplified diagram of the retrieval stage:
-[![](/img/rag-retrieval.png)](/tutorials/rag)
+![](/img/rag-retrieval.png)
 
 
 ## RAG Flavours in LangChain4j
@@ -91,7 +91,7 @@ Just point to your document(s), and LangChain4j will do its magic.
 If you need a customizable RAG, skip to the [next section](/tutorials/rag#core-rag-apis).
 
 If you are using Quarkus, there is an even easier way to do Easy RAG.
-Please read [Quarkus documentation](https://docs.quarkiverse.io/quarkus-langchain4j/dev/easy-rag.html).
+Please read [Quarkus documentation](https://docs.quarkiverse.io/quarkus-langchain4j/dev/rag-easy-rag.html).
 
 :::note
 The quality of such "Easy RAG" will, of course, be lower than that of a tailored RAG setup.
@@ -105,7 +105,7 @@ adjusting and customizing more and more aspects.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>1.0.1-beta6</version>
+    <version>1.12.1-beta21</version>
 </dependency>
 ```
 
@@ -146,7 +146,7 @@ in glob: `glob:**.pdf`.
 
 3. Now, we need to preprocess and store documents in a specialized embedding store, also known as vector database.
 This is necessary to quickly find relevant pieces of information when a user asks a question.
-We can use any of our 15+ [supported embedding stores](/integrations/embedding-stores),
+We can use any of our 30+ [supported embedding stores](/integrations/embedding-stores),
 but for simplicity, we will use an in-memory one:
 ```java
 InMemoryEmbeddingStore<TextSegment> embeddingStore = new InMemoryEmbeddingStore<>();
@@ -171,8 +171,8 @@ Therefore, we can easily load it into memory and run it in the same process usin
 
 Yes, that's right, you can convert text into embeddings entirely offline, without any external services,
 in the same JVM process.
-LangChain4j offers 5 popular embedding models
-[out-of-the-box](https://github.com/langchain4j/langchain4j-embeddings).
+LangChain4j offers some popular embedding models
+[out-of-the-box](/integrations/embedding-models/in-process).
 :::
 
 3. All `TextSegment`-`Embedding` pairs are stored in the `EmbeddingStore`.
@@ -271,6 +271,7 @@ You can create a `Document` from a `String`, but a simpler method is to use one 
 - `GitHubDocumentLoader` from the `langchain4j-document-loader-github` module
 - `GoogleCloudStorageDocumentLoader` from the `langchain4j-document-loader-google-cloud-storage` module
 - `SeleniumDocumentLoader` from the `langchain4j-document-loader-selenium` module
+- `PlaywrightDocumentLoader` from the `langchain4j-document-loader-playwright` module
 - `TencentCosDocumentLoader` from the `langchain4j-document-loader-tencent-cos` module
 
 
@@ -283,6 +284,10 @@ To parse each of these formats, there's a `DocumentParser` interface with severa
 (e.g. DOC, DOCX, PPT, PPTX, XLS, XLSX, etc.)
 - `ApacheTikaDocumentParser` from the `langchain4j-document-parser-apache-tika` module,
 which can automatically detect and parse almost all existing file formats
+- `MarkdownDocumentParser` from the `langchain4j-document-parser-markdown` module,
+  which can parse files in markdown format
+- `YamlDocumentParser` from the `langchain4j-document-parser-yaml` module,
+  which can parse files in yaml format
 
 Here is an example of how to load one or multiple `Document`s from the file system:
 ```java
@@ -323,6 +328,87 @@ which can extract desired text content and metadata entries from the raw HTML.
 
 Since there is no one-size-fits-all solution, we recommend implementing your own `DocumentTransformer`,
 tailored to your unique data.
+
+
+### Graph Transformer
+
+`GraphTransformer` is an interface that converts unstructured `Document` objects into structured `GraphDocument`s by extracting **semantic graph elements** such as nodes and relationships.
+It is ideal for converting raw text into structured semantic graphs
+
+A `GraphTransformer` transforms raw documents into `GraphDocument`s. These include:
+
+* A set of **nodes** (`GraphNode`) representing entities or concepts in the text.
+* A set of **relationships** (`GraphEdge`) representing how those entities are connected.
+* The original `Document` as the `source`.
+
+The default implementation is `LLMGraphTransformer`, which uses a language model (e.g., OpenAI) to extract graph information from natural language using prompt engineering.
+
+#### Key Benefits
+
+* **Entity and Relationship Extraction**: Identify key concepts and their semantic connections.
+* **Graph Representation**: Output is ready for integration into knowledge graphs or graph databases.
+* **Model-Powered Parsing**: Uses a large language model to infer structure from unstructured text.
+
+#### Maven Dependency
+
+```xml
+<dependency>
+  <groupId>dev.langchain4j</groupId>
+  <artifactId>langchain4j-community-llm-graph-transformer</artifactId>
+  <version>${latest version here}</version>
+</dependency>
+```
+
+#### Example Usage
+
+```java
+import dev.langchain4j.data.document.Document;
+import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.community.data.document.graph.GraphDocument;
+import dev.langchain4j.community.data.document.graph.GraphNode;
+import dev.langchain4j.community.data.document.graph.GraphEdge;
+import dev.langchain4j.community.data.document.transformer.graph.GraphTransformer;
+import dev.langchain4j.community.data.document.transformer.graph.llm.LLMGraphTransformer;
+
+import java.time.Duration;
+import java.util.Set;
+
+public class GraphTransformerExample {
+    public static void main(String[] args) {
+        // Create a GraphTransformer backed by an LLM
+        GraphTransformer transformer = new LLMGraphTransformer(
+            OpenAiChatModel.builder()
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .timeout(Duration.ofSeconds(60))
+                .build()
+        );
+
+        // Input document
+        Document document = Document.from("Barack Obama was born in Hawaii and served as the 44th President of the United States.");
+
+        // Transform the document
+        GraphDocument graphDocument = transformer.transform(document);
+
+        // Access nodes and relationships
+        Set<GraphNode> nodes = graphDocument.nodes();
+        Set<GraphEdge> relationships = graphDocument.relationships();
+
+        nodes.forEach(System.out::println);
+        relationships.forEach(System.out::println);
+    }
+}
+```
+
+#### Output Example
+
+```
+GraphNode(name=Barack Obama, type=Person)
+GraphNode(name=Hawaii, type=Location)
+GraphEdge(from=Barack Obama, predicate=was born in, to=Hawaii)
+
+GraphEdge(from=Barack Obama, predicate=served as, to=President of the United States)
+```
+
 
 
 ### Text Segment
@@ -614,7 +700,7 @@ Advanced RAG can be implemented with LangChain4j with the following core compone
 - `ContentInjector`
 
 The following diagram shows how these components work together:
-[![](/img/advanced-rag.png)](/tutorials/rag)
+![](/img/advanced-rag.png)
 
 The process is as follows:
 1. The user produces a `UserMessage`, which is converted into a `Query`
@@ -664,6 +750,29 @@ of the RAG pipeline, for example:
 - `Metadata.userMessage()` - the original `UserMessage` that should be augmented
 - `Metadata.chatMemoryId()` - the value of a `@MemoryId`-annotated method parameter. More details [here](/tutorials/ai-services/#chat-memory). This can be used to identify the user and apply access restrictions or filters during the retrieval.
 - `Metadata.chatMemory()` - all previous `ChatMessage`s. This can help to understand the context in which the `Query` was asked.
+- `Metadata.invocationParameters()` - contains `InvocationParameters` that can be specified when invoking AI Service:
+
+```java
+interface Assistant {
+    String chat(@UserMessage String userMessage, InvocationParameters parameters);
+}
+
+InvocationParameters parameters = InvocationParameters.from(Map.of("userId", "12345"));
+String response = assistant.chat("Hello", parameters);
+```
+
+`InvocationParameters` can also be accessed within other AI Service components, such as:
+- [`@Tool`-annotated method](/tutorials/tools#invocationparameters)
+- [`ToolProvider`](/tutorials/tools#specifying-tools-dynamically): inside the `ToolProviderRequest`
+- [`ToolArgumentsErrorHandler`](/tutorials/tools#handling-tool-arguments-errors)
+  and [`ToolExecutionErrorHandler`](https://docs.langchain4j.dev/tutorials/tools#handling-tool-execution-errors):
+  inside the `ToolErrorContext`
+
+Parameters are stored in a mutable, thread safe `Map`.
+
+Data can be passed between AI Service components inside the `InvocationParameters`
+(for example, from one RAG component to another or from a RAG component to a tool)
+during a single invocation of the AI Service.
 
 ### Query Transformer
 `QueryTransformer` transforms the given `Query` into one or multiple `Query`s.
@@ -744,10 +853,17 @@ ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
     .filter(metadataKey("userId").isEqualTo("12345"))
     // filter can also be specified dynamically depending on the query
     .dynamicFilter(query -> {
-        String userId = getUserId(query.metadata().chatMemoryId());
+        String userId = query.metadata().invocationParameters().get("userId");
         return metadataKey("userId").isEqualTo(userId);
     })
     .build();
+
+interface Assistant {
+    String chat(@UserMessage String userMessage, InvocationParameters parameters);
+}
+
+InvocationParameters parameters = InvocationParameters.from(Map.of("userId", "12345"));
+String response = assistant.chat("Hello", parameters);
 ```
 
 #### Web Search Content Retriever
@@ -792,6 +908,13 @@ Please refer to the `AzureAiSearchContentRetriever` Javadoc for more information
 It converts natural language queries into Neo4j Cypher queries
 and retrieves relevant information by running these queries in Neo4j.
 It can be found in the `langchain4j-community-neo4j-retriever` module.
+
+#### Elasticsearch Content Retriever
+`ElasticsearchContentRetriever` is an integration with
+[Elasticsearch](https://www.elastic.co/elasticsearch).
+It supports full-text, vector, and hybrid search.
+It can be found in the `langchain4j-elasticsearch` module.
+Please refer to the `ElasticsearchContentRetriever` Javadoc for more information.
 
 ### Query Router
 `QueryRouter` is responsible for routing `Query` to the appropriate `ContentRetriever`(s).
@@ -907,6 +1030,62 @@ assistant.chat("How to do Easy RAG with LangChain4j?")
     .onCompleteResponse(...)
     .onError(...)
     .start();
+```
+
+## Controlling what is stored in chat memory
+
+When using a `RetrievalAugmentor` with [AI Services](/tutorials/ai-services),
+you can control whether the **augmented** user message (with retrieved `Content` injected)
+or the **original** user message is stored in chat memory.
+
+This behavior is configured using the `storeRetrievedContentInChatMemory` option
+on the `AiServices` builder.
+
+### Configuration
+
+- `true` (default)  
+  Stores the **augmented** `UserMessage` (original query plus retrieved content)
+  in chat memory.  
+  The same augmented message is also sent to the LLM.
+
+- `false`  
+  Stores only the **original** `UserMessage` (without retrieved content)
+  in chat memory.  
+  The augmented message is still sent to the LLM during inference.
+
+Storing only the original user message can be useful when you want to keep
+chat history concise and aligned with the user’s actual input,
+while still providing the LLM with retrieved context for answer generation.
+
+### Example
+
+```java
+interface Assistant {
+
+    String chat(String userMessage);
+}
+
+ChatModel chatModel = OpenAiChatModel.builder()
+    .apiKey(System.getenv("OPENAI_API_KEY"))
+    .modelName(GPT_4_O_MINI)
+    .build();
+
+MessageWindowChatMemory chatMemory =
+    MessageWindowChatMemory.withMaxMessages(10);
+
+RetrievalAugmentor retrievalAugmentor =
+    DefaultRetrievalAugmentor.builder()
+        .contentRetriever(
+            EmbeddingStoreContentRetriever.from(embeddingStore, embeddingModel))
+        .build();
+
+Assistant assistant = AiServices.builder(Assistant.class)
+    .chatModel(chatModel)
+    .chatMemory(chatMemory)
+    .retrievalAugmentor(retrievalAugmentor)
+    // Store only the original user message in chat memory
+    .storeRetrievedContentInChatMemory(false)
+    .build();
 ```
 
 

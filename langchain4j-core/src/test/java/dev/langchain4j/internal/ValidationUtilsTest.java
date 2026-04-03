@@ -3,6 +3,7 @@ package dev.langchain4j.internal;
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 import static dev.langchain4j.internal.ValidationUtils.ensureEq;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNegative;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -52,6 +53,27 @@ class ValidationUtilsTest implements WithAssertions {
     }
 
     @Test
+    void ensure_not_empty_string() {
+        {
+            String str = " abc  ";
+            assertThat(ValidationUtils.ensureNotEmpty(str, "test")).isSameAs(str);
+        }
+
+        {
+            String str = "";
+            assertThatExceptionOfType(IllegalArgumentException.class)
+                    .isThrownBy(() -> ValidationUtils.ensureNotEmpty(str, "test"))
+                    .withMessageContaining("test cannot be null or empty");
+        }
+
+        {
+            assertThatExceptionOfType(IllegalArgumentException.class)
+                    .isThrownBy(() -> ValidationUtils.ensureNotEmpty((String) null, "test"))
+                    .withMessageContaining("test cannot be null or empty");
+        }
+    }
+
+    @Test
     void ensure_not_empty_collection() {
         {
             List<Object> list = new ArrayList<>();
@@ -85,6 +107,14 @@ class ValidationUtilsTest implements WithAssertions {
             assertThatExceptionOfType(IllegalArgumentException.class)
                     .isThrownBy(() -> ValidationUtils.ensureNotEmpty(array, "test"))
                     .withMessageContaining("test cannot be null or empty");
+        }
+
+        {
+            Object[] array = {};
+            assertThatExceptionOfType(IllegalArgumentException.class)
+                    .isThrownBy(() ->
+                            ValidationUtils.ensureNotEmpty(array, "%s", "Parameterized type has no type arguments."))
+                    .withMessageContaining("Parameterized type has no type arguments.");
         }
 
         {
@@ -149,6 +179,21 @@ class ValidationUtilsTest implements WithAssertions {
                     .isThrownBy(() -> ValidationUtils.ensureTrue(false, "test"))
                     .withMessageContaining("test");
         }
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, 1, Integer.MAX_VALUE})
+    void should_not_throw_when_positive(Integer i) {
+        ensureNotNegative(i, "integer");
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(ints = {Integer.MIN_VALUE, -1})
+    void should_throw_when_negative(Integer i) {
+        assertThatThrownBy(() -> ensureNotNegative(i, "integer"))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("integer must not be negative, but is: " + i);
     }
 
     @ParameterizedTest

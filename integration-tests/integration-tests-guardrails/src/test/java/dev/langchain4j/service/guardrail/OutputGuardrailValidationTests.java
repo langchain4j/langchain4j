@@ -8,6 +8,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailException;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.UserMessage;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -58,6 +59,18 @@ class OutputGuardrailValidationTests extends BaseGuardrailTests {
         assertThat(fatal.spy()).isOne();
     }
 
+    @Test
+    void noRetries() {
+        var retry = SingletonClassInstanceFactory.getInstance(RetryingGuardrail.class);
+        var model = new MyChatModel();
+        assertThatExceptionOfType(OutputGuardrailException.class)
+                .isThrownBy(() -> MyAiService.create(model).noRetry("4"))
+                .withMessageContaining(
+                        "Output validation failed. The guardrails have reached the maximum number of retries.");
+        assertThat(model.spy()).isEqualTo(1);
+        assertThat(retry.spy()).isEqualTo(1);
+    }
+
     public interface MyAiService {
         @UserMessage("Say Hi!")
         @OutputGuardrails(OKGuardrail.class)
@@ -76,11 +89,19 @@ class OutputGuardrailValidationTests extends BaseGuardrailTests {
         String retryButFail(@MemoryId String mem);
 
         @UserMessage("Say Hi!")
+        @OutputGuardrails(value = RetryingGuardrail.class, maxRetries = 0)
+        String noRetry(@MemoryId String mem);
+
+        @UserMessage("Say Hi!")
         @OutputGuardrails(KOFatalGuardrail.class)
         String fatal(@MemoryId String mem);
 
         static MyAiService create() {
-            return createAiService(MyAiService.class, builder -> builder.chatModel(new MyChatModel()));
+            return create(new MyChatModel());
+        }
+
+        static MyAiService create(ChatModel chatModel) {
+            return createAiService(MyAiService.class, builder -> builder.chatModel(chatModel));
         }
     }
 

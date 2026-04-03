@@ -1,11 +1,11 @@
 package dev.langchain4j.model.azure;
 
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
@@ -73,6 +73,7 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
@@ -96,6 +97,7 @@ class InternalAzureOpenAiHelper {
             Object credential,
             Duration timeout,
             Integer maxRetries,
+            RetryOptions retryOptions,
             HttpClientProvider httpClientProvider,
             ProxyOptions proxyOptions,
             boolean logRequestsAndResponses,
@@ -107,6 +109,7 @@ class InternalAzureOpenAiHelper {
                 credential,
                 timeout,
                 maxRetries,
+                retryOptions,
                 httpClientProvider,
                 proxyOptions,
                 logRequestsAndResponses,
@@ -121,6 +124,7 @@ class InternalAzureOpenAiHelper {
             Object credential,
             Duration timeout,
             Integer maxRetries,
+            RetryOptions retryOptions,
             HttpClientProvider httpClientProvider,
             ProxyOptions proxyOptions,
             boolean logRequestsAndResponses,
@@ -132,6 +136,7 @@ class InternalAzureOpenAiHelper {
                 credential,
                 timeout,
                 maxRetries,
+                retryOptions,
                 httpClientProvider,
                 proxyOptions,
                 logRequestsAndResponses,
@@ -146,6 +151,7 @@ class InternalAzureOpenAiHelper {
             Object credential,
             Duration timeout,
             Integer maxRetries,
+            RetryOptions retryOptions,
             HttpClientProvider httpClientProvider,
             ProxyOptions proxyOptions,
             boolean logRequestsAndResponses,
@@ -177,10 +183,7 @@ class InternalAzureOpenAiHelper {
             httpLogOptions.setLogLevel(HttpLogDetailLevel.BODY_AND_HEADERS);
         }
 
-        maxRetries = getOrDefault(maxRetries, 2);
-        ExponentialBackoffOptions exponentialBackoffOptions = new ExponentialBackoffOptions();
-        exponentialBackoffOptions.setMaxRetries(maxRetries);
-        RetryOptions retryOptions = new RetryOptions(exponentialBackoffOptions);
+        retryOptions = resolveRetryOptions(maxRetries, retryOptions);
 
         OpenAIClientBuilder openAIClientBuilder = new OpenAIClientBuilder()
                 .endpoint(ensureNotBlank(endpoint, "endpoint"))
@@ -201,6 +204,16 @@ class InternalAzureOpenAiHelper {
         }
 
         return openAIClientBuilder;
+    }
+
+    static RetryOptions resolveRetryOptions(Integer maxRetries, RetryOptions retryOptions) {
+        if (retryOptions == null) {
+            maxRetries = getOrDefault(maxRetries, 2);
+            ExponentialBackoffOptions exponentialBackoffOptions = new ExponentialBackoffOptions();
+            exponentialBackoffOptions.setMaxRetries(maxRetries);
+            return new RetryOptions(exponentialBackoffOptions);
+        }
+        return retryOptions;
     }
 
     private static OpenAIClientBuilder authenticate(TokenCredential tokenCredential) {
@@ -243,12 +256,8 @@ class InternalAzureOpenAiHelper {
                                 String text = ((TextContent) content).text();
                                 return new ChatMessageTextContentItem(text);
                             } else if (content instanceof ImageContent imageContent) {
-                                if (imageContent.image().url() == null) {
-                                    throw new UnsupportedFeatureException("Image URL is not present. "
-                                            + "Base64 encoded images are not supported at the moment.");
-                                }
-                                ChatMessageImageUrl imageUrl = new ChatMessageImageUrl(
-                                        imageContent.image().url().toString());
+                                String imageUrlString = toImageUrl(imageContent.image());
+                                ChatMessageImageUrl imageUrl = new ChatMessageImageUrl(imageUrlString);
                                 return new ChatMessageImageContentItem(imageUrl);
                             } else {
                                 throw new IllegalArgumentException("Unsupported content type: " + content.type());
@@ -275,6 +284,13 @@ class InternalAzureOpenAiHelper {
         return null;
     }
 
+    private static String toImageUrl(Image image) {
+        if (image.url() != null) {
+            return image.url().toString();
+        }
+        return String.format("data:%s;base64,%s", image.mimeType(), image.base64Data());
+    }
+
     private static List<ChatCompletionsToolCall> toolExecutionRequestsFrom(ChatMessage message) {
         if (message instanceof AiMessage aiMessage) {
             if (aiMessage.hasToolExecutionRequests()) {
@@ -288,8 +304,7 @@ class InternalAzureOpenAiHelper {
         return null;
     }
 
-    static List<ChatCompletionsToolDefinition> toToolDefinitions(
-            Collection<ToolSpecification> toolSpecifications) {
+    static List<ChatCompletionsToolDefinition> toToolDefinitions(Collection<ToolSpecification> toolSpecifications) {
         return toolSpecifications.stream()
                 .map(InternalAzureOpenAiHelper::toToolDefinition)
                 .collect(toList());
@@ -304,10 +319,12 @@ class InternalAzureOpenAiHelper {
     }
 
     static ChatCompletionsToolSelection toToolChoice(ToolChoice toolChoice) {
-        ChatCompletionsToolSelectionPreset preset = switch (toolChoice) {
-            case AUTO -> ChatCompletionsToolSelectionPreset.AUTO;
-            case REQUIRED -> ChatCompletionsToolSelectionPreset.REQUIRED;
-        };
+        ChatCompletionsToolSelectionPreset preset =
+                switch (toolChoice) {
+                    case AUTO -> ChatCompletionsToolSelectionPreset.AUTO;
+                    case REQUIRED -> ChatCompletionsToolSelectionPreset.REQUIRED;
+                    case NONE -> ChatCompletionsToolSelectionPreset.NONE;
+                };
         return new ChatCompletionsToolSelection(preset);
     }
 
@@ -439,9 +456,10 @@ class InternalAzureOpenAiHelper {
         if (jsonSchema == null) {
             return new ChatCompletionsJsonResponseFormat();
         } else {
-            if (!(jsonSchema.rootElement() instanceof JsonObjectSchema)) {
+            if (!(jsonSchema.rootElement() instanceof JsonObjectSchema
+                    || jsonSchema.rootElement() instanceof JsonRawSchema)) {
                 throw new IllegalArgumentException(
-                        "For Azure OpenAI, the root element of the JSON Schema must be a JsonObjectSchema, but it was: "
+                        "For Azure OpenAI, the root element of the JSON Schema must be either a JsonObjectSchema or a JsonRawSchema, but it was: "
                                 + jsonSchema.rootElement().getClass());
             }
             ChatCompletionsJsonSchemaResponseFormatJsonSchema schema =
@@ -459,4 +477,3 @@ class InternalAzureOpenAiHelper {
         }
     }
 }
-

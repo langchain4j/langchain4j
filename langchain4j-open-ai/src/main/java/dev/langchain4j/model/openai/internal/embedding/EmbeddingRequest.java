@@ -1,5 +1,8 @@
 package dev.langchain4j.model.openai.internal.embedding;
 
+import static java.util.Arrays.asList;
+import static java.util.Collections.unmodifiableList;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -7,12 +10,10 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 
 import java.util.List;
 import java.util.Objects;
-
-import static java.util.Arrays.asList;
-import static java.util.Collections.unmodifiableList;
 
 @JsonDeserialize(builder = EmbeddingRequest.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -21,18 +22,25 @@ public final class EmbeddingRequest {
 
     @JsonProperty
     private final String model;
+
     @JsonProperty
     private final List<String> input;
+
     @JsonProperty
     private final Integer dimensions;
+
     @JsonProperty
     private final String user;
+
+    @JsonProperty
+    private final String encodingFormat;
 
     public EmbeddingRequest(Builder builder) {
         this.model = builder.model;
         this.input = builder.input;
         this.dimensions = builder.dimensions;
         this.user = builder.user;
+        this.encodingFormat = builder.encodingFormat;
     }
 
     public String model() {
@@ -51,37 +59,47 @@ public final class EmbeddingRequest {
         return user;
     }
 
-    @Override
-    public boolean equals(Object another) {
-        if (this == another) return true;
-        return another instanceof EmbeddingRequest
-                && equalTo((EmbeddingRequest) another);
+    public String encodingFormat() {
+        return encodingFormat;
     }
 
+    @Override
+    @JacocoIgnoreCoverageGenerated
+    public boolean equals(Object another) {
+        if (this == another) return true;
+        return another instanceof EmbeddingRequest && equalTo((EmbeddingRequest) another);
+    }
+
+    @JacocoIgnoreCoverageGenerated
     private boolean equalTo(EmbeddingRequest another) {
         return Objects.equals(model, another.model)
                 && Objects.equals(input, another.input)
                 && Objects.equals(dimensions, another.dimensions)
-                && Objects.equals(user, another.user);
+                && Objects.equals(user, another.user)
+                && Objects.equals(encodingFormat, another.encodingFormat);
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         int h = 5381;
         h += (h << 5) + Objects.hashCode(model);
         h += (h << 5) + Objects.hashCode(input);
         h += (h << 5) + Objects.hashCode(dimensions);
         h += (h << 5) + Objects.hashCode(user);
+        h += (h << 5) + Objects.hashCode(encodingFormat);
         return h;
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public String toString() {
         return "EmbeddingRequest{"
                 + "model=" + model
                 + ", input=" + input
                 + ", dimensions=" + dimensions
                 + ", user=" + user
+                + ", encodingFormat=" + encodingFormat
                 + "}";
     }
 
@@ -98,6 +116,7 @@ public final class EmbeddingRequest {
         private List<String> input;
         private Integer dimensions;
         private String user;
+        private String encodingFormat;
 
         public Builder model(String model) {
             this.model = model;
@@ -122,6 +141,11 @@ public final class EmbeddingRequest {
 
         public Builder user(String user) {
             this.user = user;
+            return this;
+        }
+
+        public Builder encodingFormat(String encodingFormat) {
+            this.encodingFormat = encodingFormat;
             return this;
         }
 

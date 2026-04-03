@@ -124,7 +124,7 @@ class LambdaStreamingResponseHandlerTest implements WithAssertions {
 
     @Test
     @Timeout(value = 5, unit = TimeUnit.SECONDS)
-    void testOnPartialResponseBlockingWithError() throws InterruptedException {
+    void onPartialResponseBlockingWithError() throws InterruptedException {
         // given
         List<Object> tokens = new ArrayList<>();
         tokens.add("Never ");
@@ -152,7 +152,7 @@ class LambdaStreamingResponseHandlerTest implements WithAssertions {
 
     @Test
     @Timeout(value = 5, unit = TimeUnit.SECONDS)
-    void testOnPartialResponseAndErrorBlockingWithError() throws InterruptedException {
+    void onPartialResponseAndErrorBlockingWithError() throws InterruptedException {
         // given
         List<Object> tokens = new ArrayList<>();
         tokens.add("Never ");
@@ -180,7 +180,7 @@ class LambdaStreamingResponseHandlerTest implements WithAssertions {
     }
 
     @Test
-    void testOnPartialResponseBlockingWithInterruption() {
+    void onPartialResponseBlockingWithInterruption() {
         // given
         List<Object> tokens = new ArrayList<>();
         // No completion signal - this will hang without interruption

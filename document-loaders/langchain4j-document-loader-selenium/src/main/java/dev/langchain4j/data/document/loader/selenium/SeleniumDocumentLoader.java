@@ -4,6 +4,7 @@ import static java.util.Objects.requireNonNull;
 
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
+import dev.langchain4j.data.document.Metadata;
 import java.io.ByteArrayInputStream;
 import java.time.Duration;
 import java.util.Objects;
@@ -50,30 +51,74 @@ public class SeleniumDocumentLoader implements AutoCloseable {
     }
 
     /**
-     * Loads a document from the specified URL.
+     * Loads a document from the specified URL and parses its content using the given {@link DocumentParser}.
+     * <p>
+     * This method uses the configured {@link WebDriver} to navigate to the provided URL, and retrieves the raw page content.
+     * The content is then passed to the provided {@link DocumentParser} for parsing, and the resulting
+     * {@link Document} is returned with the URL added to its metadata.
+     * </p>
      *
-     * @param url            The URL of the file. Must not be null.
-     * @param documentParser The parser to be used for parsing text from the URL. Must not be null.
-     * @return document
+     * @param url             The URL of the web page to load. Must not be null.
+     * @param documentParser  The parser used to extract structured text from the loaded page content. Must not be null.
+     * @return A {@link Document} containing parsed content and the source URL as metadata.
+     * @throws NullPointerException if the {@code documentParser} is null.
+     * @throws RuntimeException     if an error occurs while loading or retrieving the content from the URL.
      */
     public Document load(String url, DocumentParser documentParser) {
-        requireNonNull(url, "url must not be null");
         requireNonNull(documentParser, "documentParser must not be null");
         logger.info("Loading document from URL: {}", url);
-        String pageContent;
+        String pageContent = pageContent(url);
+        Document parsedDocument = documentParser.parse(new ByteArrayInputStream(pageContent.getBytes()));
+        parsedDocument.metadata().put(Document.URL, url);
+        return parsedDocument;
+    }
+
+    /**
+     * Loads a document from the specified URL and wraps the raw page source as a {@link Document}.
+     * <p>
+     * This method fetches the content of the given URL using the configured {@link WebDriver},
+     * waits until the page is fully loaded and returns a {@link Document} containing the raw HTML
+     * or text content along with the source URL as metadata.
+     * </p>
+     *
+     * @param url The URL to load the document from. Must not be null.
+     * @return A {@link Document} containing the raw page source and the URL as metadata.
+     * @throws RuntimeException if the page fails to load or an error occurs during retrieval.
+     */
+    public Document load(String url) {
+        String pageContent = pageContent(url);
+        return Document.from(pageContent, Metadata.from(Document.URL, url));
+    }
+
+    /**
+     * Retrieves the full page source of the given URL using Selenium.
+     * <p>
+     * This method navigates the {@link WebDriver} to the specified URL, waits for the page
+     * to be fully loaded, and then returns the page content as a string.
+     * </p>
+     *
+     * @param url The URL to load. Must not be null.
+     * @return The full HTML or text content of the loaded page.
+     * @throws RuntimeException if an error occurs while loading the page or retrieving the content.
+     */
+    public String pageContent(String url) {
+        requireNonNull(url, "url must not be null");
+
         try {
+            logger.info("Navigating to URL: {}", url);
             webDriver.get(url);
+
+            logger.debug("Waiting for page to load: {}", url);
             WebDriverWait wait = new WebDriverWait(webDriver, timeout);
+
             logger.debug("Waiting webpage fully loaded: {}", url);
             wait.until(pageReadyCondition);
-            pageContent = webDriver.getPageSource();
+
+            return webDriver.getPageSource();
         } catch (Exception e) {
             logger.error("Failed to load document from URL: {}", url, e);
             throw new RuntimeException("Failed to load document from URL: " + url, e);
         }
-        Document parsedDocument = documentParser.parse(new ByteArrayInputStream(pageContent.getBytes()));
-        parsedDocument.metadata().put(Document.URL, url);
-        return parsedDocument;
     }
 
     /**
@@ -81,13 +126,16 @@ public class SeleniumDocumentLoader implements AutoCloseable {
      */
     @Override
     public void close() {
+        logger.debug("Attempting to close WebDriver...");
         if (webDriver != null) {
             try {
                 webDriver.quit();
                 logger.info("WebDriver closed successfully.");
             } catch (Exception e) {
-                logger.warn("Error closing WebDriver", e);
+                logger.warn("Failed to close WebDriver. Resources may not be fully released.", e);
             }
+        } else {
+            logger.debug("WebDriver was already null. No action taken.");
         }
     }
 

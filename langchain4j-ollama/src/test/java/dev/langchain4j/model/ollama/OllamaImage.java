@@ -18,6 +18,7 @@ public class OllamaImage {
     public static final String LLAMA_3_1 = "llama3.1";
     public static final String LLAMA_3_2 = "llama3.2";
     public static final String LLAMA_3_2_VISION = "llama3.2-vision";
+    public static final String QWEN3_06B = "qwen3:0.6b";
 
     public static final String ALL_MINILM_MODEL = "all-minilm";
 

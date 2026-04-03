@@ -1,35 +1,29 @@
 package dev.langchain4j.model.azure.common;
 
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
+
+import dev.langchain4j.model.azure.AzureModelBuilders;
 import dev.langchain4j.model.azure.AzureOpenAiChatModel;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceWithJsonSchemaIT;
-import org.junit.jupiter.api.AfterEach;
-
 import java.util.List;
 import java.util.Set;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
-import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
-
+@EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
 class AzureOpenAiAiServiceWithJsonSchemaIT extends AbstractAiServiceWithJsonSchemaIT {
 
-    AzureOpenAiChatModel model = AzureOpenAiChatModel.builder()
-            .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-            .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-            .deploymentName("gpt-4o-mini")
+    AzureOpenAiChatModel model = AzureModelBuilders.chatModelBuilder()
             .supportedCapabilities(Set.of(RESPONSE_FORMAT_JSON_SCHEMA))
             .strictJsonSchema(false)
             .temperature(0.0)
-            .logRequestsAndResponses(true)
             .build();
 
-    AzureOpenAiChatModel modelWithStrictJsonSchema = AzureOpenAiChatModel.builder()
-            .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-            .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-            .deploymentName("gpt-4o-mini")
+    AzureOpenAiChatModel modelWithStrictJsonSchema = AzureModelBuilders.chatModelBuilder()
             .supportedCapabilities(Set.of(RESPONSE_FORMAT_JSON_SCHEMA))
             .strictJsonSchema(true)
             .temperature(0.0)
-            .logRequestsAndResponses(true)
             .build();
 
     @Override

@@ -11,6 +11,7 @@ import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.HttpClientProvider;
 import com.azure.core.http.ProxyOptions;
+import com.azure.core.http.policy.RetryOptions;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.azure.spi.AzureOpenAiImageModelBuilderFactory;
 import dev.langchain4j.model.image.ImageModel;
@@ -64,6 +65,7 @@ public class AzureOpenAiImageModel implements ImageModel {
                         builder.tokenCredential,
                         builder.timeout,
                         builder.maxRetries,
+                        builder.retryOptions,
                         builder.httpClientProvider,
                         builder.proxyOptions,
                         builder.logRequestsAndResponses,
@@ -76,6 +78,7 @@ public class AzureOpenAiImageModel implements ImageModel {
                         builder.keyCredential,
                         builder.timeout,
                         builder.maxRetries,
+                        builder.retryOptions,
                         builder.httpClientProvider,
                         builder.proxyOptions,
                         builder.logRequestsAndResponses,
@@ -88,6 +91,7 @@ public class AzureOpenAiImageModel implements ImageModel {
                         builder.apiKey,
                         builder.timeout,
                         builder.maxRetries,
+                        builder.retryOptions,
                         builder.httpClientProvider,
                         builder.proxyOptions,
                         builder.logRequestsAndResponses,
@@ -102,8 +106,10 @@ public class AzureOpenAiImageModel implements ImageModel {
         this.quality = builder.quality != null ? ImageGenerationQuality.fromString(builder.quality) : null;
         this.size = builder.size != null ? ImageSize.fromString(builder.size) : null;
         this.user = builder.user;
-        this.style = builder.style != null ? ImageGenerationStyle.fromString(builder.style): null;
-        this.responseFormat = builder.responseFormat != null ? ImageGenerationResponseFormat.fromString(builder.responseFormat) : null;
+        this.style = builder.style != null ? ImageGenerationStyle.fromString(builder.style) : null;
+        this.responseFormat = builder.responseFormat != null
+                ? ImageGenerationResponseFormat.fromString(builder.responseFormat)
+                : null;
     }
 
     @Override
@@ -117,8 +123,8 @@ public class AzureOpenAiImageModel implements ImageModel {
                 .setStyle(style)
                 .setResponseFormat(responseFormat);
 
-        ImageGenerations imageGenerations = AzureOpenAiExceptionMapper.INSTANCE.withExceptionMapper(() ->
-                client.getImageGenerations(deploymentName, options));
+        ImageGenerations imageGenerations = AzureOpenAiExceptionMapper.INSTANCE.withExceptionMapper(
+                () -> client.getImageGenerations(deploymentName, options));
 
         Image image = imageFrom(imageGenerations.getData().get(0));
         return Response.from(image);
@@ -147,6 +153,7 @@ public class AzureOpenAiImageModel implements ImageModel {
         private String responseFormat;
         private Duration timeout;
         private Integer maxRetries;
+        private RetryOptions retryOptions;
         private ProxyOptions proxyOptions;
         private boolean logRequestsAndResponses;
         private OpenAIClient openAIClient;
@@ -337,6 +344,11 @@ public class AzureOpenAiImageModel implements ImageModel {
 
         public Builder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public Builder retryOptions(RetryOptions retryOptions) {
+            this.retryOptions = retryOptions;
             return this;
         }
 

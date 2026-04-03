@@ -11,12 +11,12 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageDeserializer;
 import dev.langchain4j.data.message.ChatMessageSerializer;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
-import lombok.NonNull;
-import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.NonNull;
 
 import java.net.InetSocketAddress;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 import static java.util.stream.Collectors.toList;
@@ -28,7 +28,6 @@ import static java.util.stream.Collectors.toList;
  *
  * @see <a href="https://docs.datastax.com/en/astra-serverless/docs/vector-search/overview.html">Astra Vector Store Documentation</a>
  */
-@Slf4j
 public class CassandraChatMemoryStore implements ChatMemoryStore {
 
     /**
@@ -96,6 +95,7 @@ public class CassandraChatMemoryStore implements ChatMemoryStore {
      */
     @Override
     public List<ChatMessage> getMessages(@NonNull Object memoryId) {
+        Objects.requireNonNull(memoryId, "'memoryId' must not be null");
         /*
          * RATIONAL:
          * In the cassandra table the order is explicitly put to DESC with
@@ -117,6 +117,8 @@ public class CassandraChatMemoryStore implements ChatMemoryStore {
      */
     @Override
     public void updateMessages(@NonNull Object memoryId, @NonNull List<ChatMessage> messages) {
+        Objects.requireNonNull(memoryId, "'memoryId' must not be null");
+        Objects.requireNonNull(messages, "'messages' must not be null");
         deleteMessages(memoryId);
         messageTable.upsertPartition(messages.stream()
                 .map(record -> fromChatMessage(getMemoryId(memoryId), record))
@@ -128,6 +130,7 @@ public class CassandraChatMemoryStore implements ChatMemoryStore {
      */
     @Override
     public void deleteMessages(@NonNull Object memoryId) {
+        Objects.requireNonNull(memoryId, "'memoryId' must not be null");
         messageTable.deletePartition(getMemoryId(memoryId));
     }
 
@@ -138,6 +141,7 @@ public class CassandraChatMemoryStore implements ChatMemoryStore {
      * @return chat message
      */
     private ChatMessage toChatMessage(@NonNull ClusteredRecord record) {
+        Objects.requireNonNull(record, "'record' must not be null");
         try {
             return ChatMessageDeserializer.messageFromJson(record.getBody());
         } catch (Exception e) {
@@ -153,6 +157,8 @@ public class CassandraChatMemoryStore implements ChatMemoryStore {
      * @return cassandra row.
      */
     private ClusteredRecord fromChatMessage(@NonNull String memoryId, @NonNull ChatMessage chatMessage) {
+        Objects.requireNonNull(memoryId, "'memoryId' must not be null");
+        Objects.requireNonNull(chatMessage, "'chatMessage' must not be null");
         try {
             ClusteredRecord record = new ClusteredRecord();
             record.setRowId(Uuids.timeBased());

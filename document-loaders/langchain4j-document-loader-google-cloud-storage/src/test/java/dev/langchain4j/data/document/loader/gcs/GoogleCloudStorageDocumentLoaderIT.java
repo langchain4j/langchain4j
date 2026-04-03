@@ -1,14 +1,16 @@
 package dev.langchain4j.data.document.loader.gcs;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 
 import com.google.cloud.storage.StorageException;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.parser.TextDocumentParser;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+@EnabledIfEnvironmentVariable(named = "GCP_PROJECT_ID", matches = ".+")
 public class GoogleCloudStorageDocumentLoaderIT {
 
     public static final String BUCKET_NAME = "genai-java-demos-langchain4j-test-bucket";
@@ -37,16 +39,16 @@ public class GoogleCloudStorageDocumentLoaderIT {
         final String DUMMY_FILE_NAME = "DUMMY_XYZ.txt";
 
         // when
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> gcsLoader.loadDocument(BUCKET_NAME, DUMMY_FILE_NAME, new TextDocumentParser()));
+        IllegalArgumentException exception = assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> gcsLoader.loadDocument(BUCKET_NAME, DUMMY_FILE_NAME, new TextDocumentParser()))
+                .actual();
 
         // then
         assertThat(exception.getMessage()).contains(DUMMY_FILE_NAME);
     }
 
     @Test
-    void should_load_multipe_documents() {
+    void should_load_multiple_documents() {
         // given
         GoogleCloudStorageDocumentLoader gcsLoader = GoogleCloudStorageDocumentLoader.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
@@ -67,8 +69,9 @@ public class GoogleCloudStorageDocumentLoaderIT {
                 .build();
 
         // then
-        StorageException exception = assertThrows(
-                StorageException.class, () -> gcsLoader.loadDocuments("DUMMY_BUCKET", new TextDocumentParser()));
+        StorageException exception = assertThatExceptionOfType(StorageException.class)
+                .isThrownBy(() -> gcsLoader.loadDocuments("DUMMY_BUCKET", new TextDocumentParser()))
+                .actual();
         assertThat(exception.getMessage()).contains("The specified bucket does not exist");
     }
 
