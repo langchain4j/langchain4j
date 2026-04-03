@@ -13,16 +13,27 @@ import java.io.InputStream;
 import java.util.Base64;
 
 /**
- * A document parser that integrates IBM Research's Docling parser into LangChain4j.
+ * A document parser that integrates IBM Research's Docling parser into
+ * LangChain4j.
  *
- * <p>This parser uses the Docling document processing engine to extract text and structure
- * from various document formats including PDF, DOCX, PPTX, and more. It provides advanced
- * capabilities such as OCR, table extraction, and layout analysis.</p>
+ * <p>
+ * This parser uses the Docling document processing engine to extract text and
+ * structure
+ * from various document formats including PDF, DOCX, PPTX, and more. It
+ * provides advanced
+ * capabilities such as OCR, table extraction, and layout analysis.
+ * </p>
  *
- * <p>The parser communicates with a docling-serve instance via REST API, sending documents
- * as Base64-encoded content and receiving parsed markdown output.</p>
+ * <p>
+ * The parser communicates with a docling-serve instance via REST API, sending
+ * documents
+ * as Base64-encoded content and receiving parsed markdown output.
+ * </p>
  *
- * <p>Example usage:</p>
+ * <p>
+ * Example usage:
+ * </p>
+ * 
  * <pre>{@code
  * // Default configuration (localhost:5001, 60 second timeout)
  * DoclingDocumentParser parser = new DoclingDocumentParser();
@@ -48,17 +59,22 @@ public class DoclingDocumentParser implements DocumentParser {
     /**
      * Creates a new DoclingDocumentParser with the default server URL and timeout.
      *
-     * <p>The default URL is {@code http://localhost:5001}, which assumes a local
-     * docling-serve instance is running on the default port. Default timeout is 60 seconds.</p>
+     * <p>
+     * The default URL is {@code http://localhost:5001}, which assumes a local
+     * docling-serve instance is running on the default port. Default timeout is 60
+     * seconds.
+     * </p>
      */
     public DoclingDocumentParser() {
         this("http://localhost:5001", 60);
     }
 
     /**
-     * Creates a new DoclingDocumentParser with a custom server URL and default timeout.
+     * Creates a new DoclingDocumentParser with a custom server URL and default
+     * timeout.
      *
-     * @param doclingServerUrl the URL of the docling-serve instance (e.g., "http://localhost:5001").
+     * @param doclingServerUrl the URL of the docling-serve instance (e.g.,
+     *                         "http://localhost:5001").
      *                         Must not be null or empty.
      * @throws IllegalArgumentException if the server URL is null or empty
      */
@@ -69,10 +85,13 @@ public class DoclingDocumentParser implements DocumentParser {
     /**
      * Creates a new DoclingDocumentParser with a custom server URL and timeout.
      *
-     * @param doclingServerUrl the URL of the docling-serve instance (e.g., "http://localhost:5001").
+     * @param doclingServerUrl the URL of the docling-serve instance (e.g.,
+     *                         "http://localhost:5001").
      *                         Must not be null or empty.
-     * @param timeoutSeconds the timeout in seconds for API requests. Must be positive.
-     * @throws IllegalArgumentException if the server URL is null/empty or timeout is not positive
+     * @param timeoutSeconds   the timeout in seconds for API requests. Must be
+     *                         positive.
+     * @throws IllegalArgumentException if the server URL is null/empty or timeout
+     *                                  is not positive
      */
     public DoclingDocumentParser(String doclingServerUrl, int timeoutSeconds) {
         if (doclingServerUrl == null || doclingServerUrl.isBlank()) {
@@ -89,26 +108,45 @@ public class DoclingDocumentParser implements DocumentParser {
     /**
      * Parses a document from the provided input stream using the Docling parser.
      *
-     * <p>The document is read into memory, encoded as Base64, and sent to the docling-serve
-     * instance for processing. The returned markdown content is wrapped in a LangChain4j
-     * {@link Document} object along with metadata about the parsing process.</p>
+     * <p>
+     * The document is read into memory, encoded as Base64, and sent to the
+     * docling-serve
+     * instance for processing. The returned markdown content is wrapped in a
+     * LangChain4j
+     * {@link Document} object along with metadata about the parsing process.
+     * </p>
      *
-     * <p>Metadata included:</p>
+     * <p>
+     * Metadata included:
+     * </p>
      * <ul>
-     *   <li>{@code docling_processing_time_ms}: Time taken by Docling to process the document</li>
-     *   <li>{@code document_size_bytes}: Original size of the input document</li>
-     *   <li>{@code docling_error_count}: Number of non-fatal errors encountered during parsing</li>
-     *   <li>{@code parser}: Always set to "Docling"</li>
-     *   <li>{@code timeout_seconds}: Configured timeout value</li>
+     * <li>{@code docling_processing_time_ms}: Time taken by Docling to process the
+     * document</li>
+     * <li>{@code document_size_bytes}: Original size of the input document</li>
+     * <li>{@code docling_error_count}: Number of non-fatal errors encountered
+     * during parsing</li>
+     * <li>{@code parser}: Always set to "Docling"</li>
+     * <li>{@code timeout_seconds}: Configured timeout value</li>
      * </ul>
      *
-     * @param inputStream the input stream containing the document to parse. Must not be null or empty.
+     * @param inputStream the input stream containing the document to parse. Must
+     *                    not be null or empty.
      * @return a {@link Document} containing the parsed text and metadata
      * @throws IllegalArgumentException if the input stream is null or empty
-     * @throws RuntimeException if the document cannot be read, the Docling server is unreachable,
-     *                          or parsing fails
+     * @throws RuntimeException         if the document cannot be read, the Docling
+     *                                  server is unreachable,
+     *                                  or parsing fails
      */
     @Override
+    /**
+     * Returns the configured timeout in seconds.
+     * 
+     * @return timeout in seconds
+     */
+    public int getTimeoutSeconds() {
+        return timeoutSeconds;
+    }
+
     public Document parse(InputStream inputStream) {
         if (inputStream == null) {
             throw new IllegalArgumentException("Input stream cannot be null");
@@ -142,8 +180,8 @@ public class DoclingDocumentParser implements DocumentParser {
             if (response.getErrors() != null && !response.getErrors().isEmpty()) {
                 var firstError = response.getErrors().get(0);
                 System.err.println("Warning: Docling reported " + response.getErrors().size() +
-                    " error(s). First: [" + firstError.getComponentType() + "] " +
-                    firstError.getErrorMessage());
+                        " error(s). First: [" + firstError.getComponentType() + "] " +
+                        firstError.getErrorMessage());
             }
 
             // Step 7: Extract the parsed text content
