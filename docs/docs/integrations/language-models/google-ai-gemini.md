@@ -845,7 +845,7 @@ BatchResponse response = batchModel.createBatchInline("My Batch", null, requests
 switch (response) {
     case BatchIncomplete incomplete -> {
         System.out.println("Batch is " + incomplete.state());
-        System.out.println("Batch name: " + incomplete.batchName().value());
+        System.out.println("Batch name: " + incomplete.batchId().value());
     }
     case BatchSuccess success -> {
         System.out.println("Batch completed successfully!");
@@ -889,9 +889,9 @@ BatchResponse initialResponse = batchModel.createBatchInline(
 );
 
 // Extract the batch name for polling
-BatchName batchName = switch (initialResponse) {
-    case BatchIncomplete incomplete -> incomplete.batchName();
-    case BatchSuccess success -> success.batchName();
+BatchName batchId = switch (initialResponse) {
+    case BatchIncomplete incomplete -> incomplete.batchId();
+    case BatchSuccess success -> success.batchId();
     case BatchError error -> throw new RuntimeException("Batch creation failed");
 };
 
@@ -899,7 +899,7 @@ BatchName batchName = switch (initialResponse) {
 BatchResponse result;
 do {
     Thread.sleep(5000); // Wait 5 seconds between polls
-    result = batchModel.retrieveBatchResults(batchName);
+    result = batchModel.retrieveBatchResults(batchId);
 } while (result instanceof BatchIncomplete);
 
 // Process final result
@@ -926,10 +926,10 @@ if (result instanceof BatchSuccess success) {
 **Cancel a batch job:**
 
 ```java
-BatchName batchName = // ... obtained from createBatchInline
+BatchName batchId = // ... obtained from createBatchInline
 
 try {
-    batchModel.cancelBatchJob(batchName);
+    batchModel.cancelBatchJob(batchId);
     System.out.println("Batch cancelled successfully");
 } catch (HttpException e) {
     System.err.println("Failed to cancel batch: " + e.getMessage());
@@ -939,7 +939,7 @@ try {
 **Delete a batch job:**
 
 ```java
-batchModel.deleteBatchJob(batchName);
+batchModel.deleteBatchJob(batchId);
 System.out.println("Batch deleted successfully");
 ```
 
@@ -1077,9 +1077,9 @@ BatchResponse response = batchModel.createBatchInline(
 );
 
 // Get batch name
-BatchName batchName = switch (response) {
-    case BatchIncomplete incomplete -> incomplete.batchName();
-    case BatchSuccess success -> success.batchName();
+BatchName batchId = switch (response) {
+    case BatchIncomplete incomplete -> incomplete.batchId();
+    case BatchSuccess success -> success.batchId();
     case BatchError error -> throw new RuntimeException("Failed: " + error.message());
 };
 
@@ -1093,7 +1093,7 @@ do {
         throw new RuntimeException("Batch processing timeout");
     }
     Thread.sleep(5000);
-    finalResult = batchModel.retrieveBatchResults(batchName);
+    finalResult = batchModel.retrieveBatchResults(batchId);
     
     if (finalResult instanceof BatchIncomplete incomplete) {
         System.out.println("Status: " + incomplete.state());

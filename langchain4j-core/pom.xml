@@ -159,6 +159,7 @@
                                         <exclude>dev.langchain4j.internal</exclude>
                                         <exclude>dev.langchain4j.invocation</exclude>
                                         <exclude>dev.langchain4j.memory</exclude>
+                                        <exclude>dev.langchain4j.model.batch</exclude>
                                         <exclude>dev.langchain4j.model.chat</exclude>
                                         <exclude>dev.langchain4j.model.chat.listener</exclude>
                                         <exclude>dev.langchain4j.model.chat.request</exclude>
