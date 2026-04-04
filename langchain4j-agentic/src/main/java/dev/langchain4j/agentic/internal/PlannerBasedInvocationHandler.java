@@ -23,6 +23,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -344,6 +346,8 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
         private final DefaultAgenticScope agenticScope;
         private final AgenticScopeRegistry registry;
 
+        private final ReadWriteLock lock = new ReentrantReadWriteLock();
+
         private Action nextAction = null;
 
         private PlannerLoop(Planner planner, DefaultAgenticScope agenticScope, AgenticScopeRegistry registry) {
@@ -352,21 +356,34 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
             this.registry = registry;
         }
 
-        @SuppressWarnings("unchecked")
         public Object loop() {
             Map<String, Object> savedState = agenticScope.readState(executionStateId(), Map.of());
             if (!savedState.isEmpty()) {
                 planner.restoreExecutionState(savedState);
             }
 
-            nextAction = planner.firstAction(new PlanningContext(agenticScope, null));
-            while (nextAction == null || !nextAction.isDone()) {
-                if (nextAction == null) {
-                    Thread.yield();
-                    continue;
+            lock.writeLock().lock();
+            try {
+                nextAction = planner.firstAction(new PlanningContext(agenticScope, null));
+            } finally {
+                lock.writeLock().unlock();
+            }
+            while (true) {
+                List<AgentExecutor> agents;
+                lock.writeLock().lock();
+                try {
+                    if (nextAction == null) {
+                        Thread.yield();
+                        continue;
+                    }
+                    if (nextAction.isDone()) {
+                         break;
+                    }
+                    agents = ((Action.AgentCallAction) nextAction).agentsToCall();
+                    nextAction = null;
+                } finally {
+                    lock.writeLock().unlock();
                 }
-                List<AgentExecutor> agents = ((Action.AgentCallAction) nextAction).agentsToCall();
-                nextAction = null;
                 switch (agents.size()) {
                     case 0 -> Thread.yield();
                     case 1 -> agents.get(0).execute(agenticScope, this);
@@ -402,7 +419,13 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
         }
 
         private Object result() {
-            Object result = output != null ? output.apply(agenticScope) : nextAction.result();
+            Object result;
+            lock.readLock().lock();
+            try {
+                result = output != null ? output.apply(agenticScope) : nextAction.result();
+            } finally {
+                lock.readLock().unlock();
+            }
             if (outputKey != null) {
                 if (result != null) {
                     agenticScope.writeState(outputKey, result);
@@ -416,8 +439,12 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
 
         @Override
         public void onSubagentInvoked(AgentInvocation agentInvocation) {
-            this.nextAction = composeActions(this.nextAction, planner.nextAction(new PlanningContext(agenticScope, agentInvocation)));
-
+            lock.writeLock().lock();
+            try {
+                this.nextAction = composeActions(this.nextAction, planner.nextAction(new PlanningContext(agenticScope, agentInvocation)));
+            } finally {
+                lock.writeLock().unlock();
+            }
             // Save planner execution state after each agent invocation
             Map<String, Object> execState = planner.executionState();
             if (!execState.isEmpty()) {
