@@ -28,4 +28,11 @@ class InternalOllamaHelperTest {
                         .arguments("{\"city\":\"Shanghai\"}")
                         .build());
     }
+
+    @Test
+    void toToolExecutionRequests_handlesEmptyToolCalls() {
+        List<ToolExecutionRequest> result = InternalOllamaHelper.toToolExecutionRequests(List.of());
+
+        assertThat(result).isEmpty();
+    }
 }
