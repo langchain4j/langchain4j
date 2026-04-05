@@ -6,4 +6,5 @@ import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 record GeminiModelsListResponse(
-        @JsonProperty("models") List<GeminiModelInfo> models, @JsonProperty("nextPageToken") String nextPageToken) {}
+        @JsonProperty("models") List<GeminiModelInfo> models,
+        @JsonProperty("nextPageToken") String nextPageToken) {}

@@ -5,7 +5,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record UrlContextMetadata(@JsonProperty("urlMetadata") List<UrlMetadata> urlMetadata) {
+public record UrlContextMetadata(
+        @JsonProperty("urlMetadata") List<UrlMetadata> urlMetadata) {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record UrlMetadata(

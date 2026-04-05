@@ -34,7 +34,8 @@ record GeminiGenerateContentResponse(
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record GeminiUrlContextMetadata(@JsonProperty("urlMetadata") List<GeminiUrlMetadata> urlMetadata) {}
+    record GeminiUrlContextMetadata(
+            @JsonProperty("urlMetadata") List<GeminiUrlMetadata> urlMetadata) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     record GeminiUrlMetadata(

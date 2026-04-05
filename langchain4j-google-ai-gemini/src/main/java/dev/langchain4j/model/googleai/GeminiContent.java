@@ -8,7 +8,9 @@ import java.util.List;
 import java.util.Map;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-record GeminiContent(@JsonProperty("parts") List<GeminiPart> parts, @JsonProperty("role") String role) {
+record GeminiContent(
+        @JsonProperty("parts") List<GeminiPart> parts,
+        @JsonProperty("role") String role) {
 
     GeminiContent {
         parts = mutableCopy(parts);
@@ -124,19 +126,23 @@ record GeminiContent(@JsonProperty("parts") List<GeminiPart> parts, @JsonPropert
 
         @JsonIgnoreProperties(ignoreUnknown = true)
         record GeminiBlob(
-                @JsonProperty("mimeType") String mimeType, @JsonProperty("data") String data) {}
+                @JsonProperty("mimeType") String mimeType,
+                @JsonProperty("data") String data) {}
 
         @JsonIgnoreProperties(ignoreUnknown = true)
         record GeminiFunctionCall(
-                @JsonProperty("name") String name, @JsonProperty("args") Map<String, Object> args) {}
+                @JsonProperty("name") String name,
+                @JsonProperty("args") Map<String, Object> args) {}
 
         @JsonIgnoreProperties(ignoreUnknown = true)
         record GeminiFunctionResponse(
-                @JsonProperty("name") String name, @JsonProperty("response") Map<String, String> response) {}
+                @JsonProperty("name") String name,
+                @JsonProperty("response") Map<String, String> response) {}
 
         @JsonIgnoreProperties(ignoreUnknown = true)
         record GeminiFileData(
-                @JsonProperty("mimeType") String mimeType, @JsonProperty("fileUri") String fileUri) {}
+                @JsonProperty("mimeType") String mimeType,
+                @JsonProperty("fileUri") String fileUri) {}
 
         @JsonIgnoreProperties(ignoreUnknown = true)
         record GeminiExecutableCode(
@@ -161,7 +167,8 @@ record GeminiContent(@JsonProperty("parts") List<GeminiPart> parts, @JsonPropert
 
         @JsonIgnoreProperties(ignoreUnknown = true)
         record GeminiCodeExecutionResult(
-                @JsonProperty("outcome") GeminiOutcome outcome, @JsonProperty("output") String output) {
+                @JsonProperty("outcome") GeminiOutcome outcome,
+                @JsonProperty("output") String output) {
             // TODO how to deal with the non-OK outcomes?
             enum GeminiOutcome {
                 OUTCOME_UNSPECIFIED,

@@ -19,8 +19,8 @@ public final class BatchRequestResponse {
      * Represents a batch operation that is currently pending or in progress.
      */
     public record BatchIncomplete<T>(
-            @JsonProperty("batchName") BatchName batchName, @JsonProperty("state") BatchJobState state)
-            implements BatchResponse<T> {}
+            @JsonProperty("batchName") BatchName batchName,
+            @JsonProperty("state") BatchJobState state) implements BatchResponse<T> {}
 
     /**
      * Represents a successful batch operation.
@@ -49,7 +49,8 @@ public final class BatchRequestResponse {
      * @param responses List of batch responses.
      */
     public record BatchList<T>(
-            @JsonProperty("pageToken") String pageToken, @JsonProperty("responses") List<BatchResponse<T>> responses) {}
+            @JsonProperty("pageToken") String pageToken,
+            @JsonProperty("responses") List<BatchResponse<T>> responses) {}
 
     /**
      * Represents the name of a batch operation.
@@ -123,7 +124,8 @@ public final class BatchRequestResponse {
          * @param metadata Optional. The metadata to be associated with the request.
          */
         record InlinedRequest<REQ>(
-                @JsonProperty("request") REQ request, @JsonProperty("metadata") Map<String, String> metadata) {}
+                @JsonProperty("request") REQ request,
+                @JsonProperty("metadata") Map<String, String> metadata) {}
     }
 
     record BatchCreateFileRequest(@JsonProperty("batch") FileBatch batch) {
@@ -162,7 +164,8 @@ public final class BatchRequestResponse {
          */
         @JsonIgnoreProperties(ignoreUnknown = true)
         record InlinedResponseWrapper<RESP>(
-                @JsonProperty("response") @Nullable RESP response, @JsonProperty("error") @Nullable Status error) {}
+                @JsonProperty("response") @Nullable RESP response,
+                @JsonProperty("error") @Nullable Status error) {}
     }
 
     /**
@@ -211,5 +214,6 @@ public final class BatchRequestResponse {
      * @param request the actual request payload containing the details of the operation
      */
     public record BatchFileRequest<REQ>(
-            @JsonProperty("key") String key, @JsonProperty("request") REQ request) {}
+            @JsonProperty("key") String key,
+            @JsonProperty("request") REQ request) {}
 }

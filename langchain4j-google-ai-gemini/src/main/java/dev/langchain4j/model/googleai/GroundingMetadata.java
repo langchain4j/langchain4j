@@ -72,7 +72,9 @@ public record GroundingMetadata(
             @JsonProperty("retrievedContext") RetrievedContext retrievedContext,
             @JsonProperty("maps") Maps maps) {
         @JsonIgnoreProperties(ignoreUnknown = true)
-        public record Web(@JsonProperty("uri") String uri, @JsonProperty("title") String title) {}
+        public record Web(
+                @JsonProperty("uri") String uri,
+                @JsonProperty("title") String title) {}
 
         @JsonIgnoreProperties(ignoreUnknown = true)
         public record RetrievedContext(
@@ -88,7 +90,8 @@ public record GroundingMetadata(
                 @JsonProperty("placeId") String placeId,
                 @JsonProperty("placeAnswerSources") PlaceAnswerSources placeAnswerSources) {
             @JsonIgnoreProperties(ignoreUnknown = true)
-            public record PlaceAnswerSources(@JsonProperty("reviewSnippets") List<ReviewSnippet> reviewSnippets) {}
+            public record PlaceAnswerSources(
+                    @JsonProperty("reviewSnippets") List<ReviewSnippet> reviewSnippets) {}
 
             @JsonIgnoreProperties(ignoreUnknown = true)
             public record ReviewSnippet(
@@ -113,9 +116,11 @@ public record GroundingMetadata(
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record SearchEntryPoint(
-            @JsonProperty("renderedContent") String renderedContent, @JsonProperty("sdkBlob") String sdkBlob) {}
+            @JsonProperty("renderedContent") String renderedContent,
+            @JsonProperty("sdkBlob") String sdkBlob) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record RetrievalMetadata(
-            @JsonProperty("googleSearchDynamicRetrievalScore") Double googleSearchDynamicRetrievalScore) {}
+            @JsonProperty("googleSearchDynamicRetrievalScore")
+            Double googleSearchDynamicRetrievalScore) {}
 }

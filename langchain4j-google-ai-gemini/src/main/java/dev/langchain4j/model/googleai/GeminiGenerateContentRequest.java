@@ -94,7 +94,8 @@ record GeminiGenerateContentRequest(
         record GeminiGoogleSearchRetrieval() {}
 
         @JsonIgnoreProperties(ignoreUnknown = true)
-        record GeminiGoogleMaps(@JsonProperty("enableWidget") Boolean enableWidget) {}
+        record GeminiGoogleMaps(
+                @JsonProperty("enableWidget") Boolean enableWidget) {}
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
