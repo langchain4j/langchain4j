@@ -22,7 +22,7 @@ import org.junit.jupiter.api.BeforeEach;
  */
 public abstract class AbstractElasticsearchEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
-    static ElasticsearchClientHelper elasticsearchClientHelper = new ElasticsearchClientHelper();
+    static final ElasticsearchClientHelper elasticsearchClientHelper = new ElasticsearchClientHelper();
 
     private EmbeddingStore<TextSegment> embeddingStore;
     String indexName;
@@ -30,7 +30,6 @@ public abstract class AbstractElasticsearchEmbeddingStoreIT extends EmbeddingSto
     @BeforeAll
     static void startServices() throws IOException {
         elasticsearchClientHelper.startServices();
-        assertThat(elasticsearchClientHelper.restClient).isNotNull();
         assertThat(elasticsearchClientHelper.client).isNotNull();
     }
 
@@ -51,7 +50,7 @@ public abstract class AbstractElasticsearchEmbeddingStoreIT extends EmbeddingSto
         optionallyCreateIndex(indexName);
         embeddingStore = ElasticsearchEmbeddingStore.builder()
                 .configuration(withConfiguration())
-                .restClient(elasticsearchClientHelper.restClient)
+                .client(elasticsearchClientHelper.client)
                 .indexName(indexName)
                 .build();
     }

@@ -28,7 +28,7 @@ public class AzureModelBuilders {
                 .apiKey(getAzureOpenaiKey())
                 .deploymentName(DEFAULT_CHAT_MODEL)
                 .temperature(DEFAULT_TEMPERATURE)
-                .maxTokens(DEFAULT_MAX_TOKENS)
+                .maxCompletionTokens(DEFAULT_MAX_TOKENS)
                 .logRequestsAndResponses(true);
     }
 
@@ -39,7 +39,7 @@ public class AzureModelBuilders {
                 .apiKey(getAzureOpenaiKey())
                 .deploymentName(DEFAULT_CHAT_MODEL)
                 .temperature(DEFAULT_TEMPERATURE)
-                .maxTokens(DEFAULT_MAX_TOKENS)
+                .maxCompletionTokens(DEFAULT_MAX_TOKENS)
                 .logRequestsAndResponses(true);
     }
 

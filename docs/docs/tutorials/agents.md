@@ -1104,128 +1104,6 @@ String response = expertChatbot.ask("I broke my leg what should I do");
 
 The `routerAgent` doesn't need to programmatically specify the output key, since it is already defined in its interface through the `typedOutputKey` attribute of the `@Agent` annotation, while the 3 expert agents still need to specify it programmatically, since their interfaces don't define it, so as usual it is possible to use either one of the 2 approaches. Also, it worth to note that, when reading the values from the `AgenticScope`, like in the conditional workflow definition, there is no need to perform any type check or cast, since the typed keys already provide the necessary type information.
 
-## Memory and context engineering
-
-All agents discussed so far are stateless, meaning that they do not maintain any context or memory of previous interactions. However, like for any other AI service, it is possible to provide agents with a `ChatMemory`, allowing them to maintain context across multiple invocations. 
-
-To provide the former `MedicalExpert` with a memory, it is sufficient to add a field annotated with `@MemoryId` to its signature.
-
-```java
-public interface MedicalExpertWithMemory {
-
-    @UserMessage("""
-        You are a medical expert.
-        Analyze the following user request under a medical point of view and provide the best possible answer.
-        The user request is {{request}}.
-        """)
-    @Agent("A medical expert")
-    String medical(@MemoryId String memoryId, @V("request") String request);
-}
-```
-
-and set a memory provider when building the agent:
-
-```java
-MedicalExpertWithMemory medicalExpert = AgenticServices
-        .agentBuilder(MedicalExpertWithMemory.class)
-        .chatModel(BASE_MODEL)
-        .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
-        .outputKey("response")
-        .build();
-```
-
-Generally this is enough for single agents used in isolation, but can be limiting for agents participating in an agentic system. Supposing that also the technical and legal experts have been provided with a memory, and also the `ExpertRouterAgent` has been redefined to have it:
-
-```java
-public interface ExpertRouterAgentWithMemory {
-
-    @Agent
-    String ask(@MemoryId String memoryId, @V("request") String request);
-}
-```
-
-The sequence of these two invocations to this agent
-
-```java
-String response1 = expertRouterAgent.ask("1", "I broke my leg, what should I do?");
-
-String legalResponse1 = expertRouterAgent.ask("1", "Should I sue my neighbor who caused this damage?");
-```
-
-won't give the expected result, because the second question will be routed to the legal expert, which is now invoked for the first time and has no memory of the previous question.
-
-To solve this problem it is necessary to provide the legal expert with the context and what happened before its invocation, and this is another use case where the information automatically stored in the `AgenticScope` can come to help.
-
-In particular the `AgenticScope` keeps track of the sequence of invocations of all agents, and can produce a context concatenating those invocations in a single conversation. This context can be used as it is or if necessary summarized to a shorter version, for instance defining a `ContextSummarizer` agent.
-
-```java
-public interface ContextSummarizer {
-
-    @UserMessage("""
-        Create a very short summary, 2 sentences at most, of the
-        following conversation between an AI agent and a user.
-
-        The user conversation is: '{{it}}'.
-        """)
-    String summarize(String conversation);
-}
-```
-
-Using this agent, the legal expert can be redefined and provided with a context summarization of the previous conversation, so that it can take into account the previous interactions when answering the new question.
-
-```java
-LegalExpertWithMemory legalExpert = AgenticServices
-        .agentBuilder(LegalExpertWithMemory.class)
-        .chatModel(BASE_MODEL)
-        .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
-        .context(agenticScope -> contextSummarizer.summarize(agenticScope.contextAsConversation()))
-        .outputKey("response")
-        .build();
-```
-
-More in general the context provided to an agent can be any function of the `AgenticScope` state. With this setup, the legal expert, when asked if the neighbor should be sued for the damage he caused, will be able to take into account the previous conversation with the medical expert and provide a more informed answer.
-
-Internally the agentic framework provides the additional context to the legal expert by automatically rewriting the user message sent to it, so that it contains the summarized context of the previous conversation, so in this case the actual user message will be something like:
-
-```
-"Considering this context \"The user asked about what to do after breaking their leg, and the AI provided medical advice on immediate actions like immobilizing the leg, applying ice, and seeking medical attention.\"
-You are a legal expert.
-Analyze the following user request under a legal point of view and provide the best possible answer.
-The user request is Should I sue my neighbor who caused this damage?."
-```
-
-The summarized context discussed here as an example of possible context generation for an agent is of general usefulness, so it is possible to define it on an agent in a more convenient way, using the `summarizedContext` method, like in:
-
-```java
-LegalExpertWithMemory legalExpert = AgenticServices
-        .agentBuilder(LegalExpertWithMemory.class)
-        .chatModel(BASE_MODEL)
-        .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
-        .summarizedContext("medical", "technical")
-        .outputKey("response")
-        .build();
-```
-
-By doing so it internally uses the `ContextSummarizer` agent discussed before, executing it with the same chat model of the agent where it has been defined. It is also possible to add to this method a varargs of the names of the agents whose context should be summarized, so that the summarization is done only for those agents, and not for all the ones used in the agentic system.
-
-### AgenticScope registry and persistence
-
-The `AgenticScope` is a transient data structure that is created and used during the execution of an agentic system. There is a single `AgenticScope` per user per agentic system. For stateless executions, when no memory is used, the `AgenticScope` is automatically discarded at the end of the execution, and its state is not persisted anywhere. 
-
-Conversely, when the agentic system uses a memory, the `AgenticScope` is saved in an internal registry. In this case the `AgenticScope` remains in the registry forever to allow users to interact with the agentic system in a stateful and conversational way. For this reason, when a `AgenticScope` with a specific ID is no longer needed, it has to be explicitly evicted from the registry. In order to do so the root agent of the agentic system needs to implement the interface `AgenticScopeAccess` so it is possible to call the `evictAgenticScope` method on it, passing the ID of the `AgenticScope` that has to be removed from the registry.:
-
-```java
-agent.evictAgenticScope(memoryId);
-```
-
-Both the `AgenticScope`s and their registry are purely in memory data structures. This is usually sufficient for simple agentic systems, but in some cases it can be useful to persist the `AgenticScope` state to a more durable storage, like a database or a file system. To achieve this the `langchain4j-agentic` module provides an SPI to plug in a custom persistence layer that is an implementation of the `AgenticScopeStore` interface. It is possible to set this persistence layer either programmatically:
-
-```java
-AgenticScopePersister.setStore(new MyAgenticScopeStore());
-```
-
-or using the standard Java Service Provider interface creating a file named `META-INF/services/dev.langchain4j.agentic.scope.AgenticScopeStore` containing the fully qualified name of the class implementing the `AgenticScopeStore` interface.
-
 ## Pure agentic AI
 
 Up to this point all agents have been wired and combined to create agentic systems using deterministic workflows. However, there are cases where the agentic system needs to be more flexible and adaptive, allowing agents to make decisions on how to proceed based on the context and the results of previous interactions. This is often referred to as "pure agentic AI".
@@ -2097,6 +1975,216 @@ Hi Mario, what is your sign?
 waiting for the user to provide the answer, which will be then used to invoke the `AstrologyAgent` and generate the horoscope.
 
 Since the user may take some time to provide the answer, it is possible, and actually recommended, to configure the `HumanInTheLoop` agent as an asynchronous one. In this way the agents that don't need the user's input can proceed with their execution while the agentic system is waiting for the user to provide the answer.
+
+## Memory and context engineering
+
+All agents discussed so far are stateless, meaning that they do not maintain any context or memory of previous interactions. However, like for any other AI service, it is possible to provide agents with a `ChatMemory`, allowing them to maintain context across multiple invocations.
+
+To provide the former `MedicalExpert` with a memory, it is sufficient to add a field annotated with `@MemoryId` to its signature.
+
+```java
+public interface MedicalExpertWithMemory {
+
+    @UserMessage("""
+        You are a medical expert.
+        Analyze the following user request under a medical point of view and provide the best possible answer.
+        The user request is {{request}}.
+        """)
+    @Agent("A medical expert")
+    String medical(@MemoryId String memoryId, @V("request") String request);
+}
+```
+
+and set a memory provider when building the agent:
+
+```java
+MedicalExpertWithMemory medicalExpert = AgenticServices
+        .agentBuilder(MedicalExpertWithMemory.class)
+        .chatModel(BASE_MODEL)
+        .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
+        .outputKey("response")
+        .build();
+```
+
+Generally this is enough for single agents used in isolation, but can be limiting for agents participating in an agentic system. Supposing that also the technical and legal experts have been provided with a memory, and also the `ExpertRouterAgent` has been redefined to have it:
+
+```java
+public interface ExpertRouterAgentWithMemory {
+
+    @Agent
+    String ask(@MemoryId String memoryId, @V("request") String request);
+}
+```
+
+The sequence of these two invocations to this agent
+
+```java
+String response1 = expertRouterAgent.ask("1", "I broke my leg, what should I do?");
+
+String legalResponse1 = expertRouterAgent.ask("1", "Should I sue my neighbor who caused this damage?");
+```
+
+won't give the expected result, because the second question will be routed to the legal expert, which is now invoked for the first time and has no memory of the previous question.
+
+To solve this problem it is necessary to provide the legal expert with the context and what happened before its invocation, and this is another use case where the information automatically stored in the `AgenticScope` can come to help.
+
+In particular the `AgenticScope` keeps track of the sequence of invocations of all agents, and can produce a context concatenating those invocations in a single conversation. This context can be used as it is or if necessary summarized to a shorter version, for instance defining a `ContextSummarizer` agent.
+
+```java
+public interface ContextSummarizer {
+
+    @UserMessage("""
+        Create a very short summary, 2 sentences at most, of the
+        following conversation between an AI agent and a user.
+
+        The user conversation is: '{{it}}'.
+        """)
+    String summarize(String conversation);
+}
+```
+
+Using this agent, the legal expert can be redefined and provided with a context summarization of the previous conversation, so that it can take into account the previous interactions when answering the new question.
+
+```java
+LegalExpertWithMemory legalExpert = AgenticServices
+        .agentBuilder(LegalExpertWithMemory.class)
+        .chatModel(BASE_MODEL)
+        .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
+        .context(agenticScope -> contextSummarizer.summarize(agenticScope.contextAsConversation()))
+        .outputKey("response")
+        .build();
+```
+
+More in general the context provided to an agent can be any function of the `AgenticScope` state. With this setup, the legal expert, when asked if the neighbor should be sued for the damage he caused, will be able to take into account the previous conversation with the medical expert and provide a more informed answer.
+
+Internally the agentic framework provides the additional context to the legal expert by automatically rewriting the user message sent to it, so that it contains the summarized context of the previous conversation, so in this case the actual user message will be something like:
+
+```
+"Considering this context \"The user asked about what to do after breaking their leg, and the AI provided medical advice on immediate actions like immobilizing the leg, applying ice, and seeking medical attention.\"
+You are a legal expert.
+Analyze the following user request under a legal point of view and provide the best possible answer.
+The user request is Should I sue my neighbor who caused this damage?."
+```
+
+The summarized context discussed here as an example of possible context generation for an agent is of general usefulness, so it is possible to define it on an agent in a more convenient way, using the `summarizedContext` method, like in:
+
+```java
+LegalExpertWithMemory legalExpert = AgenticServices
+        .agentBuilder(LegalExpertWithMemory.class)
+        .chatModel(BASE_MODEL)
+        .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
+        .summarizedContext("medical", "technical")
+        .outputKey("response")
+        .build();
+```
+
+By doing so it internally uses the `ContextSummarizer` agent discussed before, executing it with the same chat model of the agent where it has been defined. It is also possible to add to this method a varargs of the names of the agents whose context should be summarized, so that the summarization is done only for those agents, and not for all the ones used in the agentic system.
+
+### AgenticScope registry and persistence
+
+The `AgenticScope` is a transient data structure that is created and used during the execution of an agentic system. There is a single `AgenticScope` per user per agentic system. For stateless executions, when no memory is used, the `AgenticScope` is automatically discarded at the end of the execution, and its state is not persisted anywhere.
+
+Conversely, when the agentic system uses a memory, the `AgenticScope` is saved in an internal registry. In this case the `AgenticScope` remains in the registry forever to allow users to interact with the agentic system in a stateful and conversational way. For this reason, when a `AgenticScope` with a specific ID is no longer needed, it has to be explicitly evicted from the registry. In order to do so the root agent of the agentic system needs to implement the interface `AgenticScopeAccess` so it is possible to call the `evictAgenticScope` method on it, passing the ID of the `AgenticScope` that has to be removed from the registry.
+
+```java
+agent.evictAgenticScope(memoryId);
+```
+
+Both the `AgenticScope`s and their registry are purely in memory data structures. This is usually sufficient for simple agentic systems, but in some cases it can be useful to persist the `AgenticScope` state to a more durable storage, like a database or a file system. To achieve this the `langchain4j-agentic` module provides an SPI to plug in a custom persistence layer that is an implementation of the `AgenticScopeStore` interface. It is possible to set this persistence layer either programmatically:
+
+```java
+AgenticScopePersister.setStore(new MyAgenticScopeStore());
+```
+
+or using the standard Java Service Provider interface creating a file named `META-INF/services/dev.langchain4j.agentic.scope.AgenticScopeStore` containing the fully qualified name of the class implementing the `AgenticScopeStore` interface.
+
+### AgenticScope and agentic systems recoverability
+
+When an `AgenticScopeStore` is configured, the `langchain4j-agentic` module provides built-in recoverability support that allows agentic systems to resume execution from where they left off after a crash or process restart. This is especially valuable for long-running workflows that include human-in-the-loop steps, where the process may be intentionally stopped and restarted later.
+
+Recoverability is based on two mechanisms working together: **per-step checkpointing** and **planner execution state persistence**.
+
+After each agent invocation, the current `AgenticScope` is automatically checkpointed to the configured store. This means that all intermediate state written by agents (via `writeState`) is durably persisted. Additionally, the execution loop saves the planner's internal position (e.g., which agent in a sequence has been reached) so that on recovery the workflow resumes from the correct step rather than restarting from scratch.
+
+An implementation of the `Planner` interface can optionally participate in this mechanism through two methods:
+
+```java
+// Returns the planner's current internal state for persistence
+default Map<String, Object> executionState() { return Map.of(); }
+
+// Restores internal state from a previously saved map
+default void restoreExecutionState(Map<String, Object> state) { }
+```
+
+For instance, stateful planners like the sequential and the loop ones implement these methods to save and restore their cursor position and iteration counters. Stateless planners (like `ParallelPlanner` or `ConditionalPlanner`) use the default no-op implementations. Custom `Planner` implementations can override these methods to participate in recoverability as well.
+
+To give a practical example of how this works, consider an order processing workflow where a large order must be reviewed by a human before it is fulfilled. The workflow has three steps: validate the order, wait for human approval, and ship the order.
+
+```java
+public interface OrderWorkflow extends AgenticScopeAccess {
+    @Agent
+    String processOrder(@MemoryId String orderId, @V("order") String orderDetails);
+}
+```
+
+The `@MemoryId` annotation is essential — it activates persistent scope, which is required for recoverability. Build the workflow as a sequence of three agents:
+
+```java
+// Step 1: Validate the order and write results to shared state
+AgenticScopeAction validateOrder = AgenticServices.agentAction(scope -> {
+    String order = scope.readState("order", "");
+    scope.writeState("validated_order", "VALIDATED: " + order);
+});
+
+// Step 2: Pause for human approval using PendingResponse
+HumanInTheLoop approvalGate = AgenticServices.humanInTheLoopBuilder()
+        .description("Wait for manager approval on large orders")
+        .outputKey("approval")
+        .responseProvider(scope -> new PendingResponse<>("manager-approval"))
+        .build();
+
+// Step 3: Finalize based on the approval decision
+AgenticScopeAction shipOrder = AgenticServices.agentAction(scope -> {
+    String validated = scope.readState("validated_order", "");
+    String approval = scope.readState("approval", "");
+    scope.writeState("result", "Order " + validated + " — " + approval);
+});
+
+OrderWorkflow workflow = AgenticServices.sequenceBuilder(OrderWorkflow.class)
+        .subAgents(validateOrder, approvalGate, shipOrder)
+        .outputKey("result")
+        .build();
+```
+
+When this workflow runs, it validates the order, then blocks at the `HumanInTheLoop` step waiting for external input. At this point the full scope — including the validated order data, the planner's cursor position (step 2 completed), and the `PendingResponse` — is checkpointed to the store.
+
+The `PendingResponse` class is an implementation of the `DelayedResponse` that can be completed externally without spawning a background thread. Unlike `AsyncResponse`, which immediately starts executing on a thread pool, `PendingResponse` creates an initially incomplete future that must be explicitly completed via its `complete()` method. After serialization and deserialization, a new incomplete future is created, allowing an external system to reconnect and complete the response.
+
+If the process crashes or restarts, the scope can be recovered and the workflow resumed:
+
+```java
+// After restart: load the persisted scope and provide the human response
+AgenticScope recovered = workflow.getAgenticScope("order-12345");
+
+// Replace the PendingResponse with the actual human decision
+recovered.writeState("approval", "APPROVED by manager");
+
+// Re-invoke with the same order ID — the planner resumes from step 3
+String result = workflow.processOrder("order-12345", "1000 widgets");
+// → "Order VALIDATED: 1000 widgets — APPROVED by manager"
+```
+
+The `SequentialPlanner` restores its cursor from the checkpointed state and skips the already-completed steps (validate and approval gate), executing only the final shipping step.
+
+Alternatively, if the process is still running and the workflow is simply waiting for human input, the `PendingResponse` can be completed directly without restarting:
+
+```java
+// Complete the pending response in-flight (e.g., from a REST endpoint)
+AgenticScope scope = workflow.getAgenticScope("order-12345");
+scope.completePendingResponse("manager-approval", "APPROVED by manager");
+```
+
+This unblocks the waiting thread and the workflow continues to the shipping step without any restart.
 
 ## A2A Integration
 

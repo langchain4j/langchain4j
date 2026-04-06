@@ -432,4 +432,57 @@ class ToolSpecificationsTest implements WithAssertions {
         assertThat(schema.required()).containsExactly("arg0", "arg1"); // both required
         assertThat(schema.properties().keySet()).containsExactly("arg0", "arg1");
     }
+
+    @Test
+    void should_fail_when_both_value_and_description_are_set_in_P() throws NoSuchMethodException {
+        class Tools {
+            @Tool
+            public void tool(@P(value = "desc via value", description = "desc via description") String param) {}
+        }
+        Method method = Tools.class.getMethod("tool", String.class);
+
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> ToolSpecifications.toolSpecificationFrom(method))
+                .withMessageContaining("has both 'value' and 'description' set in @P");
+    }
+
+    @Test
+    void should_use_description_when_only_description_is_set_in_P() throws NoSuchMethodException {
+        class Tools {
+            @Tool
+            public void tool(@P(description = "desc via description") String param) {}
+        }
+        Method method = Tools.class.getMethod("tool", String.class);
+        ToolSpecification ts = ToolSpecifications.toolSpecificationFrom(method);
+
+        JsonSchemaElement element = ts.parameters().properties().get("arg0");
+        assertThat(element).isEqualTo(JsonStringSchema.builder().description("desc via description").build());
+    }
+
+    @Test
+    void should_use_value_when_only_value_is_set_in_P() throws NoSuchMethodException {
+        class Tools {
+            @Tool
+            public void tool(@P(value = "desc via value") String param) {}
+        }
+        Method method = Tools.class.getMethod("tool", String.class);
+        ToolSpecification ts = ToolSpecifications.toolSpecificationFrom(method);
+
+        JsonSchemaElement element = ts.parameters().properties().get("arg0");
+        assertThat(element).isEqualTo(JsonStringSchema.builder().description("desc via value").build());
+    }
+
+    @Test
+    void should_have_null_description_when_only_name_is_set_in_P() throws NoSuchMethodException {
+        class Tools {
+            @Tool
+            public void tool(@P(name = "myParam") String param) {}
+        }
+        Method method = Tools.class.getMethod("tool", String.class);
+        ToolSpecification ts = ToolSpecifications.toolSpecificationFrom(method);
+
+        assertThat(ts.parameters().properties()).containsKey("myParam");
+        JsonStringSchema element = (JsonStringSchema) ts.parameters().properties().get("myParam");
+        assertThat(element.description()).isNull();
+    }
 }

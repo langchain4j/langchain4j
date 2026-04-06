@@ -376,8 +376,11 @@ public class ToolService {
                         .attributes(result.attributes())
                         .build();
 
-                ToolExecution toolExecution =
-                        ToolExecution.builder().request(request).result(result).build();
+                ToolExecution toolExecution = ToolExecution.builder()
+                        .request(request)
+                        .result(result)
+                        .invocationContext(invocationContext)
+                        .build();
                 toolExecutions.add(toolExecution);
 
                 fireToolExecutedEvent(invocationContext, request, toolExecution, context.eventListenerRegistrar);
@@ -634,8 +637,10 @@ public class ToolService {
             Consumer<BeforeToolExecution> beforeToolExecution,
             Consumer<ToolExecution> afterToolExecution) {
         if (beforeToolExecution != null) {
-            beforeToolExecution.accept(
-                    BeforeToolExecution.builder().request(toolRequest).build());
+            beforeToolExecution.accept(BeforeToolExecution.builder()
+                    .request(toolRequest)
+                    .invocationContext(invocationContext)
+                    .build());
         }
 
         LocalDateTime startTime = LocalDateTime.now();
@@ -652,6 +657,7 @@ public class ToolService {
                     .result(toolResult)
                     .startTime(startTime)
                     .finishTime(LocalDateTime.now())
+                    .invocationContext(invocationContext)
                     .build());
         }
         return toolResult;

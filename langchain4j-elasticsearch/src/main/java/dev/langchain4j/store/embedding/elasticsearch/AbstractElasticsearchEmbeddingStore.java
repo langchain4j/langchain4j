@@ -62,11 +62,13 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
     /**
      * Initialize using a RestClient
      *
-     * @param configuration         Elasticsearch configuration to use (Knn or Script)
+     * @param configuration         Elasticsearch configuration to use (Knn, Script, FullText or Hybrid)
      * @param restClient            Elasticsearch Rest Client (mandatory)
      * @param indexName             Elasticsearch index name (optional). Default value: "default".
      *                              Index will be created automatically if not exists.
+     * @deprecated Use now {@link #initialize(ElasticsearchConfiguration, ElasticsearchClient, String)}
      */
+    @Deprecated(forRemoval = true)
     protected void initialize(ElasticsearchConfiguration configuration, RestClient restClient, String indexName) {
         JsonpMapper mapper = new JacksonJsonpMapper();
         ElasticsearchTransport transport = new RestClientTransport(restClient, mapper);
@@ -75,6 +77,22 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
         String version = Version.VERSION == null ? "Unknown" : Version.VERSION.toString();
         this.client = new ElasticsearchClient(transport)
                 .withTransportOptions(t -> t.addHeader("user-agent", "langchain4j elastic-java/" + version));
+        this.indexName = ensureNotNull(indexName, "indexName");
+    }
+
+    /**
+     * Initialize using an ElasticsearchClient
+     *
+     * @param configuration         Elasticsearch configuration to use (Knn or Script)
+     * @param client                Elasticsearch Client (mandatory)
+     * @param indexName             Elasticsearch index name (optional). Default value: "default".
+     *                              Index will be created automatically if not exists.
+     */
+    protected void initialize(ElasticsearchConfiguration configuration, ElasticsearchClient client, String indexName) {
+        this.configuration = configuration;
+        String version = Version.VERSION == null ? "Unknown" : Version.VERSION.toString();
+        this.client =
+                client.withTransportOptions(t -> t.addHeader("user-agent", "langchain4j elastic-java/" + version));
         this.indexName = ensureNotNull(indexName, "indexName");
     }
 
@@ -188,8 +206,7 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
             SearchResponse<Document> response = this.configuration.fullTextSearch(client, indexName, textQuery);
             log.trace("found [{}] results", response);
 
-            List<TextSegment> results = toTextList(response);
-            return results;
+            return toTextList(response);
         } catch (ElasticsearchException | IOException e) {
             throw new ElasticsearchRequestFailedException(e);
         }
@@ -352,13 +369,12 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
     private List<TextSegment> toTextList(SearchResponse<Document> response) {
         return response.hits().hits().stream()
                 .map(hit -> Optional.ofNullable(hit.source())
-                        .map(document -> document.getText() == null
-                                ? null
-                                : TextSegment.from(
-                                        document.getText(),
-                                        new Metadata(document.getMetadata())
-                                                .put(ContentMetadata.SCORE.name(), hit.score())
-                                                .put(ContentMetadata.EMBEDDING_ID.name(), hit.id())))
+                        .filter(document -> document.getText() != null)
+                        .map(document -> TextSegment.from(
+                                document.getText(),
+                                new Metadata(document.getMetadata())
+                                        .put(ContentMetadata.SCORE.name(), hit.score())
+                                        .put(ContentMetadata.EMBEDDING_ID.name(), hit.id())))
                         .orElse(null))
                 .collect(toList());
     }
