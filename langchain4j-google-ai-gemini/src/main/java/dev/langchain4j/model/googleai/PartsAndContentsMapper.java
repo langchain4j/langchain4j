@@ -42,6 +42,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 final class PartsAndContentsMapper {
 
@@ -349,7 +350,7 @@ final class PartsAndContentsMapper {
                             return new GeminiContent(
                                     userMessage.contents().stream()
                                             .map(content -> fromContentToGPart(content, mediaResolutionPerPartEnabled))
-                                            .toList(),
+                                            .collect(Collectors.toList()),
                                     GeminiRole.USER.toString());
                         case TOOL_EXECUTION_RESULT:
                             ToolExecutionResultMessage toolResultMessage = (ToolExecutionResultMessage) msg;
@@ -390,7 +391,7 @@ final class PartsAndContentsMapper {
                     }
                 })
                 .filter(Objects::nonNull)
-                .toList();
+                .collect(Collectors.toList());
     }
 
     /**

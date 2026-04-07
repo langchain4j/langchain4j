@@ -8,6 +8,7 @@ import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.invocation.InvocationContext;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
@@ -20,12 +21,14 @@ public class ToolExecution {
     private final ToolExecutionResult result;
     private final LocalDateTime startTime;
     private final LocalDateTime finishTime;
+    private final InvocationContext invocationContext;
 
     private ToolExecution(Builder builder) {
         this.request = ensureNotNull(builder.request, "request");
         this.result = ensureNotNull(builder.result, "result");
         this.startTime = builder.startTime;
         this.finishTime = builder.finishTime;
+        this.invocationContext = ensureNotNull(builder.invocationContext, "invocationContext");
     }
 
     /**
@@ -67,7 +70,6 @@ public class ToolExecution {
      *
      * @return the result of the tool execution.
      * @see #result()
-     * @see #resultContents()
      */
     public Object resultObject() {
         return result.result();
@@ -102,6 +104,13 @@ public class ToolExecution {
             return null;
         }
         return Duration.between(startTime, finishTime);
+    }
+
+    /**
+     * Returns the invocation context of the tool execution.
+     */
+    public InvocationContext invocationContext() {
+        return invocationContext;
     }
 
     @Override
@@ -140,6 +149,7 @@ public class ToolExecution {
         private ToolExecutionResult result;
         private LocalDateTime startTime;
         private LocalDateTime finishTime;
+        private InvocationContext invocationContext;
 
         private Builder() {
         }
@@ -161,6 +171,11 @@ public class ToolExecution {
 
         public Builder finishTime(LocalDateTime finishTime) {
             this.finishTime = finishTime;
+            return this;
+        }
+
+        public Builder invocationContext(InvocationContext invocationContext) {
+            this.invocationContext = invocationContext;
             return this;
         }
 
