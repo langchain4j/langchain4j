@@ -346,7 +346,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
         private final AgenticScopeRegistry registry;
         private final ReentrantLock lock = new ReentrantLock();
 
-        private Action nextAction = null;
+        private volatile Action nextAction = null;
 
         private PlannerLoop(Planner planner, DefaultAgenticScope agenticScope, AgenticScopeRegistry registry) {
             this.planner = planner;
@@ -402,9 +402,9 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
                 throw new RuntimeException(e);
             }
         }
-
         private Object result() {
             Object result = output != null ? output.apply(agenticScope) : nextAction.result();
+
             if (outputKey != null) {
                 if (result != null) {
                     agenticScope.writeState(outputKey, result);
