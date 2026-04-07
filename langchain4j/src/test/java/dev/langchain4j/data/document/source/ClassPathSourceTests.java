@@ -39,8 +39,8 @@ class ClassPathSourceTests {
                 .extracting(ClassPathSource::metadata)
                 .isEqualTo(expectedMetaData);
 
-        assertThat(new String(classPathSource.inputStream().readAllBytes()))
-                .isEqualTo("This is %s\n".formatted(filename));
+        assertThat(new String(classPathSource.inputStream().readAllBytes()).trim())
+                .isEqualTo("This is %s".formatted(filename));
     }
 
     @ParameterizedTest
