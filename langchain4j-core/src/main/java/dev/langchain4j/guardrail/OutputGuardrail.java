@@ -60,7 +60,7 @@ public interface OutputGuardrail extends Guardrail<OutputGuardrailRequest, Outpu
     }
 
     /**
-     * Produces a non-fatal failure
+     * Produces a successful result with specific success text and result object
      *
      * @return The result of a successful output guardrail validation with a specific text.
      *
@@ -86,7 +86,7 @@ public interface OutputGuardrail extends Guardrail<OutputGuardrailRequest, Outpu
     }
 
     /**
-     * Produces a non-fatal failure
+     * Produces a successful result with specific AiMessage and result object
      *
      * @param successfulAiMessage
      *            The AiMessage successful result.
