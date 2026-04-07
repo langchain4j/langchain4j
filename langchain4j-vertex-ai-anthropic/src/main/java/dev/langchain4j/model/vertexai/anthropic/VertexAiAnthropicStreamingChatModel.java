@@ -51,6 +51,7 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
     private final Boolean logResponses;
     private final Boolean enablePromptCaching;
     private final List<ChatModelListener> listeners;
+    private final Integer thinkingBudgetTokens;
 
     public VertexAiAnthropicStreamingChatModel(VertexAiAnthropicStreamingChatModelBuilder builder) {
         this.client = new VertexAiAnthropicClient(
@@ -63,6 +64,7 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
         this.temperature = ValidationUtils.validateTemperature(builder.temperature);
         this.topP = ValidationUtils.validateTopP(builder.topP);
         this.topK = ValidationUtils.validateTopK(builder.topK);
+        this.thinkingBudgetTokens = builder.thinkingBudgetTokens;
         this.stopSequences = copy(builder.stopSequences);
         this.logRequests = getOrDefault(builder.logRequests, false);
         this.logResponses = getOrDefault(builder.logResponses, false);
@@ -129,7 +131,8 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
                 parameters.stopSequences() != null && !parameters.stopSequences().isEmpty()
                         ? parameters.stopSequences()
                         : stopSequences,
-                enablePromptCaching);
+                enablePromptCaching,
+                thinkingBudgetTokens);
     }
 
     private void logRequestIfEnabled(String requestModelName, String parameterModelName, AnthropicRequest anthropicRequest) {
@@ -146,6 +149,7 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
     private StreamingResponseHandler createStreamingResponseHandler(StreamingChatResponseHandler handler) {
         return new StreamingResponseHandler() {
             private final StringBuilder currentText = new StringBuilder();
+            private final StringBuilder currentThinking = new StringBuilder();
             private final List<dev.langchain4j.agent.tool.ToolExecutionRequest> toolCalls = new ArrayList<>();
             private AnthropicResponse fullResponse;
 
@@ -240,7 +244,11 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
 
             private void processStreamingChunk(String jsonChunk, StreamingChatResponseHandler handler) {
                 if (jsonChunk.contains("\"type\":\"content_block_delta\"")) {
-                    handleTextDelta(jsonChunk, handler);
+                    if (jsonChunk.contains("\"type\":\"thinking_delta\"")) {
+                        handleThinkingDelta(jsonChunk);
+                    } else {
+                        handleTextDelta(jsonChunk, handler);
+                    }
                 } else if (jsonChunk.contains("\"type\":\"content_block_start\"")) {
                     handleToolCallStart(jsonChunk);
                 } else if (jsonChunk.contains("\"type\":\"content_block_stop\"")) {
@@ -260,6 +268,14 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
                 }
             }
 
+            private void handleThinkingDelta(String jsonChunk) {
+                String thinkingDelta = extractThinkingDelta(jsonChunk);
+                if (thinkingDelta != null && !thinkingDelta.isEmpty()) {
+                    // Silently accumulate to the StringBuilder we added earlier
+                    currentThinking.append(thinkingDelta);
+                }
+            }
+
             private String extractTextDelta(String jsonChunk) {
                 try {
                     com.fasterxml.jackson.databind.ObjectMapper mapper = 
@@ -275,6 +291,25 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
                     }
                 } catch (Exception e) {
                     logger.warn("Failed to extract text delta from chunk: {}", jsonChunk, e);
+                }
+                return null;
+            }
+
+            private String extractThinkingDelta(String jsonChunk) {
+                try {
+                    com.fasterxml.jackson.databind.ObjectMapper mapper =
+                            new com.fasterxml.jackson.databind.ObjectMapper();
+                    com.fasterxml.jackson.databind.JsonNode rootNode = mapper.readTree(jsonChunk);
+
+                    com.fasterxml.jackson.databind.JsonNode deltaNode = rootNode.get("delta");
+                    if (deltaNode != null && !deltaNode.isNull()) {
+                        com.fasterxml.jackson.databind.JsonNode thinkingNode = deltaNode.get("thinking");
+                        if (thinkingNode != null && !thinkingNode.isNull() && thinkingNode.isTextual()) {
+                            return thinkingNode.asText();
+                        }
+                    }
+                } catch (Exception e) {
+                    logger.warn("Failed to extract thinking delta from chunk: {}", jsonChunk, e);
                 }
                 return null;
             }
@@ -323,14 +358,18 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
             }
 
             private void sendFallbackResponse(StreamingChatResponseHandler handler) {
-                AiMessage.Builder aiMessageBuilder = AiMessage.builder().text(currentText.toString());
+                String text = !currentThinking.isEmpty()
+                        ? "<thinking>\n" + currentThinking + "\n</thinking>\n\n" + currentText
+                        : currentText.toString();
+
+                AiMessage.Builder aiMessageBuilder = AiMessage.builder().text(text);
                 if (!toolCalls.isEmpty()) {
                     aiMessageBuilder.toolExecutionRequests(toolCalls);
                 }
 
                 ChatResponse fallbackResponse = ChatResponse.builder()
                         .aiMessage(aiMessageBuilder.build())
-                        .tokenUsage(new TokenUsage(currentText.length() / 4, currentText.length() / 4))
+                        .tokenUsage(new TokenUsage((currentText.length() + currentThinking.length()) / 4, (currentText.length() + currentThinking.length()) / 4))
                         .finishReason(dev.langchain4j.model.output.FinishReason.STOP)
                         .build();
 
@@ -374,6 +413,7 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
         private Boolean enablePromptCaching;
         private List<ChatModelListener> listeners;
         private GoogleCredentials credentials;
+        private Integer thinkingBudgetTokens;
 
         public VertexAiAnthropicStreamingChatModelBuilder project(String project) {
             this.project = project;
@@ -452,6 +492,11 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
          */
         public VertexAiAnthropicStreamingChatModelBuilder credentials(GoogleCredentials credentials) {
             this.credentials = credentials;
+            return this;
+        }
+
+        public VertexAiAnthropicStreamingChatModelBuilder thinkingBudgetTokens(Integer thinkingBudgetTokens) {
+            this.thinkingBudgetTokens = thinkingBudgetTokens;
             return this;
         }
 
