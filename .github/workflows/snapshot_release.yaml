@@ -35,8 +35,8 @@ jobs:
 
       - name: Trigger SNAPSHOT release for langchain4j-spring repo
         if: ${{ github.event_name == 'repository_dispatch' }}
-        uses: peter-evans/repository-dispatch@v4
-        with:
-          token: ${{ secrets.GH_RELEASE_AUTOMATION }}
-          repository: langchain4j/langchain4j-spring
-          event-type: trigger-snapshot-release
+        env:
+          GH_TOKEN: ${{ secrets.GH_RELEASE_AUTOMATION }}
+        run: |
+          gh api repos/langchain4j/langchain4j-spring/dispatches \
+            -f event_type=trigger-snapshot-release
