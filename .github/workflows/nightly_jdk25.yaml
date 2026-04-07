@@ -70,7 +70,7 @@ jobs:
 
       - name: Setup JBang
         # Required for MCP module
-        uses: jbangdev/setup-jbang@main
+        uses: jbangdev/setup-jbang@2b1b465a7b75f4222b81426f23a01e013aa7b95c # v0.1.1
         continue-on-error: true
 
       - name: Build with JDK 25
