@@ -13,6 +13,7 @@ import dev.langchain4j.agentic.Agents.FoodExpert;
 import dev.langchain4j.agentic.Agents.LegalExpert;
 import dev.langchain4j.agentic.Agents.MedicalExpert;
 import dev.langchain4j.agentic.Agents.MovieExpert;
+import dev.langchain4j.agentic.Agents.OptionalAudienceEditor;
 import dev.langchain4j.agentic.Agents.RequestCategory;
 import dev.langchain4j.agentic.Agents.StyleEditor;
 import dev.langchain4j.agentic.Agents.StyleScorer;
@@ -111,6 +112,25 @@ public class DeclarativeAgentIT {
 
         String story = storyCreator.write("dragons and wizards", "fantasy", "young adults");
         assertThat(story).isNotBlank();
+    }
+
+    public interface StoryCreatorWithOptionalAudience {
+
+        @SequenceAgent(
+                outputKey = "story",
+                subAgents = {CreativeWriter.class, OptionalAudienceEditor.class, StyleEditor.class})
+        String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
+    }
+
+    @Test
+    void declarative_optional_sequence_tests() {
+        StoryCreatorWithOptionalAudience storyCreator = AgenticServices.createAgenticSystem(StoryCreatorWithOptionalAudience.class, baseModel());
+
+        String story = storyCreator.write("dragons and wizards", "fantasy", null);
+        assertThat(story).isNotBlank();
+
+        assertThat(assertThrows(MissingArgumentException.class, () -> storyCreator.write("dragons and wizards", null, "young adults")))
+                .hasMessageContaining("style");
     }
 
     public interface PlannerBasedStoryCreator {

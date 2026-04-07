@@ -71,6 +71,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     String description;
     String outputKey;
     boolean async;
+    boolean optional;
 
     private final Map<String, Object> defaultValues = new HashMap<>();
 
@@ -129,6 +130,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         this.outputKey = AgentUtil.outputKey(agent.outputKey(), agent.typedOutputKey());
 
         this.async = agent.async();
+        this.optional = agent.optional();
         if (agent.summarizedContext() != null && agent.summarizedContext().length > 0) {
             this.contextProvidingAgents = agent.summarizedContext();
         }
@@ -416,6 +418,11 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
     public B async(boolean async) {
         this.async = async;
+        return (B) this;
+    }
+
+    public B optional(boolean optional) {
+        this.optional = optional;
         return (B) this;
     }
 
