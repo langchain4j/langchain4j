@@ -366,6 +366,11 @@ class OpenAiResponsesClient {
 
             return items;
         } else if (msg instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
+            if (!toolExecutionResultMessage.hasSingleText()) {
+                throw new UnsupportedFeatureException(
+                        "OpenAI Responses API does not support non-text content in tool results. "
+                                + "Only text content is supported in function_call_output.");
+            }
             var outputEntry = new HashMap<String, Object>();
             outputEntry.put(FIELD_TYPE, TYPE_FUNCTION_CALL_OUTPUT);
             outputEntry.put(FIELD_CALL_ID, toolExecutionResultMessage.id());

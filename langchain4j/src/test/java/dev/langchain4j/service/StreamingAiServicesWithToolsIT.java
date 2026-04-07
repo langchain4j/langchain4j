@@ -29,6 +29,7 @@ import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -1654,6 +1655,66 @@ class StreamingAiServicesWithToolsIT {
         ), any());
 
         verifyNoMoreInteractionsFor(spyModel);
+    }
+
+    @Test
+    void should_send_ImageContent_to_LLM_when_tool_returns_Image() throws Exception {
+
+        // given
+        class ToolReturningImage {
+
+            @Tool("Takes a photo")
+            Image takePhoto() {
+                return Image.builder()
+                        .base64Data("iVBOR")
+                        .mimeType("image/png")
+                        .build();
+            }
+        }
+
+        ToolReturningImage tools = spy(new ToolReturningImage());
+
+        StreamingChatModel streamingModel = spy(StreamingChatModelMock.thatAlwaysStreams(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("takePhoto")
+                        .arguments("{}")
+                        .build()),
+                AiMessage.from("I see a cat")
+        ));
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .streamingChatModel(streamingModel)
+                .tools(tools)
+                .build();
+
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
+
+        // when
+        assistant.chat("Take a photo")
+                .onCompleteResponse(futureResponse::complete)
+                .onError(futureResponse::completeExceptionally)
+                .start();
+        ChatResponse response = futureResponse.get(30, SECONDS);
+
+        // then
+        assertThat(response.aiMessage().text()).contains("cat");
+        verify(tools).takePhoto();
+
+        verify(streamingModel, times(2)).chat(argThat((ChatRequest request) -> {
+            if (request.messages().size() < 3) {
+                return true; // first call
+            }
+            // second call should have ToolExecutionResultMessage with ImageContent
+            ToolExecutionResultMessage toolResult = request.messages().stream()
+                    .filter(ToolExecutionResultMessage.class::isInstance)
+                    .map(ToolExecutionResultMessage.class::cast)
+                    .findFirst()
+                    .orElse(null);
+            return toolResult != null
+                    && toolResult.contents().size() == 1
+                    && toolResult.contents().get(0) instanceof dev.langchain4j.data.message.ImageContent;
+        }), any());
     }
 
     // TODO all other tests from sync version
