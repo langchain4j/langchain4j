@@ -1,18 +1,19 @@
 package dev.langchain4j.service.tool;
 
-import static dev.langchain4j.internal.Utils.copy;
-
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.ChatMemory;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
+
+import static dev.langchain4j.internal.Utils.copy;
 
 /**
  * Represents the result of a tool execution.
@@ -21,9 +22,10 @@ import java.util.function.Supplier;
  * <ul>
  *   <li>{@link Builder#resultText(String)} — a text result, stored internally as a single {@link TextContent}.</li>
  *   <li>{@link Builder#resultTextSupplier(Supplier)} — a lazily computed text result.
- *       The supplier is invoked on first access to {@link #resultContents()} and the result is cached.</li>
- *   <li>{@link Builder#resultContents(List)} — a multimodal result containing
- *       any combination of {@link Content} elements (e.g. {@link TextContent}, {@link ImageContent}).</li>
+ *       The supplier is invoked on first access to {@link #resultContents()} or {@link #resultText()}
+ *       and the result is cached.</li>
+ *   <li>{@link Builder#resultContents(List)} — a result containing any combination of
+ *   {@link Content} elements (e.g. {@link TextContent}, {@link ImageContent}).</li>
  * </ul>
  *
  * <p>Regardless of which builder method was used, the canonical accessor is {@link #resultContents()},
@@ -44,11 +46,26 @@ public class ToolExecutionResult {
         this.isError = builder.isError;
         this.result = builder.result;
 
-        boolean hasResultContents = builder.resultContents != null;
         boolean hasResultText = builder.resultText != null;
         boolean hasResultTextSupplier = builder.resultTextSupplier != null;
+        boolean hasResultContents = builder.resultContents != null && !builder.resultContents.isEmpty();
+        validate(hasResultText, hasResultTextSupplier, hasResultContents);
+        if (hasResultText) {
+            this.resultContents = new AtomicReference<>(List.of(TextContent.from(builder.resultText)));
+            this.resultTextSupplier = null;
+        } else if (hasResultTextSupplier) {
+            this.resultContents = new AtomicReference<>();
+            this.resultTextSupplier = builder.resultTextSupplier;
+        } else {
+            this.resultContents = new AtomicReference<>(copy(builder.resultContents));
+            this.resultTextSupplier = null;
+        }
 
-        int setCount = (hasResultContents ? 1 : 0) + (hasResultText ? 1 : 0) + (hasResultTextSupplier ? 1 : 0);
+        this.attributes = copy(builder.attributes);
+    }
+
+    private static void validate(boolean hasResultText, boolean hasResultTextSupplier, boolean hasResultContents) {
+        int setCount = (hasResultText ? 1 : 0) + (hasResultTextSupplier ? 1 : 0) + (hasResultContents ? 1 : 0);
         if (setCount == 0) {
             throw new IllegalArgumentException(
                     "One of resultText, resultTextSupplier, or resultContents must be provided");
@@ -57,19 +74,6 @@ public class ToolExecutionResult {
             throw new IllegalArgumentException(
                     "resultText, resultTextSupplier, and resultContents are mutually exclusive");
         }
-
-        if (hasResultContents) {
-            this.resultContents = new AtomicReference<>(copy(builder.resultContents));
-            this.resultTextSupplier = null;
-        } else if (hasResultText) {
-            this.resultContents = new AtomicReference<>(List.of(TextContent.from(builder.resultText)));
-            this.resultTextSupplier = null;
-        } else {
-            this.resultContents = new AtomicReference<>();
-            this.resultTextSupplier = builder.resultTextSupplier;
-        }
-
-        this.attributes = copy(builder.attributes);
     }
 
     /**
@@ -242,7 +246,7 @@ public class ToolExecutionResult {
         }
 
         /**
-         * Sets the multimodal contents of the tool execution result.
+         * Sets the contents of the tool execution result.
          * Can contain any combination of {@link Content} elements
          * (e.g. {@link TextContent}, {@code ImageContent}).
          * Mutually exclusive with {@link #resultText(String)} and {@link #resultTextSupplier(Supplier)}.

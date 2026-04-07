@@ -41,10 +41,10 @@ public class ToolExecutionResultMessage implements ChatMessage {
         boolean hasContents = builder.contents != null && !builder.contents.isEmpty();
         if (hasText && hasContents) {
             throw new IllegalArgumentException("Either text or contents must be provided, not both");
-        } else if (hasContents) {
-            this.contents = copy(builder.contents);
         } else if (hasText) {
             this.contents = List.of(TextContent.from(builder.text));
+        } else if (hasContents) {
+            this.contents = copy(builder.contents);
         } else {
             throw new IllegalArgumentException("Either text or contents must be provided");
         }

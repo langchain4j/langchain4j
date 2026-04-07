@@ -23,15 +23,15 @@ public class DefaultToolExecutedEvent extends AbstractAiServiceEvent implements 
         super(builder);
         this.request = ensureNotNull(builder.request(), "request");
 
-        boolean hasResultContents = builder.resultContents() != null;
         boolean hasResultText = builder.resultText() != null;
+        boolean hasResultContents = builder.resultContents() != null && !builder.resultContents().isEmpty();
 
-        if (hasResultContents && hasResultText) {
+        if (hasResultText && hasResultContents) {
             throw new IllegalArgumentException("resultText and resultContents are mutually exclusive");
-        } else if (hasResultContents) {
-            this.resultContents = copy(builder.resultContents());
         } else if (hasResultText) {
             this.resultContents = List.of(TextContent.from(builder.resultText()));
+        } else if (hasResultContents) {
+            this.resultContents = copy(builder.resultContents());
         } else {
             throw new IllegalArgumentException("Either resultText or resultContents must be provided");
         }
