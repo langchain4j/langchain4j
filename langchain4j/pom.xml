@@ -11,8 +11,12 @@
 
     <artifactId>langchain4j</artifactId>
     <version>1.12.2</version>
+    <packaging>pom</packaging>
     <name>LangChain4j</name>
     <description>Build LLM-powered applications in Java: chatbots, agents, RAG, and much more</description>
+    <modules>
+        <module>untitled</module>
+    </modules>
 
     <properties>
         <opennlp-tools.version>2.5.4</opennlp-tools.version>

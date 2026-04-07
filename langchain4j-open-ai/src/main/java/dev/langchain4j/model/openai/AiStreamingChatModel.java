@@ -8,6 +8,7 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
+import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
@@ -20,6 +21,7 @@ import dev.langchain4j.model.openai.spi.AiStreamingChatModelBuilderFactory;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -38,6 +40,10 @@ public class AiStreamingChatModel implements AiStreamChatModel {
     private final OpenAiChatRequestParameters defaultRequestParameters;
     private final Boolean strictJsonSchema;
     private final Boolean strictTools;
+    private final boolean returnThinking;
+    private final boolean sendThinking;
+    private final String thinkingFieldName;
+    private final boolean accumulateToolCallId;
     private final List<ChatModelListener> listeners;
 
     public AiStreamingChatModel(AiStreamingChatModelBuilder builder) {
@@ -92,10 +98,14 @@ public class AiStreamingChatModel implements AiStreamChatModel {
                 .metadata(getOrDefault(builder.metadata, openAiParameters.metadata()))
                 .serviceTier(getOrDefault(builder.serviceTier, openAiParameters.serviceTier()))
                 .reasoningEffort(openAiParameters.reasoningEffort())
-                .modelSpecificParameters(getOrDefault(builder.modelSpecificParameters, openAiParameters.modelSpecificParameters()))
+                .customParameters(getOrDefault(builder.customParameters, openAiParameters.customParameters()))
                 .build();
         this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
         this.strictTools = getOrDefault(builder.strictTools, false);
+        this.returnThinking = getOrDefault(builder.returnThinking, false);
+        this.sendThinking = getOrDefault(builder.sendThinking, false);
+        this.thinkingFieldName = getOrDefault(builder.thinkingFieldName, "reasoning_content");
+        this.accumulateToolCallId = getOrDefault(builder.accumulateToolCallId, true);
         this.listeners = copy(builder.listeners);
     }
 
@@ -199,7 +209,7 @@ public class AiStreamingChatModel implements AiStreamChatModel {
         private Double presencePenalty;
         private Double frequencyPenalty;
         private Map<String, Integer> logitBias;
-        private String responseFormat;
+        private ResponseFormat responseFormat;
         private Boolean strictJsonSchema;
         private Integer seed;
         private String user;
@@ -208,12 +218,19 @@ public class AiStreamingChatModel implements AiStreamChatModel {
         private Boolean store;
         private Map<String, String> metadata;
         private String serviceTier;
+        private String reasoningEffort;
+        private Boolean returnThinking;
+        private Boolean sendThinking;
+        private String thinkingFieldName;
+        private Boolean accumulateToolCallId;
         private Duration timeout;
         private Boolean logRequests;
         private Boolean logResponses;
-        private Map<String, String> customHeaders;
+        private Logger logger;
+        private Supplier<Map<String, String>> customHeadersSupplier;
+        private Map<String, String> customQueryParams;
+        private Map<String, Object> customParameters;
         private List<ChatModelListener> listeners;
-        private Map<String, Object> modelSpecificParameters;
 
         public AiStreamingChatModelBuilder() {
             // This is public so it can be extended
@@ -365,20 +382,12 @@ public class AiStreamingChatModel implements AiStreamChatModel {
             return this;
         }
 
-        public AiStreamingChatModelBuilder customHeaders(Map<String, String> customHeaders) {
-            this.customHeaders = customHeaders;
-            return this;
-        }
 
         public AiStreamingChatModelBuilder listeners(List<ChatModelListener> listeners) {
             this.listeners = listeners;
             return this;
         }
 
-        public AiStreamingChatModelBuilder modelSpecificParameters(Map<String, Object> modelSpecificParameters) {
-            this.modelSpecificParameters = modelSpecificParameters;
-            return this;
-        }
 
         public AiStreamingChatModel build() {
             return new AiStreamingChatModel(this);
