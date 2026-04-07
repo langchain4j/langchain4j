@@ -512,6 +512,49 @@ ExpertRouterAgent expertRouterAgent = AgenticServices
 String response = expertRouterAgent.ask("I broke my leg what should I do");
 ```
 
+## Optional agents
+
+In some cases a sub-agent in a workflow may not be required to execute if its input arguments are not available in the `AgenticScope`. By default, when an agent cannot find one of its required arguments, the entire agentic system fails with a `MissingArgumentException`. However, it is possible to mark an agent as optional, so that its execution is silently skipped when any of its arguments is missing, instead of making the whole workflow fail.
+
+This can be done by using the `optional` method of the agent builder. For example, considering the sequential workflow defined above, it is possible to make the `AudienceEditor` agent optional, so that the story is still generated and style-edited even when no audience is provided in the input.
+
+```java
+CreativeWriter creativeWriter = AgenticServices
+        .agentBuilder(CreativeWriter.class)
+        .chatModel(BASE_MODEL)
+        .outputKey("story")
+        .build();
+
+AudienceEditor audienceEditor = AgenticServices
+        .agentBuilder(AudienceEditor.class)
+        .chatModel(BASE_MODEL)
+        .optional(true)
+        .outputKey("story")
+        .build();
+
+StyleEditor styleEditor = AgenticServices
+        .agentBuilder(StyleEditor.class)
+        .chatModel(BASE_MODEL)
+        .outputKey("story")
+        .build();
+
+UntypedAgent novelCreator = AgenticServices
+        .sequenceBuilder()
+        .subAgents(creativeWriter, audienceEditor, styleEditor)
+        .outputKey("story")
+        .build();
+
+// No "audience" key is provided, so the audienceEditor will be skipped
+Map<String, Object> input = Map.of(
+        "topic", "dragons and wizards",
+        "style", "fantasy"
+);
+
+String story = (String) novelCreator.invoke(input);
+```
+
+Here the `audienceEditor` agent is configured as optional. Since the input map does not contain the "audience" key required by the `AudienceEditor`, its invocation is skipped and the workflow proceeds directly with the `StyleEditor`. The same agent can also be marked as optional declaratively using the `@Agent` annotation attribute `@Agent(optional = true)`.
+
 ## Asynchronous agents
 
 By default, all agents invocations are performed in the same thread that invoked the root agent of the agentic system, and therefore they are synchronous, meaning that the execution of the agentic system waits for the completion of each agent before proceeding to the next one. However, in many cases this is not necessary, and it could be useful to invoke an agent in an asynchronous way, allowing the execution of the agentic system to proceed without waiting for the completion of that agent.

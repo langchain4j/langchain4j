@@ -264,6 +264,11 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
     }
 
     @Override
+    public boolean optional() {
+        return builder.optional;
+    }
+
+    @Override
     public List<AgentArgument> arguments() {
         return builder.arguments;
     }
