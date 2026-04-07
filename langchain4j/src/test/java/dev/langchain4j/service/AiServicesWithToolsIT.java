@@ -29,6 +29,7 @@ import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -1818,5 +1819,156 @@ class AiServicesWithToolsIT {
         ));
 
         verifyNoMoreInteractionsFor(spyChatModel);
+    }
+
+    @Test
+    void should_send_ImageContent_to_LLM_when_tool_with_Object_return_type_returns_Image() {
+
+        // given
+        class ToolReturningObjectThatIsImage {
+
+            @Tool("Takes a photo")
+            Object takePhoto() {
+                return Image.builder()
+                        .base64Data("iVBOR")
+                        .mimeType("image/png")
+                        .build();
+            }
+        }
+
+        ToolReturningObjectThatIsImage tools = spy(new ToolReturningObjectThatIsImage());
+
+        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("takePhoto")
+                        .arguments("{}")
+                        .build()),
+                AiMessage.from("I see a cat")
+        ));
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .tools(tools)
+                .build();
+
+        // when
+        assistant.chat("Take a photo");
+
+        // then
+        verify(tools).takePhoto();
+
+        verify(chatModel, times(2)).chat(argThat((ChatRequest request) -> {
+            if (request.messages().size() < 3) {
+                return true; // first call
+            }
+            // second call should have ToolExecutionResultMessage with ImageContent
+            ToolExecutionResultMessage toolResult = request.messages().stream()
+                    .filter(ToolExecutionResultMessage.class::isInstance)
+                    .map(ToolExecutionResultMessage.class::cast)
+                    .findFirst()
+                    .orElse(null);
+            return toolResult != null
+                    && toolResult.contents().size() == 1
+                    && toolResult.contents().get(0) instanceof dev.langchain4j.data.message.ImageContent;
+        }));
+    }
+
+    @Test
+    void should_send_text_to_LLM_when_tool_with_Image_return_type_returns_null() {
+
+        // given
+        class ToolReturningNullImage {
+
+            @Tool("Takes a photo")
+            Image takePhoto() {
+                return null;
+            }
+        }
+
+        ToolReturningNullImage tools = spy(new ToolReturningNullImage());
+
+        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("takePhoto")
+                        .arguments("{}")
+                        .build()),
+                AiMessage.from("No photo available")
+        ));
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .tools(tools)
+                .build();
+
+        // when
+        assistant.chat("Take a photo");
+
+        // then
+        verify(tools).takePhoto();
+
+        verify(chatModel, times(2)).chat(argThat((ChatRequest request) -> {
+            if (request.messages().size() < 3) {
+                return true; // first call
+            }
+            // second call should have ToolExecutionResultMessage with text (null serialized)
+            ToolExecutionResultMessage toolResult = request.messages().stream()
+                    .filter(ToolExecutionResultMessage.class::isInstance)
+                    .map(ToolExecutionResultMessage.class::cast)
+                    .findFirst()
+                    .orElse(null);
+            return toolResult != null && toolResult.text().equals("null");
+        }));
+    }
+
+    @Test
+    void should_send_error_text_to_LLM_when_tool_with_Image_return_type_throws_exception() {
+
+        // given
+        class ToolThrowingException {
+
+            @Tool("Takes a photo")
+            Image takePhoto() {
+                throw new RuntimeException("Camera is broken");
+            }
+        }
+
+        ToolThrowingException tools = spy(new ToolThrowingException());
+
+        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("takePhoto")
+                        .arguments("{}")
+                        .build()),
+                AiMessage.from("Sorry, the camera is broken")
+        ));
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .tools(tools)
+                .build();
+
+        // when
+        assistant.chat("Take a photo");
+
+        // then
+        verify(tools).takePhoto();
+
+        verify(chatModel, times(2)).chat(argThat((ChatRequest request) -> {
+            if (request.messages().size() < 3) {
+                return true; // first call
+            }
+            // second call should have ToolExecutionResultMessage with error text
+            ToolExecutionResultMessage toolResult = request.messages().stream()
+                    .filter(ToolExecutionResultMessage.class::isInstance)
+                    .map(ToolExecutionResultMessage.class::cast)
+                    .findFirst()
+                    .orElse(null);
+            return toolResult != null
+                    && toolResult.text().contains("Camera is broken")
+                    && Boolean.TRUE.equals(toolResult.isError());
+        }));
     }
 }
