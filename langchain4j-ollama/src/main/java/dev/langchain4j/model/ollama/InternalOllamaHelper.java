@@ -94,7 +94,7 @@ class InternalOllamaHelper {
                         .name(toolCall.getFunction().getName())
                         .arguments(toJsonWithoutIdent(toolCall.getFunction().getArguments()))
                         .build())
-                .toList();
+                .collect(Collectors.toList());
     }
 
     static String toOllamaResponseFormat(ResponseFormat responseFormat) {
