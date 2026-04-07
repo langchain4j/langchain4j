@@ -17,7 +17,7 @@ class GoogleAiGeminiAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
     protected List<ChatModel> models() {
         return Collections.singletonList(GoogleAiGeminiChatModel.builder()
                 .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-                .modelName("gemini-2.0-flash")
+                .modelName("gemini-2.5-flash")
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
@@ -30,9 +30,8 @@ class GoogleAiGeminiAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
     @MethodSource("models")
     protected void should_execute_tool_with_pojo_with_nested_pojo(ChatModel model) {}
 
-    @Disabled("Gemini cannot do it properly")
     @Override
-    @ParameterizedTest
-    @MethodSource("models")
-    protected void should_execute_tool_with_list_of_strings_parameter(ChatModel model) {}
+    protected boolean supportsMultimodalToolResults() {
+        return true;
+    }
 }

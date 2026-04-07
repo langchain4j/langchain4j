@@ -9,6 +9,9 @@ import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsM
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
+import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.internal.Json;
@@ -23,6 +26,7 @@ import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -151,10 +155,33 @@ public class DefaultToolExecutor implements ToolExecutor {
 
     private ToolExecutionResult execute(Object[] arguments) throws IllegalAccessException, InvocationTargetException {
         Object result = methodToInvoke.invoke(object, arguments);
+
+        List<Content> resultContents = toContents(result);
+        if (resultContents != null) {
+            return ToolExecutionResult.builder()
+                    .result(result)
+                    .resultContents(resultContents)
+                    .build();
+        }
+
         return ToolExecutionResult.builder()
                 .result(result)
                 .resultTextSupplier(() -> toText(result))
                 .build();
+    }
+
+    private List<Content> toContents(Object result) {
+        if (result instanceof Image image) {
+            return List.of(ImageContent.from(image));
+        } else if (result instanceof Content content) {
+            return List.of(content);
+        } else if (result instanceof Collection<?> collection && !collection.isEmpty()
+                && collection.iterator().next() instanceof Content) {
+            return collection.stream().map(Content.class::cast).toList();
+        } else if (result instanceof Content[] array) {
+            return List.of(array);
+        }
+        return null;
     }
 
     private String toText(Object result) {

@@ -5,6 +5,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -180,6 +181,11 @@ public class WorkersAiChatModel extends AbstractWorkersAIModel implements ChatMo
         } else if (chatMessage instanceof AiMessage aiMessage) {
             return aiMessage.text();
         } else if (chatMessage instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
+            if (!toolExecutionResultMessage.hasSingleText()) {
+                throw new UnsupportedFeatureException(
+                        "Workers AI does not support non-text content in tool results. "
+                                + "Only text content is supported.");
+            }
             return toolExecutionResultMessage.text();
         } else {
             throw new IllegalArgumentException("Unsupported message type: " + chatMessage.type());
