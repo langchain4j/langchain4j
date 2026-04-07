@@ -153,13 +153,6 @@ jobs:
           name: Test-Reports-${{ strategy.job-index }}
           path: '**/target/*-reports/*'
 
-      - name: Publish Test Report
-        if: always() # always run even if the previous step failed or was cancelled
-        uses: mikepenz/action-junit-report@v6
-        with:
-          report_paths: '**/target/*-reports/TEST-*.xml'
-          annotate_only: true
-
       - name: Upload JaCoCo Reports
         if: always()
         uses: actions/upload-artifact@v6
