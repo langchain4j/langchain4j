@@ -78,16 +78,16 @@ jobs:
 
       - name: Trigger documentation build and deploy
         if: steps.git-check.outputs.changed == 'true'
-        uses: peter-evans/repository-dispatch@v4
-        with:
-          token: ${{ secrets.GH_RELEASE_AUTOMATION }}
-          repository: langchain4j/langchain4j
-          event-type: trigger-docs-build-and-deploy
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api repos/langchain4j/langchain4j/dispatches \
+            -f event_type=trigger-docs-build-and-deploy
 
       - name: Trigger documentation chatbot update
         if: steps.git-check.outputs.changed == 'true'
-        uses: peter-evans/repository-dispatch@v4
-        with:
-          token: ${{ secrets.GH_RELEASE_AUTOMATION }}
-          repository: langchain4j/langchain4j
-          event-type: trigger-docs-update-chatbot
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api repos/langchain4j/langchain4j/dispatches \
+            -f event_type=trigger-docs-update-chatbot

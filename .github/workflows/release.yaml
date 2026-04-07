@@ -28,6 +28,7 @@ jobs:
         with:
           ref: ${{ env.BRANCH }}
           fetch-depth: 0
+          # PAT is required to push the version commit and release tag to a protected branch
           token: ${{ secrets.GH_RELEASE_AUTOMATION }}
 
       - name: Set up JDK 25
@@ -143,14 +144,11 @@ jobs:
           git push origin ${{ env.STABLE_VERSION }}
 
       - name: Trigger release in the langchain4j/langchain4j-spring repo
-        uses: peter-evans/repository-dispatch@v4
-        with:
-          token: ${{ secrets.GH_RELEASE_AUTOMATION }}
-          repository: langchain4j/langchain4j-spring
-          event-type: trigger-release
-          client-payload: |
-            {
-              "stableVersion": "${{ env.STABLE_VERSION }}",
-              "betaVersion": "${{ env.BETA_VERSION }}",
-              "branch": "${{ env.BRANCH }}"
-            }
+        env:
+          GH_TOKEN: ${{ secrets.GH_RELEASE_AUTOMATION }}
+        run: |
+          gh api repos/langchain4j/langchain4j-spring/dispatches \
+            -f event_type=trigger-release \
+            -f 'client_payload[stableVersion]=${{ env.STABLE_VERSION }}' \
+            -f 'client_payload[betaVersion]=${{ env.BETA_VERSION }}' \
+            -f 'client_payload[branch]=${{ env.BRANCH }}'
