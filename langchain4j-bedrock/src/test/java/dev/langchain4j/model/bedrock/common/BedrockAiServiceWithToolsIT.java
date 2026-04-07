@@ -3,7 +3,6 @@ package dev.langchain4j.model.bedrock.common;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceWithToolsIT;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.List;
@@ -20,20 +19,12 @@ class BedrockAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
     }
 
     @Override
-    @Disabled("Bedrock is too strict and expects assistant message after tool message")
-    protected void should_keep_memory_consistent_using_return_immediate(ChatModel model) {}
-
-    @Override
-    @Disabled("Mistral is hallucinating in this test")
-    protected void should_return_immediately_from_first_tool_when_not_called_in_parallel(ChatModel model) {}
+    protected boolean supportsMultimodalToolResults() {
+        return true;
+    }
 
     @AfterEach
     void afterEach() {
         sleepIfNeeded();
-    }
-
-    @Override
-    protected boolean supportsMultimodalToolResults() {
-        return true;
     }
 }
