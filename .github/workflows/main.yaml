@@ -25,6 +25,9 @@ on:
       - '.github/ISSUE_TEMPLATE/*.md'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
 
   compile_and_unit_test:
@@ -37,12 +40,12 @@ jobs:
           - 25
     steps:
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
 
       - name: Set up JDK ${{ matrix.java_version }}
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
         with:
           java-version: ${{ matrix.java_version }}
           distribution: 'temurin'
@@ -63,20 +66,24 @@ jobs:
           - 21
     steps:
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
 
       - name: Create branch from commit by event name
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          if [[ '${{ github.event_name }}' == 'push' ]]; then
-            git branch __branch_before ${{ github.event.before }}
-          elif [[ "${{ github.event_name }}" == 'pull_request' ]]; then
-            git branch __branch_before ${{ github.event.pull_request.base.sha }}
+          if [[ "$EVENT_NAME" == 'push' ]]; then
+            git branch __branch_before "$BEFORE_SHA"
+          elif [[ "$EVENT_NAME" == 'pull_request' ]]; then
+            git branch __branch_before "$PR_BASE_SHA"
           fi
 
       - name: Set up JDK ${{ matrix.java_version }}
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
         with:
           java-version: ${{ matrix.java_version }}
           distribution: 'temurin'
@@ -147,9 +154,9 @@ jobs:
   compliance:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - name: Set up JDK 17
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
         with:
           java-version: '17'
           distribution: 'temurin'
@@ -161,11 +168,11 @@ jobs:
   spotless:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
       - name: Set up JDK 17
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
         with:
           java-version: '17'
           distribution: 'temurin'
