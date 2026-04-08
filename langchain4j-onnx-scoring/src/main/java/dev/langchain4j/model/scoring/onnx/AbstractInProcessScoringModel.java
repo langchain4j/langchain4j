@@ -9,7 +9,7 @@ import dev.langchain4j.model.scoring.ScoringModel;
 import java.util.List;
 import java.util.stream.Collectors;
 
-abstract class AbstractInProcessScoringModel implements ScoringModel {
+abstract class AbstractInProcessScoringModel implements ScoringModel, AutoCloseable {
 
     public AbstractInProcessScoringModel() {
     }
@@ -28,5 +28,11 @@ abstract class AbstractInProcessScoringModel implements ScoringModel {
         OnnxScoringBertCrossEncoder.ScoringAndTokenCount scoresAndTokenCount = this.model().scoreAll(query,
                 segments.stream().map(TextSegment::text).collect(Collectors.toList()));
         return Response.from(scoresAndTokenCount.scores, new TokenUsage(scoresAndTokenCount.tokenCount));
+    }
+
+    @Override
+    public void close() {
+        OnnxScoringBertCrossEncoder m = model();
+        if (m != null) m.close();
     }
 }

@@ -14,7 +14,7 @@ import java.util.*;
 
 import static ai.onnxruntime.OnnxTensor.createTensor;
 
-class OnnxScoringBertCrossEncoder {
+class OnnxScoringBertCrossEncoder implements AutoCloseable {
 
     private final OrtEnvironment environment;
     private final OrtSession session;
@@ -23,7 +23,7 @@ class OnnxScoringBertCrossEncoder {
     private final boolean normalize;
 
     public OnnxScoringBertCrossEncoder(String modelPath, OrtSession.SessionOptions options, String pathToTokenizer, int modelMaxLength, boolean normalize) {
-        try {
+        try (options) { // properly release parent session at the end of this block to prevent leaks
             this.environment = OrtEnvironment.getEnvironment();
             this.session = this.environment.createSession(modelPath, options);
             this.expectedInputs = session.getInputNames();
@@ -47,6 +47,17 @@ class OnnxScoringBertCrossEncoder {
         ScoringAndTokenCount(List<Double> scores, int tokenCount) {
             this.scores = scores;
             this.tokenCount = tokenCount;
+        }
+    }
+
+    @Override
+    public void close() {
+        try {
+            if (session != null) session.close();
+            // release Rust allocated memory
+            if (tokenizer != null) tokenizer.close();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
