@@ -13,12 +13,12 @@ This means the underlying HTTP client can be customized,
 and any other HTTP client can be integrated by implementing the `HttpClient` SPI.
 
 Currently, there are the following out-of-the-box implementations:
-- `JdkHttpClient` in the `langchain4j-http-client-jdk` module.
+- `JdkHttpClient` from the `langchain4j-http-client-jdk` module.
 It is used by default when a supported module (e.g., `langchain4j-open-ai`) is used.
-- `SpringRestClient` in the `langchain4j-http-client-spring-restclient`.
-It is used by default when a supported module's Spring Boot starter (e.g., `langchain4j-open-ai-spring-boot-starter`) is used.
-- `ApacheHttpClient` in the `langchain4j-http-client-apache` module.
-- `OkHttpClient` in the `langchain4j-http-client-okhttp` module.
+- `SpringRestClient` from the `langchain4j-http-client-spring-restclient`/`langchain4j-http-client-spring-boot4-restclient` modules.
+It is used by default when a supported module's Spring Boot starter (e.g., `langchain4j-open-ai-spring-boot-starter`/`langchain4j-open-ai-spring-boot4-starter`) is used.
+- `ApacheHttpClient` from the `langchain4j-http-client-apache` module.
+- `OkHttpClient` from the `langchain4j-http-client-okhttp` module.
 
 ## Customizing JDK's `HttpClient`
 
