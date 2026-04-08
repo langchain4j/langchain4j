@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.net.URI;
 import java.util.Base64;
+import java.util.HashSet;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 class AudioTest {
@@ -154,5 +156,36 @@ class AudioTest {
         // then
         assertThat(audio.url().toString()).isEqualTo("file:///home/user/audio.wav");
         assertThat(audio.mimeType()).isEqualTo("audio/wav");
+    }
+
+    @Test
+    void equals_and_hashCode_should_compare_binaryData_by_content() {
+        byte[] data1 = {1, 2, 3};
+        byte[] data2 = {1, 2, 3};
+
+        Audio audio1 = Audio.builder().binaryData(data1).mimeType("audio/wav").build();
+        Audio audio2 = Audio.builder().binaryData(data2).mimeType("audio/wav").build();
+
+        assertThat(audio1).isEqualTo(audio2);
+        assertThat(audio1).hasSameHashCodeAs(audio2);
+    }
+
+    @Test
+    void equals_should_return_false_when_binaryData_differs() {
+        Audio audio1 = Audio.builder().binaryData(new byte[] {1, 2, 3}).build();
+        Audio audio2 = Audio.builder().binaryData(new byte[] {1, 2, 4}).build();
+
+        assertThat(audio1).isNotEqualTo(audio2);
+    }
+
+    @Test
+    void audio_with_binaryData_should_work_correctly_in_a_HashSet() {
+        Audio audio1 = Audio.builder().binaryData(new byte[] {1, 2, 3}).build();
+        Audio audio2 = Audio.builder().binaryData(new byte[] {1, 2, 3}).build();
+
+        Set<Audio> set = new HashSet<>();
+        set.add(audio1);
+
+        assertThat(set).contains(audio2);
     }
 }
