@@ -12,7 +12,6 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate.GeminiFinishReason;
-import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUsageMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import java.util.List;
 import java.util.Map;
@@ -173,7 +172,7 @@ class GoogleAiGeminiChatModelTest {
         @Test
         void shouldIncludeTokenUsageInResponse() {
             // Given
-            var usageMetadata = GeminiUsageMetadata.builder()
+            var usageMetadata = UsageMetadata.builder()
                     .promptTokenCount(15)
                     .candidatesTokenCount(25)
                     .totalTokenCount(40)
@@ -323,8 +322,8 @@ class GoogleAiGeminiChatModelTest {
                 "response-id-123", "gemini-pro-v1", List.of(candidate), createUsageMetadata(10, 20, 30), null);
     }
 
-    private static GeminiUsageMetadata createUsageMetadata(int promptTokens, int candidateTokens, int totalTokens) {
-        return GeminiUsageMetadata.builder()
+    private static UsageMetadata createUsageMetadata(int promptTokens, int candidateTokens, int totalTokens) {
+        return UsageMetadata.builder()
                 .promptTokenCount(promptTokens)
                 .candidatesTokenCount(candidateTokens)
                 .totalTokenCount(totalTokens)

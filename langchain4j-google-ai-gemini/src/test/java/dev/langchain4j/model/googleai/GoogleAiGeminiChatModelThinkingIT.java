@@ -311,6 +311,45 @@ class GoogleAiGeminiChatModelThinkingIT {
         assertThat(aiMessage.attributes()).isEmpty();
     }
 
+    @Test
+    void should_think_and_contain_used_thinking_tokens() {
+        // given
+        boolean includeThoughts = true;
+        boolean returnThinking = false;
+
+        GeminiThinkingConfig thinkingConfig = GeminiThinkingConfig.builder()
+                .includeThoughts(includeThoughts)
+                .thinkingBudget(20)
+                .build();
+
+        ChatModel model = GoogleAiGeminiChatModel.builder()
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .modelName("gemini-2.5-flash")
+                .thinkingConfig(thinkingConfig)
+                .returnThinking(returnThinking)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
+
+        // when
+        ChatResponse chatResponse = model.chat(userMessage);
+
+        // then
+        assertThat(chatResponse.metadata()).isInstanceOf(GoogleAiGeminiChatResponseMetadata.class);
+        GoogleAiGeminiChatResponseMetadata metadata = (GoogleAiGeminiChatResponseMetadata) chatResponse.metadata();
+
+        UsageMetadata usageMetadata = metadata.usageMetadata();
+        assertThat(usageMetadata.thoughtsTokenCount()).isPositive();
+        assertThat(usageMetadata.promptTokenCount()).isPositive();
+        assertThat(usageMetadata.candidatesTokenCount()).isPositive();
+        assertThat(usageMetadata.totalTokenCount())
+                .isEqualTo(usageMetadata.thoughtsTokenCount()
+                        + usageMetadata.promptTokenCount()
+                        + usageMetadata.candidatesTokenCount());
+    }
+
     @AfterEach
     void afterEach() throws InterruptedException {
         String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_GOOGLE_AI_GEMINI");

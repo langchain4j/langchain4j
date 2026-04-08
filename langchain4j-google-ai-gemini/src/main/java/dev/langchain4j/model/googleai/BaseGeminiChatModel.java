@@ -24,7 +24,6 @@ import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.googleai.GeminiGenerateContentRequest.GeminiToolConfig;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
-import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUsageMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import java.time.Duration;
@@ -236,6 +235,7 @@ class BaseGeminiChatModel {
                         .id(geminiResponse.responseId())
                         .modelName(geminiResponse.modelVersion())
                         .tokenUsage(createTokenUsage(geminiResponse.usageMetadata()))
+                        .usageMetadata(geminiResponse.usageMetadata())
                         .finishReason(finishReason)
                         .groundingMetadata(
                                 geminiResponse.groundingMetadata() != null
@@ -257,7 +257,7 @@ class BaseGeminiChatModel {
         return fromGPartsToAiMessage(candidate.content().parts(), includeCodeExecutionOutput, returnThinking);
     }
 
-    protected TokenUsage createTokenUsage(GeminiUsageMetadata tokenCounts) {
+    protected TokenUsage createTokenUsage(UsageMetadata tokenCounts) {
         return new TokenUsage(
                 tokenCounts.promptTokenCount(), tokenCounts.candidatesTokenCount(), tokenCounts.totalTokenCount());
     }

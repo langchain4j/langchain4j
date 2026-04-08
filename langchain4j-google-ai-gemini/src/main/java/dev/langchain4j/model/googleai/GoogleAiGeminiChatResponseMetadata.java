@@ -10,11 +10,13 @@ public class GoogleAiGeminiChatResponseMetadata extends ChatResponseMetadata {
 
     private final GroundingMetadata groundingMetadata;
     private final UrlContextMetadata urlContextMetadata;
+    private final UsageMetadata usageMetadata;
 
     private GoogleAiGeminiChatResponseMetadata(Builder builder) {
         super(builder);
         this.groundingMetadata = builder.groundingMetadata;
         this.urlContextMetadata = builder.urlContextMetadata;
+        this.usageMetadata = builder.usageMetadata;
     }
 
     public GroundingMetadata groundingMetadata() {
@@ -23,6 +25,10 @@ public class GoogleAiGeminiChatResponseMetadata extends ChatResponseMetadata {
 
     public UrlContextMetadata urlContextMetadata() {
         return urlContextMetadata;
+    }
+
+    public UsageMetadata usageMetadata() {
+        return usageMetadata;
     }
 
     @Override
@@ -51,7 +57,8 @@ public class GoogleAiGeminiChatResponseMetadata extends ChatResponseMetadata {
         return "GoogleAiGeminiChatResponseMetadata{" + "id='"
                 + id() + '\'' + ", modelName='"
                 + modelName() + '\'' + ", tokenUsage="
-                + tokenUsage() + ", finishReason="
+                + tokenUsage() + ", usageMetadata="
+                + usageMetadata() + ", finishReason="
                 + finishReason() + ", groundingMetadata="
                 + groundingMetadata + ", urlContextMetadata="
                 + urlContextMetadata + '}';
@@ -65,6 +72,7 @@ public class GoogleAiGeminiChatResponseMetadata extends ChatResponseMetadata {
 
         private GroundingMetadata groundingMetadata;
         private UrlContextMetadata urlContextMetadata;
+        private UsageMetadata usageMetadata;
 
         public Builder groundingMetadata(GroundingMetadata groundingMetadata) {
             this.groundingMetadata = groundingMetadata;
@@ -73,6 +81,11 @@ public class GoogleAiGeminiChatResponseMetadata extends ChatResponseMetadata {
 
         public Builder urlContextMetadata(UrlContextMetadata urlContextMetadata) {
             this.urlContextMetadata = urlContextMetadata;
+            return this;
+        }
+
+        public Builder usageMetadata(UsageMetadata usageMetadata) {
+            this.usageMetadata = usageMetadata;
             return this;
         }
 
