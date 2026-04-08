@@ -23,6 +23,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -343,8 +344,9 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
         private final Planner planner;
         private final DefaultAgenticScope agenticScope;
         private final AgenticScopeRegistry registry;
+        private final ReentrantLock lock = new ReentrantLock();
 
-        private Action nextAction = null;
+        private volatile Action nextAction = null;
 
         private PlannerLoop(Planner planner, DefaultAgenticScope agenticScope, AgenticScopeRegistry registry) {
             this.planner = planner;
@@ -400,9 +402,9 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
                 throw new RuntimeException(e);
             }
         }
-
         private Object result() {
             Object result = output != null ? output.apply(agenticScope) : nextAction.result();
+
             if (outputKey != null) {
                 if (result != null) {
                     agenticScope.writeState(outputKey, result);
@@ -416,16 +418,21 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
 
         @Override
         public void onSubagentInvoked(AgentInvocation agentInvocation) {
-            this.nextAction = composeActions(this.nextAction, planner.nextAction(new PlanningContext(agenticScope, agentInvocation)));
+            lock.lock();
+            try {
+                this.nextAction = composeActions(this.nextAction, planner.nextAction(new PlanningContext(agenticScope, agentInvocation)));
 
-            // Save planner execution state after each agent invocation
-            Map<String, Object> execState = planner.executionState();
-            if (!execState.isEmpty()) {
-                agenticScope.writeState(executionStateId(), execState);
-            }
+                // Save planner execution state after each agent invocation
+                Map<String, Object> execState = planner.executionState();
+                if (!execState.isEmpty()) {
+                    agenticScope.writeState(executionStateId(), execState);
+                }
 
-            if (registry != null) {
-                agenticScope.checkpoint(registry);
+                if (registry != null) {
+                    agenticScope.checkpoint(registry);
+                }
+            } finally {
+                lock.unlock();
             }
         }
 
@@ -435,10 +442,10 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
         }
 
         private static Action composeActions(Action first, Action second) {
-            if (first == null || first.isDone()) {
+            if (first == null || first.isDone() || isEmptyCall(first)) {
                 return second;
             }
-            if (second == null || second.isDone()) {
+            if (second == null || second.isDone() || isEmptyCall(second)) {
                 return first;
             }
 
@@ -446,6 +453,10 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
             agentsToCall.addAll(((Action.AgentCallAction) first).agentsToCall());
             agentsToCall.addAll(((Action.AgentCallAction) second).agentsToCall());
             return new Action.AgentCallAction(agentsToCall);
+        }
+
+        private static boolean isEmptyCall(Action action) {
+            return action instanceof Action.AgentCallAction aca && aca.agentsToCall().isEmpty();
         }
     }
 
