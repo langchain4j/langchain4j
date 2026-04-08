@@ -23,10 +23,15 @@ import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
@@ -48,6 +53,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.condition.DisabledIf;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -55,6 +61,31 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.time.LocalTime;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+
+import static dev.langchain4j.internal.Utils.generateUUIDFrom;
+import static dev.langchain4j.internal.Utils.readBytes;
+import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
+import static dev.langchain4j.service.common.AbstractAiServiceWithToolsIT.ToolWithEnumParameter.TemperatureUnit.CELSIUS;
+import static dev.langchain4j.service.common.AbstractAiServiceWithToolsIT.ToolWithSetOfEnumsParameter.Color.GREEN;
+import static dev.langchain4j.service.common.AbstractAiServiceWithToolsIT.ToolWithSetOfEnumsParameter.Color.RED;
+import static java.util.Arrays.asList;
+import static java.util.Collections.singletonMap;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatNoException;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @TestInstance(PER_CLASS)
 @ExtendWith(MockitoExtension.class)
@@ -1163,11 +1194,235 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         verify(tools).modify(7);
 
-        verify(model)
-                .chat(argThat((ChatRequest request) -> request.messages().size() == 3
-                        && request.messages().get(2).type() == TOOL_EXECUTION_RESULT
-                        && ((ToolExecutionResultMessage) request.messages().get(2))
-                                .text()
-                                .isEmpty()));
+        verify(model).chat(argThat((ChatRequest request) ->
+                request.messages().size() == 3
+                        && request.messages().get(2) instanceof ToolExecutionResultMessage toolResultMessage
+                        && toolResultMessage.text().isEmpty()
+                        && toolResultMessage.contents().equals(List.of(TextContent.from("")))
+        ));
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_allow_blank_tool_result(ChatModel model) {
+
+        // given
+        class Tools {
+
+            @Tool
+            String modify(int ignored) {
+                return " ";
+            }
+        }
+
+        model = spy(model);
+
+        Tools tools = spy(new Tools());
+
+        StringAssistant assistant = AiServices.builder(StringAssistant.class)
+                .chatModel(model)
+                .tools(tools)
+                .build();
+
+        String text = "Call tool 'modify' for argument '7'";
+
+        // when-then
+        assertThatNoException().isThrownBy(() -> assistant.chat(text));
+
+        verify(tools).modify(7);
+
+        verify(model).chat(argThat((ChatRequest request) ->
+                request.messages().size() == 3
+                        && request.messages().get(2) instanceof ToolExecutionResultMessage toolResultMessage
+                        && toolResultMessage.text().equals(" ")
+                        && toolResultMessage.contents().equals(List.of(TextContent.from(" ")))
+        ));
+    }
+
+    static final String CAT_IMAGE_URL =
+            "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
+
+    protected Image catImage() {
+        String base64Data = java.util.Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
+        return Image.builder()
+                .base64Data(base64Data)
+                .mimeType("image/png")
+                .build();
+    }
+
+    static class ToolReturningImage {
+
+        private final Image image;
+
+        ToolReturningImage(Image image) {
+            this.image = image;
+        }
+
+        @Tool("Takes a photo and returns it")
+        Image takePhoto() {
+            return image;
+        }
+    }
+
+    static class ToolReturningImageContent {
+
+        private final Image image;
+
+        ToolReturningImageContent(Image image) {
+            this.image = image;
+        }
+
+        @Tool("Takes a photo and returns it")
+        ImageContent takePhoto() {
+            return ImageContent.from(image);
+        }
+    }
+
+    static class ToolReturningContentList {
+
+        private final Image image;
+
+        ToolReturningContentList(Image image) {
+            this.image = image;
+        }
+
+        @Tool("Takes a photo and returns it with a description")
+        List<Content> takePhoto() {
+            return List.of(
+                    TextContent.from("Its name is Whiskers"),
+                    ImageContent.from(image)
+            );
+        }
+    }
+
+    protected boolean supportsMultimodalToolResults() {
+        return false;
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    @EnabledIf("supportsMultimodalToolResults")
+    void should_execute_tool_returning_Image(ChatModel model) {
+
+        // given
+        model = spy(model);
+
+        ToolReturningImage tool = spy(new ToolReturningImage(catImage()));
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(model)
+                .tools(tool)
+                .build();
+
+        // when
+        Result<String> result = assistant.chat(
+                "Use the takePhoto tool, then tell me what animal is in the photo. Answer in one word.");
+
+        // then
+        assertThat(result.content().toLowerCase()).containsAnyOf("cat", "lynx", "feline", "wildcat");
+        verify(tool).takePhoto();
+
+        verify(model, times(2)).chat(chatRequestCaptor.capture());
+        ToolExecutionResultMessage toolResult = chatRequestCaptor.getAllValues().get(1).messages().stream()
+                .filter(ToolExecutionResultMessage.class::isInstance)
+                .map(ToolExecutionResultMessage.class::cast)
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(toolResult.hasSingleText()).isFalse();
+        assertThat(toolResult.contents()).hasSize(1);
+        assertThat(toolResult.contents().get(0)).isInstanceOf(ImageContent.class);
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    @EnabledIf("supportsMultimodalToolResults")
+    void should_execute_tool_returning_ImageContent(ChatModel model) {
+
+        // given
+        model = spy(model);
+
+        ToolReturningImageContent tool = spy(new ToolReturningImageContent(catImage()));
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(model)
+                .tools(tool)
+                .build();
+
+        // when
+        Result<String> result = assistant.chat(
+                "Use the takePhoto tool, then tell me what animal is in the photo. Answer in one word.");
+
+        // then
+        assertThat(result.content().toLowerCase()).containsAnyOf("cat", "lynx", "feline", "wildcat");
+        verify(tool).takePhoto();
+
+        verify(model, times(2)).chat(chatRequestCaptor.capture());
+        ToolExecutionResultMessage toolResult = chatRequestCaptor.getAllValues().get(1).messages().stream()
+                .filter(ToolExecutionResultMessage.class::isInstance)
+                .map(ToolExecutionResultMessage.class::cast)
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(toolResult.hasSingleText()).isFalse();
+        assertThat(toolResult.contents()).hasSize(1);
+        assertThat(toolResult.contents().get(0)).isInstanceOf(ImageContent.class);
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    @EnabledIf("supportsMultimodalToolResults")
+    void should_execute_tool_returning_ContentList(ChatModel model) {
+
+        // given
+        model = spy(model);
+
+        ToolReturningContentList tool = spy(new ToolReturningContentList(catImage()));
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(model)
+                .tools(tool)
+                .build();
+
+        // when
+        Result<String> result = assistant.chat(
+                "Use the takePhoto tool, then tell me what animal is in the photo and what is its name.");
+
+        // then
+        String response = result.content().toLowerCase();
+        assertThat(response).containsAnyOf("cat", "lynx", "feline", "wildcat");
+        assertThat(response).contains("whiskers");
+        verify(tool).takePhoto();
+
+        verify(model, times(2)).chat(chatRequestCaptor.capture());
+        ToolExecutionResultMessage toolResult = chatRequestCaptor.getAllValues().get(1).messages().stream()
+                .filter(ToolExecutionResultMessage.class::isInstance)
+                .map(ToolExecutionResultMessage.class::cast)
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(toolResult.hasSingleText()).isFalse();
+        assertThat(toolResult.contents()).hasSize(2);
+        assertThat(toolResult.contents().get(0)).isInstanceOf(TextContent.class);
+        assertThat(toolResult.contents().get(1)).isInstanceOf(ImageContent.class);
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    @DisabledIf("supportsMultimodalToolResults")
+    void should_fail_when_tool_returns_image_and_provider_does_not_support_it(ChatModel model) {
+
+        // given
+        ToolReturningImage tool = spy(new ToolReturningImage(catImage()));
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(model)
+                .tools(tool)
+                .build();
+
+        // when-then
+        assertThatThrownBy(() -> assistant.chat("Take a photo"))
+                .isInstanceOf(UnsupportedFeatureException.class)
+                .hasMessageContaining("non-text content");
     }
 }

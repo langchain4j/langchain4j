@@ -1,22 +1,17 @@
 package dev.langchain4j.skills;
 
-import dev.langchain4j.Experimental;
-import org.commonmark.ext.front.matter.YamlFrontMatterExtension;
-import org.commonmark.ext.front.matter.YamlFrontMatterVisitor;
-import org.commonmark.node.Node;
-import org.commonmark.parser.Parser;
+import static dev.langchain4j.internal.Exceptions.unchecked;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static java.util.stream.Collectors.joining;
+import static java.util.stream.StreamSupport.stream;
 
+import dev.langchain4j.Experimental;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
-
-import static dev.langchain4j.internal.Exceptions.unchecked;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static java.util.stream.Collectors.joining;
-import static java.util.stream.StreamSupport.stream;
 
 /**
  * Loads skills from the file system.
@@ -43,10 +38,6 @@ import static java.util.stream.StreamSupport.stream;
 @Experimental
 public class FileSystemSkillLoader {
 
-    private static final Parser PARSER = Parser.builder()
-            .extensions(List.of(YamlFrontMatterExtension.create()))
-            .build();
-
     /**
      * Loads all skills found in immediate subdirectories of the given directory.
      * A subdirectory is treated as a skill only if it contains a {@code SKILL.md} file;
@@ -58,8 +49,7 @@ public class FileSystemSkillLoader {
      */
     public static List<FileSystemSkill> loadSkills(Path directory) {
         try (Stream<Path> entries = Files.list(directory)) {
-            return entries
-                    .filter(Files::isDirectory)
+            return entries.filter(Files::isDirectory)
                     .filter(dir -> Files.exists(dir.resolve("SKILL.md")))
                     .map(FileSystemSkillLoader::loadSkill)
                     .toList();
@@ -87,11 +77,11 @@ public class FileSystemSkillLoader {
 
         String markdown = unchecked(() -> Files.readString(skillFile));
 
-        Map<String, List<String>> frontMatter = parseFrontMatter(markdown);
-        String content = extractContent(markdown);
+        Map<String, List<String>> frontMatter = SkillLoaderCommon.parseFrontMatter(markdown);
+        String content = SkillLoaderCommon.extractContent(markdown);
 
-        String name = getSingle(frontMatter, "name");
-        String description = getSingle(frontMatter, "description");
+        String name = SkillLoaderCommon.getSingle(frontMatter, "name");
+        String description = SkillLoaderCommon.getSingle(frontMatter, "description");
 
         List<DefaultSkillResource> resources = loadResources(skillDirectory);
 
@@ -104,34 +94,9 @@ public class FileSystemSkillLoader {
                 .build();
     }
 
-    private static Map<String, List<String>> parseFrontMatter(String markdown) {
-        Node document = PARSER.parse(markdown);
-        YamlFrontMatterVisitor visitor = new YamlFrontMatterVisitor();
-        document.accept(visitor);
-        return visitor.getData();
-    }
-
-    private static String extractContent(String markdown) {
-        if (markdown.startsWith("---")) {
-            int secondDelimiter = markdown.indexOf("\n---", 3);
-            if (secondDelimiter != -1) {
-                return markdown.substring(secondDelimiter + 4).trim();
-            }
-        }
-        return markdown;
-    }
-
-    private static String getSingle(Map<String, List<String>> map, String key) {
-        return map.getOrDefault(key, List.of())
-                .stream()
-                .findFirst()
-                .orElse(null);
-    }
-
     private static List<DefaultSkillResource> loadResources(Path skillDirectory) {
         try (Stream<Path> files = Files.walk(skillDirectory)) {
-            return files
-                    .filter(Files::isRegularFile)
+            return files.filter(Files::isRegularFile)
                     .filter(path -> !path.getFileName().toString().equals("SKILL.md"))
                     .filter(path -> !skillDirectory.relativize(path).startsWith("scripts"))
                     .map(path -> {
@@ -140,7 +105,8 @@ public class FileSystemSkillLoader {
                             if (isNullOrBlank(content)) {
                                 return null;
                             }
-                            String relativePath = stream(skillDirectory.relativize(path).spliterator(), false)
+                            String relativePath = stream(
+                                            skillDirectory.relativize(path).spliterator(), false)
                                     .map(Path::toString)
                                     .collect(joining("/"));
                             return SkillResource.builder()

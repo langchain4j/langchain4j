@@ -22,25 +22,24 @@ import org.junit.jupiter.api.condition.EnabledOnJre;
 import org.mockito.InOrder;
 
 @EnabledIf(
-        value = "dev.langchain4j.model.vertexai.anthropic.VertexAiAnthropicFixtures#isMonday",
+        value = "dev.langchain4j.model.vertexai.anthropic.VertexAiAnthropicChatModelIT#isMonday",
         disabledReason = "Not enough quota to run it more often")
 @EnabledOnJre(value = JAVA_17, disabledReason = "Not enough quota to run it more often")
 @EnabledIfEnvironmentVariable(named = "GCP_PROJECT_ID", matches = ".+")
 class VertexAiAnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
-    static final StreamingChatModel VERTEX_AI_ANTHROPIC_STREAMING_CHAT_MODEL =
-            VertexAiAnthropicStreamingChatModel.builder()
-                    .project(System.getenv("GCP_PROJECT_ID"))
-                    .location(DEFAULT_LOCATION)
-                    .modelName(DEFAULT_MODEL_NAME)
-                    .temperature(0.0)
-                    .logRequests(false)
-                    .logResponses(true)
-                    .build();
+    private final StreamingChatModel model = VertexAiAnthropicStreamingChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(DEFAULT_LOCATION)
+            .modelName(DEFAULT_MODEL_NAME)
+            .temperature(0.0)
+            .logRequests(false)
+            .logResponses(true)
+            .build();
 
     @Override
     protected List<StreamingChatModel> models() {
-        return List.of(VERTEX_AI_ANTHROPIC_STREAMING_CHAT_MODEL);
+        return List.of(model);
     }
 
     @Override

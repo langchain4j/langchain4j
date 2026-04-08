@@ -13,7 +13,7 @@ All LLMs supporting tools can be found [here](/integrations/language-models) (se
 :::note
 Not all LLMs support tools equally well.
 The ability to understand, select, and correctly use tools depends heavily on the specific model and its capabilities.
-Some models may not support tools at all, while others might require careful prompt engineering 
+Some models may not support tools at all, while others might require careful prompt engineering
 or additional system instructions.
 :::
 
@@ -192,6 +192,22 @@ class WeatherTools {
 List<ToolSpecification> toolSpecifications = ToolSpecifications.toolSpecificationsFrom(WeatherTools.class);
 ```
 
+### JSON Serialization
+
+`ToolSpecification` can be serialized to JSON and deserialized back using `toJson()` and `fromJson()` methods.
+This can be useful, for example, when you want to store tool specifications in a database or transfer them over the network.
+
+```java
+String json = toolSpecification.toJson();
+
+ToolSpecification deserialized = ToolSpecification.fromJson(json);
+```
+
+By default, a dedicated Jackson `ObjectMapper` is used for the JSON conversion.
+You can provide your own implementation of `ToolSpecificationJsonCodec` via SPI
+by implementing `ToolSpecificationJsonCodecFactory` and registering it
+in `META-INF/services/dev.langchain4j.spi.agent.tool.ToolSpecificationJsonCodecFactory`.
+
 ### Using `ChatModel`
 
 Once you have a `List<ToolSpecification>`, you can call the model:
@@ -230,6 +246,29 @@ ChatRequest request2 = ChatRequest.builder()
         .build();
 ChatResponse response2 = model.chat(request2);
 ```
+
+#### Multimodal Tool Results
+`ToolExecutionResultMessage` can also carry non-text content such as images.
+Instead of using `text()`, you can use the builder with `contents()`:
+
+```java
+ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.builder()
+        .id(toolExecutionRequest.id())
+        .toolName(toolExecutionRequest.name())
+        .contents(
+                TextContent.from("Here is the photo"),
+                ImageContent.from(Image.builder()
+                        .base64Data(base64Data)
+                        .mimeType("image/png")
+                        .build())
+        )
+        .build();
+```
+
+:::note
+Not all LLM providers support multimodal tool results.
+See [Returning Images and Multimodal Content](/tutorials/tools#returning-images-and-multimodal-content) for details on provider support.
+:::
 
 ### Using `StreamingChatModel`
 
@@ -335,6 +374,31 @@ Methods annotated with `@Tool` can accept any number of parameters of various ty
 
 Methods without parameters are supported as well.
 
+#### Parameter Name
+
+By default, if the `name` attribute of `@P` is not specified, the parameter name is obtained via reflection.
+However, without the `-parameters` javac option, reflection returns generic names like `arg0`, `arg1`, etc.
+The semantic meaning of the parameter is lost, which may confuse the LLM.
+
+Setting `name` in `@P` is useful in two cases:
+
+1. **Missing `-parameters` javac option** — to avoid generic `arg0`/`arg1` names that the LLM would otherwise see.
+   Note that frameworks like Quarkus and Spring enable `-parameters` by default,
+   so the actual method parameter names are preserved and you typically do not need to set `name` when using those frameworks.
+2. **Custom name for the LLM** — when you want the LLM to see a different parameter name than the one in the source code
+   (for example, to match a specific API contract or to provide a more descriptive name).
+
+**Example:**
+
+```java
+@Tool
+void getTemperature(
+        @P("Temperature value") double value,
+        @P("Unit of temperature") Optional<String> unit) {
+    ...
+}
+```
+
 #### Required and Optional
 
 By default, all tool method parameters are considered **_required_**.
@@ -342,7 +406,7 @@ This means that the LLM will have to produce a value for such a parameter.
 A parameter can be made optional by annotating it with `@P(required = false)`:
 ```java
 @Tool
-void getTemperature(String location, @P(value = "Unit of temperature", required = false) Unit unit) {
+void getTemperature(String location, @P("Unit of temperature", required = false) Unit unit) {
     ...
 }
 ```
@@ -389,6 +453,47 @@ If the method has a `void` return type, "Success" string is sent to the LLM if t
 If the method has a `String` return type, the returned value is sent to the LLM as is, without any conversions.
 
 For other return types, the returned value is converted into a JSON string before being sent to the LLM.
+
+#### Returning Images and Multimodal Content
+
+Tools can also return images and other non-text content. When a tool returns one of the following types,
+the result is sent to the LLM as multimodal content (e.g., image) instead of being serialized to JSON text:
+
+- `Image` — sent as a single image
+- `ImageContent` — sent as a single image content
+- `Content` — sent as a single content element (e.g., `TextContent`, `ImageContent`)
+- `List<Content>` — sent as multiple content elements
+- `Content[]` — sent as multiple content elements
+
+For example, a tool that takes a photo and returns an image:
+```java
+@Tool("Takes a photo and returns it")
+Image takePhoto() {
+    byte[] imageBytes = camera.capture();
+    return Image.builder()
+            .base64Data(Base64.getEncoder().encodeToString(imageBytes))
+            .mimeType("image/png")
+            .build();
+}
+```
+
+Or a tool that returns both text and an image:
+```java
+@Tool("Takes a photo and returns it with a description")
+List<Content> takePhoto() {
+    Image image = camera.capture();
+    return List.of(
+            TextContent.from("Photo taken at " + LocalDateTime.now()),
+            ImageContent.from(image)
+    );
+}
+```
+
+:::note
+Not all LLM providers support multimodal tool results.
+Providers that currently support images in tool results include Anthropic, Amazon Bedrock, and Google AI Gemini.
+Other providers will throw an `UnsupportedFeatureException` if a tool returns non-text content.
+:::
 
 ### AI services as tools for other AI services
 
@@ -522,9 +627,44 @@ This way, the LLM has more information to decide whether or not to call the give
 ### `@P`
 Method parameters can optionally be annotated with `@P`.
 
-The `@P` annotation has 2 fields
-- `value`: description of the parameter. Mandatory field.
-- `required`: whether the parameter is required, default is `true`. Optional field.
+The `@P` annotation has the following optional fields:
+
+- `name`: name of the parameter as seen by the LLM. If not specified, the actual method parameter name is used.
+- `description`: description of the parameter (alias of `value`). Empty by default.
+- `value`: description of the parameter (alias of `description`). Empty by default.
+- `required`: whether the parameter is required, default is `true`.
+
+#### Parameter Name
+
+The `name` attribute overrides the parameter name that the LLM will see.
+Setting `name` is useful in two cases:
+
+1. **Missing `-parameters` javac option.**
+   Without the `-parameters` javac option, Java reflection returns generic names such as `arg0`, `arg1`, etc.
+   The semantic meaning of the parameter is lost, which may confuse the LLM.
+   Setting `name` restores a meaningful name.
+   Note that frameworks like Quarkus and Spring enable `-parameters` by default,
+   so the actual method parameter names are preserved and you typically do not need to set `name` when using those frameworks.
+
+2. **Custom name for the LLM.**
+   When you want the LLM to see a different parameter name than the one the developer uses in the source code
+   (for example, to match a specific API contract or to provide a more descriptive name).
+
+
+#### Parameter Description
+
+`description` and `value` are interchangeable — they both set the parameter's description that the LLM will see.
+When only a description is needed, use the shorthand `value` form:
+```java
+@Tool
+void getWeather(@P("The city name") String city) { ... }
+```
+
+When both a name and a description are needed, use named attributes:
+```java
+@Tool
+void getWeather(@P(name = "city", description = "The city name") String city) { ... }
+```
 
 ### `@Description`
 The description of classes and fields can be specified using the `@Description` annotation:
@@ -685,6 +825,7 @@ List<ToolExecution> toolExecutions = result.toolExecutions();
 ToolExecution toolExecution = toolExecutions.get(0);
 ToolExecutionRequest request = toolExecution.request();
 String result = toolExecution.result(); // tool execution result as text
+List<Content> resultContents = toolExecution.resultContents(); // tool execution result as content list (may include images)
 Object resultObject = toolExecution.resultObject(); // actual value returned by the tool
 ```
 
@@ -1149,3 +1290,4 @@ More information on this can be found [here](/tutorials/mcp/#creating-an-mcp-too
 
 - [Example with Tools](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithToolsExample.java)
 - [Example with dynamic Tools](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithDynamicToolsExample.java)
+@

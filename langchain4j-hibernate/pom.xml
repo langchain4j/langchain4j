@@ -14,9 +14,8 @@
 
     <properties>
         <postgresql.version>42.7.7</postgresql.version>
-        <hibernate.version>7.2.5.Final</hibernate.version>
         <!-- TODO: remove enforcer.skipRules -->
-        <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
+        <enforcer.skipRules>dependencyConvergence,requireUpperBoundDeps</enforcer.skipRules>
     </properties>
 
     <dependencies>

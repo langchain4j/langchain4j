@@ -92,6 +92,7 @@ class OllamaModelsIT extends AbstractOllamaLanguageModelInfrastructure {
             assertThat(runningOllamaModel.getName()).contains(TINY_DOLPHIN_MODEL);
             assertThat(runningOllamaModel.getDigest()).isNotBlank();
             assertThat(runningOllamaModel.getExpiresAt()).isNotNull();
+            assertThat(runningOllamaModel.getContextLength()).isPositive();
         });
     }
 }

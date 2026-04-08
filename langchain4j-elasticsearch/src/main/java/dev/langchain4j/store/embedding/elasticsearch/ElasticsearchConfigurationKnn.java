@@ -16,9 +16,10 @@ import org.slf4j.LoggerFactory;
  *
  * @see <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-knn-query.html#knn-query-top-level-parameters">kNN query</a>
  */
-public class ElasticsearchConfigurationKnn extends ElasticsearchConfiguration {
+public class ElasticsearchConfigurationKnn implements ElasticsearchConfiguration {
     private static final Logger log = LoggerFactory.getLogger(ElasticsearchConfigurationKnn.class);
     private final Integer numCandidates;
+    private final boolean includeVectorResponse;
 
     public static class Builder {
         private Integer numCandidates;
@@ -57,13 +58,18 @@ public class ElasticsearchConfigurationKnn extends ElasticsearchConfiguration {
         return new Builder();
     }
 
+    @Override
+    public boolean isIncludeVectorResponse() {
+        return includeVectorResponse;
+    }
+
     private ElasticsearchConfigurationKnn(final Integer numCandidates, final boolean includeVectorResponse) {
         this.numCandidates = numCandidates;
         this.includeVectorResponse = includeVectorResponse;
     }
 
     @Override
-    SearchResponse<Document> vectorSearch(
+    public SearchResponse<Document> vectorSearch(
             ElasticsearchClient client, String indexName, EmbeddingSearchRequest embeddingSearchRequest)
             throws ElasticsearchException, IOException {
         KnnQuery.Builder krb = new KnnQuery.Builder()
@@ -94,22 +100,5 @@ public class ElasticsearchConfigurationKnn extends ElasticsearchConfiguration {
                         .query(q -> q.knn(knn))
                         .minScore(embeddingSearchRequest.minScore()),
                 Document.class);
-    }
-
-    @Override
-    SearchResponse<Document> fullTextSearch(
-            final ElasticsearchClient client, final String indexName, final String textQuery)
-            throws ElasticsearchException {
-        throw new UnsupportedOperationException("Knn configuration does not support full text search");
-    }
-
-    @Override
-    SearchResponse<Document> hybridSearch(
-            final ElasticsearchClient client,
-            final String indexName,
-            final EmbeddingSearchRequest embeddingSearchRequest,
-            final String textQuery)
-            throws ElasticsearchException {
-        throw new UnsupportedOperationException("Knn configuration does not support hybrid search");
     }
 }

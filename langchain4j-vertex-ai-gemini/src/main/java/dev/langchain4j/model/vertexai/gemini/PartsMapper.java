@@ -13,6 +13,7 @@ import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
 import com.google.protobuf.util.JsonFormat;
 import dev.langchain4j.data.audio.Audio;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.AudioContent;
@@ -107,6 +108,11 @@ class PartsMapper {
             return singletonList(
                     Part.newBuilder().setText((systemMessage).text()).build());
         } else if (message instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
+            if (!toolExecutionResultMessage.hasSingleText()) {
+                throw new UnsupportedFeatureException(
+                        "Vertex AI Gemini does not support non-text content in tool results. "
+                                + "Only text content is supported.");
+            }
             String functionResponseText = toolExecutionResultMessage.text();
             Struct responseStruct = parseFunctionResponseToStruct(functionResponseText);
 

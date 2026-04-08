@@ -3,6 +3,7 @@ package dev.langchain4j.store.embedding.elasticsearch;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
@@ -70,7 +71,7 @@ public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingS
      * @param password      Elasticsearch password (optional)
      * @param indexName     Elasticsearch index name (optional). Default value: "default".
      *                      Index will be created automatically if not exists.
-     * @deprecated by {@link ElasticsearchEmbeddingStore#ElasticsearchEmbeddingStore(ElasticsearchConfiguration, RestClient, String)}
+     * @deprecated by {@link ElasticsearchEmbeddingStore#ElasticsearchEmbeddingStore(ElasticsearchConfiguration, ElasticsearchClient, String)}
      */
     @Deprecated(forRemoval = true)
     public ElasticsearchEmbeddingStore(
@@ -105,10 +106,25 @@ public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingS
      * @param restClient    Elasticsearch Rest Client (mandatory)
      * @param indexName     Elasticsearch index name (optional). Default value: "default".
      *                      Index will be created automatically if not exists.
+     * @deprecated by {@link ElasticsearchEmbeddingStore#ElasticsearchEmbeddingStore(ElasticsearchConfiguration, ElasticsearchClient, String)}
      */
+    @Deprecated(forRemoval = true)
     public ElasticsearchEmbeddingStore(
             ElasticsearchConfiguration configuration, RestClient restClient, String indexName) {
         this.initialize(configuration, restClient, indexName);
+    }
+
+    /**
+     * Constructor using an Elasticsearch Client
+     *
+     * @param configuration Elasticsearch configuration to use (Knn or Script)
+     * @param client        Elasticsearch Client (mandatory)
+     * @param indexName     Elasticsearch index name (optional). Default value: "default".
+     *                      Index will be created automatically if not exists.
+     */
+    public ElasticsearchEmbeddingStore(
+            ElasticsearchConfiguration configuration, ElasticsearchClient client, String indexName) {
+        this.initialize(configuration, client, indexName);
     }
 
     public static Builder builder() {
@@ -121,6 +137,7 @@ public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingS
         private String apiKey;
         private String userName;
         private String password;
+        private ElasticsearchClient client;
         private RestClient restClient;
         private String indexName = "default";
         private ElasticsearchConfiguration configuration =
@@ -174,9 +191,20 @@ public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingS
          * @param restClient Elasticsearch RestClient (optional).
          *                   Effectively overrides all other connection parameters like serverUrl, etc.
          * @return builder
+         * @deprecated Use {@link #client(ElasticsearchClient)} instead.
          */
+        @Deprecated(forRemoval = true)
         public Builder restClient(RestClient restClient) {
             this.restClient = restClient;
+            return this;
+        }
+
+        /**
+         * @param client Elasticsearch Client (mandatory).
+         * @return builder
+         */
+        public Builder client(ElasticsearchClient client) {
+            this.client = client;
             return this;
         }
 
@@ -210,11 +238,14 @@ public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingS
         }
 
         public ElasticsearchEmbeddingStore build() {
+            if (client != null) {
+                return new ElasticsearchEmbeddingStore(configuration, client, indexName);
+            }
+            log.warn(
+                    "This is deprecated. You should provide an ElasticsearchClient instead and use client(ElasticsearchClient) instead.");
             if (restClient != null) {
                 return new ElasticsearchEmbeddingStore(configuration, restClient, indexName);
             } else {
-                log.warn(
-                        "This is deprecated. You should provide a restClient instead and call ElasticsearchEmbeddingStore(ElasticsearchConfiguration, RestClient, String)");
                 return new ElasticsearchEmbeddingStore(configuration, serverUrl, apiKey, userName, password, indexName);
             }
         }

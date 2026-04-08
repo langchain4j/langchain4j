@@ -169,4 +169,9 @@ class AnthropicAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
         verify(tools).getWeather(argThat(location -> location.contains("Munich")), eq(Unit.FAHRENHEIT));
         verifyNoMoreInteractions(tools);
     }
+
+    @Override
+    protected boolean supportsMultimodalToolResults() {
+        return true;
+    }
 }

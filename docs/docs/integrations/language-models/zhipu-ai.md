@@ -47,13 +47,15 @@ Or, you can use BOM to manage dependencies consistently:
 ```xml
 
 <dependencyManagement>
-    <dependency>
-        <groupId>dev.langchain4j</groupId>
-        <artifactId>langchain4j-community-bom</artifactId>
-        <version>${latest version here}</version>
-        <type>pom</type>
-        <scope>import</scope>
-    </dependency>
+    <dependencies>
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-community-bom</artifactId>
+            <version>${latest version here}</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+    </dependencies>
 </dependencyManagement>
 ```
 

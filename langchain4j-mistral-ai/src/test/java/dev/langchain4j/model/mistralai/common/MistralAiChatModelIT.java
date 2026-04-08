@@ -1,6 +1,6 @@
 package dev.langchain4j.model.mistralai.common;
 
-import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_SMALL_LATEST;
+import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_MEDIUM_LATEST;
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.OPEN_MISTRAL_7B;
 
 import dev.langchain4j.model.chat.ChatModel;
@@ -17,7 +17,7 @@ class MistralAiChatModelIT extends AbstractChatModelIT {
 
     static final ChatModel MISTRAL_CHAT_MODEL = MistralAiChatModel.builder()
             .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-            .modelName(MISTRAL_SMALL_LATEST)
+            .modelName(MISTRAL_MEDIUM_LATEST)
             .temperature(0.0)
             .logRequests(false) // images are huge in logs
             .logResponses(true)

@@ -13,7 +13,7 @@ import com.ibm.watsonx.ai.core.Json;
 import com.ibm.watsonx.ai.core.auth.ibmcloud.IBMCloudAuthenticator;
 import com.ibm.watsonx.ai.core.provider.HttpClientProvider;
 import com.ibm.watsonx.ai.rerank.RerankParameters;
-import com.ibm.watsonx.ai.rerank.RerankRequest;
+import com.ibm.watsonx.ai.rerank.RerankPayload;
 import com.ibm.watsonx.ai.rerank.RerankResponse;
 import com.ibm.watsonx.ai.rerank.RerankResponse.RerankInputResult;
 import com.ibm.watsonx.ai.rerank.RerankResponse.RerankResult;
@@ -105,7 +105,7 @@ public class WatsonxScoringModelTest {
 
             scoringModel.scoreAll(List.of(TextSegment.from("test1"), TextSegment.from("test2")), "query");
 
-            var rerankRequest = Json.fromJson(HttpUtils.bodyPublisherToString(mockHttpRequest), RerankRequest.class);
+            var rerankRequest = Json.fromJson(HttpUtils.bodyPublisherToString(mockHttpRequest), RerankPayload.class);
             assertEquals("model-name", rerankRequest.modelId());
             assertEquals("project-id", rerankRequest.projectId());
             assertEquals("space-id", rerankRequest.spaceId());
