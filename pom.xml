@@ -26,6 +26,7 @@
         <module>langchain4j-http-client</module>
         <module>http-clients/langchain4j-http-client-jdk</module>
         <module>http-clients/langchain4j-http-client-apache</module>
+        <module>http-clients/langchain4j-http-client-okhttp</module>
 
         <!-- model providers -->
         <module>langchain4j-anthropic</module>
