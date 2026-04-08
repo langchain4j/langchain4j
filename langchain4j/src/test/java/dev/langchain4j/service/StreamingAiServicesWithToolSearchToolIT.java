@@ -1065,12 +1065,12 @@ public class StreamingAiServicesWithToolSearchToolIT {
     }
 
     public static void verifyNoMoreImportantInteractions(StreamingChatModel model) {
+        ignoreInteractions(model).chat(any(ChatRequest.class), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
         ignoreInteractions(model).doChat(any(), any());
         ignoreInteractions(model).defaultRequestParameters();
         ignoreInteractions(model).supportedCapabilities();
         ignoreInteractions(model).listeners();
         ignoreInteractions(model).provider();
-        ignoreInteractions(model).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class), any(ChatRequestOptions.class));
         verifyNoMoreInteractions(model);
     }
 }

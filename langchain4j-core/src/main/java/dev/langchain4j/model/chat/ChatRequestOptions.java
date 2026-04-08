@@ -1,18 +1,19 @@
 package dev.langchain4j.model.chat;
 
-import static dev.langchain4j.internal.Utils.copy;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
+import static dev.langchain4j.internal.Utils.copy;
+
 /**
- * Options that accompany a {@link dev.langchain4j.model.chat.request.ChatRequest ChatRequest} through the
- * {@link ChatModel#chat(dev.langchain4j.model.chat.request.ChatRequest, ChatRequestOptions) ChatModel.chat} or
- * {@link StreamingChatModel#chat(dev.langchain4j.model.chat.request.ChatRequest,
- * dev.langchain4j.model.chat.response.StreamingChatResponseHandler, ChatRequestOptions) StreamingChatModel.chat}
+ * Options that accompany a {@link ChatRequest} through the
+ * {@link ChatModel#chat(ChatRequest, ChatRequestOptions)} or
+ * {@link StreamingChatModel#chat(ChatRequest, ChatRequestOptions, StreamingChatResponseHandler)}
  * invocation.
  *
  * <p>These options are <em>not</em> sent to the LLM provider; they are purely
@@ -57,20 +58,18 @@ public class ChatRequestOptions {
 
     public static class Builder {
 
-        private final Map<Object, Object> listenerAttributes = new LinkedHashMap<>();
+        private Map<Object, Object> listenerAttributes;
 
-        public Builder addListenerAttribute(Object key, Object value) {
-            ensureNotNull(key, "key");
-            ensureNotNull(value, "value");
-            this.listenerAttributes.put(key, value);
+        public Builder listenerAttributes(Map<Object, Object> listenerAttributes) {
+            this.listenerAttributes = listenerAttributes;
             return this;
         }
 
-        public Builder listenerAttributes(Map<Object, Object> attributes) {
-            if (attributes != null) {
-                this.listenerAttributes.clear();
-                this.listenerAttributes.putAll(attributes);
+        public Builder addListenerAttribute(Object key, Object value) {
+            if (this.listenerAttributes == null) {
+                this.listenerAttributes = new LinkedHashMap<>();
             }
+            this.listenerAttributes.put(key, value);
             return this;
         }
 
