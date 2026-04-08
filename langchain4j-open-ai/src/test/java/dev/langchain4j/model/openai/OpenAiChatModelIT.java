@@ -328,7 +328,8 @@ class OpenAiChatModelIT {
 
         record ApproximateLocation(String city) {}
         record UserLocation(String type, ApproximateLocation approximate) {}
-        record WebSearchOptions(@JsonProperty("user_location") UserLocation userLocation) {}
+        record WebSearchOptions(
+                @JsonProperty("user_location") UserLocation userLocation) {}
 
         WebSearchOptions webSearchOptions =
                 new WebSearchOptions(new UserLocation("approximate", new ApproximateLocation(city)));
@@ -341,10 +342,8 @@ class OpenAiChatModelIT {
                         .build())
                 .build();
 
-        SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
-                .statusCode(200)
-                .body(
-                        """
+        SuccessfulHttpResponse httpResponse =
+                SuccessfulHttpResponse.builder().statusCode(200).body("""
                         {
                           "id": "chatcmpl-C9QWFjhlUn7vBERtBTMFbbgoKqTDh",
                           "object": "chat.completion",
@@ -381,8 +380,7 @@ class OpenAiChatModelIT {
                           "service_tier": "default",
                           "system_fingerprint": "fp_560af6e559"
                         }
-                        """)
-                .build();
+                        """).build();
 
         MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(httpResponse);
 
@@ -394,9 +392,7 @@ class OpenAiChatModelIT {
         ChatResponse chatResponse = model.chat(chatRequest);
 
         // then
-        assertThat(mockHttpClient.request().body())
-                .isEqualToIgnoringWhitespace(
-                        """
+        assertThat(mockHttpClient.request().body()).isEqualToIgnoringWhitespace("""
                 {
                   "messages" : [ {
                     "role" : "user",
