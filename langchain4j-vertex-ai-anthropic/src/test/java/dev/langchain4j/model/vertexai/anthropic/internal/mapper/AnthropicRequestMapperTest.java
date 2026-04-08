@@ -1,4 +1,4 @@
-package dev.langchain4j.model.vertexai.anthropic;
+package dev.langchain4j.model.vertexai.anthropic.internal.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -6,7 +6,6 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.vertexai.anthropic.internal.api.AnthropicRequest;
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import dev.langchain4j.model.vertexai.anthropic.internal.mapper.AnthropicRequestMapper;
 
 class AnthropicRequestMapperTest {
 
