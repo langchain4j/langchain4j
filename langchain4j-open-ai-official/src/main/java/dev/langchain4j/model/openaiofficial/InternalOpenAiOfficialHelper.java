@@ -117,6 +117,11 @@ class InternalOpenAiOfficialHelper {
         }
 
         if (message instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
+            if (!toolExecutionResultMessage.hasSingleText()) {
+                throw new UnsupportedFeatureException(
+                        "OpenAI Chat Completions API does not support non-text content in tool results. "
+                                + "Only text content is supported.");
+            }
             return ChatCompletionMessageParam.ofTool(ChatCompletionToolMessageParam.builder()
                     .toolCallId(toolExecutionResultMessage.id())
                     .content(toolExecutionResultMessage.text())
