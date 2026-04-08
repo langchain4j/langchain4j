@@ -1,5 +1,7 @@
 package dev.langchain4j.model.scoring.onnx;
 
+import static ai.onnxruntime.OnnxTensor.createTensor;
+
 import ai.djl.huggingface.tokenizers.Encoding;
 import ai.djl.huggingface.tokenizers.HuggingFaceTokenizer;
 import ai.djl.util.PairList;
@@ -8,11 +10,8 @@ import ai.onnxruntime.OrtEnvironment;
 import ai.onnxruntime.OrtException;
 import ai.onnxruntime.OrtSession;
 import ai.onnxruntime.OrtSession.Result;
-
 import java.nio.file.Paths;
 import java.util.*;
-
-import static ai.onnxruntime.OnnxTensor.createTensor;
 
 class OnnxScoringBertCrossEncoder implements AutoCloseable {
 
@@ -22,16 +21,26 @@ class OnnxScoringBertCrossEncoder implements AutoCloseable {
     private final HuggingFaceTokenizer tokenizer;
     private final boolean normalize;
 
-    public OnnxScoringBertCrossEncoder(String modelPath, OrtSession.SessionOptions options, String pathToTokenizer, int modelMaxLength, boolean normalize) {
+    public OnnxScoringBertCrossEncoder(
+            String modelPath,
+            OrtSession.SessionOptions options,
+            String pathToTokenizer,
+            int modelMaxLength,
+            boolean normalize) {
         try (options) { // properly release parent session at the end of this block to prevent leaks
             this.environment = OrtEnvironment.getEnvironment();
             this.session = this.environment.createSession(modelPath, options);
             this.expectedInputs = session.getInputNames();
-            Map<String, String> tokenizerOptions = new HashMap<String, String>() {{
-                put("padding", "true");
-                put("truncation", "LONGEST_FIRST"); // Default maximum length limit, LONGEST-FIRST prioritizes truncating the longest part
-                put("modelMaxLength", String.valueOf(modelMaxLength - 2));
-            }};
+            Map<String, String> tokenizerOptions = new HashMap<String, String>() {
+                {
+                    put("padding", "true");
+                    put(
+                            "truncation",
+                            "LONGEST_FIRST"); // Default maximum length limit, LONGEST-FIRST prioritizes truncating the
+                    // longest part
+                    put("modelMaxLength", String.valueOf(modelMaxLength - 2));
+                }
+            };
             this.normalize = normalize;
             this.tokenizer = HuggingFaceTokenizer.newInstance(Paths.get(pathToTokenizer), tokenizerOptions);
         } catch (Exception e) {
@@ -68,7 +77,9 @@ class OnnxScoringBertCrossEncoder implements AutoCloseable {
         PairList<String, String> pairs = new PairList<>();
         for (String document : documents) {
             pairs.add(query, document);
-            tokenCount += queryTokenCount + tokenizer.tokenize(document).size() - 2; // do not count special tokens [CLS] and [SEP]
+            tokenCount += queryTokenCount
+                    + tokenizer.tokenize(document).size()
+                    - 2; // do not count special tokens [CLS] and [SEP]
         }
         try (Result result = this.encode(pairs)) {
             scores = this.toScore(result);
@@ -90,11 +101,9 @@ class OnnxScoringBertCrossEncoder implements AutoCloseable {
             tokenTypeIds[i] = encodings[i].getTypeIds();
         }
 
-        try (
-                OnnxTensor inputIdsTensor = createTensor(environment, inputIds);
+        try (OnnxTensor inputIdsTensor = createTensor(environment, inputIds);
                 OnnxTensor attentionMaskTensor = createTensor(environment, attentionMask);
-                OnnxTensor tokenTypeIdsTensor = createTensor(this.environment, tokenTypeIds);
-        ) {
+                OnnxTensor tokenTypeIdsTensor = createTensor(this.environment, tokenTypeIds)) {
             Map<String, OnnxTensor> inputs = new HashMap<>();
             inputs.put("input_ids", inputIdsTensor);
             inputs.put("attention_mask", attentionMaskTensor);
@@ -114,7 +123,7 @@ class OnnxScoringBertCrossEncoder implements AutoCloseable {
             if (normalize) {
                 scores.add(sigmoid(floats[0]));
             } else {
-                scores.add((double)floats[0]);
+                scores.add((double) floats[0]);
             }
         }
         return scores;
@@ -123,5 +132,4 @@ class OnnxScoringBertCrossEncoder implements AutoCloseable {
     private double sigmoid(float x) {
         return 1 / (1 + Math.exp(-x));
     }
-
 }
