@@ -1,8 +1,8 @@
 package dev.langchain4j.model.chat.request;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
-
 import java.util.List;
+import java.util.Map;
 
 /**
  * Represents common chat request parameters supported by most LLM providers.
@@ -33,6 +33,17 @@ public interface ChatRequestParameters {
     ToolChoice toolChoice();
 
     ResponseFormat responseFormat();
+
+    /**
+     * Returns custom parameters to be passed to the LLM provider's API.
+     * Allows passing provider-specific parameters that are not yet supported by the builder,
+     * enabling support for new model parameters from day zero.
+     *
+     * @return custom parameters map, or null if not set
+     */
+    default Map<String, Object> customParameters() {
+        return null;
+    }
 
     /**
      * Creates a new {@link ChatRequestParameters} by combining the current parameters with the specified ones.
@@ -85,7 +96,8 @@ public interface ChatRequestParameters {
      * @return a new {@link ChatRequestParameters} instance combining both sets of parameters
      */
     default ChatRequestParameters defaultedBy(ChatRequestParameters parameters) {
-        throw new UnsupportedOperationException("Missing implementation, please override this method in " + this.getClass().getName());
+        throw new UnsupportedOperationException("Missing implementation, please override this method in "
+                + this.getClass().getName());
     }
 
     static DefaultChatRequestParameters.Builder<?> builder() {
