@@ -20,6 +20,7 @@ class OnnxScoringBertCrossEncoder implements AutoCloseable {
     private final Set<String> expectedInputs;
     private final HuggingFaceTokenizer tokenizer;
     private final boolean normalize;
+    private boolean closed;
 
     public OnnxScoringBertCrossEncoder(
             String modelPath,
@@ -61,12 +62,32 @@ class OnnxScoringBertCrossEncoder implements AutoCloseable {
 
     @Override
     public void close() {
+        if (closed) {
+            return;
+        }
+
+        Exception firstException = null;
+
         try {
             if (session != null) session.close();
-            // release Rust allocated memory
+        } catch (Exception e) {
+            firstException = e;
+        }
+
+        try {
             if (tokenizer != null) tokenizer.close();
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            if (firstException != null) {
+                firstException.addSuppressed(e);
+            } else {
+                firstException = e;
+            }
+        }
+
+        closed = true;
+
+        if (firstException != null) {
+            throw new RuntimeException(firstException);
         }
     }
 
