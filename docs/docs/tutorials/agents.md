@@ -104,7 +104,7 @@ public interface StyleEditor {
         The story is "{{story}}".
         """)
     @Agent("Edits a story to better fit a given style")
-    String editStory(@V("story") String story, @V("style") String style);
+    String styleStory(@V("story") String story, @V("style") String style);
 }
 ```
 
