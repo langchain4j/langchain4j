@@ -260,9 +260,8 @@ class InternalOllamaHelper {
             return aiMessage.text();
         } else if (chatMessage instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
             if (!toolExecutionResultMessage.hasSingleText()) {
-                throw new UnsupportedFeatureException(
-                        "Ollama does not support non-text content in tool results. "
-                                + "Only text content is supported.");
+                throw new UnsupportedFeatureException("Ollama does not support non-text content in tool results. "
+                        + "Only text content is supported.");
             }
             return toolExecutionResultMessage.text();
         } else {
