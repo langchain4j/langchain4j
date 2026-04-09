@@ -9,14 +9,16 @@ import static java.util.Arrays.asList;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
+import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
+import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-
 import java.util.List;
+import java.util.Set;
 
 @Experimental
 public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
@@ -54,13 +56,24 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
                 .logResponses(builder.logResponses)
                 .build();
 
-        this.modelName = ensureNotNull(builder.modelName, "modelName");
-        this.temperature = builder.temperature;
-        this.topP = builder.topP;
-        this.maxOutputTokens = builder.maxOutputTokens;
+        ChatRequestParameters commonParameters;
+        if (builder.defaultRequestParameters != null) {
+            commonParameters = builder.defaultRequestParameters;
+        } else {
+            commonParameters = DefaultChatRequestParameters.EMPTY;
+        }
+
+        this.modelName = ensureNotNull(getOrDefault(builder.modelName, commonParameters.modelName()), "modelName");
+        this.temperature = getOrDefault(builder.temperature, commonParameters.temperature());
+        this.topP = getOrDefault(builder.topP, commonParameters.topP());
+        this.maxOutputTokens = getOrDefault(builder.maxOutputTokens, commonParameters.maxOutputTokens());
         this.maxToolCalls = builder.maxToolCalls;
         this.parallelToolCalls = builder.parallelToolCalls;
-        this.previousResponseId = builder.previousResponseId;
+        this.previousResponseId = getOrDefault(
+                builder.previousResponseId,
+                commonParameters instanceof OpenAiResponsesChatRequestParameters openAiResponsesParameters
+                        ? openAiResponsesParameters.previousResponseId()
+                        : null);
         this.topLogprobs = builder.topLogprobs;
         this.truncation = builder.truncation;
         this.include = copyIfNotNull(builder.include);
@@ -71,14 +84,20 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
         this.reasoningEffort = builder.reasoningEffort;
         this.textVerbosity = builder.textVerbosity;
         this.streamIncludeObfuscation = builder.streamIncludeObfuscation;
+        // Default to false to avoid persisting data unless explicitly requested.
         this.store = getOrDefault(builder.store, false);
-        this.strict = getOrDefault(builder.strict, true);
+        // Default to false to avoid rejecting outputs unless explicitly enabled by the user.
+        this.strict = getOrDefault(builder.strict, false);
         this.listeners = copy(builder.listeners);
-        this.defaultRequestParameters = DefaultChatRequestParameters.builder()
+        this.defaultRequestParameters = OpenAiResponsesChatRequestParameters.builder()
                 .modelName(modelName)
                 .temperature(temperature)
                 .topP(topP)
                 .maxOutputTokens(maxOutputTokens)
+                .toolSpecifications(commonParameters.toolSpecifications())
+                .toolChoice(commonParameters.toolChoice())
+                .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
+                .previousResponseId(previousResponseId)
                 .build();
     }
 
@@ -95,7 +114,7 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
                 maxOutputTokens,
                 maxToolCalls,
                 parallelToolCalls,
-                previousResponseId,
+                getPreviousResponseId(chatRequest),
                 topLogprobs,
                 truncation,
                 include,
@@ -127,6 +146,19 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
         return ModelProvider.OPEN_AI;
     }
 
+    @Override
+    public Set<Capability> supportedCapabilities() {
+        return Set.of(Capability.RESPONSE_FORMAT_JSON_SCHEMA);
+    }
+
+    private String getPreviousResponseId(ChatRequest chatRequest) {
+        if (chatRequest.parameters() instanceof OpenAiResponsesChatRequestParameters parameters
+                && parameters.previousResponseId() != null) {
+            return parameters.previousResponseId();
+        }
+        return previousResponseId;
+    }
+
     public static class Builder {
 
         private HttpClientBuilder httpClientBuilder;
@@ -155,6 +187,8 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
         private Boolean logRequests;
         private Boolean logResponses;
         private List<ChatModelListener> listeners;
+        private ChatRequestParameters defaultRequestParameters;
+        private ResponseFormat responseFormat;
 
         public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
@@ -288,6 +322,16 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
 
         public Builder listeners(ChatModelListener... listeners) {
             return listeners(asList(listeners));
+        }
+
+        public Builder defaultRequestParameters(ChatRequestParameters parameters) {
+            this.defaultRequestParameters = parameters;
+            return this;
+        }
+
+        public Builder responseFormat(ResponseFormat responseFormat) {
+            this.responseFormat = responseFormat;
+            return this;
         }
 
         public OpenAiResponsesStreamingChatModel build() {

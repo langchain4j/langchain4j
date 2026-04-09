@@ -8,6 +8,7 @@
     <version>1.13.0-beta23-SNAPSHOT</version>
     <name>LangChain4j :: Test Retry</name>
     <description>Internal LangChain4j JUnit extension for retrying flaky tests</description>
+    <url>https://github.com/langchain4j/langchain4j/tree/main</url>
 
     <properties>
         <java.version>17</java.version>

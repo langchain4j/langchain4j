@@ -69,7 +69,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     // TODO https://github.com/langchain4j/langchain4j/issues/2220
 
     static final String WHAT_IS_THE_CAPITAL_OF_GERMANY = "What is the capital of Germany?";
-    
+
     static final String CAT_IMAGE_URL =
             "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
     static final String DICE_IMAGE_URL =
@@ -239,9 +239,8 @@ public abstract class AbstractBaseChatModelIT<M> {
         String modelName = customModelName();
         ensureModelNameIsDifferentFromDefault(modelName, model);
 
-        ChatRequestParameters parameters = ChatRequestParameters.builder()
-                .modelName(modelName)
-                .build();
+        ChatRequestParameters parameters =
+                ChatRequestParameters.builder().modelName(modelName).build();
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from(WHAT_IS_THE_CAPITAL_OF_GERMANY))
@@ -276,7 +275,8 @@ public abstract class AbstractBaseChatModelIT<M> {
     protected ChatRequestParameters saveTokens(ChatRequestParameters parameters) {
         // TODO slight optimization: check model.parameters().modelName() instead?
         if (supportsMaxOutputTokensParameter()) {
-            return parameters.overrideWith(ChatRequestParameters.builder().maxOutputTokens(1).build());
+            return parameters.overrideWith(
+                    ChatRequestParameters.builder().maxOutputTokens(1).build());
         } else {
             return parameters;
         }
@@ -288,9 +288,8 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // given
         String modelName = customModelName();
-        ChatRequestParameters parameters = ChatRequestParameters.builder()
-                .modelName(modelName)
-                .build();
+        ChatRequestParameters parameters =
+                ChatRequestParameters.builder().modelName(modelName).build();
         M model = createModelWith(saveTokens(parameters));
 
         ChatRequest chatRequest = ChatRequest.builder()
@@ -389,9 +388,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     }
 
     protected ChatRequestParameters createParameters(int maxOutputTokens) {
-        return ChatRequestParameters.builder()
-                .maxOutputTokens(maxOutputTokens)
-                .build();
+        return ChatRequestParameters.builder().maxOutputTokens(maxOutputTokens).build();
     }
 
     protected Set<FinishReason> finishReasonForMaxOutputTokens() {
@@ -404,9 +401,8 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // given
         int maxOutputTokens = maxOutputTokens();
-        ChatRequestParameters parameters = ChatRequestParameters.builder()
-                        .maxOutputTokens(maxOutputTokens)
-                        .build();
+        ChatRequestParameters parameters =
+                ChatRequestParameters.builder().maxOutputTokens(maxOutputTokens).build();
         M model = createModelWith(parameters);
 
         ChatRequest chatRequest = ChatRequest.builder()
@@ -717,8 +713,10 @@ public abstract class AbstractBaseChatModelIT<M> {
             InOrder inOrder = inOrder(handler);
             verifyToolCallbacks(handler, inOrder, toolExecutionRequest.id(), (StreamingChatModel) model);
             inOrder.verify(handler).onCompleteResponse(chatResponse);
-            inOrder.verifyNoMoreInteractions();
-            verifyNoMoreInteractions(handler);
+            if (!supportsPartialToolStreaming((StreamingChatModel) model)) {
+                inOrder.verifyNoMoreInteractions();
+                verifyNoMoreInteractions(handler);
+            }
 
             assertThat(metadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
 
@@ -1026,8 +1024,10 @@ public abstract class AbstractBaseChatModelIT<M> {
                     toolExecutionRequests.get(1).id(),
                     (StreamingChatModel) model);
             inOrder.verify(handler).onCompleteResponse(chatResponse);
-            inOrder.verifyNoMoreInteractions();
-            verifyNoMoreInteractions(handler);
+            if (!supportsPartialToolStreaming((StreamingChatModel) model)) {
+                inOrder.verifyNoMoreInteractions();
+                verifyNoMoreInteractions(handler);
+            }
 
             assertThat(metadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
 
@@ -1354,8 +1354,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     @MethodSource("models")
     @EnabledIf("supportsJsonResponseFormatWithRawSchema")
     protected void should_respect_JsonRawSchema_responseFormat(M model) {
-        var rawSchema =
-                """
+        var rawSchema = """
             {
                 "$schema": "http://json-schema.org/draft-07/schema#",
                 "type": "object",
@@ -1534,8 +1533,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     protected void should_accept_single_image_as_base64_encoded_string(M model) {
 
         // given
-        UserMessage userMessage =
-                UserMessage.from(TextContent.from("What do you see?"), catImageContentBase64());
+        UserMessage userMessage = UserMessage.from(TextContent.from("What do you see?"), catImageContentBase64());
         ChatRequest chatRequest = ChatRequest.builder().messages(userMessage).build();
 
         // when
@@ -1564,8 +1562,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         UserMessage userMessage = UserMessage.from(
                 TextContent.from("What do you see on these images? Describe both images in english."),
                 catImageContentBase64(),
-                diceImageContentBase64()
-        );
+                diceImageContentBase64());
 
         ChatRequest chatRequest = ChatRequest.builder().messages(userMessage).build();
 
@@ -1594,8 +1591,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     protected void should_fail_if_images_as_base64_encoded_strings_are_not_supported(M model) {
 
         // given
-        UserMessage userMessage =
-                UserMessage.from(TextContent.from("What do you see?"), catImageContentBase64());
+        UserMessage userMessage = UserMessage.from(TextContent.from("What do you see?"), catImageContentBase64());
         ChatRequest chatRequest = ChatRequest.builder().messages(userMessage).build();
 
         // when-then
@@ -1616,8 +1612,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     protected void should_accept_single_image_as_public_URL(M model) {
 
         // given
-        UserMessage userMessage =
-                UserMessage.from(TextContent.from("What do you see?"), catImageContentUrl());
+        UserMessage userMessage = UserMessage.from(TextContent.from("What do you see?"), catImageContentUrl());
         ChatRequest chatRequest = ChatRequest.builder().messages(userMessage).build();
 
         // when
@@ -1674,8 +1669,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     protected void should_fail_if_images_as_public_URLs_are_not_supported(M model) {
 
         // given
-        UserMessage userMessage =
-                UserMessage.from(TextContent.from("What do you see?"), catImageContentUrl());
+        UserMessage userMessage = UserMessage.from(TextContent.from("What do you see?"), catImageContentUrl());
         ChatRequest chatRequest = ChatRequest.builder().messages(userMessage).build();
 
         // when-then
