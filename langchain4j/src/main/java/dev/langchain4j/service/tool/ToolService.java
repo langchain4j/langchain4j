@@ -368,13 +368,7 @@ public class ToolService {
             for (Map.Entry<ToolExecutionRequest, ToolExecutionResult> entry : toolResults.entrySet()) {
                 ToolExecutionRequest request = entry.getKey();
                 ToolExecutionResult result = entry.getValue();
-                ToolExecutionResultMessage resultMessage = ToolExecutionResultMessage.builder()
-                        .id(request.id())
-                        .toolName(request.name())
-                        .text(result.resultText())
-                        .isError(result.isError())
-                        .attributes(result.attributes())
-                        .build();
+                ToolExecutionResultMessage resultMessage = toResultMessage(request, result);
 
                 ToolExecution toolExecution = ToolExecution.builder()
                         .request(request)
@@ -417,6 +411,9 @@ public class ToolService {
 
             if (chatMemory != null) {
                 messages = chatMemory.messages();
+                if (!context.storeRetrievedContentInChatMemory) {
+                    messages = UserMessage.replaceLast(chatMemory.messages(), invocationContext.userMessage());
+                }
             }
 
             toolServiceContext = refreshDynamicProviders(toolServiceContext, messages, invocationContext);
@@ -520,7 +517,7 @@ public class ToolService {
         listenerRegistrar.fireEvent(ToolExecutedEvent.builder()
                 .invocationContext(invocationContext)
                 .request(request)
-                .resultText(toolExecution.result())
+                .resultContents(toolExecution.resultContents())
                 .build());
     }
 
@@ -691,6 +688,16 @@ public class ToolService {
         }
     }
 
+    static ToolExecutionResultMessage toResultMessage(ToolExecutionRequest request, ToolExecutionResult result) {
+        return ToolExecutionResultMessage.builder()
+                .id(request.id())
+                .toolName(request.name())
+                .contents(result.resultContents())
+                .isError(result.isError())
+                .attributes(result.attributes())
+                .build();
+    }
+
     private static Throwable getCause(Exception e) {
         Throwable cause = e.getCause();
         return cause != null ? cause : e;
@@ -742,4 +749,5 @@ public class ToolService {
     public boolean isImmediateTool(String toolName) {
         return immediateReturnTools.contains(toolName);
     }
+
 }

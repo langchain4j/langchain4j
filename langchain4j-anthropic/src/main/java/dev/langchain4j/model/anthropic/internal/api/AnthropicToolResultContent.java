@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import java.util.List;
 import java.util.Objects;
 
 @JsonInclude(NON_NULL)
@@ -14,10 +15,24 @@ import java.util.Objects;
 public class AnthropicToolResultContent extends AnthropicMessageContent {
 
     public String toolUseId;
-    public String content;
+
+    /**
+     * Can be either a {@link String} (text-only tool result)
+     * or a {@link List} of {@link AnthropicMessageContent} (multimodal tool result).
+     */
+    public Object content;
+
     public Boolean isError;
 
     public AnthropicToolResultContent(String toolUseId, String content, Boolean isError) {
+        super("tool_result");
+        this.toolUseId = toolUseId;
+        this.content = content;
+        this.isError = isError;
+    }
+
+    public AnthropicToolResultContent(
+            String toolUseId, List<AnthropicMessageContent> content, Boolean isError) {
         super("tool_result");
         this.toolUseId = toolUseId;
         this.content = content;

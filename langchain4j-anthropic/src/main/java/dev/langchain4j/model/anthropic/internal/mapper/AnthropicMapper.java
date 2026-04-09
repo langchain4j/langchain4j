@@ -115,8 +115,29 @@ public class AnthropicMapper {
     }
 
     private static AnthropicToolResultContent toAnthropicToolResultContent(ToolExecutionResultMessage message) {
+        if (message.hasSingleText()) {
+            return new AnthropicToolResultContent(
+                    message.id(), message.text(), Boolean.TRUE.equals(message.isError()) ? true : null);
+        }
+        List<AnthropicMessageContent> contentBlocks = new ArrayList<>();
+        for (dev.langchain4j.data.message.Content content : message.contents()) {
+            if (content instanceof TextContent textContent) {
+                contentBlocks.add(new AnthropicTextContent(textContent.text()));
+            } else if (content instanceof ImageContent imageContent) {
+                Image image = imageContent.image();
+                if (image.url() != null) {
+                    contentBlocks.add(AnthropicImageContent.fromUrl(image.url().toString()));
+                } else {
+                    contentBlocks.add(AnthropicImageContent.fromBase64(
+                            ensureNotBlank(image.mimeType(), "mimeType"),
+                            ensureNotBlank(image.base64Data(), "base64Data")));
+                }
+            } else {
+                throw illegalArgument("Unsupported content type in tool result: " + content.type());
+            }
+        }
         return new AnthropicToolResultContent(
-                message.id(), message.text(), Boolean.TRUE.equals(message.isError()) ? true : null);
+                message.id(), contentBlocks, Boolean.TRUE.equals(message.isError()) ? true : null);
     }
 
     private static List<AnthropicMessageContent> toAnthropicMessageContents(UserMessage message) {

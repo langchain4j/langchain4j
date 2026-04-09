@@ -5,9 +5,25 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-internal-test-retry</artifactId>
-    <version>1.13.0-beta23-SNAPSHOT</version>
+    <version>1.14.0-beta24-SNAPSHOT</version>
     <name>LangChain4j :: Test Retry</name>
     <description>Internal LangChain4j JUnit extension for retrying flaky tests</description>
+    <url>https://github.com/langchain4j/langchain4j/tree/main</url>
+
+    <developers>
+        <developer>
+            <id>dliubarskyi</id>
+            <name>Dmytro Liubarskyi</name>
+            <email>info@langchain4j.dev</email>
+            <url>https://github.com/dliubarskyi</url>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git://github.com/langchain4j/langchain4j.git</connection>
+        <developerConnection>scm:git:git@github.com:langchain4j/langchain4j.git</developerConnection>
+        <url>https://github.com/langchain4j/langchain4j/tree/main</url>
+    </scm>
 
     <properties>
         <java.version>17</java.version>
@@ -47,8 +63,63 @@
                     <waitMaxTime>3600</waitMaxTime>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>3.3.1</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals>
+                            <goal>jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.5.0</version>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>sign</id>
+            <activation>
+                <property>
+                    <name>sign</name>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>3.0.1</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                                <phase>verify</phase>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 
     <licenses>
         <license>

@@ -247,6 +247,29 @@ ChatRequest request2 = ChatRequest.builder()
 ChatResponse response2 = model.chat(request2);
 ```
 
+#### Multimodal Tool Results
+`ToolExecutionResultMessage` can also carry non-text content such as images.
+Instead of using `text()`, you can use the builder with `contents()`:
+
+```java
+ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.builder()
+        .id(toolExecutionRequest.id())
+        .toolName(toolExecutionRequest.name())
+        .contents(
+                TextContent.from("Here is the photo"),
+                ImageContent.from(Image.builder()
+                        .base64Data(base64Data)
+                        .mimeType("image/png")
+                        .build())
+        )
+        .build();
+```
+
+:::note
+Not all LLM providers support multimodal tool results.
+See [Returning Images and Multimodal Content](/tutorials/tools#returning-images-and-multimodal-content) for details on provider support.
+:::
+
 ### Using `StreamingChatModel`
 
 Once you have a `List<ToolSpecification>`, you can call the model:
@@ -430,6 +453,47 @@ If the method has a `void` return type, "Success" string is sent to the LLM if t
 If the method has a `String` return type, the returned value is sent to the LLM as is, without any conversions.
 
 For other return types, the returned value is converted into a JSON string before being sent to the LLM.
+
+#### Returning Images and Multimodal Content
+
+Tools can also return images and other non-text content. When a tool returns one of the following types,
+the result is sent to the LLM as multimodal content (e.g., image) instead of being serialized to JSON text:
+
+- `Image` — sent as a single image
+- `ImageContent` — sent as a single image content
+- `Content` — sent as a single content element (e.g., `TextContent`, `ImageContent`)
+- `List<Content>` — sent as multiple content elements
+- `Content[]` — sent as multiple content elements
+
+For example, a tool that takes a photo and returns an image:
+```java
+@Tool("Takes a photo and returns it")
+Image takePhoto() {
+    byte[] imageBytes = camera.capture();
+    return Image.builder()
+            .base64Data(Base64.getEncoder().encodeToString(imageBytes))
+            .mimeType("image/png")
+            .build();
+}
+```
+
+Or a tool that returns both text and an image:
+```java
+@Tool("Takes a photo and returns it with a description")
+List<Content> takePhoto() {
+    Image image = camera.capture();
+    return List.of(
+            TextContent.from("Photo taken at " + LocalDateTime.now()),
+            ImageContent.from(image)
+    );
+}
+```
+
+:::note
+Not all LLM providers support multimodal tool results.
+Providers that currently support images in tool results include Anthropic, Amazon Bedrock, and Google AI Gemini.
+Other providers will throw an `UnsupportedFeatureException` if a tool returns non-text content.
+:::
 
 ### AI services as tools for other AI services
 
@@ -761,6 +825,7 @@ List<ToolExecution> toolExecutions = result.toolExecutions();
 ToolExecution toolExecution = toolExecutions.get(0);
 ToolExecutionRequest request = toolExecution.request();
 String result = toolExecution.result(); // tool execution result as text
+List<Content> resultContents = toolExecution.resultContents(); // tool execution result as content list (may include images)
 Object resultObject = toolExecution.resultObject(); // actual value returned by the tool
 ```
 

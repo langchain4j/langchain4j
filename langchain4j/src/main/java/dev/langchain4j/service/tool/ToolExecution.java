@@ -2,8 +2,12 @@ package dev.langchain4j.service.tool;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Objects;
+import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.invocation.InvocationContext;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -40,10 +44,24 @@ public class ToolExecution {
      * Returns the tool execution result as text.
      *
      * @return the result of the tool execution.
+     * @see #resultContents()
      * @see #resultObject()
      */
     public String result() {
         return result.resultText();
+    }
+
+    /**
+     * Returns the contents of the tool execution result.
+     * For text-only results, returns a singleton list containing a {@link TextContent}.
+     *
+     * @see #result()
+     * @see #resultObject()
+     * @since 1.13.0
+     */
+    @Experimental
+    public List<Content> resultContents() {
+        return result.resultContents();
     }
 
     /**

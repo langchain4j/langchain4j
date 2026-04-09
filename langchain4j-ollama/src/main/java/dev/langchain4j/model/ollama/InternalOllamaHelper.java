@@ -94,7 +94,7 @@ class InternalOllamaHelper {
                         .name(toolCall.getFunction().getName())
                         .arguments(toJsonWithoutIdent(toolCall.getFunction().getArguments()))
                         .build())
-                .toList();
+                .collect(Collectors.toList());
     }
 
     static String toOllamaResponseFormat(ResponseFormat responseFormat) {
@@ -259,6 +259,11 @@ class InternalOllamaHelper {
         } else if (chatMessage instanceof AiMessage aiMessage) {
             return aiMessage.text();
         } else if (chatMessage instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
+            if (!toolExecutionResultMessage.hasSingleText()) {
+                throw new UnsupportedFeatureException(
+                        "Ollama does not support non-text content in tool results. "
+                                + "Only text content is supported.");
+            }
             return toolExecutionResultMessage.text();
         } else {
             throw new IllegalArgumentException("Unsupported message type: " + chatMessage.type());
