@@ -171,7 +171,9 @@ class InternalOpenAiOfficialHelper {
             } else if (content instanceof PdfFileContent pdfFileContent) {
                 String fileData;
                 if (pdfFileContent.pdfFile().url() != null) {
-                    fileData = pdfFileContent.pdfFile().url().toString();
+                    throw new UnsupportedFeatureException(
+                            "OpenAI Official Chat Completions API does not support URL-based PDF inputs. "
+                                    + "Provide PDF content as base64 data instead.");
                 } else {
                     fileData = String.format(
                             "data:%s;base64,%s",
