@@ -189,9 +189,7 @@ class JsonSchemaElementUtilsTest {
         Map<String, Object> map = toMap(person, false);
 
         // then
-        assertThat(new ObjectMapper().writeValueAsString(map))
-                .isEqualToIgnoringWhitespace(
-                        """
+        assertThat(new ObjectMapper().writeValueAsString(map)).isEqualToIgnoringWhitespace("""
                 {
                    "type":"object",
                    "properties":{
@@ -223,9 +221,7 @@ class JsonSchemaElementUtilsTest {
         Map<String, Object> map = toMap(person, true);
 
         // then
-        assertThat(new ObjectMapper().writeValueAsString(map))
-                .isEqualToIgnoringWhitespace(
-                        """
+        assertThat(new ObjectMapper().writeValueAsString(map)).isEqualToIgnoringWhitespace("""
                 {
                    "type":"object",
                    "properties":{
@@ -247,8 +243,7 @@ class JsonSchemaElementUtilsTest {
     @Test
     void nativeSchemaToMap() throws JsonProcessingException {
         ObjectMapper mapper = new ObjectMapper();
-        String rawJsonSchema =
-                """
+        String rawJsonSchema = """
         {
             "additionalProperties": false,
             "type" : "object",

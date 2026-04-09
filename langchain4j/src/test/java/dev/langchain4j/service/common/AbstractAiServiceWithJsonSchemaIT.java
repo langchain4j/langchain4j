@@ -1067,10 +1067,9 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                                 .addProperty(
                                                                         "children",
                                                                         JsonArraySchema.builder()
-                                                                                .items(
-                                                                                        JsonReferenceSchema.builder()
-                                                                                                .reference(reference)
-                                                                                                .build())
+                                                                                .items(JsonReferenceSchema.builder()
+                                                                                        .reference(reference)
+                                                                                        .build())
                                                                                 .build())
                                                                 .build()))
                                                 .build())
@@ -1100,8 +1099,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         PersonExtractor16 personExtractor = AiServices.create(PersonExtractor16.class, model);
 
-        String text =
-                """
+        String text = """
                 Klaus can be identified by the following IDs:
                 - 12345
                 - 567b229a-6b0a-4f1e-9006-448cd9dfbfda

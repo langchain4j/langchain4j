@@ -28,7 +28,7 @@ import org.junit.jupiter.api.condition.EnabledOnJre;
  * - Authenticate with Google Cloud (gcloud auth application-default login)
  */
 @EnabledIf(
-        value = "dev.langchain4j.model.vertexai.anthropic.VertexAiAnthropicChatModelIT#isMonday",
+        value = "dev.langchain4j.model.vertexai.anthropic.VertexAiAnthropicFixtures#isMonday",
         disabledReason = "Not enough quota to run it more often")
 @EnabledOnJre(value = JAVA_17, disabledReason = "Not enough quota to run it more often")
 @EnabledIfEnvironmentVariable(named = "GCP_PROJECT_ID", matches = ".+")

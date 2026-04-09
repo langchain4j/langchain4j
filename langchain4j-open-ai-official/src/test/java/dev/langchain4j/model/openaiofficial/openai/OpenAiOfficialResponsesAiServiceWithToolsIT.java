@@ -13,6 +13,7 @@ import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChat
 import dev.langchain4j.service.common.AbstractAiServiceWithToolsIT;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
@@ -57,7 +58,16 @@ class OpenAiOfficialResponsesAiServiceWithToolsIT extends AbstractAiServiceWithT
         public ChatResponse doChat(ChatRequest chatRequest) {
             TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
             streamingChatModel.chat(chatRequest, handler);
-            return handler.get();
+            try {
+                return handler.get();
+            } catch (RuntimeException e) {
+                Throwable cause = e.getCause();
+                if (cause instanceof ExecutionException executionException
+                        && executionException.getCause() instanceof RuntimeException runtimeException) {
+                    throw runtimeException;
+                }
+                throw e;
+            }
         }
 
         @Override

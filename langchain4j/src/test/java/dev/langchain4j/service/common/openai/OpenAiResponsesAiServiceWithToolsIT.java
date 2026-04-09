@@ -15,6 +15,7 @@ import dev.langchain4j.model.openai.OpenAiResponsesStreamingChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceWithToolsIT;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 // TODO move to langchain4j-open-ai module once dependency cycle is resolved
@@ -60,7 +61,16 @@ class OpenAiResponsesAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
         public ChatResponse doChat(ChatRequest chatRequest) {
             TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
             streamingChatModel.chat(chatRequest, handler);
-            return handler.get();
+            try {
+                return handler.get();
+            } catch (RuntimeException e) {
+                Throwable cause = e.getCause();
+                if (cause instanceof ExecutionException executionException
+                        && executionException.getCause() instanceof RuntimeException runtimeException) {
+                    throw runtimeException;
+                }
+                throw e;
+            }
         }
 
         @Override

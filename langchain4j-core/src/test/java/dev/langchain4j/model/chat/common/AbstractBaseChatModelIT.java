@@ -1354,8 +1354,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     @MethodSource("models")
     @EnabledIf("supportsJsonResponseFormatWithRawSchema")
     protected void should_respect_JsonRawSchema_responseFormat(M model) {
-        var rawSchema =
-                """
+        var rawSchema = """
             {
                 "$schema": "http://json-schema.org/draft-07/schema#",
                 "type": "object",
@@ -1563,8 +1562,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         UserMessage userMessage = UserMessage.from(
                 TextContent.from("What do you see on these images? Describe both images in english."),
                 catImageContentBase64(),
-                diceImageContentBase64()
-        );
+                diceImageContentBase64());
 
         ChatRequest chatRequest = ChatRequest.builder().messages(userMessage).build();
 
