@@ -368,16 +368,13 @@ public class ToolService {
             for (Map.Entry<ToolExecutionRequest, ToolExecutionResult> entry : toolResults.entrySet()) {
                 ToolExecutionRequest request = entry.getKey();
                 ToolExecutionResult result = entry.getValue();
-                ToolExecutionResultMessage resultMessage = ToolExecutionResultMessage.builder()
-                        .id(request.id())
-                        .toolName(request.name())
-                        .text(result.resultText())
-                        .isError(result.isError())
-                        .attributes(result.attributes())
-                        .build();
+                ToolExecutionResultMessage resultMessage = toResultMessage(request, result);
 
-                ToolExecution toolExecution =
-                        ToolExecution.builder().request(request).result(result).build();
+                ToolExecution toolExecution = ToolExecution.builder()
+                        .request(request)
+                        .result(result)
+                        .invocationContext(invocationContext)
+                        .build();
                 toolExecutions.add(toolExecution);
 
                 fireToolExecutedEvent(invocationContext, request, toolExecution, context.eventListenerRegistrar);
@@ -517,7 +514,7 @@ public class ToolService {
         listenerRegistrar.fireEvent(ToolExecutedEvent.builder()
                 .invocationContext(invocationContext)
                 .request(request)
-                .resultText(toolExecution.result())
+                .resultContents(toolExecution.resultContents())
                 .build());
     }
 
@@ -634,8 +631,10 @@ public class ToolService {
             Consumer<BeforeToolExecution> beforeToolExecution,
             Consumer<ToolExecution> afterToolExecution) {
         if (beforeToolExecution != null) {
-            beforeToolExecution.accept(
-                    BeforeToolExecution.builder().request(toolRequest).build());
+            beforeToolExecution.accept(BeforeToolExecution.builder()
+                    .request(toolRequest)
+                    .invocationContext(invocationContext)
+                    .build());
         }
 
         LocalDateTime startTime = LocalDateTime.now();
@@ -652,6 +651,7 @@ public class ToolService {
                     .result(toolResult)
                     .startTime(startTime)
                     .finishTime(LocalDateTime.now())
+                    .invocationContext(invocationContext)
                     .build());
         }
         return toolResult;
@@ -683,6 +683,16 @@ public class ToolService {
                     .resultText(errorHandlerResult.text())
                     .build();
         }
+    }
+
+    static ToolExecutionResultMessage toResultMessage(ToolExecutionRequest request, ToolExecutionResult result) {
+        return ToolExecutionResultMessage.builder()
+                .id(request.id())
+                .toolName(request.name())
+                .contents(result.resultContents())
+                .isError(result.isError())
+                .attributes(result.attributes())
+                .build();
     }
 
     private static Throwable getCause(Exception e) {

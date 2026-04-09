@@ -169,6 +169,18 @@ public class Agents {
         String editStory(@V("story") String story, @V("audience") String audience);
     }
 
+    public interface OptionalAudienceEditor {
+
+        @UserMessage("""
+            You are a professional editor.
+            Analyze and rewrite the following story to better align with the target audience of {{audience}}.
+            Return only the story and nothing else.
+            The story is "{{story}}".
+            """)
+        @Agent(description = "Edit a story to better fit a given audience", outputKey = "story", optional = true)
+        String editStory(@V("story") String story, @V("audience") String audience);
+    }
+
     public interface StyleEditor {
 
         @UserMessage("""

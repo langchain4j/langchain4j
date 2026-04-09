@@ -462,7 +462,7 @@ class AnthropicChatModelIT {
     }
 
     @Test
-    void should_cache_tools() {
+    void should_cache_tools() throws InterruptedException {
 
         // given
         AnthropicChatModel model = AnthropicChatModel.builder()
@@ -477,7 +477,7 @@ class AnthropicChatModelIT {
 
         ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name("calculator")
-                .description("returns a sum of two numbers".repeat(450) + randomString(3))
+                .description("returns a sum of two numbers".repeat(500) + randomString(10))
                 .parameters(JsonObjectSchema.builder()
                         .addIntegerProperty("first")
                         .addIntegerProperty("second")
@@ -498,6 +498,8 @@ class AnthropicChatModelIT {
         int minCacheableTokenThresholdForHaiku = 4096;
         assertThat(createCacheTokenUsage.cacheCreationInputTokens()).isGreaterThan(minCacheableTokenThresholdForHaiku);
         assertThat(createCacheTokenUsage.cacheReadInputTokens()).isEqualTo(0);
+
+        Thread.sleep(1000);
 
         // when
         ChatResponse response2 = model.chat(request);

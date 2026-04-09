@@ -55,6 +55,14 @@ public @interface Agent {
     boolean async() default false;
 
     /**
+     * If true, the agent's execution will be silently skipped when any of its arguments is missing in the agentic scope,
+     * instead of making the agentic system's execution fail.
+     *
+     * @return true if the agent is optional, false otherwise.
+     */
+    boolean optional() default false;
+
+    /**
      * Names of other agents participating in the definition of the context of this agent.
      *
      * @return array of names of other agents participating in the definition of the context of this agent.

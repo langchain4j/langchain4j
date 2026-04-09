@@ -323,12 +323,45 @@ abstract class AbstractBedrockChatModel {
     }
 
     protected ContentBlock createToolResultBlock(ToolExecutionResultMessage toolResult) {
+        if (toolResult.hasSingleText()) {
+            return ContentBlock.builder()
+                    .toolResult(ToolResultBlock.builder()
+                            .toolUseId(toolResult.id())
+                            .content(ToolResultContentBlock.builder()
+                                    .text(toolResult.text())
+                                    .build())
+                            .build())
+                    .build();
+        }
+
+        List<ToolResultContentBlock> contentBlocks = new ArrayList<>();
+        for (Content content : toolResult.contents()) {
+            if (content instanceof TextContent textContent) {
+                contentBlocks.add(ToolResultContentBlock.builder()
+                        .text(textContent.text())
+                        .build());
+            } else if (content instanceof ImageContent imageContent) {
+                SdkBytes bytes = fromByteArray(
+                        nonNull(imageContent.image().base64Data())
+                                ? Base64.getDecoder().decode(imageContent.image().base64Data())
+                                : readBytes(String.valueOf(imageContent.image().url())));
+                String imgFormat = extractAndValidateFormat(imageContent.image());
+                contentBlocks.add(ToolResultContentBlock.builder()
+                        .image(ImageBlock.builder()
+                                .format(imgFormat)
+                                .source(ImageSource.builder().bytes(bytes).build())
+                                .build())
+                        .build());
+            } else {
+                throw new UnsupportedFeatureException(
+                        "Bedrock does not support content type '" + content.type()
+                                + "' in tool results. Only text and image content are supported.");
+            }
+        }
         return ContentBlock.builder()
                 .toolResult(ToolResultBlock.builder()
                         .toolUseId(toolResult.id())
-                        .content(ToolResultContentBlock.builder()
-                                .text(toolResult.text())
-                                .build())
+                        .content(contentBlocks)
                         .build())
                 .build();
     }

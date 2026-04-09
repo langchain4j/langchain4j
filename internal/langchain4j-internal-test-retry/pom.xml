@@ -44,7 +44,7 @@
                     <autoPublish>true</autoPublish>
                     <waitUntil>published</waitUntil>
                     <!-- waitMaxTime is specified in seconds-->
-                    <waitMaxTime>1800</waitMaxTime>
+                    <waitMaxTime>3600</waitMaxTime>
                 </configuration>
             </plugin>
         </plugins>
