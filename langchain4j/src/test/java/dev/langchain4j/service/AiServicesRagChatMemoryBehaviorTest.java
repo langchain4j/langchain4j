@@ -185,6 +185,8 @@ class AiServicesRagChatMemoryBehaviorTest {
         assistant.chat("hello");
 
         assertThat(chatModel.requests()).hasSize(2);
+        assertThat(lastUserMessage(chatModel.requests().get(0).messages()))
+                .isEqualTo(UserMessage.from("hello [augmented]"));
         assertThat(lastUserMessage(chatModel.requests().get(1).messages()))
                 .isEqualTo(UserMessage.from("hello [augmented]"));
     }
@@ -206,6 +208,8 @@ class AiServicesRagChatMemoryBehaviorTest {
         assistant.chat("hello");
 
         assertThat(chatModel.requests()).hasSize(2);
+        assertThat(lastUserMessage(chatModel.requests().get(0).messages()))
+                .isEqualTo(UserMessage.from("hello [augmented]"));
         assertThat(lastUserMessage(chatModel.requests().get(1).messages()))
                 .isEqualTo(UserMessage.from("hello [augmented]"));
     }
@@ -262,6 +266,8 @@ class AiServicesRagChatMemoryBehaviorTest {
         assistant.chat("hello");
 
         assertThat(chatModel.requests()).hasSize(3);
+        assertThat(lastUserMessage(chatModel.requests().get(0).messages()))
+                .isEqualTo(UserMessage.from("hello [augmented]"));
         assertThat(lastUserMessage(chatModel.requests().get(1).messages()))
                 .isEqualTo(UserMessage.from("hello [augmented]"));
         assertThat(lastUserMessage(chatModel.requests().get(2).messages()))
@@ -306,6 +312,8 @@ class AiServicesRagChatMemoryBehaviorTest {
         futureResponse.get(30, TimeUnit.SECONDS);
 
         assertThat(capturedRequests).hasSize(2);
+        assertThat(lastUserMessage(capturedRequests.get(0).messages()))
+                .isEqualTo(UserMessage.from("hello [augmented]"));
         assertThat(lastUserMessage(capturedRequests.get(1).messages()))
                 .isEqualTo(UserMessage.from("hello [augmented]"));
     }
