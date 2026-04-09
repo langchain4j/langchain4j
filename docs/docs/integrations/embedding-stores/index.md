@@ -9,6 +9,7 @@ sidebar_position: 0
 | [In-memory](/integrations/embedding-stores/in-memory)                                 | ✅                | ✅                     | ✅                   |
 | [AlloyDB for Postgres](/integrations/embedding-stores/alloydb)                        | ✅                | ✅                     | ✅                   |
 | [Amazon S3 Vectors](/integrations/embedding-stores/amazon-s3-vectors)                 | ✅                | ✅                     | ✅                   |
+| [ArcadeDB](/integrations/embedding-stores/arcadedb)                                   | ✅                | ✅                     | ✅                   |
 | [Astra DB](/integrations/embedding-stores/astra-db)                                   | ✅                |                       |                     |
 | [Azure AI Search](/integrations/embedding-stores/azure-ai-search)                     | ✅                | ✅                     | ✅                   |
 | [Azure CosmosDB Mongo vCore](/integrations/embedding-stores/azure-cosmos-mongo-vcore) | ✅                |                       |                     |
