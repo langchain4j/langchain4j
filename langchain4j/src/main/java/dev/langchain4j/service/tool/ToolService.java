@@ -415,7 +415,7 @@ public class ToolService {
             if (chatMemory != null) {
                 messages = chatMemory.messages();
                 if (!context.storeRetrievedContentInChatMemory) {
-                    messages = replaceLastUserMessage(chatMemory.messages(), invocationContext.userMessage());
+                    messages = UserMessage.replaceLast(chatMemory.messages(), invocationContext.userMessage());
                 }
             }
 
@@ -740,29 +740,4 @@ public class ToolService {
         return immediateReturnTools.contains(toolName);
     }
 
-    /**
-     * Ensures the last {@link UserMessage} in the message list matches the one from {@link InvocationContext}.
-     * When {@code storeRetrievedContentInChatMemory} is {@code false}, the chat memory contains the original
-     * (non-augmented) message, but the LLM should receive the same final message as the first call.
-     *
-     * @param messages the messages reloaded from chat memory
-     * @param userMessage the final user message from {@link InvocationContext}, or {@code null} if not set
-     * @return new list with replacement if the last UserMessage differs, or the original list otherwise
-     */
-    public static List<ChatMessage> replaceLastUserMessage(List<ChatMessage> messages, UserMessage userMessage) {
-        if (userMessage == null) {
-            return messages;
-        }
-        for (int i = messages.size() - 1; i >= 0; i--) {
-            if (messages.get(i) instanceof UserMessage existing) {
-                if (existing.equals(userMessage)) {
-                    return messages;
-                }
-                List<ChatMessage> patched = new ArrayList<>(messages);
-                patched.set(i, userMessage);
-                return patched;
-            }
-        }
-        return messages;
-    }
 }

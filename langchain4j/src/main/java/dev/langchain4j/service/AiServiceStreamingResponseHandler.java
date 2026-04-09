@@ -12,6 +12,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
@@ -40,7 +41,6 @@ import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
-import dev.langchain4j.service.tool.ToolService;
 import dev.langchain4j.service.tool.ToolServiceContext;
 import java.util.ArrayList;
 import java.util.List;
@@ -465,7 +465,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         List<ChatMessage> messages = getMemory(memoryId).messages();
         return context.storeRetrievedContentInChatMemory
                 ? messages
-                : ToolService.replaceLastUserMessage(messages, invocationContext.userMessage());
+                : UserMessage.replaceLast(messages, invocationContext.userMessage());
     }
 
     @Override
