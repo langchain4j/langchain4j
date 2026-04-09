@@ -465,7 +465,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         List<ChatMessage> messages = getMemory(memoryId).messages();
         return context.storeRetrievedContentInChatMemory
                 ? messages
-                : ToolService.replaceLastUserMessageForToolReplay(messages, invocationContext.userMessage());
+                : ToolService.replaceLastUserMessage(messages, invocationContext.userMessage());
     }
 
     @Override

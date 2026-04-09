@@ -413,9 +413,10 @@ public class ToolService {
             }
 
             if (chatMemory != null) {
-                messages = context.storeRetrievedContentInChatMemory
-                        ? chatMemory.messages()
-                        : replaceLastUserMessageForToolReplay(chatMemory.messages(), invocationContext.userMessage());
+                messages = chatMemory.messages();
+                if (!context.storeRetrievedContentInChatMemory) {
+                    messages = replaceLastUserMessage(chatMemory.messages(), invocationContext.userMessage());
+                }
             }
 
             toolServiceContext = refreshDynamicProviders(toolServiceContext, messages, invocationContext);
@@ -748,8 +749,7 @@ public class ToolService {
      * @param userMessage the final user message from {@link InvocationContext}, or {@code null} if not set
      * @return new list with replacement if the last UserMessage differs, or the original list otherwise
      */
-    public static List<ChatMessage> replaceLastUserMessageForToolReplay(
-            List<ChatMessage> messages, UserMessage userMessage) {
+    public static List<ChatMessage> replaceLastUserMessage(List<ChatMessage> messages, UserMessage userMessage) {
         if (userMessage == null) {
             return messages;
         }
