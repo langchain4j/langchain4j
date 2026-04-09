@@ -73,6 +73,7 @@ class OpenAiResponsesClient {
     private static final String FIELD_DELTA = "delta";
     private static final String FIELD_TEXT = "text";
     private static final String FIELD_IMAGE_URL = "image_url";
+    private static final String FIELD_FILE_URL = "file_url";
     private static final String FIELD_FILE_DATA = "file_data";
     private static final String FIELD_FILENAME = "filename";
     private static final String FIELD_DETAIL = "detail";
@@ -419,8 +420,14 @@ class OpenAiResponsesClient {
     private Map<String, Object> createInputPdfContent(PdfFileContent pdfFileContent) {
         var content = new HashMap<String, Object>();
         content.put(FIELD_TYPE, TYPE_INPUT_FILE);
-        content.put(FIELD_FILE_DATA, buildPdfFileData(pdfFileContent));
-        content.put(FIELD_FILENAME, DEFAULT_PDF_FILENAME);
+        if (pdfFileContent.pdfFile().url() != null) {
+            content.put(FIELD_FILE_URL, pdfFileContent.pdfFile().url().toString());
+        } else if (pdfFileContent.pdfFile().base64Data() != null) {
+            content.put(FIELD_FILE_DATA, buildPdfFileData(pdfFileContent));
+            content.put(FIELD_FILENAME, DEFAULT_PDF_FILENAME);
+        } else {
+            throw new IllegalArgumentException("PDF must have either url or base64Data");
+        }
         return content;
     }
 
@@ -436,13 +443,11 @@ class OpenAiResponsesClient {
     }
 
     private String buildPdfFileData(PdfFileContent pdfFileContent) {
-        if (pdfFileContent.pdfFile().url() != null) {
-            return pdfFileContent.pdfFile().url().toString();
-        } else if (pdfFileContent.pdfFile().base64Data() != null) {
+        if (pdfFileContent.pdfFile().base64Data() != null) {
             return "data:" + pdfFileContent.pdfFile().mimeType() + ";base64,"
                     + pdfFileContent.pdfFile().base64Data();
         } else {
-            throw new IllegalArgumentException("PDF must have either url or base64Data");
+            throw new IllegalArgumentException("PDF must have base64Data");
         }
     }
 

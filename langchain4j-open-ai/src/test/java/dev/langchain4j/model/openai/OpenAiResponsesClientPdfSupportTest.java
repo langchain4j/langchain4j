@@ -60,6 +60,47 @@ class OpenAiResponsesClientPdfSupportTest {
         assertThat((String) pdfInput.get("file_data")).isEqualTo("data:application/pdf;base64," + pdfBase64);
     }
 
+    @Test
+    void should_map_pdf_file_url_content_to_input_file() throws Exception {
+
+        // given
+        String pdfUrl = "https://orimi.com/pdf-test.pdf";
+        UserMessage userMessage = UserMessage.builder()
+                .addContent(TextContent.from("What information is in the attached PDF?"))
+                .addContent(PdfFileContent.from(PdfFile.builder()
+                        .url(pdfUrl)
+                        .build()))
+                .build();
+
+        OpenAiResponsesClient client =
+                OpenAiResponsesClient.builder().apiKey("test-api-key").build();
+        Method toResponsesMessages =
+                OpenAiResponsesClient.class.getDeclaredMethod("toResponsesMessages", ChatMessage.class);
+        toResponsesMessages.setAccessible(true);
+
+        // when
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> messages =
+                (List<Map<String, Object>>) toResponsesMessages.invoke(client, userMessage);
+
+        // then
+        assertThat(messages).hasSize(1);
+        Map<String, Object> message = messages.get(0);
+        assertThat(message).containsEntry("type", "message").containsEntry("role", "user");
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> content = (List<Map<String, Object>>) message.get("content");
+        assertThat(content).hasSize(2);
+
+        Map<String, Object> pdfInput = content.stream()
+                .filter(contentItem -> "input_file".equals(contentItem.get("type")))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(pdfInput).containsEntry("file_url", pdfUrl);
+        assertThat(pdfInput).doesNotContainKeys("file_data", "filename");
+    }
+
     private String samplePdfBase64() throws Exception {
         URL samplePdf = getClass().getClassLoader().getResource("sample.pdf");
         assertThat(samplePdf).isNotNull();
