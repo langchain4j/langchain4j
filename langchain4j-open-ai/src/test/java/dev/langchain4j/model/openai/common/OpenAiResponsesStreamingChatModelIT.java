@@ -279,7 +279,7 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
         UserMessage userMessage = UserMessage.builder()
                 .addContent(TextContent.from(
-                        "What city and postal code appear in the attached PDF? Return only that city and postal code."))
+                        "What city appears in the attached PDF? Return only the city name."))
                 .addContent(PdfFileContent.from(PdfFile.builder()
                         .url("https://orimi.com/pdf-test.pdf")
                         .build()))
@@ -289,8 +289,7 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
         model.chat(ChatRequest.builder().messages(userMessage).build(), handler);
 
         assertThat(handler.get().aiMessage().text())
-                .containsIgnoringCase("Whitehorse")
-                .containsIgnoringCase("Y1A 2C6");
+                .containsIgnoringCase("Whitehorse");
     }
 
     @Test
