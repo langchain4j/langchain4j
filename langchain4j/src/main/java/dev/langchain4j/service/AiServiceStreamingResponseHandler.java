@@ -12,7 +12,6 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
@@ -94,7 +93,6 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private final ToolArgumentsErrorHandler toolArgumentsErrorHandler;
     private final ToolExecutionErrorHandler toolExecutionErrorHandler;
     private final Executor toolExecutor;
-    private final UserMessage userMessageForToolReplay;
     private final Queue<Future<ToolRequestResult>> toolExecutionFutures = new ConcurrentLinkedQueue<>();
 
     private final List<String> responseBuffer = new ArrayList<>();
@@ -128,8 +126,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             ToolExecutionErrorHandler toolExecutionErrorHandler,
             Executor toolExecutor,
             GuardrailRequestParams commonGuardrailParams,
-            Object methodKey,
-            UserMessage userMessageForToolReplay) {
+            Object methodKey) {
         this.chatRequest = ensureNotNull(chatRequest, "chatRequest");
         this.chatExecutor = ensureNotNull(chatExecutor, "chatExecutor");
         this.context = ensureNotNull(context, "context");
@@ -157,7 +154,6 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         this.toolArgumentsErrorHandler = ensureNotNull(toolArgumentsErrorHandler, "toolArgumentsErrorHandler");
         this.toolExecutionErrorHandler = ensureNotNull(toolExecutionErrorHandler, "toolExecutionErrorHandler");
         this.toolExecutor = toolExecutor;
-        this.userMessageForToolReplay = userMessageForToolReplay;
 
         this.hasOutputGuardrails = context.guardrailService().hasOutputGuardrails(methodKey);
 
@@ -396,8 +392,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     toolExecutionErrorHandler,
                     toolExecutor,
                     commonGuardrailParams,
-                    methodKey,
-                    userMessageForToolReplay);
+                    methodKey);
 
             fireRequestIssuedEvent(nextChatRequest);
             context.streamingChatModel.chat(nextChatRequest, handler);
@@ -467,8 +462,10 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     private List<ChatMessage> messagesToSend(Object memoryId) {
-        return ToolService.replaceLastUserMessageForToolReplay(
-                getMemory(memoryId).messages(), userMessageForToolReplay);
+        List<ChatMessage> messages = getMemory(memoryId).messages();
+        return context.storeRetrievedContentInChatMemory
+                ? messages
+                : ToolService.replaceLastUserMessageForToolReplay(messages, invocationContext.userMessage());
     }
 
     @Override

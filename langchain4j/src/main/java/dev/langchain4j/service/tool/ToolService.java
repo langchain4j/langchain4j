@@ -333,7 +333,6 @@ public class ToolService {
             ChatMemory chatMemory,
             InvocationContext invocationContext,
             ToolServiceContext toolServiceContext,
-            UserMessage userMessageForToolReplay,
             boolean isReturnTypeResult) {
         TokenUsage aggregateTokenUsage = chatResponse.metadata().tokenUsage();
         List<ToolExecution> toolExecutions = new ArrayList<>();
@@ -414,7 +413,9 @@ public class ToolService {
             }
 
             if (chatMemory != null) {
-                messages = replaceLastUserMessageForToolReplay(chatMemory.messages(), userMessageForToolReplay);
+                messages = context.storeRetrievedContentInChatMemory
+                        ? chatMemory.messages()
+                        : replaceLastUserMessageForToolReplay(chatMemory.messages(), invocationContext.userMessage());
             }
 
             toolServiceContext = refreshDynamicProviders(toolServiceContext, messages, invocationContext);
@@ -739,23 +740,26 @@ public class ToolService {
     }
 
     /**
-     * Replaces the last {@link UserMessage} in the message list with the given replay message.
-     * Used to restore augmented content after {@code chatMemory.messages()} reload
-     * when {@code storeRetrievedContentInChatMemory} is {@code false}.
+     * Ensures the last {@link UserMessage} in the message list matches the one from {@link InvocationContext}.
+     * When {@code storeRetrievedContentInChatMemory} is {@code false}, the chat memory contains the original
+     * (non-augmented) message, but the LLM should receive the same final message as the first call.
      *
      * @param messages the messages reloaded from chat memory
-     * @param userMessageForToolReplay the augmented user message to replay, or {@code null} for no-op
-     * @return new list with replacement, or original list if replay is {@code null} or no UserMessage found
+     * @param userMessage the final user message from {@link InvocationContext}, or {@code null} if not set
+     * @return new list with replacement if the last UserMessage differs, or the original list otherwise
      */
     public static List<ChatMessage> replaceLastUserMessageForToolReplay(
-            List<ChatMessage> messages, UserMessage userMessageForToolReplay) {
-        if (userMessageForToolReplay == null) {
+            List<ChatMessage> messages, UserMessage userMessage) {
+        if (userMessage == null) {
             return messages;
         }
-        List<ChatMessage> patched = new ArrayList<>(messages);
-        for (int i = patched.size() - 1; i >= 0; i--) {
-            if (patched.get(i) instanceof UserMessage) {
-                patched.set(i, userMessageForToolReplay);
+        for (int i = messages.size() - 1; i >= 0; i--) {
+            if (messages.get(i) instanceof UserMessage existing) {
+                if (existing.equals(userMessage)) {
+                    return messages;
+                }
+                List<ChatMessage> patched = new ArrayList<>(messages);
+                patched.set(i, userMessage);
                 return patched;
             }
         }

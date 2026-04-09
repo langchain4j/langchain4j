@@ -7,7 +7,6 @@ import static dev.langchain4j.service.AiServiceParamsUtil.chatRequestParameters;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.invocation.InvocationContext;
@@ -52,7 +51,6 @@ public class AiServiceTokenStream implements TokenStream {
     private final InvocationContext invocationContext;
     private final GuardrailRequestParams commonGuardrailParams;
     private final Object methodKey;
-    private final UserMessage userMessageForToolReplay;
 
     private Consumer<String> partialResponseHandler;
     private BiConsumer<PartialResponse, PartialResponseContext> partialResponseWithContextHandler;
@@ -99,7 +97,6 @@ public class AiServiceTokenStream implements TokenStream {
         this.invocationContext = parameters.invocationContext();
         this.commonGuardrailParams = parameters.commonGuardrailParams();
         this.methodKey = parameters.methodKey();
-        this.userMessageForToolReplay = parameters.userMessageForToolReplay();
     }
 
     @Override
@@ -239,8 +236,7 @@ public class AiServiceTokenStream implements TokenStream {
                 toolExecutionErrorHandler,
                 toolExecutor,
                 commonGuardrailParams,
-                methodKey,
-                userMessageForToolReplay);
+                methodKey);
 
         if (contentsHandler != null && retrievedContents != null) {
             contentsHandler.accept(retrievedContents);
