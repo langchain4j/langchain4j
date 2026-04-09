@@ -243,6 +243,25 @@ model.chat("Tell me a joke about Java");
 
 The `attributes` map allows passing information between the `onRequest`, `onResponse`, and `onError` methods of the same
 `ChatModelListener`, as well as between multiple `ChatModelListener`s.
+If you need to provide per-invocation metadata to listeners, use `ChatRequestOptions`.
+For example, you can pass tenant or correlation identifiers to `ChatModelListener`s
+through `listenerAttributes`. These options are used only within the LangChain4j invocation chain;
+they are not sent to the LLM provider.
+
+```java
+ChatRequest chatRequest = ChatRequest.builder()
+        .messages(UserMessage.from("Tell me a joke about Java"))
+        .build();
+
+ChatRequestOptions options = ChatRequestOptions.builder()
+        .addListenerAttribute("tenantId", "tenant-123")
+        .addListenerAttribute("correlationId", "corr-456")
+        .build();
+
+model.chat(chatRequest, options);
+```
+
+The same applies to `StreamingChatModel.chat(chatRequest, options, handler)`.
 
 ### How listeners work
 
