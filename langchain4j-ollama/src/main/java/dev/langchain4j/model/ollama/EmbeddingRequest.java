@@ -1,7 +1,6 @@
 package dev.langchain4j.model.ollama;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
-import static dev.langchain4j.internal.Exceptions.illegalArgument;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -101,13 +100,6 @@ class EmbeddingRequest {
      */
     private Integer dimensions;
 
-    private static Integer validateDimensions(Integer dimensions) {
-        if (dimensions != null && dimensions < 1) {
-            throw illegalArgument("`dimensions` must be a positive integer.");
-        }
-        return dimensions;
-    }
-
     EmbeddingRequest() {}
 
     EmbeddingRequest(String model, List<String> input) {
@@ -117,7 +109,7 @@ class EmbeddingRequest {
     EmbeddingRequest(String model, List<String> input, Integer dimensions) {
         this.model = model;
         this.input = input;
-        this.dimensions = validateDimensions(dimensions);
+        this.dimensions = dimensions;
     }
 
     static Builder builder() {
