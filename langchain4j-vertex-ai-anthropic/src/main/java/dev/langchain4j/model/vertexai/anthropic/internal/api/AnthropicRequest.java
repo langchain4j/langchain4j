@@ -107,6 +107,7 @@ public class AnthropicRequest {
             this.type = "enabled";
             this.budgetTokens = budgetTokens;
         }
+
         @Override
         public String toString() {
             return "{type='" + type + "', budgetTokens=" + budgetTokens + "}";

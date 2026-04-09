@@ -3,12 +3,10 @@ package dev.langchain4j.model.vertexai.anthropic;
 import static dev.langchain4j.model.vertexai.anthropic.VertexAiAnthropicFixtures.DEFAULT_LOCATION;
 import static dev.langchain4j.model.vertexai.anthropic.VertexAiAnthropicFixtures.DEFAULT_MODEL_NAME;
 import static java.time.DayOfWeek.MONDAY;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.condition.JRE.JAVA_17;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import org.junit.jupiter.api.Test;
 import dev.langchain4j.data.message.UserMessage;
-
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -18,6 +16,7 @@ import dev.langchain4j.model.output.TokenUsage;
 import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.condition.EnabledOnJre;
@@ -136,11 +135,11 @@ class VertexAiAnthropicChatModelIT extends AbstractChatModelIT {
                 .build();
 
         // when
-        UserMessage userMessage = UserMessage.from("What are the internal structural differences between a HashMap and a ConcurrentHashMap in Java, and how do those differences impact read-heavy workloads?");
+        UserMessage userMessage = UserMessage.from(
+                "What are the internal structural differences between a HashMap and a ConcurrentHashMap in Java, and how do those differences impact read-heavy workloads?");
 
-        ChatResponse response = thinkingModel.doChat(
-                ChatRequest.builder().messages(userMessage).build()
-        );
+        ChatResponse response =
+                thinkingModel.doChat(ChatRequest.builder().messages(userMessage).build());
 
         // then
         String responseText = response.aiMessage().text();
@@ -149,6 +148,7 @@ class VertexAiAnthropicChatModelIT extends AbstractChatModelIT {
         assertThat(responseText).contains("</thinking>");
         assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(0);
     }
+
     public static boolean isMonday() {
         return LocalDate.now().getDayOfWeek() == MONDAY;
     }

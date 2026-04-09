@@ -19,8 +19,15 @@ class AnthropicRequestMapperTest {
         AnthropicRequest request = AnthropicRequestMapper.toRequest(
                 "claude-3-7-sonnet@20260215",
                 List.of(UserMessage.from("Hello")),
-                null, null, 4000, originalTemperature, null, null, null, false, thinkingBudget
-        );
+                null,
+                null,
+                4000,
+                originalTemperature,
+                null,
+                null,
+                null,
+                false,
+                thinkingBudget);
 
         // then
         assertThat(request.thinking).isNotNull();
@@ -40,14 +47,28 @@ class AnthropicRequestMapperTest {
         AnthropicRequest requestZero = AnthropicRequestMapper.toRequest(
                 "claude-3-7-sonnet@20260215",
                 List.of(UserMessage.from("Hello")),
-                null, null, 4000, originalTemperature, null, null, null, false, 0
-        );
+                null,
+                null,
+                4000,
+                originalTemperature,
+                null,
+                null,
+                null,
+                false,
+                0);
 
         AnthropicRequest requestNull = AnthropicRequestMapper.toRequest(
                 "claude-3-7-sonnet@20260215",
                 List.of(UserMessage.from("Hello")),
-                null, null, 4000, originalTemperature, null, null, null, false, null
-        );
+                null,
+                null,
+                4000,
+                originalTemperature,
+                null,
+                null,
+                null,
+                false,
+                null);
 
         // then
         assertThat(requestZero.thinking).isNull();
