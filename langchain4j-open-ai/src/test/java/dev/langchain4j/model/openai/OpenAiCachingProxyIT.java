@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class OpenAiCachingProxyIT {
 
     @Test
-    void should_cache_sync_chat_responses() throws InterruptedException {
+    void should_cache_sync_chat_responses() {
 
         // given
         OpenAiChatModel nonCachingModel = OpenAiChatModel.builder()
@@ -31,14 +31,10 @@ class OpenAiCachingProxyIT {
 
         // when
         ChatResponse nonCachedResponse1 = nonCachingModel.chat(nonCachingRequest);
-
-        Thread.sleep(1000);
-
         ChatResponse nonCachedResponse2 = nonCachingModel.chat(nonCachingRequest);
 
         // then
-        assertThat(((OpenAiChatResponseMetadata) nonCachedResponse1.metadata()).created())
-                .isNotEqualTo(((OpenAiChatResponseMetadata) nonCachedResponse2.metadata()).created());
+        assertThat(nonCachedResponse1.metadata().id()).isNotEqualTo(nonCachedResponse2.metadata().id());
 
         // given
         OpenAiChatModel cachingModel = OpenAiChatModel.builder()
@@ -56,16 +52,14 @@ class OpenAiCachingProxyIT {
 
         // when
         ChatResponse cachedResponse1 = cachingModel.chat(cachingRequest);
-
         ChatResponse cachedResponse2 = cachingModel.chat(cachingRequest);
 
         // then
-        assertThat(((OpenAiChatResponseMetadata) cachedResponse1.metadata()).created())
-                .isEqualTo(((OpenAiChatResponseMetadata) cachedResponse2.metadata()).created());
+        assertThat(cachedResponse1.metadata().id()).isEqualTo(cachedResponse2.metadata().id());
     }
 
     @Test
-    void should_cache_streaming_chat_responses() throws InterruptedException {
+    void should_cache_streaming_chat_responses() {
 
         OpenAiStreamingChatModel nonCachingModel = OpenAiStreamingChatModel.builder()
                 .apiKey(System.getenv("OPENAI_API_KEY"))
@@ -79,21 +73,17 @@ class OpenAiCachingProxyIT {
                 .messages(UserMessage.from(randomString(10)))
                 .build();
 
-
         // when
         TestStreamingChatResponseHandler handler1 = new TestStreamingChatResponseHandler();
         nonCachingModel.chat(nonCachingRequest, handler1);
         ChatResponse nonCachedResponse1 = handler1.get();
-
-        Thread.sleep(1000);
 
         TestStreamingChatResponseHandler handler2 = new TestStreamingChatResponseHandler();
         nonCachingModel.chat(nonCachingRequest, handler2);
         ChatResponse nonCachedResponse2 = handler2.get();
 
         // then
-        assertThat(((OpenAiChatResponseMetadata) nonCachedResponse1.metadata()).created())
-                .isNotEqualTo(((OpenAiChatResponseMetadata) nonCachedResponse2.metadata()).created());
+        assertThat(nonCachedResponse1.metadata().id()).isNotEqualTo(nonCachedResponse2.metadata().id());
 
         // given
         OpenAiStreamingChatModel cachingModel = OpenAiStreamingChatModel.builder()
@@ -114,14 +104,11 @@ class OpenAiCachingProxyIT {
         cachingModel.chat(cachingRequest, handler3);
         ChatResponse cachedResponse1 = handler3.get();
 
-        Thread.sleep(1000);
-
         TestStreamingChatResponseHandler handler4 = new TestStreamingChatResponseHandler();
         cachingModel.chat(cachingRequest, handler4);
         ChatResponse cachedResponse2 = handler4.get();
 
         // then
-        assertThat(((OpenAiChatResponseMetadata) cachedResponse1.metadata()).created())
-                .isEqualTo(((OpenAiChatResponseMetadata) cachedResponse2.metadata()).created());
+        assertThat(cachedResponse1.metadata().id()).isEqualTo(cachedResponse2.metadata().id());
     }
 }
