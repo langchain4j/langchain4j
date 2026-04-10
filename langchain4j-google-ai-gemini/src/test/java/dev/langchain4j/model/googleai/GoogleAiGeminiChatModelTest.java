@@ -12,6 +12,9 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate.GeminiFinishReason;
+import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUrlContextMetadata;
+import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUrlMetadata;
+import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUrlRetrievalStatus;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUsageMetadata;
 import dev.langchain4j.model.googleai.GeminiGenerationConfig.GeminiImageConfig;
 import dev.langchain4j.model.output.FinishReason;
@@ -248,6 +251,54 @@ class GoogleAiGeminiChatModelTest {
             // Then
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(FinishReason.LENGTH);
         }
+
+        @Test
+        void shouldReturnServerToolResults() {
+            GroundingMetadata groundingMetadata = GroundingMetadata.builder()
+                    .webSearchQueries(List.of("langchain4j"))
+                    .googleMapsWidgetContextToken("widget-token")
+                    .build();
+            GeminiContent content = new GeminiContent(
+                    List.of(
+                            GeminiContent.GeminiPart.builder()
+                                    .executableCode(new GeminiContent.GeminiPart.GeminiExecutableCode(
+                                            GeminiContent.GeminiPart.GeminiExecutableCode.GeminiLanguage.PYTHON,
+                                            "print(1)"))
+                                    .build(),
+                            GeminiContent.GeminiPart.builder()
+                                    .codeExecutionResult(new GeminiContent.GeminiPart.GeminiCodeExecutionResult(
+                                            GeminiContent.GeminiPart.GeminiCodeExecutionResult.GeminiOutcome.OUTCOME_OK,
+                                            "1"))
+                                    .build()),
+                    "model");
+            GeminiCandidate candidate = new GeminiCandidate(
+                    content,
+                    GeminiFinishReason.STOP,
+                    new GeminiUrlContextMetadata(List.of(new GeminiUrlMetadata(
+                            "https://example.com", GeminiUrlRetrievalStatus.URL_RETRIEVAL_STATUS_SUCCESS))),
+                    groundingMetadata);
+            GeminiGenerateContentResponse response = new GeminiGenerateContentResponse(
+                    "server-tool-response-id", "gemini-pro-v1", List.of(candidate), createUsageMetadata(1, 2, 3), null);
+
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+                    .thenReturn(response);
+
+            var subject = GoogleAiGeminiChatModel.builder()
+                    .apiKey("test-api-key")
+                    .modelName(TEST_MODEL_NAME)
+                    .returnServerToolResults(true)
+                    .build(mockGeminiService);
+
+            var chatResponse =
+                    subject.chat(ChatRequest.builder().messages(new UserMessage("Test tools")).build());
+
+            assertThat(chatResponse.aiMessage().attributes()).containsKey(GeminiServerToolsMapper.SERVER_TOOL_RESULTS_KEY);
+            List<GoogleAiGeminiServerToolResult> results = (List<GoogleAiGeminiServerToolResult>) chatResponse.aiMessage()
+                    .attributes()
+                    .get(GeminiServerToolsMapper.SERVER_TOOL_RESULTS_KEY);
+            assertThat(results).extracting(GoogleAiGeminiServerToolResult::type)
+                    .contains("code_execution_tool_result", "url_context_tool_result", "google_search_tool_result");
+        }
     }
 
     @Nested
@@ -342,6 +393,34 @@ class GoogleAiGeminiChatModelTest {
                             .aspectRatio("16:9")
                             .imageSize("2K")
                             .build());
+        }
+
+        @Test
+        void shouldIncludeServerToolsInRequest() {
+            var expectedResponse = createGeminiResponse("Response");
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+                    .thenReturn(expectedResponse);
+
+            var subject = GoogleAiGeminiChatModel.builder()
+                    .apiKey("test-api-key")
+                    .modelName(TEST_MODEL_NAME)
+                    .serverTools(
+                            GoogleAiGeminiServerTool.builder().type("google_search").build(),
+                            GoogleAiGeminiServerTool.builder()
+                                    .type("google_maps")
+                                    .addAttribute("enable_widget", true)
+                                    .build())
+                    .build(mockGeminiService);
+
+            subject.chat(ChatRequest.builder().messages(new UserMessage("Test message")).build());
+
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+
+            GeminiGenerateContentRequest request = requestCaptor.getValue();
+            assertThat(request.tools()).hasSize(1);
+            assertThat(request.tools().get(0).googleSearch()).isNotNull();
+            assertThat(request.tools().get(0).googleMaps()).isNotNull();
+            assertThat(request.tools().get(0).googleMaps().enableWidget()).isTrue();
         }
     }
 

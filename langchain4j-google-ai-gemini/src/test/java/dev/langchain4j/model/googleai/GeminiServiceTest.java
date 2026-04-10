@@ -329,7 +329,7 @@ class GeminiServiceTest {
             StringBuilder partialResponses = new StringBuilder();
 
             // When
-            subject.generateContentStream(TEST_MODEL_NAME, request, false, null, new StreamingChatResponseHandler() {
+            subject.generateContentStream(TEST_MODEL_NAME, request, false, null, false, new StreamingChatResponseHandler() {
                 @Override
                 public void onPartialResponse(String partialResponse) {
                     partialResponses.append(partialResponse);
@@ -373,7 +373,7 @@ class GeminiServiceTest {
             CompletableFuture<Void> futureComplete = new CompletableFuture<>();
 
             // When
-            subject.generateContentStream(TEST_MODEL_NAME, request, false, null, new StreamingChatResponseHandler() {
+            subject.generateContentStream(TEST_MODEL_NAME, request, false, null, false, new StreamingChatResponseHandler() {
                 @Override
                 public void onCompleteResponse(ChatResponse completeResponse) {
                     futureComplete.complete(null);

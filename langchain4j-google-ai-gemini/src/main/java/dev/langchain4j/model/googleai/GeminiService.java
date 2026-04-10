@@ -179,9 +179,10 @@ class GeminiService {
             GeminiGenerateContentRequest request,
             boolean includeCodeExecutionOutput,
             Boolean returnThinking,
+            boolean returnServerToolResults,
             StreamingChatResponseHandler handler) {
         String url = String.format("%s/models/%s:streamGenerateContent?alt=sse", baseUrl, modelName);
-        streamRequest(url, apiKey, request, includeCodeExecutionOutput, returnThinking, handler);
+        streamRequest(url, apiKey, request, includeCodeExecutionOutput, returnThinking, returnServerToolResults, handler);
     }
 
     private <T> T sendRequest(String url, String apiKey, @Nullable Object requestBody, Class<T> responseType) {
@@ -200,11 +201,12 @@ class GeminiService {
             Object requestBody,
             boolean includeCodeExecutionOutput,
             Boolean returnThinking,
+            boolean returnServerToolResults,
             StreamingChatResponseHandler handler) {
         HttpRequest httpRequest = buildHttpRequest(url, apiKey, requestBody, POST);
 
         GeminiStreamingResponseBuilder responseBuilder =
-                new GeminiStreamingResponseBuilder(includeCodeExecutionOutput, returnThinking);
+                new GeminiStreamingResponseBuilder(includeCodeExecutionOutput, returnThinking, returnServerToolResults);
 
         httpClient.execute(httpRequest, new ServerSentEventListener() {
 
