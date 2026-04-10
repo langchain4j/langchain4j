@@ -162,7 +162,7 @@ public class OpenAiStreamingResponseBuilder {
             }
         }
 
-        if (delta.toolCalls() != null && !delta.toolCalls().isEmpty()) {
+        if (delta.toolCalls() != null) {
             for (ToolCall toolCall : delta.toolCalls()) {
                 int toolCallIndex = toolCall.index() != null ? toolCall.index() : fallbackToolCallIndex.get();
 

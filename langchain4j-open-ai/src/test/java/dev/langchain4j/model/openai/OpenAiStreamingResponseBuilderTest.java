@@ -2,10 +2,10 @@ package dev.langchain4j.model.openai;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.internal.chat.*;
 import java.util.List;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 class OpenAiStreamingResponseBuilderTest {
@@ -106,7 +106,8 @@ class OpenAiStreamingResponseBuilderTest {
 
     @Test
     void should_keep_all_tool_calls_from_same_delta() {
-        // Given
+
+        // given
         OpenAiStreamingResponseBuilder builder = new OpenAiStreamingResponseBuilder();
 
         ToolCall tc1 = ToolCall.builder()
@@ -114,8 +115,8 @@ class OpenAiStreamingResponseBuilderTest {
                 .index(0)
                 .type(ToolType.FUNCTION)
                 .function(FunctionCall.builder()
-                        .name("run_sql")
-                        .arguments("{\"q\":\"SELECT 1\"}")
+                        .name("tool_name")
+                        .arguments("{}")
                         .build())
                 .build();
 
@@ -124,30 +125,31 @@ class OpenAiStreamingResponseBuilderTest {
                 .index(1)
                 .type(ToolType.FUNCTION)
                 .function(FunctionCall.builder()
-                        .name("run_sql")
-                        .arguments("{\"q\":\"SELECT 2\"}")
+                        .name("tool_name")
+                        .arguments("{}")
                         .build())
                 .build();
 
         ChatCompletionResponse partial = ChatCompletionResponse.builder()
                 .id("resp_1")
                 .model("openai-compatible-model")
-                .choices(java.util.List.of(ChatCompletionChoice.builder()
+                .choices(List.of(ChatCompletionChoice.builder()
                         .index(0)
                         .delta(Delta.builder()
-                                .toolCalls(java.util.List.of(tc1, tc2))
+                                .toolCalls(List.of(tc1, tc2))
                                 .build())
                         .build()))
                 .build();
 
-        // When
+        // when
         builder.append(partial);
         ChatResponse response = builder.build();
 
-        // Then
-        Assertions.assertThat(response.aiMessage().toolExecutionRequests()).hasSize(2);
-        Assertions.assertThat(response.aiMessage().toolExecutionRequests())
-                .extracting(it -> it.id())
+        // then
+        List<ToolExecutionRequest> toolExecutionRequests = response.aiMessage().toolExecutionRequests();
+        assertThat(toolExecutionRequests).hasSize(2);
+        assertThat(toolExecutionRequests)
+                .extracting(ToolExecutionRequest::id)
                 .containsExactly("call_1", "call_2");
     }
 
