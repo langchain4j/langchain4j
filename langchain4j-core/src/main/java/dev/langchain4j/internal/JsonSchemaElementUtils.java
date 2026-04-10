@@ -5,6 +5,8 @@ import static java.lang.reflect.Modifier.isStatic;
 import static java.util.Arrays.stream;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import dev.langchain4j.Internal;
 import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
@@ -85,7 +87,32 @@ public class JsonSchemaElementUtils {
                     .build();
         }
 
-        return jsonObjectOrReferenceSchemaFrom(clazz, fieldDescription, areSubFieldsRequiredByDefault, visited, false);
+        return jsonAnyOfSchemaFromTypeInfo(clazz, fieldDescription, areSubFieldsRequiredByDefault, visited)
+                .orElseGet(() -> jsonObjectOrReferenceSchemaFrom(clazz, fieldDescription, areSubFieldsRequiredByDefault, visited, false));
+    }
+
+    private static Optional<JsonSchemaElement> jsonAnyOfSchemaFromTypeInfo(
+            Class<?> clazz,
+            String description,
+            boolean areSubFieldsRequiredByDefault,
+            Map<Class<?>, VisitedClassMetadata> visited) {
+        JsonTypeInfo typeInfo = clazz.getAnnotation(JsonTypeInfo.class);
+        JsonSubTypes subTypes = clazz.getAnnotation(JsonSubTypes.class);
+        if (typeInfo == null || subTypes == null || subTypes.value().length == 0) {
+            return Optional.empty();
+        }
+
+        List<JsonSchemaElement> subSchemas = new ArrayList<>();
+        for (JsonSubTypes.Type subType : subTypes.value()) {
+            JsonSchemaElement subSchema = jsonObjectOrReferenceSchemaFrom(
+                    subType.value(), null, areSubFieldsRequiredByDefault, visited, false);
+            subSchemas.add(subSchema);
+        }
+
+        return Optional.of(JsonAnyOfSchema.builder()
+                .description(Optional.ofNullable(description).orElseGet(() -> descriptionFrom(clazz)))
+                .anyOf(subSchemas)
+                .build());
     }
 
     public static JsonSchemaElement jsonObjectOrReferenceSchemaFrom(
@@ -117,7 +144,7 @@ public class JsonSchemaElementUtils {
 
         Map<String, JsonSchemaElement> properties = new LinkedHashMap<>();
         List<String> required = new ArrayList<>();
-        for (Field field : type.getDeclaredFields()) {
+        for (Field field : getAllFields(type)) {
             String fieldName = field.getName();
             if (isStatic(field.getModifiers()) || fieldName.equals("__$hits$__") || fieldName.startsWith("this$")) {
                 continue;
@@ -151,6 +178,16 @@ public class JsonSchemaElementUtils {
         }
 
         return builder.build();
+    }
+
+    private static List<Field> getAllFields(Class<?> type) {
+        List<Field> fields = new ArrayList<>();
+        Class<?> current = type;
+        while (current != null && current != Object.class) {
+            fields.addAll(Arrays.asList(current.getDeclaredFields()));
+            current = current.getSuperclass();
+        }
+        return fields;
     }
 
     private static boolean isRequired(Field field, boolean defaultValue) {
