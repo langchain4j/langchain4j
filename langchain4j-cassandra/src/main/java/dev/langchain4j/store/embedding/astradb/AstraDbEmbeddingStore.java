@@ -1,5 +1,8 @@
 package dev.langchain4j.store.embedding.astradb;
 
+import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.Utils.toStringValueMap;
+
 import com.dtsx.astra.sdk.AstraDBCollection;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
@@ -13,17 +16,12 @@ import io.stargate.sdk.data.domain.JsonDocumentMutationResult;
 import io.stargate.sdk.data.domain.JsonDocumentResult;
 import io.stargate.sdk.data.domain.odm.Document;
 import io.stargate.sdk.data.domain.query.Filter;
-import org.jspecify.annotations.NonNull;
-import org.slf4j.Logger;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
-
-import static dev.langchain4j.internal.Utils.randomUUID;
-import static dev.langchain4j.internal.Utils.toStringValueMap;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Implementation of {@link EmbeddingStore} using AstraDB.
@@ -107,7 +105,8 @@ public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
     public String add(Embedding embedding, TextSegment textSegment) {
         return astraDBCollection
                 .insertOne(mapRecord(randomUUID(), embedding, textSegment))
-                .getDocument().getId();
+                .getDocument()
+                .getId();
     }
 
     /**
@@ -126,15 +125,11 @@ public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
         if (embeddings == null) return null;
 
         // Map as a JsonDocument list.
-        List<JsonDocument> recordList = embeddings
-                .stream()
-                .map(e -> mapRecord(randomUUID(), e, null))
-                .collect(Collectors.toList());
+        List<JsonDocument> recordList =
+                embeddings.stream().map(e -> mapRecord(randomUUID(), e, null)).collect(Collectors.toList());
 
         // No upsert needed as ids will be generated.
-        return astraDBCollection
-                .insertManyChunkedJsonDocuments(recordList, itemsPerChunk, concurrentThreads)
-                .stream()
+        return astraDBCollection.insertManyChunkedJsonDocuments(recordList, itemsPerChunk, concurrentThreads).stream()
                 .map(JsonDocumentMutationResult::getDocument)
                 .map(Document::getId)
                 .collect(Collectors.toList());
@@ -143,7 +138,8 @@ public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddingList, List<TextSegment> textSegmentList) {
         if (embeddingList == null || textSegmentList == null || embeddingList.size() != textSegmentList.size()) {
-            throw new IllegalArgumentException("embeddingList and textSegmentList must not be null and have the same size");
+            throw new IllegalArgumentException(
+                    "embeddingList and textSegmentList must not be null and have the same size");
         }
 
         // Map as JsonDocument list
@@ -153,22 +149,20 @@ public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         // No upsert needed (ids will be generated)
-        astraDBCollection
-                .insertManyChunkedJsonDocuments(recordList, itemsPerChunk, concurrentThreads);
+        astraDBCollection.insertManyChunkedJsonDocuments(recordList, itemsPerChunk, concurrentThreads);
     }
 
     @Override
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
-        if (request.filter() != null) {
-            throw new UnsupportedOperationException("EmbeddingSearchRequest.Filter is not supported yet.");
-        }
+        Filter stargateFilter = request.filter() != null ? AstraDbFilterMapper.map(request.filter()) : null;
 
         List<EmbeddingMatch<TextSegment>> matches =
-                findRelevant(request.queryEmbedding(), request.maxResults(), request.minScore());
+                findRelevant(request.queryEmbedding(), stargateFilter, request.maxResults(), request.minScore());
         return new EmbeddingSearchResult<>(matches);
     }
 
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
+    public List<EmbeddingMatch<TextSegment>> findRelevant(
+            Embedding referenceEmbedding, int maxResults, double minScore) {
         return findRelevant(referenceEmbedding, (Filter) null, maxResults, minScore);
     }
 
@@ -181,8 +175,10 @@ public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param minScore           threshold
      * @return records
      */
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, Filter metaDatafilter, int maxResults, double minScore) {
-        return astraDBCollection.findVector(referenceEmbedding.vector(), metaDatafilter, maxResults)
+    public List<EmbeddingMatch<TextSegment>> findRelevant(
+            Embedding referenceEmbedding, Filter metaDatafilter, int maxResults, double minScore) {
+        return astraDBCollection
+                .findVector(referenceEmbedding.vector(), metaDatafilter, maxResults)
                 .filter(r -> r.getSimilarity() >= minScore)
                 .map(this::mapJsonResult)
                 .collect(Collectors.toList());
@@ -204,9 +200,11 @@ public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
             Object body = properties.get(KEY_ATTRIBUTES_BLOB);
             if (body != null) {
                 Metadata metadata = new Metadata(properties.entrySet().stream()
-                        .collect(Collectors.toMap(Map.Entry::getKey,
-                                entry -> entry.getValue() == null ? "" : entry.getValue().toString()
-                        )));
+                        .collect(Collectors.toMap(
+                                Map.Entry::getKey,
+                                entry -> entry.getValue() == null
+                                        ? ""
+                                        : entry.getValue().toString())));
                 metadata.remove(KEY_ATTRIBUTES_BLOB);
                 metadata.remove(KEY_SIMILARITY);
                 embedded = new TextSegment(body.toString(), metadata);
