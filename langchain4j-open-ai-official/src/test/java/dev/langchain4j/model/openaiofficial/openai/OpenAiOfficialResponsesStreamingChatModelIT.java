@@ -7,12 +7,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.openai.models.ChatModel;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -365,6 +368,33 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
 
         // then
         assertThat(handler.get().aiMessage().text()).contains("Paris");
+    }
+
+    @Test
+    @Disabled("Verifies that URL-based PDF inputs work against the live official Responses API; keep disabled by default.")
+    void should_accept_pdf_file_content_as_public_url() {
+
+        var client = OpenAIOkHttpClient.builder()
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .build();
+
+        StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
+                .client(client)
+                .modelName("gpt-5-mini")
+                .build();
+
+        UserMessage userMessage = UserMessage.builder()
+                .addContent(TextContent.from(
+                        "What city appears in the attached PDF? Return only the city name."))
+                .addContent(PdfFileContent.from(PdfFile.builder()
+                        .url("https://orimi.com/pdf-test.pdf")
+                        .build()))
+                .build();
+
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(ChatRequest.builder().messages(userMessage).build(), handler);
+
+        assertThat(handler.get().aiMessage().text()).containsIgnoringCase("Whitehorse");
     }
 
     @Test

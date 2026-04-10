@@ -10,8 +10,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.http.client.MockHttpClient;
 import dev.langchain4j.http.client.MockHttpClientBuilder;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -30,6 +32,7 @@ import dev.langchain4j.model.openai.OpenAiResponsesStreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.List;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.mockito.InOrder;
@@ -261,6 +264,32 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
         model.chat("What is the capital of France?", handler);
 
         assertThat(handler.get().aiMessage().text()).contains("Paris");
+    }
+
+    @Test
+    @Disabled("Verifies that URL-based PDF inputs work against the live API; keep disabled by default.")
+    void should_accept_pdf_file_content_as_public_url() {
+        StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(GPT_4_1_NANO.toString())
+                .logRequests(false) // the request contains the PDF URL
+                .logResponses(true)
+                .build();
+
+        UserMessage userMessage = UserMessage.builder()
+                .addContent(TextContent.from(
+                        "What city appears in the attached PDF? Return only the city name."))
+                .addContent(PdfFileContent.from(PdfFile.builder()
+                        .url("https://orimi.com/pdf-test.pdf")
+                        .build()))
+                .build();
+
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(ChatRequest.builder().messages(userMessage).build(), handler);
+
+        assertThat(handler.get().aiMessage().text())
+                .containsIgnoringCase("Whitehorse");
     }
 
     @Test

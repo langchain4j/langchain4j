@@ -39,6 +39,7 @@ import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -166,6 +167,26 @@ class InternalOpenAiOfficialHelper {
                                         .build())
                                 .build()
                                 .inputAudio())
+                        .build()));
+            } else if (content instanceof PdfFileContent pdfFileContent) {
+                String fileData;
+                if (pdfFileContent.pdfFile().url() != null) {
+                    // URL-based PDF inputs are supported by the Responses API, but not by Chat Completions.
+                    throw new UnsupportedFeatureException(
+                            "OpenAI Official Chat Completions API does not support URL-based PDF inputs. "
+                                    + "Provide PDF content as base64 data instead.");
+                } else {
+                    fileData = String.format(
+                            "data:%s;base64,%s",
+                            pdfFileContent.pdfFile().mimeType(),
+                            pdfFileContent.pdfFile().base64Data());
+                }
+
+                parts.add(ChatCompletionContentPart.ofFile(ChatCompletionContentPart.File.builder()
+                        .file(ChatCompletionContentPart.File.FileObject.builder()
+                                .fileData(fileData)
+                                .filename("pdf_file")
+                                .build())
                         .build()));
             } else {
                 throw illegalArgument("Unknown content type: " + content);
