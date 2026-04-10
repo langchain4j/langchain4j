@@ -21,4 +21,9 @@ class SyncRequestExecutor<Response> {
         Response parsedResponse = Json.fromJson(rawHttpResponse.body(), responseClass);
         return new ParsedAndRawResponse<>(parsedResponse, rawHttpResponse);
     }
+
+    byte[] executeAsInputStream() {
+        SuccessfulHttpResponse rawHttpResponse = httpClient.execute(httpRequest);
+        return rawHttpResponse.bodyBytes();
+    }
 }

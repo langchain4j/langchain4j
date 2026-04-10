@@ -3,6 +3,7 @@ package dev.langchain4j.http.client;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -10,7 +11,8 @@ public class SuccessfulHttpResponse {
 
     private final int statusCode;
     private final Map<String, List<String>> headers;
-    private final String body;
+    private final byte[] body;
+    private String cachedStringBody;
 
     public SuccessfulHttpResponse(Builder builder) {
         this.statusCode = ensureBetween(builder.statusCode, 200, 299, "statusCode");
@@ -27,7 +29,14 @@ public class SuccessfulHttpResponse {
     }
 
     public String body() {
-        return body;
+        if (cachedStringBody == null) {
+            cachedStringBody = new String(body);
+        }
+        return cachedStringBody;
+    }
+
+    public byte[] bodyBytes() {
+        return Arrays.copyOf(body, body.length);
     }
 
     public static Builder builder() {
@@ -38,7 +47,7 @@ public class SuccessfulHttpResponse {
 
         private int statusCode;
         private Map<String, List<String>> headers;
-        private String body;
+        private byte[] body;
 
         private Builder() {}
 
@@ -52,8 +61,13 @@ public class SuccessfulHttpResponse {
             return this;
         }
 
-        public Builder body(String body) {
+        public Builder body(byte[] body) {
             this.body = body;
+            return this;
+        }
+
+        public Builder body(String body) {
+            this.body = body.getBytes();
             return this;
         }
 
