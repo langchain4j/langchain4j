@@ -5,8 +5,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.AiServiceParamsUtil.chatRequestParameters;
 import static dev.langchain4j.service.tool.ToolService.refreshDynamicProviders;
 
-import dev.langchain4j.service.tool.search.ToolSearchService;
-
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
@@ -41,12 +39,18 @@ import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
+import dev.langchain4j.service.tool.ToolInvocationLimitExceededException;
+import dev.langchain4j.service.tool.ToolLimitExceededBehavior;
 import dev.langchain4j.service.tool.ToolServiceContext;
+import dev.langchain4j.service.tool.search.ToolSearchService;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
@@ -64,6 +68,11 @@ import org.slf4j.LoggerFactory;
 class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler {
 
     private static final Logger LOG = LoggerFactory.getLogger(AiServiceStreamingResponseHandler.class);
+
+    private static final String TOOL_LIMIT_EXCEEDED_MESSAGE =
+            "Tool '%s' has reached its invocation limit of %d. Please proceed without it.";
+    private static final String TOOL_LOOP_ENDED_MESSAGE =
+            "Tool loop ended because another tool reached its invocation limit. Please proceed without tools.";
 
     private final ChatExecutor chatExecutor;
     private final ChatRequest chatRequest;
@@ -99,6 +108,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private final boolean hasOutputGuardrails;
 
     private int sequentialToolsInvocationsLeft;
+    private final Map<String, Integer> toolInvocationCounts;
+    private final Set<String> overBudgetToolNames = ConcurrentHashMap.newKeySet();
 
     private record ToolRequestResult(ToolExecutionRequest request, ToolExecutionResult result) {}
 
@@ -127,6 +138,60 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             Executor toolExecutor,
             GuardrailRequestParams commonGuardrailParams,
             Object methodKey) {
+        this(
+                chatRequest,
+                chatExecutor,
+                context,
+                invocationContext,
+                partialResponseHandler,
+                partialResponseWithContextHandler,
+                partialThinkingHandler,
+                partialThinkingWithContextHandler,
+                partialToolCallHandler,
+                partialToolCallWithContextHandler,
+                beforeToolExecutionHandler,
+                toolExecutionHandler,
+                intermediateResponseHandler,
+                completeResponseHandler,
+                errorHandler,
+                temporaryMemory,
+                tokenUsage,
+                toolServiceContext,
+                sequentialToolsInvocationsLeft,
+                toolArgumentsErrorHandler,
+                toolExecutionErrorHandler,
+                toolExecutor,
+                commonGuardrailParams,
+                methodKey,
+                new HashMap<>());
+    }
+
+    AiServiceStreamingResponseHandler(
+            ChatRequest chatRequest,
+            ChatExecutor chatExecutor,
+            AiServiceContext context,
+            InvocationContext invocationContext,
+            Consumer<String> partialResponseHandler,
+            BiConsumer<PartialResponse, PartialResponseContext> partialResponseWithContextHandler,
+            Consumer<PartialThinking> partialThinkingHandler,
+            BiConsumer<PartialThinking, PartialThinkingContext> partialThinkingWithContextHandler,
+            Consumer<PartialToolCall> partialToolCallHandler,
+            BiConsumer<PartialToolCall, PartialToolCallContext> partialToolCallWithContextHandler,
+            Consumer<BeforeToolExecution> beforeToolExecutionHandler,
+            Consumer<ToolExecution> toolExecutionHandler,
+            Consumer<ChatResponse> intermediateResponseHandler,
+            Consumer<ChatResponse> completeResponseHandler,
+            Consumer<Throwable> errorHandler,
+            ChatMemory temporaryMemory,
+            TokenUsage tokenUsage,
+            ToolServiceContext toolServiceContext,
+            int sequentialToolsInvocationsLeft,
+            ToolArgumentsErrorHandler toolArgumentsErrorHandler,
+            ToolExecutionErrorHandler toolExecutionErrorHandler,
+            Executor toolExecutor,
+            GuardrailRequestParams commonGuardrailParams,
+            Object methodKey,
+            Map<String, Integer> toolInvocationCounts) {
         this.chatRequest = ensureNotNull(chatRequest, "chatRequest");
         this.chatExecutor = ensureNotNull(chatExecutor, "chatExecutor");
         this.context = ensureNotNull(context, "context");
@@ -158,6 +223,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         this.hasOutputGuardrails = context.guardrailService().hasOutputGuardrails(methodKey);
 
         this.sequentialToolsInvocationsLeft = sequentialToolsInvocationsLeft;
+        this.toolInvocationCounts = toolInvocationCounts;
     }
 
     @Override
@@ -227,13 +293,40 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     public void onCompleteToolCall(CompleteToolCall completeToolCall) {
         if (toolExecutor != null) {
             ToolExecutionRequest toolRequest = completeToolCall.toolExecutionRequest();
-            var future = CompletableFuture.supplyAsync(
-                    () -> {
-                        ToolExecutionResult toolResult = execute(toolRequest);
-                        return new ToolRequestResult(toolRequest, toolResult);
-                    },
-                    toolExecutor);
-            toolExecutionFutures.add(future);
+
+            // Check per-tool budget before dispatching execution.
+            // Use synchronized access to toolInvocationCounts since onCompleteToolCall
+            // may be called from the streaming model's thread while futures resolve concurrently.
+            String toolName = toolRequest.name();
+            int limit = context.toolService.maxToolInvocationsFor(toolName);
+            boolean overBudget;
+            synchronized (toolInvocationCounts) {
+                int currentCount = toolInvocationCounts.getOrDefault(toolName, 0);
+                if (currentCount >= limit) {
+                    overBudget = true;
+                } else {
+                    toolInvocationCounts.merge(toolName, 1, Integer::sum);
+                    overBudget = false;
+                }
+            }
+
+            if (overBudget) {
+                overBudgetToolNames.add(toolName);
+                ToolExecutionResult overBudgetResult = ToolExecutionResult.builder()
+                        .isError(true)
+                        .resultText(String.format(TOOL_LIMIT_EXCEEDED_MESSAGE, toolName, limit))
+                        .build();
+                toolExecutionFutures.add(
+                        CompletableFuture.completedFuture(new ToolRequestResult(toolRequest, overBudgetResult)));
+            } else {
+                var future = CompletableFuture.supplyAsync(
+                        () -> {
+                            ToolExecutionResult toolResult = execute(toolRequest);
+                            return new ToolRequestResult(toolRequest, toolResult);
+                        },
+                        toolExecutor);
+                toolExecutionFutures.add(future);
+            }
         }
     }
 
@@ -299,9 +392,10 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 for (Future<ToolRequestResult> toolExecutionFuture : toolExecutionFutures) {
                     try {
                         ToolRequestResult toolRequestResult = toolExecutionFuture.get();
-                        fireToolExecutedEvent(toolRequestResult);
                         ToolExecutionRequest toolRequest = toolRequestResult.request();
                         ToolExecutionResult toolResult = toolRequestResult.result();
+
+                        fireToolExecutedEvent(new ToolRequestResult(toolRequest, toolResult));
                         toolResults.add(toolResult);
                         ToolExecutionResultMessage toolExecutionResultMessage =
                                 toResultMessage(toolRequest, toolResult);
@@ -320,8 +414,59 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     }
                 }
             } else {
+                // Classify requests before executing (mirrors non-streaming path).
+                // This ensures END/ERROR behavior prevents ALL tools from executing,
+                // not just those appearing after the over-budget tool in the list.
+                boolean endLoop = false;
+                Map<String, Integer> projectedCounts = new HashMap<>(toolInvocationCounts);
                 for (ToolExecutionRequest toolRequest : aiMessage.toolExecutionRequests()) {
-                    ToolExecutionResult toolResult = execute(toolRequest);
+                    String toolName = toolRequest.name();
+                    int currentCount = projectedCounts.getOrDefault(toolName, 0);
+                    int limit = context.toolService.maxToolInvocationsFor(toolName);
+                    if (currentCount >= limit) {
+                        overBudgetToolNames.add(toolName);
+                        ToolLimitExceededBehavior behavior = context.toolService.toolLimitExceededBehaviorFor(toolName);
+                        if (behavior == ToolLimitExceededBehavior.ERROR) {
+                            throw new ToolInvocationLimitExceededException(toolName, limit, currentCount + 1);
+                        }
+                        if (behavior == ToolLimitExceededBehavior.END) {
+                            endLoop = true;
+                        }
+                    } else {
+                        projectedCounts.merge(toolName, 1, Integer::sum);
+                    }
+                }
+
+                // Execute within-budget tools (or skip all if END was triggered).
+                // Re-check each request against projected counts to handle parallel calls
+                // to the same tool (e.g., 3 calls to search with limit=2: first 2 execute, 3rd rejected).
+                Map<String, Integer> executionCounts = new HashMap<>(toolInvocationCounts);
+                for (ToolExecutionRequest toolRequest : aiMessage.toolExecutionRequests()) {
+                    String toolName = toolRequest.name();
+                    int currentCount = executionCounts.getOrDefault(toolName, 0);
+                    int limit = context.toolService.maxToolInvocationsFor(toolName);
+                    ToolExecutionResult toolResult;
+                    if (endLoop) {
+                        toolResult = currentCount >= limit
+                                ? ToolExecutionResult.builder()
+                                        .isError(true)
+                                        .resultText(String.format(TOOL_LIMIT_EXCEEDED_MESSAGE, toolName, limit))
+                                        .build()
+                                : ToolExecutionResult.builder()
+                                        .isError(true)
+                                        .resultText(TOOL_LOOP_ENDED_MESSAGE)
+                                        .build();
+                    } else if (currentCount >= limit) {
+                        toolResult = ToolExecutionResult.builder()
+                                .isError(true)
+                                .resultText(String.format(TOOL_LIMIT_EXCEEDED_MESSAGE, toolName, limit))
+                                .build();
+                    } else {
+                        toolResult = execute(toolRequest);
+                        toolInvocationCounts.merge(toolName, 1, Integer::sum);
+                        executionCounts.merge(toolName, 1, Integer::sum);
+                    }
+
                     toolResults.add(toolResult);
                     ToolRequestResult toolRequestResult = new ToolRequestResult(toolRequest, toolResult);
                     fireToolExecutedEvent(toolRequestResult);
@@ -343,13 +488,72 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 return;
             }
 
+            // Check if any over-budget tools require END/ERROR behavior.
+            // This runs after all tool results (both executed and rejected) are collected
+            // into memory, so the conversation history is complete.
+            for (String toolName : overBudgetToolNames) {
+                int limit = context.toolService.maxToolInvocationsFor(toolName);
+                ToolLimitExceededBehavior behavior = context.toolService.toolLimitExceededBehaviorFor(toolName);
+                if (behavior == ToolLimitExceededBehavior.ERROR) {
+                    int currentCount = toolInvocationCounts.getOrDefault(toolName, 0);
+                    throw new ToolInvocationLimitExceededException(toolName, limit, currentCount + 1);
+                }
+                if (behavior == ToolLimitExceededBehavior.END) {
+                    List<ChatMessage> endMessages = messagesToSend(invocationContext.chatMemoryId());
+                    ChatRequestParameters endParams =
+                            chatRequestParameters(invocationContext.methodArguments(), List.of());
+                    ChatRequest endRequest = context.chatRequestTransformer.apply(
+                            ChatRequest.builder()
+                                    .messages(endMessages)
+                                    .parameters(endParams)
+                                    .build(),
+                            invocationContext.chatMemoryId());
+
+                    var endHandler = new AiServiceStreamingResponseHandler(
+                            endRequest,
+                            chatExecutor,
+                            context,
+                            invocationContext,
+                            partialResponseHandler,
+                            partialResponseWithContextHandler,
+                            partialThinkingHandler,
+                            partialThinkingWithContextHandler,
+                            partialToolCallHandler,
+                            partialToolCallWithContextHandler,
+                            beforeToolExecutionHandler,
+                            toolExecutionHandler,
+                            intermediateResponseHandler,
+                            completeResponseHandler,
+                            errorHandler,
+                            temporaryMemory,
+                            TokenUsage.sum(tokenUsage, chatResponse.metadata().tokenUsage()),
+                            ToolServiceContext.Empty.INSTANCE,
+                            sequentialToolsInvocationsLeft,
+                            toolArgumentsErrorHandler,
+                            toolExecutionErrorHandler,
+                            toolExecutor,
+                            commonGuardrailParams,
+                            methodKey,
+                            toolInvocationCounts);
+
+                    fireRequestIssuedEvent(endRequest);
+                    context.streamingChatModel.chat(endRequest, endHandler);
+                    return;
+                }
+            }
+
             List<ChatMessage> messages = messagesToSend(invocationContext.chatMemoryId());
 
-            ToolServiceContext updatedToolContext = refreshDynamicProviders(toolServiceContext, messages, invocationContext);
+            ToolServiceContext updatedToolContext =
+                    refreshDynamicProviders(toolServiceContext, messages, invocationContext);
             updatedToolContext = ToolSearchService.addFoundTools(updatedToolContext, toolResults);
 
-            ChatRequestParameters parameters = chatRequestParameters(invocationContext.methodArguments(),
-                    updatedToolContext.effectiveTools());
+            // Level 1: Remove exhausted tools before the next LLM call
+            updatedToolContext =
+                    updatedToolContext.withoutTools(context.toolService.findExhaustedTools(toolInvocationCounts));
+
+            ChatRequestParameters parameters =
+                    chatRequestParameters(invocationContext.methodArguments(), updatedToolContext.effectiveTools());
 
             ChatRequest nextChatRequest = context.chatRequestTransformer.apply(
                     ChatRequest.builder()
@@ -382,7 +586,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     toolExecutionErrorHandler,
                     toolExecutor,
                     commonGuardrailParams,
-                    methodKey);
+                    methodKey,
+                    toolInvocationCounts);
 
             fireRequestIssuedEvent(nextChatRequest);
             context.streamingChatModel.chat(nextChatRequest, handler);

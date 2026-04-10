@@ -8,7 +8,6 @@ import static java.util.stream.Collectors.toList;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ReturnBehavior;
-import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -21,6 +20,7 @@ import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
 import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
@@ -45,6 +45,7 @@ import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutor;
+import dev.langchain4j.service.tool.ToolLimitExceededBehavior;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.search.ToolSearchStrategy;
 import dev.langchain4j.spi.services.AiServicesFactory;
@@ -634,6 +635,66 @@ public abstract class AiServices<T> {
      */
     public AiServices<T> maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
         context.toolService.maxSequentialToolsInvocations(maxSequentialToolsInvocations);
+        return this;
+    }
+
+    /**
+     * Sets the default maximum number of times any single tool may be invoked
+     * within one AI service call. When a tool exceeds this limit, it will be removed
+     * from the tool set for subsequent LLM calls, and any over-budget calls within
+     * the same LLM response will be handled according to the configured
+     * {@link ToolLimitExceededBehavior} (default: {@link ToolLimitExceededBehavior#CONTINUE}).
+     *
+     * <p>This limit is independent of {@link #maxSequentialToolsInvocations(int)},
+     * which limits the number of LLM response rounds, not individual tool calls.
+     *
+     * @param defaultLimit the maximum number of invocations per tool (default: unlimited)
+     * @return builder
+     * @since 1.14.0
+     */
+    public AiServices<T> maxToolInvocations(int defaultLimit) {
+        context.toolService.maxToolInvocations(defaultLimit);
+        return this;
+    }
+
+    /**
+     * Sets the maximum number of invocations for a specific tool.
+     * This overrides the default limit set by {@link #maxToolInvocations(int)}.
+     *
+     * @param toolName the name of the tool
+     * @param limit    the maximum number of invocations for this tool
+     * @return builder
+     * @since 1.14.0
+     */
+    public AiServices<T> maxToolInvocations(String toolName, int limit) {
+        context.toolService.maxToolInvocations(toolName, limit);
+        return this;
+    }
+
+    /**
+     * Sets the maximum number of invocations for a specific tool, with a specific behavior
+     * when the limit is exceeded.
+     *
+     * @param toolName the name of the tool
+     * @param limit    the maximum number of invocations for this tool
+     * @param behavior the behavior when the limit is exceeded
+     * @return builder
+     * @since 1.14.0
+     */
+    public AiServices<T> maxToolInvocations(String toolName, int limit, ToolLimitExceededBehavior behavior) {
+        context.toolService.maxToolInvocations(toolName, limit, behavior);
+        return this;
+    }
+
+    /**
+     * Sets the default behavior when any tool's per-invocation limit is exceeded.
+     *
+     * @param behavior the behavior to use (default: {@link ToolLimitExceededBehavior#CONTINUE})
+     * @return builder
+     * @since 1.14.0
+     */
+    public AiServices<T> toolLimitExceededBehavior(ToolLimitExceededBehavior behavior) {
+        context.toolService.toolLimitExceededBehavior(behavior);
         return this;
     }
 
