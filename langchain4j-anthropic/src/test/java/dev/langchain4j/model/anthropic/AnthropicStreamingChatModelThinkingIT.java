@@ -53,7 +53,7 @@ class AnthropicStreamingChatModelThinkingIT {
 
         StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
-                .baseUrl(System.getenv("ANTHROPIC_BASE_URL"))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(modelName)
 
@@ -135,7 +135,7 @@ class AnthropicStreamingChatModelThinkingIT {
 
         StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
-                .baseUrl(System.getenv("ANTHROPIC_BASE_URL"))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(modelName)
 
@@ -222,7 +222,7 @@ class AnthropicStreamingChatModelThinkingIT {
 
         StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
-                .baseUrl(System.getenv("ANTHROPIC_BASE_URL"))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(modelName)
 
@@ -370,7 +370,7 @@ class AnthropicStreamingChatModelThinkingIT {
 
         StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
-                .baseUrl(System.getenv("ANTHROPIC_BASE_URL"))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
 
                 .beta(beta)
@@ -525,7 +525,7 @@ class AnthropicStreamingChatModelThinkingIT {
 
         // given
         StreamingChatModel model = AnthropicStreamingChatModel.builder()
-                .baseUrl(System.getenv("ANTHROPIC_BASE_URL"))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_SONNET_4_5_20250929)
 

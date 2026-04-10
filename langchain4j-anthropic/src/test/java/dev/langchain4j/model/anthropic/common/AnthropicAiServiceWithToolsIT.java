@@ -32,7 +32,7 @@ class AnthropicAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
     @Override
     protected List<ChatModel> models() {
         return singletonList(AnthropicChatModel.builder()
-                .baseUrl(System.getenv("ANTHROPIC_BASE_URL"))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .temperature(0.0)
@@ -69,7 +69,7 @@ class AnthropicAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
 
         ChatModel chatModel = AnthropicChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
-                .baseUrl(System.getenv("ANTHROPIC_BASE_URL"))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_SONNET_4_5_20250929)
                 .beta("advanced-tool-use-2025-11-20")
@@ -142,7 +142,7 @@ class AnthropicAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
 
         ChatModel chatModel = AnthropicChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
-                .baseUrl(System.getenv("ANTHROPIC_BASE_URL"))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_SONNET_4_5_20250929)
                 .beta("advanced-tool-use-2025-11-20")

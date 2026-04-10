@@ -14,7 +14,7 @@ class AnthropicStreamingChatModelListenerIT extends AbstractStreamingChatModelLi
     @Override
     protected StreamingChatModel createModel(ChatModelListener listener) {
         return AnthropicStreamingChatModel.builder()
-                .baseUrl(System.getenv("ANTHROPIC_BASE_URL"))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(modelName())
                 .temperature(temperature())
