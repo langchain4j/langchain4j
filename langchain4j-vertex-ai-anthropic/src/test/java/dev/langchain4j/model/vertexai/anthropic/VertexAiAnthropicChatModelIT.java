@@ -3,15 +3,20 @@ package dev.langchain4j.model.vertexai.anthropic;
 import static dev.langchain4j.model.vertexai.anthropic.VertexAiAnthropicFixtures.DEFAULT_LOCATION;
 import static dev.langchain4j.model.vertexai.anthropic.VertexAiAnthropicFixtures.DEFAULT_MODEL_NAME;
 import static java.time.DayOfWeek.MONDAY;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.condition.JRE.JAVA_17;
 
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
 import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.condition.EnabledOnJre;
@@ -114,6 +119,34 @@ class VertexAiAnthropicChatModelIT extends AbstractChatModelIT {
         if (ciDelaySeconds != null) {
             Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
         }
+    }
+
+    @Test
+    void should_support_extended_thinking() {
+        // given
+        ChatModel thinkingModel = VertexAiAnthropicChatModel.builder()
+                .project(System.getenv("GCP_PROJECT_ID"))
+                .location(DEFAULT_LOCATION)
+                .modelName("claude-3-7-sonnet@20260215")
+                .maxTokens(4000)
+                .thinkingBudgetTokens(1024)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        // when
+        UserMessage userMessage = UserMessage.from(
+                "What are the internal structural differences between a HashMap and a ConcurrentHashMap in Java, and how do those differences impact read-heavy workloads?");
+
+        ChatResponse response =
+                thinkingModel.doChat(ChatRequest.builder().messages(userMessage).build());
+
+        // then
+        String responseText = response.aiMessage().text();
+        assertThat(responseText).isNotBlank();
+        assertThat(responseText).contains("<thinking>");
+        assertThat(responseText).contains("</thinking>");
+        assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(0);
     }
 
     public static boolean isMonday() {
