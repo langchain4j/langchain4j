@@ -13,6 +13,7 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate.GeminiFinishReason;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUsageMetadata;
+import dev.langchain4j.model.googleai.GeminiGenerationConfig.GeminiImageConfig;
 import dev.langchain4j.model.output.FinishReason;
 import java.util.List;
 import java.util.Map;
@@ -307,6 +308,39 @@ class GoogleAiGeminiChatModelTest {
                             .seed(42)
                             .candidateCount(1)
                             .responseLogprobs(false)
+                            .build());
+        }
+
+        @Test
+        void shouldSendImageConfigWhenConfigured() {
+            // Given
+            var expectedResponse = createGeminiResponse("Response");
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+                    .thenReturn(expectedResponse);
+
+            var subject = GoogleAiGeminiChatModel.builder()
+                    .apiKey("test-api-key")
+                    .modelName(TEST_MODEL_NAME)
+                    .imageAspectRatio("16:9")
+                    .imageSize("2K")
+                    .build(mockGeminiService);
+
+            var chatRequest = ChatRequest.builder()
+                    .messages(new UserMessage("Generate image"))
+                    .build();
+
+            // When
+            subject.chat(chatRequest);
+
+            // Then
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            var request = requestCaptor.getValue();
+
+            assertThat(request.generationConfig()).isNotNull();
+            assertThat(request.generationConfig().imageConfig())
+                    .isEqualTo(GeminiImageConfig.builder()
+                            .aspectRatio("16:9")
+                            .imageSize("2K")
                             .build());
         }
     }
