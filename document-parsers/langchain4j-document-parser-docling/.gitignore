@@ -1,0 +1,26 @@
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+*~
+
+# Test outputs
+test-output/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+dependency-reduced-pom.xml
