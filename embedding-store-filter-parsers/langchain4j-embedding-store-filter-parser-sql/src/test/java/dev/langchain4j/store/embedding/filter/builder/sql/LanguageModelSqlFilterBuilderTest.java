@@ -136,4 +136,68 @@ class LanguageModelSqlFilterBuilderTest {
 
         verify(sqlFilterParser).parse("SELECT * FROM users WHERE id = 1");
     }
+
+    @Test
+    void should_use_retry_strategy_when_configured() {
+        // Given a chat model that first returns invalid SQL, then valid SQL
+        ChatModel chatModel = mock(ChatModel.class);
+        when(chatModel.chat(any(dev.langchain4j.data.message.UserMessage.class)))
+                .thenReturn(new dev.langchain4j.model.chat.response.ChatResponse.Builder()
+                        .aiMessage(new dev.langchain4j.data.message.AiMessage("INVALID SQL"))
+                        .build())
+                .thenReturn(new dev.langchain4j.model.chat.response.ChatResponse.Builder()
+                        .aiMessage(new dev.langchain4j.data.message.AiMessage("SELECT * FROM table WHERE id = 1"))
+                        .build());
+
+        LanguageModelSqlFilterBuilder sqlFilterBuilder = LanguageModelSqlFilterBuilder.builder()
+                .chatModel(chatModel)
+                .tableDefinition(tableDefinition)
+                .retryStrategy(RetryStrategy.RETRY_WITH_SIMPLE_PROMPT)
+                .maxRetries(2)
+                .build();
+
+        Query query = Query.from("test");
+        sqlFilterBuilder.build(query);
+
+        // Verify that the chat model was called twice (initial + retry)
+        verify(chatModel, times(2)).chat(any(dev.langchain4j.data.message.UserMessage.class));
+    }
+
+    @Test
+    void should_use_default_retry_strategy_none() {
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("INVALID SQL");
+
+        LanguageModelSqlFilterBuilder sqlFilterBuilder = LanguageModelSqlFilterBuilder.builder()
+                .chatModel(chatModel)
+                .tableDefinition(tableDefinition)
+                .build();
+
+        Query query = Query.from("test");
+        var result = sqlFilterBuilder.build(query);
+
+        // With NONE strategy, should return null when parsing fails
+        org.assertj.core.api.Assertions.assertThat(result).isNull();
+    }
+
+    @Test
+    void should_extract_sql_from_complex_response() {
+        String complexResponse = "Sure! Here's the SQL query you requested:\n\n" + "```sql\n"
+                + "SELECT * FROM users WHERE name = 'John'\n"
+                + "```\n\n"
+                + "This query will find all users named John.";
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(complexResponse);
+
+        LanguageModelSqlFilterBuilder sqlFilterBuilder = LanguageModelSqlFilterBuilder.builder()
+                .chatModel(chatModel)
+                .tableDefinition(tableDefinition)
+                .sqlFilterParser(sqlFilterParser)
+                .build();
+
+        Query query = Query.from("test");
+        sqlFilterBuilder.build(query);
+
+        // Should extract and parse the SQL from within the code block
+        verify(sqlFilterParser, atLeastOnce()).parse(contains("SELECT"));
+    }
 }
