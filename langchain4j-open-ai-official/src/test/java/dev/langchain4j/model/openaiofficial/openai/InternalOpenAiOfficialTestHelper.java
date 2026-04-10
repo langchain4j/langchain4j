@@ -8,6 +8,7 @@ import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialEmbeddingModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialImageModel;
+import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialStreamingChatModel;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,6 +42,7 @@ public class InternalOpenAiOfficialTestHelper {
     static final OpenAiOfficialChatModel OPEN_AI_CHAT_MODEL_JSON_WITHOUT_STRICT_SCHEMA;
     static final OpenAiOfficialChatModel OPEN_AI_CHAT_MODEL_JSON_WITH_STRICT_SCHEMA;
     static final OpenAiOfficialStreamingChatModel OPEN_AI_STREAMING_CHAT_MODEL;
+    static final OpenAiOfficialResponsesStreamingChatModel OPEN_AI_RESPONSES_STREAMING_CHAT_MODEL;
 
     // Embedding models
     static final OpenAiOfficialEmbeddingModel OPEN_AI_EMBEDDING_MODEL;
@@ -81,6 +83,11 @@ public class InternalOpenAiOfficialTestHelper {
                     .modelName(CHAT_MODEL_NAME)
                     .build();
 
+            OPEN_AI_RESPONSES_STREAMING_CHAT_MODEL = OpenAiOfficialResponsesStreamingChatModel.builder()
+                    .apiKey(System.getenv("OPENAI_API_KEY"))
+                    .modelName(CHAT_MODEL_NAME)
+                    .build();
+
             OPEN_AI_EMBEDDING_MODEL = OpenAiOfficialEmbeddingModel.builder()
                     .apiKey(System.getenv("OPENAI_API_KEY"))
                     .modelName(EMBEDDING_MODEL_NAME)
@@ -97,6 +104,7 @@ public class InternalOpenAiOfficialTestHelper {
             OPEN_AI_CHAT_MODEL_JSON_WITHOUT_STRICT_SCHEMA = null;
             OPEN_AI_CHAT_MODEL_JSON_WITH_STRICT_SCHEMA = null;
             OPEN_AI_STREAMING_CHAT_MODEL = null;
+            OPEN_AI_RESPONSES_STREAMING_CHAT_MODEL = null;
             OPEN_AI_EMBEDDING_MODEL = null;
             OPEN_AI_IMAGE_MODEL = null;
         }
@@ -156,6 +164,21 @@ public class InternalOpenAiOfficialTestHelper {
             log.error("Testing streaming models: skipping tests as OpenAI API keys are not set");
         }
         return models;
+    }
+
+    static List<StreamingChatModel> chatModelsResponsesStreaming() {
+        List<StreamingChatModel> models = new ArrayList<>();
+        if (OPEN_AI_RESPONSES_STREAMING_CHAT_MODEL != null) {
+            models.add(OPEN_AI_RESPONSES_STREAMING_CHAT_MODEL);
+        }
+        if (models.isEmpty()) {
+            log.error("Testing responses streaming models: skipping tests as OpenAI API keys are not set");
+        }
+        return models;
+    }
+
+    static OpenAiOfficialResponsesStreamingChatModel.Builder responsesStreamingChatModelBuilder() {
+        return OpenAiOfficialResponsesStreamingChatModel.builder().apiKey(System.getenv("OPENAI_API_KEY"));
     }
 
     static List<dev.langchain4j.model.embedding.EmbeddingModel> embeddingModels() {

@@ -1,10 +1,8 @@
 package dev.langchain4j.model.openaiofficial.openai;
 
-import com.openai.client.okhttp.OpenAIOkHttpClient;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatResponseMetadata;
-import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.common.AbstractStreamingAiServiceIT;
@@ -16,13 +14,8 @@ class OpenAiOfficialResponsesStreamingAiServiceIT extends AbstractStreamingAiSer
 
     @Override
     protected List<StreamingChatModel> models() {
-        var client = OpenAIOkHttpClient.builder()
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .build();
-
-        StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
-                .client(client)
-                .modelName(InternalOpenAiOfficialTestHelper.CHAT_MODEL_NAME.toString())
+        StreamingChatModel model = InternalOpenAiOfficialTestHelper.responsesStreamingChatModelBuilder()
+                .modelName(InternalOpenAiOfficialTestHelper.CHAT_MODEL_NAME)
                 .build();
 
         return List.of(model);

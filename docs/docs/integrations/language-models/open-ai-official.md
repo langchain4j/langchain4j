@@ -272,3 +272,8 @@ StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
 - **Cancellation**: Supports `StreamingHandle.cancel()` to stop responses
 - **Same features**: Full support for tools, listeners, and all standard parameters
 
+### Reasoning summaries
+If the selected model supports reasoning summaries, you can request them using the
+`reasoningSummary` parameter. When provided, the summary is surfaced in the final
+`AiMessage.thinking` field. Summaries are optional and model-dependent, so `thinking`
+may be `null` when the model does not return a summary.
