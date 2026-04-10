@@ -19,8 +19,18 @@ import com.openai.models.Reasoning;
 import com.openai.models.ReasoningEffort;
 import com.openai.models.ResponseFormatJsonObject;
 import com.openai.models.ResponsesModel;
+import com.openai.models.responses.ComputerTool;
+import com.openai.models.responses.ContainerAuto;
+import com.openai.models.responses.ContainerNetworkPolicyDomainSecret;
+import com.openai.models.responses.ContainerReference;
 import com.openai.models.responses.EasyInputMessage;
+import com.openai.models.responses.FileSearchTool;
+import com.openai.models.responses.FunctionShellTool;
 import com.openai.models.responses.FunctionTool;
+import com.openai.models.responses.InlineSkill;
+import com.openai.models.responses.LocalEnvironment;
+import com.openai.models.responses.LocalSkill;
+import com.openai.models.responses.NamespaceTool;
 import com.openai.models.responses.ResponseCompletedEvent;
 import com.openai.models.responses.ResponseCreateParams;
 import com.openai.models.responses.ResponseCreatedEvent;
@@ -40,10 +50,15 @@ import com.openai.models.responses.ResponseInputItem;
 import com.openai.models.responses.ResponseInputText;
 import com.openai.models.responses.ResponseOutputItemAddedEvent;
 import com.openai.models.responses.ResponseOutputItemDoneEvent;
+import com.openai.models.responses.ResponseOutputItem;
 import com.openai.models.responses.ResponseStreamEvent;
 import com.openai.models.responses.ResponseTextConfig;
 import com.openai.models.responses.ResponseTextDeltaEvent;
+import com.openai.models.responses.SkillReference;
+import com.openai.models.responses.Tool;
+import com.openai.models.responses.ToolSearchTool;
 import com.openai.models.responses.ToolChoiceOptions;
+import com.openai.models.responses.WebSearchTool;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -77,10 +92,12 @@ import dev.langchain4j.model.chat.response.StreamingHandle;
 import java.net.Proxy;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -97,6 +114,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
     private static final Logger logger = LoggerFactory.getLogger(OpenAiOfficialResponsesStreamingChatModel.class);
     private static final String PROMPT_CACHE_RETENTION_FIELD = "prompt_cache_retention";
+    static final String SERVER_TOOL_RESULTS_KEY = "server_tool_results";
 
     private final OpenAIClient client;
     private final ExecutorService executorService;
@@ -121,6 +139,8 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
     private final List<ChatModelListener> listeners;
     private final ChatRequestParameters defaultRequestParameters;
     private final Boolean strict;
+    private final List<OpenAiOfficialServerTool> serverTools;
+    private final Boolean returnServerToolResults;
 
     private OpenAiOfficialResponsesStreamingChatModel(Builder builder) {
         this.client = builder.client != null
@@ -168,6 +188,8 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 .maxCompletionTokens(maxOutputTokens)
                 .build();
         this.strict = getOrDefault(builder.strict, true);
+        this.serverTools = copy(builder.serverTools);
+        this.returnServerToolResults = getOrDefault(builder.returnServerToolResults, false);
     }
 
     public static Builder builder() {
@@ -259,14 +281,11 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                         .build());
             }
 
-            // Add tools if present
-            if (chatRequest.toolSpecifications() != null
-                    && !chatRequest.toolSpecifications().isEmpty()) {
-                for (var toolSpec : chatRequest.toolSpecifications()) {
-                    paramsBuilder.addTool(toResponsesTool(toolSpec, strict));
+            List<Tool> tools = toResponsesTools(chatRequest.toolSpecifications(), strict, serverTools);
+            if (!tools.isEmpty()) {
+                for (Tool tool : tools) {
+                    paramsBuilder.addTool(tool);
                 }
-
-                // Add tool choice if specified
                 if (chatRequest.toolChoice() != null) {
                     paramsBuilder.toolChoice(toResponsesToolChoice(chatRequest.toolChoice()));
                 }
@@ -288,7 +307,8 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 }
             });
 
-            var eventHandler = new ResponsesEventHandler(handler, responseIdRef, effectiveModelName, streamingHandle);
+            var eventHandler = new ResponsesEventHandler(
+                    handler, responseIdRef, effectiveModelName, streamingHandle, returnServerToolResults);
 
             // The forEach call blocks, so it is submitted to the executor service to run asynchronously,
             // this is the only thread used.
@@ -441,6 +461,747 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         }
     }
 
+    private static List<Tool> toResponsesTools(
+            List<ToolSpecification> toolSpecifications, boolean strict, List<OpenAiOfficialServerTool> serverTools) {
+        List<Tool> tools = new ArrayList<>();
+        if (toolSpecifications != null) {
+            for (ToolSpecification toolSpecification : toolSpecifications) {
+                tools.add(Tool.ofFunction(toResponsesTool(toolSpecification, strict)));
+            }
+        }
+        for (OpenAiOfficialServerTool serverTool : serverTools) {
+            tools.add(toResponsesServerTool(serverTool));
+        }
+        return tools;
+    }
+
+    private static Tool toResponsesServerTool(OpenAiOfficialServerTool serverTool) {
+        return switch (serverTool.type()) {
+            case "web_search" -> Tool.ofWebSearch(toWebSearchTool(serverTool));
+            case "file_search" -> Tool.ofFileSearch(toFileSearchTool(serverTool));
+            case "tool_search" -> Tool.ofSearch(toToolSearchTool(serverTool));
+            case "mcp" -> Tool.ofMcp(toMcpTool(serverTool));
+            case "shell" -> Tool.ofShell(toShellTool(serverTool));
+            case "computer" -> Tool.ofComputer(toComputerTool(serverTool));
+            case "namespace" -> Tool.ofNamespace(toNamespaceTool(serverTool));
+            default -> throw new UnsupportedFeatureException(
+                    "Unsupported OpenAI server tool type: " + serverTool.type()
+                            + ". Supported types are: web_search, file_search, tool_search, mcp, shell, computer, namespace.");
+        };
+    }
+
+    private static WebSearchTool toWebSearchTool(OpenAiOfficialServerTool serverTool) {
+        WebSearchTool.Builder builder = WebSearchTool.builder();
+        putAdditionalProperties(
+                serverTool.additionalProperties(),
+                List.of("filters", "search_context_size", "user_location", "allowed_domains", "blocked_domains"),
+                builder::putAdditionalProperty);
+        builder.type(WebSearchTool.Type.of(serverTool.type()));
+        String searchContextSize = stringValue(serverTool.searchContextSize(), serverTool.additionalProperties(), "search_context_size");
+        if (searchContextSize != null) {
+            builder.searchContextSize(WebSearchTool.SearchContextSize.of(searchContextSize));
+        }
+        Object userLocation = mapValue(serverTool.userLocation(), serverTool.additionalProperties(), "user_location");
+        if (userLocation instanceof Map<?, ?> map) {
+            WebSearchTool.UserLocation.Builder userLocationBuilder = WebSearchTool.UserLocation.builder();
+            map.forEach((key, value) -> userLocationBuilder.putAdditionalProperty(String.valueOf(key), JsonValue.from(value)));
+            builder.userLocation(userLocationBuilder.build());
+        }
+        Object filters = (serverTool.filters() != null && !serverTool.filters().isEmpty())
+                ? serverTool.filters()
+                : filtersFromAttributes(serverTool.additionalProperties());
+        if (filters instanceof Map<?, ?> map) {
+            WebSearchTool.Filters.Builder filtersBuilder = WebSearchTool.Filters.builder();
+            map.forEach((key, value) -> {
+                if ("allowed_domains".equals(String.valueOf(key))) {
+                    List<String> allowedDomains = stringListValue(value);
+                    if (allowedDomains != null) {
+                        filtersBuilder.allowedDomains(allowedDomains);
+                    }
+                } else {
+                    filtersBuilder.putAdditionalProperty(String.valueOf(key), JsonValue.from(value));
+                }
+            });
+            builder.filters(filtersBuilder.build());
+        }
+        return builder.build();
+    }
+
+    private static FileSearchTool toFileSearchTool(OpenAiOfficialServerTool serverTool) {
+        FileSearchTool.Builder builder = FileSearchTool.builder();
+        putAdditionalProperties(
+                serverTool.additionalProperties(),
+                List.of("vector_store_ids", "filters", "max_num_results", "ranking_options"),
+                builder::putAdditionalProperty);
+        builder.type(JsonValue.from(serverTool.type()));
+        List<String> vectorStoreIds = !serverTool.vectorStoreIds().isEmpty()
+                ? serverTool.vectorStoreIds()
+                : stringListValue(serverTool.additionalProperties().get("vector_store_ids"));
+        if (vectorStoreIds != null) {
+            builder.vectorStoreIds(vectorStoreIds);
+        }
+        Integer maxNumResults = integerValue(serverTool.maxNumResults(), serverTool.additionalProperties(), "max_num_results");
+        if (maxNumResults != null) {
+            builder.maxNumResults(maxNumResults.longValue());
+        }
+        Object filters = !serverTool.filters().isEmpty() ? serverTool.filters() : serverTool.additionalProperties().get("filters");
+        if (filters instanceof Map<?, ?> map) {
+            builder.filters(JsonValue.from(toStringObjectMap(map)));
+        }
+        Object rankingOptions = mapValue(serverTool.rankingOptions(), serverTool.additionalProperties(), "ranking_options");
+        if (rankingOptions instanceof Map<?, ?> map) {
+            FileSearchTool.RankingOptions.Builder rankingBuilder = FileSearchTool.RankingOptions.builder();
+            map.forEach((key, value) -> rankingBuilder.putAdditionalProperty(String.valueOf(key), JsonValue.from(value)));
+            builder.rankingOptions(rankingBuilder.build());
+        }
+        return builder.build();
+    }
+
+    private static ToolSearchTool toToolSearchTool(OpenAiOfficialServerTool serverTool) {
+        ToolSearchTool.Builder builder = ToolSearchTool.builder();
+        putAdditionalProperties(
+                serverTool.additionalProperties(), List.of("description", "execution", "parameters"), builder::putAdditionalProperty);
+        builder.type(JsonValue.from(serverTool.type()));
+        String description = stringValue(serverTool.description(), serverTool.additionalProperties(), "description");
+        if (description != null) {
+            builder.description(description);
+        }
+        String execution = stringValue(serverTool.execution(), serverTool.additionalProperties(), "execution");
+        if (execution != null) {
+            builder.execution(ToolSearchTool.Execution.of(execution));
+        }
+        Object parameters = objectValue(serverTool.parameters(), serverTool.additionalProperties(), "parameters");
+        if (parameters != null) {
+            builder.parameters(JsonValue.from(parameters));
+        }
+        return builder.build();
+    }
+
+    private static Tool.Mcp toMcpTool(OpenAiOfficialServerTool serverTool) {
+        Tool.Mcp.Builder builder = Tool.Mcp.builder();
+        putAdditionalProperties(
+                serverTool.additionalProperties(),
+                List.of(
+                        "server_label",
+                        "allowed_tools",
+                        "authorization",
+                        "connector_id",
+                        "defer_loading",
+                        "headers",
+                        "require_approval",
+                        "server_description",
+                        "server_url"),
+                builder::putAdditionalProperty);
+        builder.type(JsonValue.from(serverTool.type()));
+        String serverLabel = stringValue(serverTool.serverLabel(), serverTool.additionalProperties(), "server_label");
+        if (serverLabel != null) {
+            builder.serverLabel(serverLabel);
+        } else if (serverTool.name() != null) {
+            builder.serverLabel(serverTool.name());
+        }
+        String authorization = stringValue(serverTool.authorization(), serverTool.additionalProperties(), "authorization");
+        if (authorization != null) {
+            builder.authorization(authorization);
+        }
+        String connectorId = stringValue(serverTool.connectorId(), serverTool.additionalProperties(), "connector_id");
+        if (connectorId != null) {
+            builder.connectorId(Tool.Mcp.ConnectorId.of(connectorId));
+        }
+        Boolean deferLoading = booleanValue(serverTool.deferLoading(), serverTool.additionalProperties(), "defer_loading");
+        if (deferLoading != null) {
+            builder.deferLoading(deferLoading);
+        }
+        String serverDescription = stringValue(serverTool.serverDescription(), serverTool.additionalProperties(), "server_description");
+        if (serverDescription != null) {
+            builder.serverDescription(serverDescription);
+        }
+        String serverUrl = stringValue(serverTool.serverUrl(), serverTool.additionalProperties(), "server_url");
+        if (serverUrl != null) {
+            builder.serverUrl(serverUrl);
+        }
+        Object allowedTools = !serverTool.allowedTools().isEmpty()
+                ? serverTool.allowedTools()
+                : serverTool.additionalProperties().get("allowed_tools");
+        if (allowedTools instanceof List<?> list) {
+            builder.allowedToolsOfMcp(list.stream().map(String::valueOf).toList());
+        } else if (allowedTools instanceof Map<?, ?> map) {
+            builder.allowedTools(Tool.Mcp.AllowedTools.ofMcpToolFilter(toMcpAllowedToolsFilter(toStringObjectMap(map))));
+        }
+        Object headers = mapValue(serverTool.headers(), serverTool.additionalProperties(), "headers");
+        if (headers instanceof Map<?, ?> map) {
+            Tool.Mcp.Headers.Builder headersBuilder = Tool.Mcp.Headers.builder();
+            map.forEach((key, value) -> headersBuilder.putAdditionalProperty(String.valueOf(key), JsonValue.from(value)));
+            builder.headers(headersBuilder.build());
+        }
+        Object requireApproval = objectValue(serverTool.requireApproval(), serverTool.additionalProperties(), "require_approval");
+        if (requireApproval instanceof String value) {
+            builder.requireApproval(Tool.Mcp.RequireApproval.ofMcpToolApprovalSetting(
+                    Tool.Mcp.RequireApproval.McpToolApprovalSetting.of(value)));
+        } else if (requireApproval instanceof Map<?, ?> map) {
+            builder.requireApproval(Tool.Mcp.RequireApproval.ofMcpToolApprovalFilter(
+                    toMcpRequireApprovalFilter(toStringObjectMap(map))));
+        }
+        return builder.build();
+    }
+
+    private static Tool.Mcp.AllowedTools.McpToolFilter toMcpAllowedToolsFilter(Map<String, Object> allowedTools) {
+        Tool.Mcp.AllowedTools.McpToolFilter.Builder builder = Tool.Mcp.AllowedTools.McpToolFilter.builder();
+        putAdditionalProperties(allowedTools, List.of("read_only", "tool_names"), builder::putAdditionalProperty);
+        if (allowedTools.containsKey("read_only")) {
+            builder.readOnly(Boolean.parseBoolean(String.valueOf(allowedTools.get("read_only"))));
+        }
+        List<String> toolNames = stringListValue(allowedTools.get("tool_names"));
+        if (toolNames != null) {
+            builder.toolNames(toolNames);
+        }
+        return builder.build();
+    }
+
+    private static Tool.Mcp.RequireApproval.McpToolApprovalFilter toMcpRequireApprovalFilter(
+            Map<String, Object> requireApproval) {
+        Tool.Mcp.RequireApproval.McpToolApprovalFilter.Builder builder =
+                Tool.Mcp.RequireApproval.McpToolApprovalFilter.builder();
+        putAdditionalProperties(requireApproval, List.of("always", "never"), builder::putAdditionalProperty);
+        Object always = requireApproval.get("always");
+        if (always instanceof Map<?, ?> map) {
+            builder.always(toMcpApprovalFilterAlways(toStringObjectMap(map)));
+        }
+        Object never = requireApproval.get("never");
+        if (never instanceof Map<?, ?> map) {
+            builder.never(toMcpApprovalFilterNever(toStringObjectMap(map)));
+        }
+        return builder.build();
+    }
+
+    private static Tool.Mcp.RequireApproval.McpToolApprovalFilter.Always toMcpApprovalFilterAlways(
+            Map<String, Object> filter) {
+        Tool.Mcp.RequireApproval.McpToolApprovalFilter.Always.Builder builder =
+                Tool.Mcp.RequireApproval.McpToolApprovalFilter.Always.builder();
+        putAdditionalProperties(filter, List.of("read_only", "tool_names"), builder::putAdditionalProperty);
+        if (filter.containsKey("read_only")) {
+            builder.readOnly(Boolean.parseBoolean(String.valueOf(filter.get("read_only"))));
+        }
+        List<String> toolNames = stringListValue(filter.get("tool_names"));
+        if (toolNames != null) {
+            builder.toolNames(toolNames);
+        }
+        return builder.build();
+    }
+
+    private static Tool.Mcp.RequireApproval.McpToolApprovalFilter.Never toMcpApprovalFilterNever(
+            Map<String, Object> filter) {
+        Tool.Mcp.RequireApproval.McpToolApprovalFilter.Never.Builder builder =
+                Tool.Mcp.RequireApproval.McpToolApprovalFilter.Never.builder();
+        putAdditionalProperties(filter, List.of("read_only", "tool_names"), builder::putAdditionalProperty);
+        if (filter.containsKey("read_only")) {
+            builder.readOnly(Boolean.parseBoolean(String.valueOf(filter.get("read_only"))));
+        }
+        List<String> toolNames = stringListValue(filter.get("tool_names"));
+        if (toolNames != null) {
+            builder.toolNames(toolNames);
+        }
+        return builder.build();
+    }
+
+    private static FunctionShellTool toShellTool(OpenAiOfficialServerTool serverTool) {
+        FunctionShellTool.Builder builder = FunctionShellTool.builder();
+        putAdditionalProperties(serverTool.additionalProperties(), List.of("environment"), builder::putAdditionalProperty);
+        builder.type(JsonValue.from(serverTool.type()));
+
+        Object environment = mapValue(serverTool.environment(), serverTool.additionalProperties(), "environment");
+        if (environment instanceof Map<?, ?> map) {
+            builder.environment(toShellEnvironment(map));
+        }
+
+        return builder.build();
+    }
+
+    private static FunctionShellTool.Environment toShellEnvironment(Map<?, ?> environment) {
+        Map<String, Object> environmentMap = toStringObjectMap(environment);
+        String type = String.valueOf(environmentMap.get("type"));
+
+        return switch (type) {
+            case "local" -> FunctionShellTool.Environment.ofLocal(toLocalEnvironment(environmentMap));
+            case "container_auto" -> FunctionShellTool.Environment.ofContainerAuto(toContainerAuto(environmentMap));
+            case "container_reference" -> FunctionShellTool.Environment.ofContainerReference(
+                    toContainerReference(environmentMap));
+            default -> throw new IllegalArgumentException("Unsupported shell environment type: " + type);
+        };
+    }
+
+    private static LocalEnvironment toLocalEnvironment(Map<String, Object> environment) {
+        LocalEnvironment.Builder builder = LocalEnvironment.builder();
+        putAdditionalProperties(environment, List.of("type", "skills"), builder::putAdditionalProperty);
+        builder.type(JsonValue.from(environment.getOrDefault("type", "local")));
+
+        Object skills = environment.get("skills");
+        if (skills instanceof List<?> list) {
+            for (Object skill : list) {
+                if (skill instanceof Map<?, ?> skillMap) {
+                    builder.addSkill(toLocalSkill(skillMap));
+                }
+            }
+        }
+
+        return builder.build();
+    }
+
+    private static LocalSkill toLocalSkill(Map<?, ?> skill) {
+        Map<String, Object> skillMap = toStringObjectMap(skill);
+        LocalSkill.Builder builder = LocalSkill.builder();
+        putAdditionalProperties(skillMap, List.of("name", "path", "description"), builder::putAdditionalProperty);
+        if (skillMap.containsKey("name")) {
+            builder.name(String.valueOf(skillMap.get("name")));
+        }
+        if (skillMap.containsKey("path")) {
+            builder.path(String.valueOf(skillMap.get("path")));
+        }
+        if (skillMap.containsKey("description")) {
+            builder.description(String.valueOf(skillMap.get("description")));
+        }
+        return builder.build();
+    }
+
+    private static ContainerAuto toContainerAuto(Map<String, Object> environment) {
+        ContainerAuto.Builder builder = ContainerAuto.builder();
+        putAdditionalProperties(
+                environment,
+                List.of("type", "file_ids", "memory_limit", "network_policy", "skills"),
+                builder::putAdditionalProperty);
+        builder.type(JsonValue.from(environment.getOrDefault("type", "container_auto")));
+
+        Object fileIds = environment.get("file_ids");
+        if (fileIds instanceof List<?> ids) {
+            builder.fileIds(ids.stream().map(String::valueOf).toList());
+        }
+        if (environment.containsKey("memory_limit")) {
+            builder.memoryLimit(ContainerAuto.MemoryLimit.of(String.valueOf(environment.get("memory_limit"))));
+        }
+        Object networkPolicy = environment.get("network_policy");
+        if (networkPolicy instanceof Map<?, ?> map) {
+            builder.networkPolicy(toContainerNetworkPolicy(map));
+        }
+        Object skills = environment.get("skills");
+        if (skills instanceof List<?> list) {
+            for (Object skill : list) {
+                if (skill instanceof Map<?, ?> skillMap) {
+                    builder.addSkill(toContainerAutoSkill(skillMap));
+                }
+            }
+        }
+
+        return builder.build();
+    }
+
+    private static ContainerAuto.Skill toContainerAutoSkill(Map<?, ?> skill) {
+        Map<String, Object> skillMap = toStringObjectMap(skill);
+        String type = String.valueOf(skillMap.get("type"));
+        return switch (type) {
+            case "reference" -> ContainerAuto.Skill.ofReference(toSkillReference(skillMap));
+            case "inline" -> ContainerAuto.Skill.ofInline(toInlineSkill(skillMap));
+            default -> throw new IllegalArgumentException("Unsupported shell container skill type: " + type);
+        };
+    }
+
+    private static SkillReference toSkillReference(Map<String, Object> skill) {
+        SkillReference.Builder builder = SkillReference.builder();
+        putAdditionalProperties(skill, List.of("type", "skill_id", "version"), builder::putAdditionalProperty);
+        builder.type(JsonValue.from(skill.getOrDefault("type", "reference")));
+        if (skill.containsKey("skill_id")) {
+            builder.skillId(String.valueOf(skill.get("skill_id")));
+        }
+        if (skill.containsKey("version")) {
+            builder.version(String.valueOf(skill.get("version")));
+        }
+        return builder.build();
+    }
+
+    private static InlineSkill toInlineSkill(Map<String, Object> skill) {
+        InlineSkill.Builder builder = InlineSkill.builder();
+        putAdditionalProperties(skill, List.of("type", "name", "description", "source"), builder::putAdditionalProperty);
+        builder.type(JsonValue.from(skill.getOrDefault("type", "inline")));
+        if (skill.containsKey("name")) {
+            builder.name(String.valueOf(skill.get("name")));
+        }
+        if (skill.containsKey("description")) {
+            builder.description(String.valueOf(skill.get("description")));
+        }
+        Object source = skill.get("source");
+        if (source instanceof Map<?, ?> map) {
+            builder.source(toInlineSkillSource(map));
+        }
+        return builder.build();
+    }
+
+    private static ContainerAuto.NetworkPolicy toContainerNetworkPolicy(Map<?, ?> networkPolicy) {
+        Map<String, Object> networkPolicyMap = toStringObjectMap(networkPolicy);
+        String type = String.valueOf(networkPolicyMap.get("type"));
+        return switch (type) {
+            case "allowlist" -> ContainerAuto.NetworkPolicy.ofAllowlist(toContainerAllowlist(networkPolicyMap));
+            case "disabled" -> ContainerAuto.NetworkPolicy.ofDisabled(
+                    com.openai.models.responses.ContainerNetworkPolicyDisabled.builder()
+                            .type(JsonValue.from(type))
+                            .build());
+            default -> throw new IllegalArgumentException("Unsupported shell container network_policy type: " + type);
+        };
+    }
+
+    private static com.openai.models.responses.ContainerNetworkPolicyAllowlist toContainerAllowlist(
+            Map<String, Object> networkPolicy) {
+        com.openai.models.responses.ContainerNetworkPolicyAllowlist.Builder builder =
+                com.openai.models.responses.ContainerNetworkPolicyAllowlist.builder();
+        putAdditionalProperties(
+                networkPolicy,
+                List.of("type", "allowed_domains", "domain_secrets"),
+                builder::putAdditionalProperty);
+        builder.type(JsonValue.from(networkPolicy.getOrDefault("type", "allowlist")));
+        Object allowedDomains = networkPolicy.get("allowed_domains");
+        if (allowedDomains instanceof List<?> domains) {
+            builder.allowedDomains(domains.stream().map(String::valueOf).toList());
+        }
+        Object domainSecrets = networkPolicy.get("domain_secrets");
+        if (domainSecrets instanceof List<?> secrets) {
+            for (Object secret : secrets) {
+                if (secret instanceof Map<?, ?> secretMap) {
+                    builder.addDomainSecret(toContainerNetworkPolicyDomainSecret(toStringObjectMap(secretMap)));
+                }
+            }
+        }
+        return builder.build();
+    }
+
+    private static ContainerNetworkPolicyDomainSecret toContainerNetworkPolicyDomainSecret(Map<String, Object> domainSecret) {
+        ContainerNetworkPolicyDomainSecret.Builder builder = ContainerNetworkPolicyDomainSecret.builder();
+        putAdditionalProperties(domainSecret, List.of("domain", "name", "value"), builder::putAdditionalProperty);
+        if (domainSecret.containsKey("domain")) {
+            builder.domain(String.valueOf(domainSecret.get("domain")));
+        }
+        if (domainSecret.containsKey("name")) {
+            builder.name(String.valueOf(domainSecret.get("name")));
+        }
+        if (domainSecret.containsKey("value")) {
+            builder.value(String.valueOf(domainSecret.get("value")));
+        }
+        return builder.build();
+    }
+
+    private static com.openai.models.responses.InlineSkillSource toInlineSkillSource(Map<?, ?> source) {
+        Map<String, Object> sourceMap = toStringObjectMap(source);
+        com.openai.models.responses.InlineSkillSource.Builder builder =
+                com.openai.models.responses.InlineSkillSource.builder();
+        putAdditionalProperties(sourceMap, List.of("type", "media_type", "data"), builder::putAdditionalProperty);
+        if (sourceMap.containsKey("type")) {
+            builder.type(JsonValue.from(sourceMap.get("type")));
+        }
+        if (sourceMap.containsKey("media_type")) {
+            builder.mediaType(JsonValue.from(sourceMap.get("media_type")));
+        }
+        if (sourceMap.containsKey("data")) {
+            builder.data(String.valueOf(sourceMap.get("data")));
+        }
+        return builder.build();
+    }
+
+    private static ContainerReference toContainerReference(Map<String, Object> environment) {
+        ContainerReference.Builder builder = ContainerReference.builder();
+        putAdditionalProperties(environment, List.of("type", "container_id"), builder::putAdditionalProperty);
+        builder.type(JsonValue.from(environment.getOrDefault("type", "container_reference")));
+        if (environment.containsKey("container_id")) {
+            builder.containerId(String.valueOf(environment.get("container_id")));
+        }
+        return builder.build();
+    }
+
+    private static ComputerTool toComputerTool(OpenAiOfficialServerTool serverTool) {
+        ComputerTool.Builder builder = ComputerTool.builder();
+        putAdditionalProperties(serverTool.additionalProperties(), List.of(), builder::putAdditionalProperty);
+        builder.type(JsonValue.from(serverTool.type()));
+        return builder.build();
+    }
+
+    private static NamespaceTool toNamespaceTool(OpenAiOfficialServerTool serverTool) {
+        NamespaceTool.Builder builder = NamespaceTool.builder();
+        putAdditionalProperties(serverTool.additionalProperties(), List.of("description", "tools"), builder::putAdditionalProperty);
+        builder.type(JsonValue.from(serverTool.type()));
+        if (serverTool.name() != null) {
+            builder.name(serverTool.name());
+        }
+        String description = stringValue(serverTool.description(), serverTool.additionalProperties(), "description");
+        if (description != null) {
+            builder.description(description);
+        }
+
+        Object tools = !serverTool.tools().isEmpty() ? serverTool.tools() : serverTool.additionalProperties().get("tools");
+        if (tools instanceof List<?> list) {
+            for (Object tool : list) {
+                if (tool instanceof Map<?, ?> toolMap) {
+                    builder.addTool(toNamespaceToolEntry(toolMap));
+                }
+            }
+        }
+
+        return builder.build();
+    }
+
+    private static NamespaceTool.Tool toNamespaceToolEntry(Map<?, ?> tool) {
+        Map<String, Object> toolMap = toStringObjectMap(tool);
+        String type = String.valueOf(toolMap.get("type"));
+        return switch (type) {
+            case "function" -> NamespaceTool.Tool.ofFunction(toNamespaceFunctionTool(toolMap));
+            default -> throw new IllegalArgumentException("Unsupported namespace nested tool type: " + type);
+        };
+    }
+
+    private static NamespaceTool.Tool.Function toNamespaceFunctionTool(Map<String, Object> tool) {
+        NamespaceTool.Tool.Function.Builder builder = NamespaceTool.Tool.Function.builder();
+        putAdditionalProperties(
+                tool,
+                List.of("name", "type", "description", "parameters", "strict"),
+                builder::putAdditionalProperty);
+        builder.type(JsonValue.from(tool.getOrDefault("type", "function")));
+        if (tool.containsKey("name")) {
+            builder.name(String.valueOf(tool.get("name")));
+        }
+        if (tool.containsKey("description")) {
+            builder.description(String.valueOf(tool.get("description")));
+        }
+        if (tool.containsKey("parameters")) {
+            builder.parameters(JsonValue.from(tool.get("parameters")));
+        }
+        if (tool.containsKey("strict")) {
+            builder.strict(Boolean.parseBoolean(String.valueOf(tool.get("strict"))));
+        }
+        return builder.build();
+    }
+
+    private static void putAdditionalProperties(
+            Map<String, Object> attributes, List<String> handledKeys, AdditionalPropertyWriter writer) {
+        for (Map.Entry<String, Object> entry : attributes.entrySet()) {
+            if (!handledKeys.contains(entry.getKey())) {
+                writer.write(entry.getKey(), JsonValue.from(entry.getValue()));
+            }
+        }
+    }
+
+    private interface AdditionalPropertyWriter {
+        void write(String key, JsonValue value);
+    }
+
+    private static String stringValue(String preferredValue, Map<String, Object> additionalProperties, String key) {
+        if (preferredValue != null) {
+            return preferredValue;
+        }
+        Object value = additionalProperties.get(key);
+        return value == null ? null : String.valueOf(value);
+    }
+
+    private static Integer integerValue(Integer preferredValue, Map<String, Object> additionalProperties, String key) {
+        if (preferredValue != null) {
+            return preferredValue;
+        }
+        Object value = additionalProperties.get(key);
+        return value instanceof Number number ? number.intValue() : null;
+    }
+
+    private static Boolean booleanValue(Boolean preferredValue, Map<String, Object> additionalProperties, String key) {
+        if (preferredValue != null) {
+            return preferredValue;
+        }
+        Object value = additionalProperties.get(key);
+        return value == null ? null : Boolean.parseBoolean(String.valueOf(value));
+    }
+
+    private static Object objectValue(Object preferredValue, Map<String, Object> additionalProperties, String key) {
+        return preferredValue != null ? preferredValue : additionalProperties.get(key);
+    }
+
+    private static Map<String, Object> mapValue(
+            Map<String, Object> preferredValue, Map<String, Object> additionalProperties, String key) {
+        if (preferredValue != null && !preferredValue.isEmpty()) {
+            return preferredValue;
+        }
+        Object value = additionalProperties.get(key);
+        return value instanceof Map<?, ?> map ? toStringObjectMap(map) : null;
+    }
+
+    private static List<String> stringListValue(Object value) {
+        if (value instanceof List<?> list) {
+            return list.stream().map(String::valueOf).toList();
+        }
+        return null;
+    }
+
+    private static Object filtersFromAttributes(Map<String, Object> attributes) {
+        if (attributes.containsKey("filters")) {
+            return attributes.get("filters");
+        }
+        Map<String, Object> filters = new LinkedHashMap<>();
+        if (attributes.containsKey("allowed_domains")) {
+            filters.put("allowed_domains", attributes.get("allowed_domains"));
+        }
+        if (attributes.containsKey("blocked_domains")) {
+            filters.put("blocked_domains", attributes.get("blocked_domains"));
+        }
+        return filters.isEmpty() ? null : filters;
+    }
+
+    private static Map<String, Object> toStringObjectMap(Map<?, ?> source) {
+        Map<String, Object> target = new LinkedHashMap<>();
+        source.forEach((key, value) -> target.put(String.valueOf(key), value));
+        return target;
+    }
+
+    private static Optional<Object> optionalMcpError(ResponseOutputItem.McpCall item) {
+        try {
+            return item.error().map(value -> (Object) value);
+        } catch (RuntimeException e) {
+            return Optional.ofNullable(item._additionalProperties().get("error"));
+        }
+    }
+
+    static List<OpenAiOfficialServerToolResult> extractServerToolResults(List<ResponseOutputItem> outputItems) {
+        List<OpenAiOfficialServerToolResult> results = new ArrayList<>();
+        for (ResponseOutputItem outputItem : outputItems) {
+            if (outputItem.isWebSearchCall()) {
+                var item = outputItem.asWebSearchCall();
+                results.add(OpenAiOfficialServerToolResult.builder()
+                        .type("web_search_call")
+                        .toolUseId(item.id())
+                        .content(Map.of(
+                                "id", item.id(),
+                                "action", item.action(),
+                                "status", item.status().asString()))
+                        .build());
+            } else if (outputItem.isFileSearchCall()) {
+                var item = outputItem.asFileSearchCall();
+                Map<String, Object> content = new LinkedHashMap<>();
+                content.put("id", item.id());
+                content.put("queries", item.queries());
+                content.put("status", item.status().asString());
+                item.results().ifPresent(value -> content.put("results", value));
+                results.add(OpenAiOfficialServerToolResult.builder()
+                        .type("file_search_call")
+                        .toolUseId(item.id())
+                        .content(content)
+                        .build());
+            } else if (outputItem.isToolSearchCall()) {
+                var item = outputItem.asToolSearchCall();
+                Map<String, Object> content = new LinkedHashMap<>();
+                content.put("id", item.id());
+                content.put("arguments", item._arguments());
+                content.put("execution", item.execution().asString());
+                content.put("status", item.status().asString());
+                item.callId().ifPresent(value -> content.put("call_id", value));
+                item.createdBy().ifPresent(value -> content.put("created_by", value));
+                results.add(OpenAiOfficialServerToolResult.builder()
+                        .type("tool_search_call")
+                        .toolUseId(item.id())
+                        .content(content)
+                        .build());
+            } else if (outputItem.isMcpListTools()) {
+                var item = outputItem.asMcpListTools();
+                Map<String, Object> content = new LinkedHashMap<>();
+                content.put("id", item.id());
+                content.put("server_label", item.serverLabel());
+                content.put("tools", item.tools());
+                item.error().ifPresent(value -> content.put("error", value));
+                results.add(OpenAiOfficialServerToolResult.builder()
+                        .type("mcp_list_tools")
+                        .toolUseId(item.id())
+                        .content(content)
+                        .build());
+            } else if (outputItem.isMcpCall()) {
+                var item = outputItem.asMcpCall();
+                Map<String, Object> content = new LinkedHashMap<>();
+                content.put("id", item.id());
+                content.put("arguments", item.arguments());
+                content.put("name", item.name());
+                content.put("server_label", item.serverLabel());
+                item.approvalRequestId().ifPresent(value -> content.put("approval_request_id", value));
+                optionalMcpError(item).ifPresent(value -> content.put("error", value));
+                item.output().ifPresent(value -> content.put("output", value));
+                item.status().ifPresent(value -> content.put("status", value.asString()));
+                results.add(OpenAiOfficialServerToolResult.builder()
+                        .type("mcp_call")
+                        .toolUseId(item.id())
+                        .content(content)
+                        .build());
+            } else if (outputItem.isLocalShellCall()) {
+                var item = outputItem.asLocalShellCall();
+                Map<String, Object> content = new LinkedHashMap<>();
+                content.put("id", item.id());
+                content.put("call_id", item.callId());
+                content.put("action", item.action());
+                content.put("status", item.status().asString());
+                results.add(OpenAiOfficialServerToolResult.builder()
+                        .type("shell_call")
+                        .toolUseId(item.id())
+                        .content(content)
+                        .build());
+            } else if (outputItem.isShellCall()) {
+                var item = outputItem.asShellCall();
+                Map<String, Object> content = new LinkedHashMap<>();
+                content.put("id", item.id());
+                content.put("call_id", item.callId());
+                content.put("action", item.action());
+                content.put("status", item.status().asString());
+                item.environment().ifPresent(value -> content.put("environment", value));
+                item.createdBy().ifPresent(value -> content.put("created_by", value));
+                results.add(OpenAiOfficialServerToolResult.builder()
+                        .type("shell_call")
+                        .toolUseId(item.id())
+                        .content(content)
+                        .build());
+            } else if (outputItem.isShellCallOutput()) {
+                var item = outputItem.asShellCallOutput();
+                Map<String, Object> content = new LinkedHashMap<>();
+                content.put("id", item.id());
+                content.put("call_id", item.callId());
+                content.put("output", item.output());
+                content.put("status", item.status().asString());
+                item.maxOutputLength().ifPresent(value -> content.put("max_output_length", value));
+                item.createdBy().ifPresent(value -> content.put("created_by", value));
+                results.add(OpenAiOfficialServerToolResult.builder()
+                        .type("shell_call_output")
+                        .toolUseId(item.id())
+                        .content(content)
+                        .build());
+            } else if (outputItem.isComputerCall()) {
+                var item = outputItem.asComputerCall();
+                Map<String, Object> content = new LinkedHashMap<>();
+                content.put("id", item.id());
+                content.put("call_id", item.callId());
+                content.put("status", item.status().asString());
+                content.put("type", item.type().asString());
+                item._pendingSafetyChecks().asKnown().ifPresent(value -> content.put("pending_safety_checks", value));
+                item.action().ifPresent(value -> content.put("action", value));
+                item.actions().ifPresent(value -> content.put("actions", value));
+                results.add(OpenAiOfficialServerToolResult.builder()
+                        .type("computer_call")
+                        .toolUseId(item.id())
+                        .content(content)
+                        .build());
+            }
+        }
+        return results;
+    }
+
+    static AiMessage buildFinalAiMessage(
+            String text, List<ToolExecutionRequest> completedToolCalls, List<OpenAiOfficialServerToolResult> serverToolResults) {
+        String normalizedText = (text != null && text.isEmpty() && (!completedToolCalls.isEmpty() || !serverToolResults.isEmpty()))
+                ? null
+                : text;
+        AiMessage.Builder builder = AiMessage.builder()
+                .text(normalizedText)
+                .toolExecutionRequests(completedToolCalls);
+
+        if (!serverToolResults.isEmpty()) {
+            builder.attributes(Map.of(SERVER_TOOL_RESULTS_KEY, serverToolResults));
+        }
+
+        return builder.build();
+    }
+
     private static ToolChoiceOptions toResponsesToolChoice(ToolChoice toolChoice) {
         if (toolChoice == null) {
             return null;
@@ -535,6 +1296,8 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         private List<ChatModelListener> listeners;
         private ExecutorService executorService;
         private Boolean strict;
+        private List<OpenAiOfficialServerTool> serverTools;
+        private Boolean returnServerToolResults;
 
         public Builder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
@@ -738,6 +1501,20 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             return this;
         }
 
+        public Builder serverTools(List<OpenAiOfficialServerTool> serverTools) {
+            this.serverTools = serverTools;
+            return this;
+        }
+
+        public Builder serverTools(OpenAiOfficialServerTool... serverTools) {
+            return serverTools(asList(serverTools));
+        }
+
+        public Builder returnServerToolResults(Boolean returnServerToolResults) {
+            this.returnServerToolResults = returnServerToolResults;
+            return this;
+        }
+
         public OpenAiOfficialResponsesStreamingChatModel build() {
             return new OpenAiOfficialResponsesStreamingChatModel(this);
         }
@@ -753,6 +1530,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         private final Map<String, ToolExecutionRequest.Builder> toolCallBuilders = new HashMap<>();
         private final Map<String, Integer> toolCallIndices = new HashMap<>();
         private final List<ToolExecutionRequest> completedToolCalls = new ArrayList<>();
+        private final boolean returnServerToolResults;
         private final StringBuilder textBuilder = new StringBuilder();
         private OpenAiOfficialTokenUsage tokenUsage;
         private String responseId;
@@ -763,11 +1541,13 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 StreamingChatResponseHandler handler,
                 AtomicReference<String> responseIdRef,
                 String modelName,
-                StreamingHandle streamingHandle) {
+                StreamingHandle streamingHandle,
+                boolean returnServerToolResults) {
             this.handler = handler;
             this.responseIdRef = responseIdRef;
             this.modelName = modelName;
             this.streamingHandle = streamingHandle;
+            this.returnServerToolResults = returnServerToolResults;
         }
 
         void handleEvent(ResponseStreamEvent event) {
@@ -959,12 +1739,10 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             });
 
             // Build final AI message
-            var text = !textBuilder.isEmpty() ? textBuilder.toString() : null;
-            var aiMessage = !completedToolCalls.isEmpty() && text != null
-                    ? new AiMessage(text, completedToolCalls)
-                    : !completedToolCalls.isEmpty()
-                            ? AiMessage.from(completedToolCalls)
-                            : new AiMessage(textBuilder.toString());
+            var text = textBuilder.toString();
+            List<OpenAiOfficialServerToolResult> serverToolResults =
+                    returnServerToolResults ? extractServerToolResults(response.output()) : List.of();
+            var aiMessage = buildFinalAiMessage(text, completedToolCalls, serverToolResults);
 
             // Build metadata
             var metadataBuilder =
