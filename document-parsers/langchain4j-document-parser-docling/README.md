@@ -10,6 +10,12 @@ A LangChain4j document parser integration that uses IBM Research's [Docling](htt
 - **Simple Integration**: Implements LangChain4j's `DocumentParser` interface
 - **Configurable Timeout**: Customize timeout settings for different workloads
 
+## Requirements
+
+- Java 8 or higher
+- Running docling-serve instance (version 1.14.3 or higher recommended)
+- Maven for building (if building from source)
+
 ## Architecture
 
 ```
@@ -72,7 +78,13 @@ Document document = parser.parse(inputStream);
 DoclingDocumentParser parser = new DoclingDocumentParser("http://localhost:5001", 120);
 
 Document document = parser.parse(inputStream);
+
+// Verify timeout configuration
+int configuredTimeout = parser.getTimeoutSeconds();
+System.out.println("Timeout: " + configuredTimeout + " seconds");
 ```
+
+````
 
 ### Accessing Metadata
 
@@ -90,7 +102,7 @@ String timeout = document.metadata().getString("timeout_seconds");
 
 // Check if there were any errors
 String errorCount = document.metadata().getString("docling_error_count");
-```
+````
 
 ### Integration with LangChain4j RAG
 
@@ -217,6 +229,15 @@ DoclingDocumentParser parser = new DoclingDocumentParser("http://localhost:5001"
 - HTML
 - Markdown
 - Images (PNG, JPEG, TIFF) with OCR
+
+## Testing
+
+This module includes:
+
+- **20 unit tests**: Covering validation, error handling, and configuration
+- **Integration test framework**: Ready for end-to-end testing with docling-serve
+
+See [TESTING.md](TESTING.md) for details on running tests.
 
 ## Contributing
 
