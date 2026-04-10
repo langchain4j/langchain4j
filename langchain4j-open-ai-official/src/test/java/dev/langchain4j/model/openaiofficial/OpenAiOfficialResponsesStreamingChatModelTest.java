@@ -29,7 +29,7 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
     void should_convert_shell_server_tool() {
         OpenAiOfficialServerTool serverTool = OpenAiOfficialServerTool.builder()
                 .type("shell")
-                .environment(Map.of(
+                .addAttribute("environment", Map.of(
                         "type", "local",
                         "skills", List.of(Map.of(
                                 "name", "checks",
@@ -64,8 +64,8 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
         OpenAiOfficialServerTool serverTool = OpenAiOfficialServerTool.builder()
                 .type("namespace")
                 .name("github")
-                .description("GitHub tools")
-                .tools(List.of(Map.of(
+                .addAttribute("description", "GitHub tools")
+                .addAttribute("tools", List.of(Map.of(
                         "type", "function",
                         "name", "list_prs",
                         "description", "List pull requests",
@@ -86,8 +86,8 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
         OpenAiOfficialServerTool serverTool = OpenAiOfficialServerTool.builder()
                 .type("namespace")
                 .name("crm")
-                .description("CRM tools")
-                .tools(List.of(Map.of(
+                .addAttribute("description", "CRM tools")
+                .addAttribute("tools", List.of(Map.of(
                         "type", "function",
                         "name", "list_open_orders",
                         "description", "List open orders for a customer ID.",
@@ -112,8 +112,8 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
         OpenAiOfficialServerTool serverTool = OpenAiOfficialServerTool.builder()
                 .type("namespace")
                 .name("github")
-                .description("GitHub tools")
-                .tools(List.of(Map.of(
+                .addAttribute("description", "GitHub tools")
+                .addAttribute("tools", List.of(Map.of(
                         "type", "custom",
                         "name", "search_code",
                         "description", "Search code",
@@ -143,12 +143,12 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
     }
 
     @Test
-    void should_convert_web_search_server_tool_with_typed_fields_and_additional_properties() {
+    void should_convert_web_search_server_tool_with_attributes() {
         OpenAiOfficialServerTool serverTool = OpenAiOfficialServerTool.builder()
                 .type("web_search")
-                .searchContextSize("low")
-                .filters(Map.of("allowed_domains", List.of("openai.com")))
-                .addAdditionalProperty("latency_tier", "interactive")
+                .addAttribute("search_context_size", "low")
+                .addAttribute("filters", Map.of("allowed_domains", List.of("openai.com")))
+                .addAttribute("latency_tier", "interactive")
                 .build();
 
         var tool = invokeToResponsesServerTool(serverTool);
@@ -196,14 +196,14 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
     }
 
     @Test
-    void should_convert_file_search_server_tool_with_typed_fields_and_additional_properties() {
+    void should_convert_file_search_server_tool_with_attributes() {
         OpenAiOfficialServerTool serverTool = OpenAiOfficialServerTool.builder()
                 .type("file_search")
-                .vectorStoreIds(List.of("vs_1", "vs_2"))
-                .maxNumResults(5)
-                .filters(Map.of("type", "eq", "key", "source", "value", "docs"))
-                .rankingOptions(Map.of("ranker", "auto"))
-                .addAdditionalProperty("rewrite_query", true)
+                .addAttribute("vector_store_ids", List.of("vs_1", "vs_2"))
+                .addAttribute("max_num_results", 5)
+                .addAttribute("filters", Map.of("type", "eq", "key", "source", "value", "docs"))
+                .addAttribute("ranking_options", Map.of("ranker", "auto"))
+                .addAttribute("rewrite_query", true)
                 .build();
 
         var tool = invokeToResponsesServerTool(serverTool);
@@ -216,15 +216,16 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
     }
 
     @Test
-    void should_convert_mcp_server_tool_with_typed_fields_and_additional_properties() {
+    void should_convert_mcp_server_tool_with_attributes() {
         OpenAiOfficialServerTool serverTool = OpenAiOfficialServerTool.builder()
                 .type("mcp")
-                .serverLabel("filesystem")
-                .serverUrl("https://example.com/mcp")
-                .allowedTools(List.of("read_file"))
-                .headers(Map.of("x-test", "1"))
-                .requireApproval("never")
-                .addAdditionalProperty("trace", true)
+                .name("filesystem")
+                .addAttribute("server_label", "filesystem")
+                .addAttribute("server_url", "https://example.com/mcp")
+                .addAttribute("allowed_tools", List.of("read_file"))
+                .addAttribute("headers", Map.of("x-test", "1"))
+                .addAttribute("require_approval", "never")
+                .addAttribute("trace", true)
                 .build();
 
         var tool = invokeToResponsesServerTool(serverTool);
@@ -242,9 +243,10 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
     void should_convert_mcp_allowed_tools_filter_object() {
         OpenAiOfficialServerTool serverTool = OpenAiOfficialServerTool.builder()
                 .type("mcp")
-                .serverLabel("filesystem")
-                .serverUrl("https://example.com/mcp")
-                .addAdditionalProperty("allowed_tools", Map.of(
+                .name("filesystem")
+                .addAttribute("server_label", "filesystem")
+                .addAttribute("server_url", "https://example.com/mcp")
+                .addAttribute("allowed_tools", Map.of(
                         "read_only", true,
                         "tool_names", List.of("read_file")))
                 .build();
@@ -264,9 +266,10 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
     void should_convert_mcp_require_approval_filter_object() {
         OpenAiOfficialServerTool serverTool = OpenAiOfficialServerTool.builder()
                 .type("mcp")
-                .serverLabel("filesystem")
-                .serverUrl("https://example.com/mcp")
-                .addAdditionalProperty("require_approval", Map.of(
+                .name("filesystem")
+                .addAttribute("server_label", "filesystem")
+                .addAttribute("server_url", "https://example.com/mcp")
+                .addAttribute("require_approval", Map.of(
                         "always", Map.of("tool_names", List.of("write_file")),
                         "never", Map.of("read_only", true)))
                 .build();
@@ -293,7 +296,7 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
     void should_convert_shell_container_allowlist_domain_secrets() {
         OpenAiOfficialServerTool serverTool = OpenAiOfficialServerTool.builder()
                 .type("shell")
-                .environment(Map.of(
+                .addAttribute("environment", Map.of(
                         "type", "container_auto",
                         "network_policy", Map.of(
                                 "type", "allowlist",
@@ -549,19 +552,7 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
     }
 
     private static com.openai.models.responses.Tool invokeToResponsesServerTool(OpenAiOfficialServerTool serverTool) {
-        try {
-            Method method = OpenAiOfficialResponsesStreamingChatModel.class
-                    .getDeclaredMethod("toResponsesServerTool", OpenAiOfficialServerTool.class);
-            method.setAccessible(true);
-            return (com.openai.models.responses.Tool) method.invoke(null, serverTool);
-        } catch (InvocationTargetException e) {
-            if (e.getCause() instanceof RuntimeException runtimeException) {
-                throw runtimeException;
-            }
-            throw new RuntimeException(e.getCause());
-        } catch (ReflectiveOperationException e) {
-            throw new RuntimeException(e);
-        }
+        return OpenAiOfficialServerToolMapper.toResponsesTool(serverTool);
     }
 
     @SuppressWarnings("unchecked")

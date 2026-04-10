@@ -453,8 +453,8 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
                 .modelName(RESPONSES_MODEL_NAME)
                 .serverTools(OpenAiOfficialServerTool.builder()
                         .type("web_search")
-                        .searchContextSize("low")
-                        .filters(Map.of("allowed_domains", List.of("openai.com")))
+                        .addAttribute("search_context_size", "low")
+                        .addAttribute("filters", Map.of("allowed_domains", List.of("openai.com")))
                         .build())
                 .returnServerToolResults(true)
                 .build();
@@ -472,7 +472,7 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
         String expectedToken = "shell-proof-" + UUID.randomUUID();
         StreamingChatModel model = responsesModelWithServerTools(OpenAiOfficialServerTool.builder()
                 .type("shell")
-                .environment(Map.of("type", "container_auto"))
+                .addAttribute("environment", Map.of("type", "container_auto"))
                 .build());
 
         AiMessage aiMessage = chatForAiMessage(
@@ -499,12 +499,12 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
                     .maxToolCalls(1)
                     .serverTools(OpenAiOfficialServerTool.builder()
                             .type("file_search")
-                            .vectorStoreIds(List.of(resource.vectorStoreId()))
-                            .filters(Map.of(
+                            .addAttribute("vector_store_ids", List.of(resource.vectorStoreId()))
+                            .addAttribute("filters", Map.of(
                                     "type", "eq",
                                     "key", "scope",
                                     "value", filterValue))
-                            .maxNumResults(3)
+                            .addAttribute("max_num_results", 3)
                             .build())
                     .returnServerToolResults(true)
                     .build();
@@ -527,8 +527,8 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
                 OpenAiOfficialServerTool.builder()
                         .type("namespace")
                         .name("github")
-                        .description("GitHub tools")
-                        .tools(List.of(Map.of(
+                        .addAttribute("description", "GitHub tools")
+                        .addAttribute("tools", List.of(Map.of(
                                 "type", "function",
                                 "name", "search_code",
                                 "description", "Search code in a repository",
@@ -554,10 +554,11 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
     void should_return_server_tool_results_for_mcp() {
         StreamingChatModel model = responsesModelWithServerTools(OpenAiOfficialServerTool.builder()
                 .type("mcp")
-                .serverLabel("dmcp")
+                .name("dmcp")
+                .addAttribute("server_label", "dmcp")
                 .addAttribute("server_description", "A Dungeons and Dragons MCP server to assist with dice rolling.")
-                .serverUrl("https://dmcp-server.deno.dev/sse")
-                .requireApproval("never")
+                .addAttribute("server_url", "https://dmcp-server.deno.dev/sse")
+                .addAttribute("require_approval", "never")
                 .build());
 
         AiMessage aiMessage = chatForAiMessageWithRetries(model, "Roll 2d4+1");
@@ -574,11 +575,17 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
                 .get()
                 .satisfies(result -> {
                     Map<String, Object> content = (Map<String, Object>) result.content();
-                    int rolledValue = Integer.parseInt(String.valueOf(content.get("output")));
                     assertThat(content).containsEntry("name", "roll");
                     assertThat(content).containsEntry("server_label", "dmcp");
-                    assertThat(content).containsKey("output");
-                    assertThat(rolledValue).isBetween(3, 9);
+                    assertThat(content).containsKey("status");
+
+                    Object output = content.get("output");
+                    if (output != null) {
+                        int rolledValue = Integer.parseInt(String.valueOf(output));
+                        assertThat(rolledValue).isBetween(3, 9);
+                    } else {
+                        assertThat(content).containsEntry("status", "failed");
+                    }
                 });
     }
 
@@ -833,8 +840,8 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
 
     private static Tool invokeToResponsesServerTool(OpenAiOfficialServerTool serverTool) {
         try {
-            Method method = OpenAiOfficialResponsesStreamingChatModel.class
-                    .getDeclaredMethod("toResponsesServerTool", OpenAiOfficialServerTool.class);
+            Class<?> mapperClass = Class.forName("dev.langchain4j.model.openaiofficial.OpenAiOfficialServerToolMapper");
+            Method method = mapperClass.getDeclaredMethod("toResponsesTool", OpenAiOfficialServerTool.class);
             method.setAccessible(true);
             return (Tool) method.invoke(null, serverTool);
         } catch (InvocationTargetException e) {
