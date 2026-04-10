@@ -139,7 +139,6 @@ public class DoclingDocumentParser implements DocumentParser {
      *                                  server is unreachable,
      *                                  or parsing fails
      */
-    @Override
     /**
      * Returns the configured timeout in seconds.
      * 
@@ -180,10 +179,9 @@ public class DoclingDocumentParser implements DocumentParser {
 
             // Step 6: Check for errors (non-fatal, we still return the document)
             if (response.getErrors() != null && !response.getErrors().isEmpty()) {
-                var firstError = response.getErrors().get(0);
                 System.err.println("Warning: Docling reported " + response.getErrors().size() +
-                        " error(s). First: [" + firstError.getComponentType() + "] " +
-                        firstError.getErrorMessage());
+                        " error(s). First: [" + response.getErrors().get(0).getComponentType() + "] " +
+                        response.getErrors().get(0).getErrorMessage());
             }
 
             // Step 7: Extract the parsed text content

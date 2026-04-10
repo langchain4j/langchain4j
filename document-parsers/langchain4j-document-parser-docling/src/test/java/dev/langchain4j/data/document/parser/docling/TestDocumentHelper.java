@@ -1,8 +1,5 @@
 package dev.langchain4j.data.document.parser.docling;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-
 /**
  * Helper utilities for creating test documents.
  * 
@@ -52,8 +49,8 @@ class TestDocumentHelper {
      */
     static byte[] createSimpleTextDocument() {
         String text = "This is a test document.\n" +
-                     "It contains multiple lines.\n" +
-                     "Used for integration testing.";
+                "It contains multiple lines.\n" +
+                "Used for integration testing.";
         return text.getBytes();
     }
 }
