@@ -24,6 +24,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 class AnthropicChatModelIT extends AbstractChatModelIT {
 
     static final ChatModel ANTHROPIC_CHAT_MODEL = AnthropicChatModel.builder()
+            .baseUrl(System.getenv("ANTHROPIC_BASE_URL"))
             .apiKey(System.getenv("ANTHROPIC_API_KEY"))
             .modelName(CLAUDE_HAIKU_4_5_20251001)
             .temperature(0.0)
@@ -32,6 +33,7 @@ class AnthropicChatModelIT extends AbstractChatModelIT {
             .build();
 
     static final ChatModel ANTHROPIC_SCHEMA_MODEL = AnthropicChatModel.builder()
+            .baseUrl(System.getenv("ANTHROPIC_BASE_URL"))
             .apiKey(System.getenv("ANTHROPIC_API_KEY"))
             .modelName(CLAUDE_HAIKU_4_5_20251001)
             .temperature(0.0)
@@ -48,6 +50,7 @@ class AnthropicChatModelIT extends AbstractChatModelIT {
     @Override
     protected ChatModel createModelWith(ChatRequestParameters parameters) {
         var anthropicChatModelBuilder = AnthropicChatModel.builder()
+                .baseUrl(System.getenv("ANTHROPIC_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .defaultRequestParameters(parameters)
                 .logRequests(true)

@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ShellSkillsIT {
 
     ChatModel model = AnthropicChatModel.builder()
+            .baseUrl(System.getenv("ANTHROPIC_BASE_URL"))
             .apiKey(System.getenv("ANTHROPIC_API_KEY"))
             .modelName(CLAUDE_SONNET_4_6)
             .listeners(new LoggingChatModelListener())
