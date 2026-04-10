@@ -66,6 +66,8 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
     private final boolean cacheTools;
     private final String thinkingType;
     private final Integer thinkingBudgetTokens;
+    private final AnthropicThinkingDisplay thinkingDisplay;
+    private final AnthropicThinkingEffort thinkingEffort;
     private final boolean returnThinking;
     private final boolean sendThinking;
     private final List<ChatModelListener> listeners;
@@ -115,6 +117,8 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         this.cacheTools = getOrDefault(builder.cacheTools, false);
         this.thinkingType = builder.thinkingType;
         this.thinkingBudgetTokens = builder.thinkingBudgetTokens;
+        this.thinkingDisplay = builder.thinkingDisplay;
+        this.thinkingEffort = builder.thinkingEffort;
         this.returnThinking = getOrDefault(builder.returnThinking, false);
         this.sendThinking = getOrDefault(builder.sendThinking, true);
         this.listeners = copy(builder.listeners);
@@ -152,6 +156,8 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         private Boolean cacheTools;
         private String thinkingType;
         private Integer thinkingBudgetTokens;
+        private AnthropicThinkingDisplay thinkingDisplay;
+        private AnthropicThinkingEffort thinkingEffort;
         private Boolean returnThinking;
         private Boolean sendThinking;
         private Duration timeout;
@@ -264,9 +270,35 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
 
         /**
          * Configures <a href="https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking">thinking</a>.
+         * Required for manual ({@code "enabled"}) mode; not used for adaptive ({@code "adaptive"}) mode.
          */
         public AnthropicStreamingChatModelBuilder thinkingBudgetTokens(Integer thinkingBudgetTokens) {
             this.thinkingBudgetTokens = thinkingBudgetTokens;
+            return this;
+        }
+
+        /**
+         * Controls how thinking content is returned in API responses.
+         * <ul>
+         *   <li>{@code "summarized"} (default) – thinking blocks contain summarized text.</li>
+         *   <li>{@code "omitted"} – thinking blocks are returned with an empty {@code thinking} field;
+         *       the encrypted {@code signature} is still included for multi-turn continuity.
+         *       Reduces time-to-first-text-token when streaming.</li>
+         * </ul>
+         * Cannot be used when thinking type is {@code "disabled"}.
+         */
+        public AnthropicStreamingChatModelBuilder thinkingDisplay(AnthropicThinkingDisplay thinkingDisplay) {
+            this.thinkingDisplay = thinkingDisplay;
+            return this;
+        }
+
+        /**
+         * Soft guidance for thinking depth when using adaptive thinking ({@code thinkingType = "adaptive"}).
+         * Accepted values: {@code "max"} (Opus 4.6 only), {@code "high"} (default), {@code "medium"}, {@code "low"}.
+         * Passed as {@code output_config.effort} in the API request.
+         */
+        public AnthropicStreamingChatModelBuilder thinkingEffort(AnthropicThinkingEffort thinkingEffort) {
+            this.thinkingEffort = thinkingEffort;
             return this;
         }
 
@@ -460,7 +492,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         validate(chatRequest.parameters());
         AnthropicCreateMessageRequest anthropicRequest = createAnthropicRequest(
                 chatRequest,
-                toThinking(thinkingType, thinkingBudgetTokens),
+                toThinking(thinkingType, thinkingBudgetTokens, thinkingDisplay),
                 sendThinking,
                 cacheSystemMessages ? EPHEMERAL : NO_CACHE,
                 cacheTools ? EPHEMERAL : NO_CACHE,
@@ -471,7 +503,8 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
                 toolMetadataKeysToSend,
                 userId,
                 customParameters,
-                strictTools);
+                strictTools,
+                thinkingEffort);
         client.createMessage(
                 anthropicRequest, new AnthropicCreateMessageOptions(returnThinking, returnServerToolResults), handler);
     }
