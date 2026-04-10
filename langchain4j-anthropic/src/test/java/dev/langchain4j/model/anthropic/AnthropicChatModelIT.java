@@ -45,7 +45,7 @@ class AnthropicChatModelIT {
 
         // given
         ChatModel model = AnthropicChatModel.builder()
-                .baseUrl(System.getenv("ANTHROPIC_BASE_URL"))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .logRequests(false) // base64-encoded PDFs are huge
@@ -72,7 +72,7 @@ class AnthropicChatModelIT {
         List<String> stopSequences = List.of("World", " World");
 
         ChatModel model = AnthropicChatModel.builder()
-                .baseUrl(System.getenv("ANTHROPIC_BASE_URL"))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .stopSequences(stopSequences)
@@ -97,7 +97,7 @@ class AnthropicChatModelIT {
 
         // given
         ChatModel model = AnthropicChatModel.builder()
-                .baseUrl(System.getenv("ANTHROPIC_BASE_URL"))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .cacheSystemMessages(true)
@@ -132,7 +132,7 @@ class AnthropicChatModelIT {
 
         // given
         ChatModel model = AnthropicChatModel.builder()
-                .baseUrl(System.getenv("ANTHROPIC_BASE_URL"))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .cacheSystemMessages(true)
@@ -169,7 +169,7 @@ class AnthropicChatModelIT {
 
         // given
         ChatModel model = AnthropicChatModel.builder()
-                .baseUrl(System.getenv("ANTHROPIC_BASE_URL"))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .cacheSystemMessages(true)
@@ -195,7 +195,7 @@ class AnthropicChatModelIT {
 
         // given
         ChatModel model = AnthropicChatModel.builder()
-                .baseUrl(System.getenv("ANTHROPIC_BASE_URL"))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .version("2023-06-01")
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
@@ -224,7 +224,7 @@ class AnthropicChatModelIT {
 
         // given
         ChatModel model = AnthropicChatModel.builder()
-                .baseUrl(System.getenv("ANTHROPIC_BASE_URL"))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(modelName)
                 .maxTokens(1)
@@ -253,7 +253,7 @@ class AnthropicChatModelIT {
         String modelNameString = modelName.toString();
 
         ChatModel model = AnthropicChatModel.builder()
-                .baseUrl(System.getenv("ANTHROPIC_BASE_URL"))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(modelNameString)
                 .maxTokens(1)
@@ -283,7 +283,7 @@ class AnthropicChatModelIT {
         // given
         String expectedToolName = "get_weather";
         ChatModel model = AnthropicChatModel.builder()
-                .baseUrl(System.getenv("ANTHROPIC_BASE_URL"))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .temperature(0.0)
@@ -333,7 +333,7 @@ class AnthropicChatModelIT {
     void should_force_execution_without_tools_when_pass_tool_choice_none() {
         // given
         ChatModel model = AnthropicChatModel.builder()
-                .baseUrl(System.getenv("ANTHROPIC_BASE_URL"))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .temperature(0.0)
@@ -379,7 +379,7 @@ class AnthropicChatModelIT {
     void should_execute_one_tool_and_ignore_another_tool_with_parallel_tool_disabled() {
         // given
         ChatModel model = AnthropicChatModel.builder()
-                .baseUrl(System.getenv("ANTHROPIC_BASE_URL"))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .temperature(0.0)
@@ -476,7 +476,7 @@ class AnthropicChatModelIT {
 
         // given
         AnthropicChatModel model = AnthropicChatModel.builder()
-                .baseUrl(System.getenv("ANTHROPIC_BASE_URL"))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .cacheTools(true)
@@ -526,7 +526,7 @@ class AnthropicChatModelIT {
 
         // given
         ChatModel model = AnthropicChatModel.builder()
-                .baseUrl(System.getenv("ANTHROPIC_BASE_URL"))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .logRequests(true)
@@ -562,7 +562,7 @@ class AnthropicChatModelIT {
 
         ChatModel model = AnthropicChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
-                .baseUrl(System.getenv("ANTHROPIC_BASE_URL"))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_SONNET_4_5_20250929)
                 .beta("context-management-2025-06-27")
@@ -603,7 +603,7 @@ class AnthropicChatModelIT {
 
         ChatModel model = AnthropicChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
-                .baseUrl(System.getenv("ANTHROPIC_BASE_URL"))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .beta("code-execution-2025-08-25")
                 .modelName(CLAUDE_SONNET_4_5_20250929)
@@ -642,7 +642,7 @@ class AnthropicChatModelIT {
 
         ChatModel model = AnthropicChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
-                .baseUrl(System.getenv("ANTHROPIC_BASE_URL"))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_SONNET_4_5_20250929)
                 .serverTools(webSearchTool)
@@ -697,7 +697,7 @@ class AnthropicChatModelIT {
 
         ChatModel model = AnthropicChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
-                .baseUrl(System.getenv("ANTHROPIC_BASE_URL"))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_SONNET_4_5_20250929)
                 .beta("advanced-tool-use-2025-11-20")
@@ -734,7 +734,7 @@ class AnthropicChatModelIT {
 
         ChatModel model = AnthropicChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
-                .baseUrl(System.getenv("ANTHROPIC_BASE_URL"))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_SONNET_4_5_20250929)
                 .temperature(0.0)
@@ -794,7 +794,7 @@ class AnthropicChatModelIT {
                 .build();
 
         ChatModel model = AnthropicChatModel.builder()
-                .baseUrl(System.getenv("ANTHROPIC_BASE_URL"))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_SONNET_4_5_20250929)
                 .serverTools(webSearchTool)
