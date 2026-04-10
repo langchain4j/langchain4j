@@ -190,4 +190,15 @@ class DoclingDocumentParserTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("positive");
     }
+    @Test
+    void shouldReturnConfiguredTimeout() {
+        // Given
+        DoclingDocumentParser parser = new DoclingDocumentParser("http://localhost:5001", 90);
+        
+        // When
+        int timeout = parser.getTimeoutSeconds();
+        
+        // Then
+        assertThat(timeout).isEqualTo(90);
+}
 }
