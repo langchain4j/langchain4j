@@ -8,7 +8,6 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
-
 import java.util.Objects;
 
 @JsonDeserialize(builder = ChatCompletionChoice.Builder.class)
@@ -18,18 +17,25 @@ public final class ChatCompletionChoice {
 
     @JsonProperty
     private final Integer index;
+
     @JsonProperty
     private final AssistantMessage message;
+
     @JsonProperty
     private final Delta delta;
+
     @JsonProperty
     private final String finishReason;
+
+    @JsonProperty
+    private final LogProbs logprobs;
 
     public ChatCompletionChoice(Builder builder) {
         this.index = builder.index;
         this.message = builder.message;
         this.delta = builder.delta;
         this.finishReason = builder.finishReason;
+        this.logprobs = builder.logprobs;
     }
 
     public Integer index() {
@@ -48,12 +54,15 @@ public final class ChatCompletionChoice {
         return finishReason;
     }
 
+    public LogProbs logprobs() {
+        return logprobs;
+    }
+
     @Override
     @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof ChatCompletionChoice
-                && equalTo((ChatCompletionChoice) another);
+        return another instanceof ChatCompletionChoice && equalTo((ChatCompletionChoice) another);
     }
 
     @JacocoIgnoreCoverageGenerated
@@ -61,7 +70,8 @@ public final class ChatCompletionChoice {
         return Objects.equals(index, another.index)
                 && Objects.equals(message, another.message)
                 && Objects.equals(delta, another.delta)
-                && Objects.equals(finishReason, another.finishReason);
+                && Objects.equals(finishReason, another.finishReason)
+                && Objects.equals(logprobs, another.logprobs);
     }
 
     @Override
@@ -72,6 +82,7 @@ public final class ChatCompletionChoice {
         h += (h << 5) + Objects.hashCode(message);
         h += (h << 5) + Objects.hashCode(delta);
         h += (h << 5) + Objects.hashCode(finishReason);
+        h += (h << 5) + Objects.hashCode(logprobs);
         return h;
     }
 
@@ -83,6 +94,7 @@ public final class ChatCompletionChoice {
                 + ", message=" + message
                 + ", delta=" + delta
                 + ", finishReason=" + finishReason
+                + ", logprobs=" + logprobs
                 + "}";
     }
 
@@ -99,6 +111,7 @@ public final class ChatCompletionChoice {
         private AssistantMessage message;
         private Delta delta;
         private String finishReason;
+        private LogProbs logprobs;
 
         public Builder index(Integer index) {
             this.index = index;
@@ -117,6 +130,11 @@ public final class ChatCompletionChoice {
 
         public Builder finishReason(String finishReason) {
             this.finishReason = finishReason;
+            return this;
+        }
+
+        public Builder logprobs(LogProbs logprobs) {
+            this.logprobs = logprobs;
             return this;
         }
 
