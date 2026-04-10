@@ -34,7 +34,7 @@ Currently, depending on the LLM and the LLM provider, there are three ways how t
 
 
 ## JSON Schema
-Some LLM providers (currently Amazon Bedrock, Azure OpenAI, Google AI Gemini, Mistral, Ollama and OpenAI) allow
+Some LLM providers (currently Amazon Bedrock, Azure OpenAI, Google AI Gemini, Mistral, DashScope, Ollama and OpenAI) allow
 specifying [JSON schema](https://json-schema.org/overview/what-is-jsonschema) for the desired output.
 You can view all supported LLM providers [here](/integrations/language-models) in the "JSON Schema" column.
 
@@ -126,6 +126,11 @@ ChatModel chatModel = BedrockChatModel.builder()
         .logRequests(true)
         .logResponses(true)
         .build();
+// OR
+ChatModel chatModel = QwenChatModel.builder()
+        .apiKey(System.getenv("DASHSCOPE_API_KEY"))
+        .modelName("qwen-max")
+        .build();
 
 ChatResponse chatResponse = chatModel.chat(chatRequest);
 
@@ -138,7 +143,7 @@ System.out.println(person); // Person[name=John, age=42, height=1.75, married=fa
 Notes:
 - [1] - In most cases, the root element must be of `JsonObjectSchema` type,
 however:
-  - Amazon Bedrock, Azure OpenAI, Mistral, Ollama, OpenAI and OpenAI Official also allow `JsonRawSchema` as a root element
+  - Amazon Bedrock, Azure OpenAI, Mistral, DashScope, Ollama, OpenAI and OpenAI Official also allow `JsonRawSchema` as a root element
   - Gemini also allows `JsonEnumSchema` and `JsonArraySchema` as root elements
 - [2] - Required properties must be explicitly specified; otherwise, they are considered optional.
 
@@ -370,7 +375,7 @@ JsonRawSchema schema = JsonRawSchema.from(rawSchema);
 ```
 
 :::note
-The `JsonRawSchema` is currently supported only by Amazon Bedrock, Azure OpenAI, Mistral, Ollama, OpenAI, OpenAI Official and Google AI Gemini.
+The `JsonRawSchema` is currently supported only by Amazon Bedrock, Azure OpenAI, Mistral, DashScope, Ollama, OpenAI, OpenAI Official and Google AI Gemini.
 For Google AI Gemini specifically, see the example in the [Response JSON Schema](/integrations/language-models/google-ai-gemini/#response-json-schema).
 :::
 
@@ -389,7 +394,7 @@ JsonSchemaElement stringSchema = JsonStringSchema.builder()
 #### Limitations
 
 When using JSON Schema with `ChatModel`, there are some limitations:
-- It works only with supported Amazon Bedrock, Azure OpenAI, Google AI Gemini, Mistral, Ollama and OpenAI models.
+- It works only with supported Amazon Bedrock, Azure OpenAI, Google AI Gemini, Mistral, DashScope, Ollama and OpenAI models.
 - It does not work in the [streaming mode](/tutorials/ai-services#streaming) for OpenAI yet.
 For Google AI Gemini, Mistral and Ollama, JSON Schema can be specified via `responseSchema(...)` when creating/building the model.
 - `JsonReferenceSchema` and `JsonAnyOfSchema` are currently supported only by Azure OpenAI, Mistral and OpenAI.
@@ -462,6 +467,11 @@ ChatModel chatModel = BedrockChatModel.builder()
         .logRequests(true)
         .logResponses(true)
         .build();
+// OR
+ChatModel chatModel = QwenChatModel.builder()
+        .apiKey(System.getenv("DASHSCOPE_API_KEY"))
+        .modelName("qwen-max")
+        .build();
 
 PersonExtractor personExtractor = AiServices.create(PersonExtractor.class, chatModel); // see [1] below
 
@@ -487,6 +497,7 @@ as these beans are created automatically. More info on this:
 - [6] - This is required to enable the JSON Schema feature for [Mistral](/integrations/language-models/mistral-ai).
 - [7] - This is required to enable the JSON Schema feature for [watsonx.ai](/integrations/language-models/watsonx).
 - [8] - This is required to enable the JSON Schema feature for [Amazon Bedrock](/integrations/language-models/amazon-bedrock).
+- [9] - This is required to enable the JSON Schema feature for [DashScope](/integrations/language-models/dashscope).
 
 When all the following conditions are met:
 - AI Service method returns a POJO
@@ -576,7 +587,7 @@ enum Priority {
 #### Limitations
 
 When using JSON Schema with AI Services, there are some limitations:
-- It works only with supported Amazon Bedrock, Azure OpenAI, Google AI Gemini, Mistral, Ollama and OpenAI models.
+- It works only with supported Amazon Bedrock, Azure OpenAI, Google AI Gemini, Mistral, DashScope, Ollama and OpenAI models.
 - Support for JSON Schema needs to be enabled explicitly when configuring `ChatModel`.
 - It does not work in the [streaming mode](/tutorials/ai-services#streaming).
 - Not all types are supported. See the list of supported types [here](/tutorials/structured-outputs#supported-types).
