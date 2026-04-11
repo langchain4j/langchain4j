@@ -33,9 +33,10 @@ final class OpenAiOfficialServerToolMapper {
             case "shell" -> Tool.ofShell(toShellTool(serverTool));
             case "computer" -> Tool.ofComputer(toComputerTool(serverTool));
             case "namespace" -> Tool.ofNamespace(toNamespaceTool(serverTool));
-            default -> throw new UnsupportedFeatureException(
-                    "Unsupported OpenAI server tool type: " + serverTool.type()
-                            + ". Supported types are: web_search, file_search, tool_search, mcp, shell, computer, namespace.");
+            default ->
+                throw new UnsupportedFeatureException(
+                        "Unsupported OpenAI server tool type: " + serverTool.type()
+                                + ". Supported types are: web_search, file_search, tool_search, mcp, shell, computer, namespace.");
         };
     }
 
@@ -54,7 +55,8 @@ final class OpenAiOfficialServerToolMapper {
         Object userLocation = mapValue(attributes, "user_location");
         if (userLocation instanceof Map<?, ?> map) {
             WebSearchTool.UserLocation.Builder userLocationBuilder = WebSearchTool.UserLocation.builder();
-            map.forEach((key, value) -> userLocationBuilder.putAdditionalProperty(String.valueOf(key), JsonValue.from(value)));
+            map.forEach((key, value) ->
+                    userLocationBuilder.putAdditionalProperty(String.valueOf(key), JsonValue.from(value)));
             builder.userLocation(userLocationBuilder.build());
         }
         Object filters = filtersFromAttributes(attributes);
@@ -79,7 +81,9 @@ final class OpenAiOfficialServerToolMapper {
         FileSearchTool.Builder builder = FileSearchTool.builder();
         Map<String, Object> attributes = serverTool.attributes();
         putAdditionalProperties(
-                attributes, List.of("vector_store_ids", "filters", "max_num_results", "ranking_options"), builder::putAdditionalProperty);
+                attributes,
+                List.of("vector_store_ids", "filters", "max_num_results", "ranking_options"),
+                builder::putAdditionalProperty);
         builder.type(JsonValue.from(serverTool.type()));
         List<String> vectorStoreIds = stringListValue(attributes.get("vector_store_ids"));
         if (vectorStoreIds != null) {
@@ -96,7 +100,8 @@ final class OpenAiOfficialServerToolMapper {
         Object rankingOptions = mapValue(attributes, "ranking_options");
         if (rankingOptions instanceof Map<?, ?> map) {
             FileSearchTool.RankingOptions.Builder rankingBuilder = FileSearchTool.RankingOptions.builder();
-            map.forEach((key, value) -> rankingBuilder.putAdditionalProperty(String.valueOf(key), JsonValue.from(value)));
+            map.forEach(
+                    (key, value) -> rankingBuilder.putAdditionalProperty(String.valueOf(key), JsonValue.from(value)));
             builder.rankingOptions(rankingBuilder.build());
         }
         return builder.build();
@@ -105,7 +110,8 @@ final class OpenAiOfficialServerToolMapper {
     private static ToolSearchTool toToolSearchTool(OpenAiOfficialServerTool serverTool) {
         ToolSearchTool.Builder builder = ToolSearchTool.builder();
         Map<String, Object> attributes = serverTool.attributes();
-        putAdditionalProperties(attributes, List.of("description", "execution", "parameters"), builder::putAdditionalProperty);
+        putAdditionalProperties(
+                attributes, List.of("description", "execution", "parameters"), builder::putAdditionalProperty);
         builder.type(JsonValue.from(serverTool.type()));
         String description = stringValue(attributes, "description");
         if (description != null) {
@@ -169,12 +175,14 @@ final class OpenAiOfficialServerToolMapper {
         if (allowedTools instanceof List<?> list) {
             builder.allowedToolsOfMcp(list.stream().map(String::valueOf).toList());
         } else if (allowedTools instanceof Map<?, ?> map) {
-            builder.allowedTools(Tool.Mcp.AllowedTools.ofMcpToolFilter(toMcpAllowedToolsFilter(toStringObjectMap(map))));
+            builder.allowedTools(
+                    Tool.Mcp.AllowedTools.ofMcpToolFilter(toMcpAllowedToolsFilter(toStringObjectMap(map))));
         }
         Object headers = mapValue(attributes, "headers");
         if (headers instanceof Map<?, ?> map) {
             Tool.Mcp.Headers.Builder headersBuilder = Tool.Mcp.Headers.builder();
-            map.forEach((key, value) -> headersBuilder.putAdditionalProperty(String.valueOf(key), JsonValue.from(value)));
+            map.forEach(
+                    (key, value) -> headersBuilder.putAdditionalProperty(String.valueOf(key), JsonValue.from(value)));
             builder.headers(headersBuilder.build());
         }
         Object requireApproval = attributes.get("require_approval");
@@ -268,8 +276,8 @@ final class OpenAiOfficialServerToolMapper {
         return switch (type) {
             case "local" -> FunctionShellTool.Environment.ofLocal(toLocalEnvironment(environmentMap));
             case "container_auto" -> FunctionShellTool.Environment.ofContainerAuto(toContainerAuto(environmentMap));
-            case "container_reference" -> FunctionShellTool.Environment.ofContainerReference(
-                    toContainerReference(environmentMap));
+            case "container_reference" ->
+                FunctionShellTool.Environment.ofContainerReference(toContainerReference(environmentMap));
             default -> throw new IllegalArgumentException("Unsupported shell environment type: " + type);
         };
     }
@@ -363,7 +371,8 @@ final class OpenAiOfficialServerToolMapper {
 
     private static InlineSkill toInlineSkill(Map<String, Object> skill) {
         InlineSkill.Builder builder = InlineSkill.builder();
-        putAdditionalProperties(skill, List.of("type", "name", "description", "source"), builder::putAdditionalProperty);
+        putAdditionalProperties(
+                skill, List.of("type", "name", "description", "source"), builder::putAdditionalProperty);
         builder.type(JsonValue.from(skill.getOrDefault("type", "inline")));
         if (skill.containsKey("name")) {
             builder.name(String.valueOf(skill.get("name")));
@@ -383,10 +392,11 @@ final class OpenAiOfficialServerToolMapper {
         String type = String.valueOf(networkPolicyMap.get("type"));
         return switch (type) {
             case "allowlist" -> ContainerAuto.NetworkPolicy.ofAllowlist(toContainerAllowlist(networkPolicyMap));
-            case "disabled" -> ContainerAuto.NetworkPolicy.ofDisabled(
-                    com.openai.models.responses.ContainerNetworkPolicyDisabled.builder()
-                            .type(JsonValue.from(type))
-                            .build());
+            case "disabled" ->
+                ContainerAuto.NetworkPolicy.ofDisabled(
+                        com.openai.models.responses.ContainerNetworkPolicyDisabled.builder()
+                                .type(JsonValue.from(type))
+                                .build());
             default -> throw new IllegalArgumentException("Unsupported shell container network_policy type: " + type);
         };
     }
@@ -396,9 +406,7 @@ final class OpenAiOfficialServerToolMapper {
         com.openai.models.responses.ContainerNetworkPolicyAllowlist.Builder builder =
                 com.openai.models.responses.ContainerNetworkPolicyAllowlist.builder();
         putAdditionalProperties(
-                networkPolicy,
-                List.of("type", "allowed_domains", "domain_secrets"),
-                builder::putAdditionalProperty);
+                networkPolicy, List.of("type", "allowed_domains", "domain_secrets"), builder::putAdditionalProperty);
         builder.type(JsonValue.from(networkPolicy.getOrDefault("type", "allowlist")));
         Object allowedDomains = networkPolicy.get("allowed_domains");
         if (allowedDomains instanceof List<?> domains) {
@@ -415,7 +423,8 @@ final class OpenAiOfficialServerToolMapper {
         return builder.build();
     }
 
-    private static ContainerNetworkPolicyDomainSecret toContainerNetworkPolicyDomainSecret(Map<String, Object> domainSecret) {
+    private static ContainerNetworkPolicyDomainSecret toContainerNetworkPolicyDomainSecret(
+            Map<String, Object> domainSecret) {
         ContainerNetworkPolicyDomainSecret.Builder builder = ContainerNetworkPolicyDomainSecret.builder();
         putAdditionalProperties(domainSecret, List.of("domain", "name", "value"), builder::putAdditionalProperty);
         if (domainSecret.containsKey("domain")) {
@@ -501,9 +510,7 @@ final class OpenAiOfficialServerToolMapper {
     private static NamespaceTool.Tool.Function toNamespaceFunctionTool(Map<String, Object> tool) {
         NamespaceTool.Tool.Function.Builder builder = NamespaceTool.Tool.Function.builder();
         putAdditionalProperties(
-                tool,
-                List.of("name", "type", "description", "parameters", "strict"),
-                builder::putAdditionalProperty);
+                tool, List.of("name", "type", "description", "parameters", "strict"), builder::putAdditionalProperty);
         builder.type(JsonValue.from(tool.getOrDefault("type", "function")));
         if (tool.containsKey("name")) {
             builder.name(String.valueOf(tool.get("name")));

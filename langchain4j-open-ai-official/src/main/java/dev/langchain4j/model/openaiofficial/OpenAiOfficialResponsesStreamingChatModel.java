@@ -38,9 +38,9 @@ import com.openai.models.responses.ResponseInputContent;
 import com.openai.models.responses.ResponseInputImage;
 import com.openai.models.responses.ResponseInputItem;
 import com.openai.models.responses.ResponseInputText;
+import com.openai.models.responses.ResponseOutputItem;
 import com.openai.models.responses.ResponseOutputItemAddedEvent;
 import com.openai.models.responses.ResponseOutputItemDoneEvent;
-import com.openai.models.responses.ResponseOutputItem;
 import com.openai.models.responses.ResponseStreamEvent;
 import com.openai.models.responses.ResponseTextConfig;
 import com.openai.models.responses.ResponseTextDeltaEvent;
@@ -79,9 +79,9 @@ import dev.langchain4j.model.chat.response.StreamingHandle;
 import java.net.Proxy;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -598,13 +598,14 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
     }
 
     static AiMessage buildFinalAiMessage(
-            String text, List<ToolExecutionRequest> completedToolCalls, List<OpenAiOfficialServerToolResult> serverToolResults) {
-        String normalizedText = (text != null && text.isEmpty() && (!completedToolCalls.isEmpty() || !serverToolResults.isEmpty()))
-                ? null
-                : text;
-        AiMessage.Builder builder = AiMessage.builder()
-                .text(normalizedText)
-                .toolExecutionRequests(completedToolCalls);
+            String text,
+            List<ToolExecutionRequest> completedToolCalls,
+            List<OpenAiOfficialServerToolResult> serverToolResults) {
+        String normalizedText =
+                (text != null && text.isEmpty() && (!completedToolCalls.isEmpty() || !serverToolResults.isEmpty()))
+                        ? null
+                        : text;
+        AiMessage.Builder builder = AiMessage.builder().text(normalizedText).toolExecutionRequests(completedToolCalls);
 
         if (!serverToolResults.isEmpty()) {
             builder.attributes(Map.of(SERVER_TOOL_RESULTS_KEY, serverToolResults));

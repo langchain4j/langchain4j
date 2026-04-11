@@ -35,8 +35,7 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
 
         assertThat(tool.isWebSearch()).isTrue();
         assertThat(tool.asWebSearch().filters()).isPresent();
-        assertThat(tool.asWebSearch().filters().get().allowedDomains())
-                .hasValue(List.of("openai.com"));
+        assertThat(tool.asWebSearch().filters().get().allowedDomains()).hasValue(List.of("openai.com"));
         assertThat(tool.asWebSearch().filters().get()._additionalProperties())
                 .containsEntry("blocked_domains", JsonValue.from(List.of("example.com")));
         assertThat(tool.asWebSearch()._additionalProperties())
@@ -56,7 +55,8 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
 
         assertThat(tool.isSearch()).isTrue();
         assertThat(tool.asSearch().description()).hasValue("Search tools");
-        assertThat(tool.asSearch().execution()).hasValueSatisfying(value -> assertThat(value.asString()).isEqualTo("required"));
+        assertThat(tool.asSearch().execution())
+                .hasValueSatisfying(value -> assertThat(value.asString()).isEqualTo("required"));
     }
 
     @Test
@@ -65,15 +65,18 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
                 .type("namespace")
                 .name("crm")
                 .addAttribute("description", "CRM tools")
-                .addAttribute("tools", List.of(Map.of(
-                        "type", "function",
-                        "name", "list_open_orders",
-                        "description", "List open orders for a customer ID.",
-                        "defer_loading", true,
-                        "parameters", Map.of(
-                                "type", "object",
-                                "properties", Map.of("customer_id", Map.of("type", "string")),
-                                "required", List.of("customer_id")))))
+                .addAttribute(
+                        "tools",
+                        List.of(Map.of(
+                                "type", "function",
+                                "name", "list_open_orders",
+                                "description", "List open orders for a customer ID.",
+                                "defer_loading", true,
+                                "parameters",
+                                        Map.of(
+                                                "type", "object",
+                                                "properties", Map.of("customer_id", Map.of("type", "string")),
+                                                "required", List.of("customer_id")))))
                 .build();
 
         var tool = OpenAiOfficialServerToolMapper.toResponsesTool(serverTool);
@@ -91,11 +94,13 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
                 .type("namespace")
                 .name("github")
                 .addAttribute("description", "GitHub tools")
-                .addAttribute("tools", List.of(Map.of(
-                        "type", "custom",
-                        "name", "search_code",
-                        "description", "Search code",
-                        "defer_loading", true)))
+                .addAttribute(
+                        "tools",
+                        List.of(Map.of(
+                                "type", "custom",
+                                "name", "search_code",
+                                "description", "Search code",
+                                "defer_loading", true)))
                 .build();
 
         assertThatThrownBy(() -> OpenAiOfficialServerToolMapper.toResponsesTool(serverTool))
@@ -119,9 +124,8 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
     void should_reject_unsupported_shell_container_skill_type() {
         OpenAiOfficialServerTool serverTool = OpenAiOfficialServerTool.builder()
                 .type("shell")
-                .addAttribute("environment", Map.of(
-                        "type", "container_auto",
-                        "skills", List.of(Map.of("type", "custom"))))
+                .addAttribute(
+                        "environment", Map.of("type", "container_auto", "skills", List.of(Map.of("type", "custom"))))
                 .build();
 
         assertThatThrownBy(() -> OpenAiOfficialServerToolMapper.toResponsesTool(serverTool))
@@ -133,9 +137,8 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
     void should_reject_unsupported_shell_container_network_policy_type() {
         OpenAiOfficialServerTool serverTool = OpenAiOfficialServerTool.builder()
                 .type("shell")
-                .addAttribute("environment", Map.of(
-                        "type", "container_auto",
-                        "network_policy", Map.of("type", "restricted")))
+                .addAttribute(
+                        "environment", Map.of("type", "container_auto", "network_policy", Map.of("type", "restricted")))
                 .build();
 
         assertThatThrownBy(() -> OpenAiOfficialServerToolMapper.toResponsesTool(serverTool))
@@ -150,7 +153,8 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
 
         assertThatThrownBy(() -> OpenAiOfficialServerToolMapper.toResponsesTool(serverTool))
                 .isInstanceOf(UnsupportedFeatureException.class)
-                .hasMessageContaining("Supported types are: web_search, file_search, tool_search, mcp, shell, computer, namespace.");
+                .hasMessageContaining(
+                        "Supported types are: web_search, file_search, tool_search, mcp, shell, computer, namespace.");
     }
 
     @Test
@@ -197,7 +201,8 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
                 OpenAiOfficialResponsesStreamingChatModel.extractServerToolResults(
                         List.of(functionCall, shellCall, computerCall));
 
-        assertThat(results).extracting(OpenAiOfficialServerToolResult::type)
+        assertThat(results)
+                .extracting(OpenAiOfficialServerToolResult::type)
                 .containsExactly("shell_call", "computer_call");
     }
 
@@ -235,18 +240,19 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
 
     @Test
     void should_extract_shell_call_output_server_tool_results() {
-        ResponseOutputItem shellCallOutput = ResponseOutputItem.ofShellCallOutput(ResponseFunctionShellToolCallOutput.builder()
-                .id("shell_out_1")
-                .callId("shell_call_1")
-                .maxOutputLength(1024)
-                .addOutput(ResponseFunctionShellToolCallOutput.Output.builder()
-                        .stdout("hello")
-                        .stderr("")
-                        .exitOutcome(0)
-                        .build())
-                .status(ResponseFunctionShellToolCallOutput.Status.COMPLETED)
-                .type(JsonValue.from("shell_call_output"))
-                .build());
+        ResponseOutputItem shellCallOutput =
+                ResponseOutputItem.ofShellCallOutput(ResponseFunctionShellToolCallOutput.builder()
+                        .id("shell_out_1")
+                        .callId("shell_call_1")
+                        .maxOutputLength(1024)
+                        .addOutput(ResponseFunctionShellToolCallOutput.Output.builder()
+                                .stdout("hello")
+                                .stderr("")
+                                .exitOutcome(0)
+                                .build())
+                        .status(ResponseFunctionShellToolCallOutput.Status.COMPLETED)
+                        .type(JsonValue.from("shell_call_output"))
+                        .build());
 
         List<OpenAiOfficialServerToolResult> results =
                 OpenAiOfficialResponsesStreamingChatModel.extractServerToolResults(List.of(shellCallOutput));
@@ -290,9 +296,7 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
                 .id("mcp_list_1")
                 .serverLabel("filesystem")
                 .addTool(ResponseOutputItem.McpListTools.Tool.builder()
-                        .inputSchema(JsonValue.from(Map.of(
-                                "type", "object",
-                                "properties", Map.of())))
+                        .inputSchema(JsonValue.from(Map.of("type", "object", "properties", Map.of())))
                         .name("read_file")
                         .build())
                 .type(JsonValue.from("mcp_list_tools"))
@@ -307,11 +311,14 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
                 .type(JsonValue.from("mcp_call"))
                 .build());
 
-        List<OpenAiOfficialServerToolResult> results = OpenAiOfficialResponsesStreamingChatModel.extractServerToolResults(
-                List.of(webSearchCall, fileSearchCall, toolSearchCall, mcpListTools, mcpCall));
+        List<OpenAiOfficialServerToolResult> results =
+                OpenAiOfficialResponsesStreamingChatModel.extractServerToolResults(
+                        List.of(webSearchCall, fileSearchCall, toolSearchCall, mcpListTools, mcpCall));
 
-        assertThat(results).extracting(OpenAiOfficialServerToolResult::type)
-                .containsExactly("web_search_call", "file_search_call", "tool_search_call", "mcp_list_tools", "mcp_call");
+        assertThat(results)
+                .extracting(OpenAiOfficialServerToolResult::type)
+                .containsExactly(
+                        "web_search_call", "file_search_call", "tool_search_call", "mcp_list_tools", "mcp_call");
     }
 
     @Test
@@ -322,13 +329,12 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
                 .content(Map.of("status", "completed"))
                 .build();
 
-        AiMessage aiMessage = OpenAiOfficialResponsesStreamingChatModel.buildFinalAiMessage(
-                "",
-                List.of(),
-                List.of(serverToolResult));
+        AiMessage aiMessage =
+                OpenAiOfficialResponsesStreamingChatModel.buildFinalAiMessage("", List.of(), List.of(serverToolResult));
 
         assertThat(aiMessage.text()).isNull();
-        assertThat(aiMessage.attributes()).containsKey(OpenAiOfficialResponsesStreamingChatModel.SERVER_TOOL_RESULTS_KEY);
+        assertThat(aiMessage.attributes())
+                .containsKey(OpenAiOfficialResponsesStreamingChatModel.SERVER_TOOL_RESULTS_KEY);
     }
 
     @Test

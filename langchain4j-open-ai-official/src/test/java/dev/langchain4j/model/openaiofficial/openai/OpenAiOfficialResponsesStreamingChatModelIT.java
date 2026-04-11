@@ -46,13 +46,13 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -501,10 +501,12 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
                     .serverTools(OpenAiOfficialServerTool.builder()
                             .type("file_search")
                             .addAttribute("vector_store_ids", List.of(resource.vectorStoreId()))
-                            .addAttribute("filters", Map.of(
-                                    "type", "eq",
-                                    "key", "scope",
-                                    "value", filterValue))
+                            .addAttribute(
+                                    "filters",
+                                    Map.of(
+                                            "type", "eq",
+                                            "key", "scope",
+                                            "value", filterValue))
                             .addAttribute("max_num_results", 3)
                             .build())
                     .returnServerToolResults(true)
@@ -529,20 +531,20 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
                         .type("namespace")
                         .name("github")
                         .addAttribute("description", "GitHub tools")
-                        .addAttribute("tools", List.of(Map.of(
-                                "type", "function",
-                                "name", "search_code",
-                                "description", "Search code in a repository",
-                                "defer_loading", true,
-                                "parameters", Map.of(
-                                        "type", "object",
-                                        "properties", Map.of(
-                                                "query", Map.of("type", "string")),
-                                        "required", List.of("query")))))
+                        .addAttribute(
+                                "tools",
+                                List.of(Map.of(
+                                        "type", "function",
+                                        "name", "search_code",
+                                        "description", "Search code in a repository",
+                                        "defer_loading", true,
+                                        "parameters",
+                                                Map.of(
+                                                        "type", "object",
+                                                        "properties", Map.of("query", Map.of("type", "string")),
+                                                        "required", List.of("query")))))
                         .build(),
-                OpenAiOfficialServerTool.builder()
-                        .type("tool_search")
-                        .build());
+                OpenAiOfficialServerTool.builder().type("tool_search").build());
 
         AiMessage aiMessage = chatForAiMessage(
                 model,
@@ -564,8 +566,7 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
                 .build());
 
         AiMessage aiMessage = chatForAiMessageWithRetries(
-                model,
-                "Use the MCP dice tool to roll 2d4+1 and reply with only the numeric total.");
+                model, "Use the MCP dice tool to roll 2d4+1 and reply with only the numeric total.");
 
         assertThat(aiMessage.text()).matches("\\d+");
         assertThat(serverToolResults(aiMessage))
@@ -573,8 +574,8 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
                 .contains("mcp_list_tools", "mcp_call");
 
         assertThat(serverToolResults(aiMessage).stream()
-                .filter(result -> "mcp_call".equals(result.type()))
-                .findFirst())
+                        .filter(result -> "mcp_call".equals(result.type()))
+                        .findFirst())
                 .isPresent()
                 .get()
                 .satisfies(mcpCall -> {
@@ -584,25 +585,28 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
                             .containsEntry("name", "roll")
                             .containsEntry("server_label", "dmcp")
                             .containsEntry("status", "completed");
-                    assertThat(Integer.parseInt(String.valueOf(content.get("output")))).isBetween(3, 9);
+                    assertThat(Integer.parseInt(String.valueOf(content.get("output"))))
+                            .isBetween(3, 9);
                 });
     }
 
     @Test
     void should_return_server_tool_results_for_computer() {
-        Response response = newClient().responses().create(ResponseCreateParams.builder()
-                .model(ResponsesModel.ofChat(ChatModel.of(RESPONSES_MODEL_NAME)))
-                .input(
-                        "Open data:text/html,%3Ch1%3EComputer%20Tool%20Ready%3C/h1%3E and stop after the first computer action.")
-                .addTool(Tool.ofComputer(ComputerTool.builder()
-                        .type(JsonValue.from("computer"))
-                        .build()))
-                .build());
+        Response response = newClient()
+                .responses()
+                .create(ResponseCreateParams.builder()
+                        .model(ResponsesModel.ofChat(ChatModel.of(RESPONSES_MODEL_NAME)))
+                        .input(
+                                "Open data:text/html,%3Ch1%3EComputer%20Tool%20Ready%3C/h1%3E and stop after the first computer action.")
+                        .addTool(Tool.ofComputer(ComputerTool.builder()
+                                .type(JsonValue.from("computer"))
+                                .build()))
+                        .build());
 
         assertThat(response.output().stream()
-                .filter(ResponseOutputItem::isComputerCall)
-                .map(ResponseOutputItem::asComputerCall)
-                .findFirst())
+                        .filter(ResponseOutputItem::isComputerCall)
+                        .map(ResponseOutputItem::asComputerCall)
+                        .findFirst())
                 .isPresent()
                 .get()
                 .satisfies(computerCall -> {
@@ -685,29 +689,34 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
         return current.getMessage();
     }
 
-    private static TestVectorStoreResource createVectorStoreResource(OpenAIClient client, String content, String filterValue) {
+    private static TestVectorStoreResource createVectorStoreResource(
+            OpenAIClient client, String content, String filterValue) {
         try {
             Path tempFile = Files.createTempFile("openai-file-search-", ".txt");
             Files.writeString(tempFile, content);
 
-            FileObject fileObject = client.files().create(FileCreateParams.builder()
-                    .file(tempFile)
-                    .purpose(FilePurpose.USER_DATA)
-                    .build());
+            FileObject fileObject = client.files()
+                    .create(FileCreateParams.builder()
+                            .file(tempFile)
+                            .purpose(FilePurpose.USER_DATA)
+                            .build());
 
-            VectorStore vectorStore = client.vectorStores().create(VectorStoreCreateParams.builder()
-                    .name("langchain4j-file-search-it-" + UUID.randomUUID())
-                    .build());
+            VectorStore vectorStore = client.vectorStores()
+                    .create(VectorStoreCreateParams.builder()
+                            .name("langchain4j-file-search-it-" + UUID.randomUUID())
+                            .build());
 
-            VectorStoreFileBatch batch = client.vectorStores().fileBatches().create(FileBatchCreateParams.builder()
-                    .vectorStoreId(vectorStore.id())
-                    .addFile(FileBatchCreateParams.File.builder()
-                            .fileId(fileObject.id())
-                            .attributes(FileBatchCreateParams.File.Attributes.builder()
-                                    .putAdditionalProperty("scope", com.openai.core.JsonValue.from(filterValue))
+            VectorStoreFileBatch batch = client.vectorStores()
+                    .fileBatches()
+                    .create(FileBatchCreateParams.builder()
+                            .vectorStoreId(vectorStore.id())
+                            .addFile(FileBatchCreateParams.File.builder()
+                                    .fileId(fileObject.id())
+                                    .attributes(FileBatchCreateParams.File.Attributes.builder()
+                                            .putAdditionalProperty("scope", com.openai.core.JsonValue.from(filterValue))
+                                            .build())
                                     .build())
-                            .build())
-                    .build());
+                            .build());
 
             waitForVectorStoreBatchReady(client, vectorStore.id(), batch.id());
             return new TestVectorStoreResource(tempFile, fileObject.id(), vectorStore.id());
@@ -721,10 +730,12 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
         String lastStatus = "unknown";
 
         while (System.nanoTime() < deadline) {
-            VectorStoreFileBatch batch = client.vectorStores().fileBatches().retrieve(FileBatchRetrieveParams.builder()
-                    .vectorStoreId(vectorStoreId)
-                    .batchId(batchId)
-                    .build());
+            VectorStoreFileBatch batch = client.vectorStores()
+                    .fileBatches()
+                    .retrieve(FileBatchRetrieveParams.builder()
+                            .vectorStoreId(vectorStoreId)
+                            .batchId(batchId)
+                            .build());
             String status = batch.status().asString();
             lastStatus = status;
             if ("completed".equals(status)) {
@@ -741,8 +752,8 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
             }
         }
 
-        throw new IllegalStateException(
-                "Timed out waiting for vector store batch " + batchId + " to become ready; last status was " + lastStatus);
+        throw new IllegalStateException("Timed out waiting for vector store batch " + batchId
+                + " to become ready; last status was " + lastStatus);
     }
 
     private static final class ExtendedTimeoutStreamingChatResponseHandler extends TestStreamingChatResponseHandler {
@@ -833,6 +844,5 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
 
     @Override
     @Disabled("Can't do it reliably")
-    protected void should_execute_multiple_tools_in_parallel_then_answer(StreamingChatModel model) {
-    }
+    protected void should_execute_multiple_tools_in_parallel_then_answer(StreamingChatModel model) {}
 }

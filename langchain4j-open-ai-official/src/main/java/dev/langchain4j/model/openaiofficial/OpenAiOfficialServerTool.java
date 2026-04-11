@@ -56,11 +56,10 @@ public class OpenAiOfficialServerTool {
 
     @Override
     public String toString() {
-        return "OpenAiOfficialServerTool{" +
-                "type='" + type + '\'' +
-                ", name='" + name + '\'' +
-                ", attributes=" + attributes +
-                '}';
+        return "OpenAiOfficialServerTool{" + "type='"
+                + type + '\'' + ", name='"
+                + name + '\'' + ", attributes="
+                + attributes + '}';
     }
 
     public static Builder builder() {
