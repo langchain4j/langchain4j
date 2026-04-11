@@ -6,12 +6,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.openai.client.OpenAIClient;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
+import com.openai.core.JsonValue;
 import com.openai.models.ChatModel;
 import com.openai.models.ResponsesModel;
 import com.openai.models.files.FileCreateParams;
 import com.openai.models.files.FileDeleted;
 import com.openai.models.files.FileObject;
 import com.openai.models.files.FilePurpose;
+import com.openai.models.responses.ComputerTool;
 import com.openai.models.responses.Response;
 import com.openai.models.responses.ResponseCreateParams;
 import com.openai.models.responses.ResponseOutputItem;
@@ -41,8 +43,6 @@ import dev.langchain4j.model.openaiofficial.OpenAiOfficialServerToolResult;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -553,48 +553,51 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
 
     @Test
     void should_return_server_tool_results_for_mcp() {
-        Response response = createDirectResponseWithRetries(
-                "Roll 2d4+1",
-                OpenAiOfficialServerTool.builder()
-                        .type("mcp")
-                        .name("dmcp")
-                        .addAttribute("server_label", "dmcp")
-                        .addAttribute("server_description", "A Dungeons and Dragons MCP server to assist with dice rolling.")
-                        .addAttribute("server_url", "https://dmcp-server.deno.dev/sse")
-                        .addAttribute("allowed_tools", List.of("roll"))
-                        .addAttribute("require_approval", "never")
-                        .build());
+        StreamingChatModel model = responsesModelWithServerTools(OpenAiOfficialServerTool.builder()
+                .type("mcp")
+                .name("dmcp")
+                .addAttribute("server_label", "dmcp")
+                .addAttribute("server_description", "A Dungeons and Dragons MCP server to assist with dice rolling.")
+                .addAttribute("server_url", "https://dmcp-server.deno.dev/sse")
+                .addAttribute("allowed_tools", List.of("roll"))
+                .addAttribute("require_approval", "never")
+                .build());
 
-        assertThat(response.output())
-                .extracting(item -> item.isMcpListTools() ? "mcp_list_tools" : item.isMcpCall() ? "mcp_call" : null)
+        AiMessage aiMessage = chatForAiMessageWithRetries(
+                model,
+                "Use the MCP dice tool to roll 2d4+1 and reply with only the numeric total.");
+
+        assertThat(aiMessage.text()).matches("\\d+");
+        assertThat(serverToolResults(aiMessage))
+                .extracting(OpenAiOfficialServerToolResult::type)
                 .contains("mcp_list_tools", "mcp_call");
 
-        assertThat(response.output().stream()
-                .filter(ResponseOutputItem::isMcpCall)
-                .map(ResponseOutputItem::asMcpCall)
+        assertThat(serverToolResults(aiMessage).stream()
+                .filter(result -> "mcp_call".equals(result.type()))
                 .findFirst())
                 .isPresent()
                 .get()
                 .satisfies(mcpCall -> {
-                    assertThat(mcpCall.name()).isEqualTo("roll");
-                    assertThat(mcpCall.serverLabel()).isEqualTo("dmcp");
-                    assertThat(mcpCall.status()).hasValueSatisfying(status -> assertThat(status.asString()).isEqualTo("completed"));
-                    assertThat(mcpCall.output())
-                            .hasValueSatisfying(output -> assertThat(Integer.parseInt(output)).isBetween(3, 9));
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> content = (Map<String, Object>) mcpCall.content();
+                    assertThat(content)
+                            .containsEntry("name", "roll")
+                            .containsEntry("server_label", "dmcp")
+                            .containsEntry("status", "completed");
+                    assertThat(Integer.parseInt(String.valueOf(content.get("output")))).isBetween(3, 9);
                 });
     }
 
     @Test
     void should_return_server_tool_results_for_computer() {
-        Response response = createDirectResponse(
-                "Open data:text/html,%3Ch1%3EComputer%20Tool%20Ready%3C/h1%3E and stop after the first computer action.",
-                OpenAiOfficialServerTool.builder()
-                        .type("computer")
-                        .build());
-
-        assertThat(response.output())
-                .extracting(ResponseOutputItem::isComputerCall)
-                .contains(true);
+        Response response = newClient().responses().create(ResponseCreateParams.builder()
+                .model(ResponsesModel.ofChat(ChatModel.of(RESPONSES_MODEL_NAME)))
+                .input(
+                        "Open data:text/html,%3Ch1%3EComputer%20Tool%20Ready%3C/h1%3E and stop after the first computer action.")
+                .addTool(Tool.ofComputer(ComputerTool.builder()
+                        .type(JsonValue.from("computer"))
+                        .build()))
+                .build());
 
         assertThat(response.output().stream()
                 .filter(ResponseOutputItem::isComputerCall)
@@ -613,46 +616,6 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .timeout(Duration.ofSeconds(120))
                 .build();
-    }
-
-    private static Response createDirectResponse(String input, OpenAiOfficialServerTool... serverTools) {
-        ResponseCreateParams.Builder builder = ResponseCreateParams.builder()
-                .model(ResponsesModel.ofChat(ChatModel.of(RESPONSES_MODEL_NAME)))
-                .input(input);
-
-        for (OpenAiOfficialServerTool serverTool : serverTools) {
-            builder.addTool(invokeToResponsesServerTool(serverTool));
-        }
-
-        return newClient().responses().create(builder.build());
-    }
-
-    private static Response createDirectResponseWithRetries(String input, OpenAiOfficialServerTool... serverTools) {
-        RuntimeException lastException = null;
-
-        for (int attempt = 1; attempt <= 5; attempt++) {
-            try {
-                return createDirectResponse(input, serverTools);
-            } catch (RuntimeException e) {
-                lastException = e;
-                String message = rootCauseMessage(e);
-                boolean retryableMcpFailure = message != null
-                        && ((message.contains("Error retrieving tool list from MCP server") && message.contains("424"))
-                                || message.toLowerCase().contains("timed out")
-                                || message.toLowerCase().contains("timeout"));
-                if (!retryableMcpFailure || attempt == 5) {
-                    throw e;
-                }
-                try {
-                    TimeUnit.SECONDS.sleep(attempt * 3L);
-                } catch (InterruptedException interruptedException) {
-                    Thread.currentThread().interrupt();
-                    throw new RuntimeException(interruptedException);
-                }
-            }
-        }
-
-        throw lastException;
     }
 
     private static StreamingChatModel responsesModelWithServerTools(OpenAiOfficialServerTool... serverTools) {
@@ -835,22 +798,6 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
             } catch (RuntimeException ignored) {
                 // Best-effort cleanup for integration resources.
             }
-        }
-    }
-
-    private static Tool invokeToResponsesServerTool(OpenAiOfficialServerTool serverTool) {
-        try {
-            Class<?> mapperClass = Class.forName("dev.langchain4j.model.openaiofficial.OpenAiOfficialServerToolMapper");
-            Method method = mapperClass.getDeclaredMethod("toResponsesTool", OpenAiOfficialServerTool.class);
-            method.setAccessible(true);
-            return (Tool) method.invoke(null, serverTool);
-        } catch (InvocationTargetException e) {
-            if (e.getCause() instanceof RuntimeException runtimeException) {
-                throw runtimeException;
-            }
-            throw new RuntimeException(e.getCause());
-        } catch (ReflectiveOperationException e) {
-            throw new RuntimeException(e);
         }
     }
 
