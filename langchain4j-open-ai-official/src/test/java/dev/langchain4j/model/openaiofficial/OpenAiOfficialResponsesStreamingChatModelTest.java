@@ -319,6 +319,137 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
     }
 
     @Test
+    void should_convert_shell_container_reference_environment() {
+        OpenAiOfficialServerTool serverTool = OpenAiOfficialServerTool.builder()
+                .type("shell")
+                .addAttribute("environment", Map.of(
+                        "type", "container_reference",
+                        "container_id", "container_123"))
+                .build();
+
+        var tool = invokeToResponsesServerTool(serverTool);
+
+        assertThat(tool.isShell()).isTrue();
+        assertThat(tool.asShell().environment()).isPresent();
+        assertThat(tool.asShell().environment().get().isContainerReference()).isTrue();
+        assertThat(tool.asShell().environment().get().asContainerReference().containerId()).isEqualTo("container_123");
+    }
+
+    @Test
+    void should_convert_shell_container_reference_skill() {
+        OpenAiOfficialServerTool serverTool = OpenAiOfficialServerTool.builder()
+                .type("shell")
+                .addAttribute("environment", Map.of(
+                        "type", "container_auto",
+                        "skills", List.of(Map.of(
+                                "type", "reference",
+                                "skill_id", "checks",
+                                "version", "1"))))
+                .build();
+
+        var tool = invokeToResponsesServerTool(serverTool);
+
+        assertThat(tool.isShell()).isTrue();
+        assertThat(tool.asShell().environment()).isPresent();
+        assertThat(tool.asShell().environment().get().isContainerAuto()).isTrue();
+        assertThat(tool.asShell().environment().get().asContainerAuto().skills())
+                .hasValueSatisfying(skills -> {
+                    assertThat(skills).hasSize(1);
+                    assertThat(skills.get(0).isReference()).isTrue();
+                    assertThat(skills.get(0).asReference().skillId()).isEqualTo("checks");
+                    assertThat(skills.get(0).asReference().version()).hasValue("1");
+                });
+    }
+
+    @Test
+    void should_convert_shell_container_inline_skill() {
+        OpenAiOfficialServerTool serverTool = OpenAiOfficialServerTool.builder()
+                .type("shell")
+                .addAttribute("environment", Map.of(
+                        "type", "container_auto",
+                        "skills", List.of(Map.of(
+                                "type", "inline",
+                                "name", "checks",
+                                "description", "Run checks",
+                                "source", Map.of(
+                                        "type", "source",
+                                        "media_type", "text/markdown",
+                                        "data", "# checks")))))
+                .build();
+
+        var tool = invokeToResponsesServerTool(serverTool);
+
+        assertThat(tool.isShell()).isTrue();
+        assertThat(tool.asShell().environment()).isPresent();
+        assertThat(tool.asShell().environment().get().isContainerAuto()).isTrue();
+        assertThat(tool.asShell().environment().get().asContainerAuto().skills())
+                .hasValueSatisfying(skills -> {
+                    assertThat(skills).hasSize(1);
+                    assertThat(skills.get(0).isInline()).isTrue();
+                    assertThat(skills.get(0).asInline().name()).isEqualTo("checks");
+                    assertThat(skills.get(0).asInline().source()).isNotNull();
+                });
+    }
+
+    @Test
+    void should_convert_shell_container_disabled_network_policy() {
+        OpenAiOfficialServerTool serverTool = OpenAiOfficialServerTool.builder()
+                .type("shell")
+                .addAttribute("environment", Map.of(
+                        "type", "container_auto",
+                        "network_policy", Map.of("type", "disabled")))
+                .build();
+
+        var tool = invokeToResponsesServerTool(serverTool);
+
+        assertThat(tool.isShell()).isTrue();
+        assertThat(tool.asShell().environment()).isPresent();
+        assertThat(tool.asShell().environment().get().isContainerAuto()).isTrue();
+        assertThat(tool.asShell().environment().get().asContainerAuto().networkPolicy())
+                .hasValueSatisfying(networkPolicy -> assertThat(networkPolicy.isDisabled()).isTrue());
+    }
+
+    @Test
+    void should_reject_unsupported_shell_environment_type() {
+        OpenAiOfficialServerTool serverTool = OpenAiOfficialServerTool.builder()
+                .type("shell")
+                .addAttribute("environment", Map.of("type", "remote"))
+                .build();
+
+        assertThatThrownBy(() -> invokeToResponsesServerTool(serverTool))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unsupported shell environment type: remote");
+    }
+
+    @Test
+    void should_reject_unsupported_shell_container_skill_type() {
+        OpenAiOfficialServerTool serverTool = OpenAiOfficialServerTool.builder()
+                .type("shell")
+                .addAttribute("environment", Map.of(
+                        "type", "container_auto",
+                        "skills", List.of(Map.of("type", "custom"))))
+                .build();
+
+        assertThatThrownBy(() -> invokeToResponsesServerTool(serverTool))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unsupported shell container skill type: custom");
+    }
+
+    @Test
+    void should_reject_unsupported_shell_container_network_policy_type() {
+        OpenAiOfficialServerTool serverTool = OpenAiOfficialServerTool.builder()
+                .type("shell")
+                .addAttribute("environment", Map.of(
+                        "type", "container_auto",
+                        "network_policy", Map.of("type", "restricted")))
+                .build();
+
+        assertThatThrownBy(() -> invokeToResponsesServerTool(serverTool))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unsupported shell container network_policy type: restricted");
+    }
+
+    @Test
     void should_extract_shell_and_computer_server_tool_results_only() {
         ResponseOutputItem functionCall = ResponseOutputItem.ofFunctionCall(ResponseFunctionToolCall.builder()
                 .id("fn_1")

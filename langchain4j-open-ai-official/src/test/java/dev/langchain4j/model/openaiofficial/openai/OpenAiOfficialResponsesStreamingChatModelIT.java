@@ -45,6 +45,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -61,7 +62,7 @@ import org.mockito.InOrder;
 class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     private static final String RESPONSES_MODEL_NAME = "gpt-5.4";
-    private static final long VECTOR_STORE_TIMEOUT_SECONDS = 120;
+    private static final long VECTOR_STORE_TIMEOUT_SECONDS = 300;
     private static final long DEFAULT_RESPONSE_TIMEOUT_SECONDS = 180;
 
     @Override
@@ -552,40 +553,34 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
 
     @Test
     void should_return_server_tool_results_for_mcp() {
-        StreamingChatModel model = responsesModelWithServerTools(OpenAiOfficialServerTool.builder()
-                .type("mcp")
-                .name("dmcp")
-                .addAttribute("server_label", "dmcp")
-                .addAttribute("server_description", "A Dungeons and Dragons MCP server to assist with dice rolling.")
-                .addAttribute("server_url", "https://dmcp-server.deno.dev/sse")
-                .addAttribute("require_approval", "never")
-                .build());
+        Response response = createDirectResponseWithRetries(
+                "Roll 2d4+1",
+                OpenAiOfficialServerTool.builder()
+                        .type("mcp")
+                        .name("dmcp")
+                        .addAttribute("server_label", "dmcp")
+                        .addAttribute("server_description", "A Dungeons and Dragons MCP server to assist with dice rolling.")
+                        .addAttribute("server_url", "https://dmcp-server.deno.dev/sse")
+                        .addAttribute("allowed_tools", List.of("roll"))
+                        .addAttribute("require_approval", "never")
+                        .build());
 
-        AiMessage aiMessage = chatForAiMessageWithRetries(model, "Roll 2d4+1");
-
-        List<OpenAiOfficialServerToolResult> serverToolResults = serverToolResults(aiMessage);
-        assertThat(serverToolResults)
-                .extracting(OpenAiOfficialServerToolResult::type)
+        assertThat(response.output())
+                .extracting(item -> item.isMcpListTools() ? "mcp_list_tools" : item.isMcpCall() ? "mcp_call" : null)
                 .contains("mcp_list_tools", "mcp_call");
 
-        assertThat(serverToolResults.stream()
-                .filter(result -> "mcp_call".equals(result.type()))
+        assertThat(response.output().stream()
+                .filter(ResponseOutputItem::isMcpCall)
+                .map(ResponseOutputItem::asMcpCall)
                 .findFirst())
                 .isPresent()
                 .get()
-                .satisfies(result -> {
-                    Map<String, Object> content = (Map<String, Object>) result.content();
-                    assertThat(content).containsEntry("name", "roll");
-                    assertThat(content).containsEntry("server_label", "dmcp");
-                    assertThat(content).containsKey("status");
-
-                    Object output = content.get("output");
-                    if (output != null) {
-                        int rolledValue = Integer.parseInt(String.valueOf(output));
-                        assertThat(rolledValue).isBetween(3, 9);
-                    } else {
-                        assertThat(content).containsEntry("status", "failed");
-                    }
+                .satisfies(mcpCall -> {
+                    assertThat(mcpCall.name()).isEqualTo("roll");
+                    assertThat(mcpCall.serverLabel()).isEqualTo("dmcp");
+                    assertThat(mcpCall.status()).hasValueSatisfying(status -> assertThat(status.asString()).isEqualTo("completed"));
+                    assertThat(mcpCall.output())
+                            .hasValueSatisfying(output -> assertThat(Integer.parseInt(output)).isBetween(3, 9));
                 });
     }
 
@@ -616,6 +611,7 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
     private static OpenAIClient newClient() {
         return OpenAIOkHttpClient.builder()
                 .apiKey(System.getenv("OPENAI_API_KEY"))
+                .timeout(Duration.ofSeconds(120))
                 .build();
     }
 
@@ -634,20 +630,21 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
     private static Response createDirectResponseWithRetries(String input, OpenAiOfficialServerTool... serverTools) {
         RuntimeException lastException = null;
 
-        for (int attempt = 1; attempt <= 3; attempt++) {
+        for (int attempt = 1; attempt <= 5; attempt++) {
             try {
                 return createDirectResponse(input, serverTools);
             } catch (RuntimeException e) {
                 lastException = e;
-                String message = e.getMessage();
+                String message = rootCauseMessage(e);
                 boolean retryableMcpFailure = message != null
-                        && message.contains("Error retrieving tool list from MCP server")
-                        && message.contains("424");
-                if (!retryableMcpFailure || attempt == 3) {
+                        && ((message.contains("Error retrieving tool list from MCP server") && message.contains("424"))
+                                || message.toLowerCase().contains("timed out")
+                                || message.toLowerCase().contains("timeout"));
+                if (!retryableMcpFailure || attempt == 5) {
                     throw e;
                 }
                 try {
-                    TimeUnit.SECONDS.sleep(attempt * 2L);
+                    TimeUnit.SECONDS.sleep(attempt * 3L);
                 } catch (InterruptedException interruptedException) {
                     Thread.currentThread().interrupt();
                     throw new RuntimeException(interruptedException);
@@ -758,6 +755,7 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
 
     private static void waitForVectorStoreBatchReady(OpenAIClient client, String vectorStoreId, String batchId) {
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(VECTOR_STORE_TIMEOUT_SECONDS);
+        String lastStatus = "unknown";
 
         while (System.nanoTime() < deadline) {
             VectorStoreFileBatch batch = client.vectorStores().fileBatches().retrieve(FileBatchRetrieveParams.builder()
@@ -765,6 +763,7 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
                     .batchId(batchId)
                     .build());
             String status = batch.status().asString();
+            lastStatus = status;
             if ("completed".equals(status)) {
                 return;
             }
@@ -779,7 +778,8 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
             }
         }
 
-        throw new IllegalStateException("Timed out waiting for vector store batch " + batchId + " to become ready");
+        throw new IllegalStateException(
+                "Timed out waiting for vector store batch " + batchId + " to become ready; last status was " + lastStatus);
     }
 
     private static final class ExtendedTimeoutStreamingChatResponseHandler extends TestStreamingChatResponseHandler {
