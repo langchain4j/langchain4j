@@ -20,7 +20,6 @@ import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUrlRet
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUsageMetadata;
 import dev.langchain4j.model.googleai.GeminiGenerationConfig.GeminiImageConfig;
 import dev.langchain4j.model.output.FinishReason;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Nested;
@@ -292,14 +291,16 @@ class GoogleAiGeminiChatModelTest {
                     .returnServerToolResults(true)
                     .build(mockGeminiService);
 
-            var chatResponse =
-                    subject.chat(ChatRequest.builder().messages(new UserMessage("Test tools")).build());
+            var chatResponse = subject.chat(ChatRequest.builder()
+                    .messages(new UserMessage("Test tools"))
+                    .build());
 
-            assertThat(chatResponse.aiMessage().attributes()).containsKey(GeminiServerToolsMapper.SERVER_TOOL_RESULTS_KEY);
-            List<GoogleAiGeminiServerToolResult> results = (List<GoogleAiGeminiServerToolResult>) chatResponse.aiMessage()
-                    .attributes()
-                    .get(GeminiServerToolsMapper.SERVER_TOOL_RESULTS_KEY);
-            assertThat(results).extracting(GoogleAiGeminiServerToolResult::type)
+            assertThat(chatResponse.aiMessage().attributes())
+                    .containsKey(GeminiServerToolsMapper.SERVER_TOOL_RESULTS_KEY);
+            List<GoogleAiGeminiServerToolResult> results = (List<GoogleAiGeminiServerToolResult>)
+                    chatResponse.aiMessage().attributes().get(GeminiServerToolsMapper.SERVER_TOOL_RESULTS_KEY);
+            assertThat(results)
+                    .extracting(GoogleAiGeminiServerToolResult::type)
                     .contains("code_execution_tool_result", "url_context_tool_result", "google_search_tool_result");
 
             assertThat(results.stream()
@@ -308,7 +309,8 @@ class GoogleAiGeminiChatModelTest {
                     .isPresent()
                     .get()
                     .extracting(GoogleAiGeminiServerToolResult::content)
-                    .satisfies(resultContent -> assertThat((Map<String, Object>) resultContent).containsKey("url_metadata"));
+                    .satisfies(resultContent ->
+                            assertThat((Map<String, Object>) resultContent).containsKey("url_metadata"));
 
             assertThat(results.stream()
                             .filter(result -> "google_search_tool_result".equals(result.type()))
@@ -316,8 +318,8 @@ class GoogleAiGeminiChatModelTest {
                     .isPresent()
                     .get()
                     .extracting(GoogleAiGeminiServerToolResult::content)
-                    .satisfies(resultContent -> assertThat((Map<String, Object>) resultContent).containsEntry(
-                            "web_search_queries", List.of("langchain4j")));
+                    .satisfies(resultContent -> assertThat((Map<String, Object>) resultContent)
+                            .containsEntry("web_search_queries", List.of("langchain4j")));
         }
 
         @Test
@@ -329,7 +331,11 @@ class GoogleAiGeminiChatModelTest {
                     "server-tool-response-id",
                     "gemini-pro-v1",
                     List.of(new GeminiCandidate(
-                            new GeminiContent(List.of(GeminiContent.GeminiPart.builder().text("Response").build()), "model"),
+                            new GeminiContent(
+                                    List.of(GeminiContent.GeminiPart.builder()
+                                            .text("Response")
+                                            .build()),
+                                    "model"),
                             GeminiFinishReason.STOP,
                             null,
                             null)),
@@ -345,10 +351,12 @@ class GoogleAiGeminiChatModelTest {
                     .returnServerToolResults(false)
                     .build(mockGeminiService);
 
-            var chatResponse =
-                    subject.chat(ChatRequest.builder().messages(new UserMessage("Test tools")).build());
+            var chatResponse = subject.chat(ChatRequest.builder()
+                    .messages(new UserMessage("Test tools"))
+                    .build());
 
-            assertThat(chatResponse.aiMessage().attributes()).doesNotContainKey(GeminiServerToolsMapper.SERVER_TOOL_RESULTS_KEY);
+            assertThat(chatResponse.aiMessage().attributes())
+                    .doesNotContainKey(GeminiServerToolsMapper.SERVER_TOOL_RESULTS_KEY);
         }
     }
 
@@ -456,14 +464,18 @@ class GoogleAiGeminiChatModelTest {
                     .apiKey("test-api-key")
                     .modelName(TEST_MODEL_NAME)
                     .serverTools(
-                            GoogleAiGeminiServerTool.builder().type("google_search").build(),
+                            GoogleAiGeminiServerTool.builder()
+                                    .type("google_search")
+                                    .build(),
                             GoogleAiGeminiServerTool.builder()
                                     .type("google_maps")
                                     .addAttribute("enable_widget", true)
                                     .build())
                     .build(mockGeminiService);
 
-            subject.chat(ChatRequest.builder().messages(new UserMessage("Test message")).build());
+            subject.chat(ChatRequest.builder()
+                    .messages(new UserMessage("Test message"))
+                    .build());
 
             verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
 
@@ -488,11 +500,17 @@ class GoogleAiGeminiChatModelTest {
                     .retrieveGoogleMapsWidgetToken(true)
                     .allowUrlContext(true)
                     .serverTools(
-                            GoogleAiGeminiServerTool.builder().type("google_search").build(),
-                            GoogleAiGeminiServerTool.builder().type("google_maps").build())
+                            GoogleAiGeminiServerTool.builder()
+                                    .type("google_search")
+                                    .build(),
+                            GoogleAiGeminiServerTool.builder()
+                                    .type("google_maps")
+                                    .build())
                     .build(mockGeminiService);
 
-            subject.chat(ChatRequest.builder().messages(new UserMessage("Test message")).build());
+            subject.chat(ChatRequest.builder()
+                    .messages(new UserMessage("Test message"))
+                    .build());
 
             verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
 
@@ -529,13 +547,8 @@ class GoogleAiGeminiChatModelTest {
                         null,
                         null,
                         new GroundingMetadata.GroundingChunk.Maps(
-                                "https://maps.example.com",
-                                "Paris",
-                                "Landmark",
-                                "place-1",
-                                null))))
-                .groundingSupports(List.of(new GroundingMetadata.GroundingSupport(
-                        List.of(0), List.of(0.9), null)))
+                                "https://maps.example.com", "Paris", "Landmark", "place-1", null))))
+                .groundingSupports(List.of(new GroundingMetadata.GroundingSupport(List.of(0), List.of(0.9), null)))
                 .googleMapsWidgetContextToken("widget-token")
                 .build();
 

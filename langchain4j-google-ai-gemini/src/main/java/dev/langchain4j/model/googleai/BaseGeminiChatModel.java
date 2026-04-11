@@ -28,8 +28,8 @@ import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUsageM
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;

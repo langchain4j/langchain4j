@@ -36,19 +36,19 @@ final class GeminiServerToolsMapper {
         Map<String, GoogleAiGeminiServerTool> merged = new LinkedHashMap<>();
 
         if (allowCodeExecution) {
-            merged.put("code_execution", GoogleAiGeminiServerTool.builder()
-                    .type("code_execution")
-                    .build());
+            merged.put(
+                    "code_execution",
+                    GoogleAiGeminiServerTool.builder().type("code_execution").build());
         }
         if (allowGoogleSearch) {
-            merged.put("google_search", GoogleAiGeminiServerTool.builder()
-                    .type("google_search")
-                    .build());
+            merged.put(
+                    "google_search",
+                    GoogleAiGeminiServerTool.builder().type("google_search").build());
         }
         if (allowUrlContext) {
-            merged.put("url_context", GoogleAiGeminiServerTool.builder()
-                    .type("url_context")
-                    .build());
+            merged.put(
+                    "url_context",
+                    GoogleAiGeminiServerTool.builder().type("url_context").build());
         }
         if (allowGoogleMaps) {
             GoogleAiGeminiServerTool.Builder builder =
@@ -81,11 +81,12 @@ final class GeminiServerToolsMapper {
                 case "code_execution" -> codeExecution = new GeminiCodeExecution();
                 case "google_search" -> googleSearch = new GeminiGoogleSearchRetrieval();
                 case "url_context" -> urlContext = new GeminiUrlContext();
-                case "google_maps" -> googleMaps =
-                        new GeminiGoogleMaps(booleanAttribute(serverTool.attributes(), "enable_widget"));
-                default -> throw new UnsupportedFeatureException(
-                        "Unsupported Google AI Gemini server tool type: " + serverTool.type()
-                                + ". Supported types are: code_execution, google_search, url_context, google_maps.");
+                case "google_maps" ->
+                    googleMaps = new GeminiGoogleMaps(booleanAttribute(serverTool.attributes(), "enable_widget"));
+                default ->
+                    throw new UnsupportedFeatureException(
+                            "Unsupported Google AI Gemini server tool type: " + serverTool.type()
+                                    + ". Supported types are: code_execution, google_search, url_context, google_maps.");
             }
         }
 
@@ -142,7 +143,9 @@ final class GeminiServerToolsMapper {
 
     static List<GoogleAiGeminiServerToolResult> extractServerToolResults(
             GeminiGenerateContentResponse response, GeminiCandidate candidate) {
-        List<GeminiPart> parts = candidate != null && candidate.content() != null ? candidate.content().parts() : List.of();
+        List<GeminiPart> parts = candidate != null && candidate.content() != null
+                ? candidate.content().parts()
+                : List.of();
         GroundingMetadata groundingMetadata = response.groundingMetadata() != null
                 ? response.groundingMetadata()
                 : candidate != null ? candidate.groundingMetadata() : null;
@@ -160,9 +163,12 @@ final class GeminiServerToolsMapper {
             GeminiExecutableCode executableCode = part.executableCode();
             if (executableCode != null) {
                 Map<String, Object> code = new LinkedHashMap<>();
-                putIfNotNull(code, "programming_language", executableCode.programmingLanguage() != null
-                        ? executableCode.programmingLanguage().toString()
-                        : null);
+                putIfNotNull(
+                        code,
+                        "programming_language",
+                        executableCode.programmingLanguage() != null
+                                ? executableCode.programmingLanguage().toString()
+                                : null);
                 putIfNotNull(code, "code", executableCode.code());
                 steps.add(code);
             }
@@ -170,9 +176,12 @@ final class GeminiServerToolsMapper {
             GeminiCodeExecutionResult codeExecutionResult = part.codeExecutionResult();
             if (codeExecutionResult != null) {
                 Map<String, Object> result = new LinkedHashMap<>();
-                putIfNotNull(result, "outcome", codeExecutionResult.outcome() != null
-                        ? codeExecutionResult.outcome().toString()
-                        : null);
+                putIfNotNull(
+                        result,
+                        "outcome",
+                        codeExecutionResult.outcome() != null
+                                ? codeExecutionResult.outcome().toString()
+                                : null);
                 putIfNotNull(result, "output", codeExecutionResult.output());
                 steps.add(result);
             }

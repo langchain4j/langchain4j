@@ -329,22 +329,23 @@ class GeminiServiceTest {
             StringBuilder partialResponses = new StringBuilder();
 
             // When
-            subject.generateContentStream(TEST_MODEL_NAME, request, false, null, false, new StreamingChatResponseHandler() {
-                @Override
-                public void onPartialResponse(String partialResponse) {
-                    partialResponses.append(partialResponse);
-                }
+            subject.generateContentStream(
+                    TEST_MODEL_NAME, request, false, null, false, new StreamingChatResponseHandler() {
+                        @Override
+                        public void onPartialResponse(String partialResponse) {
+                            partialResponses.append(partialResponse);
+                        }
 
-                @Override
-                public void onCompleteResponse(ChatResponse completeResponse) {
-                    futureResponse.complete(completeResponse);
-                }
+                        @Override
+                        public void onCompleteResponse(ChatResponse completeResponse) {
+                            futureResponse.complete(completeResponse);
+                        }
 
-                @Override
-                public void onError(Throwable error) {
-                    futureResponse.completeExceptionally(error);
-                }
-            });
+                        @Override
+                        public void onError(Throwable error) {
+                            futureResponse.completeExceptionally(error);
+                        }
+                    });
 
             ChatResponse response = futureResponse.get(5, TimeUnit.SECONDS);
 
@@ -373,17 +374,18 @@ class GeminiServiceTest {
             CompletableFuture<Void> futureComplete = new CompletableFuture<>();
 
             // When
-            subject.generateContentStream(TEST_MODEL_NAME, request, false, null, false, new StreamingChatResponseHandler() {
-                @Override
-                public void onCompleteResponse(ChatResponse completeResponse) {
-                    futureComplete.complete(null);
-                }
+            subject.generateContentStream(
+                    TEST_MODEL_NAME, request, false, null, false, new StreamingChatResponseHandler() {
+                        @Override
+                        public void onCompleteResponse(ChatResponse completeResponse) {
+                            futureComplete.complete(null);
+                        }
 
-                @Override
-                public void onError(Throwable error) {
-                    futureComplete.completeExceptionally(error);
-                }
-            });
+                        @Override
+                        public void onError(Throwable error) {
+                            futureComplete.completeExceptionally(error);
+                        }
+                    });
 
             futureComplete.get(5, TimeUnit.SECONDS);
 

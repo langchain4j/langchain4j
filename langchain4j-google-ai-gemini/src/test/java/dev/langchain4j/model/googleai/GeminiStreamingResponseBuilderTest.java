@@ -71,11 +71,9 @@ class GeminiStreamingResponseBuilderTest {
                         null,
                         null,
                         new GeminiContent.GeminiPart.GeminiExecutableCode(
-                                GeminiContent.GeminiPart.GeminiExecutableCode.GeminiLanguage.PYTHON,
-                                "print(1)"),
+                                GeminiContent.GeminiPart.GeminiExecutableCode.GeminiLanguage.PYTHON, "print(1)"),
                         new GeminiContent.GeminiPart.GeminiCodeExecutionResult(
-                                GeminiContent.GeminiPart.GeminiCodeExecutionResult.GeminiOutcome.OUTCOME_OK,
-                                "1"),
+                                GeminiContent.GeminiPart.GeminiCodeExecutionResult.GeminiOutcome.OUTCOME_OK, "1"),
                         null,
                         null,
                         null)),
@@ -95,14 +93,11 @@ class GeminiStreamingResponseBuilderTest {
     @Test
     void should_preserve_server_tool_metadata_from_metadata_only_response() {
         GeminiStreamingResponseBuilder builder = new GeminiStreamingResponseBuilder(false, null, true);
-        GroundingMetadata groundingMetadata =
-                GroundingMetadata.builder().webSearchQueries(List.of("langchain4j")).build();
+        GroundingMetadata groundingMetadata = GroundingMetadata.builder()
+                .webSearchQueries(List.of("langchain4j"))
+                .build();
         GeminiGenerateContentResponse response = new GeminiGenerateContentResponse(
-                "id-1",
-                "gemini-pro",
-                List.of(new GeminiCandidate(null, null, null, null)),
-                null,
-                groundingMetadata);
+                "id-1", "gemini-pro", List.of(new GeminiCandidate(null, null, null, null)), null, groundingMetadata);
 
         TextAndTools result = builder.append(response);
         ChatResponse completeResponse = builder.build();
@@ -117,8 +112,8 @@ class GeminiStreamingResponseBuilderTest {
     void should_preserve_exact_server_tool_result_shapes() {
         GeminiStreamingResponseBuilder builder = new GeminiStreamingResponseBuilder(false, null, true);
         GeminiGenerateContentResponse.GeminiUrlContextMetadata urlContextMetadata =
-                new GeminiGenerateContentResponse.GeminiUrlContextMetadata(List.of(new GeminiGenerateContentResponse
-                        .GeminiUrlMetadata(
+                new GeminiGenerateContentResponse.GeminiUrlContextMetadata(
+                        List.of(new GeminiGenerateContentResponse.GeminiUrlMetadata(
                                 "https://docs.langchain4j.dev",
                                 GeminiGenerateContentResponse.GeminiUrlRetrievalStatus.URL_RETRIEVAL_STATUS_SUCCESS)));
         GroundingMetadata groundingMetadata = GroundingMetadata.builder()
@@ -127,16 +122,14 @@ class GeminiStreamingResponseBuilderTest {
                 .groundingChunks(List.of(new GroundingMetadata.GroundingChunk(
                         new GroundingMetadata.GroundingChunk.Web("https://example.com", "Example"),
                         null,
-                        new GroundingMetadata.GroundingChunk.Maps("https://maps.example.com", "Paris", "Landmark", "place-1", null))))
+                        new GroundingMetadata.GroundingChunk.Maps(
+                                "https://maps.example.com", "Paris", "Landmark", "place-1", null))))
                 .build();
         GeminiGenerateContentResponse response = new GeminiGenerateContentResponse(
                 "id-1",
                 "gemini-pro",
                 List.of(new GeminiCandidate(
-                        new GeminiContent(List.of(), "model"),
-                        null,
-                        urlContextMetadata,
-                        groundingMetadata)),
+                        new GeminiContent(List.of(), "model"), null, urlContextMetadata, groundingMetadata)),
                 null,
                 null);
 
@@ -145,11 +138,11 @@ class GeminiStreamingResponseBuilderTest {
         ChatResponse completeResponse = builder.build();
 
         @SuppressWarnings("unchecked")
-        List<GoogleAiGeminiServerToolResult> results = (List<GoogleAiGeminiServerToolResult>) completeResponse.aiMessage()
-                .attributes()
-                .get(GeminiServerToolsMapper.SERVER_TOOL_RESULTS_KEY);
+        List<GoogleAiGeminiServerToolResult> results = (List<GoogleAiGeminiServerToolResult>)
+                completeResponse.aiMessage().attributes().get(GeminiServerToolsMapper.SERVER_TOOL_RESULTS_KEY);
 
-        assertThat(results).extracting(GoogleAiGeminiServerToolResult::type)
+        assertThat(results)
+                .extracting(GoogleAiGeminiServerToolResult::type)
                 .contains("url_context_tool_result", "google_search_tool_result", "google_maps_tool_result");
         assertThat(results.stream()
                         .filter(result -> "url_context_tool_result".equals(result.type()))
@@ -157,7 +150,8 @@ class GeminiStreamingResponseBuilderTest {
                 .isPresent()
                 .get()
                 .extracting(GoogleAiGeminiServerToolResult::content)
-                .satisfies(content -> assertThat((java.util.Map<String, Object>) content).containsKey("url_metadata"));
+                .satisfies(content ->
+                        assertThat((java.util.Map<String, Object>) content).containsKey("url_metadata"));
         assertThat(results.stream()
                         .filter(result -> "google_search_tool_result".equals(result.type()))
                         .findFirst())

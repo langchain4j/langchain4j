@@ -47,15 +47,15 @@ class GoogleAiGeminiVertexExpressServerToolsIT {
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .baseUrl(VERTEX_EXPRESS_BASE_URL)
                 .modelName(GEMINI_3_1_PRO_PREVIEW_MODEL)
-                .serverTools(GoogleAiGeminiServerTool.builder()
-                        .type("url_context")
-                        .build())
+                .serverTools(
+                        GoogleAiGeminiServerTool.builder().type("url_context").build())
                 .returnServerToolResults(true)
                 .build();
 
         ChatResponse response = model.chat(ChatRequest.builder()
-                .messages(UserMessage.from(
-                        "Use URL context on https://docs.langchain4j.dev/ and tell me what project this documentation is for."))
+                .messages(
+                        UserMessage.from(
+                                "Use URL context on https://docs.langchain4j.dev/ and tell me what project this documentation is for."))
                 .build());
 
         assertThat(response.aiMessage().text()).containsIgnoringCase("LangChain4j");
@@ -65,9 +65,8 @@ class GoogleAiGeminiVertexExpressServerToolsIT {
     @SuppressWarnings("unchecked")
     private static void assertServerToolResultPresent(ChatResponse response, String expectedType) {
         assertThat(response.aiMessage().attributes()).containsKey(GeminiServerToolsMapper.SERVER_TOOL_RESULTS_KEY);
-        List<GoogleAiGeminiServerToolResult> results = (List<GoogleAiGeminiServerToolResult>) response.aiMessage()
-                .attributes()
-                .get(GeminiServerToolsMapper.SERVER_TOOL_RESULTS_KEY);
+        List<GoogleAiGeminiServerToolResult> results = (List<GoogleAiGeminiServerToolResult>)
+                response.aiMessage().attributes().get(GeminiServerToolsMapper.SERVER_TOOL_RESULTS_KEY);
         assertThat(results).extracting(GoogleAiGeminiServerToolResult::type).contains(expectedType);
     }
 }

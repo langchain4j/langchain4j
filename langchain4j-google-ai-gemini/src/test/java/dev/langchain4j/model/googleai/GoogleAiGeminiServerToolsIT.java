@@ -39,9 +39,8 @@ class GoogleAiGeminiServerToolsIT {
         assertThat(response.aiMessage().attributes()).containsKey(GeminiServerToolsMapper.SERVER_TOOL_RESULTS_KEY);
 
         @SuppressWarnings("unchecked")
-        List<GoogleAiGeminiServerToolResult> results = (List<GoogleAiGeminiServerToolResult>) response.aiMessage()
-                .attributes()
-                .get(GeminiServerToolsMapper.SERVER_TOOL_RESULTS_KEY);
+        List<GoogleAiGeminiServerToolResult> results = (List<GoogleAiGeminiServerToolResult>)
+                response.aiMessage().attributes().get(GeminiServerToolsMapper.SERVER_TOOL_RESULTS_KEY);
 
         assertThat(results).extracting(GoogleAiGeminiServerToolResult::type).contains("code_execution_tool_result");
     }
@@ -77,9 +76,8 @@ class GoogleAiGeminiServerToolsIT {
         GoogleAiGeminiChatModel model = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName(GEMINI_2_5_FLASH_MODEL)
-                .serverTools(GoogleAiGeminiServerTool.builder()
-                        .type("google_search")
-                        .build())
+                .serverTools(
+                        GoogleAiGeminiServerTool.builder().type("google_search").build())
                 .returnServerToolResults(true)
                 .build();
 
@@ -98,15 +96,15 @@ class GoogleAiGeminiServerToolsIT {
         GoogleAiGeminiChatModel model = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName(GEMINI_3_FLASH_MODEL)
-                .serverTools(GoogleAiGeminiServerTool.builder()
-                        .type("url_context")
-                        .build())
+                .serverTools(
+                        GoogleAiGeminiServerTool.builder().type("url_context").build())
                 .returnServerToolResults(true)
                 .build();
 
         ChatResponse response = model.chat(ChatRequest.builder()
-                .messages(UserMessage.from(
-                        "Use URL context on https://docs.langchain4j.dev/ and tell me what project this documentation is for."))
+                .messages(
+                        UserMessage.from(
+                                "Use URL context on https://docs.langchain4j.dev/ and tell me what project this documentation is for."))
                 .build());
 
         assertThat(response.aiMessage().text()).containsIgnoringCase("LangChain4j");
@@ -126,8 +124,7 @@ class GoogleAiGeminiServerToolsIT {
                 .build();
 
         ChatResponse response = model.chat(ChatRequest.builder()
-                .messages(UserMessage.from(
-                        "Use Google Maps grounding to name one famous landmark in Paris."))
+                .messages(UserMessage.from("Use Google Maps grounding to name one famous landmark in Paris."))
                 .build());
 
         assertThat(response.aiMessage().text()).isNotBlank();
@@ -146,9 +143,8 @@ class GoogleAiGeminiServerToolsIT {
     @SuppressWarnings("unchecked")
     private static void assertServerToolResultPresent(ChatResponse response, String expectedType) {
         assertThat(response.aiMessage().attributes()).containsKey(GeminiServerToolsMapper.SERVER_TOOL_RESULTS_KEY);
-        List<GoogleAiGeminiServerToolResult> results = (List<GoogleAiGeminiServerToolResult>) response.aiMessage()
-                .attributes()
-                .get(GeminiServerToolsMapper.SERVER_TOOL_RESULTS_KEY);
+        List<GoogleAiGeminiServerToolResult> results = (List<GoogleAiGeminiServerToolResult>)
+                response.aiMessage().attributes().get(GeminiServerToolsMapper.SERVER_TOOL_RESULTS_KEY);
         assertThat(results).extracting(GoogleAiGeminiServerToolResult::type).contains(expectedType);
     }
 }
