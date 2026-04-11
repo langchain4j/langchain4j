@@ -14,6 +14,7 @@ class AnthropicChatModelListenerIT extends AbstractChatModelListenerIT {
     @Override
     protected ChatModel createModel(ChatModelListener listener) {
         return AnthropicChatModel.builder()
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(modelName())
                 .temperature(temperature())

@@ -1,7 +1,7 @@
 package dev.langchain4j.model.anthropic;
 
 import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.model.anthropic.AnthropicChatModelIT.randomString;
+import static dev.langchain4j.internal.Utils.randomString;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_HAIKU_4_5_20251001;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_SONNET_4_5_20250929;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_SONNET_4_6;
@@ -68,7 +68,7 @@ class AnthropicStreamingChatModelIT {
 
         // given
         StreamingChatModel model = AnthropicStreamingChatModel.builder()
-                .baseUrl("https://api.anthropic.com/v1/")
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .version("2023-06-01")
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
@@ -119,6 +119,7 @@ class AnthropicStreamingChatModelIT {
 
         // given
         AnthropicStreamingChatModel model = AnthropicStreamingChatModel.builder()
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .cacheSystemMessages(true)
@@ -147,6 +148,7 @@ class AnthropicStreamingChatModelIT {
 
         // given
         AnthropicStreamingChatModel model = AnthropicStreamingChatModel.builder()
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .cacheTools(true)
@@ -199,6 +201,7 @@ class AnthropicStreamingChatModelIT {
         Duration timeout = Duration.ofMillis(millis);
 
         StreamingChatModel model = AnthropicStreamingChatModel.builder()
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .logRequests(true)
@@ -265,6 +268,7 @@ class AnthropicStreamingChatModelIT {
 
         StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_SONNET_4_5_20250929)
                 .beta("context-management-2025-06-27")
@@ -300,6 +304,7 @@ class AnthropicStreamingChatModelIT {
 
         AnthropicStreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_SONNET_4_5_20250929)
                 .temperature(0.0)
@@ -358,6 +363,7 @@ class AnthropicStreamingChatModelIT {
                 .build();
 
         StreamingChatModel model = AnthropicStreamingChatModel.builder()
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_SONNET_4_5_20250929)
                 .serverTools(webSearchTool)

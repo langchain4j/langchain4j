@@ -55,6 +55,7 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected StreamingChatModel createModelWith(ChatRequestParameters parameters) {
         var anthropicChatModelBuilder = AnthropicStreamingChatModel.builder()
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .maxTokens(parameters.maxOutputTokens())
                 .logRequests(true)

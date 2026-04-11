@@ -19,6 +19,7 @@ public class AnthropicAiServiceWithJsonSchemaIT extends AbstractAiServiceWithJso
     protected List<ChatModel> models() {
         return List.of(
                 AnthropicChatModel.builder()
+                        .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                         .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                         .modelName(AnthropicChatModelName.CLAUDE_HAIKU_4_5_20251001)
                         .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)
@@ -26,6 +27,7 @@ public class AnthropicAiServiceWithJsonSchemaIT extends AbstractAiServiceWithJso
                         .logRequests(true)
                         .build(),
                 AnthropicChatModel.builder()
+                        .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                         .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                         .beta("structured-outputs-2025-11-13") // testing backward compatibility
                         .modelName(AnthropicChatModelName.CLAUDE_HAIKU_4_5_20251001)
