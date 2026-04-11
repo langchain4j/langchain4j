@@ -38,11 +38,13 @@ import com.openai.models.responses.ResponseInputContent;
 import com.openai.models.responses.ResponseInputImage;
 import com.openai.models.responses.ResponseInputItem;
 import com.openai.models.responses.ResponseInputText;
+import com.openai.models.responses.ResponseOutputItem;
 import com.openai.models.responses.ResponseOutputItemAddedEvent;
 import com.openai.models.responses.ResponseOutputItemDoneEvent;
 import com.openai.models.responses.ResponseStreamEvent;
 import com.openai.models.responses.ResponseTextConfig;
 import com.openai.models.responses.ResponseTextDeltaEvent;
+import com.openai.models.responses.Tool;
 import com.openai.models.responses.ToolChoiceOptions;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -79,8 +81,10 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -97,6 +101,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
     private static final Logger logger = LoggerFactory.getLogger(OpenAiOfficialResponsesStreamingChatModel.class);
     private static final String PROMPT_CACHE_RETENTION_FIELD = "prompt_cache_retention";
+    static final String SERVER_TOOL_RESULTS_KEY = "server_tool_results";
 
     private final OpenAIClient client;
     private final ExecutorService executorService;
@@ -121,6 +126,8 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
     private final List<ChatModelListener> listeners;
     private final ChatRequestParameters defaultRequestParameters;
     private final Boolean strict;
+    private final List<OpenAiOfficialServerTool> serverTools;
+    private final Boolean returnServerToolResults;
 
     private OpenAiOfficialResponsesStreamingChatModel(Builder builder) {
         this.client = builder.client != null
@@ -168,6 +175,8 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 .maxCompletionTokens(maxOutputTokens)
                 .build();
         this.strict = getOrDefault(builder.strict, true);
+        this.serverTools = copy(builder.serverTools);
+        this.returnServerToolResults = getOrDefault(builder.returnServerToolResults, false);
     }
 
     public static Builder builder() {
@@ -259,14 +268,11 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                         .build());
             }
 
-            // Add tools if present
-            if (chatRequest.toolSpecifications() != null
-                    && !chatRequest.toolSpecifications().isEmpty()) {
-                for (var toolSpec : chatRequest.toolSpecifications()) {
-                    paramsBuilder.addTool(toResponsesTool(toolSpec, strict));
+            List<Tool> tools = toResponsesTools(chatRequest.toolSpecifications(), strict, serverTools);
+            if (!tools.isEmpty()) {
+                for (Tool tool : tools) {
+                    paramsBuilder.addTool(tool);
                 }
-
-                // Add tool choice if specified
                 if (chatRequest.toolChoice() != null) {
                     paramsBuilder.toolChoice(toResponsesToolChoice(chatRequest.toolChoice()));
                 }
@@ -288,7 +294,8 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 }
             });
 
-            var eventHandler = new ResponsesEventHandler(handler, responseIdRef, effectiveModelName, streamingHandle);
+            var eventHandler = new ResponsesEventHandler(
+                    handler, responseIdRef, effectiveModelName, streamingHandle, returnServerToolResults);
 
             // The forEach call blocks, so it is submitted to the executor service to run asynchronously,
             // this is the only thread used.
@@ -441,6 +448,172 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         }
     }
 
+    private static List<Tool> toResponsesTools(
+            List<ToolSpecification> toolSpecifications, boolean strict, List<OpenAiOfficialServerTool> serverTools) {
+        List<Tool> tools = new ArrayList<>();
+        if (toolSpecifications != null) {
+            for (ToolSpecification toolSpecification : toolSpecifications) {
+                tools.add(Tool.ofFunction(toResponsesTool(toolSpecification, strict)));
+            }
+        }
+        for (OpenAiOfficialServerTool serverTool : serverTools) {
+            tools.add(OpenAiOfficialServerToolMapper.toResponsesTool(serverTool));
+        }
+        return tools;
+    }
+
+    private static Optional<Object> optionalMcpError(ResponseOutputItem.McpCall item) {
+        try {
+            return item.error().map(value -> (Object) value);
+        } catch (RuntimeException e) {
+            return Optional.ofNullable(item._additionalProperties().get("error"));
+        }
+    }
+
+    static List<OpenAiOfficialServerToolResult> extractServerToolResults(List<ResponseOutputItem> outputItems) {
+        List<OpenAiOfficialServerToolResult> results = new ArrayList<>();
+        for (ResponseOutputItem outputItem : outputItems) {
+            if (outputItem.isWebSearchCall()) {
+                var item = outputItem.asWebSearchCall();
+                results.add(OpenAiOfficialServerToolResult.builder()
+                        .type("web_search_call")
+                        .toolUseId(item.id())
+                        .content(Map.of(
+                                "id", item.id(),
+                                "action", item.action(),
+                                "status", item.status().asString()))
+                        .build());
+            } else if (outputItem.isFileSearchCall()) {
+                var item = outputItem.asFileSearchCall();
+                Map<String, Object> content = new LinkedHashMap<>();
+                content.put("id", item.id());
+                content.put("queries", item.queries());
+                content.put("status", item.status().asString());
+                item.results().ifPresent(value -> content.put("results", value));
+                results.add(OpenAiOfficialServerToolResult.builder()
+                        .type("file_search_call")
+                        .toolUseId(item.id())
+                        .content(content)
+                        .build());
+            } else if (outputItem.isToolSearchCall()) {
+                var item = outputItem.asToolSearchCall();
+                Map<String, Object> content = new LinkedHashMap<>();
+                content.put("id", item.id());
+                content.put("arguments", item._arguments());
+                content.put("execution", item.execution().asString());
+                content.put("status", item.status().asString());
+                item.callId().ifPresent(value -> content.put("call_id", value));
+                item.createdBy().ifPresent(value -> content.put("created_by", value));
+                results.add(OpenAiOfficialServerToolResult.builder()
+                        .type("tool_search_call")
+                        .toolUseId(item.id())
+                        .content(content)
+                        .build());
+            } else if (outputItem.isMcpListTools()) {
+                var item = outputItem.asMcpListTools();
+                Map<String, Object> content = new LinkedHashMap<>();
+                content.put("id", item.id());
+                content.put("server_label", item.serverLabel());
+                content.put("tools", item.tools());
+                item.error().ifPresent(value -> content.put("error", value));
+                results.add(OpenAiOfficialServerToolResult.builder()
+                        .type("mcp_list_tools")
+                        .toolUseId(item.id())
+                        .content(content)
+                        .build());
+            } else if (outputItem.isMcpCall()) {
+                var item = outputItem.asMcpCall();
+                Map<String, Object> content = new LinkedHashMap<>();
+                content.put("id", item.id());
+                content.put("arguments", item.arguments());
+                content.put("name", item.name());
+                content.put("server_label", item.serverLabel());
+                item.approvalRequestId().ifPresent(value -> content.put("approval_request_id", value));
+                optionalMcpError(item).ifPresent(value -> content.put("error", value));
+                item.output().ifPresent(value -> content.put("output", value));
+                item.status().ifPresent(value -> content.put("status", value.asString()));
+                results.add(OpenAiOfficialServerToolResult.builder()
+                        .type("mcp_call")
+                        .toolUseId(item.id())
+                        .content(content)
+                        .build());
+            } else if (outputItem.isLocalShellCall()) {
+                var item = outputItem.asLocalShellCall();
+                Map<String, Object> content = new LinkedHashMap<>();
+                content.put("id", item.id());
+                content.put("call_id", item.callId());
+                content.put("action", item.action());
+                content.put("status", item.status().asString());
+                results.add(OpenAiOfficialServerToolResult.builder()
+                        .type("shell_call")
+                        .toolUseId(item.id())
+                        .content(content)
+                        .build());
+            } else if (outputItem.isShellCall()) {
+                var item = outputItem.asShellCall();
+                Map<String, Object> content = new LinkedHashMap<>();
+                content.put("id", item.id());
+                content.put("call_id", item.callId());
+                content.put("action", item.action());
+                content.put("status", item.status().asString());
+                item.environment().ifPresent(value -> content.put("environment", value));
+                item.createdBy().ifPresent(value -> content.put("created_by", value));
+                results.add(OpenAiOfficialServerToolResult.builder()
+                        .type("shell_call")
+                        .toolUseId(item.id())
+                        .content(content)
+                        .build());
+            } else if (outputItem.isShellCallOutput()) {
+                var item = outputItem.asShellCallOutput();
+                Map<String, Object> content = new LinkedHashMap<>();
+                content.put("id", item.id());
+                content.put("call_id", item.callId());
+                content.put("output", item.output());
+                content.put("status", item.status().asString());
+                item.maxOutputLength().ifPresent(value -> content.put("max_output_length", value));
+                item.createdBy().ifPresent(value -> content.put("created_by", value));
+                results.add(OpenAiOfficialServerToolResult.builder()
+                        .type("shell_call_output")
+                        .toolUseId(item.id())
+                        .content(content)
+                        .build());
+            } else if (outputItem.isComputerCall()) {
+                var item = outputItem.asComputerCall();
+                Map<String, Object> content = new LinkedHashMap<>();
+                content.put("id", item.id());
+                content.put("call_id", item.callId());
+                content.put("status", item.status().asString());
+                content.put("type", item.type().asString());
+                item._pendingSafetyChecks().asKnown().ifPresent(value -> content.put("pending_safety_checks", value));
+                item.action().ifPresent(value -> content.put("action", value));
+                item.actions().ifPresent(value -> content.put("actions", value));
+                results.add(OpenAiOfficialServerToolResult.builder()
+                        .type("computer_call")
+                        .toolUseId(item.id())
+                        .content(content)
+                        .build());
+            }
+        }
+        return results;
+    }
+
+    static AiMessage buildFinalAiMessage(
+            String text,
+            List<ToolExecutionRequest> completedToolCalls,
+            List<OpenAiOfficialServerToolResult> serverToolResults) {
+        String normalizedText =
+                (text != null && text.isEmpty() && (!completedToolCalls.isEmpty() || !serverToolResults.isEmpty()))
+                        ? null
+                        : text;
+        AiMessage.Builder builder = AiMessage.builder().text(normalizedText).toolExecutionRequests(completedToolCalls);
+
+        if (!serverToolResults.isEmpty()) {
+            builder.attributes(Map.of(SERVER_TOOL_RESULTS_KEY, serverToolResults));
+        }
+
+        return builder.build();
+    }
+
     private static ToolChoiceOptions toResponsesToolChoice(ToolChoice toolChoice) {
         if (toolChoice == null) {
             return null;
@@ -535,6 +708,8 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         private List<ChatModelListener> listeners;
         private ExecutorService executorService;
         private Boolean strict;
+        private List<OpenAiOfficialServerTool> serverTools;
+        private Boolean returnServerToolResults;
 
         public Builder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
@@ -738,6 +913,20 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             return this;
         }
 
+        public Builder serverTools(List<OpenAiOfficialServerTool> serverTools) {
+            this.serverTools = serverTools;
+            return this;
+        }
+
+        public Builder serverTools(OpenAiOfficialServerTool... serverTools) {
+            return serverTools(asList(serverTools));
+        }
+
+        public Builder returnServerToolResults(Boolean returnServerToolResults) {
+            this.returnServerToolResults = returnServerToolResults;
+            return this;
+        }
+
         public OpenAiOfficialResponsesStreamingChatModel build() {
             return new OpenAiOfficialResponsesStreamingChatModel(this);
         }
@@ -753,6 +942,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         private final Map<String, ToolExecutionRequest.Builder> toolCallBuilders = new HashMap<>();
         private final Map<String, Integer> toolCallIndices = new HashMap<>();
         private final List<ToolExecutionRequest> completedToolCalls = new ArrayList<>();
+        private final boolean returnServerToolResults;
         private final StringBuilder textBuilder = new StringBuilder();
         private OpenAiOfficialTokenUsage tokenUsage;
         private String responseId;
@@ -763,11 +953,13 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 StreamingChatResponseHandler handler,
                 AtomicReference<String> responseIdRef,
                 String modelName,
-                StreamingHandle streamingHandle) {
+                StreamingHandle streamingHandle,
+                boolean returnServerToolResults) {
             this.handler = handler;
             this.responseIdRef = responseIdRef;
             this.modelName = modelName;
             this.streamingHandle = streamingHandle;
+            this.returnServerToolResults = returnServerToolResults;
         }
 
         void handleEvent(ResponseStreamEvent event) {
@@ -959,12 +1151,10 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             });
 
             // Build final AI message
-            var text = !textBuilder.isEmpty() ? textBuilder.toString() : null;
-            var aiMessage = !completedToolCalls.isEmpty() && text != null
-                    ? new AiMessage(text, completedToolCalls)
-                    : !completedToolCalls.isEmpty()
-                            ? AiMessage.from(completedToolCalls)
-                            : new AiMessage(textBuilder.toString());
+            var text = textBuilder.toString();
+            List<OpenAiOfficialServerToolResult> serverToolResults =
+                    returnServerToolResults ? extractServerToolResults(response.output()) : List.of();
+            var aiMessage = buildFinalAiMessage(text, completedToolCalls, serverToolResults);
 
             // Build metadata
             var metadataBuilder =

@@ -2,6 +2,7 @@ package dev.langchain4j.model.googleai;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
 import dev.langchain4j.model.googleai.GeminiStreamingResponseBuilder.TextAndTools;
 import java.util.Collections;
@@ -10,7 +11,7 @@ import org.junit.jupiter.api.Test;
 
 class GeminiStreamingResponseBuilderTest {
 
-    private final GeminiStreamingResponseBuilder builder = new GeminiStreamingResponseBuilder(false, null);
+    private final GeminiStreamingResponseBuilder builder = new GeminiStreamingResponseBuilder(false, null, false);
 
     @Test
     void should_return_empty_when_partial_response_is_null() {
@@ -57,5 +58,115 @@ class GeminiStreamingResponseBuilderTest {
 
         assertThat(result.maybeText()).hasValue("Hello");
         assertThat(result.tools()).isEmpty();
+    }
+
+    @Test
+    void should_include_server_tool_results_when_enabled() {
+        GeminiStreamingResponseBuilder builder = new GeminiStreamingResponseBuilder(false, null, true);
+        GeminiContent content = new GeminiContent(
+                List.of(new GeminiContent.GeminiPart(
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        new GeminiContent.GeminiPart.GeminiExecutableCode(
+                                GeminiContent.GeminiPart.GeminiExecutableCode.GeminiLanguage.PYTHON, "print(1)"),
+                        new GeminiContent.GeminiPart.GeminiCodeExecutionResult(
+                                GeminiContent.GeminiPart.GeminiCodeExecutionResult.GeminiOutcome.OUTCOME_OK, "1"),
+                        null,
+                        null,
+                        null)),
+                "model");
+        GeminiCandidate candidate = new GeminiCandidate(content, null, null, null);
+        GeminiGenerateContentResponse response =
+                new GeminiGenerateContentResponse("id-1", "gemini-pro", List.of(candidate), null, null);
+
+        builder.append(response);
+
+        ChatResponse completeResponse = builder.build();
+
+        assertThat(completeResponse.aiMessage().attributes())
+                .containsKey(GeminiServerToolsMapper.SERVER_TOOL_RESULTS_KEY);
+    }
+
+    @Test
+    void should_preserve_server_tool_metadata_from_metadata_only_response() {
+        GeminiStreamingResponseBuilder builder = new GeminiStreamingResponseBuilder(false, null, true);
+        GroundingMetadata groundingMetadata = GroundingMetadata.builder()
+                .webSearchQueries(List.of("langchain4j"))
+                .build();
+        GeminiGenerateContentResponse response = new GeminiGenerateContentResponse(
+                "id-1", "gemini-pro", List.of(new GeminiCandidate(null, null, null, null)), null, groundingMetadata);
+
+        TextAndTools result = builder.append(response);
+        ChatResponse completeResponse = builder.build();
+
+        assertThat(result.maybeText()).isEmpty();
+        assertThat(result.tools()).isEmpty();
+        assertThat(completeResponse.aiMessage().attributes())
+                .containsKey(GeminiServerToolsMapper.SERVER_TOOL_RESULTS_KEY);
+    }
+
+    @Test
+    void should_preserve_exact_server_tool_result_shapes() {
+        GeminiStreamingResponseBuilder builder = new GeminiStreamingResponseBuilder(false, null, true);
+        GeminiGenerateContentResponse.GeminiUrlContextMetadata urlContextMetadata =
+                new GeminiGenerateContentResponse.GeminiUrlContextMetadata(
+                        List.of(new GeminiGenerateContentResponse.GeminiUrlMetadata(
+                                "https://docs.langchain4j.dev",
+                                GeminiGenerateContentResponse.GeminiUrlRetrievalStatus.URL_RETRIEVAL_STATUS_SUCCESS)));
+        GroundingMetadata groundingMetadata = GroundingMetadata.builder()
+                .webSearchQueries(List.of("langchain4j"))
+                .googleMapsWidgetContextToken("widget-token")
+                .groundingChunks(List.of(new GroundingMetadata.GroundingChunk(
+                        new GroundingMetadata.GroundingChunk.Web("https://example.com", "Example"),
+                        null,
+                        new GroundingMetadata.GroundingChunk.Maps(
+                                "https://maps.example.com", "Paris", "Landmark", "place-1", null))))
+                .build();
+        GeminiGenerateContentResponse response = new GeminiGenerateContentResponse(
+                "id-1",
+                "gemini-pro",
+                List.of(new GeminiCandidate(
+                        new GeminiContent(List.of(), "model"), null, urlContextMetadata, groundingMetadata)),
+                null,
+                null);
+
+        builder.append(response);
+
+        ChatResponse completeResponse = builder.build();
+
+        @SuppressWarnings("unchecked")
+        List<GoogleAiGeminiServerToolResult> results = (List<GoogleAiGeminiServerToolResult>)
+                completeResponse.aiMessage().attributes().get(GeminiServerToolsMapper.SERVER_TOOL_RESULTS_KEY);
+
+        assertThat(results)
+                .extracting(GoogleAiGeminiServerToolResult::type)
+                .contains("url_context_tool_result", "google_search_tool_result", "google_maps_tool_result");
+        assertThat(results.stream()
+                        .filter(result -> "url_context_tool_result".equals(result.type()))
+                        .findFirst())
+                .isPresent()
+                .get()
+                .extracting(GoogleAiGeminiServerToolResult::content)
+                .satisfies(content ->
+                        assertThat((java.util.Map<String, Object>) content).containsKey("url_metadata"));
+        assertThat(results.stream()
+                        .filter(result -> "google_search_tool_result".equals(result.type()))
+                        .findFirst())
+                .isPresent()
+                .get()
+                .extracting(GoogleAiGeminiServerToolResult::content)
+                .satisfies(content -> assertThat((java.util.Map<String, Object>) content)
+                        .containsEntry("web_search_queries", List.of("langchain4j")));
+        assertThat(results.stream()
+                        .filter(result -> "google_maps_tool_result".equals(result.type()))
+                        .findFirst())
+                .isPresent()
+                .get()
+                .extracting(GoogleAiGeminiServerToolResult::content)
+                .satisfies(content -> assertThat((java.util.Map<String, Object>) content)
+                        .containsEntry("google_maps_widget_context_token", "widget-token"));
     }
 }
