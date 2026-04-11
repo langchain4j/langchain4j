@@ -1,6 +1,7 @@
 package dev.langchain4j.model.googleai;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -8,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
@@ -18,6 +20,7 @@ import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUrlRet
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUsageMetadata;
 import dev.langchain4j.model.googleai.GeminiGenerationConfig.GeminiImageConfig;
 import dev.langchain4j.model.output.FinishReason;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Nested;
@@ -298,6 +301,54 @@ class GoogleAiGeminiChatModelTest {
                     .get(GeminiServerToolsMapper.SERVER_TOOL_RESULTS_KEY);
             assertThat(results).extracting(GoogleAiGeminiServerToolResult::type)
                     .contains("code_execution_tool_result", "url_context_tool_result", "google_search_tool_result");
+
+            assertThat(results.stream()
+                            .filter(result -> "url_context_tool_result".equals(result.type()))
+                            .findFirst())
+                    .isPresent()
+                    .get()
+                    .extracting(GoogleAiGeminiServerToolResult::content)
+                    .satisfies(resultContent -> assertThat((Map<String, Object>) resultContent).containsKey("url_metadata"));
+
+            assertThat(results.stream()
+                            .filter(result -> "google_search_tool_result".equals(result.type()))
+                            .findFirst())
+                    .isPresent()
+                    .get()
+                    .extracting(GoogleAiGeminiServerToolResult::content)
+                    .satisfies(resultContent -> assertThat((Map<String, Object>) resultContent).containsEntry(
+                            "web_search_queries", List.of("langchain4j")));
+        }
+
+        @Test
+        void shouldNotReturnServerToolResultsWhenDisabled() {
+            GroundingMetadata groundingMetadata = GroundingMetadata.builder()
+                    .webSearchQueries(List.of("langchain4j"))
+                    .build();
+            GeminiGenerateContentResponse response = new GeminiGenerateContentResponse(
+                    "server-tool-response-id",
+                    "gemini-pro-v1",
+                    List.of(new GeminiCandidate(
+                            new GeminiContent(List.of(GeminiContent.GeminiPart.builder().text("Response").build()), "model"),
+                            GeminiFinishReason.STOP,
+                            null,
+                            null)),
+                    createUsageMetadata(1, 1, 2),
+                    groundingMetadata);
+
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+                    .thenReturn(response);
+
+            var subject = GoogleAiGeminiChatModel.builder()
+                    .apiKey("test-api-key")
+                    .modelName(TEST_MODEL_NAME)
+                    .returnServerToolResults(false)
+                    .build(mockGeminiService);
+
+            var chatResponse =
+                    subject.chat(ChatRequest.builder().messages(new UserMessage("Test tools")).build());
+
+            assertThat(chatResponse.aiMessage().attributes()).doesNotContainKey(GeminiServerToolsMapper.SERVER_TOOL_RESULTS_KEY);
         }
     }
 
@@ -422,6 +473,81 @@ class GoogleAiGeminiChatModelTest {
             assertThat(request.tools().get(0).googleMaps()).isNotNull();
             assertThat(request.tools().get(0).googleMaps().enableWidget()).isTrue();
         }
+
+        @Test
+        void should_merge_legacy_flags_and_explicit_server_tools_without_duplicates() {
+            var expectedResponse = createGeminiResponse("Response");
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+                    .thenReturn(expectedResponse);
+
+            var subject = GoogleAiGeminiChatModel.builder()
+                    .apiKey("test-api-key")
+                    .modelName(TEST_MODEL_NAME)
+                    .allowGoogleSearch(true)
+                    .allowGoogleMaps(true)
+                    .retrieveGoogleMapsWidgetToken(true)
+                    .allowUrlContext(true)
+                    .serverTools(
+                            GoogleAiGeminiServerTool.builder().type("google_search").build(),
+                            GoogleAiGeminiServerTool.builder().type("google_maps").build())
+                    .build(mockGeminiService);
+
+            subject.chat(ChatRequest.builder().messages(new UserMessage("Test message")).build());
+
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+
+            GeminiGenerateContentRequest request = requestCaptor.getValue();
+            assertThat(request.tools()).hasSize(1);
+            assertThat(request.tools().get(0).googleSearch()).isNotNull();
+            assertThat(request.tools().get(0).urlContext()).isNotNull();
+            assertThat(request.tools().get(0).googleMaps()).isNotNull();
+            assertThat(request.tools().get(0).googleMaps().enableWidget()).isFalse();
+        }
+
+        @Test
+        void should_reject_unsupported_server_tool_type() {
+            var subject = GoogleAiGeminiChatModel.builder()
+                    .apiKey("test-api-key")
+                    .modelName(TEST_MODEL_NAME)
+                    .serverTools(GoogleAiGeminiServerTool.builder()
+                            .type("custom_tool")
+                            .build())
+                    .build(mockGeminiService);
+
+            assertThatThrownBy(() -> subject.chat(ChatRequest.builder()
+                            .messages(new UserMessage("Test message"))
+                            .build()))
+                    .isInstanceOf(UnsupportedFeatureException.class)
+                    .hasMessageContaining("Unsupported Google AI Gemini server tool type: custom_tool");
+        }
+    }
+
+    @Test
+    void should_extract_google_maps_server_tool_result_with_exact_shape() {
+        GroundingMetadata groundingMetadata = GroundingMetadata.builder()
+                .groundingChunks(List.of(new GroundingMetadata.GroundingChunk(
+                        null,
+                        null,
+                        new GroundingMetadata.GroundingChunk.Maps(
+                                "https://maps.example.com",
+                                "Paris",
+                                "Landmark",
+                                "place-1",
+                                null))))
+                .groundingSupports(List.of(new GroundingMetadata.GroundingSupport(
+                        List.of(0), List.of(0.9), null)))
+                .googleMapsWidgetContextToken("widget-token")
+                .build();
+
+        List<GoogleAiGeminiServerToolResult> results =
+                GeminiServerToolsMapper.extractServerToolResults(List.of(), null, groundingMetadata);
+
+        assertThat(results).singleElement().satisfies(result -> {
+            assertThat(result.type()).isEqualTo("google_maps_tool_result");
+            assertThat((Map<String, Object>) result.content())
+                    .containsKeys("grounding_chunks", "grounding_supports", "google_maps_widget_context_token")
+                    .containsEntry("google_maps_widget_context_token", "widget-token");
+        });
     }
 
     private static GeminiGenerateContentResponse createGeminiResponse(String text) {

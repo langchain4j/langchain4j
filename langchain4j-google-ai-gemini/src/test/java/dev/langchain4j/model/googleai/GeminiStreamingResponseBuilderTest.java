@@ -112,4 +112,67 @@ class GeminiStreamingResponseBuilderTest {
         assertThat(completeResponse.aiMessage().attributes())
                 .containsKey(GeminiServerToolsMapper.SERVER_TOOL_RESULTS_KEY);
     }
+
+    @Test
+    void should_preserve_exact_server_tool_result_shapes() {
+        GeminiStreamingResponseBuilder builder = new GeminiStreamingResponseBuilder(false, null, true);
+        GeminiGenerateContentResponse.GeminiUrlContextMetadata urlContextMetadata =
+                new GeminiGenerateContentResponse.GeminiUrlContextMetadata(List.of(new GeminiGenerateContentResponse
+                        .GeminiUrlMetadata(
+                                "https://docs.langchain4j.dev",
+                                GeminiGenerateContentResponse.GeminiUrlRetrievalStatus.URL_RETRIEVAL_STATUS_SUCCESS)));
+        GroundingMetadata groundingMetadata = GroundingMetadata.builder()
+                .webSearchQueries(List.of("langchain4j"))
+                .googleMapsWidgetContextToken("widget-token")
+                .groundingChunks(List.of(new GroundingMetadata.GroundingChunk(
+                        new GroundingMetadata.GroundingChunk.Web("https://example.com", "Example"),
+                        null,
+                        new GroundingMetadata.GroundingChunk.Maps("https://maps.example.com", "Paris", "Landmark", "place-1", null))))
+                .build();
+        GeminiGenerateContentResponse response = new GeminiGenerateContentResponse(
+                "id-1",
+                "gemini-pro",
+                List.of(new GeminiCandidate(
+                        new GeminiContent(List.of(), "model"),
+                        null,
+                        urlContextMetadata,
+                        groundingMetadata)),
+                null,
+                null);
+
+        builder.append(response);
+
+        ChatResponse completeResponse = builder.build();
+
+        @SuppressWarnings("unchecked")
+        List<GoogleAiGeminiServerToolResult> results = (List<GoogleAiGeminiServerToolResult>) completeResponse.aiMessage()
+                .attributes()
+                .get(GeminiServerToolsMapper.SERVER_TOOL_RESULTS_KEY);
+
+        assertThat(results).extracting(GoogleAiGeminiServerToolResult::type)
+                .contains("url_context_tool_result", "google_search_tool_result", "google_maps_tool_result");
+        assertThat(results.stream()
+                        .filter(result -> "url_context_tool_result".equals(result.type()))
+                        .findFirst())
+                .isPresent()
+                .get()
+                .extracting(GoogleAiGeminiServerToolResult::content)
+                .satisfies(content -> assertThat((java.util.Map<String, Object>) content).containsKey("url_metadata"));
+        assertThat(results.stream()
+                        .filter(result -> "google_search_tool_result".equals(result.type()))
+                        .findFirst())
+                .isPresent()
+                .get()
+                .extracting(GoogleAiGeminiServerToolResult::content)
+                .satisfies(content -> assertThat((java.util.Map<String, Object>) content)
+                        .containsEntry("web_search_queries", List.of("langchain4j")));
+        assertThat(results.stream()
+                        .filter(result -> "google_maps_tool_result".equals(result.type()))
+                        .findFirst())
+                .isPresent()
+                .get()
+                .extracting(GoogleAiGeminiServerToolResult::content)
+                .satisfies(content -> assertThat((java.util.Map<String, Object>) content)
+                        .containsEntry("google_maps_widget_context_token", "widget-token"));
+    }
 }

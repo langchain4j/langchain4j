@@ -16,6 +16,7 @@ class GoogleAiGeminiServerToolsIT {
 
     private static final String GOOGLE_AI_GEMINI_API_KEY = System.getenv("GOOGLE_AI_GEMINI_API_KEY");
     private static final String GEMINI_3_FLASH_MODEL = "gemini-3-flash-preview";
+    private static final String GEMINI_2_5_FLASH_MODEL = "gemini-2.5-flash";
 
     @Test
     void should_execute_code_with_server_tools() {
@@ -75,7 +76,7 @@ class GoogleAiGeminiServerToolsIT {
     void should_use_google_search_with_server_tools() {
         GoogleAiGeminiChatModel model = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName(GEMINI_3_FLASH_MODEL)
+                .modelName(GEMINI_2_5_FLASH_MODEL)
                 .serverTools(GoogleAiGeminiServerTool.builder()
                         .type("google_search")
                         .build())
@@ -116,7 +117,7 @@ class GoogleAiGeminiServerToolsIT {
     void should_use_google_maps_with_server_tools() {
         GoogleAiGeminiChatModel model = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName(GEMINI_3_FLASH_MODEL)
+                .modelName(GEMINI_2_5_FLASH_MODEL)
                 .serverTools(GoogleAiGeminiServerTool.builder()
                         .type("google_maps")
                         .addAttribute("enable_widget", true)
