@@ -139,8 +139,7 @@ class PolymorphicAiServiceTest {
 
     @Test
     void prompt_should_contain_discriminator_instructions() {
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds(
-                """
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("""
                 { "type": "text", "text": "ok" }
                 """);
 
@@ -158,8 +157,7 @@ class PolymorphicAiServiceTest {
 
     @Test
     void should_handle_polymorphic_return_type_with_user_message_template() {
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds(
-                """
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("""
                 { "type": "image", "url": "https://example.com/cat.png" }
                 """);
 
@@ -243,8 +241,7 @@ class PolymorphicAiServiceTest {
 
     @Test
     void should_fail_on_duplicate_discriminator_values() {
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds(
-                """
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("""
                 { "type": "dup", "text": "x" }
                 """);
 

@@ -73,7 +73,8 @@ class PolymorphicOutputParser<T> implements OutputParser<T> {
         }
 
         try {
-            return targetType.cast(deserializeBypassingTypeId((Map<String, Object>) payload, discriminator, targetType));
+            return targetType.cast(
+                    deserializeBypassingTypeId((Map<String, Object>) payload, discriminator, targetType));
         } catch (Exception e) {
             throw outputParsingException(text, targetType.getTypeName(), e);
         }
