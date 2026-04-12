@@ -16,6 +16,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.Internal;
 import dev.langchain4j.internal.JsonParsingUtils;
 import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -53,7 +54,14 @@ class PolymorphicOutputParser<T> implements OutputParser<T> {
             throw outputParsingException(text, type.getTypeName(), e);
         }
 
-        Object discriminatorValue = parsedJson.value().get(discriminator);
+        // Handle wrapped format {"value": {...}} produced by JSON schema mode (OpenAI-compatible)
+        Map<?, ?> payload = parsedJson.value();
+        Object valueField = payload.get("value");
+        if (valueField instanceof Map<?, ?> innerMap) {
+            payload = innerMap;
+        }
+
+        Object discriminatorValue = payload.get(discriminator);
         if (discriminatorValue == null) {
             throw new OutputParsingException(
                     "Missing discriminator '" + discriminator + "' for " + type.getName(), null);
@@ -65,7 +73,7 @@ class PolymorphicOutputParser<T> implements OutputParser<T> {
         }
 
         try {
-            return targetType.cast(deserializeBypassingTypeId(parsedJson.value(), discriminator, targetType));
+            return targetType.cast(deserializeBypassingTypeId((Map<String, Object>) payload, discriminator, targetType));
         } catch (Exception e) {
             throw outputParsingException(text, targetType.getTypeName(), e);
         }
@@ -96,7 +104,10 @@ class PolymorphicOutputParser<T> implements OutputParser<T> {
 
         return Optional.of(JsonSchema.builder()
                 .name(type.getSimpleName())
-                .rootElement(anyOfSchema)
+                .rootElement(JsonObjectSchema.builder()
+                        .addProperty("value", anyOfSchema)
+                        .required("value")
+                        .build())
                 .build());
     }
 

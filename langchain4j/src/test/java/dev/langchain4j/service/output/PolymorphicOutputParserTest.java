@@ -127,13 +127,29 @@ class PolymorphicOutputParserTest {
     }
 
     @Test
+    void should_parse_wrapped_value_from_json_schema_mode() {
+        String json = """
+                { "value": { "type": "image", "url": "https://example.com/img.png" } }
+                """;
+
+        ChatbotResponse response = parser.parse(json);
+
+        assertThat(response).isInstanceOf(ImageResponse.class);
+        assertThat(((ImageResponse) response).url()).isEqualTo("https://example.com/img.png");
+    }
+
+    @Test
     void json_schema_contains_all_subtypes() {
         Optional<JsonSchema> jsonSchema = parser.jsonSchema();
 
         assertThat(jsonSchema).isPresent();
-        assertThat(jsonSchema.get().rootElement()).isInstanceOf(JsonAnyOfSchema.class);
+        assertThat(jsonSchema.get().rootElement()).isInstanceOf(JsonObjectSchema.class);
 
-        JsonAnyOfSchema anyOf = (JsonAnyOfSchema) jsonSchema.get().rootElement();
+        JsonObjectSchema root = (JsonObjectSchema) jsonSchema.get().rootElement();
+        assertThat(root.properties()).containsKey("value");
+        assertThat(root.properties().get("value")).isInstanceOf(JsonAnyOfSchema.class);
+
+        JsonAnyOfSchema anyOf = (JsonAnyOfSchema) root.properties().get("value");
         assertThat(anyOf.anyOf()).hasSize(2);
 
         Set<Set<String>> propertySets = anyOf.anyOf().stream()
