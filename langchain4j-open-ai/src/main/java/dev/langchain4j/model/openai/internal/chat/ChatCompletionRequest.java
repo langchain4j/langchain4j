@@ -89,8 +89,7 @@ public final class ChatCompletionRequest {
     private final Map<String, String> metadata;
 
     @JsonProperty
-    private final String reasoningEffort;
-
+    private final Map<String, String> reasoning;
     @JsonProperty
     private final String serviceTier;
 
@@ -132,7 +131,13 @@ public final class ChatCompletionRequest {
         this.parallelToolCalls = builder.parallelToolCalls;
         this.store = builder.store;
         this.metadata = builder.metadata;
-        this.reasoningEffort = builder.reasoningEffort;
+        if (builder.reasoning != null) {
+            this.reasoning = builder.reasoning;
+        } else if (builder.reasoningEffort != null) {
+            this.reasoning = java.util.Collections.singletonMap("effort", builder.reasoningEffort);
+        } else {
+            this.reasoning = null;
+        }
         this.serviceTier = builder.serviceTier;
         this.logprobs = builder.logprobs;
         this.topLogprobs = builder.topLogprobs;
@@ -226,7 +231,11 @@ public final class ChatCompletionRequest {
     }
 
     public String reasoningEffort() {
-        return reasoningEffort;
+        return reasoning != null ? reasoning.get("effort") : null;
+    }
+
+    public Map<String, String> reasoning() {
+        return reasoning;
     }
 
     public String serviceTier() {
@@ -286,7 +295,7 @@ public final class ChatCompletionRequest {
                 && Objects.equals(parallelToolCalls, another.parallelToolCalls)
                 && Objects.equals(store, another.store)
                 && Objects.equals(metadata, another.metadata)
-                && Objects.equals(reasoningEffort, another.reasoningEffort)
+                && Objects.equals(reasoning, another.reasoning)
                 && Objects.equals(serviceTier, another.serviceTier)
                 && Objects.equals(logprobs, another.logprobs)
                 && Objects.equals(topLogprobs, another.topLogprobs)
@@ -320,7 +329,7 @@ public final class ChatCompletionRequest {
         h += (h << 5) + Objects.hashCode(parallelToolCalls);
         h += (h << 5) + Objects.hashCode(store);
         h += (h << 5) + Objects.hashCode(metadata);
-        h += (h << 5) + Objects.hashCode(reasoningEffort);
+        h += (h << 5) + Objects.hashCode(reasoning);
         h += (h << 5) + Objects.hashCode(serviceTier);
         h += (h << 5) + Objects.hashCode(logprobs);
         h += (h << 5) + Objects.hashCode(topLogprobs);
@@ -355,7 +364,7 @@ public final class ChatCompletionRequest {
                 + ", parallelToolCalls=" + parallelToolCalls
                 + ", store=" + store
                 + ", metadata=" + metadata
-                + ", reasoningEffort=" + reasoningEffort
+                + ", reasoning=" + reasoning
                 + ", serviceTier=" + serviceTier
                 + ", logprobs=" + logprobs
                 + ", topLogprobs=" + topLogprobs
@@ -396,6 +405,7 @@ public final class ChatCompletionRequest {
         private Boolean store;
         private Map<String, String> metadata;
         private String reasoningEffort;
+        private Map<String, String> reasoning;
         private String serviceTier;
         private Boolean logprobs;
         private Integer topLogprobs;
@@ -430,7 +440,8 @@ public final class ChatCompletionRequest {
             parallelToolCalls(instance.parallelToolCalls);
             store(instance.store);
             metadata(instance.metadata);
-            reasoningEffort(instance.reasoningEffort);
+            reasoningEffort(instance.reasoningEffort());
+            reasoning(instance.reasoning);
             serviceTier(instance.serviceTier);
             logprobs(instance.logprobs);
             topLogprobs(instance.topLogprobs);
@@ -622,6 +633,12 @@ public final class ChatCompletionRequest {
 
         public Builder reasoningEffort(String reasoningEffort) {
             this.reasoningEffort = reasoningEffort;
+            return this;
+        }
+
+        @JsonSetter
+        public Builder reasoning(Map<String, String> reasoning) {
+            this.reasoning = reasoning;
             return this;
         }
 
