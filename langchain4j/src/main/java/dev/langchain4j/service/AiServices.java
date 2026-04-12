@@ -473,7 +473,7 @@ public abstract class AiServices<T> {
      * @see Tool
      */
     public AiServices<T> tools(Collection<Object> objectsWithTools) {
-        context.deferredToolObjects.addAll(objectsWithTools);
+        context.toolService.tools(objectsWithTools, context.includeInheritedFields);
         return this;
     }
 
@@ -481,12 +481,15 @@ public abstract class AiServices<T> {
      * When enabled, tool parameter schemas will include fields inherited from superclasses.
      * Default is {@code false} — only fields declared directly on the parameter class are included.
      *
+     * <p>Call this before {@link #tools(Object...)} or {@link #tools(Collection)} if you want the
+     * setting to affect tools registered through the builder.
+     *
      * <p>Example usage:
      * <pre>{@code
      * AiServices.builder(Assistant.class)
      *     .chatModel(model)
-     *     .tools(new MyTool())
      *     .includeInheritedFields(true)
+     *     .tools(new MyTool())
      *     .build();
      * }</pre>
      *

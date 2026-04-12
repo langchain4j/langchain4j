@@ -102,10 +102,6 @@ class DefaultAiServices<T> extends AiServices<T> {
     }
 
     public T build() {
-        if (!context.deferredToolObjects.isEmpty()) {
-            context.toolService.tools(context.deferredToolObjects, context.includeInheritedFields);
-            context.deferredToolObjects.clear();
-        }
         validate();
 
         Object proxyInstance = Proxy.newProxyInstance(
