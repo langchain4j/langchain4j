@@ -64,9 +64,13 @@ class JsonSchemasTest {
         Optional<JsonSchema> jsonSchema = jsonSchemaFrom(ChatbotResponse.class);
 
         assertThat(jsonSchema).isPresent();
-        assertThat(jsonSchema.get().rootElement()).isInstanceOf(JsonAnyOfSchema.class);
+        assertThat(jsonSchema.get().rootElement()).isInstanceOf(JsonObjectSchema.class);
 
-        JsonAnyOfSchema anyOf = (JsonAnyOfSchema) jsonSchema.get().rootElement();
+        JsonObjectSchema root = (JsonObjectSchema) jsonSchema.get().rootElement();
+        assertThat(root.properties()).containsKey("value");
+        assertThat(root.properties().get("value")).isInstanceOf(JsonAnyOfSchema.class);
+
+        JsonAnyOfSchema anyOf = (JsonAnyOfSchema) root.properties().get("value");
         assertThat(anyOf.anyOf()).hasSize(2);
 
         assertThat(anyOf.anyOf().stream()
