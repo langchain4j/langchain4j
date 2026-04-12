@@ -60,7 +60,7 @@ class JsonSchemasTest {
     }
 
     @Test
-    void should_return_json_schema_for_polymorphic_sealed_types() {
+    void should_return_json_schema_for_polymorphic_types() {
         Optional<JsonSchema> jsonSchema = jsonSchemaFrom(ChatbotResponse.class);
 
         assertThat(jsonSchema).isPresent();
