@@ -1,29 +1,33 @@
 package dev.langchain4j.service.output;
 
 import dev.langchain4j.Internal;
-
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Date;
 
 @Internal
 class DateOutputParser implements OutputParser<Date> {
 
     private static final String DATE_PATTERN = "yyyy-MM-dd";
-    private static final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat(DATE_PATTERN);
+    // DateTimeFormatter is immutable and thread-safe, unlike SimpleDateFormat.
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
 
     @Override
     public Date parse(String string) {
         string = string.trim();
 
-        // SimpleDateFormat silently accepts dd-MM-yyyy; but parses it strangely.
+        // Guard against inputs like "dd-MM-yyyy" so the error message stays consistent
+        // with previous behavior (and independent of formatter-specific exceptions).
         if (string.indexOf("-") != 4 || string.indexOf("-", 5) != 7) {
             throw new RuntimeException("Invalid date format: " + string);
         }
 
         try {
-            return SIMPLE_DATE_FORMAT.parse(string);
-        } catch (ParseException e) {
+            LocalDate localDate = LocalDate.parse(string, FORMATTER);
+            return Date.from(localDate.atStartOfDay(ZoneId.systemDefault()).toInstant());
+        } catch (DateTimeParseException e) {
             throw new RuntimeException(e);
         }
     }

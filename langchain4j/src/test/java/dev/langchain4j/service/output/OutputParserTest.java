@@ -6,6 +6,11 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
@@ -59,6 +64,45 @@ class OutputParserTest implements WithAssertions {
         assertThatExceptionOfType(RuntimeException.class)
                 .isThrownBy(() -> parser.parse("01-12-2020"))
                 .withMessage("Invalid date format: 01-12-2020");
+    }
+
+    @Test
+    @SuppressWarnings("deprecation")
+    void date_parser_is_thread_safe() throws InterruptedException {
+        DateOutputParser parser = new DateOutputParser();
+        Date expected = new Date(120, Calendar.JANUARY, 12);
+
+        int threads = 16;
+        int iterationsPerThread = 500;
+
+        CountDownLatch latch = new CountDownLatch(threads);
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+
+        ExecutorService executor = Executors.newFixedThreadPool(threads);
+        try {
+            for (int i = 0; i < threads; i++) {
+                executor.submit(() -> {
+                    try {
+                        for (int j = 0; j < iterationsPerThread; j++) {
+                            Date result = parser.parse("2020-01-12");
+                            if (!expected.equals(result)) {
+                                failure.compareAndSet(null, new AssertionError("Got unexpected date: " + result));
+                                return;
+                            }
+                        }
+                    } catch (Throwable t) {
+                        failure.compareAndSet(null, t);
+                    } finally {
+                        latch.countDown();
+                    }
+                });
+            }
+            assertThat(latch.await(30, TimeUnit.SECONDS)).isTrue();
+        } finally {
+            executor.shutdownNow();
+        }
+
+        assertThat(failure.get()).isNull();
     }
 
     @Test
